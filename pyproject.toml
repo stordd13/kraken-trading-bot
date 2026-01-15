@@ -1,0 +1,179 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "krakenbot"
+version = "0.1.0"
+description = "Automated BTC/EUR trading bot for Kraken exchange"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "KrakenBot Team" }
+]
+keywords = ["trading", "bot", "kraken", "bitcoin", "automation"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+dependencies = [
+    # Core async framework
+    "asyncio>=3.4.3",
+
+    # API clients
+    "ccxt>=4.2.0",              # Kraken REST API
+    "websockets>=12.0",         # WebSocket client
+    "aiohttp>=3.9.0",           # Async HTTP client
+
+    # Database
+    "sqlalchemy[asyncio]>=2.0.0",  # Async ORM
+    "asyncpg>=0.29.0",          # Async PostgreSQL driver
+    "alembic>=1.13.0",          # Database migrations
+
+    # Configuration & validation
+    "pydantic>=2.5.0",          # Settings validation
+    "pydantic-settings>=2.1.0", # Environment variables
+    "python-dotenv>=1.0.0",     # .env file loading
+
+    # Logging
+    "structlog>=24.1.0",        # Structured logging
+
+    # Utilities
+    "python-dateutil>=2.8.2",   # Date parsing
+    "pytz>=2024.1",             # Timezone handling
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+
+    # Code quality
+    "ruff>=0.1.0",              # Linter & formatter
+    "mypy>=1.8.0",              # Type checker
+    "pre-commit>=3.6.0",        # Git hooks
+
+    # Type stubs
+    "types-python-dateutil",
+    "types-pytz",
+]
+
+ml = [
+    # Future ML dependencies
+    "numpy>=1.26.0",
+    "pandas>=2.1.0",
+    "scikit-learn>=1.4.0",
+]
+
+monitoring = [
+    # Monitoring & alerting
+    "prometheus-client>=0.19.0",
+]
+
+[project.scripts]
+krakenbot = "krakenbot.main:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/krakenbot"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+    "-ra",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["src/krakenbot"]
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+precision = 2
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "TCH",    # flake8-type-checking
+    "RUF",    # Ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # function call in argument defaults
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
+"tests/**/*.py" = ["ARG"]  # Allow unused arguments in tests
+
+[tool.ruff.lint.isort]
+known-first-party = ["krakenbot"]
+force-sort-within-sections = true
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_any_generics = false
+disallow_subclassing_any = false
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+check_untyped_defs = true
+strict_equality = true
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+    "ccxt.*",
+    "structlog.*",
+]
+ignore_missing_imports = true
