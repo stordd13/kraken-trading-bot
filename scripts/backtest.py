@@ -23,6 +23,7 @@ from krakenbot.core.event_bus import EventBus
 from krakenbot.core.logger import get_logger
 from krakenbot.models.base import TradeSide
 from krakenbot.models.market_data import OHLCData
+from krakenbot.models.trades import BacktestRun, Trade, TradeStatus
 from krakenbot.strategies.base import SignalType, TradingSignal
 from krakenbot.strategies.threshold import ThresholdStrategy
 
@@ -464,6 +465,100 @@ class BacktestEngine:
 
         print("\n" + "=" * 80 + "\n")
 
+    async def save_to_database(
+        self,
+        pair: str,
+        run_name: str | None = None,
+    ) -> BacktestRun:
+        """Save backtest results to database for dashboard visualization.
+
+        Args:
+            pair: Trading pair that was backtested.
+            run_name: Optional human-readable name. If not provided, generates one.
+
+        Returns:
+            The saved BacktestRun instance.
+        """
+        # Generate run name if not provided
+        if run_name is None:
+            date_str = self.metrics.start_time.strftime("%Y-%m-%d")
+            run_name = f"{self.strategy_name}_{pair}_{date_str}_{self.metrics.duration_days:.0f}d"
+
+        # Create BacktestRun instance
+        backtest_run = BacktestRun(
+            run_name=run_name,
+            strategy=self.strategy_name,
+            pair=pair,
+            start_time=self.metrics.start_time,
+            end_time=self.metrics.end_time,
+            starting_balance=self.metrics.starting_balance,
+            ending_balance=self.metrics.ending_balance,
+            total_trades=self.metrics.total_trades,
+            winning_trades=self.metrics.winning_trades,
+            losing_trades=self.metrics.losing_trades,
+            win_rate=Decimal(str(self.metrics.win_rate)),
+            total_pnl=self.metrics.total_pnl,
+            total_fees=self.metrics.total_fees,
+            net_pnl=self.metrics.net_pnl,
+            total_return_pct=Decimal(str(self.metrics.total_return_pct)),
+            max_drawdown=self.metrics.max_drawdown,
+            max_drawdown_pct=Decimal(str(self.metrics.max_drawdown_pct)),
+            sharpe_ratio=Decimal(str(self.metrics.sharpe_ratio)),
+            profit_factor=Decimal(str(self.metrics.profit_factor)),
+            average_win=self.metrics.average_win,
+            average_loss=self.metrics.average_loss,
+        )
+
+        # Save to database
+        async with self.db_manager.session() as session:
+            session.add(backtest_run)
+            await session.commit()
+            await session.refresh(backtest_run)
+
+            self.logger.info(
+                "backtest_saved_to_db",
+                backtest_id=str(backtest_run.id),
+                run_name=run_name,
+            )
+
+        return backtest_run
+
+    async def save_trades_to_database(
+        self,
+        backtest_run_id: str,
+        pair: str,
+    ) -> None:
+        """Save backtest trades to database (optional, for detailed analysis).
+
+        Args:
+            backtest_run_id: ID of the backtest run (for filtering).
+            pair: Trading pair.
+        """
+        async with self.db_manager.session() as session:
+            for trade in self.metrics.trades:
+                db_trade = Trade(
+                    timestamp=trade.timestamp,
+                    pair=pair,
+                    side=trade.side,
+                    amount=trade.amount_crypto,
+                    price=trade.price,
+                    fee=trade.fee,
+                    fee_currency="USDC",
+                    strategy=f"backtest_{backtest_run_id}",  # Tag as backtest trade
+                    pnl=trade.pnl,
+                    status=TradeStatus.FILLED,
+                    notes=f"Backtest trade from run {backtest_run_id}",
+                )
+                session.add(db_trade)
+
+            await session.commit()
+
+            self.logger.info(
+                "backtest_trades_saved",
+                backtest_id=backtest_run_id,
+                trade_count=len(self.metrics.trades),
+            )
+
 
 async def main() -> None:
     """CLI entry point for backtesting."""
@@ -492,6 +587,17 @@ async def main() -> None:
         default=None,
         help="End date (YYYY-MM-DD, default: now)",
     )
+    parser.add_argument(
+        "--save",
+        action="store_true",
+        help="Save backtest results to database (for dashboard visualization)",
+    )
+    parser.add_argument(
+        "--name",
+        type=str,
+        default=None,
+        help="Custom name for this backtest run",
+    )
 
     args = parser.parse_args()
 
@@ -515,6 +621,16 @@ async def main() -> None:
 
         # Print report
         engine.print_report()
+
+        # Save to database if requested
+        if args.save:
+            backtest_run = await engine.save_to_database(args.pair, run_name=args.name)
+            print(f"\n✅ Backtest results saved to database with ID: {backtest_run.id}")
+            print(f"   Run name: {backtest_run.run_name}")
+            print(f"   View in dashboard: streamlit run scripts/dashboard.py\n")
+
+            # Optionally save individual trades (commented out by default to avoid clutter)
+            # await engine.save_trades_to_database(str(backtest_run.id), args.pair)
 
     finally:
         await db_manager.disconnect()

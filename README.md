@@ -875,6 +875,12 @@ python -m scripts.backtest --pair XBT/USDC --days 14 --end-date 2026-01-15
 
 # Backtest specific strategy
 python -m scripts.backtest --strategy threshold --pair XBT/USDC --days 7
+
+# Save backtest results to database for dashboard visualization
+python -m scripts.backtest --pair XBT/USDC --days 7 --save
+
+# Save with custom name
+python -m scripts.backtest --pair XBT/USDC --days 30 --save --name "Aggressive Strategy Test"
 ```
 
 ### Backtest Output
@@ -1036,6 +1042,31 @@ The dashboard will open in your browser at `http://localhost:8501`.
 - **Historical Data**: Chart requires OHLC data in the database (accumulated by the bot)
 - **Port 8501**: Default Streamlit port must be available
 
+### Backtest Visualization
+
+The dashboard includes a **Backtest Results** mode that allows you to visualize saved backtest runs:
+
+1. **Run a backtest with --save flag**:
+   ```bash
+   python -m scripts.backtest --pair XBT/USDC --days 30 --save
+   ```
+
+2. **Open the dashboard**:
+   ```bash
+   streamlit run scripts/dashboard.py
+   ```
+
+3. **Switch to Backtest mode**:
+   - In the sidebar, select "Backtest Results"
+   - Choose a backtest from the dropdown
+   - View comprehensive metrics: Net P&L, Win Rate, Sharpe Ratio, Max Drawdown
+   - See the full backtest period chart with entry/exit points
+
+4. **Compare multiple backtests**:
+   - Run multiple backtests with different parameters
+   - Switch between them in the dashboard to compare performance
+   - Each backtest is saved with timestamp for easy identification
+
 ### Tips for Using the Dashboard
 
 1. **Paper Mode Testing**: Run the bot in paper mode and monitor performance on the dashboard before going live
@@ -1043,6 +1074,7 @@ The dashboard will open in your browser at `http://localhost:8501`.
 3. **Performance Tracking**: Check Total P&L and Win Rate to evaluate strategy effectiveness
 4. **Multi-Window**: Open dashboard in one window, keep logs in terminal in another
 5. **Auto-Refresh**: Enable for hands-off monitoring, disable when analyzing specific trades
+6. **Backtest Analysis**: Save all your backtests to compare different strategy parameters and find optimal settings
 
 ---
 

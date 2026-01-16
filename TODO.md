@@ -175,6 +175,10 @@
   - [x] Bot status monitoring (RUNNING/IDLE/STOPPED/ERROR)
   - [x] Interactive Plotly candlestick chart
   - [x] Color-coded buy/sell signals on chart
+  - [x] **Mode Backtest Results** (NOUVEAU!)
+  - [x] Sélecteur de backtests avec dropdown
+  - [x] Visualisation métriques de backtest (P&L, Win Rate, Sharpe, Drawdown)
+  - [x] Comparaison de plusieurs backtests
 - [ ] Export métriques pour Grafana (futur)
 - [ ] Alertes Discord/Telegram (optionnel)
 
@@ -187,6 +191,11 @@
   - [x] Rapport détaillé des performances
   - [x] Tests unitaires pour le backtesting
   - [x] Documentation dans README.md
+  - [x] **Sauvegarde résultats en DB** (NOUVEAU!)
+  - [x] Table `backtest_runs` avec toutes les métriques
+  - [x] Migration Alembic pour backtest_runs
+  - [x] Flag `--save` pour sauvegarder les résultats
+  - [x] Intégration avec dashboard pour visualisation
 
 #### 3. Multi-Stratégies
 - [ ] Registre de stratégies

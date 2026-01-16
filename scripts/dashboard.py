@@ -22,7 +22,7 @@ from sqlalchemy import select, desc
 from krakenbot.config.settings import get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.models.market_data import OHLCData
-from krakenbot.models.trades import Trade, BotState
+from krakenbot.models.trades import Trade, BotState, BacktestRun
 from krakenbot.models.base import BotStatus
 
 
@@ -82,6 +82,32 @@ async def fetch_recent_trades(
         )
         result = await session.execute(stmt)
         return list(result.scalars().all())
+
+
+async def fetch_backtest_runs(
+    db_manager: DatabaseManager,
+    limit: int = 50,
+) -> list[BacktestRun]:
+    """Fetch recent backtest runs from database."""
+    async with db_manager.session() as session:
+        stmt = (
+            select(BacktestRun)
+            .order_by(desc(BacktestRun.created_at))
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+        return list(result.scalars().all())
+
+
+async def fetch_backtest_by_id(
+    db_manager: DatabaseManager,
+    backtest_id: str,
+) -> BacktestRun | None:
+    """Fetch specific backtest run by ID."""
+    async with db_manager.session() as session:
+        stmt = select(BacktestRun).where(BacktestRun.id == backtest_id)
+        result = await session.execute(stmt)
+        return result.scalar_one_or_none()
 
 
 def create_price_chart(ohlc_data: list[OHLCData], trades: list[Trade]) -> go.Figure:
@@ -303,34 +329,124 @@ def main():
 
     st.markdown("---")
 
-    # Fetch bot state
-    bot_state = loop.run_until_complete(fetch_bot_state(db_manager))
+    # Settings
+    settings = get_settings()
+    pair = settings.trading.pair
 
-    # Render metrics
-    render_metrics(bot_state)
+    # Sidebar controls
+    with st.sidebar:
+        st.header("Settings")
 
-    st.markdown("---")
+        # Mode selection
+        mode = st.radio(
+            "View Mode",
+            options=["Live Bot", "Backtest Results"],
+            index=0,
+        )
 
-    # Two-column layout
-    col1, col2 = st.columns([2, 1])
+        # If backtest mode, show selector
+        selected_backtest = None
+        if mode == "Backtest Results":
+            backtests = loop.run_until_complete(fetch_backtest_runs(db_manager, limit=50))
+            if backtests:
+                backtest_options = {
+                    f"{bt.run_name} ({bt.created_at.strftime('%Y-%m-%d %H:%M')})": str(bt.id)
+                    for bt in backtests
+                }
+                selected_name = st.selectbox(
+                    "Select Backtest",
+                    options=list(backtest_options.keys()),
+                )
+                selected_id = backtest_options[selected_name]
+                selected_backtest = loop.run_until_complete(
+                    fetch_backtest_by_id(db_manager, selected_id)
+                )
+            else:
+                st.warning("No backtests found. Run a backtest with --save flag.")
 
-    with col1:
-        # Settings
-        settings = get_settings()
-        pair = settings.trading.pair
+        hours = st.slider("Chart Hours", min_value=1, max_value=168, value=24, step=1)
+        auto_refresh = st.checkbox("Auto-refresh (30s)", value=False)
 
-        # Sidebar controls
-        with st.sidebar:
-            st.header("Settings")
-            hours = st.slider("Chart Hours", min_value=1, max_value=168, value=24, step=1)
-            auto_refresh = st.checkbox("Auto-refresh (30s)", value=False)
+    # Conditional rendering based on mode
+    if mode == "Backtest Results" and selected_backtest:
+        # Backtest metrics
+        col1, col2, col3, col4 = st.columns(4)
+        with col1:
+            st.metric(
+                "Net P&L",
+                f"{float(selected_backtest.net_pnl):+.2f} USDC",
+                delta=f"{float(selected_backtest.total_return_pct):+.2f}% return",
+            )
+        with col2:
+            st.metric(
+                "Win Rate",
+                f"{float(selected_backtest.win_rate) * 100:.1f}%",
+                delta=f"{selected_backtest.total_trades} trades",
+            )
+        with col3:
+            st.metric(
+                "Sharpe Ratio",
+                f"{float(selected_backtest.sharpe_ratio):.2f}",
+            )
+        with col4:
+            st.metric(
+                "Max Drawdown",
+                f"{float(selected_backtest.max_drawdown):.2f} USDC",
+                delta=f"{float(selected_backtest.max_drawdown_pct):.2f}%",
+            )
 
-        # Render chart
-        render_chart(db_manager, pair, hours)
+        st.markdown("---")
 
-    with col2:
-        # Bot status
-        render_bot_status(bot_state)
+        # Backtest details
+        col1, col2 = st.columns(2)
+        with col1:
+            st.subheader("Backtest Details")
+            st.write(f"**Strategy:** {selected_backtest.strategy}")
+            st.write(f"**Pair:** {selected_backtest.pair}")
+            st.write(f"**Period:** {selected_backtest.start_time.strftime('%Y-%m-%d')} to {selected_backtest.end_time.strftime('%Y-%m-%d')}")
+            st.write(f"**Duration:** {(selected_backtest.end_time - selected_backtest.start_time).days} days")
+
+        with col2:
+            st.subheader("Performance Metrics")
+            st.write(f"**Starting Balance:** {float(selected_backtest.starting_balance):.2f} USDC")
+            st.write(f"**Ending Balance:** {float(selected_backtest.ending_balance):.2f} USDC")
+            st.write(f"**Total Fees:** {float(selected_backtest.total_fees):.2f} USDC")
+            st.write(f"**Profit Factor:** {float(selected_backtest.profit_factor):.2f}")
+
+        st.markdown("---")
+
+        # Render chart for backtest period
+        ohlc_data = loop.run_until_complete(fetch_recent_ohlc(
+            db_manager,
+            selected_backtest.pair,
+            hours=(selected_backtest.end_time - selected_backtest.start_time).days * 24,
+        ))
+        if ohlc_data:
+            fig = create_price_chart(ohlc_data, [])
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("No OHLC data found for this backtest period.")
+
+    else:
+        # Live Bot Mode
+        # Fetch bot state
+        bot_state = loop.run_until_complete(fetch_bot_state(db_manager))
+
+        # Render metrics
+        render_metrics(bot_state)
+
+        st.markdown("---")
+
+        # Two-column layout
+        col1, col2 = st.columns([2, 1])
+
+        with col1:
+            # Render chart
+            render_chart(db_manager, pair, hours)
+
+        with col2:
+            # Bot status
+            render_bot_status(bot_state)
 
     st.markdown("---")
 

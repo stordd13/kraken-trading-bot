@@ -379,3 +379,193 @@ class BotState(Base):
         if not self.has_position or self.entry_price is None:
             return Decimal("0")
         return (current_price - self.entry_price) * self.position_size
+
+
+class BacktestRun(Base):
+    """Backtest run results model.
+
+    This table stores the results of strategy backtests for
+    visualization and comparison.
+
+    Attributes:
+        id: Unique backtest run identifier (UUID).
+        run_name: Human-readable name for this backtest.
+        strategy: Strategy name that was tested.
+        pair: Trading pair used in backtest.
+        start_time: Backtest period start.
+        end_time: Backtest period end.
+        starting_balance: Initial balance.
+        ending_balance: Final balance.
+        total_trades: Number of trades executed.
+        winning_trades: Number of winning trades.
+        losing_trades: Number of losing trades.
+        win_rate: Win rate (0-1).
+        total_pnl: Total profit/loss.
+        total_fees: Total fees paid.
+        net_pnl: Net profit/loss (total_pnl - total_fees).
+        total_return_pct: Total return percentage.
+        max_drawdown: Maximum drawdown amount.
+        max_drawdown_pct: Maximum drawdown percentage.
+        sharpe_ratio: Sharpe ratio.
+        profit_factor: Profit factor (total_wins / total_losses).
+        average_win: Average winning trade amount.
+        average_loss: Average losing trade amount.
+        created_at: When this backtest was run.
+    """
+
+    __tablename__ = "backtest_runs"
+
+    # Primary key
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        comment="Unique backtest run identifier",
+    )
+
+    # Backtest metadata
+    run_name: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        comment="Human-readable backtest name",
+    )
+    strategy: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Strategy name",
+    )
+    pair: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        index=True,
+        comment="Trading pair (e.g., XBT/USDC)",
+    )
+
+    # Time period
+    start_time: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        index=True,
+        comment="Backtest period start (UTC)",
+    )
+    end_time: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        comment="Backtest period end (UTC)",
+    )
+
+    # Balance metrics
+    starting_balance: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Initial balance",
+    )
+    ending_balance: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Final balance",
+    )
+
+    # Trade statistics
+    total_trades: Mapped[int] = mapped_column(
+        nullable=False,
+        default=0,
+        comment="Total number of trades",
+    )
+    winning_trades: Mapped[int] = mapped_column(
+        nullable=False,
+        default=0,
+        comment="Number of winning trades",
+    )
+    losing_trades: Mapped[int] = mapped_column(
+        nullable=False,
+        default=0,
+        comment="Number of losing trades",
+    )
+    win_rate: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=5, scale=4),
+        nullable=False,
+        default=Decimal("0"),
+        comment="Win rate (0-1)",
+    )
+
+    # P&L metrics
+    total_pnl: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Total profit/loss",
+    )
+    total_fees: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Total fees paid",
+    )
+    net_pnl: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Net profit/loss (total_pnl - total_fees)",
+    )
+    total_return_pct: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=10, scale=4),
+        nullable=False,
+        comment="Total return percentage",
+    )
+
+    # Risk metrics
+    max_drawdown: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Maximum drawdown amount",
+    )
+    max_drawdown_pct: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=10, scale=4),
+        nullable=False,
+        comment="Maximum drawdown percentage",
+    )
+    sharpe_ratio: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=10, scale=4),
+        nullable=False,
+        comment="Sharpe ratio",
+    )
+    profit_factor: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=10, scale=4),
+        nullable=False,
+        comment="Profit factor (total_wins / total_losses)",
+    )
+    average_win: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Average winning trade amount",
+    )
+    average_loss: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Average losing trade amount",
+    )
+
+    # Metadata
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=utc_now,
+        index=True,
+        comment="When this backtest was run",
+    )
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_backtest_runs_strategy_created", "strategy", "created_at"),
+        Index("ix_backtest_runs_pair_created", "pair", "created_at"),
+        {
+            "comment": "Backtest run results for strategy analysis",
+        },
+    )
+
+    def __repr__(self) -> str:
+        """Return string representation of backtest run."""
+        return (
+            f"BacktestRun(id={self.id!r}, run_name={self.run_name!r}, "
+            f"strategy={self.strategy!r}, pair={self.pair!r}, "
+            f"net_pnl={self.net_pnl}, total_return_pct={self.total_return_pct})"
+        )
