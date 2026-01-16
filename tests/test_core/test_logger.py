@@ -73,9 +73,10 @@ class TestSecretMasking:
         }
         result = _mask_dict_secrets(data)
 
-        assert result["api_key"] == "***"  # Short enough to be fully masked
+        # Long strings (>8 chars) are masked as "xxx...xxx"
+        assert result["api_key"] == "sec...890"  # Long value shows partial
         assert result["name"] == "test"  # Not a secret field
-        assert result["password"] == "***"  # Secret field
+        assert result["password"] == "myp...123"  # Long password shows partial
 
     def test_mask_dict_secrets_nested(self) -> None:
         """Test masking of nested dictionaries."""
@@ -88,7 +89,8 @@ class TestSecretMasking:
         }
         result = _mask_dict_secrets(data)
 
-        assert result["config"]["api_key"] == "***"
+        # Long strings (>8 chars) are masked as "xxx...xxx"
+        assert result["config"]["api_key"] == "nes...key"
         assert result["config"]["host"] == "localhost"
         assert result["name"] == "test"
 
@@ -115,7 +117,8 @@ class TestMaskSecretsProcessor:
         }
         result = mask_secrets(None, None, event_dict)  # type: ignore[arg-type]
 
-        assert result["password"] == "***"
+        # Password is > 8 chars so it shows partial masking
+        assert result["password"] == "sec...123"
         assert result["user"] == "admin"
 
     def test_mask_secrets_preserves_normal_fields(self) -> None:

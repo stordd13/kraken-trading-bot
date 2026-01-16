@@ -12,6 +12,8 @@ Système de trading automatisé sur Kraken pour BTC/EUR avec:
 - Pipeline de données pour accumulation d'historique long terme
 - Évolution future vers ML/RL
 
+
+
 ### Vision Produit
 1. **Court terme**: Bot fonctionnel avec stratégie simple (seuils)
 2. **Moyen terme**: Backtesting + monitoring + multi-stratégies

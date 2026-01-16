@@ -56,15 +56,15 @@ class TestEventBusSubscription:
 
     async def test_subscribe_adds_callback(self, event_bus: EventBus) -> None:
         """Test that subscribing adds callback to subscribers."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("test.event", callback)
 
         assert event_bus.get_subscriber_count("test.event") == 1
 
     async def test_subscribe_multiple_callbacks(self, event_bus: EventBus) -> None:
         """Test subscribing multiple callbacks to same event."""
-        callback1 = MagicMock()
-        callback2 = MagicMock()
+        callback1 = MagicMock(__name__="callback1")
+        callback2 = MagicMock(__name__="callback2")
 
         await event_bus.subscribe("test.event", callback1)
         await event_bus.subscribe("test.event", callback2)
@@ -73,14 +73,14 @@ class TestEventBusSubscription:
 
     async def test_subscribe_with_event_type_enum(self, event_bus: EventBus) -> None:
         """Test subscribing using EventType enum."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe(EventType.MARKET_TICK, callback)
 
         assert event_bus.get_subscriber_count(EventType.MARKET_TICK) == 1
 
     async def test_unsubscribe_removes_callback(self, event_bus: EventBus) -> None:
         """Test that unsubscribing removes callback."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("test.event", callback)
         result = await event_bus.unsubscribe("test.event", callback)
 
@@ -91,23 +91,23 @@ class TestEventBusSubscription:
         self, event_bus: EventBus
     ) -> None:
         """Test unsubscribing a non-existent callback returns False."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         result = await event_bus.unsubscribe("test.event", callback)
 
         assert result is False
 
     async def test_wildcard_subscription(self, event_bus: EventBus) -> None:
         """Test wildcard subscription pattern."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("market.*", callback)
 
         assert event_bus.get_subscriber_count("market.*") == 1
 
     async def test_total_subscriber_count(self, event_bus: EventBus) -> None:
         """Test getting total subscriber count."""
-        callback1 = MagicMock()
-        callback2 = MagicMock()
-        callback3 = MagicMock()
+        callback1 = MagicMock(__name__="callback1")
+        callback2 = MagicMock(__name__="callback2")
+        callback3 = MagicMock(__name__="callback3")
 
         await event_bus.subscribe("event.one", callback1)
         await event_bus.subscribe("event.two", callback2)
@@ -121,7 +121,7 @@ class TestEventBusPublishing:
 
     async def test_publish_calls_subscriber(self, event_bus: EventBus) -> None:
         """Test that publishing calls subscribed callback."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("test.event", callback)
 
         await event_bus.publish("test.event", {"key": "value"})
@@ -130,7 +130,7 @@ class TestEventBusPublishing:
 
     async def test_publish_async_callback(self, event_bus: EventBus) -> None:
         """Test publishing to async callback."""
-        callback = AsyncMock()
+        callback = AsyncMock(__name__="callback")
         await event_bus.subscribe("test.event", callback)
 
         await event_bus.publish("test.event", {"key": "value"})
@@ -139,8 +139,8 @@ class TestEventBusPublishing:
 
     async def test_publish_returns_delivery_count(self, event_bus: EventBus) -> None:
         """Test that publish returns number of delivered events."""
-        callback1 = MagicMock()
-        callback2 = MagicMock()
+        callback1 = MagicMock(__name__="callback1")
+        callback2 = MagicMock(__name__="callback2")
 
         await event_bus.subscribe("test.event", callback1)
         await event_bus.subscribe("test.event", callback2)
@@ -159,7 +159,7 @@ class TestEventBusPublishing:
 
     async def test_publish_wildcard_receives_events(self, event_bus: EventBus) -> None:
         """Test that wildcard subscribers receive matching events."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("market.*", callback)
 
         await event_bus.publish("market.tick", {"price": "42000"})
@@ -171,7 +171,7 @@ class TestEventBusPublishing:
         self, event_bus: EventBus
     ) -> None:
         """Test that wildcard doesn't match unrelated events."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("market.*", callback)
 
         await event_bus.publish("trade.signal", {})
@@ -180,7 +180,7 @@ class TestEventBusPublishing:
 
     async def test_publish_with_event_type_enum(self, event_bus: EventBus) -> None:
         """Test publishing using EventType enum."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe(EventType.MARKET_TICK, callback)
 
         await event_bus.publish(EventType.MARKET_TICK, {"price": "42000"})
@@ -191,8 +191,8 @@ class TestEventBusPublishing:
         self, event_bus: EventBus
     ) -> None:
         """Test that error in one callback doesn't prevent others."""
-        callback1 = MagicMock(side_effect=ValueError("test error"))
-        callback2 = MagicMock()
+        callback1 = MagicMock(__name__="callback1", side_effect=ValueError("test error"))
+        callback2 = MagicMock(__name__="callback2")
 
         await event_bus.subscribe("test.event", callback1)
         await event_bus.subscribe("test.event", callback2)
@@ -301,7 +301,7 @@ class TestEventBusClearSubscribers:
 
     async def test_clear_all_subscribers(self, event_bus: EventBus) -> None:
         """Test clearing all subscribers."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("event.one", callback)
         await event_bus.subscribe("event.two", callback)
         await event_bus.subscribe("market.*", callback)
@@ -312,7 +312,7 @@ class TestEventBusClearSubscribers:
 
     async def test_clear_specific_event_subscribers(self, event_bus: EventBus) -> None:
         """Test clearing subscribers for specific event."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("event.one", callback)
         await event_bus.subscribe("event.two", callback)
 
@@ -327,7 +327,7 @@ class TestEventBusStatistics:
 
     async def test_stats_track_published_events(self, event_bus: EventBus) -> None:
         """Test that stats track published events."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("test.event", callback)
 
         await event_bus.publish("test.event", {})
@@ -339,7 +339,7 @@ class TestEventBusStatistics:
 
     async def test_stats_track_delivery_errors(self, event_bus: EventBus) -> None:
         """Test that stats track delivery errors."""
-        callback = MagicMock(side_effect=ValueError("error"))
+        callback = MagicMock(__name__="callback", side_effect=ValueError("error"))
         await event_bus.subscribe("test.event", callback)
 
         await event_bus.publish("test.event", {})
@@ -349,7 +349,7 @@ class TestEventBusStatistics:
 
     async def test_reset_stats(self, event_bus: EventBus) -> None:
         """Test resetting statistics."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe("test.event", callback)
         await event_bus.publish("test.event", {})
 
@@ -413,7 +413,7 @@ class TestEventType:
         self, event_bus: EventBus
     ) -> None:
         """Test that EventType can be used for subscriptions."""
-        callback = MagicMock()
+        callback = MagicMock(__name__="callback")
         await event_bus.subscribe(EventType.MARKET_TICK, callback)
         await event_bus.publish(EventType.MARKET_TICK, {})
 

@@ -71,6 +71,17 @@ def mock_live_settings() -> Settings:
     Returns:
         A Settings instance configured for live trading.
     """
+    # Use model_construct to bypass validation for testing purposes.
+    # This is necessary because the TradingSettings validator checks
+    # confirm_live before it's available in the validation context.
+    trading_settings = TradingSettings.model_construct(
+        mode=TradingMode.LIVE,
+        pair="XBT/EUR",
+        confirm_live="yes",
+        default_order_amount_eur=15.0,
+        candle_interval_min=15,
+    )
+
     return Settings(
         app_name="KrakenBot-Test",
         environment="testing",
@@ -81,11 +92,7 @@ def mock_live_settings() -> Settings:
         database=DatabaseSettings(
             url="postgresql+asyncpg://test:test@localhost:5432/krakenbot_test",
         ),
-        trading=TradingSettings(
-            mode=TradingMode.LIVE,
-            pair="XBT/EUR",
-            confirm_live="yes",
-        ),
+        trading=trading_settings,
     )
 
 

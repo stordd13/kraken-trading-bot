@@ -1,0 +1,609 @@
+"""Execution engine for processing trading signals.
+
+This module provides the ExecutionEngine class that orchestrates the execution
+of trading signals by validating them through the RiskManager and executing
+orders via the Kraken REST client.
+
+Workflow:
+    1. Receive trading signal from EventBus
+    2. Validate signal via RiskManager
+    3. Execute order via KrakenRestClient
+    4. Update BotState in database
+    5. Log all decisions and outcomes
+
+Example:
+    >>> from krakenbot.execution.engine import ExecutionEngine
+    >>> engine = ExecutionEngine(settings, event_bus, db_manager, rest_client)
+    >>> await engine.start()
+    >>> # Engine now listens for TRADE_SIGNAL events
+    >>> await engine.stop()
+"""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any
+
+from krakenbot.core.event_bus import EventType
+from krakenbot.core.logger import get_logger
+from krakenbot.execution.risk import RiskManager
+from krakenbot.models.base import BotStatus, TradeSide, TradeStatus
+from krakenbot.strategies.base import TradingSignal
+
+if TYPE_CHECKING:
+    from krakenbot.config.settings import Settings
+    from krakenbot.connectors.kraken_rest import KrakenRestClient
+    from krakenbot.core.database import DatabaseManager
+    from krakenbot.core.event_bus import EventBus
+    from krakenbot.models.trades import Trade
+
+
+class ExecutionEngine:
+    """Engine that processes trading signals and executes orders.
+
+    The ExecutionEngine is the central component that connects strategy
+    signals to actual order execution. It listens for signals on the
+    EventBus, validates them through risk management, and executes
+    approved orders.
+
+    Responsibilities:
+        - Subscribe to trading signal events
+        - Validate orders through RiskManager
+        - Execute orders via KrakenRestClient
+        - Update BotState after trades
+        - Log all trading decisions
+
+    Attributes:
+        settings: Application settings.
+        event_bus: Event bus for pub/sub communication.
+        db_manager: Database manager for persistence.
+        rest_client: Kraken REST API client.
+        risk_manager: Risk management validator.
+
+    Example:
+        >>> engine = ExecutionEngine(
+        ...     settings=settings,
+        ...     event_bus=event_bus,
+        ...     db_manager=db_manager,
+        ...     rest_client=rest_client,
+        ... )
+        >>> await engine.start()
+        >>> # Signal handling happens automatically
+        >>> await engine.stop()
+    """
+
+    def __init__(
+        self,
+        settings: Settings,
+        event_bus: EventBus,
+        db_manager: DatabaseManager,
+        rest_client: KrakenRestClient,
+    ) -> None:
+        """Initialize the execution engine.
+
+        Args:
+            settings: Application settings.
+            event_bus: Event bus for pub/sub communication.
+            db_manager: Database manager for persistence.
+            rest_client: Kraken REST API client.
+        """
+        self.settings = settings
+        self.event_bus = event_bus
+        self.db_manager = db_manager
+        self.rest_client = rest_client
+        self.risk_manager = RiskManager(settings, db_manager)
+        self.logger = get_logger(__name__)
+
+        self._running = False
+
+        # Statistics
+        self._stats = {
+            "signals_received": 0,
+            "signals_executed": 0,
+            "signals_rejected": 0,
+            "signals_ignored": 0,
+            "execution_errors": 0,
+        }
+
+    async def start(self) -> None:
+        """Start the execution engine.
+
+        Subscribes to trading signal events and begins processing.
+        """
+        if self._running:
+            self.logger.warning("execution_engine_already_running")
+            return
+
+        self._running = True
+        await self.event_bus.subscribe(EventType.TRADE_SIGNAL, self._handle_signal)
+
+        self.logger.info(
+            "execution_engine_started",
+            trading_mode=self.settings.trading.mode.value,
+            default_order_eur=self.settings.trading.default_order_amount_eur,
+        )
+
+    async def stop(self) -> None:
+        """Stop the execution engine.
+
+        Unsubscribes from events and stops processing signals.
+        """
+        if not self._running:
+            self.logger.warning("execution_engine_not_running")
+            return
+
+        self._running = False
+        await self.event_bus.unsubscribe(EventType.TRADE_SIGNAL, self._handle_signal)
+
+        self.logger.info(
+            "execution_engine_stopped",
+            stats=self._stats,
+        )
+
+    async def _handle_signal(self, data: dict[str, Any]) -> None:
+        """Handle incoming trading signal events.
+
+        This is the callback registered with the EventBus for
+        TRADE_SIGNAL events.
+
+        Args:
+            data: Event data containing the trading signal.
+        """
+        if not self._running:
+            return
+
+        self._stats["signals_received"] += 1
+
+        # Extract the signal from event data
+        signal: TradingSignal = data.get("signal")  # type: ignore[assignment]
+        if signal is None:
+            self.logger.error("signal_missing_from_event", data=data)
+            return
+
+        # Ignore HOLD signals
+        if not signal.should_trade:
+            self._stats["signals_ignored"] += 1
+            self.logger.debug(
+                "signal_ignored_hold",
+                strategy=signal.strategy,
+                pair=signal.pair,
+                reason=signal.reason,
+            )
+            return
+
+        self.logger.info(
+            "signal_received",
+            signal_type=signal.signal_type.value,
+            pair=signal.pair,
+            price=float(signal.price),
+            confidence=signal.confidence,
+            reason=signal.reason,
+            strategy=signal.strategy,
+        )
+
+        try:
+            await self._execute_signal(signal)
+        except Exception as e:
+            self._stats["execution_errors"] += 1
+            self.logger.error(
+                "signal_execution_error",
+                error=str(e),
+                error_type=type(e).__name__,
+                signal_type=signal.signal_type.value,
+                pair=signal.pair,
+                strategy=signal.strategy,
+                exc_info=e,
+            )
+            # Publish error event
+            await self.event_bus.publish(
+                EventType.SYSTEM_ERROR,
+                {
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "context": "signal_execution",
+                    "signal": signal.to_dict(),
+                },
+            )
+
+    async def _execute_signal(self, signal: TradingSignal) -> None:
+        """Execute a trading signal after validation.
+
+        This method:
+        1. Determines order parameters
+        2. Gets current balance
+        3. Validates through RiskManager
+        4. Executes the order if approved
+        5. Updates BotState
+
+        Args:
+            signal: The trading signal to execute.
+        """
+        # Determine order side
+        side = TradeSide.BUY if signal.is_buy else TradeSide.SELL
+
+        # Calculate order amount
+        amount = await self._calculate_order_amount(signal.pair, side, signal.price)
+
+        if amount <= Decimal("0"):
+            self.logger.warning(
+                "order_skipped_zero_amount",
+                signal_type=signal.signal_type.value,
+                pair=signal.pair,
+                side=side.value,
+            )
+            self._stats["signals_ignored"] += 1
+            return
+
+        # Get current balance for risk checks
+        balance = await self.rest_client.get_balance()
+
+        # Perform risk validation
+        risk_result = await self.risk_manager.check_order(
+            pair=signal.pair,
+            side=side,
+            amount=amount,
+            price=signal.price,
+            balance=balance,
+        )
+
+        if risk_result.rejected:
+            self._stats["signals_rejected"] += 1
+            self.logger.warning(
+                "order_rejected_by_risk",
+                pair=signal.pair,
+                side=side.value,
+                amount=float(amount),
+                price=float(signal.price),
+                reasons=risk_result.reasons,
+                strategy=signal.strategy,
+            )
+            # Publish rejection event
+            await self.event_bus.publish(
+                EventType.TRADE_ORDER_FAILED,
+                {
+                    "pair": signal.pair,
+                    "side": side.value,
+                    "amount": str(amount),
+                    "reasons": risk_result.reasons,
+                    "context": "risk_rejected",
+                },
+            )
+            return
+
+        # Execute the order
+        trade = await self.rest_client.place_market_order(
+            pair=signal.pair,
+            side=side,
+            amount=amount,
+            strategy=signal.strategy,
+        )
+
+        self._stats["signals_executed"] += 1
+
+        # Update bot state
+        await self._update_bot_state(trade, signal)
+
+        self.logger.info(
+            "order_executed",
+            trade_id=str(trade.id),
+            pair=trade.pair,
+            side=trade.side.value,
+            amount=float(trade.amount),
+            price=float(trade.price),
+            fee=float(trade.fee),
+            strategy=trade.strategy,
+            status=trade.status.value,
+        )
+
+    async def _calculate_order_amount(
+        self,
+        pair: str,
+        side: TradeSide,
+        price: Decimal,
+    ) -> Decimal:
+        """Calculate the order amount based on side and settings.
+
+        For BUY orders, converts the default EUR amount to base currency.
+        For SELL orders, returns the full position size.
+
+        Args:
+            pair: Trading pair.
+            side: Order side.
+            price: Current price.
+
+        Returns:
+            Order amount in base currency.
+        """
+        if side == TradeSide.BUY:
+            # For BUY: convert default EUR amount to base currency
+            eur_amount = Decimal(str(self.settings.trading.default_order_amount_eur))
+            amount = eur_amount / price
+
+            # Round to appropriate precision (8 decimal places for crypto)
+            return amount.quantize(Decimal("0.00000001"))
+        else:
+            # For SELL: get position size from BotState
+            position_size = await self._get_position_size(pair)
+            return position_size
+
+    async def _get_position_size(self, pair: str) -> Decimal:
+        """Get the current position size for a trading pair.
+
+        Queries the BotState table for the position associated with
+        the trading pair.
+
+        Args:
+            pair: Trading pair.
+
+        Returns:
+            Current position size, or 0 if no position exists.
+        """
+        from sqlalchemy import select
+
+        from krakenbot.models.trades import BotState
+
+        async with self.db_manager.read_session() as session:
+            # Query for bot states that might hold this pair
+            # The bot_id typically includes the pair or strategy name
+            result = await session.execute(
+                select(BotState.position_size)
+                .where(BotState.position_size > Decimal("0"))
+                .order_by(BotState.updated_at.desc())
+                .limit(1)
+            )
+            position = result.scalar()
+            return position if position else Decimal("0")
+
+    async def _update_bot_state(self, trade: Trade, signal: TradingSignal) -> None:
+        """Update the BotState after a trade execution.
+
+        Creates or updates the BotState record with position information
+        and P&L tracking.
+
+        Args:
+            trade: The executed trade.
+            signal: The original trading signal.
+        """
+        from sqlalchemy import select
+
+        from krakenbot.models.trades import BotState
+
+        async with self.db_manager.session() as session:
+            # Find or create BotState
+            result = await session.execute(
+                select(BotState).where(BotState.bot_id == signal.strategy)
+            )
+            bot_state = result.scalar_one_or_none()
+
+            if bot_state is None:
+                # Create new BotState
+                bot_state = BotState(
+                    bot_id=signal.strategy,
+                    strategy=signal.strategy,
+                    status=BotStatus.RUNNING,
+                    position_size=Decimal("0"),
+                    daily_pnl=Decimal("0"),
+                    total_pnl=Decimal("0"),
+                    daily_trades_count=0,
+                )
+                session.add(bot_state)
+
+            # Update based on trade type
+            if trade.side == TradeSide.BUY:
+                # Opening or adding to position
+                await self._handle_buy_trade(session, bot_state, trade, signal)
+            else:
+                # Closing position
+                await self._handle_sell_trade(session, bot_state, trade, signal)
+
+            # Common updates
+            bot_state.last_signal_at = signal.timestamp
+            bot_state.updated_at = datetime.now(timezone.utc)
+
+    async def _handle_buy_trade(
+        self,
+        session: Any,
+        bot_state: Any,
+        trade: Trade,
+        signal: TradingSignal,
+    ) -> None:
+        """Handle BotState update for a buy trade.
+
+        Updates position size and entry price.
+
+        Args:
+            session: Database session.
+            bot_state: BotState to update.
+            trade: Executed buy trade.
+            signal: Original signal.
+        """
+        # Update position
+        bot_state.position_size = trade.amount
+        bot_state.entry_price = trade.price
+        bot_state.last_trade_at = trade.timestamp
+        bot_state.daily_trades_count += 1
+
+        self.logger.info(
+            "position_opened",
+            strategy=signal.strategy,
+            pair=trade.pair,
+            amount=float(trade.amount),
+            entry_price=float(trade.price),
+            trade_id=str(trade.id),
+        )
+
+    async def _handle_sell_trade(
+        self,
+        session: Any,
+        bot_state: Any,
+        trade: Trade,
+        signal: TradingSignal,
+    ) -> None:
+        """Handle BotState update for a sell trade.
+
+        Calculates P&L and resets position.
+
+        Args:
+            session: Database session.
+            bot_state: BotState to update.
+            trade: Executed sell trade.
+            signal: Original signal.
+        """
+        from krakenbot.models.trades import Trade as TradeModel
+
+        pnl = Decimal("0")
+
+        # Calculate P&L if we have entry price
+        if bot_state.entry_price is not None and bot_state.entry_price > Decimal("0"):
+            # P&L = (exit_price - entry_price) * amount - fees
+            price_diff = trade.price - bot_state.entry_price
+            pnl = (price_diff * trade.amount) - trade.fee
+
+            # Update P&L tracking
+            bot_state.daily_pnl += pnl
+            bot_state.total_pnl += pnl
+
+            # Update the trade with P&L
+            trade_record = await session.get(TradeModel, trade.id)
+            if trade_record:
+                trade_record.pnl = pnl
+
+            self.logger.info(
+                "position_closed",
+                strategy=signal.strategy,
+                pair=trade.pair,
+                amount=float(trade.amount),
+                entry_price=float(bot_state.entry_price),
+                exit_price=float(trade.price),
+                pnl=float(pnl),
+                total_pnl=float(bot_state.total_pnl),
+                trade_id=str(trade.id),
+            )
+        else:
+            self.logger.warning(
+                "position_closed_no_entry_price",
+                strategy=signal.strategy,
+                pair=trade.pair,
+                amount=float(trade.amount),
+                exit_price=float(trade.price),
+            )
+
+        # Reset position
+        bot_state.position_size = Decimal("0")
+        bot_state.entry_price = None
+        bot_state.last_trade_at = trade.timestamp
+        bot_state.daily_trades_count += 1
+
+    @property
+    def is_running(self) -> bool:
+        """Check if the execution engine is running.
+
+        Returns:
+            True if the engine is active and processing signals.
+        """
+        return self._running
+
+    @property
+    def stats(self) -> dict[str, int]:
+        """Get execution statistics.
+
+        Returns:
+            Dictionary of execution statistics.
+        """
+        return self._stats.copy()
+
+    def reset_stats(self) -> None:
+        """Reset execution statistics to zero."""
+        self._stats = {
+            "signals_received": 0,
+            "signals_executed": 0,
+            "signals_rejected": 0,
+            "signals_ignored": 0,
+            "execution_errors": 0,
+        }
+
+    async def execute_manual_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        strategy: str = "manual",
+    ) -> Trade | None:
+        """Execute a manual order outside of signal flow.
+
+        This method allows direct order execution while still
+        respecting risk management rules.
+
+        Args:
+            pair: Trading pair.
+            side: Order side.
+            amount: Order amount in base currency.
+            strategy: Strategy name for tracking.
+
+        Returns:
+            Trade object if executed, None if rejected.
+
+        Example:
+            >>> trade = await engine.execute_manual_order(
+            ...     pair="XBT/EUR",
+            ...     side=TradeSide.BUY,
+            ...     amount=Decimal("0.001"),
+            ... )
+        """
+        self.logger.info(
+            "manual_order_requested",
+            pair=pair,
+            side=side.value,
+            amount=float(amount),
+            strategy=strategy,
+        )
+
+        # Get current balance and price
+        balance = await self.rest_client.get_balance()
+        ticker = await self.rest_client.get_ticker(pair)
+        price = ticker.get("last", Decimal("0"))
+
+        if price <= Decimal("0"):
+            self.logger.error(
+                "manual_order_failed_no_price",
+                pair=pair,
+            )
+            return None
+
+        # Risk check
+        risk_result = await self.risk_manager.check_order(
+            pair=pair,
+            side=side,
+            amount=amount,
+            price=price,
+            balance=balance,
+        )
+
+        if risk_result.rejected:
+            self.logger.warning(
+                "manual_order_rejected",
+                pair=pair,
+                side=side.value,
+                reasons=risk_result.reasons,
+            )
+            return None
+
+        # Execute
+        trade = await self.rest_client.place_market_order(
+            pair=pair,
+            side=side,
+            amount=amount,
+            strategy=strategy,
+        )
+
+        self.logger.info(
+            "manual_order_executed",
+            trade_id=str(trade.id),
+            pair=trade.pair,
+            side=trade.side.value,
+            amount=float(trade.amount),
+            price=float(trade.price),
+        )
+
+        return trade

@@ -50,17 +50,16 @@ class TestDatabaseManager:
         ) as mock_create_engine:
             # Create a mock engine
             mock_engine = MagicMock()
-            mock_engine.begin = MagicMock()
 
             # Create async context manager for begin()
             mock_connection = AsyncMock()
             mock_connection.execute = AsyncMock()
 
-            async def async_begin():
-                return mock_connection
-
-            mock_engine.begin.return_value.__aenter__ = async_begin
-            mock_engine.begin.return_value.__aexit__ = AsyncMock()
+            # Use AsyncMock for the context manager
+            mock_context = AsyncMock()
+            mock_context.__aenter__ = AsyncMock(return_value=mock_connection)
+            mock_context.__aexit__ = AsyncMock(return_value=None)
+            mock_engine.begin.return_value = mock_context
 
             mock_create_engine.return_value = mock_engine
 
@@ -81,16 +80,15 @@ class TestDatabaseManager:
             "krakenbot.core.database.create_async_engine"
         ) as mock_create_engine:
             mock_engine = MagicMock()
-            mock_engine.begin = MagicMock()
 
             mock_connection = AsyncMock()
             mock_connection.execute = AsyncMock()
 
-            async def async_begin():
-                return mock_connection
-
-            mock_engine.begin.return_value.__aenter__ = async_begin
-            mock_engine.begin.return_value.__aexit__ = AsyncMock()
+            # Use AsyncMock for the context manager
+            mock_context = AsyncMock()
+            mock_context.__aenter__ = AsyncMock(return_value=mock_connection)
+            mock_context.__aexit__ = AsyncMock(return_value=None)
+            mock_engine.begin.return_value = mock_context
 
             mock_create_engine.return_value = mock_engine
 
@@ -194,11 +192,11 @@ class TestTimescaleDBSupport:
         mock_connection = AsyncMock()
         mock_connection.execute = AsyncMock()
 
-        async def async_begin():
-            return mock_connection
-
-        mock_engine.begin.return_value.__aenter__ = async_begin
-        mock_engine.begin.return_value.__aexit__ = AsyncMock()
+        # Use AsyncMock for the context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_connection)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        mock_engine.begin.return_value = mock_context
 
         manager._engine = mock_engine
         manager._initialized = True
@@ -216,11 +214,11 @@ class TestTimescaleDBSupport:
         mock_connection = AsyncMock()
         mock_connection.execute = AsyncMock()
 
-        async def async_begin():
-            return mock_connection
-
-        mock_engine.begin.return_value.__aenter__ = async_begin
-        mock_engine.begin.return_value.__aexit__ = AsyncMock()
+        # Use AsyncMock for the context manager
+        mock_context = AsyncMock()
+        mock_context.__aenter__ = AsyncMock(return_value=mock_connection)
+        mock_context.__aexit__ = AsyncMock(return_value=None)
+        mock_engine.begin.return_value = mock_context
 
         manager._engine = mock_engine
         manager._initialized = True
@@ -262,5 +260,7 @@ class TestBase:
 
     def test_base_is_declarative_base(self) -> None:
         """Test that Base is a valid declarative base."""
+        # Check that Base has metadata (required for declarative base)
         assert hasattr(Base, "metadata")
-        assert hasattr(Base, "__tablename__")
+        # Check that Base has registry (required for SQLAlchemy 2.0 declarative base)
+        assert hasattr(Base, "registry")

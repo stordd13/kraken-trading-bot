@@ -463,6 +463,7 @@ class TestKrakenWebSocketClientPairMapping:
         # Mock connection
         ws_client._connected = True
         ws_client._ws = AsyncMock()
+        ws_client._ws.closed = False  # Required for is_connected property
         ws_client._ws.send_json = AsyncMock()
 
         await ws_client.subscribe_ohlc("BTC/EUR", interval=15)
@@ -477,6 +478,7 @@ class TestKrakenWebSocketClientPairMapping:
         """Test that unknown pairs pass through unchanged."""
         ws_client._connected = True
         ws_client._ws = AsyncMock()
+        ws_client._ws.closed = False  # Required for is_connected property
         ws_client._ws.send_json = AsyncMock()
 
         await ws_client.subscribe_ohlc("UNKNOWN/PAIR", interval=15)
