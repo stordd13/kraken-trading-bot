@@ -950,6 +950,102 @@ STRATEGY_SELL_THRESHOLD_PCT=1.0 python -m scripts.backtest --days 30
 
 ---
 
+## Monitoring Dashboard
+
+KrakenBot includes a real-time Streamlit dashboard for monitoring bot performance, positions, and trades.
+
+### Starting the Dashboard
+
+**Prerequisites**:
+1. Install monitoring dependencies:
+   ```bash
+   pip install -e ".[monitoring]"
+   ```
+
+2. Ensure database is running and populated with data:
+   ```bash
+   docker compose up -d db
+   ```
+
+**Run the dashboard**:
+```bash
+streamlit run scripts/dashboard.py
+```
+
+The dashboard will open in your browser at `http://localhost:8501`.
+
+### Dashboard Features
+
+#### 1. Real-Time Metrics
+- **Total P&L**: Overall profit/loss across all trades
+- **Daily P&L**: Today's profit/loss performance
+- **Current Position**: BTC holdings and entry price
+- **Trade Count**: Total number of executed trades
+
+#### 2. Interactive Price Chart
+- **Candlestick Chart**: OHLC data with Plotly interactive controls
+- **Trading Signals**: Visual markers for buy (🔺 green) and sell (🔻 red) orders
+- **Configurable Timeframe**: Select from 1 hour to 7 days of history
+- **Latest Price**: Current BTC price and 24h change
+
+#### 3. Recent Trades Table
+- **Color-Coded Rows**: Green for buys, red for sells
+- **Trade Details**: Timestamp, side, price, amounts, fees, P&L
+- **Status Tracking**: See pending, executed, or failed trades
+
+#### 4. Bot Status Monitor
+- **Live Status**: 🟢 RUNNING, 🟡 IDLE, 🔴 STOPPED/ERROR
+- **Strategy Info**: Active strategy name and parameters
+- **Last Activity**: When the bot last updated or generated a signal
+- **Bot ID**: Unique identifier for this bot instance
+
+#### 5. Controls
+- **Refresh Button**: Manually refresh all data
+- **Auto-Refresh**: Enable 30-second automatic updates
+- **Chart Hours Slider**: Adjust time range (1-168 hours)
+- **Trading Mode Indicator**: See if running in Paper or Live mode
+
+### Dashboard Screenshot Example
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║  🤖 KrakenBot Dashboard              🔄 Refresh  📝 Paper    ║
+╠══════════════════════════════════════════════════════════════╣
+║  Total P&L        Position         Entry Price   Trades      ║
+║  +25.40 USDC     0.00123456 BTC    92,450.00      12         ║
+║  +5.20 today                                                  ║
+╠══════════════════════════════════════════════════════════════╣
+║  📈 XBT/USDC Price Chart (Last 24h)                          ║
+║  [Interactive candlestick chart with buy/sell markers]       ║
+║                                                               ║
+║  Latest: 93,200.00 USDC   24h Change: +1.2%   Vol: 2.4 BTC  ║
+╠══════════════════════════════════════════════════════════════╣
+║  Recent Trades                                                ║
+║  Time            Side  Price     Amount      P&L    Status   ║
+║  2026-01-16 14:30  BUY  92,450   15.00 USDC   —     executed ║
+║  2026-01-16 14:45  SELL 93,200   15.20 USDC  +0.70  executed ║
+╠══════════════════════════════════════════════════════════════╣
+║  Bot Status: 🟢 RUNNING   Strategy: threshold                ║
+║  Last Updated: 2026-01-16 14:50:23 UTC                       ║
+╚══════════════════════════════════════════════════════════════╝
+```
+
+### Dashboard Requirements
+
+- **Database Access**: Dashboard reads from the same PostgreSQL database as the bot
+- **Historical Data**: Chart requires OHLC data in the database (accumulated by the bot)
+- **Port 8501**: Default Streamlit port must be available
+
+### Tips for Using the Dashboard
+
+1. **Paper Mode Testing**: Run the bot in paper mode and monitor performance on the dashboard before going live
+2. **Strategy Validation**: Use the chart to visualize if your buy/sell signals align with market movements
+3. **Performance Tracking**: Check Total P&L and Win Rate to evaluate strategy effectiveness
+4. **Multi-Window**: Open dashboard in one window, keep logs in terminal in another
+5. **Auto-Refresh**: Enable for hands-off monitoring, disable when analyzing specific trades
+
+---
+
 ## Troubleshooting
 
 ### Common Issues

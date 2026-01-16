@@ -165,12 +165,16 @@
 
 ### Phase 2 - Production Ready (Priorité Moyenne)
 
-#### 1. Monitoring & Observabilité
-- [ ] Dashboard Streamlit simple
-  - [ ] Vue temps réel (positions, PnL)
-  - [ ] Graphique BTC/EUR avec signaux
-  - [ ] Derniers trades
-  - [ ] Stats de performance
+#### 1. Monitoring & Observabilité ✅ COMPLÉTÉ
+- [x] Dashboard Streamlit simple
+  - [x] Vue temps réel (positions, PnL)
+  - [x] Graphique BTC/USDC avec signaux
+  - [x] Derniers trades
+  - [x] Stats de performance
+  - [x] Contrôles (refresh, auto-refresh, timeframe slider)
+  - [x] Bot status monitoring (RUNNING/IDLE/STOPPED/ERROR)
+  - [x] Interactive Plotly candlestick chart
+  - [x] Color-coded buy/sell signals on chart
 - [ ] Export métriques pour Grafana (futur)
 - [ ] Alertes Discord/Telegram (optionnel)
 

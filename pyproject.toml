@@ -75,6 +75,9 @@ ml = [
 monitoring = [
     # Monitoring & alerting
     "prometheus-client>=0.19.0",
+    "streamlit>=1.30.0",        # Dashboard UI
+    "plotly>=5.18.0",           # Interactive charts
+    "pandas>=2.1.0",            # Data manipulation for dashboard
 ]
 
 [project.scripts]
