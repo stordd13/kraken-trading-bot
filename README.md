@@ -856,6 +856,100 @@ The bot will:
 
 ---
 
+## Backtesting
+
+KrakenBot includes a comprehensive backtesting framework to test strategies on historical data before deploying them live.
+
+### Running a Backtest
+
+**Basic usage**:
+```bash
+# Backtest the last 7 days (default)
+python -m scripts.backtest --pair XBT/USDC
+
+# Backtest specific period
+python -m scripts.backtest --pair XBT/USDC --days 30
+
+# Backtest with custom end date
+python -m scripts.backtest --pair XBT/USDC --days 14 --end-date 2026-01-15
+
+# Backtest specific strategy
+python -m scripts.backtest --strategy threshold --pair XBT/USDC --days 7
+```
+
+### Backtest Output
+
+The backtest will display a comprehensive report:
+
+```
+================================================================================
+                              BACKTEST REPORT
+================================================================================
+
+Strategy:                      threshold
+Period:                        2026-01-09 to 2026-01-16
+Duration:                      7.0 days
+
+--------------------------------------------------------------------------------
+PERFORMANCE SUMMARY
+--------------------------------------------------------------------------------
+Starting Balance:              1000.00 USDC
+Ending Balance:                1025.40 USDC
+Total Return:                  +2.54%
+Net P&L:                       +25.40 USDC
+Total Fees Paid:               4.60 USDC
+
+--------------------------------------------------------------------------------
+TRADE STATISTICS
+--------------------------------------------------------------------------------
+Total Trades:                  8
+Winning Trades:                5
+Losing Trades:                 3
+Win Rate:                      62.50%
+Average Win:                   +8.20 USDC
+Average Loss:                  -4.10 USDC
+Profit Factor:                 2.00
+
+--------------------------------------------------------------------------------
+RISK METRICS
+--------------------------------------------------------------------------------
+Max Drawdown:                  12.30 USDC
+Max Drawdown %:                1.23%
+Sharpe Ratio:                  1.85
+================================================================================
+```
+
+### Performance Metrics Explained
+
+- **Total Return %**: Overall portfolio return from start to end
+- **Net P&L**: Profit/Loss after fees
+- **Win Rate**: Percentage of profitable trades
+- **Profit Factor**: Ratio of total wins to total losses (>1 is profitable)
+- **Max Drawdown**: Largest peak-to-trough decline in portfolio value
+- **Sharpe Ratio**: Risk-adjusted return (>1 is good, >2 is excellent)
+
+### Requirements for Backtesting
+
+1. **Historical Data**: You need OHLC data in your database for the backtest period
+2. **Minimum Data**: At least 10 candles required (strategy needs history to analyze)
+3. **Database Running**: PostgreSQL with TimescaleDB must be accessible
+
+**Tip**: Let the bot run in paper mode for a few days/weeks to accumulate historical data, then backtest different strategy parameters to optimize performance!
+
+### Strategy Optimization
+
+You can modify strategy parameters in `.env` and re-run backtests to find optimal settings:
+
+```bash
+# Test with more aggressive buy threshold
+STRATEGY_BUY_THRESHOLD_PCT=-0.5 python -m scripts.backtest --days 30
+
+# Test with tighter sell target
+STRATEGY_SELL_THRESHOLD_PCT=1.0 python -m scripts.backtest --days 30
+```
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
@@ -1183,10 +1277,9 @@ kraken-trading-bot/
 ### Planned (Phase 2)
 
 - [ ] Streamlit monitoring dashboard
-- [ ] Backtesting framework
+- [x] Backtesting framework
 - [ ] Multi-strategy support
 - [ ] Health checks and alerts
-- [ ] Performance metrics (Sharpe ratio, drawdown)
 - [ ] Discord/Telegram notifications
 
 ### Future (Phase 3)

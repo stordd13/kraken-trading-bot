@@ -174,12 +174,15 @@
 - [ ] Export métriques pour Grafana (futur)
 - [ ] Alertes Discord/Telegram (optionnel)
 
-#### 2. Backtesting Framework
-- [ ] `scripts/backtest.py`
-  - [ ] Replay historique depuis DB
-  - [ ] Simulation stratégie
-  - [ ] Calcul métriques (Sharpe, drawdown, etc.)
-  - [ ] Export résultats
+#### 2. Backtesting Framework ✅ COMPLÉTÉ
+- [x] `scripts/backtest.py`
+  - [x] Replay historique depuis DB
+  - [x] Simulation stratégie
+  - [x] Calcul métriques (Sharpe, drawdown, etc.)
+  - [x] CLI interface pour lancer les backtests
+  - [x] Rapport détaillé des performances
+  - [x] Tests unitaires pour le backtesting
+  - [x] Documentation dans README.md
 
 #### 3. Multi-Stratégies
 - [ ] Registre de stratégies

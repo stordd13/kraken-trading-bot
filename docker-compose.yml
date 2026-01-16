@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  db:
+    image: timescale/timescaledb:latest-pg15
+    container_name: krakenbot-db
+    environment:
+      POSTGRES_USER: krakenbot
+      POSTGRES_PASSWORD: krakenbot
+      POSTGRES_DB: krakenbot
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U krakenbot -d krakenbot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local
