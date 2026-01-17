@@ -198,6 +198,56 @@ class StrategySettings(BaseSettings):
     )
 
 
+class ScheduledTasksSettings(BaseSettings):
+    """Scheduled data collection tasks configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="SCHEDULER_")
+
+    enabled: bool = Field(
+        default=True,
+        description="Enable scheduled tasks",
+    )
+
+    timezone: str = Field(
+        default="UTC",
+        description="Timezone for cron schedules",
+    )
+
+    # Cron expressions for scheduled jobs
+    daily_1min_cron: str = Field(
+        default="0 2 * * *",  # 02:00 UTC daily
+        description="Cron expression for 1min OHLC collection",
+    )
+    daily_5min_cron: str = Field(
+        default="15 2 * * *",  # 02:15 UTC daily
+        description="Cron expression for 5min OHLC collection",
+    )
+    weekly_15min_cron: str = Field(
+        default="0 3 * * 1",  # 03:00 UTC Mondays
+        description="Cron expression for 15min OHLC collection",
+    )
+    monthly_1h_cron: str = Field(
+        default="0 4 1 * *",  # 04:00 UTC 1st of month
+        description="Cron expression for 1h OHLC collection",
+    )
+
+    # Data collection settings
+    pairs: list[str] = Field(
+        default=["XBT/USDC", "XBT/EUR"],
+        description="Trading pairs to collect data for",
+    )
+    intervals: list[int] = Field(
+        default=[1, 5, 15, 60],
+        description="OHLC intervals to collect (in minutes)",
+    )
+    batch_size: int = Field(
+        default=1000,
+        description="Bulk insert batch size",
+        ge=100,
+        le=10000,
+    )
+
+
 class Settings(BaseSettings):
     """Main application settings."""
 
@@ -232,6 +282,7 @@ class Settings(BaseSettings):
     risk: RiskManagementSettings = Field(default_factory=RiskManagementSettings)
     trading: TradingSettings = Field(default_factory=TradingSettings)
     strategy: StrategySettings = Field(default_factory=StrategySettings)
+    scheduler: ScheduledTasksSettings = Field(default_factory=ScheduledTasksSettings)
 
     def validate_all(self) -> None:
         """Validate all settings and secrets at startup."""

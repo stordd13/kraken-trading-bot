@@ -158,6 +158,13 @@ KrakenBot uses an **event-driven architecture** where components communicate thr
   - Buy/sell thresholds
   - Lookback periods for analysis
 
+- **`ScheduledTasksSettings`**: Scheduled data collection
+  - Enable/disable scheduled tasks
+  - Cron expressions for data collection jobs
+  - Trading pairs to collect data for
+  - OHLC intervals (1min, 5min, 15min, 1h)
+  - Batch size for database inserts
+
 **Usage Example**:
 ```python
 from krakenbot.config.settings import get_settings
@@ -1380,6 +1387,86 @@ kraken-trading-bot/
 
 ---
 
+## Historical Data Collection
+
+KrakenBot includes a comprehensive system for collecting and managing real OHLC data from Kraken API.
+
+### Manual Data Fetch
+
+Fetch historical OHLC data for a specific pair and interval:
+
+```bash
+# Fetch 7 days of 15min candles for XBT/EUR
+python -m scripts.fetch_ohlc --pair XBT/EUR --interval 15 --days 7
+
+# Resume from last stored timestamp
+python -m scripts.fetch_ohlc --pair XBT/EUR --interval 15 --days 90 --resume
+
+# Available intervals: 1, 5, 15, 30, 60, 240, 1440 (minutes)
+```
+
+**Features**:
+- Automatic pagination (720 candles per request limit)
+- Resume from last timestamp if interrupted
+- Retry logic for network errors
+- Rate limiting (1 req/sec)
+- Progress bar with tqdm
+- Deduplication via database merge
+
+### Backfill Historical Data
+
+One-shot backfill of all configured pairs and intervals:
+
+```bash
+# Dry-run to estimate volume
+python -m scripts.backfill_historical_data --dry-run
+
+# Execute backfill
+python -m scripts.backfill_historical_data
+
+# Custom pairs/intervals
+python -m scripts.backfill_historical_data --pairs XBT/EUR --intervals 15 60
+```
+
+**Backfill Limits** (based on Kraken API retention):
+- 1min: 7 days
+- 5min: 30 days
+- 15min: 90 days
+- 1h: 365 days
+
+### Scheduled Data Collection
+
+The bot includes automatic scheduled tasks (via APScheduler) to continuously collect data:
+
+**Default Schedule**:
+- **1min OHLC**: Daily at 02:00 UTC
+- **5min OHLC**: Daily at 02:15 UTC
+- **15min OHLC**: Weekly (Mondays) at 03:00 UTC
+- **1h OHLC**: Monthly (1st of month) at 04:00 UTC
+
+**Configuration** (in `.env`):
+```bash
+SCHEDULER_ENABLED=true
+SCHEDULER_PAIRS=XBT/USDC,XBT/EUR
+SCHEDULER_INTERVALS=1,5,15,60
+SCHEDULER_TIMEZONE=UTC
+
+# Custom cron expressions
+SCHEDULER_DAILY_1MIN_CRON="0 2 * * *"
+SCHEDULER_WEEKLY_15MIN_CRON="0 3 * * 1"
+```
+
+**Audit Trail**: All task executions are logged in `task_execution_logs` table with:
+- Task ID, pair, interval
+- Start/completion timestamps
+- Status (success/failed)
+- Number of candles fetched
+- Error messages if failed
+
+To disable scheduled collection, set `SCHEDULER_ENABLED=false` in `.env`.
+
+---
+
 ## Project Status
 
 ### Completed (MVP)
@@ -1397,6 +1484,25 @@ kraken-trading-bot/
 - [x] Graceful shutdown handling
 - [x] Comprehensive test suite (284 tests, 100% pass)
 
+### Recently Completed
+
+- [x] **Historical data collection system**
+  - Scripts to fetch real OHLC data from Kraken REST API
+  - Automatic pagination for large time ranges
+  - Resume capability from last timestamp
+  - Time interval conversion utilities (1m, 5m, 15m, 1h, etc.)
+- [x] **Scheduled data collection** (APScheduler)
+  - Daily jobs for 1min and 5min intervals
+  - Weekly jobs for 15min intervals
+  - Monthly jobs for 1h intervals
+  - Audit trail with TaskExecutionLog model
+  - Integrated into bot lifecycle
+- [x] **Backfill scripts**
+  - One-shot historical data backfill for all pairs/intervals
+  - Dry-run mode for estimating volume
+  - Parallel or sequential execution
+  - Progress bars and detailed logging
+
 ### In Progress
 
 - [ ] End-to-end testing with real Kraken data
@@ -1404,7 +1510,7 @@ kraken-trading-bot/
 
 ### Planned (Phase 2)
 
-- [ ] Streamlit monitoring dashboard
+- [x] Streamlit monitoring dashboard
 - [x] Backtesting framework
 - [ ] Multi-strategy support
 - [ ] Health checks and alerts

@@ -41,6 +41,7 @@ from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
 from krakenbot.execution.engine import ExecutionEngine
+from krakenbot.scheduler.task_scheduler import TaskScheduler
 from krakenbot.strategies.threshold import ThresholdStrategy
 
 if TYPE_CHECKING:
@@ -70,13 +71,15 @@ class KrakenBot:
         5. WebSocket Client
         6. Execution Engine
         7. Strategy
+        8. Task Scheduler (if enabled)
 
     Shutdown Order (reverse):
-        1. Strategy
-        2. Execution Engine
-        3. WebSocket Client
-        4. REST Client
-        5. Database Manager
+        1. Task Scheduler
+        2. Strategy
+        3. Execution Engine
+        4. WebSocket Client
+        5. REST Client
+        6. Database Manager
 
     Attributes:
         settings: Application configuration.
@@ -87,6 +90,7 @@ class KrakenBot:
         rest_client: Kraken REST API client.
         strategy: Trading strategy instance.
         execution_engine: Order execution engine.
+        task_scheduler: Task scheduler for scheduled data collection.
 
     Example:
         >>> bot = KrakenBot()
@@ -112,6 +116,7 @@ class KrakenBot:
         self.rest_client: KrakenRestClient | None = None
         self.strategy: ThresholdStrategy | None = None
         self.execution_engine: ExecutionEngine | None = None
+        self.task_scheduler: TaskScheduler | None = None
 
         # State
         self._running: bool = False
@@ -191,18 +196,32 @@ class KrakenBot:
         )
         self.logger.debug("strategy_initialized")
 
+        # 7. Initialize task scheduler (if enabled)
+        if self.settings.scheduler.enabled:
+            self.task_scheduler = TaskScheduler(
+                self.settings,
+                self.event_bus,
+                self.db_manager,
+            )
+            self.logger.debug("task_scheduler_initialized")
+
         self._setup_completed = True
+
+        components_list = [
+            "event_bus",
+            "database",
+            "rest_client",
+            "websocket_client",
+            "execution_engine",
+            "strategy",
+        ]
+        if self.task_scheduler:
+            components_list.append("task_scheduler")
+
         self.logger.info(
             "krakenbot_initialized",
             status="ready",
-            components=[
-                "event_bus",
-                "database",
-                "rest_client",
-                "websocket_client",
-                "execution_engine",
-                "strategy",
-            ],
+            components=components_list,
         )
 
     async def start(self) -> None:
@@ -239,6 +258,11 @@ class KrakenBot:
         await self.ws_client.subscribe_ticker(self.settings.trading.pair)
         self.logger.debug("websocket_connected_and_subscribed")
 
+        # 4. Start task scheduler (if enabled)
+        if self.task_scheduler:
+            await self.task_scheduler.start()
+            self.logger.debug("task_scheduler_started")
+
         self._running = True
 
         self.logger.info(
@@ -248,6 +272,7 @@ class KrakenBot:
             pair=self.settings.trading.pair,
             interval=f"{self.settings.trading.candle_interval_min}m",
             strategy=self.strategy.get_name(),
+            scheduler_enabled=self.task_scheduler is not None,
         )
 
     async def stop(self) -> None:
@@ -257,11 +282,12 @@ class KrakenBot:
         proper cleanup and no orphaned connections.
 
         Stop Order:
-            1. Strategy (stop generating signals)
-            2. Execution engine (stop processing)
-            3. WebSocket client (disconnect)
-            4. REST client (close connections)
-            5. Database manager (close pool)
+            1. Task scheduler (stop scheduled jobs)
+            2. Strategy (stop generating signals)
+            3. Execution engine (stop processing)
+            4. WebSocket client (disconnect)
+            5. REST client (close connections)
+            6. Database manager (close pool)
         """
         if not self._running:
             self.logger.debug("krakenbot_not_running_on_stop")
@@ -272,7 +298,19 @@ class KrakenBot:
 
         # Stop in reverse order
 
-        # 1. Stop strategy
+        # 1. Stop task scheduler
+        if self.task_scheduler:
+            try:
+                await self.task_scheduler.stop()
+                self.logger.debug("task_scheduler_stopped")
+            except Exception as e:
+                self.logger.error(
+                    "task_scheduler_stop_error",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+
+        # 2. Stop strategy
         if self.strategy:
             try:
                 await self.strategy.stop()
@@ -284,7 +322,7 @@ class KrakenBot:
                     error_type=type(e).__name__,
                 )
 
-        # 2. Stop execution engine
+        # 3. Stop execution engine
         if self.execution_engine:
             try:
                 await self.execution_engine.stop()
@@ -296,7 +334,7 @@ class KrakenBot:
                     error_type=type(e).__name__,
                 )
 
-        # 3. Close WebSocket
+        # 4. Close WebSocket
         if self.ws_client:
             try:
                 await self.ws_client.close()
@@ -308,7 +346,7 @@ class KrakenBot:
                     error_type=type(e).__name__,
                 )
 
-        # 4. Close REST client
+        # 5. Close REST client
         if self.rest_client:
             try:
                 await self.rest_client.close()
@@ -320,7 +358,7 @@ class KrakenBot:
                     error_type=type(e).__name__,
                 )
 
-        # 5. Close database
+        # 6. Close database
         if self.db_manager:
             try:
                 await self.db_manager.close_db()

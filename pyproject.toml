@@ -42,9 +42,13 @@ dependencies = [
     # Logging
     "structlog>=24.1.0",        # Structured logging
 
+    # Scheduling
+    "APScheduler>=3.10.0",      # Task scheduling with cron support
+
     # Utilities
     "python-dateutil>=2.8.2",   # Date parsing
     "pytz>=2024.1",             # Timezone handling
+    "tqdm>=4.66.0",             # Progress bars
 ]
 
 [project.optional-dependencies]
@@ -178,5 +182,7 @@ show_error_codes = true
 module = [
     "ccxt.*",
     "structlog.*",
+    "apscheduler.*",
+    "tqdm.*",
 ]
 ignore_missing_imports = true

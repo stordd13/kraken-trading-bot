@@ -798,6 +798,137 @@ class KrakenRestClient:
                 trade_id=str(trade.id),
             )
 
+    async def fetch_ohlcv(
+        self,
+        pair: str,
+        interval: int,
+        since: datetime | None = None,
+        limit: int = 720,
+    ) -> list[dict[str, Any]]:
+        """Fetch historical OHLC candles from Kraken REST API.
+
+        This method retrieves historical OHLC (Open, High, Low, Close) data
+        using the CCXT library. It's used for backtesting and historical
+        data collection.
+
+        Args:
+            pair: Trading pair (e.g., "XBT/EUR", "XBT/USDC").
+            interval: Candle interval in minutes (1, 5, 15, 30, 60, 240, 1440).
+            since: Start time (UTC). If None, fetches most recent candles.
+            limit: Max candles to fetch (max 720 per Kraken API limit).
+
+        Returns:
+            List of OHLC dictionaries with keys:
+                - timestamp: Candle timestamp (datetime)
+                - pair: Trading pair
+                - interval: Candle interval in minutes
+                - open: Opening price
+                - high: Highest price
+                - low: Lowest price
+                - close: Closing price
+                - volume: Trading volume
+
+        Raises:
+            KrakenAPIError: On API errors.
+            RateLimitError: If rate limit exceeded.
+            ValueError: If interval is not supported.
+
+        Example:
+            >>> client = KrakenRestClient(settings, event_bus)
+            >>> candles = await client.fetch_ohlcv("XBT/EUR", 15, limit=100)
+            >>> print(f"Fetched {len(candles)} candles")
+        """
+        from krakenbot.utils.time_utils import minutes_to_ccxt_timeframe
+
+        try:
+            # Convert interval to CCXT timeframe format
+            timeframe = minutes_to_ccxt_timeframe(interval)
+
+            # Convert pair to Kraken format
+            kraken_pair = PAIR_TO_KRAKEN.get(pair, pair)
+
+            # Convert since to milliseconds timestamp if provided
+            since_ms = None
+            if since:
+                since_ms = int(since.timestamp() * 1000)
+
+            # Log the request
+            logger.debug(
+                "fetching_ohlcv",
+                pair=kraken_pair,
+                timeframe=timeframe,
+                since=since.isoformat() if since else None,
+                limit=limit,
+            )
+
+            # Fetch OHLC data from Kraken via CCXT
+            self._stats["api_calls"] += 1
+            ohlcv_data = await self._exchange.fetch_ohlcv(
+                symbol=kraken_pair,
+                timeframe=timeframe,
+                since=since_ms,
+                limit=limit,
+            )
+
+            # Parse CCXT response format: [[timestamp_ms, open, high, low, close, volume], ...]
+            result = []
+            for candle in ohlcv_data:
+                timestamp_ms, open_price, high, low, close, volume = candle
+
+                # Convert timestamp from milliseconds to datetime
+                timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
+
+                result.append(
+                    {
+                        "timestamp": timestamp,
+                        "pair": pair,  # Use original pair format
+                        "interval": interval,
+                        "open": Decimal(str(open_price)),
+                        "high": Decimal(str(high)),
+                        "low": Decimal(str(low)),
+                        "close": Decimal(str(close)),
+                        "volume": Decimal(str(volume)),
+                    }
+                )
+
+            logger.info(
+                "ohlcv_fetched",
+                pair=pair,
+                interval=interval,
+                candles=len(result),
+                first_timestamp=result[0]["timestamp"].isoformat() if result else None,
+                last_timestamp=result[-1]["timestamp"].isoformat() if result else None,
+            )
+
+            return result
+
+        except ccxt.RateLimitExceeded as e:
+            logger.warning(
+                "kraken_rest_rate_limit",
+                error=str(e),
+            )
+            raise RateLimitError(
+                message=f"Rate limit exceeded when fetching OHLCV: {e}",
+            )
+        except ccxt.ExchangeError as e:
+            logger.error(
+                "kraken_rest_ohlcv_error",
+                pair=pair,
+                interval=interval,
+                error=str(e),
+            )
+            raise KrakenAPIError(
+                message=f"Failed to fetch OHLCV data: {e}",
+            )
+        except ValueError as e:
+            # From minutes_to_ccxt_timeframe
+            logger.error(
+                "invalid_interval",
+                interval=interval,
+                error=str(e),
+            )
+            raise
+
     def set_paper_balance(self, currency: str, amount: Decimal) -> None:
         """Set paper trading balance for a currency.
 
