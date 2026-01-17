@@ -611,8 +611,8 @@ async def main() -> None:
 
     # Initialize components
     settings = get_settings()
-    db_manager = DatabaseManager(settings.database.url)
-    await db_manager.connect()
+    db_manager = DatabaseManager()
+    await db_manager.init_db(settings)
 
     try:
         # Run backtest
@@ -633,7 +633,7 @@ async def main() -> None:
             # await engine.save_trades_to_database(str(backtest_run.id), args.pair)
 
     finally:
-        await db_manager.disconnect()
+        await db_manager.close_db()
 
 
 if __name__ == "__main__":

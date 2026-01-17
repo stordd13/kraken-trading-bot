@@ -38,8 +38,7 @@ st.set_page_config(
 @st.cache_resource
 def get_db_manager():
     """Get database manager instance."""
-    settings = get_settings()
-    return DatabaseManager(settings.database.url)
+    return DatabaseManager()
 
 
 async def fetch_bot_state(db_manager: DatabaseManager) -> BotState | None:
@@ -470,9 +469,11 @@ if __name__ == "__main__":
     db_manager = get_db_manager()
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(db_manager.connect())
+
+    settings = get_settings()
+    loop.run_until_complete(db_manager.init_db(settings))
 
     try:
         main()
     finally:
-        loop.run_until_complete(db_manager.disconnect())
+        loop.run_until_complete(db_manager.close_db())
