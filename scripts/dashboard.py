@@ -44,7 +44,7 @@ def get_db_manager():
 async def fetch_bot_state(db_manager: DatabaseManager) -> BotState | None:
     """Fetch current bot state from database."""
     async with db_manager.session() as session:
-        stmt = select(BotState).order_by(desc(BotState.last_updated)).limit(1)
+        stmt = select(BotState).order_by(desc(BotState.updated_at)).limit(1)
         result = await session.execute(stmt)
         return result.scalar_one_or_none()
 
