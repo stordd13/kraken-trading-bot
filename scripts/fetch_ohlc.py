@@ -90,10 +90,12 @@ async def save_ohlc_batch(
     if not candles:
         return 0
 
+    from sqlalchemy.dialects.postgresql import insert as pg_insert
+
     async with db_manager.session() as session:
+        # Use PostgreSQL's ON CONFLICT DO UPDATE for deduplication
         for candle_data in candles:
-            # Create OHLCData instance
-            ohlc = OHLCData(
+            stmt = pg_insert(OHLCData).values(
                 timestamp=candle_data["timestamp"],
                 pair=candle_data["pair"],
                 interval=candle_data["interval"],
@@ -102,9 +104,17 @@ async def save_ohlc_batch(
                 low=candle_data["low"],
                 close=candle_data["close"],
                 volume=candle_data["volume"],
+            ).on_conflict_do_update(
+                index_elements=["timestamp", "pair", "interval"],
+                set_=dict(
+                    open=candle_data["open"],
+                    high=candle_data["high"],
+                    low=candle_data["low"],
+                    close=candle_data["close"],
+                    volume=candle_data["volume"],
+                )
             )
-            # Merge for deduplication
-            session.add(ohlc)
+            await session.execute(stmt)
 
         await session.commit()
 

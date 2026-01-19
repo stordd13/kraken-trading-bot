@@ -70,6 +70,7 @@ class ThresholdStrategy(BaseStrategy):
         self._reference_price: Decimal | None = None
         self._entry_price: Decimal | None = None
         self._has_position: bool = False
+        self._skip_db_sync: bool = False  # Set to True in backtest mode
 
         self.logger.debug(
             "strategy_initialized",
@@ -140,13 +141,35 @@ class ThresholdStrategy(BaseStrategy):
 
         now = datetime.now(timezone.utc)
 
+        # DEBUG: Log strategy internal state
+        self.logger.debug(
+            "strategy_state_check",
+            has_position=self._has_position,
+            entry_price=float(self._entry_price) if self._entry_price else None,
+            current_price=float(self._current_price) if self._current_price else None,
+            reference_price=float(self._reference_price) if self._reference_price else None,
+        )
+
         # SELL LOGIC: Check if profit target is reached
         if self._has_position and self._entry_price:
             profit_pct = (
                 (self._current_price - self._entry_price) / self._entry_price
             ) * Decimal("100")
 
+            self.logger.debug(
+                "strategy_sell_check",
+                profit_pct=float(profit_pct),
+                sell_threshold_pct=self.sell_threshold_pct,
+                meets_threshold=profit_pct >= Decimal(str(self.sell_threshold_pct)),
+            )
+
             if profit_pct >= Decimal(str(self.sell_threshold_pct)):
+                self.logger.info(
+                    "strategy_sell_signal",
+                    profit_pct=float(profit_pct),
+                    entry_price=float(self._entry_price),
+                    current_price=float(self._current_price),
+                )
                 return TradingSignal(
                     signal_type=SignalType.SELL,
                     pair=self.pair,
@@ -200,7 +223,13 @@ class ThresholdStrategy(BaseStrategy):
 
         Reads the current bot state from the database to determine
         if we have an open position and at what entry price.
+
+        If _skip_db_sync is True (backtest mode), skips DB read and uses internal state.
         """
+        # In backtest mode, use internal state instead of DB
+        if self._skip_db_sync:
+            return
+
         try:
             async with self.db_manager.read_session() as session:
                 result = await session.execute(

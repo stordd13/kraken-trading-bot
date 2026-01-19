@@ -56,14 +56,21 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 
-# Pair name mapping from standard to Kraken format
+# Pair name mapping from standard to Kraken format (CCXT normalized symbols)
+# CCXT uses BTC instead of XBT for Kraken
 PAIR_TO_KRAKEN = {
-    "XBT/EUR": "XBT/EUR",
-    "BTC/EUR": "XBT/EUR",
-    "XBT/USD": "XBT/USD",
-    "BTC/USD": "XBT/USD",
+    "XBT/EUR": "BTC/EUR",
+    "BTC/EUR": "BTC/EUR",
+    "XBT/USD": "BTC/USD",
+    "BTC/USD": "BTC/USD",
+    "XBT/USDC": "BTC/USDC",
+    "BTC/USDC": "BTC/USDC",
+    "XBT/USDT": "BTC/USDT",
+    "BTC/USDT": "BTC/USDT",
     "ETH/EUR": "ETH/EUR",
     "ETH/USD": "ETH/USD",
+    "ETH/USDC": "ETH/USDC",
+    "ETH/USDT": "ETH/USDT",
 }
 
 # Minimum order sizes (in base currency)

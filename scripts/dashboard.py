@@ -290,11 +290,8 @@ def render_chart(db_manager: DatabaseManager, pair: str, hours: int):
     st.subheader(f"{pair} Price Chart (Last {hours}h)")
 
     # Fetch data
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    ohlc_data = loop.run_until_complete(fetch_recent_ohlc(db_manager, pair, hours))
-    trades = loop.run_until_complete(fetch_recent_trades(db_manager, limit=50))
+    ohlc_data = run_async(fetch_recent_ohlc(db_manager, pair, hours))
+    trades = run_async(fetch_recent_trades(db_manager, limit=50))
 
     if ohlc_data:
         fig = create_price_chart(ohlc_data, trades)
@@ -314,14 +311,24 @@ def render_chart(db_manager: DatabaseManager, pair: str, hours: int):
         st.warning(f"No OHLC data found for {pair}. Is the bot running and receiving data?")
 
 
+def run_async(coro):
+    """Run async coroutine in a fresh event loop (Streamlit-safe).
+
+    Streamlit reruns the script on every interaction, which can cause
+    event loop conflicts. This helper creates a new loop each time.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+
+
 def main():
     """Main dashboard application."""
     # Initialize database
     db_manager = get_db_manager()
-
-    # Async event loop for database operations
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
 
     # Render header
     render_header()
@@ -346,7 +353,7 @@ def main():
         # If backtest mode, show selector
         selected_backtest = None
         if mode == "Backtest Results":
-            backtests = loop.run_until_complete(fetch_backtest_runs(db_manager, limit=50))
+            backtests = run_async(fetch_backtest_runs(db_manager, limit=50))
             if backtests:
                 backtest_options = {
                     f"{bt.run_name} ({bt.created_at.strftime('%Y-%m-%d %H:%M')})": str(bt.id)
@@ -357,7 +364,7 @@ def main():
                     options=list(backtest_options.keys()),
                 )
                 selected_id = backtest_options[selected_name]
-                selected_backtest = loop.run_until_complete(
+                selected_backtest = run_async(
                     fetch_backtest_by_id(db_manager, selected_id)
                 )
             else:
@@ -415,7 +422,7 @@ def main():
         st.markdown("---")
 
         # Render chart for backtest period
-        ohlc_data = loop.run_until_complete(fetch_recent_ohlc(
+        ohlc_data = run_async(fetch_recent_ohlc(
             db_manager,
             selected_backtest.pair,
             hours=(selected_backtest.end_time - selected_backtest.start_time).days * 24,
@@ -429,7 +436,7 @@ def main():
     else:
         # Live Bot Mode
         # Fetch bot state
-        bot_state = loop.run_until_complete(fetch_bot_state(db_manager))
+        bot_state = run_async(fetch_bot_state(db_manager))
 
         # Render metrics
         render_metrics(bot_state)
@@ -450,7 +457,7 @@ def main():
     st.markdown("---")
 
     # Trades table
-    trades = loop.run_until_complete(fetch_recent_trades(db_manager, limit=20))
+    trades = run_async(fetch_recent_trades(db_manager, limit=20))
     render_trades_table(trades)
 
     # Auto-refresh
@@ -467,13 +474,10 @@ def main():
 if __name__ == "__main__":
     # Connect to database
     db_manager = get_db_manager()
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
     settings = get_settings()
-    loop.run_until_complete(db_manager.init_db(settings))
+    run_async(db_manager.init_db(settings))
 
     try:
         main()
     finally:
-        loop.run_until_complete(db_manager.close_db())
+        run_async(db_manager.close_db())

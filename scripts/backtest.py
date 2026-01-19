@@ -25,7 +25,6 @@ from krakenbot.models.base import TradeSide
 from krakenbot.models.market_data import OHLCData
 from krakenbot.models.trades import BacktestRun, Trade, TradeStatus
 from krakenbot.strategies.base import SignalType, TradingSignal
-from krakenbot.strategies.threshold import ThresholdStrategy
 
 
 @dataclass
@@ -166,33 +165,65 @@ class BacktestEngine:
         if signal.signal_type == SignalType.HOLD:
             return
 
-        fee_pct = Decimal("0.004")  # 0.4% taker fee on Kraken
+        # Realistic trading costs
+        fee_pct = Decimal("0.0026")  # 0.26% maker fee on Kraken (tier 1)
+        spread_pct = Decimal("0.0002")  # 0.02% typical BTC/USDC spread
+        slippage_pct = Decimal("0.0001")  # 0.01% slippage (small orders)
 
-        if signal.signal_type == SignalType.BUY and not self.in_position:
+        # Handle multi-position strategies differently
+        is_multi = self.strategy_name == "threshold_multi"
+
+        if signal.signal_type == SignalType.BUY and (is_multi or not self.in_position):
             # Buy with available USDC
             order_amount = min(
                 self.usdc_balance,
-                self.settings.trading.default_order_amount_eur,  # Reuse EUR setting
+                Decimal(str(self.settings.trading.default_order_amount_eur)),  # Convert to Decimal
             )
 
-            if order_amount < 1:  # Minimum order
+            self.logger.debug(
+                "backtest_buy_attempt",
+                usdc_balance=float(self.usdc_balance),
+                order_amount=float(order_amount),
+                min_order=1.0,
+            )
+
+            if order_amount < Decimal("1"):  # Minimum order
+                self.logger.warning("backtest_buy_skipped_min_order", order_amount=float(order_amount))
                 return
+
+            # Apply spread + slippage to get realistic execution price
+            # When buying, we pay the ASK price (higher than mid)
+            execution_price = current_price * (Decimal("1") + spread_pct + slippage_pct)
 
             fee = order_amount * fee_pct
             amount_after_fee = order_amount - fee
-            crypto_bought = amount_after_fee / current_price
+            crypto_bought = amount_after_fee / execution_price
 
             # Update balances
             self.usdc_balance -= order_amount
             self.crypto_balance += crypto_bought
-            self.entry_price = current_price
+            self.entry_price = execution_price  # Store actual execution price
             self.in_position = True
+
+            # Update strategy position state for next signal generation
+            if is_multi:
+                # For multi-position, notify strategy of new position
+                position_id = self.strategy.add_position(
+                    entry_price=current_price,  # Use mid-price for strategy
+                    amount_usdc=order_amount,
+                    entry_time=signal.timestamp,
+                )
+                self.logger.debug("multi_position_opened", position_id=position_id)
+            else:
+                # Single position mode
+                # Use current_price (not execution_price) so strategy sees mid-market price
+                self.strategy.set_position_state(has_position=True, entry_price=current_price)
 
             # Record trade
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.BUY,
-                price=current_price,
+                price=execution_price,  # Actual execution price with spread+slippage
                 amount_usdc=order_amount,
                 amount_crypto=crypto_bought,
                 fee=fee,
@@ -207,9 +238,13 @@ class BacktestEngine:
                 crypto=float(crypto_bought),
             )
 
-        elif signal.signal_type == SignalType.SELL and self.in_position:
+        elif signal.signal_type == SignalType.SELL and (is_multi or self.in_position):
+            # Apply spread + slippage to get realistic execution price
+            # When selling, we receive the BID price (lower than mid)
+            execution_price = current_price * (Decimal("1") - spread_pct - slippage_pct)
+
             # Sell all crypto holdings
-            proceeds = self.crypto_balance * current_price
+            proceeds = self.crypto_balance * execution_price
             fee = proceeds * fee_pct
             amount_after_fee = proceeds - fee
 
@@ -223,11 +258,22 @@ class BacktestEngine:
             self.crypto_balance = Decimal("0")
             self.in_position = False
 
+            # Update strategy position state for next signal generation
+            if is_multi:
+                # Close specific position
+                position_id = signal.metadata.get("position_id") if signal.metadata else None
+                if position_id:
+                    closed_pos = self.strategy.close_position(position_id)
+                    self.logger.debug("multi_position_closed", position_id=position_id)
+            else:
+                # Single position mode
+                self.strategy.set_position_state(has_position=False, entry_price=None)
+
             # Record trade
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.SELL,
-                price=current_price,
+                price=execution_price,  # Actual execution price with spread+slippage
                 amount_usdc=amount_after_fee,
                 amount_crypto=crypto_sold,
                 fee=fee,
@@ -364,14 +410,46 @@ class BacktestEngine:
             raise ValueError(f"Insufficient data: only {len(candles)} candles available")
 
         # Initialize strategy
+        # Override settings pair with backtest pair
+        self.settings.trading.pair = pair
+
         if self.strategy_name == "threshold":
+            from krakenbot.strategies.threshold import ThresholdStrategy
+
             self.strategy = ThresholdStrategy(
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                settings=self.settings,
+            )
+        elif self.strategy_name == "rsi":
+            from krakenbot.strategies.rsi import RSIStrategy
+
+            self.strategy = RSIStrategy(
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                settings=self.settings,
+            )
+        elif self.strategy_name == "macd":
+            from krakenbot.strategies.macd import MACDStrategy
+
+            self.strategy = MACDStrategy(
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                settings=self.settings,
+            )
+        elif self.strategy_name == "threshold_multi":
+            from krakenbot.strategies.threshold_multi import ThresholdMultiStrategy
+
+            self.strategy = ThresholdMultiStrategy(
                 event_bus=self.event_bus,
                 db_manager=self.db_manager,
                 settings=self.settings,
             )
         else:
             raise ValueError(f"Unknown strategy: {self.strategy_name}")
+
+        # CRITICAL: Skip DB sync in backtest mode for all strategies
+        self.strategy._skip_db_sync = True
 
         # Replay historical data
         for i, candle in enumerate(candles):
@@ -388,8 +466,28 @@ class BacktestEngine:
 
             await self.strategy.on_ohlc(ohlc_data)
 
+            # Simulate tick with closing price for strategy
+            tick_data = {
+                "pair": candle.pair,
+                "timestamp": candle.timestamp,
+                "price": candle.close,
+                "volume": candle.volume,
+                "side": "buy",  # Dummy side for backtest
+            }
+            await self.strategy.on_tick(tick_data)
+
             # Generate signal
             signal = await self.strategy.generate_signal()
+
+            # DEBUG: Log all BUY/SELL signals
+            if signal and signal.signal_type.value in ['buy', 'sell']:
+                self.logger.info(
+                    "backtest_signal",
+                    timestamp=candle.timestamp,
+                    signal=signal.signal_type.value,
+                    reason=signal.reason,
+                    price=float(candle.close),
+                )
 
             # Execute signal
             if signal:

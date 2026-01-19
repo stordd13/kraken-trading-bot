@@ -9,8 +9,10 @@ from typing import TYPE_CHECKING
 from sqlalchemy import TIMESTAMP, String, Integer, Text, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
-from krakenbot.models.base import Base
-from krakenbot.utils.datetime_utils import utc_now
+from krakenbot.core.database import Base
+
+# Import utc_now from trades module where it's defined
+from krakenbot.models.trades import utc_now
 
 if TYPE_CHECKING:
     pass  # For future type hints if needed

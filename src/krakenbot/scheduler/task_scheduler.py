@@ -83,7 +83,11 @@ class TaskScheduler:
             return
 
         # Initialize REST client
-        self.rest_client = KrakenRestClient(self.settings)
+        self.rest_client = KrakenRestClient(
+            settings=self.settings,
+            event_bus=self.event_bus,
+            db_manager=self.db_manager,
+        )
 
         # Register all scheduled tasks
         await self._register_tasks()
