@@ -74,6 +74,7 @@ class BacktestMetrics:
     start_time: datetime | None = None
     end_time: datetime | None = None
     duration_days: float = 0.0
+    average_holding_time_minutes: float = 0.0  # Average time positions are held
 
     # Trade history
     trades: list[BacktestTrade] = field(default_factory=list)
@@ -171,7 +172,7 @@ class BacktestEngine:
         slippage_pct = Decimal("0.0001")  # 0.01% slippage (small orders)
 
         # Handle multi-position strategies differently
-        is_multi = self.strategy_name == "threshold_multi"
+        is_multi = self.strategy_name in ["threshold_multi", "threshold_rolling"]
 
         if signal.signal_type == SignalType.BUY and (is_multi or not self.in_position):
             # Buy with available USDC
@@ -208,11 +209,22 @@ class BacktestEngine:
             # Update strategy position state for next signal generation
             if is_multi:
                 # For multi-position, notify strategy of new position
-                position_id = self.strategy.add_position(
-                    entry_price=current_price,  # Use mid-price for strategy
-                    amount_usdc=order_amount,
-                    entry_time=signal.timestamp,
-                )
+                if self.strategy_name == "threshold_rolling":
+                    # Extract reference_price from signal metadata
+                    reference_price = Decimal(str(signal.metadata.get("reference_price", current_price)))
+                    position_id = self.strategy.add_position(
+                        entry_price=current_price,  # Use mid-price for strategy
+                        amount_usdc=order_amount,
+                        reference_price=reference_price,
+                        entry_time=signal.timestamp,
+                    )
+                else:
+                    # threshold_multi doesn't need reference_price
+                    position_id = self.strategy.add_position(
+                        entry_price=current_price,  # Use mid-price for strategy
+                        amount_usdc=order_amount,
+                        entry_time=signal.timestamp,
+                    )
                 self.logger.debug("multi_position_opened", position_id=position_id)
             else:
                 # Single position mode
@@ -243,29 +255,56 @@ class BacktestEngine:
             # When selling, we receive the BID price (lower than mid)
             execution_price = current_price * (Decimal("1") - spread_pct - slippage_pct)
 
-            # Sell all crypto holdings
-            proceeds = self.crypto_balance * execution_price
-            fee = proceeds * fee_pct
-            amount_after_fee = proceeds - fee
-
-            # Calculate P&L
-            cost_basis = self.entry_price * self.crypto_balance if self.entry_price else Decimal("0")
-            pnl = amount_after_fee - cost_basis
-
-            # Update balances
-            self.usdc_balance += amount_after_fee
-            crypto_sold = self.crypto_balance
-            self.crypto_balance = Decimal("0")
-            self.in_position = False
-
-            # Update strategy position state for next signal generation
+            # For multi-position strategies, get position details first
             if is_multi:
-                # Close specific position
                 position_id = signal.metadata.get("position_id") if signal.metadata else None
                 if position_id:
+                    # Close position and get its details
                     closed_pos = self.strategy.close_position(position_id)
-                    self.logger.debug("multi_position_closed", position_id=position_id)
+                    if closed_pos:
+                        # Calculate crypto amount from position's USDC amount and entry price
+                        crypto_amount = closed_pos.amount_usdc / closed_pos.entry_price
+                        entry_price_used = closed_pos.entry_price
+                    else:
+                        # Position not found, skip this sell
+                        self.logger.warning("position_not_found_for_sell", position_id=position_id)
+                        return
+                else:
+                    # No position_id in metadata
+                    self.logger.warning("no_position_id_in_sell_signal")
+                    return
+
+                # Calculate proceeds from this specific position
+                proceeds = crypto_amount * execution_price
+                fee = proceeds * fee_pct
+                amount_after_fee = proceeds - fee
+
+                # Calculate P&L for this position
+                cost_basis = closed_pos.amount_usdc  # Original USDC spent
+                pnl = amount_after_fee - cost_basis
+
+                # Update balances
+                self.usdc_balance += amount_after_fee
+                crypto_sold = crypto_amount
+
+                self.logger.debug("multi_position_closed", position_id=position_id)
             else:
+                # Single position mode - use global tracking
+                proceeds = self.crypto_balance * execution_price
+                fee = proceeds * fee_pct
+                amount_after_fee = proceeds - fee
+
+                # Calculate P&L
+                cost_basis = self.entry_price * self.crypto_balance if self.entry_price else Decimal("0")
+                pnl = amount_after_fee - cost_basis
+
+                # Update balances
+                self.usdc_balance += amount_after_fee
+                crypto_sold = self.crypto_balance
+                self.crypto_balance = Decimal("0")
+                self.in_position = False
+                entry_price_used = self.entry_price
+
                 # Single position mode
                 self.strategy.set_position_state(has_position=False, entry_price=None)
 
@@ -289,12 +328,19 @@ class BacktestEngine:
             else:
                 self.metrics.losing_trades += 1
 
-            self.logger.debug(
-                "backtest_sell",
-                price=float(current_price),
-                crypto=float(crypto_sold),
-                pnl=float(pnl),
-            )
+            # Extract holding time from signal metadata if available
+            holding_time_minutes = signal.metadata.get("holding_time_minutes") if signal.metadata else None
+
+            log_data = {
+                "price": float(current_price),
+                "crypto": float(crypto_sold),
+                "pnl": float(pnl),
+            }
+
+            if holding_time_minutes is not None:
+                log_data["holding_time_minutes"] = holding_time_minutes
+
+            self.logger.debug("backtest_sell", **log_data)
 
             self.entry_price = None
 
@@ -350,6 +396,22 @@ class BacktestEngine:
         self.metrics.max_drawdown = max_dd
         if peak > 0:
             self.metrics.max_drawdown_pct = float((max_dd / peak) * 100)
+
+        # Calculate average holding time (for completed trades with timestamps)
+        buy_trades = {t.timestamp: t for t in self.metrics.trades if t.side == TradeSide.BUY}
+        sell_trades = [t for t in self.metrics.trades if t.side == TradeSide.SELL]
+
+        holding_times = []
+        for sell_trade in sell_trades:
+            # Find the corresponding buy trade (match by closest timestamp before sell)
+            matching_buys = [t for t in buy_trades.values() if t.timestamp < sell_trade.timestamp]
+            if matching_buys:
+                buy_trade = max(matching_buys, key=lambda x: x.timestamp)
+                holding_time = (sell_trade.timestamp - buy_trade.timestamp).total_seconds() / 60
+                holding_times.append(holding_time)
+
+        if holding_times:
+            self.metrics.average_holding_time_minutes = sum(holding_times) / len(holding_times)
 
         # Sharpe ratio (simplified: assumes daily returns)
         if len(self.equity_curve) > 1:
@@ -441,6 +503,14 @@ class BacktestEngine:
             from krakenbot.strategies.threshold_multi import ThresholdMultiStrategy
 
             self.strategy = ThresholdMultiStrategy(
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                settings=self.settings,
+            )
+        elif self.strategy_name == "threshold_rolling":
+            from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
+
+            self.strategy = ThresholdRollingStrategy(
                 event_bus=self.event_bus,
                 db_manager=self.db_manager,
                 settings=self.settings,
@@ -552,6 +622,16 @@ class BacktestEngine:
         print(f"{'Average Win:':<30} {float(self.metrics.average_win):+.2f} USDC")
         print(f"{'Average Loss:':<30} {float(self.metrics.average_loss):+.2f} USDC")
         print(f"{'Profit Factor:':<30} {self.metrics.profit_factor:.2f}")
+
+        # Display average holding time if available
+        if self.metrics.average_holding_time_minutes > 0:
+            hours = int(self.metrics.average_holding_time_minutes // 60)
+            minutes = int(self.metrics.average_holding_time_minutes % 60)
+            if hours > 0:
+                time_str = f"{hours}h {minutes}min"
+            else:
+                time_str = f"{minutes}min"
+            print(f"{'Avg Holding Time:':<30} {time_str} ({self.metrics.average_holding_time_minutes:.1f} min)")
 
         print("\n" + "-" * 80)
         print("RISK METRICS")

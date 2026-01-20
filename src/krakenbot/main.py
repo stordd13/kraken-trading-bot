@@ -42,7 +42,7 @@ from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
 from krakenbot.execution.engine import ExecutionEngine
 from krakenbot.scheduler.task_scheduler import TaskScheduler
-from krakenbot.strategies.threshold_multi import ThresholdMultiStrategy
+from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
@@ -114,7 +114,7 @@ class KrakenBot:
         self.db_manager: DatabaseManager | None = None
         self.ws_client: KrakenWebSocketClient | None = None
         self.rest_client: KrakenRestClient | None = None
-        self.strategy: ThresholdMultiStrategy | None = None
+        self.strategy: ThresholdRollingStrategy | None = None
         self.execution_engine: ExecutionEngine | None = None
         self.task_scheduler: TaskScheduler | None = None
 
@@ -188,8 +188,8 @@ class KrakenBot:
         )
         self.logger.debug("execution_engine_initialized")
 
-        # 6. Initialize strategy (multi-position threshold)
-        self.strategy = ThresholdMultiStrategy(
+        # 6. Initialize strategy (rolling reference threshold)
+        self.strategy = ThresholdRollingStrategy(
             self.settings,
             self.event_bus,
             self.db_manager,
