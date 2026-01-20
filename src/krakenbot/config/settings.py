@@ -107,10 +107,10 @@ class RiskManagementSettings(BaseSettings):
         ge=0.0,
     )
     max_open_positions: int = Field(
-        default=3,
+        default=10,  # Increased from 3 to allow more positions
         description="Maximum number of simultaneous open positions",
         ge=1,
-        le=10,
+        le=20,  # Increased limit from 10 to 20
     )
     min_trade_interval_sec: int = Field(
         default=60,
@@ -136,11 +136,11 @@ class TradingSettings(BaseSettings):
         description="Trading mode (paper or live)",
     )
     pair: str = Field(
-        default="XBT/EUR",
+        default="XBT/USDC",  # Changed from XBT/EUR to match backtests
         description="Trading pair",
     )
     default_order_amount_eur: float = Field(
-        default=15.0,
+        default=100.0,  # Increased from 15.0 for better profit potential
         description="Default order amount in EUR",
         ge=1.0,
         le=10000.0,

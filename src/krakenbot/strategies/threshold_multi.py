@@ -351,3 +351,18 @@ class ThresholdMultiStrategy(BaseStrategy):
     def open_positions(self) -> list[Position]:
         """Get list of open positions."""
         return self._open_positions.copy()
+
+    @property
+    def current_price(self) -> Decimal | None:
+        """Get the current market price."""
+        return self._current_price
+
+    @property
+    def reference_price(self) -> Decimal | None:
+        """Get the reference price (moving average)."""
+        return self._reference_price
+
+    @property
+    def has_position(self) -> bool:
+        """Check if strategy has any open positions."""
+        return len(self._open_positions) > 0
