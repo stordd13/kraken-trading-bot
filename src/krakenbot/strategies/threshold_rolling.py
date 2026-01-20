@@ -418,6 +418,11 @@ class ThresholdRollingStrategy(BaseStrategy):
         return self._reference_prices.copy()
 
     @property
+    def reference_price(self) -> Decimal | None:
+        """Get the most recent reference price (for backward compatibility with main.py)."""
+        return self._reference_prices[-1] if self._reference_prices else None
+
+    @property
     def has_position(self) -> bool:
         """Check if strategy has any open positions."""
         return len(self._open_positions) > 0
