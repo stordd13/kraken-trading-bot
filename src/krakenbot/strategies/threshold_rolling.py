@@ -426,3 +426,13 @@ class ThresholdRollingStrategy(BaseStrategy):
     def has_position(self) -> bool:
         """Check if strategy has any open positions."""
         return len(self._open_positions) > 0
+
+    @property
+    def entry_price(self) -> Decimal | None:
+        """Get entry price of the first open position (for backward compatibility with main.py)."""
+        return self._open_positions[0].entry_price if self._open_positions else None
+
+    @property
+    def price_history_len(self) -> int:
+        """Get the length of price history (number of reference prices)."""
+        return len(self._reference_prices)
