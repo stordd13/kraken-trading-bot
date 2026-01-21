@@ -34,6 +34,8 @@ import signal
 import sys
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy import select
+
 from krakenbot.config.settings import get_settings
 from krakenbot.connectors.kraken_rest import KrakenRestClient
 from krakenbot.connectors.kraken_ws import KrakenWebSocketClient
@@ -41,6 +43,8 @@ from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
 from krakenbot.execution.engine import ExecutionEngine
+from krakenbot.models.base import BotStatus
+from krakenbot.models.trades import BotState
 from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 
 if TYPE_CHECKING:
@@ -237,7 +241,10 @@ class KrakenBot:
         await self.strategy.start()
         self.logger.debug("strategy_started")
 
-        # 3. Connect WebSocket and subscribe to market data
+        # 3. Initialize bot state in database (for dashboard)
+        await self._init_bot_state()
+
+        # 4. Connect WebSocket and subscribe to market data
         await self.ws_client.connect()
         await self.ws_client.subscribe_ohlc(
             self.settings.trading.pair,
@@ -276,6 +283,10 @@ class KrakenBot:
 
         self.logger.info("krakenbot_stopping")
         self._running = False
+
+        # Mark bot as stopped in database first (while db is still open)
+        if self.db_manager and self.strategy:
+            await self._mark_bot_stopped()
 
         # Stop in reverse order
 
@@ -439,6 +450,9 @@ class KrakenBot:
             **stats,
         )
 
+        # Update heartbeat in database
+        await self._update_bot_heartbeat()
+
     def _get_uptime_seconds(self) -> float:
         """Calculate bot uptime in seconds.
 
@@ -448,6 +462,91 @@ class KrakenBot:
         if not hasattr(self, "_start_time"):
             self._start_time = datetime.now(UTC)
         return (datetime.now(UTC) - self._start_time).total_seconds()
+
+    async def _init_bot_state(self) -> None:
+        """Initialize bot state in database on startup.
+
+        Creates or updates the BotState record to indicate the bot is running.
+        This ensures the dashboard shows "RUNNING" immediately on startup,
+        without waiting for the first trade to execute.
+        """
+        async with self.db_manager.session() as session:
+            result = await session.execute(
+                select(BotState).where(BotState.bot_id == self.strategy.get_name())
+            )
+            bot_state = result.scalar_one_or_none()
+
+            if bot_state is None:
+                bot_state = BotState(
+                    bot_id=self.strategy.get_name(),
+                    strategy=self.strategy.get_name(),
+                    status=BotStatus.RUNNING,
+                )
+                session.add(bot_state)
+                self.logger.info(
+                    "bot_state_created",
+                    bot_id=self.strategy.get_name(),
+                    status="running",
+                )
+            else:
+                bot_state.status = BotStatus.RUNNING
+                bot_state.updated_at = datetime.now(UTC)
+                self.logger.info(
+                    "bot_state_updated",
+                    bot_id=self.strategy.get_name(),
+                    status="running",
+                )
+
+            await session.commit()
+
+    async def _update_bot_heartbeat(self) -> None:
+        """Update bot_state heartbeat in database.
+
+        Called periodically to update the `updated_at` timestamp,
+        indicating the bot is still alive.
+        """
+        try:
+            async with self.db_manager.session() as session:
+                result = await session.execute(
+                    select(BotState).where(BotState.bot_id == self.strategy.get_name())
+                )
+                bot_state = result.scalar_one_or_none()
+                if bot_state:
+                    bot_state.updated_at = datetime.now(UTC)
+                    await session.commit()
+        except Exception as e:
+            self.logger.warning(
+                "bot_heartbeat_update_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+
+    async def _mark_bot_stopped(self) -> None:
+        """Mark bot as stopped in database.
+
+        Called during shutdown to update the BotState status to STOPPED,
+        ensuring the dashboard shows the correct state.
+        """
+        try:
+            async with self.db_manager.session() as session:
+                result = await session.execute(
+                    select(BotState).where(BotState.bot_id == self.strategy.get_name())
+                )
+                bot_state = result.scalar_one_or_none()
+                if bot_state:
+                    bot_state.status = BotStatus.STOPPED
+                    bot_state.updated_at = datetime.now(UTC)
+                    await session.commit()
+                    self.logger.info(
+                        "bot_state_stopped",
+                        bot_id=self.strategy.get_name(),
+                    )
+        except Exception as e:
+            self.logger.warning(
+                "bot_state_stop_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
 
     def request_shutdown(self) -> None:
         """Request a graceful shutdown of the bot.
