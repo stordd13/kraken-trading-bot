@@ -16,6 +16,7 @@
 - [ ] Laisser tourner paper trading quelques jours/semaines
 - [ ] Analyser les trades exécutés (win rate, P&L, drawdown)
 - [ ] Identifier les patterns de trades perdants
+- [ ] Ajouter suivi des positions ouvertes dans le dashboard (après BUY, en attente SELL/stop-loss)
 
 ### Backtest sur Vraies Données
 - [ ] Script backtest avec données collectées
@@ -24,7 +25,7 @@
 
 ### Décision Go/No-Go Live
 - [ ] Si stratégie rentable ou neutre → Phase 2
-- [ ] Si stratégie perdante → itérer sur paramètres
+- [ ] Si stratégie perdante → itérer sur paramètres ou alors Phase 3 directement
 
 ---
 

@@ -334,6 +334,7 @@ class ThresholdRollingStrategy(BaseStrategy):
 
                 # Calculate holding time
                 now = datetime.now(UTC)
+
                 holding_time = now - closed_position.entry_time
                 holding_minutes = holding_time.total_seconds() / 60
 
