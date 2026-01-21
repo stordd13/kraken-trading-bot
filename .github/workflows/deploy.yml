@@ -28,11 +28,33 @@ jobs:
             # Install dependencies (if poetry.lock changed)
             ~/.local/bin/poetry install --no-interaction
 
-            # Restart the bot
+            # Install/update systemd service files (if they changed)
+            echo "Installing systemd service files..."
+            sudo cp deploy/krakenbot.service /etc/systemd/system/
+            sudo cp deploy/krakenbot-collector.service /etc/systemd/system/
+            sudo systemctl daemon-reload
+
+            # Enable services to start on boot
+            sudo systemctl enable krakenbot-collector
+            sudo systemctl enable krakenbot
+
+            # Restart services
+            echo "Restarting krakenbot-collector..."
+            sudo systemctl restart krakenbot-collector
+            sleep 3
+
+            echo "Restarting krakenbot..."
             sudo systemctl restart krakenbot
-
-            # Wait a bit and check status
             sleep 5
-            sudo systemctl status krakenbot --no-pager
 
+            # Check status of both services
+            echo ""
+            echo "=== krakenbot-collector status ==="
+            sudo systemctl status krakenbot-collector --no-pager || true
+
+            echo ""
+            echo "=== krakenbot status ==="
+            sudo systemctl status krakenbot --no-pager || true
+
+            echo ""
             echo "✅ Deployment complete!"

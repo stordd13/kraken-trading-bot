@@ -1,0 +1,35 @@
+[Unit]
+Description=KrakenBot Data Collector Service
+Documentation=https://github.com/stordd13/kraken-trading-bot
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=bruno
+Group=bruno
+WorkingDirectory=/home/bruno/apps/kraken-trading-bot
+Environment=PATH=/home/bruno/.local/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/home/bruno/apps/kraken-trading-bot/.env
+
+# Run the collector service
+ExecStart=/home/bruno/.local/bin/poetry run python -m krakenbot.collector
+
+# Restart on failure
+Restart=always
+RestartSec=10
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=krakenbot-collector
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/bruno/apps/kraken-trading-bot
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
