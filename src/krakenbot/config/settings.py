@@ -306,7 +306,7 @@ class Settings(BaseSettings):
             )
 
         if errors:
-            raise ValueError(f"Configuration validation failed:\n" + "\n".join(f"- {e}" for e in errors))
+            raise ValueError("Configuration validation failed:\n" + "\n".join(f"- {e}" for e in errors))
 
     @property
     def is_production(self) -> bool:

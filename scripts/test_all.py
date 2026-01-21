@@ -11,8 +11,8 @@ Usage:
 """
 
 import asyncio
-import sys
 from pathlib import Path
+import sys
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -47,7 +47,8 @@ async def test_data_exists():
     print("=" * 80)
 
     try:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         from krakenbot.models.market_data import OHLCData
 
         settings = get_settings()
@@ -81,7 +82,8 @@ async def test_backtest_runs_table():
     print("=" * 80)
 
     try:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         from krakenbot.models.trades import BacktestRun
 
         settings = get_settings()
@@ -115,7 +117,8 @@ async def test_bot_state_table():
     print("=" * 80)
 
     try:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         from krakenbot.models.trades import BotState
 
         settings = get_settings()
@@ -141,21 +144,21 @@ async def test_bot_state_table():
         return False
 
 
-def test_streamlit_installed():
-    """Test 5: Check if Streamlit is installed."""
+def test_dash_installed():
+    """Test 5: Check if Dash is installed (for dashboard)."""
     print("\n" + "=" * 80)
-    print("TEST 5: Streamlit Installation")
+    print("TEST 5: Dash Installation")
     print("=" * 80)
 
     try:
-        import streamlit
+        import dash
         import plotly
-        print(f"✅ Streamlit {streamlit.__version__} installed")
+        print(f"✅ Dash {dash.__version__} installed")
         print(f"✅ Plotly {plotly.__version__} installed")
         return True
     except ImportError as e:
         print(f"❌ Missing package: {e}")
-        print("   Run: pip install -e '.[monitoring]'")
+        print("   Run: poetry add dash dash-bootstrap-components plotly")
         return False
 
 
@@ -196,7 +199,7 @@ async def main():
         "OHLC Data": await test_data_exists(),
         "Backtest Runs Table": await test_backtest_runs_table(),
         "Bot State Table": await test_bot_state_table(),
-        "Streamlit Installation": test_streamlit_installed(),
+        "Dash Installation": test_dash_installed(),
     }
 
     # Summary
@@ -216,7 +219,7 @@ async def main():
     if passed == total:
         print("\n🎉 All tests passed! You can now:")
         print("   1. Run backtest: python -m scripts.backtest --pair XBT/USDC --days 7 --save")
-        print("   2. Start dashboard: streamlit run scripts/dashboard.py")
+        print("   2. Start dashboard: python scripts/dashboard.py")
     else:
         print("\n⚠️  Some tests failed. Follow the suggestions above to fix them.")
         sys.exit(1)

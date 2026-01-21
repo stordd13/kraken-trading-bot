@@ -18,10 +18,10 @@ Via SSH tunnel (from local machine):
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 import os
 import sys
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -45,7 +45,7 @@ async def get_status() -> None:
     print("=" * 60)
     print("🤖 KRAKENBOT STATUS CHECK")
     print("=" * 60)
-    print(f"📅 Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    print(f"📅 Time: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC")
     print(f"🔗 Database: {database_url.split('@')[1] if '@' in database_url else database_url}")
     print()
 
@@ -93,9 +93,9 @@ async def get_status() -> None:
             latest_candle = result.scalar()
             if latest_candle:
                 age_minutes = (
-                    datetime.now(timezone.utc) - latest_candle.timestamp.replace(tzinfo=timezone.utc)
+                    datetime.now(UTC) - latest_candle.timestamp.replace(tzinfo=UTC)
                 ).total_seconds() / 60
-                print(f"\nLatest candle:")
+                print("\nLatest candle:")
                 print(f"  • Pair: {latest_candle.pair}")
                 print(f"  • Time: {latest_candle.timestamp}")
                 print(f"  • Close: {latest_candle.close}")
@@ -160,7 +160,7 @@ async def get_status() -> None:
             print("📊 LAST 24H SUMMARY")
             print("-" * 40)
 
-            yesterday = datetime.now(timezone.utc) - timedelta(days=1)
+            yesterday = datetime.now(UTC) - timedelta(days=1)
             result = await session.execute(
                 select(func.count(), func.sum(Trade.pnl))
                 .where(Trade.timestamp >= yesterday)

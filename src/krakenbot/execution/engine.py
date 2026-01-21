@@ -21,14 +21,14 @@ Example:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from krakenbot.core.event_bus import EventType
 from krakenbot.core.logger import get_logger
 from krakenbot.execution.risk import RiskManager
-from krakenbot.models.base import BotStatus, TradeSide, TradeStatus
+from krakenbot.models.base import BotStatus, TradeSide
 from krakenbot.strategies.base import TradingSignal
 
 if TYPE_CHECKING:
@@ -399,7 +399,7 @@ class ExecutionEngine:
 
             # Common updates
             bot_state.last_signal_at = signal.timestamp
-            bot_state.updated_at = datetime.now(timezone.utc)
+            bot_state.updated_at = datetime.now(UTC)
 
     async def _handle_buy_trade(
         self,

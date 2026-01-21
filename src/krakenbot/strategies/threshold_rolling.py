@@ -16,14 +16,11 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
-
 from krakenbot.models.base import SignalType
-from krakenbot.models.trades import BotState
 from krakenbot.strategies.base import BaseStrategy, TradingSignal
 
 if TYPE_CHECKING:
@@ -127,16 +124,16 @@ class ThresholdRollingStrategy(BaseStrategy):
                     self._current_timestamp = datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
                 except ValueError:
                     # Try as Unix timestamp
-                    self._current_timestamp = datetime.fromtimestamp(float(timestamp_value), tz=timezone.utc)
+                    self._current_timestamp = datetime.fromtimestamp(float(timestamp_value), tz=UTC)
             elif isinstance(timestamp_value, (int, float)):
                 # Unix timestamp
-                self._current_timestamp = datetime.fromtimestamp(timestamp_value, tz=timezone.utc)
+                self._current_timestamp = datetime.fromtimestamp(timestamp_value, tz=UTC)
             elif isinstance(timestamp_value, datetime):
                 self._current_timestamp = timestamp_value
             else:
-                self._current_timestamp = datetime.now(timezone.utc)
+                self._current_timestamp = datetime.now(UTC)
         else:
-            self._current_timestamp = datetime.now(timezone.utc)
+            self._current_timestamp = datetime.now(UTC)
 
         # Add this candle's close as a new reference price
         self._reference_prices.append(close_price)
@@ -174,7 +171,7 @@ class ThresholdRollingStrategy(BaseStrategy):
         await self._update_position_state()
 
         # Use current candle timestamp for calculations (or fallback to now)
-        current_time = self._current_timestamp or datetime.now(timezone.utc)
+        current_time = self._current_timestamp or datetime.now(UTC)
 
         # SELL LOGIC: Check each open position for profit target or stop-loss
         for position in self._open_positions:
@@ -300,7 +297,7 @@ class ThresholdRollingStrategy(BaseStrategy):
 
         position = RollingPosition(
             entry_price=entry_price,
-            entry_time=entry_time or datetime.now(timezone.utc),
+            entry_time=entry_time or datetime.now(UTC),
             amount_usdc=amount_usdc,
             position_id=position_id,
             reference_price=reference_price,
@@ -334,7 +331,7 @@ class ThresholdRollingStrategy(BaseStrategy):
                 closed_position = self._open_positions.pop(i)
 
                 # Calculate holding time
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 holding_time = now - closed_position.entry_time
                 holding_minutes = holding_time.total_seconds() / 60
 

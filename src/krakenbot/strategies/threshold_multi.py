@@ -15,14 +15,11 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
-
 from krakenbot.models.base import SignalType
-from krakenbot.models.trades import BotState
 from krakenbot.strategies.base import BaseStrategy, TradingSignal
 
 if TYPE_CHECKING:
@@ -148,7 +145,7 @@ class ThresholdMultiStrategy(BaseStrategy):
         # Update position state from database (for live trading)
         await self._update_position_state()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # SELL LOGIC: Check each open position for profit target or stop-loss
         for position in self._open_positions:
@@ -258,7 +255,7 @@ class ThresholdMultiStrategy(BaseStrategy):
 
         position = Position(
             entry_price=entry_price,
-            entry_time=entry_time or datetime.now(timezone.utc),
+            entry_time=entry_time or datetime.now(UTC),
             amount_usdc=amount_usdc,
             position_id=position_id,
         )

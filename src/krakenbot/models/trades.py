@@ -7,10 +7,9 @@ This module defines the database models for:
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
+import uuid
 
 from sqlalchemy import DECIMAL, TIMESTAMP, Enum, Index, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -19,9 +18,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 from krakenbot.core.database import Base
 from krakenbot.models.base import BotStatus, TradeSide, TradeStatus
 
-if TYPE_CHECKING:
-    pass
-
 
 def utc_now() -> datetime:
     """Get current UTC datetime.
@@ -29,7 +25,7 @@ def utc_now() -> datetime:
     Returns:
         Current datetime with UTC timezone.
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class Trade(Base):

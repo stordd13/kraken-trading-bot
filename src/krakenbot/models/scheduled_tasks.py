@@ -4,18 +4,14 @@ This module defines ORM models for tracking scheduled task executions.
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING
 
-from sqlalchemy import TIMESTAMP, String, Integer, Text, Index
+from sqlalchemy import TIMESTAMP, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from krakenbot.core.database import Base
 
 # Import utc_now from trades module where it's defined
 from krakenbot.models.trades import utc_now
-
-if TYPE_CHECKING:
-    pass  # For future type hints if needed
 
 
 class TaskExecutionLog(Base):

@@ -34,9 +34,9 @@ Example:
 from __future__ import annotations
 
 import asyncio
-import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
+import json
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -46,7 +46,6 @@ from krakenbot.core.exceptions import (
     DataValidationError,
     WebSocketConnectionError,
     WebSocketDisconnectedError,
-    WebSocketTimeoutError,
 )
 from krakenbot.core.logger import get_logger
 from krakenbot.models.base import TradeSide
@@ -195,7 +194,7 @@ class KrakenWebSocketClient:
 
             self._connected = True
             self._running = True
-            self._last_message_time = datetime.now(timezone.utc)
+            self._last_message_time = datetime.now(UTC)
             self._reconnect_count = 0
 
             logger.info("kraken_ws_connected")
@@ -341,7 +340,7 @@ class KrakenWebSocketClient:
         while self._running and self._ws and not self._ws.closed:
             try:
                 msg = await self._ws.receive()
-                self._last_message_time = datetime.now(timezone.utc)
+                self._last_message_time = datetime.now(UTC)
 
                 if msg.type == aiohttp.WSMsgType.TEXT:
                     self._stats["messages_received"] += 1
@@ -369,7 +368,7 @@ class KrakenWebSocketClient:
 
             except asyncio.CancelledError:
                 break
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("kraken_ws_receive_timeout")
                 if self._running:
                     asyncio.create_task(self._reconnect())
@@ -398,7 +397,7 @@ class KrakenWebSocketClient:
                     continue
 
                 elapsed = (
-                    datetime.now(timezone.utc) - self._last_message_time
+                    datetime.now(UTC) - self._last_message_time
                 ).total_seconds()
 
                 if elapsed > self._heartbeat_timeout * 3:
@@ -573,9 +572,9 @@ class KrakenWebSocketClient:
             # Parse OHLC data
             # Format: [time, etime, open, high, low, close, vwap, volume, count]
             # time = candle start time, etime = candle end time
-            candle_start = datetime.fromtimestamp(float(data[0]), tz=timezone.utc)
-            candle_end = datetime.fromtimestamp(float(data[1]), tz=timezone.utc)
-            current_time = datetime.now(timezone.utc)
+            candle_start = datetime.fromtimestamp(float(data[0]), tz=UTC)
+            candle_end = datetime.fromtimestamp(float(data[1]), tz=UTC)
+            current_time = datetime.now(UTC)
 
             # Create OHLC object for event (always publish for live price tracking)
             ohlc = OHLCData(
@@ -661,7 +660,7 @@ class KrakenWebSocketClient:
 
             # Create tick data
             tick = TickData(
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 pair=pair,
                 sequence=0,  # Will be updated in save
                 price=last_price,
@@ -718,7 +717,7 @@ class KrakenWebSocketClient:
                 # Format: [price, volume, time, side, orderType, misc]
                 price = Decimal(trade[0])
                 volume = Decimal(trade[1])
-                timestamp = datetime.fromtimestamp(float(trade[2]), tz=timezone.utc)
+                timestamp = datetime.fromtimestamp(float(trade[2]), tz=UTC)
                 side = TradeSide.BUY if trade[3] == "b" else TradeSide.SELL
 
                 tick = TickData(

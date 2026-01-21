@@ -4,7 +4,7 @@ This module provides helpers for converting between different time representatio
 used by Kraken API, CCXT library, and the internal database format.
 """
 
-from datetime import datetime, timedelta, UTC
+from datetime import datetime, timedelta
 
 
 def minutes_to_ccxt_timeframe(interval_minutes: int) -> str:
@@ -59,65 +59,6 @@ def minutes_to_ccxt_timeframe(interval_minutes: int) -> str:
         f"Unsupported interval: {interval_minutes} minutes. "
         f"Supported intervals: {sorted(interval_map.keys())}"
     )
-
-
-def ccxt_timeframe_to_minutes(timeframe: str) -> int:
-    """Convert CCXT timeframe string to minutes.
-
-    Args:
-        timeframe: CCXT timeframe string (e.g., "1m", "5m", "1h").
-
-    Returns:
-        Interval in minutes.
-
-    Raises:
-        ValueError: If timeframe format is invalid.
-
-    Examples:
-        >>> ccxt_timeframe_to_minutes("1m")
-        1
-        >>> ccxt_timeframe_to_minutes("1h")
-        60
-        >>> ccxt_timeframe_to_minutes("1d")
-        1440
-    """
-    timeframe = timeframe.lower().strip()
-
-    # Extract number and unit
-    if not timeframe:
-        raise ValueError("Timeframe cannot be empty")
-
-    # Find where the number ends
-    unit_start = 0
-    for i, char in enumerate(timeframe):
-        if not char.isdigit():
-            unit_start = i
-            break
-
-    if unit_start == 0:
-        raise ValueError(f"Invalid timeframe format: {timeframe}")
-
-    try:
-        amount = int(timeframe[:unit_start])
-    except ValueError:
-        raise ValueError(f"Invalid timeframe number: {timeframe[:unit_start]}")
-
-    unit = timeframe[unit_start:]
-
-    # Convert to minutes based on unit
-    multipliers = {
-        "m": 1,  # minutes
-        "h": 60,  # hours
-        "d": 1440,  # days
-        "w": 10080,  # weeks
-    }
-
-    if unit not in multipliers:
-        raise ValueError(
-            f"Invalid timeframe unit: {unit}. Supported: {list(multipliers.keys())}"
-        )
-
-    return amount * multipliers[unit]
 
 
 def calculate_pagination_steps(

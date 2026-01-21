@@ -24,16 +24,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
+from datetime import UTC, datetime
 import os
 import sys
-from datetime import datetime, timedelta, timezone
-from decimal import Decimal
 
 import dash
+from dash import Input, Output, State, callback, dash_table, dcc, html
+import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
-from dash import dcc, html, dash_table, Input, Output, State, callback
-import dash_bootstrap_components as dbc
 from sqlalchemy import create_engine, text
 
 # Add src to path
@@ -385,7 +384,7 @@ app.layout = dbc.Container([
 def update_metrics(n_intervals, n_clicks):
     """Update metric cards."""
     bot_state = fetch_bot_state()
-    now = datetime.now(timezone.utc).strftime("%H:%M:%S UTC")
+    now = datetime.now(UTC).strftime("%H:%M:%S UTC")
 
     if bot_state:
         status = bot_state.get("status", "unknown")

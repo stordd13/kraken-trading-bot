@@ -14,6 +14,6 @@ from krakenbot.connectors.kraken_rest import KrakenRestClient
 from krakenbot.connectors.kraken_ws import KrakenWebSocketClient
 
 __all__ = [
-    "KrakenWebSocketClient",
     "KrakenRestClient",
+    "KrakenWebSocketClient",
 ]

@@ -63,9 +63,7 @@ def mask_secrets(
         The processed event dictionary with secrets masked.
     """
     for key, value in list(event_dict.items()):
-        if key.lower() in SECRET_FIELD_NAMES:
-            event_dict[key] = _mask_value(value)
-        elif isinstance(value, str) and _looks_like_secret(value):
+        if key.lower() in SECRET_FIELD_NAMES or (isinstance(value, str) and _looks_like_secret(value)):
             event_dict[key] = _mask_value(value)
         elif isinstance(value, dict):
             event_dict[key] = _mask_dict_secrets(value)

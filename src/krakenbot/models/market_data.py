@@ -9,16 +9,12 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING
 
 from sqlalchemy import DECIMAL, TIMESTAMP, Enum, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from krakenbot.core.database import Base
 from krakenbot.models.base import TradeSide
-
-if TYPE_CHECKING:
-    pass
 
 
 class OHLCData(Base):

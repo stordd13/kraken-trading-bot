@@ -4,19 +4,17 @@ This module implements scheduled tasks using APScheduler for continuous
 data collection from Kraken API.
 """
 
-import asyncio
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime
 
-import structlog
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+import structlog
 
 from krakenbot.config.settings import Settings
+from krakenbot.connectors.kraken_rest import KrakenRestClient
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import EventBus, EventType
-from krakenbot.connectors.kraken_rest import KrakenRestClient
 from krakenbot.models.scheduled_tasks import TaskExecutionLog
-from krakenbot.utils.time_utils import get_max_days_for_interval
 
 logger = structlog.get_logger()
 

@@ -10,12 +10,10 @@ Usage:
 import argparse
 import asyncio
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import Any
 
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from krakenbot.config.settings import Settings, get_settings
 from krakenbot.core.database import DatabaseManager
@@ -483,22 +481,6 @@ class BacktestEngine:
                 db_manager=self.db_manager,
                 settings=self.settings,
             )
-        elif self.strategy_name == "rsi":
-            from krakenbot.strategies.rsi import RSIStrategy
-
-            self.strategy = RSIStrategy(
-                event_bus=self.event_bus,
-                db_manager=self.db_manager,
-                settings=self.settings,
-            )
-        elif self.strategy_name == "macd":
-            from krakenbot.strategies.macd import MACDStrategy
-
-            self.strategy = MACDStrategy(
-                event_bus=self.event_bus,
-                db_manager=self.db_manager,
-                settings=self.settings,
-            )
         elif self.strategy_name == "threshold_multi":
             from krakenbot.strategies.threshold_multi import ThresholdMultiStrategy
 
@@ -516,7 +498,10 @@ class BacktestEngine:
                 settings=self.settings,
             )
         else:
-            raise ValueError(f"Unknown strategy: {self.strategy_name}")
+            raise ValueError(
+                f"Unknown strategy: {self.strategy_name}. "
+                f"Available: threshold, threshold_multi, threshold_rolling"
+            )
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies
         self.strategy._skip_db_sync = True
@@ -805,7 +790,7 @@ async def main() -> None:
             backtest_run = await engine.save_to_database(args.pair, run_name=args.name)
             print(f"\n✅ Backtest results saved to database with ID: {backtest_run.id}")
             print(f"   Run name: {backtest_run.run_name}")
-            print(f"   View in dashboard: streamlit run scripts/dashboard.py\n")
+            print("   View in dashboard: streamlit run scripts/dashboard.py\n")
 
             # Optionally save individual trades (commented out by default to avoid clutter)
             # await engine.save_trades_to_database(str(backtest_run.id), args.pair)

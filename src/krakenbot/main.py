@@ -29,9 +29,9 @@ Example:
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 import signal
 import sys
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
 from krakenbot.config.settings import get_settings
@@ -388,7 +388,7 @@ class KrakenBot:
             - Strategy state (current price, position status)
         """
         stats_interval_sec: int = 60
-        last_stats_at: datetime = datetime.now(timezone.utc)
+        last_stats_at: datetime = datetime.now(UTC)
 
         self.logger.info(
             "krakenbot_main_loop_started",
@@ -401,7 +401,7 @@ class KrakenBot:
                 await asyncio.sleep(1)
 
                 # Log stats periodically
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 elapsed = (now - last_stats_at).total_seconds()
 
                 if elapsed >= stats_interval_sec:
@@ -483,8 +483,8 @@ class KrakenBot:
             Number of seconds since the bot was started.
         """
         if not hasattr(self, "_start_time"):
-            self._start_time = datetime.now(timezone.utc)
-        return (datetime.now(timezone.utc) - self._start_time).total_seconds()
+            self._start_time = datetime.now(UTC)
+        return (datetime.now(UTC) - self._start_time).total_seconds()
 
     def request_shutdown(self) -> None:
         """Request a graceful shutdown of the bot.
@@ -526,7 +526,7 @@ async def main() -> None:
     bot = KrakenBot()
 
     # Track startup time
-    bot._start_time = datetime.now(timezone.utc)
+    bot._start_time = datetime.now(UTC)
 
     # Setup signal handlers for graceful shutdown
     loop = asyncio.get_running_loop()

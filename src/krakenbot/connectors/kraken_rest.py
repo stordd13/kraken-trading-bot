@@ -29,10 +29,10 @@ Example:
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
+import uuid
 
 import ccxt.async_support as ccxt
 
@@ -404,7 +404,7 @@ class KrakenRestClient:
         # Create trade record
         trade = Trade(
             id=uuid.uuid4(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair=pair,
             side=side,
             amount=amount,
@@ -493,7 +493,7 @@ class KrakenRestClient:
             # Create trade record
             trade = Trade(
                 id=uuid.uuid4(),
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
                 pair=pair,
                 side=side,
                 amount=filled_amount,
@@ -883,7 +883,7 @@ class KrakenRestClient:
                 timestamp_ms, open_price, high, low, close, volume = candle
 
                 # Convert timestamp from milliseconds to datetime
-                timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=timezone.utc)
+                timestamp = datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC)
 
                 result.append(
                     {

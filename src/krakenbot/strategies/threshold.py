@@ -12,7 +12,7 @@ Example:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
@@ -139,7 +139,7 @@ class ThresholdStrategy(BaseStrategy):
         # Update position state from database
         await self._update_position_state()
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # DEBUG: Log strategy internal state
         self.logger.debug(

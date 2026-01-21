@@ -28,7 +28,7 @@ Example:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -375,7 +375,7 @@ class RiskManager:
         last_trade_at = await self._get_last_trade_time()
 
         if last_trade_at is not None:
-            time_since_last = datetime.now(timezone.utc) - last_trade_at
+            time_since_last = datetime.now(UTC) - last_trade_at
 
             if time_since_last < self.min_trade_interval:
                 remaining = self.min_trade_interval - time_since_last
@@ -399,7 +399,7 @@ class RiskManager:
         from krakenbot.models.trades import Trade
 
         async with self.db_manager.read_session() as session:
-            today = datetime.now(timezone.utc).date()
+            today = datetime.now(UTC).date()
             result = await session.execute(
                 select(func.coalesce(func.sum(Trade.pnl), 0))
                 .where(func.date(Trade.timestamp) == today)
