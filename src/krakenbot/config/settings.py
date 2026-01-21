@@ -191,10 +191,10 @@ class StrategySettings(BaseSettings):
         le=20.0,
     )
     lookback_periods: int = Field(
-        default=10,
-        description="Number of candles to look back for analysis",
+        default=50,
+        description="Number of candles to look back for analysis (50 x 15min = 12h30)",
         ge=1,
-        le=100,
+        le=200,
     )
 
 
