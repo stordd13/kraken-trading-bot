@@ -558,6 +558,9 @@ class KrakenWebSocketClient:
     ) -> None:
         """Handle OHLC candle data.
 
+        Kraken WebSocket sends OHLC updates on every trade. We only save
+        completed candles to avoid storing intermediate states.
+
         Args:
             pair: Trading pair.
             data: OHLC data array.
@@ -569,9 +572,14 @@ class KrakenWebSocketClient:
 
             # Parse OHLC data
             # Format: [time, etime, open, high, low, close, vwap, volume, count]
-            timestamp = datetime.fromtimestamp(float(data[0]), tz=timezone.utc)
+            # time = candle start time, etime = candle end time
+            candle_start = datetime.fromtimestamp(float(data[0]), tz=timezone.utc)
+            candle_end = datetime.fromtimestamp(float(data[1]), tz=timezone.utc)
+            current_time = datetime.now(timezone.utc)
+
+            # Create OHLC object for event (always publish for live price tracking)
             ohlc = OHLCData(
-                timestamp=timestamp,
+                timestamp=candle_start,
                 pair=pair,
                 interval=interval,
                 open=Decimal(data[2]),
@@ -583,17 +591,38 @@ class KrakenWebSocketClient:
                 trades_count=int(data[8]) if len(data) > 8 else None,
             )
 
-            # Save to database
-            await self._save_ohlc(ohlc)
-            self._stats["ohlc_received"] += 1
+            # Check if candle is complete (current time >= candle end time)
+            is_candle_complete = current_time >= candle_end
 
-            # Publish event
+            # Only save completed candles to database
+            if is_candle_complete:
+                await self._save_ohlc(ohlc)
+                self._stats["ohlc_received"] += 1
+                logger.debug(
+                    "kraken_ws_ohlc_saved",
+                    pair=pair,
+                    interval=interval,
+                    close=str(ohlc.close),
+                    candle_start=candle_start.isoformat(),
+                )
+            else:
+                logger.debug(
+                    "kraken_ws_ohlc_in_progress",
+                    pair=pair,
+                    interval=interval,
+                    close=str(ohlc.close),
+                    candle_end=candle_end.isoformat(),
+                )
+
+            # Always publish event for live price tracking (strategies need current price)
             await self._event_bus.publish(
                 EventType.MARKET_OHLC,
                 {
                     "pair": pair,
                     "interval": interval,
-                    "timestamp": timestamp.isoformat(),
+                    "timestamp": candle_start.isoformat(),
+                    "candle_end": candle_end.isoformat(),
+                    "is_complete": is_candle_complete,
                     "open": str(ohlc.open),
                     "high": str(ohlc.high),
                     "low": str(ohlc.low),
@@ -602,13 +631,6 @@ class KrakenWebSocketClient:
                     "vwap": str(ohlc.vwap) if ohlc.vwap else None,
                     "trades_count": ohlc.trades_count,
                 },
-            )
-
-            logger.debug(
-                "kraken_ws_ohlc_received",
-                pair=pair,
-                interval=interval,
-                close=str(ohlc.close),
             )
 
         except (IndexError, ValueError) as e:
