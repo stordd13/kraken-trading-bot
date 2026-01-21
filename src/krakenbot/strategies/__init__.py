@@ -13,7 +13,7 @@ from krakenbot.strategies.threshold import ThresholdStrategy
 __all__ = [
     # Base classes
     "BaseStrategy",
-    "TradingSignal",
     # Strategies
     "ThresholdStrategy",
+    "TradingSignal",
 ]

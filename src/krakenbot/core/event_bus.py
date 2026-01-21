@@ -408,9 +408,7 @@ class EventBus:
                 self._wildcard_subscribers.clear()
                 logger.info("event_bus_all_subscribers_cleared")
             else:
-                event_str = (
-                    event_type.value if isinstance(event_type, EventType) else event_type
-                )
+                event_str = event_type.value if isinstance(event_type, EventType) else event_type
                 if event_str.endswith(".*"):
                     prefix = event_str[:-2]
                     if prefix in self._wildcard_subscribers:

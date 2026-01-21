@@ -34,6 +34,7 @@ Example:
 from __future__ import annotations
 
 import asyncio
+import contextlib
 from datetime import UTC, datetime
 from decimal import Decimal
 import json
@@ -221,7 +222,7 @@ class KrakenWebSocketClient:
             raise WebSocketConnectionError(
                 message=f"Failed to connect to Kraken WebSocket: {e}",
                 url=self._settings.kraken.ws_url,
-            )
+            ) from e
 
     async def close(self) -> None:
         """Close WebSocket connection gracefully.
@@ -234,17 +235,13 @@ class KrakenWebSocketClient:
         # Cancel background tasks
         if self._heartbeat_task and not self._heartbeat_task.done():
             self._heartbeat_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._heartbeat_task
-            except asyncio.CancelledError:
-                pass
 
         if self._message_task and not self._message_task.done():
             self._message_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._message_task
-            except asyncio.CancelledError:
-                pass
 
         await self._cleanup()
 
@@ -312,7 +309,7 @@ class KrakenWebSocketClient:
             await self.connect()
 
             # Re-subscribe to all previous subscriptions
-            for sub_key, sub_info in list(self._subscriptions.items()):
+            for _sub_key, sub_info in list(self._subscriptions.items()):
                 if sub_info["type"] == "ohlc":
                     await self.subscribe_ohlc(
                         sub_info["pair"],
@@ -396,9 +393,7 @@ class KrakenWebSocketClient:
                 if not self._last_message_time:
                     continue
 
-                elapsed = (
-                    datetime.now(UTC) - self._last_message_time
-                ).total_seconds()
+                elapsed = (datetime.now(UTC) - self._last_message_time).total_seconds()
 
                 if elapsed > self._heartbeat_timeout * 3:
                     logger.warning(
@@ -531,7 +526,7 @@ class KrakenWebSocketClient:
             )
             return
 
-        channel_id = data[0]
+        data[0]
         payload = data[1]
         channel_name = data[2]
         pair = data[3]

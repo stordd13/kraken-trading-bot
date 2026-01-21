@@ -14,15 +14,15 @@ from krakenbot.models.market_data import OHLCData, TickData
 from krakenbot.models.trades import BotState, Trade
 
 __all__ = [
+    "BotState",
     # Enums
     "BotStatus",
-    "SignalType",
-    "TradeSide",
-    "TradeStatus",
     # Market data models
     "OHLCData",
+    "SignalType",
     "TickData",
     # Trade models
     "Trade",
-    "BotState",
+    "TradeSide",
+    "TradeStatus",
 ]

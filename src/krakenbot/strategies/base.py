@@ -20,8 +20,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime
-from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from krakenbot.core.event_bus import EventType
@@ -29,6 +27,9 @@ from krakenbot.core.logger import get_logger
 from krakenbot.models.base import SignalType
 
 if TYPE_CHECKING:
+    from datetime import datetime
+    from decimal import Decimal
+
     from krakenbot.config.settings import Settings
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus

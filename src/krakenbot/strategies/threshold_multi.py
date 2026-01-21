@@ -199,7 +199,9 @@ class ThresholdMultiStrategy(BaseStrategy):
             # (prevent duplicate buys on same candle)
             price_changed_enough = True
             if self._last_buy_price is not None:
-                price_change = abs(self._current_price - self._last_buy_price) / self._last_buy_price
+                price_change = (
+                    abs(self._current_price - self._last_buy_price) / self._last_buy_price
+                )
                 if price_change < Decimal("0.001"):  # Less than 0.1% change
                     price_changed_enough = False
 

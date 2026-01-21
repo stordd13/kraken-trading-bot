@@ -29,7 +29,6 @@ from krakenbot.core.event_bus import EventType
 from krakenbot.core.logger import get_logger
 from krakenbot.execution.risk import RiskManager
 from krakenbot.models.base import BotStatus, TradeSide
-from krakenbot.strategies.base import TradingSignal
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
@@ -37,6 +36,7 @@ if TYPE_CHECKING:
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
     from krakenbot.models.trades import Trade
+    from krakenbot.strategies.base import TradingSignal
 
 
 class ExecutionEngine:

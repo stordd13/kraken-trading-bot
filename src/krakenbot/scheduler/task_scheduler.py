@@ -55,9 +55,9 @@ class TaskScheduler:
         self.scheduler = AsyncIOScheduler(
             timezone=settings.scheduler.timezone,
             job_defaults={
-                'coalesce': True,  # If job missed, run once (not multiple times)
-                'max_instances': 1,  # Only one instance of each job at a time
-                'misfire_grace_time': 300,  # 5 minutes grace period for misfires
+                "coalesce": True,  # If job missed, run once (not multiple times)
+                "max_instances": 1,  # Only one instance of each job at a time
+                "misfire_grace_time": 300,  # 5 minutes grace period for misfires
             },
         )
 
@@ -127,12 +127,12 @@ class TaskScheduler:
                     timezone=self.settings.scheduler.timezone,
                 ),
                 args=[1, 1],  # interval=1min, days=1
-                id='daily_ohlc_1min',
-                name='Daily 1min OHLC Collection',
+                id="daily_ohlc_1min",
+                name="Daily 1min OHLC Collection",
             )
             logger.info(
                 "registered_scheduled_task",
-                task_id='daily_ohlc_1min',
+                task_id="daily_ohlc_1min",
                 cron=self.settings.scheduler.daily_1min_cron,
             )
 
@@ -145,12 +145,12 @@ class TaskScheduler:
                     timezone=self.settings.scheduler.timezone,
                 ),
                 args=[5, 1],  # interval=5min, days=1
-                id='daily_ohlc_5min',
-                name='Daily 5min OHLC Collection',
+                id="daily_ohlc_5min",
+                name="Daily 5min OHLC Collection",
             )
             logger.info(
                 "registered_scheduled_task",
-                task_id='daily_ohlc_5min',
+                task_id="daily_ohlc_5min",
                 cron=self.settings.scheduler.daily_5min_cron,
             )
 
@@ -163,12 +163,12 @@ class TaskScheduler:
                     timezone=self.settings.scheduler.timezone,
                 ),
                 args=[15, 7],  # interval=15min, days=7
-                id='weekly_ohlc_15min',
-                name='Weekly 15min OHLC Collection',
+                id="weekly_ohlc_15min",
+                name="Weekly 15min OHLC Collection",
             )
             logger.info(
                 "registered_scheduled_task",
-                task_id='weekly_ohlc_15min',
+                task_id="weekly_ohlc_15min",
                 cron=self.settings.scheduler.weekly_15min_cron,
             )
 
@@ -181,12 +181,12 @@ class TaskScheduler:
                     timezone=self.settings.scheduler.timezone,
                 ),
                 args=[60, 30],  # interval=1h, days=30
-                id='monthly_ohlc_1h',
-                name='Monthly 1h OHLC Collection',
+                id="monthly_ohlc_1h",
+                name="Monthly 1h OHLC Collection",
             )
             logger.info(
                 "registered_scheduled_task",
-                task_id='monthly_ohlc_1h',
+                task_id="monthly_ohlc_1h",
                 cron=self.settings.scheduler.monthly_1h_cron,
             )
 

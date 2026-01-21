@@ -118,9 +118,7 @@ class KrakenRestClient:
         self._db_manager = db_manager
 
         # Trading mode prefix for logging
-        self._mode_prefix = (
-            "[PAPER]" if settings.trading.mode == TradingMode.PAPER else "[LIVE]"
-        )
+        self._mode_prefix = "[PAPER]" if settings.trading.mode == TradingMode.PAPER else "[LIVE]"
 
         # Initialize ccxt exchange
         self._exchange = ccxt.kraken(
@@ -239,7 +237,7 @@ class KrakenRestClient:
             raise KrakenAPIError(
                 message=f"Failed to fetch balance: {e}",
                 response={"error": str(e)},
-            )
+            ) from e
 
     async def get_ticker(self, pair: str) -> dict[str, Any]:
         """Get current ticker information for a pair.
@@ -268,7 +266,9 @@ class KrakenRestClient:
                 "bid": Decimal(str(ticker.get("bid", 0))) if ticker.get("bid") else None,
                 "ask": Decimal(str(ticker.get("ask", 0))) if ticker.get("ask") else None,
                 "last": Decimal(str(ticker.get("last", 0))) if ticker.get("last") else None,
-                "volume": Decimal(str(ticker.get("baseVolume", 0))) if ticker.get("baseVolume") else None,
+                "volume": Decimal(str(ticker.get("baseVolume", 0)))
+                if ticker.get("baseVolume")
+                else None,
                 "high": Decimal(str(ticker.get("high", 0))) if ticker.get("high") else None,
                 "low": Decimal(str(ticker.get("low", 0))) if ticker.get("low") else None,
                 "timestamp": ticker.get("timestamp"),
@@ -283,7 +283,7 @@ class KrakenRestClient:
             raise KrakenAPIError(
                 message=f"Failed to fetch ticker: {e}",
                 response={"error": str(e), "pair": pair},
-            )
+            ) from e
 
     async def place_market_order(
         self,
@@ -560,7 +560,7 @@ class KrakenRestClient:
 
             raise InsufficientBalanceError(
                 message=f"Insufficient funds: {e}",
-            )
+            ) from e
 
         except ccxt.RateLimitExceeded as e:
             self._stats["orders_failed"] += 1
@@ -570,7 +570,7 @@ class KrakenRestClient:
             )
             raise RateLimitError(
                 message=f"Rate limit exceeded: {e}",
-            )
+            ) from e
 
         except ccxt.ExchangeError as e:
             self._stats["orders_failed"] += 1
@@ -596,7 +596,7 @@ class KrakenRestClient:
                 pair=pair,
                 side=side.value,
                 amount=amount,
-            )
+            ) from e
 
     async def get_open_orders(self, pair: str | None = None) -> list[dict[str, Any]]:
         """Get open orders.
@@ -634,7 +634,9 @@ class KrakenRestClient:
                         "side": order.get("side"),
                         "amount": Decimal(str(order.get("amount", 0))),
                         "filled": Decimal(str(order.get("filled", 0))),
-                        "price": Decimal(str(order.get("price", 0))) if order.get("price") else None,
+                        "price": Decimal(str(order.get("price", 0)))
+                        if order.get("price")
+                        else None,
                         "status": order.get("status"),
                         "timestamp": order.get("timestamp"),
                     }
@@ -654,7 +656,7 @@ class KrakenRestClient:
             )
             raise KrakenAPIError(
                 message=f"Failed to fetch open orders: {e}",
-            )
+            ) from e
 
     async def cancel_order(self, order_id: str, pair: str | None = None) -> bool:
         """Cancel an open order.
@@ -722,7 +724,7 @@ class KrakenRestClient:
             raise OrderCancelError(
                 message=f"Failed to cancel order: {e}",
                 order_id=order_id,
-            )
+            ) from e
 
     async def get_trade_history(
         self,
@@ -784,7 +786,7 @@ class KrakenRestClient:
             )
             raise KrakenAPIError(
                 message=f"Failed to fetch trade history: {e}",
-            )
+            ) from e
 
     async def _save_trade(self, trade: Trade) -> None:
         """Save trade to database.
@@ -916,7 +918,7 @@ class KrakenRestClient:
             )
             raise RateLimitError(
                 message=f"Rate limit exceeded when fetching OHLCV: {e}",
-            )
+            ) from e
         except ccxt.ExchangeError as e:
             logger.error(
                 "kraken_rest_ohlcv_error",
@@ -926,7 +928,7 @@ class KrakenRestClient:
             )
             raise KrakenAPIError(
                 message=f"Failed to fetch OHLCV data: {e}",
-            )
+            ) from e
         except ValueError as e:
             # From minutes_to_ccxt_timeframe
             logger.error(

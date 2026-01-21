@@ -452,20 +452,14 @@ class KrakenBot:
                 "name": self.strategy.get_name(),
                 "running": self.strategy.is_running,
                 "current_price": (
-                    float(self.strategy.current_price)
-                    if self.strategy.current_price
-                    else None
+                    float(self.strategy.current_price) if self.strategy.current_price else None
                 ),
                 "reference_price": (
-                    float(self.strategy.reference_price)
-                    if self.strategy.reference_price
-                    else None
+                    float(self.strategy.reference_price) if self.strategy.reference_price else None
                 ),
                 "has_position": self.strategy.has_position,
                 "entry_price": (
-                    float(self.strategy.entry_price)
-                    if self.strategy.entry_price
-                    else None
+                    float(self.strategy.entry_price) if self.strategy.entry_price else None
                 ),
                 "price_history_len": self.strategy.price_history_len,
             }

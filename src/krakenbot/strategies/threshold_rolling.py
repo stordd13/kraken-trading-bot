@@ -83,7 +83,9 @@ class ThresholdRollingStrategy(BaseStrategy):
         # Internal state
         self._reference_prices: list[Decimal] = []  # Rolling window of reference prices
         self._current_price: Decimal | None = None
-        self._current_timestamp: datetime | None = None  # Track current candle time for holding calculations
+        self._current_timestamp: datetime | None = (
+            None  # Track current candle time for holding calculations
+        )
         self._open_positions: list[RollingPosition] = []
         self._next_position_id: int = 1
         self._skip_db_sync: bool = False
@@ -121,7 +123,9 @@ class ThresholdRollingStrategy(BaseStrategy):
             if isinstance(timestamp_value, str):
                 # Parse ISO format or Unix timestamp string
                 try:
-                    self._current_timestamp = datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
+                    self._current_timestamp = datetime.fromisoformat(
+                        timestamp_value.replace("Z", "+00:00")
+                    )
                 except ValueError:
                     # Try as Unix timestamp
                     self._current_timestamp = datetime.fromtimestamp(float(timestamp_value), tz=UTC)
@@ -232,9 +236,7 @@ class ThresholdRollingStrategy(BaseStrategy):
                     continue
 
                 # Calculate drop percentage vs this reference
-                drop_pct = (
-                    (self._current_price - ref_price) / ref_price
-                ) * Decimal("100")
+                drop_pct = ((self._current_price - ref_price) / ref_price) * Decimal("100")
 
                 # Check if threshold is met
                 if drop_pct <= Decimal(str(self.buy_threshold_pct)):

@@ -24,8 +24,10 @@ Exception Hierarchy:
 
 from __future__ import annotations
 
-from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from decimal import Decimal
 
 
 class KrakenBotError(Exception):

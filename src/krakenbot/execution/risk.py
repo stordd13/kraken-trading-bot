@@ -146,9 +146,7 @@ class RiskManager:
         self.max_position_pct = settings.risk.max_position_pct
         self.daily_loss_limit = Decimal(str(settings.risk.daily_loss_limit_eur))
         self.max_open_positions = settings.risk.max_open_positions
-        self.min_trade_interval = timedelta(
-            seconds=settings.risk.min_trade_interval_sec
-        )
+        self.min_trade_interval = timedelta(seconds=settings.risk.min_trade_interval_sec)
         self.emergency_stop_loss_pct = settings.risk.emergency_stop_loss_pct
 
         self.logger.info(
@@ -263,8 +261,7 @@ class RiskManager:
 
             if amount > available:
                 result.add_reason(
-                    f"Insufficient {base_currency}: need {amount:.8f}, "
-                    f"have {available:.8f}"
+                    f"Insufficient {base_currency}: need {amount:.8f}, have {available:.8f}"
                 )
 
     async def _check_position_size(
@@ -316,8 +313,7 @@ class RiskManager:
 
         if position_pct > Decimal(str(self.max_position_pct)):
             result.add_reason(
-                f"Position size too large: {position_pct:.1f}% > "
-                f"{self.max_position_pct}% limit"
+                f"Position size too large: {position_pct:.1f}% > {self.max_position_pct}% limit"
             )
 
     async def _check_daily_loss_limit(self, result: RiskCheckResult) -> None:
@@ -333,8 +329,7 @@ class RiskManager:
 
         if daily_pnl <= -self.daily_loss_limit:
             result.add_reason(
-                f"Daily loss limit reached: {daily_pnl:.2f} EUR <= "
-                f"-{self.daily_loss_limit:.2f} EUR"
+                f"Daily loss limit reached: {daily_pnl:.2f} EUR <= -{self.daily_loss_limit:.2f} EUR"
             )
 
     async def _check_max_open_positions(
@@ -359,8 +354,7 @@ class RiskManager:
 
         if open_positions >= self.max_open_positions:
             result.add_reason(
-                f"Max open positions reached: {open_positions} >= "
-                f"{self.max_open_positions}"
+                f"Max open positions reached: {open_positions} >= {self.max_open_positions}"
             )
 
     async def _check_trade_interval(self, result: RiskCheckResult) -> None:
@@ -422,9 +416,7 @@ class RiskManager:
 
         async with self.db_manager.read_session() as session:
             result = await session.execute(
-                select(func.count(BotState.bot_id)).where(
-                    BotState.position_size > Decimal("0")
-                )
+                select(func.count(BotState.bot_id)).where(BotState.position_size > Decimal("0"))
             )
             return result.scalar() or 0
 

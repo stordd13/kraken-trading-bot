@@ -301,12 +301,12 @@ class Settings(BaseSettings):
 
         # Validate risk settings make sense
         if self.risk.emergency_stop_loss_pct <= self.strategy.sell_threshold_pct:
-            errors.append(
-                "Emergency stop-loss must be greater than sell threshold"
-            )
+            errors.append("Emergency stop-loss must be greater than sell threshold")
 
         if errors:
-            raise ValueError("Configuration validation failed:\n" + "\n".join(f"- {e}" for e in errors))
+            raise ValueError(
+                "Configuration validation failed:\n" + "\n".join(f"- {e}" for e in errors)
+            )
 
     @property
     def is_production(self) -> bool:

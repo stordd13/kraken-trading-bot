@@ -9,7 +9,6 @@ This module provides:
 
 from __future__ import annotations
 
-from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -23,6 +22,8 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import DeclarativeBase
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from krakenbot.config.settings import Settings
 
 from krakenbot.core.logger import get_logger
@@ -68,9 +69,7 @@ class DatabaseManager:
             RuntimeError: If the database has not been initialized.
         """
         if self._engine is None:
-            raise RuntimeError(
-                "Database not initialized. Call init_db() first."
-            )
+            raise RuntimeError("Database not initialized. Call init_db() first.")
         return self._engine
 
     @property
@@ -84,9 +83,7 @@ class DatabaseManager:
             RuntimeError: If the database has not been initialized.
         """
         if self._session_factory is None:
-            raise RuntimeError(
-                "Database not initialized. Call init_db() first."
-            )
+            raise RuntimeError("Database not initialized. Call init_db() first.")
         return self._session_factory
 
     @property
@@ -228,9 +225,7 @@ class DatabaseManager:
             Exception: If TimescaleDB extension cannot be created.
         """
         async with self.engine.begin() as conn:
-            await conn.execute(
-                text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE")
-            )
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE"))
         logger.info("timescaledb_extension_enabled")
 
     async def create_hypertable(

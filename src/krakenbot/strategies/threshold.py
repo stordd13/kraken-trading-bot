@@ -152,9 +152,9 @@ class ThresholdStrategy(BaseStrategy):
 
         # SELL LOGIC: Check if profit target is reached
         if self._has_position and self._entry_price:
-            profit_pct = (
-                (self._current_price - self._entry_price) / self._entry_price
-            ) * Decimal("100")
+            profit_pct = ((self._current_price - self._entry_price) / self._entry_price) * Decimal(
+                "100"
+            )
 
             self.logger.debug(
                 "strategy_sell_check",
