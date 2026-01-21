@@ -51,6 +51,8 @@ dependencies = [
     "tqdm>=4.66.0",             # Progress bars
     "dash (>=3.4.0,<4.0.0)",
     "dash-bootstrap-components (>=2.0.4,<3.0.0)",
+    "pandas (>=2.3.3,<3.0.0)",
+    "psycopg2-binary (>=2.9.11,<3.0.0)",
 ]
 
 [project.optional-dependencies]
