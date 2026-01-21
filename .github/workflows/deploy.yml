@@ -18,7 +18,6 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          passphrase: ${{ secrets.HETZNER_SSH_PASSPHRASE }}
           script: |
             cd ~/apps/kraken-trading-bot
 
