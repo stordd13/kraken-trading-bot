@@ -49,6 +49,8 @@ dependencies = [
     "python-dateutil>=2.8.2",   # Date parsing
     "pytz>=2024.1",             # Timezone handling
     "tqdm>=4.66.0",             # Progress bars
+    "dash (>=3.4.0,<4.0.0)",
+    "dash-bootstrap-components (>=2.0.4,<3.0.0)",
 ]
 
 [project.optional-dependencies]
