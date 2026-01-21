@@ -23,97 +23,95 @@ Bot de trading automatisé BTC/USDC sur Kraken avec collecte de données 24/7.
 ```
 
 **Entry points:**
-- `python -m krakenbot.collector` → Data collector
-- `python -m krakenbot` → Trading bot
+- `python -m krakenbot.collector` → Data collector (24/7)
+- `python -m krakenbot` → Trading bot (paper/live)
 - `python scripts/dashboard.py` → Dashboard Dash (localhost:8050)
 
 ## Structure
 
 ```
 src/krakenbot/
-├── collector.py      # Service standalone collecte données (24/7)
-├── main.py           # Trading bot (paper/live)
+├── collector.py      # Service standalone collecte données
+├── main.py           # Trading bot
 ├── config/           # Settings Pydantic
 ├── core/             # Database, EventBus, Logger
 ├── connectors/       # KrakenWS, KrakenREST
-├── models/           # SQLAlchemy ORM (market_data_ohlc, trades_history, bot_state)
-├── strategies/       # ThresholdStrategy (seule stratégie active)
+├── models/           # SQLAlchemy ORM
+├── strategies/       # ThresholdStrategy
 ├── execution/        # ExecutionEngine, RiskManager
-└── scheduler/        # TaskScheduler pour backfill historique
+└── scheduler/        # TaskScheduler (backfill)
 
-scripts/
-└── dashboard.py      # Dashboard Dash temps réel
+scripts/dashboard.py  # Dashboard Dash temps réel
 
 deploy/
 ├── krakenbot.service           # Systemd trading bot
 └── krakenbot-collector.service # Systemd data collector
 ```
 
-## Conventions de Code
+## Conventions
 
 - **Python 3.11+**, type hints obligatoires
-- **Async/await** partout, jamais de code bloquant
+- **Async/await** partout
 - **Imports absolus**: `from krakenbot.core import ...`
 - **Linting**: `ruff check . --fix && ruff format .`
-- **Naming**: PascalCase (classes), snake_case (fonctions/variables)
+- **Decimal** pour les montants (jamais float)
+- **UTC** pour tous les timestamps
 
-## Commandes Utiles
+## Commandes
 
 ```bash
 # Dev local
 poetry install
-poetry run python -m krakenbot.collector  # Collecteur
-poetry run python -m krakenbot            # Trading bot
-poetry run python scripts/dashboard.py    # Dashboard (avec tunnel SSH)
+poetry run python -m krakenbot.collector
+poetry run python -m krakenbot
+poetry run python scripts/dashboard.py  # avec tunnel SSH
 
-# Lint/Format
-poetry run ruff check . --fix
-poetry run ruff format .
+# Lint
+poetry run ruff check . --fix && poetry run ruff format .
 
 # Tests
 poetry run pytest
 ```
 
-## Déploiement (Hetzner VPS)
+## Déploiement (Hetzner)
 
-**CI/CD**: Push sur `main` → GitHub Actions → Deploy automatique
+**CI/CD**: Push `main` → GitHub Actions → Deploy auto
 
-**Services systemd:**
 ```bash
-sudo systemctl status krakenbot-collector  # Doit toujours tourner
-sudo systemctl status krakenbot            # Paper/live trading
-sudo journalctl -u krakenbot-collector -f  # Logs collector
-sudo journalctl -u krakenbot -f            # Logs trading
+# Sur le serveur
+sudo systemctl status krakenbot-collector
+sudo systemctl status krakenbot
+sudo journalctl -u krakenbot-collector -f
+sudo journalctl -u krakenbot -f
 ```
 
-**Dashboard local (avec tunnel SSH):**
+**Dashboard (depuis Mac):**
 ```bash
 ssh -L 5432:localhost:5432 bruno@<IP> -N &
 poetry run python scripts/dashboard.py
-# Ouvrir http://localhost:8050
+# http://localhost:8050
 ```
 
 ## Base de Données
 
-- **PostgreSQL 15 + TimescaleDB** sur Hetzner
+- **PostgreSQL 15 + TimescaleDB**
 - **Tables**: `market_data_ohlc`, `trades_history`, `bot_state`, `task_execution_logs`
-- **Déduplication**: Clé composite `(timestamp, pair, interval)` + `session.merge()`
+- **Déduplication**: Clé `(timestamp, pair, interval)` + `session.merge()`
 
-## Stratégie Active: ThresholdStrategy
+## Stratégie: ThresholdStrategy
 
 ```python
-# Paramètres dans config/settings.py
-buy_threshold_pct: float = -1.0   # Acheter si prix baisse de 1%
-sell_threshold_pct: float = 2.0   # Vendre si prix monte de 2%
-rolling_window: int = 20          # Fenêtre pour calcul
-trade_amount: float = 5.0         # Montant USDC par trade
+buy_threshold_pct: float = -1.0   # Acheter si -1%
+sell_threshold_pct: float = 2.0   # Vendre si +2%
+rolling_window: int = 20
+trade_amount: float = 5.0         # USDC par trade
 ```
 
-## Gestion des Risques
+## Risk Management
 
-- `max_position_pct`: 5% du portfolio max par trade
-- `daily_loss_limit`: Stop si perte > 50 USDC/jour
-- `min_trade_interval_sec`: 60s minimum entre trades
+- `max_position_pct`: 5% portfolio max/trade
+- `daily_loss_limit`: 50 USDC/jour
+- `min_trade_interval_sec`: 60s entre trades
 - Mode paper par défaut, live requiert `TRADING_MODE=live`
 
 ## Secrets (.env)
@@ -124,20 +122,3 @@ KRAKEN_API_SECRET=xxx
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/krakenbot
 TRADING_MODE=paper  # paper | live
 ```
-
-## TODO (Prochaines étapes)
-
-### Priorité haute
-- [ ] Alerting Telegram/Discord sur trades et erreurs
-- [ ] Backtest sur les vraies données collectées
-- [ ] Analyse des trades paper trading
-
-### Priorité moyenne
-- [ ] Tests unitaires composants critiques
-- [ ] Health checks endpoint
-- [ ] Métriques Prometheus
-
-### Long terme
-- [ ] Passage en live (petit capital 50-100€)
-- [ ] Multi-stratégies en parallèle
-- [ ] ML/RL avec données accumulées
