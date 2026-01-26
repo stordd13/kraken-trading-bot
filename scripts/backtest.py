@@ -12,8 +12,13 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import select
+
+# Load .env from project root
+load_dotenv(Path(__file__).parent.parent / ".env")
 
 from krakenbot.config.settings import Settings, get_settings
 from krakenbot.core.database import DatabaseManager

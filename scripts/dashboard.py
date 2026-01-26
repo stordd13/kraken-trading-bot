@@ -79,7 +79,7 @@ def fetch_bot_state() -> dict | None:
         return None
 
 
-def fetch_ohlc_data(pair: str = "XBT/USDC", hours: int = 24, interval: int = 15) -> pd.DataFrame:
+def fetch_ohlc_data(pair: str = "XBT/USDC", hours: int = 24, interval: int = 1) -> pd.DataFrame:
     """Fetch OHLC data for chart."""
     query = """
     SELECT timestamp, open, high, low, close, volume
