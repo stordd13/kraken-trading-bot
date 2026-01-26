@@ -136,6 +136,7 @@ class KrakenWebSocketClient:
         # Background tasks
         self._message_task: asyncio.Task[None] | None = None
         self._heartbeat_task: asyncio.Task[None] | None = None
+        self._data_flow_task: asyncio.Task[None] | None = None
 
         # Statistics
         self._stats = {
@@ -206,6 +207,9 @@ class KrakenWebSocketClient:
             # Start heartbeat monitoring
             self._heartbeat_task = asyncio.create_task(self._heartbeat_monitor())
 
+            # Start data flow watchdog (detects zombie connections)
+            self._data_flow_task = asyncio.create_task(self._data_flow_watchdog())
+
             # Publish connection event
             await self._event_bus.publish(
                 EventType.BOT_STARTED,
@@ -237,6 +241,11 @@ class KrakenWebSocketClient:
             self._heartbeat_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await self._heartbeat_task
+
+        if self._data_flow_task and not self._data_flow_task.done():
+            self._data_flow_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._data_flow_task
 
         if self._message_task and not self._message_task.done():
             self._message_task.cancel()
@@ -403,6 +412,47 @@ class KrakenWebSocketClient:
                     if self._running:
                         asyncio.create_task(self._reconnect())
                     break
+
+            except asyncio.CancelledError:
+                break
+
+    async def _data_flow_watchdog(self) -> None:
+        """Monitor that data is actually flowing (detect zombie connections).
+
+        This watchdog checks every 5 minutes that the message counter is
+        increasing. If no new messages are received, it forces a reconnection.
+        This catches "zombie" connections where the WebSocket appears connected
+        but is not receiving any data.
+        """
+        # Wait for initial connection to stabilize
+        await asyncio.sleep(60)
+
+        last_count = self._stats["messages_received"]
+
+        while self._running:
+            try:
+                # Check every 5 minutes
+                await asyncio.sleep(300)
+
+                current_count = self._stats["messages_received"]
+
+                if current_count == last_count and self._connected:
+                    logger.warning(
+                        "kraken_ws_data_flow_stale",
+                        last_count=last_count,
+                        current_count=current_count,
+                        message="No new messages in 5 minutes, forcing reconnection",
+                    )
+                    if self._running:
+                        asyncio.create_task(self._reconnect())
+                    break
+                else:
+                    logger.debug(
+                        "kraken_ws_data_flow_ok",
+                        messages_delta=current_count - last_count,
+                    )
+
+                last_count = current_count
 
             except asyncio.CancelledError:
                 break
