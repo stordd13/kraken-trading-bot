@@ -127,9 +127,11 @@ async def main() -> None:
         sell_thresholds = [1.0, 2.0, 3.0]
         lookbacks = [20, 50]
     else:
-        buy_thresholds = [-0.5, -0.75, -1.0, -1.25, -1.5, -2.0, -2.5]
-        sell_thresholds = [0.75, 1.0, 1.5, 2.0, 2.5, 3.0]
-        lookbacks = [10, 20, 30, 50, 75, 100]
+        # Extended grid with long lookbacks (in 1-min candles)
+        # 60=1h, 360=6h, 1440=1day, 4320=3days, 10080=7days
+        buy_thresholds = [-0.5, -1.0, -1.5, -2.0, -2.5, -3.0]
+        sell_thresholds = [1.0, 2.0, 3.0, 4.0, 5.0]
+        lookbacks = [60, 360, 1440, 4320, 10080]
 
     total_combinations = len(buy_thresholds) * len(sell_thresholds) * len(lookbacks)
 
