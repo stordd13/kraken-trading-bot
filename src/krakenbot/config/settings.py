@@ -7,7 +7,7 @@ Settings are loaded from environment variables with validation.
 from enum import Enum
 from typing import Literal
 
-from pydantic import Field, PostgresDsn, SecretStr, field_validator
+from pydantic import Field, PostgresDsn, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -156,17 +156,15 @@ class TradingSettings(BaseSettings):
         description="Explicit confirmation for live trading (must be 'yes')",
     )
 
-    @field_validator("mode")
-    @classmethod
-    def validate_live_mode(cls, v: TradingMode, info) -> TradingMode:
+    @model_validator(mode="after")
+    def validate_live_mode(self) -> "TradingSettings":
         """Ensure live mode requires explicit confirmation."""
-        if v == TradingMode.LIVE:
-            confirm = info.data.get("confirm_live", "no")
-            if confirm.lower() != "yes":
+        if self.mode == TradingMode.LIVE:
+            if self.confirm_live.lower() != "yes":
                 raise ValueError(
                     "Live trading requires TRADING_CONFIRM_LIVE=yes environment variable"
                 )
-        return v
+        return self
 
 
 class StrategySettings(BaseSettings):
