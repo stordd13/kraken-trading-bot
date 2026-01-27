@@ -78,6 +78,7 @@ class ThresholdRollingStrategy(BaseStrategy):
         self.stop_loss_pct = settings.risk.emergency_stop_loss_pct
         self.lookback_periods = settings.strategy.lookback_periods
         self.max_open_positions = settings.risk.max_open_positions
+        self.max_holding_minutes = settings.strategy.max_holding_minutes
         self.pair = settings.trading.pair
 
         # Internal state
@@ -98,6 +99,7 @@ class ThresholdRollingStrategy(BaseStrategy):
             sell_threshold_pct=self.sell_threshold_pct,
             stop_loss_pct=self.stop_loss_pct,
             lookback_periods=self.lookback_periods,
+            max_holding_minutes=self.max_holding_minutes,
             max_open_positions=self.max_open_positions,
             pair=self.pair,
         )
@@ -224,6 +226,26 @@ class ThresholdRollingStrategy(BaseStrategy):
                         "profit_pct": float(profit_pct),
                         "holding_time_minutes": holding_minutes,
                         "reason": "stop_loss",
+                    },
+                )
+
+            # Check holding time timeout (max holding period reached)
+            if holding_minutes >= self.max_holding_minutes:
+                return TradingSignal(
+                    signal_type=SignalType.SELL,
+                    pair=self.pair,
+                    price=self._current_price,
+                    confidence=0.7,
+                    reason=f"Position #{position.position_id} TIMEOUT: held {holding_minutes:.0f} min >= {self.max_holding_minutes} min max ({float(profit_pct):+.2f}%)",
+                    strategy=self.get_name(),
+                    timestamp=current_time,
+                    metadata={
+                        "position_id": position.position_id,
+                        "entry_price": float(position.entry_price),
+                        "reference_price": float(position.reference_price),
+                        "profit_pct": float(profit_pct),
+                        "holding_time_minutes": holding_minutes,
+                        "reason": "timeout",
                     },
                 )
 

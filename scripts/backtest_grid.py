@@ -57,6 +57,7 @@ async def run_backtest_with_params(
     buy_threshold: float,
     sell_threshold: float,
     lookback: int,
+    candle_interval: int = 1,
 ) -> GridSearchResult:
     """Run a single backtest with specific parameters."""
 
@@ -69,7 +70,12 @@ async def run_backtest_with_params(
     settings.strategy.lookback_periods = lookback
 
     # Create and run backtest
-    engine = BacktestEngine(settings, db_manager, strategy_name="threshold_rolling")
+    engine = BacktestEngine(
+        settings,
+        db_manager,
+        strategy_name="threshold_rolling",
+        candle_interval=candle_interval,
+    )
 
     try:
         metrics = await engine.run(pair, start_time, end_time)
@@ -107,6 +113,12 @@ async def main() -> None:
     parser.add_argument("--days", type=int, default=5, help="Number of days to backtest")
     parser.add_argument("--end-date", type=str, default=None, help="End date (YYYY-MM-DD)")
     parser.add_argument("--quick", action="store_true", help="Quick mode (fewer combinations)")
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=5,
+        help="Candle interval in minutes (default: 5 for realistic trading)",
+    )
     args = parser.parse_args()
 
     # Parse dates
@@ -122,24 +134,35 @@ async def main() -> None:
     await db_manager.init_db(settings)
 
     # Define parameter grid
+    # Lookbacks are in CANDLES, not minutes!
+    # For 5-min candles: 12=1h, 72=6h, 288=1day, 864=3days, 2016=7days
+    # For 1-min candles: 60=1h, 360=6h, 1440=1day, 4320=3days, 10080=7days
     if args.quick:
         buy_thresholds = [-0.5, -1.0, -2.0]
         sell_thresholds = [1.0, 2.0, 3.0]
-        lookbacks = [20, 50]
+        if args.interval == 5:
+            lookbacks = [12, 72]  # 1h, 6h in 5-min candles
+        else:
+            lookbacks = [20, 50]
     else:
-        # Extended grid with long lookbacks (in 1-min candles)
-        # 60=1h, 360=6h, 1440=1day, 4320=3days, 10080=7days
         buy_thresholds = [-0.5, -1.0, -1.5, -2.0, -2.5, -3.0]
         sell_thresholds = [1.0, 2.0, 3.0, 4.0, 5.0]
-        lookbacks = [60, 360, 1440, 4320, 10080]
+        if args.interval == 5:
+            # 5-min candles: 12=1h, 72=6h, 288=1day, 864=3days, 2016=7days
+            lookbacks = [12, 72, 288, 864, 2016]
+        else:
+            # 1-min candles: 60=1h, 360=6h, 1440=1day, 4320=3days, 10080=7days
+            lookbacks = [60, 360, 1440, 4320, 10080]
 
     total_combinations = len(buy_thresholds) * len(sell_thresholds) * len(lookbacks)
 
     print(f"\n{'='*80}")
-    print(f"GRID SEARCH - {args.pair}")
+    print(f"GRID SEARCH - {args.pair} ({args.interval}-min candles)")
     print(f"{'='*80}")
     print(f"Period: {start_time.date()} to {end_time.date()} ({args.days} days)")
+    print(f"Candle interval: {args.interval} min")
     print(f"Testing {total_combinations} parameter combinations...")
+    print(f"Lookbacks tested: {lookbacks}")
     print(f"{'='*80}\n")
 
     results: list[GridSearchResult] = []
@@ -157,6 +180,7 @@ async def main() -> None:
                         buy_threshold=buy_thresh,
                         sell_threshold=sell_thresh,
                         lookback=lookback,
+                        candle_interval=args.interval,
                     )
                     results.append(result)
                     completed += 1

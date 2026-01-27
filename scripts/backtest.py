@@ -95,6 +95,7 @@ class BacktestEngine:
         settings: Settings,
         db_manager: DatabaseManager,
         strategy_name: str = "threshold",
+        candle_interval: int = 1,
     ):
         """Initialize backtest engine.
 
@@ -102,10 +103,12 @@ class BacktestEngine:
             settings: Application settings
             db_manager: Database manager for historical data
             strategy_name: Name of strategy to backtest
+            candle_interval: Candle interval in minutes (default: 1)
         """
         self.settings = settings
         self.db_manager = db_manager
         self.strategy_name = strategy_name
+        self.candle_interval = candle_interval
         self.logger = get_logger().bind(component="backtest")
 
         # Simulation state
@@ -141,6 +144,7 @@ class BacktestEngine:
         self.logger.info(
             "loading_historical_data",
             pair=pair,
+            interval=self.candle_interval,
             start=start_time.isoformat(),
             end=end_time.isoformat(),
         )
@@ -149,6 +153,7 @@ class BacktestEngine:
             stmt = (
                 select(OHLCData)
                 .where(OHLCData.pair == pair)
+                .where(OHLCData.interval == self.candle_interval)
                 .where(OHLCData.timestamp >= start_time)
                 .where(OHLCData.timestamp <= end_time)
                 .order_by(OHLCData.timestamp.asc())
@@ -156,7 +161,7 @@ class BacktestEngine:
             result = await session.execute(stmt)
             candles = list(result.scalars().all())
 
-        self.logger.info("historical_data_loaded", candle_count=len(candles))
+        self.logger.info("historical_data_loaded", candle_count=len(candles), interval=self.candle_interval)
         return candles
 
     async def execute_signal(self, signal: TradingSignal, current_price: Decimal) -> None:
@@ -766,6 +771,12 @@ async def main() -> None:
         default=None,
         help="Custom name for this backtest run",
     )
+    parser.add_argument(
+        "--interval",
+        type=int,
+        default=1,
+        help="Candle interval in minutes (default: 1). Use 5 for more realistic trading.",
+    )
 
     args = parser.parse_args()
 
@@ -784,7 +795,12 @@ async def main() -> None:
 
     try:
         # Run backtest
-        engine = BacktestEngine(settings, db_manager, strategy_name=args.strategy)
+        engine = BacktestEngine(
+            settings,
+            db_manager,
+            strategy_name=args.strategy,
+            candle_interval=args.interval,
+        )
         metrics = await engine.run(args.pair, start_time, end_time)
 
         # Print report

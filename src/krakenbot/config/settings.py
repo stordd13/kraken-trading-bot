@@ -194,7 +194,13 @@ class StrategySettings(BaseSettings):
         default=50,
         description="Number of candles to look back for analysis (50 x 15min = 12h30)",
         ge=1,
-        le=200,
+        le=10000,  # Allow up to 10000 for 7 days of 1-min candles
+    )
+    max_holding_minutes: int = Field(
+        default=10080,  # 7 days = 7 * 24 * 60
+        description="Maximum time to hold a position before forced exit (minutes)",
+        ge=60,  # minimum 1 hour
+        le=20160,  # maximum 14 days
     )
 
 
