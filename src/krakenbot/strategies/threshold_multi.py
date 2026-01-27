@@ -1,5 +1,9 @@
 """Multi-position threshold-based mean reversion strategy.
 
+DEPRECATED/EXPERIMENTAL: This strategy is not exported and not used in
+production. Use ThresholdRollingStrategy (threshold_rolling.py) instead.
+Kept for reference and potential future use.
+
 This strategy can open multiple independent positions simultaneously:
 - Opens a NEW position each time price drops by threshold% vs moving average
 - Each position has its own entry price and profit target

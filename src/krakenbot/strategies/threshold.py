@@ -1,5 +1,9 @@
 """Threshold-based mean reversion trading strategy.
 
+DEPRECATED: This strategy is superseded by ThresholdRollingStrategy.
+Use threshold_rolling.py instead for production. This file is kept
+for reference and backward compatibility with backtests.
+
 This module implements a simple mean reversion strategy that:
 - Buys when price drops below a threshold relative to a moving average
 - Sells when profit target is reached
