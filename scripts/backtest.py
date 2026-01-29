@@ -293,7 +293,12 @@ class BacktestEngine:
 
                 # Update balances
                 self.usdc_balance += amount_after_fee
+                self.crypto_balance -= crypto_amount  # Decrement crypto balance
                 crypto_sold = crypto_amount
+
+                # Check if all positions are closed
+                if not self.strategy.positions:
+                    self.in_position = False
 
                 self.logger.debug("multi_position_closed", position_id=position_id)
             else:
@@ -379,8 +384,8 @@ class BacktestEngine:
 
         # Final balance
         self.metrics.ending_balance = self.usdc_balance
-        if self.in_position and self.entry_price:
-            # Add unrealized position value
+        if self.crypto_balance > 0 and self.metrics.trades:
+            # Add unrealized position value at last known price
             self.metrics.ending_balance += self.crypto_balance * self.metrics.trades[-1].price
 
         # Total return
@@ -560,7 +565,7 @@ class BacktestEngine:
 
             # Track equity curve
             current_equity = self.usdc_balance
-            if self.in_position and self.entry_price:
+            if self.crypto_balance > 0:
                 current_equity += self.crypto_balance * candle.close
             self.equity_curve.append((candle.timestamp, current_equity))
 
@@ -811,10 +816,11 @@ async def main() -> None:
             backtest_run = await engine.save_to_database(args.pair, run_name=args.name)
             print(f"\n✅ Backtest results saved to database with ID: {backtest_run.id}")
             print(f"   Run name: {backtest_run.run_name}")
-            print("   View in dashboard: streamlit run scripts/dashboard.py\n")
 
-            # Optionally save individual trades (commented out by default to avoid clutter)
-            # await engine.save_trades_to_database(str(backtest_run.id), args.pair)
+            # Save individual trades for dashboard visualization
+            await engine.save_trades_to_database(str(backtest_run.id), args.pair)
+            print(f"   Trades saved: {len(engine.metrics.trades)}")
+            print("   View in dashboard: python scripts/dashboard.py\n")
 
     finally:
         await db_manager.close_db()

@@ -174,6 +174,103 @@ def execute_custom_query(query: str) -> tuple[pd.DataFrame | None, str | None]:
         return None, str(e)
 
 
+def fetch_open_positions() -> pd.DataFrame:
+    """Fetch open positions (buys without matching sells).
+
+    Uses FIFO matching: calculates net position by pair and computes
+    weighted average entry price from unmatched buy trades.
+    """
+    query = """
+    WITH trade_flows AS (
+        SELECT
+            pair,
+            side,
+            timestamp,
+            amount,
+            price,
+            strategy,
+            -- Running sum of position changes
+            SUM(CASE WHEN side = 'buy' THEN amount ELSE -amount END)
+                OVER (PARTITION BY pair ORDER BY timestamp) as running_position
+        FROM trades_history
+        WHERE status = 'filled'
+          AND strategy NOT LIKE 'backtest_%'
+        ORDER BY pair, timestamp
+    ),
+    current_positions AS (
+        SELECT
+            pair,
+            SUM(CASE WHEN side = 'buy' THEN amount ELSE -amount END) as net_position
+        FROM trades_history
+        WHERE status = 'filled'
+          AND strategy NOT LIKE 'backtest_%'
+        GROUP BY pair
+        HAVING SUM(CASE WHEN side = 'buy' THEN amount ELSE -amount END) > 0.00000001
+    ),
+    -- Get the most recent buys that make up the current position
+    recent_buys AS (
+        SELECT
+            t.pair,
+            t.timestamp as entry_time,
+            t.amount,
+            t.price,
+            t.strategy,
+            SUM(t.amount) OVER (PARTITION BY t.pair ORDER BY t.timestamp DESC) as cumulative_amount
+        FROM trades_history t
+        INNER JOIN current_positions cp ON t.pair = cp.pair
+        WHERE t.side = 'buy'
+          AND t.status = 'filled'
+          AND t.strategy NOT LIKE 'backtest_%'
+        ORDER BY t.pair, t.timestamp DESC
+    ),
+    -- Calculate weighted average entry price for open position
+    position_details AS (
+        SELECT
+            rb.pair,
+            cp.net_position as amount,
+            MIN(rb.entry_time) as entry_time,
+            SUM(rb.amount * rb.price) / SUM(rb.amount) as avg_entry_price,
+            MAX(rb.strategy) as strategy
+        FROM recent_buys rb
+        INNER JOIN current_positions cp ON rb.pair = cp.pair
+        WHERE rb.cumulative_amount <= cp.net_position * 1.5  -- Include relevant buys
+        GROUP BY rb.pair, cp.net_position
+    )
+    SELECT
+        pair,
+        amount,
+        avg_entry_price as entry_price,
+        entry_time,
+        strategy
+    FROM position_details
+    ORDER BY entry_time DESC
+    """
+    try:
+        return pd.read_sql(query, engine)
+    except Exception as e:
+        print(f"Error fetching open positions: {e}")
+        return pd.DataFrame()
+
+
+def fetch_current_price(pair: str = "XBT/USDC") -> float | None:
+    """Fetch current price from latest OHLC data."""
+    query = """
+    SELECT close
+    FROM market_data_ohlc
+    WHERE pair = :pair
+    ORDER BY timestamp DESC
+    LIMIT 1
+    """
+    try:
+        df = pd.read_sql(text(query), engine, params={"pair": pair})
+        if not df.empty:
+            return float(df.iloc[0]["close"])
+        return None
+    except Exception as e:
+        print(f"Error fetching current price: {e}")
+        return None
+
+
 def fetch_backtest_runs() -> pd.DataFrame:
     """Fetch all backtest runs from database."""
     query = """
@@ -191,6 +288,37 @@ def fetch_backtest_runs() -> pd.DataFrame:
     except Exception as e:
         print(f"Error fetching backtest runs: {e}")
         return pd.DataFrame()
+
+
+def delete_backtest_run(backtest_id: str) -> tuple[bool, str]:
+    """Delete a backtest run and its associated trades.
+
+    Args:
+        backtest_id: UUID of the backtest run to delete.
+
+    Returns:
+        Tuple of (success, message).
+    """
+    try:
+        with engine.connect() as conn:
+            # Delete associated trades first
+            conn.execute(
+                text("DELETE FROM trades_history WHERE strategy LIKE :pattern"),
+                {"pattern": f"backtest_{backtest_id}%"},
+            )
+            # Delete the backtest run
+            result = conn.execute(
+                text("DELETE FROM backtest_runs WHERE id = :id"),
+                {"id": backtest_id},
+            )
+            conn.commit()
+
+            if result.rowcount > 0:
+                return True, f"Deleted backtest {backtest_id[:8]}..."
+            else:
+                return False, "Backtest not found"
+    except Exception as e:
+        return False, str(e)
 
 
 def fetch_backtest_trades(strategy_filter: str) -> pd.DataFrame:
@@ -398,6 +526,8 @@ app.layout = dbc.Container(
         ),
         # Auto-refresh interval
         dcc.Interval(id="interval-component", interval=10 * 1000, n_intervals=0),
+        # Store for delete status
+        dcc.Store(id="delete-status-store", data=None),
         # Metrics Row
         dbc.Row(
             [
@@ -505,7 +635,37 @@ app.layout = dbc.Container(
                     label="Trades",
                     tab_id="tab-trades",
                 ),
-                # Tab 3: SQL Explorer
+                # Tab 3: Positions
+                dbc.Tab(
+                    [
+                        dbc.Card(
+                            [
+                                dbc.CardHeader(
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                html.H5("Open Positions", className="mb-0"),
+                                                width=8,
+                                            ),
+                                            dbc.Col(
+                                                html.Div(id="positions-summary", className="text-end"),
+                                                width=4,
+                                            ),
+                                        ]
+                                    )
+                                ),
+                                dbc.CardBody(
+                                    [
+                                        html.Div(id="positions-table"),
+                                    ]
+                                ),
+                            ]
+                        ),
+                    ],
+                    label="Positions",
+                    tab_id="tab-positions",
+                ),
+                # Tab 4: SQL Explorer
                 dbc.Tab(
                     [
                         dbc.Card(
@@ -575,7 +735,7 @@ app.layout = dbc.Container(
                     label="SQL Explorer",
                     tab_id="tab-sql",
                 ),
-                # Tab 4: Statistics
+                # Tab 5: Statistics
                 dbc.Tab(
                     [
                         dbc.Card(
@@ -592,7 +752,7 @@ app.layout = dbc.Container(
                     label="Statistics",
                     tab_id="tab-stats",
                 ),
-                # Tab 5: Backtest Results
+                # Tab 6: Backtest Results
                 dbc.Tab(
                     [
                         dbc.Row(
@@ -614,6 +774,13 @@ app.layout = dbc.Container(
                                                                 ),
                                                                 dbc.Col(
                                                                     [
+                                                                        dbc.Button(
+                                                                            "Delete Selected",
+                                                                            id="delete-backtest-btn",
+                                                                            color="danger",
+                                                                            size="sm",
+                                                                            className="me-2",
+                                                                        ),
                                                                         dbc.Button(
                                                                             "Refresh",
                                                                             id="refresh-backtest-btn",
@@ -821,6 +988,121 @@ def update_trades_table(n_intervals, n_clicks):
 
 
 @callback(
+    [Output("positions-table", "children"), Output("positions-summary", "children")],
+    [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
+)
+def update_positions_table(n_intervals, n_clicks):
+    """Update open positions table with unrealized P&L."""
+    df = fetch_open_positions()
+
+    if df.empty:
+        return (
+            dbc.Alert("No open positions", color="secondary"),
+            dbc.Badge("0 positions", color="secondary"),
+        )
+
+    # Get current price for P&L calculation
+    current_price = fetch_current_price("XBT/USDC")
+
+    # Calculate unrealized P&L for each position
+    now = datetime.now(UTC)
+    rows = []
+    total_unrealized_pnl = 0.0
+
+    for _, row in df.iterrows():
+        entry_price = float(row["entry_price"])
+        amount = float(row["amount"])
+        entry_time = pd.to_datetime(row["entry_time"])
+
+        # Calculate duration
+        if entry_time.tzinfo is None:
+            entry_time = entry_time.replace(tzinfo=UTC)
+        duration = now - entry_time
+        hours = duration.total_seconds() / 3600
+        if hours < 1:
+            duration_str = f"{int(duration.total_seconds() / 60)}m"
+        elif hours < 24:
+            duration_str = f"{hours:.1f}h"
+        else:
+            duration_str = f"{duration.days}d {int(hours % 24)}h"
+
+        # Calculate unrealized P&L
+        if current_price:
+            unrealized_pnl = (current_price - entry_price) * amount
+            unrealized_pnl_pct = ((current_price / entry_price) - 1) * 100
+            total_unrealized_pnl += unrealized_pnl
+        else:
+            unrealized_pnl = None
+            unrealized_pnl_pct = None
+
+        rows.append(
+            {
+                "pair": row["pair"],
+                "amount": f"{amount:.6f}",
+                "entry_price": f"{entry_price:.2f}",
+                "current_price": f"{current_price:.2f}" if current_price else "—",
+                "unrealized_pnl": f"{unrealized_pnl:+.2f}" if unrealized_pnl is not None else "—",
+                "unrealized_pnl_pct": f"{unrealized_pnl_pct:+.2f}%"
+                if unrealized_pnl_pct is not None
+                else "—",
+                "duration": duration_str,
+                "strategy": row["strategy"],
+            }
+        )
+
+    display_df = pd.DataFrame(rows)
+
+    # Summary badge
+    pnl_color = "success" if total_unrealized_pnl >= 0 else "danger"
+    summary = html.Span(
+        [
+            dbc.Badge(f"{len(rows)} position(s)", color="info", className="me-2"),
+            dbc.Badge(f"P&L: {total_unrealized_pnl:+.2f} USDC", color=pnl_color),
+        ]
+    )
+
+    table = dash_table.DataTable(
+        data=display_df.to_dict("records"),
+        columns=[
+            {"name": "Pair", "id": "pair"},
+            {"name": "Amount", "id": "amount"},
+            {"name": "Entry Price", "id": "entry_price"},
+            {"name": "Current Price", "id": "current_price"},
+            {"name": "P&L (USDC)", "id": "unrealized_pnl"},
+            {"name": "P&L (%)", "id": "unrealized_pnl_pct"},
+            {"name": "Duration", "id": "duration"},
+            {"name": "Strategy", "id": "strategy"},
+        ],
+        style_table={"overflowX": "auto"},
+        style_header={
+            "backgroundColor": "rgb(30, 30, 30)",
+            "color": "white",
+            "fontWeight": "bold",
+        },
+        style_cell={
+            "backgroundColor": "rgb(50, 50, 50)",
+            "color": "white",
+            "border": "1px solid rgb(70, 70, 70)",
+            "textAlign": "left",
+            "padding": "10px",
+        },
+        style_data_conditional=[
+            {
+                "if": {"filter_query": "{unrealized_pnl} contains '+'"},
+                "color": "#00ff88",
+            },
+            {
+                "if": {"filter_query": "{unrealized_pnl} contains '-'"},
+                "color": "#ff4444",
+            },
+        ],
+        page_size=10,
+    )
+
+    return table, summary
+
+
+@callback(
     [Output("sql-results", "children"), Output("query-status", "children")],
     Input("execute-query-btn", "n_clicks"),
     State("sql-input", "value"),
@@ -915,13 +1197,18 @@ def update_stats(n_intervals, n_clicks):
 
 # Store selected backtest ID
 selected_backtest_id = dcc.Store(id="selected-backtest-id", data=None)
+delete_status_store = dcc.Store(id="delete-status-store", data=None)
 
 
 @callback(
     Output("backtest-runs-table", "children"),
-    [Input("refresh-backtest-btn", "n_clicks"), Input("tabs", "active_tab")],
+    [
+        Input("refresh-backtest-btn", "n_clicks"),
+        Input("tabs", "active_tab"),
+        Input("delete-status-store", "data"),
+    ],
 )
-def update_backtest_runs(n_clicks, active_tab):
+def update_backtest_runs(n_clicks, active_tab, delete_status):
     """Update backtest runs table."""
     if active_tab != "tab-backtest":
         return dash.no_update
@@ -1012,6 +1299,35 @@ def update_backtest_runs(n_clicks, active_tab):
         selected_rows=[0] if not df.empty else [],
         page_size=10,
     )
+
+
+@callback(
+    Output("delete-status-store", "data"),
+    Input("delete-backtest-btn", "n_clicks"),
+    [State("backtest-runs-datatable", "selected_rows"), State("backtest-runs-datatable", "data")],
+    prevent_initial_call=True,
+)
+def handle_delete_backtest(n_clicks, selected_rows, data):
+    """Delete selected backtest run."""
+    if not n_clicks or not selected_rows or not data:
+        return dash.no_update
+
+    selected_row = data[selected_rows[0]]
+    short_id = selected_row.get("id_short", "")
+
+    # Get full ID from database
+    df = fetch_backtest_runs()
+    if df.empty:
+        return {"success": False, "message": "No backtests found"}
+
+    matching = df[df["id"].astype(str).str.startswith(short_id)]
+    if matching.empty:
+        return {"success": False, "message": "Backtest not found"}
+
+    full_id = str(matching.iloc[0]["id"])
+    success, message = delete_backtest_run(full_id)
+
+    return {"success": success, "message": message, "timestamp": datetime.now(UTC).isoformat()}
 
 
 @callback(
