@@ -162,14 +162,46 @@ def fetch_stats() -> dict:
 
 
 def execute_custom_query(query: str) -> tuple[pd.DataFrame | None, str | None]:
-    """Execute custom SQL query."""
-    try:
-        # Basic safety check - only allow SELECT
-        if not query.strip().upper().startswith("SELECT"):
-            return None, "Only SELECT queries are allowed"
+    """Execute custom SQL query.
 
-        df = pd.read_sql(query, engine)
-        return df, None
+    Allows SELECT on any table.
+    Allows DELETE only on backtest-related data:
+    - backtest_runs table
+    - trades_history with strategy LIKE 'backtest%'
+    """
+    try:
+        query_upper = query.strip().upper()
+
+        # SELECT queries - always allowed
+        if query_upper.startswith("SELECT"):
+            df = pd.read_sql(query, engine)
+            return df, None
+
+        # DELETE queries - restricted to backtest data
+        if query_upper.startswith("DELETE"):
+            # Allow DELETE FROM backtest_runs
+            if "BACKTEST_RUNS" in query_upper:
+                with engine.connect() as conn:
+                    result = conn.execute(text(query))
+                    conn.commit()
+                    return None, f"Deleted {result.rowcount} row(s) from backtest_runs"
+
+            # Allow DELETE FROM trades_history only with backtest filter
+            if "TRADES_HISTORY" in query_upper:
+                # Must have a backtest filter to prevent accidental deletion of real trades
+                if "BACKTEST" not in query_upper or "STRATEGY" not in query_upper:
+                    return None, (
+                        "DELETE from trades_history requires a backtest filter. "
+                        "Example: DELETE FROM trades_history WHERE strategy LIKE 'backtest_%'"
+                    )
+                with engine.connect() as conn:
+                    result = conn.execute(text(query))
+                    conn.commit()
+                    return None, f"Deleted {result.rowcount} row(s) from trades_history"
+
+            return None, "DELETE only allowed on backtest_runs or trades_history (with backtest filter)"
+
+        return None, "Only SELECT and DELETE (backtest data only) queries are allowed"
     except Exception as e:
         return None, str(e)
 
