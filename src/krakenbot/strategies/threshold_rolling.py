@@ -91,6 +91,7 @@ class ThresholdRollingStrategy(BaseStrategy):
         self._next_position_id: int = 1
         self._skip_db_sync: bool = False
         self._used_references: set[Decimal] = set()  # Track which refs already have positions
+        self._pending_reference: Decimal | None = None  # Delayed reference to add on next candle
 
         self.logger.debug(
             "threshold_rolling_strategy_initialized",
@@ -141,14 +142,18 @@ class ThresholdRollingStrategy(BaseStrategy):
         else:
             self._current_timestamp = datetime.now(UTC)
 
-        # Add this candle's close as a new reference price
-        self._reference_prices.append(close_price)
+        # CRITICAL FIX: Add PREVIOUS pending reference first (before this candle)
+        # This ensures we compare current price against PAST references, not itself
+        if self._pending_reference is not None:
+            self._reference_prices.append(self._pending_reference)
+            # Maintain rolling window (FIFO)
+            if len(self._reference_prices) > self.lookback_periods:
+                removed_ref = self._reference_prices.pop(0)
+                # Clean up used_references if the old reference is removed
+                self._used_references.discard(removed_ref)
 
-        # Maintain rolling window (FIFO)
-        if len(self._reference_prices) > self.lookback_periods:
-            removed_ref = self._reference_prices.pop(0)
-            # Clean up used_references if the old reference is removed
-            self._used_references.discard(removed_ref)
+        # Store this candle's close as pending - will be added as reference on NEXT candle
+        self._pending_reference = close_price
 
         self.logger.debug(
             "ohlc_processed",
@@ -433,6 +438,7 @@ class ThresholdRollingStrategy(BaseStrategy):
         self._current_price = None
         self._open_positions.clear()
         self._used_references.clear()
+        self._pending_reference = None
         self._next_position_id = 1
         self.logger.debug("threshold_rolling_strategy_state_reset", strategy=self.get_name())
 
