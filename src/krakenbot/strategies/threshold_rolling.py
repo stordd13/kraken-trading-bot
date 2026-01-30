@@ -282,6 +282,23 @@ class ThresholdRollingStrategy(BaseStrategy):
                         },
                     )
 
+        # Log signal analysis for debugging (shows why no BUY signal)
+        if self._reference_prices:
+            drops = []
+            for ref in self._reference_prices:
+                drop = ((self._current_price - ref) / ref) * Decimal("100")
+                drops.append(f"{float(ref):.2f}→{float(drop):+.2f}%")
+
+            self.logger.info(
+                "signal_analysis",
+                current_price=float(self._current_price),
+                buy_threshold=self.buy_threshold_pct,
+                open_positions=len(self._open_positions),
+                max_positions=self.max_open_positions,
+                reference_drops=drops[:5],
+                used_refs=len(self._used_references),
+            )
+
         # Default: HOLD
         return TradingSignal(
             signal_type=SignalType.HOLD,

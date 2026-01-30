@@ -70,6 +70,8 @@ PAIR_MAPPING = {
     "BTC/EUR": "XBT/EUR",
     "XBT/USD": "XBT/USD",
     "BTC/USD": "XBT/USD",
+    "XBT/USDC": "XBT/USDC",
+    "BTC/USDC": "XBT/USDC",
     "ETH/EUR": "ETH/EUR",
     "ETH/USD": "ETH/USD",
 }
