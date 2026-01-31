@@ -1,6 +1,6 @@
 # KrakenBot - État du Projet
 
-> Dernière mise à jour: 2026-01-29
+> Dernière mise à jour: 2026-01-31
 
 ## Résumé Exécutif
 
@@ -10,20 +10,20 @@
 |-----------|--------|---------|
 | Data Collector | ✅ Live 24/7 | WebSocket + REST backfill |
 | Trading Bot | ✅ Live | Mode live activé |
-| Dashboard | ✅ Fonctionnel | Dash sur localhost:8050 |
+| Dashboard | ✅ Fonctionnel | Dash sur localhost:8050 (5 tabs incluant Positions) |
 | Database | ✅ Opérationnel | PostgreSQL + TimescaleDB |
 | CI/CD | ✅ Automatisé | GitHub Actions → Hetzner |
 
 ---
 
-## Configuration Actuelle
+## Configuration Actuelle (Production)
 
 ```yaml
 Pair: XBT/USDC
 Candle interval: 15 min
 Lookback: 50 périodes (12h30)
-Buy threshold: -1.0%
-Sell threshold: +2.0%
+Buy threshold: -3.0%    # Achète si prix baisse de 3%
+Sell threshold: +2.0%   # Vend si prix monte de 2%
 Order amount: 100 USDC
 Max open positions: 10
 Daily loss limit: 50 USDC
@@ -96,17 +96,36 @@ Min trade interval: 60 sec
    - Services systemd supervisés
    - Logs accessibles via journalctl
 
+5. **Dashboard**
+   - Tab Charts: Candlestick avec overlay trades
+   - Tab Trades: Historique récent
+   - Tab Positions: P&L non réalisé en temps réel
+   - Tab SQL Explorer: Requêtes custom
+   - Tab Statistics: Stats OHLC et trading
+   - Tab Backtest: Résultats de backtesting
+
+---
+
+## Bugs Corrigés Récemment
+
+### 2026-01-31: Fix timing référence prix
+**Problème**: Le prix de la candle était ajouté comme référence AVANT la génération du signal, causant `drop_pct = 0%` systématiquement.
+
+**Solution**: Ajout de `_pending_reference` pour différer l'ajout de la référence à la candle suivante.
+
+**Commit**: `a69e86c` - "fix: Delay reference price addition to prevent self-comparison bug"
+
 ---
 
 ## Points d'Amélioration Identifiés
 
 ### Haute Priorité
 
-| Problème | Impact | Solution |
-|----------|--------|----------|
-| Pas de visibilité positions ouvertes | Impossible de voir P&L non réalisé | Ajouter tab "Positions" au dashboard |
-| Pas d'alertes | Découverte tardive des problèmes | Notifications Telegram/Discord |
-| Frais non comptés dans backtest | Résultats optimistes | Intégrer frais Kraken (0.26%) |
+| Problème | Impact | Solution | Status |
+|----------|--------|----------|--------|
+| ~~Pas de visibilité positions~~ | ~~P&L non réalisé~~ | ~~Tab Positions~~ | ✅ Fait |
+| Frais non comptés dans backtest | Résultats optimistes | Intégrer frais Kraken (0.26%) | 🔜 Prochain |
+| Pas d'alertes | Découverte tardive | Notifications Telegram/Discord | 📋 Planifié |
 
 ### Moyenne Priorité
 

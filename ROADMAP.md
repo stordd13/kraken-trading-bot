@@ -1,14 +1,14 @@
 # KrakenBot - Roadmap
 
-> Dernière mise à jour: 2026-01-29
+> Dernière mise à jour: 2026-01-31
 
 ## Vue d'Ensemble
 
 ```
-Phase 1 (ACTUELLE)     Phase 2              Phase 3              Phase 4
+Phase 1               Phase 2              Phase 3              Phase 4
 ┌─────────────────┐    ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐
 │ Bot Live        │ →  │ Monitoring &    │→ │ Multi-Stratégie │→ │ Machine         │
-│ Fonctionnel     │    │ Alertes         │  │ & Optimisation  │  │ Learning        │
+│ Fonctionnel     │    │ Optimisation    │  │ & Multi-Pair    │  │ Learning        │
 └─────────────────┘    └─────────────────┘  └─────────────────┘  └─────────────────┘
      ✅ DONE              EN COURS             PLANIFIÉ            LONG TERME
 ```
@@ -29,22 +29,31 @@ Phase 1 (ACTUELLE)     Phase 2              Phase 3              Phase 4
 
 ---
 
-## Phase 2: Monitoring & Alertes 🚧 EN COURS
+## Phase 2: Monitoring & Optimisation 🚧 EN COURS
 
-### 2.1 Tracking des Positions Ouvertes (PRIORITÉ HAUTE)
+### 2.1 Tracking des Positions Ouvertes ✅ FAIT
 
 **Objectif**: Voir les positions en cours et le P&L non réalisé
 
-- [ ] Query positions ouvertes depuis `trades_history`
-- [ ] Calcul P&L non réalisé en temps réel
-- [ ] Nouveau tab "Positions" dans le dashboard
-- [ ] Affichage: entry price, current price, P&L%, durée
+- [x] Query positions ouvertes depuis `trades_history`
+- [x] Calcul P&L non réalisé en temps réel
+- [x] Tab "Positions" dans le dashboard
+- [x] Affichage: entry price, current price, P&L%, durée
+- [x] Auto-refresh toutes les 10 secondes
+
+### 2.2 Amélioration Backtesting (PRIORITÉ ACTUELLE)
+
+**Objectif**: Résultats plus réalistes
+
+- [ ] Intégrer frais Kraken (0.26% taker pour market orders)
+- [ ] Simulation slippage (0.05%)
+- [ ] Métriques avancées (Profit Factor, Sortino, Max Drawdown)
+- [ ] Validation croisée temporelle (train 70% / test 30%)
 
 **Fichiers à modifier**:
-- `scripts/dashboard.py` - Nouveau tab
-- Potentiellement nouveau module `src/krakenbot/core/positions.py`
+- `scripts/backtest.py`
 
-### 2.2 Alertes et Notifications
+### 2.3 Alertes et Notifications (Plus tard)
 
 **Objectif**: Être informé en temps réel des événements importants
 
@@ -57,18 +66,6 @@ Phase 1 (ACTUELLE)     Phase 2              Phase 3              Phase 4
 **Fichiers à créer**:
 - `src/krakenbot/notifications/` - Module notifications
 - Config: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`
-
-### 2.3 Amélioration Backtesting
-
-**Objectif**: Résultats plus réalistes
-
-- [ ] Intégrer frais Kraken (0.26% maker/taker)
-- [ ] Slippage simulation
-- [ ] Test sur périodes out-of-sample
-- [ ] Validation croisée temporelle
-
-**Fichiers à modifier**:
-- `scripts/backtest.py`
 
 ---
 
@@ -150,9 +147,9 @@ Phase 1 (ACTUELLE)     Phase 2              Phase 3              Phase 4
 ## Métriques de Succès
 
 ### Phase 2
-- [ ] Dashboard affiche positions ouvertes
-- [ ] Notifications reçues en < 30 sec
-- [ ] Backtest inclut frais réalistes
+- [x] Dashboard affiche positions ouvertes
+- [ ] Backtest inclut frais réalistes (0.26%)
+- [ ] Notifications reçues en < 30 sec (optionnel)
 
 ### Phase 3
 - [ ] Au moins 3 stratégies backtestées

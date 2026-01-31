@@ -1,50 +1,52 @@
 # KrakenBot - TODO
 
-> Dernière mise à jour: 2026-01-21
+> Dernière mise à jour: 2026-01-31
 
 ## Statut Actuel
 
-- **Data Collector**: En production sur Hetzner (24/7)
-- **Trading Bot**: Paper trading en cours
-- **Dashboard**: Dash disponible (localhost:8050)
+- **Data Collector**: ✅ En production sur Hetzner (24/7)
+- **Trading Bot**: ✅ LIVE (mode live activé, buy_threshold=-3%)
+- **Dashboard**: ✅ Dash disponible (localhost:8050, 5 tabs)
 
 ---
 
-## Phase 1: Validation Stratégie Actuelle (EN COURS)
+## Phase 1: Bot Live Fonctionnel ✅ TERMINÉ
 
-### Analyse Paper Trading
-- [ ] Laisser tourner paper trading quelques jours/semaines
-- [ ] Analyser les trades exécutés (win rate, P&L, drawdown)
-- [ ] Identifier les patterns de trades perdants
-- [ ] Ajouter suivi des positions ouvertes dans le dashboard (après BUY, en attente SELL/stop-loss)
-
-### Backtest sur Vraies Données
-- [ ] Script backtest avec données collectées
-- [ ] Comparer résultats backtest vs paper trading
-- [ ] Ajuster paramètres si nécessaire (buy_threshold, sell_threshold, rolling_window)
-
-### Décision Go/No-Go Live
-- [ ] Si stratégie rentable ou neutre → Phase 2
-- [ ] Si stratégie perdante → itérer sur paramètres ou alors Phase 3 directement
+- [x] Architecture 2 services (collector + trading bot)
+- [x] Data collection 24/7 (WebSocket + REST backfill)
+- [x] ThresholdRollingStrategy fonctionnelle
+- [x] Risk management (5 checks)
+- [x] Paper trading validé
+- [x] Live trading activé
+- [x] Dashboard Dash avec tab Positions
+- [x] CI/CD GitHub Actions → Hetzner
+- [x] Backtest avec grid search
+- [x] Fix bug timing référence prix (2026-01-31)
 
 ---
 
-## Phase 2: Live Trading + Alertes
+## Phase 2: Monitoring & Optimisation 🚧 EN COURS
 
-### Passage en Live
-- [ ] Petit capital initial (50-100€)
-- [ ] Surveillance active premiers jours
-- [ ] Vérifier exécution réelle des ordres
+### 2.1 Tracking Positions ✅ FAIT
+- [x] Tab "Positions" dans le dashboard
+- [x] P&L non réalisé en temps réel
+- [x] Durée des positions
+- [x] Auto-refresh 10 secondes
 
-### Alerting (setup avec bot live pour debug facile)
-- [ ] Notifications Telegram/Discord sur trades exécutés
-- [ ] Alertes sur erreurs critiques
-- [ ] Alertes limites de risque atteintes
+### 2.2 Amélioration Backtesting (PRIORITÉ)
+- [ ] Intégrer frais Kraken (0.26% taker)
+- [ ] Simulation slippage (0.05%)
+- [ ] Métriques avancées (Profit Factor, Sortino, Max Drawdown)
+- [ ] Validation croisée temporelle (train 70% / test 30%)
+
+### 2.3 Alertes (Plus tard)
+- [ ] Notifications Telegram/Discord sur trades
+- [ ] Alertes erreurs critiques
 - [ ] Rapport quotidien P&L
 
 ---
 
-## Phase 3: Stratégies Avancées
+## Phase 3: Multi-Stratégies 📋 PLANIFIÉ
 
 ### Nouvelles Stratégies à Explorer
 - [ ] Mean Reversion avec Bollinger Bands
@@ -58,9 +60,14 @@
 - [ ] Paper trading parallèle de plusieurs stratégies
 - [ ] Allocation capital par stratégie
 
+### Multi-Pair
+- [ ] Support XBT/EUR
+- [ ] Support ETH/USDC
+- [ ] Corrélation analysis entre pairs
+
 ---
 
-## Phase 4: Machine Learning
+## Phase 4: Machine Learning 🔮 LONG TERME
 
 ### Prérequis
 - [ ] Minimum 3-6 mois de données OHLC collectées
@@ -73,34 +80,17 @@
 - [ ] Transformer-based (si assez de données)
 - [ ] Reinforcement Learning (DQN, PPO)
 
-### Pipeline ML
-- [ ] Feature store
-- [ ] Backtesting framework ML-compatible
-- [ ] Model versioning (MLflow?)
-- [ ] A/B testing paper trading
-
 ---
 
-## Améliorations Continues (en parallèle)
-
-### Robustesse
-- [ ] Gestion reconnexions WebSocket/DB
-- [ ] Health checks endpoint (`/health`)
-- [ ] Tests unitaires composants critiques
-
-### Monitoring
-- [ ] Métriques Prometheus (optionnel)
-- [ ] Dashboard Grafana (optionnel)
-
----
-
-## Complété
+## Historique Complété
 
 - [x] Architecture 2 services (collector + trading bot)
 - [x] CI/CD GitHub Actions → Hetzner
-- [x] Dashboard Dash temps réel
+- [x] Dashboard Dash temps réel (5 tabs)
 - [x] Systemd services
 - [x] Data collection 24/7
 - [x] Paper trading fonctionnel
 - [x] Risk management (5 checks)
-- [x] 284 tests (100% pass)
+- [x] Live trading activé
+- [x] Tab Positions avec P&L temps réel
+- [x] Fix bug timing référence prix
