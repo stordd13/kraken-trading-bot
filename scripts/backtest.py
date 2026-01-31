@@ -535,10 +535,18 @@ class BacktestEngine:
                 db_manager=self.db_manager,
                 settings=self.settings,
             )
+        elif self.strategy_name == "technical_indicator":
+            from krakenbot.strategies.technical_indicator import TechnicalIndicatorStrategy
+
+            self.strategy = TechnicalIndicatorStrategy(
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                settings=self.settings,
+            )
         else:
             raise ValueError(
                 f"Unknown strategy: {self.strategy_name}. "
-                f"Available: threshold, threshold_multi, threshold_rolling"
+                f"Available: threshold, threshold_multi, threshold_rolling, technical_indicator"
             )
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies

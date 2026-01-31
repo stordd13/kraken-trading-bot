@@ -202,6 +202,66 @@ class StrategySettings(BaseSettings):
     )
 
 
+class TechnicalIndicatorSettings(BaseSettings):
+    """Technical indicator strategy configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="TI_")
+
+    # RSI settings
+    rsi_period: int = Field(
+        default=14,
+        description="RSI calculation period",
+        ge=5,
+        le=50,
+    )
+    rsi_oversold: float = Field(
+        default=30.0,
+        description="RSI oversold threshold (BUY signal)",
+        ge=10.0,
+        le=40.0,
+    )
+    rsi_overbought: float = Field(
+        default=70.0,
+        description="RSI overbought threshold (SELL signal)",
+        ge=60.0,
+        le=90.0,
+    )
+
+    # MACD settings
+    macd_fast: int = Field(
+        default=12,
+        description="MACD fast EMA period",
+        ge=5,
+        le=30,
+    )
+    macd_slow: int = Field(
+        default=26,
+        description="MACD slow EMA period",
+        ge=15,
+        le=60,
+    )
+    macd_signal: int = Field(
+        default=9,
+        description="MACD signal line period",
+        ge=3,
+        le=20,
+    )
+
+    # Bollinger Bands settings
+    bb_period: int = Field(
+        default=20,
+        description="Bollinger Bands SMA period",
+        ge=10,
+        le=50,
+    )
+    bb_multiplier: float = Field(
+        default=2.0,
+        description="Bollinger Bands standard deviation multiplier",
+        ge=1.0,
+        le=3.0,
+    )
+
+
 class ScheduledTasksSettings(BaseSettings):
     """Scheduled data collection tasks configuration."""
 
@@ -287,6 +347,9 @@ class Settings(BaseSettings):
     trading: TradingSettings = Field(default_factory=TradingSettings)
     strategy: StrategySettings = Field(default_factory=StrategySettings)
     scheduler: ScheduledTasksSettings = Field(default_factory=ScheduledTasksSettings)
+    technical_indicator: TechnicalIndicatorSettings = Field(
+        default_factory=TechnicalIndicatorSettings
+    )
 
     def validate_all(self) -> None:
         """Validate all settings and secrets at startup."""
