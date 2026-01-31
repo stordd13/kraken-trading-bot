@@ -33,11 +33,11 @@
 - [x] Durée des positions
 - [x] Auto-refresh 10 secondes
 
-### 2.2 Amélioration Backtesting (PRIORITÉ)
-- [ ] Intégrer frais Kraken (0.26% taker)
-- [ ] Simulation slippage (0.05%)
-- [ ] Métriques avancées (Profit Factor, Sortino, Max Drawdown)
-- [ ] Validation croisée temporelle (train 70% / test 30%)
+### 2.2 Amélioration Backtesting ✅ FAIT
+- [x] Intégrer frais Kraken (0.26% taker)
+- [x] Simulation slippage + spread (0.01% + 0.02%)
+- [x] Métriques avancées (Profit Factor, Sharpe, Sortino, Max Drawdown)
+- [x] Validation croisée temporelle (`--cross-validate` flag)
 
 ### 2.3 Alertes (Plus tard)
 - [ ] Notifications Telegram/Discord sur trades
@@ -94,3 +94,4 @@
 - [x] Live trading activé
 - [x] Tab Positions avec P&L temps réel
 - [x] Fix bug timing référence prix
+- [x] Backtest avec frais réalistes + Sortino + cross-validation

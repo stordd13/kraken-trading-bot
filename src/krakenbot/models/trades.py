@@ -403,6 +403,7 @@ class BacktestRun(Base):
         max_drawdown: Maximum drawdown amount.
         max_drawdown_pct: Maximum drawdown percentage.
         sharpe_ratio: Sharpe ratio.
+        sortino_ratio: Sortino ratio (downside volatility only).
         profit_factor: Profit factor (total_wins / total_losses).
         average_win: Average winning trade amount.
         average_loss: Average losing trade amount.
@@ -523,6 +524,12 @@ class BacktestRun(Base):
         DECIMAL(precision=10, scale=4),
         nullable=False,
         comment="Sharpe ratio",
+    )
+    sortino_ratio: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=10, scale=4),
+        nullable=False,
+        default=Decimal("0"),
+        comment="Sortino ratio (downside volatility)",
     )
     profit_factor: Mapped[Decimal] = mapped_column(
         DECIMAL(precision=10, scale=4),

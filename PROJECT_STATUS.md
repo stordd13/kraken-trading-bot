@@ -90,6 +90,9 @@ Min trade interval: 60 sec
    - Grid search pour optimiser les paramètres
    - Support des candles 5min et 15min
    - Lookbacks de 1h à 7 jours testés
+   - Frais réalistes (0.26% + spread + slippage)
+   - Métriques avancées (Sharpe, Sortino, Drawdown)
+   - Validation croisée temporelle (`--cross-validate`)
 
 4. **Déploiement**
    - CI/CD automatique
@@ -124,8 +127,9 @@ Min trade interval: 60 sec
 | Problème | Impact | Solution | Status |
 |----------|--------|----------|--------|
 | ~~Pas de visibilité positions~~ | ~~P&L non réalisé~~ | ~~Tab Positions~~ | ✅ Fait |
-| Frais non comptés dans backtest | Résultats optimistes | Intégrer frais Kraken (0.26%) | 🔜 Prochain |
-| Pas d'alertes | Découverte tardive | Notifications Telegram/Discord | 📋 Planifié |
+| ~~Frais non comptés dans backtest~~ | ~~Résultats optimistes~~ | ~~Frais + slippage~~ | ✅ Fait |
+| ~~Métriques basiques~~ | ~~Analyse incomplète~~ | ~~Sortino + cross-validation~~ | ✅ Fait |
+| Pas d'alertes | Découverte tardive | Notifications Telegram/Discord | 🔜 Prochain |
 
 ### Moyenne Priorité
 
@@ -133,7 +137,6 @@ Min trade interval: 60 sec
 |----------|--------|----------|
 | Mono-pair | Diversification limitée | Support multi-pair |
 | Paramètres fixes | Pas d'adaptation au marché | Régime detection |
-| Métriques basiques | Analyse incomplète | Sortino, Calmar, drawdowns |
 
 ---
 

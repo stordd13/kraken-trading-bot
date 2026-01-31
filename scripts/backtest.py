@@ -67,6 +67,7 @@ class BacktestMetrics:
     max_drawdown: Decimal = Decimal("0")  # Largest peak-to-trough decline
     max_drawdown_pct: float = 0.0
     sharpe_ratio: float = 0.0  # Risk-adjusted return
+    sortino_ratio: float = 0.0  # Risk-adjusted return (downside volatility only)
 
     # Position tracking
     starting_balance: Decimal = Decimal("1000")
@@ -123,7 +124,7 @@ class BacktestEngine:
 
         # Strategy instance (will be created during run)
         self.event_bus = EventBus()
-        self.strategy: ThresholdStrategy | None = None
+        self.strategy = None  # Will be created during run
 
     async def load_historical_data(
         self,
@@ -161,7 +162,9 @@ class BacktestEngine:
             result = await session.execute(stmt)
             candles = list(result.scalars().all())
 
-        self.logger.info("historical_data_loaded", candle_count=len(candles), interval=self.candle_interval)
+        self.logger.info(
+            "historical_data_loaded", candle_count=len(candles), interval=self.candle_interval
+        )
         return candles
 
     async def execute_signal(self, signal: TradingSignal, current_price: Decimal) -> None:
@@ -197,7 +200,9 @@ class BacktestEngine:
             )
 
             if order_amount < Decimal("1"):  # Minimum order
-                self.logger.warning("backtest_buy_skipped_min_order", order_amount=float(order_amount))
+                self.logger.warning(
+                    "backtest_buy_skipped_min_order", order_amount=float(order_amount)
+                )
                 return
 
             # Apply spread + slippage to get realistic execution price
@@ -219,7 +224,9 @@ class BacktestEngine:
                 # For multi-position, notify strategy of new position
                 if self.strategy_name == "threshold_rolling":
                     # Extract reference_price from signal metadata
-                    reference_price = Decimal(str(signal.metadata.get("reference_price", current_price)))
+                    reference_price = Decimal(
+                        str(signal.metadata.get("reference_price", current_price))
+                    )
                     position_id = self.strategy.add_position(
                         entry_price=current_price,  # Use mid-price for strategy
                         amount_usdc=order_amount,
@@ -272,7 +279,6 @@ class BacktestEngine:
                     if closed_pos:
                         # Calculate crypto amount from position's USDC amount and entry price
                         crypto_amount = closed_pos.amount_usdc / closed_pos.entry_price
-                        entry_price_used = closed_pos.entry_price
                     else:
                         # Position not found, skip this sell
                         self.logger.warning("position_not_found_for_sell", position_id=position_id)
@@ -308,7 +314,9 @@ class BacktestEngine:
                 amount_after_fee = proceeds - fee
 
                 # Calculate P&L
-                cost_basis = self.entry_price * self.crypto_balance if self.entry_price else Decimal("0")
+                cost_basis = (
+                    self.entry_price * self.crypto_balance if self.entry_price else Decimal("0")
+                )
                 pnl = amount_after_fee - cost_basis
 
                 # Update balances
@@ -316,7 +324,6 @@ class BacktestEngine:
                 crypto_sold = self.crypto_balance
                 self.crypto_balance = Decimal("0")
                 self.in_position = False
-                entry_price_used = self.entry_price
 
                 # Single position mode
                 self.strategy.set_position_state(has_position=False, entry_price=None)
@@ -342,7 +349,9 @@ class BacktestEngine:
                 self.metrics.losing_trades += 1
 
             # Extract holding time from signal metadata if available
-            holding_time_minutes = signal.metadata.get("holding_time_minutes") if signal.metadata else None
+            holding_time_minutes = (
+                signal.metadata.get("holding_time_minutes") if signal.metadata else None
+            )
 
             log_data = {
                 "price": float(current_price),
@@ -359,7 +368,9 @@ class BacktestEngine:
 
     def calculate_final_metrics(self) -> None:
         """Calculate final performance metrics after backtest completes."""
-        self.metrics.total_trades = len([t for t in self.metrics.trades if t.side == TradeSide.SELL])
+        self.metrics.total_trades = len(
+            [t for t in self.metrics.trades if t.side == TradeSide.SELL]
+        )
 
         if self.metrics.total_trades > 0:
             self.metrics.win_rate = self.metrics.winning_trades / self.metrics.total_trades
@@ -391,15 +402,18 @@ class BacktestEngine:
         # Total return
         if self.metrics.starting_balance > 0:
             self.metrics.total_return_pct = float(
-                ((self.metrics.ending_balance - self.metrics.starting_balance)
-                 / self.metrics.starting_balance) * 100
+                (
+                    (self.metrics.ending_balance - self.metrics.starting_balance)
+                    / self.metrics.starting_balance
+                )
+                * 100
             )
 
         # Max drawdown calculation
         peak = self.metrics.starting_balance
         max_dd = Decimal("0")
 
-        for timestamp, equity in self.equity_curve:
+        for _timestamp, equity in self.equity_curve:
             if equity > peak:
                 peak = equity
             drawdown = peak - equity
@@ -439,11 +453,20 @@ class BacktestEngine:
             if returns:
                 avg_return = sum(returns) / len(returns)
                 variance = sum((r - avg_return) ** 2 for r in returns) / len(returns)
-                std_dev = variance ** 0.5
+                std_dev = variance**0.5
 
                 if std_dev > 0:
                     # Annualized Sharpe (assuming 365 days)
-                    self.metrics.sharpe_ratio = (avg_return / std_dev) * (365 ** 0.5)
+                    self.metrics.sharpe_ratio = (avg_return / std_dev) * (365**0.5)
+
+                # Sortino ratio: uses only downside volatility
+                negative_returns = [r for r in returns if r < 0]
+                if negative_returns:
+                    downside_variance = sum(r**2 for r in negative_returns) / len(returns)
+                    downside_std = downside_variance**0.5
+                    if downside_std > 0:
+                        # Annualized Sortino (assuming 365 days)
+                        self.metrics.sortino_ratio = (avg_return / downside_std) * (365**0.5)
 
     async def run(
         self,
@@ -550,7 +573,7 @@ class BacktestEngine:
             signal = await self.strategy.generate_signal()
 
             # DEBUG: Log all BUY/SELL signals
-            if signal and signal.signal_type.value in ['buy', 'sell']:
+            if signal and signal.signal_type.value in ["buy", "sell"]:
                 self.logger.info(
                     "backtest_signal",
                     timestamp=candle.timestamp,
@@ -631,7 +654,9 @@ class BacktestEngine:
                 time_str = f"{hours}h {minutes}min"
             else:
                 time_str = f"{minutes}min"
-            print(f"{'Avg Holding Time:':<30} {time_str} ({self.metrics.average_holding_time_minutes:.1f} min)")
+            print(
+                f"{'Avg Holding Time:':<30} {time_str} ({self.metrics.average_holding_time_minutes:.1f} min)"
+            )
 
         print("\n" + "-" * 80)
         print("RISK METRICS")
@@ -640,6 +665,7 @@ class BacktestEngine:
         print(f"{'Max Drawdown:':<30} {float(self.metrics.max_drawdown):.2f} USDC")
         print(f"{'Max Drawdown %:':<30} {self.metrics.max_drawdown_pct:.2f}%")
         print(f"{'Sharpe Ratio:':<30} {self.metrics.sharpe_ratio:.2f}")
+        print(f"{'Sortino Ratio:':<30} {self.metrics.sortino_ratio:.2f}")
 
         print("\n" + "=" * 80 + "\n")
 
@@ -682,6 +708,7 @@ class BacktestEngine:
             max_drawdown=self.metrics.max_drawdown,
             max_drawdown_pct=Decimal(str(self.metrics.max_drawdown_pct)),
             sharpe_ratio=Decimal(str(self.metrics.sharpe_ratio)),
+            sortino_ratio=Decimal(str(self.metrics.sortino_ratio)),
             profit_factor=Decimal(str(self.metrics.profit_factor)),
             average_win=self.metrics.average_win,
             average_loss=self.metrics.average_loss,
@@ -782,6 +809,17 @@ async def main() -> None:
         default=1,
         help="Candle interval in minutes (default: 1). Use 5 for more realistic trading.",
     )
+    parser.add_argument(
+        "--cross-validate",
+        action="store_true",
+        help="Run temporal cross-validation (train 70%% / test 30%%)",
+    )
+    parser.add_argument(
+        "--train-ratio",
+        type=float,
+        default=0.7,
+        help="Train set ratio for cross-validation (default: 0.7 = 70%%)",
+    )
 
     args = parser.parse_args()
 
@@ -799,28 +837,137 @@ async def main() -> None:
     await db_manager.init_db(settings)
 
     try:
-        # Run backtest
-        engine = BacktestEngine(
-            settings,
-            db_manager,
-            strategy_name=args.strategy,
-            candle_interval=args.interval,
-        )
-        metrics = await engine.run(args.pair, start_time, end_time)
+        if args.cross_validate:
+            # Temporal cross-validation: train on first X%, test on remaining
+            total_duration = end_time - start_time
+            train_duration = total_duration * args.train_ratio
+            split_time = start_time + train_duration
 
-        # Print report
-        engine.print_report()
+            print("\n" + "=" * 80)
+            print("TEMPORAL CROSS-VALIDATION".center(80))
+            print("=" * 80)
+            print(f"\nTotal period: {start_time.date()} to {end_time.date()} ({args.days} days)")
+            print(f"Train ratio: {args.train_ratio:.0%}")
+            print(f"Split point: {split_time.date()}")
+            print(
+                f"Train: {start_time.date()} to {split_time.date()} ({int(train_duration.days)} days)"
+            )
+            print(
+                f"Test:  {split_time.date()} to {end_time.date()} ({args.days - int(train_duration.days)} days)"
+            )
 
-        # Save to database if requested
-        if args.save:
-            backtest_run = await engine.save_to_database(args.pair, run_name=args.name)
-            print(f"\n✅ Backtest results saved to database with ID: {backtest_run.id}")
-            print(f"   Run name: {backtest_run.run_name}")
+            # Run TRAIN backtest
+            print("\n" + "-" * 80)
+            print("TRAIN SET".center(80))
+            print("-" * 80)
 
-            # Save individual trades for dashboard visualization
-            await engine.save_trades_to_database(str(backtest_run.id), args.pair)
-            print(f"   Trades saved: {len(engine.metrics.trades)}")
-            print("   View in dashboard: python scripts/dashboard.py\n")
+            train_engine = BacktestEngine(
+                settings,
+                db_manager,
+                strategy_name=args.strategy,
+                candle_interval=args.interval,
+            )
+            train_metrics = await train_engine.run(args.pair, start_time, split_time)
+            train_engine.print_report()
+
+            # Run TEST backtest
+            print("\n" + "-" * 80)
+            print("TEST SET".center(80))
+            print("-" * 80)
+
+            test_engine = BacktestEngine(
+                settings,
+                db_manager,
+                strategy_name=args.strategy,
+                candle_interval=args.interval,
+            )
+            test_metrics = await test_engine.run(args.pair, split_time, end_time)
+            test_engine.print_report()
+
+            # Print comparison
+            print("\n" + "=" * 80)
+            print("TRAIN vs TEST COMPARISON".center(80))
+            print("=" * 80)
+            print(f"\n{'Metric':<25} {'Train':<15} {'Test':<15} {'Delta':<15}")
+            print("-" * 70)
+
+            # Total return
+            train_ret = train_metrics.total_return_pct
+            test_ret = test_metrics.total_return_pct
+            print(
+                f"{'Total Return %':<25} {train_ret:>+.2f}%{'':<8} {test_ret:>+.2f}%{'':<8} {test_ret - train_ret:>+.2f}%"
+            )
+
+            # Win rate
+            train_wr = train_metrics.win_rate * 100
+            test_wr = test_metrics.win_rate * 100
+            print(
+                f"{'Win Rate %':<25} {train_wr:>.2f}%{'':<9} {test_wr:>.2f}%{'':<9} {test_wr - train_wr:>+.2f}%"
+            )
+
+            # Profit factor
+            print(
+                f"{'Profit Factor':<25} {train_metrics.profit_factor:>.2f}{'':<12} {test_metrics.profit_factor:>.2f}{'':<12} {test_metrics.profit_factor - train_metrics.profit_factor:>+.2f}"
+            )
+
+            # Sharpe ratio
+            print(
+                f"{'Sharpe Ratio':<25} {train_metrics.sharpe_ratio:>.2f}{'':<12} {test_metrics.sharpe_ratio:>.2f}{'':<12} {test_metrics.sharpe_ratio - train_metrics.sharpe_ratio:>+.2f}"
+            )
+
+            # Sortino ratio
+            print(
+                f"{'Sortino Ratio':<25} {train_metrics.sortino_ratio:>.2f}{'':<12} {test_metrics.sortino_ratio:>.2f}{'':<12} {test_metrics.sortino_ratio - train_metrics.sortino_ratio:>+.2f}"
+            )
+
+            # Max drawdown
+            train_dd = train_metrics.max_drawdown_pct
+            test_dd = test_metrics.max_drawdown_pct
+            print(
+                f"{'Max Drawdown %':<25} {train_dd:>.2f}%{'':<9} {test_dd:>.2f}%{'':<9} {test_dd - train_dd:>+.2f}%"
+            )
+
+            # Trade count
+            print(
+                f"{'Total Trades':<25} {train_metrics.total_trades:<15} {test_metrics.total_trades:<15} {test_metrics.total_trades - train_metrics.total_trades:>+d}"
+            )
+
+            print("\n" + "=" * 80)
+
+            # Overfitting warning
+            if train_ret > 0 and test_ret < 0:
+                print("\n⚠️  WARNING: Possible OVERFITTING detected!")
+                print("    Strategy is profitable on train but loses on test data.")
+                print("    Consider adjusting parameters or using a different strategy.\n")
+            elif train_ret > test_ret * 2 and train_ret > 5:
+                print("\n⚠️  CAUTION: Train performance is significantly better than test.")
+                print("    This may indicate overfitting to historical patterns.\n")
+            elif test_ret > train_ret:
+                print("\n✅ Good sign: Test performance matches or exceeds train performance.\n")
+
+        else:
+            # Standard single backtest
+            engine = BacktestEngine(
+                settings,
+                db_manager,
+                strategy_name=args.strategy,
+                candle_interval=args.interval,
+            )
+            await engine.run(args.pair, start_time, end_time)
+
+            # Print report
+            engine.print_report()
+
+            # Save to database if requested
+            if args.save:
+                backtest_run = await engine.save_to_database(args.pair, run_name=args.name)
+                print(f"\n✅ Backtest results saved to database with ID: {backtest_run.id}")
+                print(f"   Run name: {backtest_run.run_name}")
+
+                # Save individual trades for dashboard visualization
+                await engine.save_trades_to_database(str(backtest_run.id), args.pair)
+                print(f"   Trades saved: {len(engine.metrics.trades)}")
+                print("   View in dashboard: python scripts/dashboard.py\n")
 
     finally:
         await db_manager.close_db()

@@ -41,19 +41,28 @@ Phase 1               Phase 2              Phase 3              Phase 4
 - [x] Affichage: entry price, current price, P&L%, durée
 - [x] Auto-refresh toutes les 10 secondes
 
-### 2.2 Amélioration Backtesting (PRIORITÉ ACTUELLE)
+### 2.2 Amélioration Backtesting ✅ FAIT
 
 **Objectif**: Résultats plus réalistes
 
-- [ ] Intégrer frais Kraken (0.26% taker pour market orders)
-- [ ] Simulation slippage (0.05%)
-- [ ] Métriques avancées (Profit Factor, Sortino, Max Drawdown)
-- [ ] Validation croisée temporelle (train 70% / test 30%)
+- [x] Intégrer frais Kraken (0.26% taker pour market orders)
+- [x] Simulation slippage + spread (0.01% + 0.02%)
+- [x] Métriques avancées (Profit Factor, Sharpe, Sortino, Max Drawdown)
+- [x] Validation croisée temporelle (`--cross-validate` flag)
 
-**Fichiers à modifier**:
-- `scripts/backtest.py`
+**Usage**:
+```bash
+# Backtest standard
+python scripts/backtest.py --strategy threshold_rolling --days 14
 
-### 2.3 Alertes et Notifications (Plus tard)
+# Avec validation croisée (train 70% / test 30%)
+python scripts/backtest.py --strategy threshold_rolling --days 14 --cross-validate
+
+# Customiser le ratio train/test
+python scripts/backtest.py --days 14 --cross-validate --train-ratio 0.8
+```
+
+### 2.3 Alertes et Notifications (PRIORITÉ ACTUELLE)
 
 **Objectif**: Être informé en temps réel des événements importants
 
@@ -148,7 +157,8 @@ Phase 1               Phase 2              Phase 3              Phase 4
 
 ### Phase 2
 - [x] Dashboard affiche positions ouvertes
-- [ ] Backtest inclut frais réalistes (0.26%)
+- [x] Backtest inclut frais réalistes (0.26%)
+- [x] Sortino ratio + validation croisée temporelle
 - [ ] Notifications reçues en < 30 sec (optionnel)
 
 ### Phase 3
