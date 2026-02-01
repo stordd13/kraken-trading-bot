@@ -24,9 +24,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
-from datetime import UTC, datetime
+import asyncio
+from datetime import UTC, datetime, timedelta
 import os
 import sys
+import threading
 
 import dash
 from dash import Input, Output, State, callback, dash_table, dcc, html
@@ -45,6 +47,15 @@ DATABASE_URL = os.environ.get(
 
 # Create sync engine
 engine = create_engine(DATABASE_URL)
+
+# Global state for background backtest execution
+_backtest_thread: threading.Thread | None = None
+_backtest_progress: dict = {
+    "running": False,
+    "progress": 0,
+    "message": "",
+    "error": None,
+}
 
 # Initialize Dash app
 app = dash.Dash(
@@ -199,7 +210,10 @@ def execute_custom_query(query: str) -> tuple[pd.DataFrame | None, str | None]:
                     conn.commit()
                     return None, f"Deleted {result.rowcount} row(s) from trades_history"
 
-            return None, "DELETE only allowed on backtest_runs or trades_history (with backtest filter)"
+            return (
+                None,
+                "DELETE only allowed on backtest_runs or trades_history (with backtest filter)",
+            )
 
         return None, "Only SELECT and DELETE (backtest data only) queries are allowed"
     except Exception as e:
@@ -320,6 +334,115 @@ def fetch_backtest_runs() -> pd.DataFrame:
     except Exception as e:
         print(f"Error fetching backtest runs: {e}")
         return pd.DataFrame()
+
+
+def fetch_data_range_stats() -> dict:
+    """Fetch data range and candle counts per interval."""
+    query = """
+    SELECT
+        interval,
+        COUNT(*) as candle_count,
+        MIN(timestamp) as earliest,
+        MAX(timestamp) as latest
+    FROM market_data_ohlc
+    WHERE pair = 'XBT/USDC'
+    GROUP BY interval
+    ORDER BY interval
+    """
+    try:
+        df = pd.read_sql(query, engine)
+        if df.empty:
+            return {
+                "intervals": [],
+                "total_candles": 0,
+                "global_earliest": None,
+                "global_latest": None,
+            }
+        return {
+            "intervals": df.to_dict("records"),
+            "total_candles": int(df["candle_count"].sum()),
+            "global_earliest": df["earliest"].min(),
+            "global_latest": df["latest"].max(),
+        }
+    except Exception as e:
+        print(f"Error fetching data range: {e}")
+        return {
+            "intervals": [],
+            "total_candles": 0,
+            "global_earliest": None,
+            "global_latest": None,
+        }
+
+
+def run_backtest_in_thread(strategy: str, days: int, interval: int, pair: str) -> None:
+    """Run backtest in background thread."""
+    global _backtest_progress
+
+    async def _run() -> None:
+        global _backtest_progress
+        try:
+            _backtest_progress = {
+                "running": True,
+                "progress": 5,
+                "message": "Initializing...",
+                "error": None,
+            }
+
+            # Import here to avoid circular imports
+            from krakenbot.config.settings import get_settings
+            from krakenbot.core.database import DatabaseManager
+
+            # Import backtest engine from scripts
+            script_dir = os.path.dirname(__file__)
+            sys.path.insert(0, script_dir)
+            from backtest import BacktestEngine
+
+            settings = get_settings()
+            db_manager = DatabaseManager()
+            await db_manager.init_db(settings)
+
+            _backtest_progress["progress"] = 10
+            _backtest_progress["message"] = "Creating backtest engine..."
+
+            bt_engine = BacktestEngine(
+                settings=settings,
+                db_manager=db_manager,
+                strategy_name=strategy,
+                candle_interval=interval,
+            )
+
+            end_time = datetime.now(UTC)
+            start_time = end_time - timedelta(days=days)
+
+            _backtest_progress["progress"] = 15
+            _backtest_progress["message"] = "Loading historical data..."
+
+            await bt_engine.run(pair, start_time, end_time)
+
+            _backtest_progress["progress"] = 85
+            _backtest_progress["message"] = "Saving results..."
+
+            await bt_engine.save_to_database(pair)
+            await bt_engine.save_trades_to_database(str(bt_engine.backtest_run.id), pair)
+
+            _backtest_progress = {
+                "running": False,
+                "progress": 100,
+                "message": "Completed!",
+                "error": None,
+            }
+
+            await db_manager.close_db()
+
+        except Exception as e:
+            _backtest_progress = {
+                "running": False,
+                "progress": 0,
+                "message": "",
+                "error": str(e),
+            }
+
+    asyncio.run(_run())
 
 
 def delete_backtest_run(backtest_id: str) -> tuple[bool, str]:
@@ -680,7 +803,9 @@ app.layout = dbc.Container(
                                                 width=8,
                                             ),
                                             dbc.Col(
-                                                html.Div(id="positions-summary", className="text-end"),
+                                                html.Div(
+                                                    id="positions-summary", className="text-end"
+                                                ),
                                                 width=4,
                                             ),
                                         ]
@@ -787,6 +912,116 @@ app.layout = dbc.Container(
                 # Tab 6: Backtest Results
                 dbc.Tab(
                     [
+                        # Data range badge
+                        html.Div(id="backtest-data-range", className="mb-3"),
+                        # Run Backtest Form
+                        dbc.Card(
+                            [
+                                dbc.CardHeader(html.H5("Run New Backtest", className="mb-0")),
+                                dbc.CardBody(
+                                    [
+                                        dbc.Row(
+                                            [
+                                                dbc.Col(
+                                                    [
+                                                        dbc.Label("Strategy"),
+                                                        dbc.Select(
+                                                            id="backtest-strategy-select",
+                                                            options=[
+                                                                {
+                                                                    "label": "Threshold",
+                                                                    "value": "threshold",
+                                                                },
+                                                                {
+                                                                    "label": "Threshold Multi",
+                                                                    "value": "threshold_multi",
+                                                                },
+                                                                {
+                                                                    "label": "Threshold Rolling",
+                                                                    "value": "threshold_rolling",
+                                                                },
+                                                                {
+                                                                    "label": "Technical Indicator",
+                                                                    "value": "technical_indicator",
+                                                                },
+                                                            ],
+                                                            value="threshold",
+                                                        ),
+                                                    ],
+                                                    width=3,
+                                                ),
+                                                dbc.Col(
+                                                    [
+                                                        dbc.Label("Days"),
+                                                        dbc.Input(
+                                                            id="backtest-days-input",
+                                                            type="number",
+                                                            value=7,
+                                                            min=1,
+                                                            max=365,
+                                                        ),
+                                                    ],
+                                                    width=2,
+                                                ),
+                                                dbc.Col(
+                                                    [
+                                                        dbc.Label("Interval (min)"),
+                                                        dbc.Select(
+                                                            id="backtest-interval-select",
+                                                            options=[
+                                                                {"label": "1 min", "value": "1"},
+                                                                {"label": "5 min", "value": "5"},
+                                                                {"label": "15 min", "value": "15"},
+                                                                {"label": "60 min", "value": "60"},
+                                                            ],
+                                                            value="15",
+                                                        ),
+                                                    ],
+                                                    width=2,
+                                                ),
+                                                dbc.Col(
+                                                    [
+                                                        dbc.Label("Pair"),
+                                                        dbc.Select(
+                                                            id="backtest-pair-select",
+                                                            options=[
+                                                                {
+                                                                    "label": "XBT/USDC",
+                                                                    "value": "XBT/USDC",
+                                                                },
+                                                            ],
+                                                            value="XBT/USDC",
+                                                        ),
+                                                    ],
+                                                    width=2,
+                                                ),
+                                                dbc.Col(
+                                                    [
+                                                        dbc.Label("\u00a0"),  # Spacer
+                                                        dbc.Button(
+                                                            "Run Backtest",
+                                                            id="run-backtest-btn",
+                                                            color="success",
+                                                            className="w-100",
+                                                        ),
+                                                    ],
+                                                    width=3,
+                                                ),
+                                            ],
+                                        ),
+                                        html.Div(id="backtest-progress", className="mt-3"),
+                                    ]
+                                ),
+                            ],
+                            className="mb-4",
+                        ),
+                        # Stores for backtest state
+                        dcc.Interval(
+                            id="backtest-progress-interval",
+                            interval=2000,
+                            disabled=True,
+                        ),
+                        # Backtest Runs Table
                         dbc.Row(
                             [
                                 dbc.Col(
@@ -802,10 +1037,17 @@ app.layout = dbc.Container(
                                                                         "Backtest Runs",
                                                                         className="mb-0",
                                                                     ),
-                                                                    width=8,
+                                                                    width=6,
                                                                 ),
                                                                 dbc.Col(
                                                                     [
+                                                                        dbc.Button(
+                                                                            "Compare Selected",
+                                                                            id="compare-backtest-btn",
+                                                                            color="info",
+                                                                            size="sm",
+                                                                            className="me-2",
+                                                                        ),
                                                                         dbc.Button(
                                                                             "Delete Selected",
                                                                             id="delete-backtest-btn",
@@ -820,7 +1062,7 @@ app.layout = dbc.Container(
                                                                             size="sm",
                                                                         ),
                                                                     ],
-                                                                    width=4,
+                                                                    width=6,
                                                                     className="text-end",
                                                                 ),
                                                             ]
@@ -840,6 +1082,51 @@ app.layout = dbc.Container(
                             ],
                             className="mb-4",
                         ),
+                        # Comparison Section (collapsible)
+                        dbc.Collapse(
+                            id="comparison-collapse",
+                            is_open=False,
+                            children=[
+                                dbc.Card(
+                                    [
+                                        dbc.CardHeader(
+                                            dbc.Row(
+                                                [
+                                                    dbc.Col(
+                                                        html.H5(
+                                                            "Strategy Comparison", className="mb-0"
+                                                        ),
+                                                        width=8,
+                                                    ),
+                                                    dbc.Col(
+                                                        dbc.Button(
+                                                            "Close",
+                                                            id="close-comparison-btn",
+                                                            size="sm",
+                                                            color="secondary",
+                                                        ),
+                                                        width=4,
+                                                        className="text-end",
+                                                    ),
+                                                ]
+                                            )
+                                        ),
+                                        dbc.CardBody(
+                                            [
+                                                html.Div(id="comparison-metrics-table"),
+                                                html.Hr(),
+                                                dcc.Graph(
+                                                    id="comparison-equity-chart",
+                                                    config={"displayModeBar": False},
+                                                ),
+                                            ]
+                                        ),
+                                    ],
+                                    className="mb-4",
+                                ),
+                            ],
+                        ),
+                        # Details Row
                         dbc.Row(
                             [
                                 dbc.Col(
@@ -1182,46 +1469,119 @@ def execute_query(n_clicks, query):
     [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
 )
 def update_stats(n_intervals, n_clicks):
-    """Update statistics tab."""
+    """Update statistics tab with data range info."""
     stats = fetch_stats()
+    data_range = fetch_data_range_stats()
 
-    return dbc.Row(
+    # Create data range table
+    intervals_data = data_range.get("intervals", [])
+    range_rows = []
+    for item in intervals_data:
+        interval = item["interval"]
+        count = item["candle_count"]
+        earliest = item["earliest"]
+        latest = item["latest"]
+        span_days = (latest - earliest).days if earliest and latest else 0
+
+        range_rows.append(
+            {
+                "interval": f"{interval} min",
+                "count": f"{count:,}",
+                "earliest": earliest.strftime("%Y-%m-%d %H:%M") if earliest else "—",
+                "latest": latest.strftime("%Y-%m-%d %H:%M") if latest else "—",
+                "span": f"{span_days} days",
+            }
+        )
+
+    data_range_table = (
+        dash_table.DataTable(
+            data=range_rows,
+            columns=[
+                {"name": "Interval", "id": "interval"},
+                {"name": "Candles", "id": "count"},
+                {"name": "Earliest", "id": "earliest"},
+                {"name": "Latest", "id": "latest"},
+                {"name": "Span", "id": "span"},
+            ],
+            style_table={"overflowX": "auto"},
+            style_header={
+                "backgroundColor": "rgb(30, 30, 30)",
+                "color": "white",
+                "fontWeight": "bold",
+            },
+            style_cell={
+                "backgroundColor": "rgb(50, 50, 50)",
+                "color": "white",
+                "padding": "8px",
+            },
+        )
+        if range_rows
+        else dbc.Alert("No OHLC data available", color="info")
+    )
+
+    return html.Div(
         [
-            dbc.Col(
+            dbc.Row(
                 [
-                    dbc.Card(
+                    dbc.Col(
                         [
-                            dbc.CardHeader("OHLC Data"),
-                            dbc.CardBody(
+                            dbc.Card(
                                 [
-                                    html.P(f"Total candles: {stats.get('total_candles', 0):,}"),
-                                    html.P(f"First candle: {stats.get('first_candle', '—')}"),
-                                    html.P(f"Last candle: {stats.get('last_candle', '—')}"),
+                                    dbc.CardHeader("Available Data Range (XBT/USDC)"),
+                                    dbc.CardBody([data_range_table]),
                                 ]
                             ),
-                        ]
+                        ],
+                        width=12,
+                        className="mb-4",
                     ),
-                ],
-                width=6,
+                ]
             ),
-            dbc.Col(
+            dbc.Row(
                 [
-                    dbc.Card(
+                    dbc.Col(
                         [
-                            dbc.CardHeader("Trading"),
-                            dbc.CardBody(
+                            dbc.Card(
                                 [
-                                    html.P(f"Total trades: {stats.get('total_trades', 0)}"),
-                                    html.P(
-                                        f"Buys: {stats.get('total_buys', 0)} | Sells: {stats.get('total_sells', 0)}"
+                                    dbc.CardHeader("OHLC Data"),
+                                    dbc.CardBody(
+                                        [
+                                            html.P(
+                                                f"Total candles: {stats.get('total_candles', 0):,}"
+                                            ),
+                                            html.P(
+                                                f"First candle: {stats.get('first_candle', '—')}"
+                                            ),
+                                            html.P(f"Last candle: {stats.get('last_candle', '—')}"),
+                                        ]
                                     ),
-                                    html.P(f"Total P&L: {stats.get('total_pnl', 0):+.2f} USDC"),
                                 ]
                             ),
-                        ]
+                        ],
+                        width=6,
                     ),
-                ],
-                width=6,
+                    dbc.Col(
+                        [
+                            dbc.Card(
+                                [
+                                    dbc.CardHeader("Trading"),
+                                    dbc.CardBody(
+                                        [
+                                            html.P(f"Total trades: {stats.get('total_trades', 0)}"),
+                                            html.P(
+                                                f"Buys: {stats.get('total_buys', 0)} | Sells: {stats.get('total_sells', 0)}"
+                                            ),
+                                            html.P(
+                                                f"Total P&L: {stats.get('total_pnl', 0):+.2f} USDC"
+                                            ),
+                                        ]
+                                    ),
+                                ]
+                            ),
+                        ],
+                        width=6,
+                    ),
+                ]
             ),
         ]
     )
@@ -1327,7 +1687,7 @@ def update_backtest_runs(n_clicks, active_tab, delete_status):
                 "color": "#00ff88",
             },
         ],
-        row_selectable="single",
+        row_selectable="multi",
         selected_rows=[0] if not df.empty else [],
         page_size=10,
     )
@@ -1502,6 +1862,391 @@ def update_backtest_details(selected_rows, data):
     equity_fig = create_backtest_equity_chart(trades_df, float(bt.get("starting_balance", 1000)))
 
     return details, equity_fig
+
+
+# ============================================================================
+# DATA RANGE CALLBACK
+# ============================================================================
+
+
+@callback(
+    Output("backtest-data-range", "children"),
+    Input("tabs", "active_tab"),
+)
+def update_data_range_badge(active_tab):
+    """Show data range badge in Backtest tab."""
+    if active_tab != "tab-backtest":
+        return dash.no_update
+
+    stats = fetch_data_range_stats()
+
+    if not stats.get("global_earliest"):
+        return dbc.Alert("No market data available", color="warning", className="mb-2")
+
+    earliest = stats["global_earliest"].strftime("%Y-%m-%d")
+    latest = stats["global_latest"].strftime("%Y-%m-%d")
+    total = stats["total_candles"]
+
+    # Create interval breakdown
+    intervals_text = ", ".join(
+        [f"{item['interval']}min: {item['candle_count']:,}" for item in stats.get("intervals", [])]
+    )
+
+    return html.Div(
+        [
+            dbc.Badge(f"Data: {earliest} to {latest}", color="info", className="me-2"),
+            dbc.Badge(f"{total:,} candles", color="secondary", className="me-2"),
+            html.Small(f"({intervals_text})", className="text-muted"),
+        ]
+    )
+
+
+# ============================================================================
+# BACKTEST EXECUTION CALLBACKS
+# ============================================================================
+
+
+@callback(
+    [
+        Output("backtest-progress-interval", "disabled"),
+        Output("run-backtest-btn", "disabled"),
+    ],
+    Input("run-backtest-btn", "n_clicks"),
+    [
+        State("backtest-strategy-select", "value"),
+        State("backtest-days-input", "value"),
+        State("backtest-interval-select", "value"),
+        State("backtest-pair-select", "value"),
+    ],
+    prevent_initial_call=True,
+)
+def start_backtest(n_clicks, strategy, days, interval, pair):
+    """Start backtest in background thread."""
+    global _backtest_thread, _backtest_progress
+
+    if _backtest_progress.get("running"):
+        return dash.no_update, dash.no_update
+
+    _backtest_thread = threading.Thread(
+        target=run_backtest_in_thread,
+        args=(strategy, int(days), int(interval), pair),
+        daemon=True,
+    )
+    _backtest_thread.start()
+
+    return False, True  # Enable interval, disable button
+
+
+@callback(
+    [
+        Output("backtest-progress", "children"),
+        Output("backtest-progress-interval", "disabled", allow_duplicate=True),
+        Output("run-backtest-btn", "disabled", allow_duplicate=True),
+        Output("backtest-runs-table", "children", allow_duplicate=True),
+    ],
+    Input("backtest-progress-interval", "n_intervals"),
+    prevent_initial_call=True,
+)
+def update_backtest_progress(n_intervals):
+    """Poll backtest progress."""
+    global _backtest_progress
+
+    if _backtest_progress.get("error"):
+        error_msg = _backtest_progress["error"]
+        _backtest_progress = {"running": False, "progress": 0, "message": "", "error": None}
+        return (
+            dbc.Alert(f"Error: {error_msg}", color="danger"),
+            True,
+            False,
+            dash.no_update,
+        )
+
+    if not _backtest_progress.get("running"):
+        if _backtest_progress.get("progress") == 100:
+            # Completed - refresh table
+            _backtest_progress = {"running": False, "progress": 0, "message": "", "error": None}
+            # Trigger table refresh by returning updated content
+            df = fetch_backtest_runs()
+            if not df.empty:
+                # Re-create table (simplified refresh)
+                return (
+                    dbc.Alert("Backtest completed!", color="success", dismissable=True),
+                    True,
+                    False,
+                    update_backtest_runs_table(df),
+                )
+            return (
+                dbc.Alert("Backtest completed!", color="success", dismissable=True),
+                True,
+                False,
+                dash.no_update,
+            )
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+    progress = _backtest_progress.get("progress", 0)
+    message = _backtest_progress.get("message", "Running...")
+
+    return (
+        html.Div(
+            [
+                dbc.Progress(value=progress, striped=True, animated=True, className="mb-2"),
+                html.Small(message, className="text-muted"),
+            ]
+        ),
+        False,
+        True,
+        dash.no_update,
+    )
+
+
+def update_backtest_runs_table(df: pd.DataFrame) -> dash_table.DataTable:
+    """Helper to create backtest runs DataTable."""
+    display_df = df.copy()
+    display_df["period"] = display_df.apply(
+        lambda r: f"{r['start_time'].strftime('%m/%d')} - {r['end_time'].strftime('%m/%d')}"
+        if pd.notna(r["start_time"])
+        else "—",
+        axis=1,
+    )
+    display_df["return"] = display_df["total_return_pct"].apply(
+        lambda x: f"{float(x):+.2f}%" if pd.notna(x) else "—"
+    )
+    display_df["win_rate_pct"] = display_df["win_rate"].apply(
+        lambda x: f"{float(x) * 100:.1f}%" if pd.notna(x) else "—"
+    )
+    display_df["pnl"] = display_df["net_pnl"].apply(
+        lambda x: f"{float(x):+.2f}" if pd.notna(x) else "—"
+    )
+    display_df["id_short"] = display_df["id"].apply(lambda x: str(x)[:8] if x else "—")
+
+    columns_to_show = [
+        "id_short",
+        "run_name",
+        "strategy",
+        "period",
+        "total_trades",
+        "win_rate_pct",
+        "pnl",
+        "return",
+    ]
+    display_df = display_df[columns_to_show]
+
+    return dash_table.DataTable(
+        id="backtest-runs-datatable",
+        data=display_df.to_dict("records"),
+        columns=[
+            {"name": "ID", "id": "id_short"},
+            {"name": "Run Name", "id": "run_name"},
+            {"name": "Strategy", "id": "strategy"},
+            {"name": "Period", "id": "period"},
+            {"name": "Trades", "id": "total_trades"},
+            {"name": "Win Rate", "id": "win_rate_pct"},
+            {"name": "Net P&L", "id": "pnl"},
+            {"name": "Return", "id": "return"},
+        ],
+        style_table={"overflowX": "auto"},
+        style_header={
+            "backgroundColor": "rgb(30, 30, 30)",
+            "color": "white",
+            "fontWeight": "bold",
+        },
+        style_cell={
+            "backgroundColor": "rgb(50, 50, 50)",
+            "color": "white",
+            "border": "1px solid rgb(70, 70, 70)",
+            "textAlign": "left",
+            "padding": "10px",
+        },
+        style_data_conditional=[
+            {
+                "if": {"filter_query": "{return} contains '-'"},
+                "color": "#ff4444",
+            },
+            {
+                "if": {"filter_query": "{return} contains '+' && {return} != '+0.00%'"},
+                "color": "#00ff88",
+            },
+        ],
+        row_selectable="multi",
+        selected_rows=[0] if not df.empty else [],
+        page_size=10,
+    )
+
+
+# ============================================================================
+# COMPARISON CALLBACKS
+# ============================================================================
+
+
+def create_comparison_equity_chart(runs_data: list[dict]) -> go.Figure:
+    """Create overlaid equity curves for multiple backtests."""
+    fig = go.Figure()
+
+    colors = ["#00ff88", "#ff4444", "#4488ff", "#ffaa00", "#aa44ff"]
+
+    for i, run in enumerate(runs_data):
+        trades_df = fetch_backtest_trades(str(run["id"]))
+        if trades_df.empty:
+            continue
+
+        # Calculate equity curve
+        starting_balance = float(run["starting_balance"])
+        equity = [starting_balance]
+        timestamps = [trades_df["timestamp"].iloc[0]]
+
+        cumulative_pnl = 0
+        for _, trade in trades_df.iterrows():
+            if trade["pnl"] is not None and pd.notna(trade["pnl"]):
+                cumulative_pnl += float(trade["pnl"])
+            equity.append(starting_balance + cumulative_pnl)
+            timestamps.append(trade["timestamp"])
+
+        run_name = run.get("run_name", "Unknown")
+        if len(run_name) > 20:
+            run_name = run_name[:20] + "..."
+
+        fig.add_trace(
+            go.Scatter(
+                x=timestamps,
+                y=equity,
+                mode="lines",
+                name=f"{run['strategy']} ({run_name})",
+                line={"color": colors[i % len(colors)], "width": 2},
+            )
+        )
+
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        height=400,
+        margin={"l": 50, "r": 50, "t": 30, "b": 50},
+        xaxis={"gridcolor": "rgba(255,255,255,0.1)", "title": "Time"},
+        yaxis={"gridcolor": "rgba(255,255,255,0.1)", "title": "Equity (USDC)"},
+        legend={"orientation": "h", "yanchor": "bottom", "y": 1.02},
+    )
+
+    return fig
+
+
+def create_comparison_metrics_table(runs: list[dict]) -> dash_table.DataTable:
+    """Create side-by-side metrics comparison table."""
+    metrics = [
+        ("Strategy", "strategy"),
+        ("Period", None),
+        ("Total Return %", "total_return_pct"),
+        ("Net P&L", "net_pnl"),
+        ("Win Rate %", "win_rate"),
+        ("Total Trades", "total_trades"),
+        ("Sharpe Ratio", "sharpe_ratio"),
+        ("Max Drawdown %", "max_drawdown_pct"),
+        ("Profit Factor", "profit_factor"),
+    ]
+
+    rows = []
+    for metric_name, key in metrics:
+        row = {"Metric": metric_name}
+        for i, run in enumerate(runs):
+            col_name = f"Run {i + 1}"
+            if key is None and metric_name == "Period":
+                start = (
+                    run["start_time"].strftime("%m/%d") if pd.notna(run.get("start_time")) else "?"
+                )
+                end = run["end_time"].strftime("%m/%d") if pd.notna(run.get("end_time")) else "?"
+                row[col_name] = f"{start} - {end}"
+            elif key == "win_rate":
+                val = run.get(key)
+                row[col_name] = f"{float(val) * 100:.1f}%" if pd.notna(val) else "—"
+            elif key in ["total_return_pct", "max_drawdown_pct"]:
+                val = run.get(key)
+                row[col_name] = f"{float(val):+.2f}%" if pd.notna(val) else "—"
+            elif key == "net_pnl":
+                val = run.get(key)
+                row[col_name] = f"{float(val):+.2f}" if pd.notna(val) else "—"
+            elif key in ["sharpe_ratio", "profit_factor"]:
+                val = run.get(key)
+                row[col_name] = f"{float(val):.2f}" if pd.notna(val) else "—"
+            else:
+                row[col_name] = str(run.get(key, "—"))
+        rows.append(row)
+
+    columns = [{"name": "Metric", "id": "Metric"}]
+    columns.extend([{"name": f"Run {i + 1}", "id": f"Run {i + 1}"} for i in range(len(runs))])
+
+    return dash_table.DataTable(
+        data=rows,
+        columns=columns,
+        style_table={"overflowX": "auto"},
+        style_header={
+            "backgroundColor": "rgb(30, 30, 30)",
+            "color": "white",
+            "fontWeight": "bold",
+        },
+        style_cell={
+            "backgroundColor": "rgb(50, 50, 50)",
+            "color": "white",
+            "padding": "10px",
+        },
+    )
+
+
+@callback(
+    [
+        Output("comparison-collapse", "is_open"),
+        Output("comparison-metrics-table", "children"),
+        Output("comparison-equity-chart", "figure"),
+    ],
+    [
+        Input("compare-backtest-btn", "n_clicks"),
+        Input("close-comparison-btn", "n_clicks"),
+    ],
+    [
+        State("backtest-runs-datatable", "selected_rows"),
+        State("backtest-runs-datatable", "data"),
+    ],
+    prevent_initial_call=True,
+)
+def handle_comparison(compare_clicks, close_clicks, selected_rows, data):
+    """Show/hide comparison view."""
+    ctx = dash.callback_context
+    if not ctx.triggered:
+        return dash.no_update, dash.no_update, dash.no_update
+
+    trigger = ctx.triggered[0]["prop_id"].split(".")[0]
+
+    if trigger == "close-comparison-btn":
+        return False, dash.no_update, dash.no_update
+
+    if not selected_rows or len(selected_rows) < 2:
+        return (
+            True,
+            dbc.Alert("Select at least 2 runs to compare", color="warning"),
+            go.Figure(),
+        )
+
+    # Get selected run IDs
+    selected_ids = [data[i]["id_short"] for i in selected_rows]
+
+    # Fetch full run data
+    df = fetch_backtest_runs()
+    runs = []
+    for short_id in selected_ids:
+        matching = df[df["id"].astype(str).str.startswith(short_id)]
+        if not matching.empty:
+            runs.append(matching.iloc[0].to_dict())
+
+    if len(runs) < 2:
+        return (
+            True,
+            dbc.Alert("Could not find selected runs", color="warning"),
+            go.Figure(),
+        )
+
+    # Create comparison views
+    metrics_table = create_comparison_metrics_table(runs)
+    equity_chart = create_comparison_equity_chart(runs)
+
+    return True, metrics_table, equity_chart
 
 
 # ============================================================================
