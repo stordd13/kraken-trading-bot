@@ -277,22 +277,16 @@ class ScheduledTasksSettings(BaseSettings):
         description="Timezone for cron schedules",
     )
 
-    # Cron expressions for scheduled jobs
-    daily_1min_cron: str = Field(
+    # Cron expression for daily OHLC backfill (all intervals)
+    daily_backfill_cron: str = Field(
         default="0 2 * * *",  # 02:00 UTC daily
-        description="Cron expression for 1min OHLC collection",
+        description="Cron expression for daily OHLC backfill (all intervals)",
     )
-    daily_5min_cron: str = Field(
-        default="15 2 * * *",  # 02:15 UTC daily
-        description="Cron expression for 5min OHLC collection",
-    )
-    weekly_15min_cron: str = Field(
-        default="0 3 * * 1",  # 03:00 UTC Mondays
-        description="Cron expression for 15min OHLC collection",
-    )
-    monthly_1h_cron: str = Field(
-        default="0 4 1 * *",  # 04:00 UTC 1st of month
-        description="Cron expression for 1h OHLC collection",
+    backfill_days: int = Field(
+        default=1,
+        description="Number of days to backfill each run",
+        ge=1,
+        le=30,
     )
 
     # Data collection settings

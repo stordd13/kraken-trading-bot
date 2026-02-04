@@ -422,8 +422,8 @@ def run_backtest_in_thread(strategy: str, days: int, interval: int, pair: str) -
             _backtest_progress["progress"] = 85
             _backtest_progress["message"] = "Saving results..."
 
-            await bt_engine.save_to_database(pair)
-            await bt_engine.save_trades_to_database(str(bt_engine.backtest_run.id), pair)
+            backtest_run = await bt_engine.save_to_database(pair)
+            await bt_engine.save_trades_to_database(str(backtest_run.id), pair)
 
             _backtest_progress = {
                 "running": False,

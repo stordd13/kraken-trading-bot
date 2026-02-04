@@ -20,7 +20,10 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from sqlalchemy import select
+
 from krakenbot.models.base import SignalType
+from krakenbot.models.market_data import OHLCData
 from krakenbot.strategies.base import BaseStrategy, TradingSignal
 
 if TYPE_CHECKING:
@@ -105,6 +108,65 @@ class ThresholdRollingStrategy(BaseStrategy):
             pair=self.pair,
         )
 
+    async def start(self) -> None:
+        """Start the strategy with pre-loaded historical references."""
+        await super().start()
+
+        # Pre-load reference prices from DB so signals can be generated immediately
+        if not self._skip_db_sync:
+            await self._load_historical_references()
+
+    async def _load_historical_references(self) -> None:
+        """Load recent completed OHLC closes as initial reference prices.
+
+        Queries the database for the most recent candles matching the configured
+        pair and interval, and populates _reference_prices so the strategy can
+        generate signals immediately after startup.
+        """
+        interval = self.settings.trading.candle_interval
+
+        stmt = (
+            select(OHLCData.close)
+            .where(
+                OHLCData.pair == self.pair,
+                OHLCData.interval == interval,
+            )
+            .order_by(OHLCData.timestamp.desc())
+            .limit(self.lookback_periods)
+        )
+
+        try:
+            async with self.db_manager.session() as session:
+                result = await session.execute(stmt)
+                rows = result.scalars().all()
+
+            if rows:
+                # Rows are DESC, reverse to get chronological order
+                self._reference_prices = list(reversed(rows))
+                # Set pending reference as the most recent (will be added on next candle)
+                self._pending_reference = self._reference_prices.pop()
+
+                self.logger.info(
+                    "historical_references_loaded",
+                    pair=self.pair,
+                    interval=interval,
+                    num_references=len(self._reference_prices),
+                    oldest_ref=float(self._reference_prices[0]) if self._reference_prices else None,
+                    newest_ref=float(self._pending_reference),
+                )
+            else:
+                self.logger.warning(
+                    "no_historical_references",
+                    pair=self.pair,
+                    interval=interval,
+                )
+        except Exception as e:
+            self.logger.error(
+                "historical_references_load_failed",
+                error=str(e),
+                pair=self.pair,
+            )
+
     async def on_tick(self, tick_data: dict[str, Any]) -> None:
         """Update current price from tick data."""
         if tick_data.get("pair") != self.pair:
@@ -113,11 +175,24 @@ class ThresholdRollingStrategy(BaseStrategy):
         self._current_price = Decimal(str(tick_data["price"]))
 
     async def on_ohlc(self, ohlc_data: dict[str, Any]) -> None:
-        """Process OHLC candle and update reference prices."""
+        """Process OHLC candle and update reference prices.
+
+        Only processes COMPLETED candles to avoid polluting reference prices
+        with intermediate values. Kraken WebSocket sends OHLC updates on every
+        trade, but only the final close price of a completed candle is meaningful.
+        """
         if ohlc_data.get("pair") != self.pair:
             return
 
         close_price = Decimal(str(ohlc_data["close"]))
+
+        # Always update current price for display/monitoring
+        self._current_price = close_price
+
+        # Only process completed candles for reference prices
+        # Kraken WS sends updates on every trade - we only want final closes
+        if not ohlc_data.get("is_complete", False):
+            return
 
         # Store timestamp for holding time calculations
         if "timestamp" in ohlc_data:

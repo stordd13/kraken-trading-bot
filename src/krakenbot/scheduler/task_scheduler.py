@@ -113,81 +113,31 @@ class TaskScheduler:
             await self.rest_client.close()
 
     async def _register_tasks(self) -> None:
-        """Register all scheduled data collection tasks.
+        """Register daily OHLC backfill task for all intervals.
 
-        Creates cron-based jobs for each interval (1min, 5min, 15min, 1h)
-        based on configuration.
+        A single daily job fetches the last N days of data for ALL configured
+        intervals (1min, 5min, 15min, 1h). This ensures uniform data coverage
+        across all intervals.
         """
-        # Daily 1min OHLC fetch
-        if 1 in self.settings.scheduler.intervals:
-            self.scheduler.add_job(
-                self._fetch_ohlc_task,
-                trigger=CronTrigger.from_crontab(
-                    self.settings.scheduler.daily_1min_cron,
-                    timezone=self.settings.scheduler.timezone,
-                ),
-                args=[1, 1],  # interval=1min, days=1
-                id="daily_ohlc_1min",
-                name="Daily 1min OHLC Collection",
-            )
-            logger.info(
-                "registered_scheduled_task",
-                task_id="daily_ohlc_1min",
-                cron=self.settings.scheduler.daily_1min_cron,
-            )
+        days = self.settings.scheduler.backfill_days
 
-        # Daily 5min OHLC fetch
-        if 5 in self.settings.scheduler.intervals:
+        for interval in self.settings.scheduler.intervals:
             self.scheduler.add_job(
                 self._fetch_ohlc_task,
                 trigger=CronTrigger.from_crontab(
-                    self.settings.scheduler.daily_5min_cron,
+                    self.settings.scheduler.daily_backfill_cron,
                     timezone=self.settings.scheduler.timezone,
                 ),
-                args=[5, 1],  # interval=5min, days=1
-                id="daily_ohlc_5min",
-                name="Daily 5min OHLC Collection",
+                args=[interval, days],
+                id=f"daily_ohlc_{interval}min",
+                name=f"Daily {interval}min OHLC Backfill ({days}d)",
             )
             logger.info(
                 "registered_scheduled_task",
-                task_id="daily_ohlc_5min",
-                cron=self.settings.scheduler.daily_5min_cron,
-            )
-
-        # Weekly 15min OHLC fetch
-        if 15 in self.settings.scheduler.intervals:
-            self.scheduler.add_job(
-                self._fetch_ohlc_task,
-                trigger=CronTrigger.from_crontab(
-                    self.settings.scheduler.weekly_15min_cron,
-                    timezone=self.settings.scheduler.timezone,
-                ),
-                args=[15, 7],  # interval=15min, days=7
-                id="weekly_ohlc_15min",
-                name="Weekly 15min OHLC Collection",
-            )
-            logger.info(
-                "registered_scheduled_task",
-                task_id="weekly_ohlc_15min",
-                cron=self.settings.scheduler.weekly_15min_cron,
-            )
-
-        # Monthly 1h OHLC fetch
-        if 60 in self.settings.scheduler.intervals:
-            self.scheduler.add_job(
-                self._fetch_ohlc_task,
-                trigger=CronTrigger.from_crontab(
-                    self.settings.scheduler.monthly_1h_cron,
-                    timezone=self.settings.scheduler.timezone,
-                ),
-                args=[60, 30],  # interval=1h, days=30
-                id="monthly_ohlc_1h",
-                name="Monthly 1h OHLC Collection",
-            )
-            logger.info(
-                "registered_scheduled_task",
-                task_id="monthly_ohlc_1h",
-                cron=self.settings.scheduler.monthly_1h_cron,
+                task_id=f"daily_ohlc_{interval}min",
+                interval=interval,
+                days=days,
+                cron=self.settings.scheduler.daily_backfill_cron,
             )
 
     async def _fetch_ohlc_task(
