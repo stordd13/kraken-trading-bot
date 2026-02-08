@@ -195,7 +195,7 @@ class RiskManager:
 
         # Run all risk checks
         await self._check_balance(result, pair, side, amount, price, balance)
-        await self._check_position_size(result, side, amount, price, balance)
+        await self._check_position_size(result, pair, side, amount, price, balance)
         await self._check_daily_loss_limit(result)
         await self._check_max_open_positions(result, side)
         await self._check_trade_interval(result)
@@ -267,6 +267,7 @@ class RiskManager:
     async def _check_position_size(
         self,
         result: RiskCheckResult,
+        pair: str,
         side: TradeSide,
         amount: Decimal,
         price: Decimal,
@@ -281,6 +282,7 @@ class RiskManager:
 
         Args:
             result: RiskCheckResult to update.
+            pair: Trading pair (e.g., "XBT/USDC").
             side: Order side (BUY or SELL).
             amount: Order amount in base currency.
             price: Current price.
@@ -291,20 +293,20 @@ class RiskManager:
         if side != TradeSide.BUY:
             return
 
-        # Calculate total portfolio value in EUR
-        # For simplicity, we use EUR as the base for calculation
-        # In production, you'd convert all currencies to EUR
-        total_portfolio_value = balance.get("EUR", Decimal("0"))
+        # Get the quote currency from the trading pair (e.g., "XBT/USDC" -> "USDC")
+        quote_currency = pair.split("/")[1] if "/" in pair else "EUR"
 
-        # Add value of crypto holdings (estimated)
-        for currency, bal in balance.items():
-            if currency != "EUR" and bal > Decimal("0"):
-                # We would need current prices for accurate conversion
-                # For now, skip non-EUR holdings in the check
-                pass
+        # Calculate total portfolio value in the quote currency
+        total_portfolio_value = balance.get(quote_currency, Decimal("0"))
+
+        # Also check EUR as fallback if quote currency not found
+        if total_portfolio_value <= Decimal("0") and quote_currency != "EUR":
+            total_portfolio_value = balance.get("EUR", Decimal("0"))
 
         if total_portfolio_value <= Decimal("0"):
-            result.add_reason("Portfolio value is zero or negative")
+            result.add_reason(
+                f"Portfolio value is zero: no {quote_currency} or EUR balance available"
+            )
             return
 
         # Calculate position size as percentage

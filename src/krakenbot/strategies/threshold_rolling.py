@@ -123,7 +123,7 @@ class ThresholdRollingStrategy(BaseStrategy):
         pair and interval, and populates _reference_prices so the strategy can
         generate signals immediately after startup.
         """
-        interval = self.settings.trading.candle_interval
+        interval = self.settings.trading.candle_interval_min
 
         stmt = (
             select(OHLCData.close)
@@ -166,6 +166,11 @@ class ThresholdRollingStrategy(BaseStrategy):
                 error=str(e),
                 pair=self.pair,
             )
+            # Fail-fast: strategy cannot function without reference prices
+            raise RuntimeError(
+                f"Cannot start strategy: failed to load historical references. "
+                f"Check database connection and data availability. Error: {e}"
+            ) from e
 
     async def on_tick(self, tick_data: dict[str, Any]) -> None:
         """Update current price from tick data."""

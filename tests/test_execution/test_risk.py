@@ -10,15 +10,14 @@ This module tests all risk management functionality including:
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from krakenbot.execution.risk import RiskCheckResult, RiskManager
-from krakenbot.models.base import TradeSide, TradeStatus
-
+from krakenbot.models.base import TradeSide
 
 # =============================================================================
 # RiskCheckResult Tests
@@ -211,6 +210,7 @@ class TestRiskManager:
 
         await risk_manager._check_position_size(
             result=result,
+            pair="XBT/EUR",
             side=TradeSide.BUY,
             amount=Decimal("0.001"),
             price=Decimal("42000"),  # Order value: 42 EUR = 0.42% of 10000
@@ -229,6 +229,7 @@ class TestRiskManager:
 
         await risk_manager._check_position_size(
             result=result,
+            pair="XBT/EUR",
             side=TradeSide.BUY,
             amount=Decimal("0.01"),
             price=Decimal("42000"),  # Order value: 420 EUR = 42% of 1000
@@ -248,6 +249,7 @@ class TestRiskManager:
 
         await risk_manager._check_position_size(
             result=result,
+            pair="XBT/EUR",
             side=TradeSide.BUY,
             amount=Decimal("0.001"),
             price=Decimal("42000"),
@@ -255,7 +257,7 @@ class TestRiskManager:
         )
 
         assert result.rejected is True
-        assert any("zero or negative" in reason for reason in result.reasons)
+        assert any("zero" in reason.lower() for reason in result.reasons)
 
     @pytest.mark.asyncio
     async def test_check_position_size_skipped_for_sell(
@@ -268,11 +270,31 @@ class TestRiskManager:
         # Even with a very large sell that would fail for buy, sell should pass
         await risk_manager._check_position_size(
             result=result,
+            pair="XBT/EUR",
             side=TradeSide.SELL,
             amount=Decimal("0.1"),
             price=Decimal("42000"),  # Order value: 4200 EUR = 420% of 1000
             balance=balance,
         )
+
+    @pytest.mark.asyncio
+    async def test_check_position_size_with_usdc(
+        self, risk_manager: RiskManager
+    ) -> None:
+        """Test position size check works with USDC as quote currency."""
+        result = RiskCheckResult(approved=True)
+        balance = {"USDC": Decimal("10000.00")}
+
+        await risk_manager._check_position_size(
+            result=result,
+            pair="XBT/USDC",
+            side=TradeSide.BUY,
+            amount=Decimal("0.001"),
+            price=Decimal("42000"),  # Order value: 42 USDC = 0.42% of 10000
+            balance=balance,
+        )
+
+        assert result.approved is True
 
         assert result.approved is True
 
@@ -403,7 +425,7 @@ class TestRiskManager:
     ) -> None:
         """Test trade interval check passes when enough time has elapsed."""
         result = RiskCheckResult(approved=True)
-        last_trade = datetime.now(timezone.utc) - timedelta(seconds=120)
+        last_trade = datetime.now(UTC) - timedelta(seconds=120)
 
         with patch.object(
             risk_manager, "_get_last_trade_time", return_value=last_trade
@@ -418,7 +440,7 @@ class TestRiskManager:
     ) -> None:
         """Test trade interval check fails when trading too soon."""
         result = RiskCheckResult(approved=True)
-        last_trade = datetime.now(timezone.utc) - timedelta(seconds=30)
+        last_trade = datetime.now(UTC) - timedelta(seconds=30)
 
         with patch.object(
             risk_manager, "_get_last_trade_time", return_value=last_trade
@@ -447,7 +469,7 @@ class TestRiskManager:
         """Test trade interval check passes when exactly at minimum."""
         result = RiskCheckResult(approved=True)
         # Default minimum is 60 seconds
-        last_trade = datetime.now(timezone.utc) - timedelta(seconds=60)
+        last_trade = datetime.now(UTC) - timedelta(seconds=60)
 
         with patch.object(
             risk_manager, "_get_last_trade_time", return_value=last_trade
@@ -491,7 +513,7 @@ class TestRiskManager:
     ) -> None:
         """Test full order validation collects multiple failure reasons."""
         balance = {"EUR": Decimal("100.00")}  # Insufficient balance
-        last_trade = datetime.now(timezone.utc) - timedelta(seconds=10)  # Too soon
+        last_trade = datetime.now(UTC) - timedelta(seconds=10)  # Too soon
 
         with (
             patch.object(
