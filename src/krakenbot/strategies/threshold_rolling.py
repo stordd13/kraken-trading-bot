@@ -96,6 +96,9 @@ class ThresholdRollingStrategy(BaseStrategy):
         self._used_references: set[Decimal] = set()  # Track which refs already have positions
         self._pending_reference: Decimal | None = None  # Delayed reference to add on next candle
         self._bought_this_candle: bool = False  # Limit to 1 BUY per candle
+        self._warming_up: bool = True  # Warmup mode: use first candle open as ref
+        self._warmup_open_price: Decimal | None = None  # First candle open price
+        self._historical_refs_for_display: list[Decimal] = []  # For dashboard only, NOT trading
 
         self.logger.debug(
             "threshold_rolling_strategy_initialized",
@@ -118,11 +121,13 @@ class ThresholdRollingStrategy(BaseStrategy):
             await self._load_historical_references()
 
     async def _load_historical_references(self) -> None:
-        """Load recent completed OHLC closes as initial reference prices.
+        """Load historical refs for DISPLAY ONLY (dashboard).
 
-        Queries the database for the most recent candles matching the configured
-        pair and interval, and populates _reference_prices so the strategy can
-        generate signals immediately after startup.
+        IMPORTANT: These refs are NOT used for trading decisions!
+        Trading refs start empty and accumulate only from bot startup.
+
+        The warmup mode uses the first candle's open price as sole reference
+        until the first candle completes. After that, refs accumulate from scratch.
         """
         interval = self.settings.trading.candle_interval_min
 
@@ -142,36 +147,32 @@ class ThresholdRollingStrategy(BaseStrategy):
                 rows = result.scalars().all()
 
             if rows:
-                # Rows are DESC, reverse to get chronological order
-                self._reference_prices = list(reversed(rows))
-                # Set pending reference as the most recent (will be added on next candle)
-                self._pending_reference = self._reference_prices.pop()
+                # Store for display only - NOT in _reference_prices for trading!
+                self._historical_refs_for_display = list(reversed(rows))
 
                 self.logger.info(
-                    "historical_references_loaded",
+                    "historical_references_loaded_for_display",
                     pair=self.pair,
                     interval=interval,
-                    num_references=len(self._reference_prices),
-                    oldest_ref=float(self._reference_prices[0]) if self._reference_prices else None,
-                    newest_ref=float(self._pending_reference),
+                    num_refs=len(self._historical_refs_for_display),
+                    oldest_ref=float(self._historical_refs_for_display[0]),
+                    newest_ref=float(self._historical_refs_for_display[-1]),
+                    note="For dashboard only - NOT used for trading",
                 )
             else:
                 self.logger.warning(
-                    "no_historical_references",
+                    "no_historical_references_for_display",
                     pair=self.pair,
                     interval=interval,
                 )
         except Exception as e:
-            self.logger.error(
+            self.logger.warning(
                 "historical_references_load_failed",
                 error=str(e),
                 pair=self.pair,
+                note="Non-fatal: trading will work without display refs",
             )
-            # Fail-fast: strategy cannot function without reference prices
-            raise RuntimeError(
-                f"Cannot start strategy: failed to load historical references. "
-                f"Check database connection and data availability. Error: {e}"
-            ) from e
+            # NOT a fatal error anymore - trading works without historical refs
 
     async def on_tick(self, tick_data: dict[str, Any]) -> None:
         """Update current price from tick data."""
@@ -195,10 +196,30 @@ class ThresholdRollingStrategy(BaseStrategy):
         # Always update current price for display/monitoring
         self._current_price = close_price
 
+        # Capture first candle open price during warmup
+        if self._warming_up and self._warmup_open_price is None:
+            open_price = Decimal(str(ohlc_data.get("open", ohlc_data.get("close"))))
+            self._warmup_open_price = open_price
+            self.logger.info(
+                "warmup_started",
+                open_price=float(open_price),
+                strategy=self.get_name(),
+            )
+
         # Only process completed candles for reference prices
         # Kraken WS sends updates on every trade - we only want final closes
         if not ohlc_data.get("is_complete", False):
             return
+
+        # End warmup on first complete candle
+        if self._warming_up:
+            self._warming_up = False
+            self._warmup_open_price = None
+            self.logger.info(
+                "warmup_complete",
+                first_ref=float(close_price),
+                strategy=self.get_name(),
+            )
 
         # Reset buy flag on new complete candle - allows 1 BUY per candle
         self._bought_this_candle = False
@@ -243,7 +264,8 @@ class ThresholdRollingStrategy(BaseStrategy):
             "ohlc_processed",
             pair=self.pair,
             close=float(close_price),
-            num_references=len(self._reference_prices),
+            num_trading_refs=len(self._reference_prices),
+            num_display_refs=len(self._historical_refs_for_display),
             open_positions=len(self._open_positions),
         )
 
@@ -258,8 +280,15 @@ class ThresholdRollingStrategy(BaseStrategy):
         Returns:
             TradingSignal with BUY, SELL, or HOLD, or None if not ready.
         """
-        # Need current price and at least one reference to generate signals
-        if not self._current_price or not self._reference_prices:
+        # Need current price to generate signals
+        if not self._current_price:
+            return None
+
+        # During warmup: need warmup_open_price
+        # After warmup: need at least one reference
+        if self._warming_up and self._warmup_open_price is None:
+            return None
+        if not self._warming_up and not self._reference_prices:
             return None
 
         # Update position state from database (for live trading)
@@ -344,7 +373,30 @@ class ThresholdRollingStrategy(BaseStrategy):
             if self._bought_this_candle:
                 return None
 
-            # Check ALL reference prices in the rolling window
+            # WARMUP MODE: Use first candle open as only reference
+            if self._warming_up:
+                drop_pct = (
+                    (self._current_price - self._warmup_open_price) / self._warmup_open_price
+                ) * Decimal("100")
+
+                if drop_pct <= Decimal(str(self.buy_threshold_pct)):
+                    self._bought_this_candle = True
+                    self._used_references.add(self._warmup_open_price)
+
+                    return TradingSignal(
+                        signal_type=SignalType.BUY,
+                        pair=self.pair,
+                        price=self._current_price,
+                        confidence=0.8,
+                        reason=f"[WARMUP] Price drop vs candle open: {float(drop_pct):.2f}% <= {self.buy_threshold_pct}%",
+                        strategy=self.get_name(),
+                        timestamp=current_time,
+                        metadata={"reference_price": str(self._warmup_open_price)},
+                    )
+                # During warmup, return None if no BUY (don't check empty _reference_prices)
+                return None
+
+            # NORMAL MODE: Check references accumulated since startup
             for ref_price in self._reference_prices:
                 # Skip if this reference already has an open position
                 if ref_price in self._used_references:
@@ -524,13 +576,16 @@ class ThresholdRollingStrategy(BaseStrategy):
     def reset_state(self) -> None:
         """Reset the strategy's internal state."""
         super().reset_state()
-        self._reference_prices.clear()
+        self._reference_prices.clear()  # Trading refs
+        self._historical_refs_for_display.clear()  # Display refs
         self._current_price = None
         self._open_positions.clear()
         self._used_references.clear()
         self._pending_reference = None
         self._next_position_id = 1
         self._bought_this_candle = False
+        self._warming_up = True
+        self._warmup_open_price = None
         self.logger.debug("threshold_rolling_strategy_state_reset", strategy=self.get_name())
 
     async def on_trade_filled(
@@ -660,3 +715,16 @@ class ThresholdRollingStrategy(BaseStrategy):
     def price_history_len(self) -> int:
         """Get the length of price history (number of reference prices)."""
         return len(self._reference_prices)
+
+    @property
+    def all_reference_prices_for_display(self) -> list[Decimal]:
+        """Get ALL reference prices for dashboard display.
+
+        Combines historical refs (from DB) with trading refs (since startup).
+        """
+        return self._historical_refs_for_display + self._reference_prices
+
+    @property
+    def is_warming_up(self) -> bool:
+        """Check if strategy is in warmup mode."""
+        return self._warming_up

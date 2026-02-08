@@ -291,6 +291,7 @@ class KrakenRestClient:
         side: TradeSide,
         amount: Decimal,
         strategy: str = "manual",
+        signal_price: Decimal | None = None,
     ) -> Trade:
         """Place a market order.
 
@@ -335,7 +336,7 @@ class KrakenRestClient:
         if self.is_paper_mode:
             return await self._paper_market_order(pair, side, amount, strategy)
         else:
-            return await self._live_market_order(kraken_pair, side, amount, strategy)
+            return await self._live_market_order(kraken_pair, side, amount, strategy, signal_price)
 
     async def _paper_market_order(
         self,
@@ -456,6 +457,7 @@ class KrakenRestClient:
         side: TradeSide,
         amount: Decimal,
         strategy: str,
+        signal_price: Decimal | None = None,
     ) -> Trade:
         """Execute a real market order.
 
@@ -484,7 +486,8 @@ class KrakenRestClient:
             order_id = order.get("id")
             filled_raw = order.get("filled") or amount
             filled_amount = Decimal(str(filled_raw))
-            avg_price_raw = order.get("average") or order.get("price") or 0
+            # Use signal_price as fallback before 0 to avoid DivisionByZero
+            avg_price_raw = order.get("average") or order.get("price") or signal_price or 0
             avg_price = Decimal(str(avg_price_raw))
 
             # Calculate fee - handle None values

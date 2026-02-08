@@ -277,6 +277,7 @@ class ExecutionEngine:
             side=side,
             amount=amount,
             strategy=signal.strategy,
+            signal_price=signal.price,  # Fallback price if Kraken returns None
         )
 
         self._stats["signals_executed"] += 1
