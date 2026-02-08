@@ -126,9 +126,11 @@ class KrakenWebSocketClient:
         self._channel_ids: dict[int, dict[str, Any]] = {}
 
         # OHLC candle tracking for completion detection
-        # Kraken WS doesn't notify when a candle completes - it just sends updates
-        # We detect completion by tracking when candle_start changes (new candle started)
-        self._last_candle_start: dict[str, datetime] = {}  # key = "pair-interval"
+        # Kraken WS v1 doesn't notify when a candle completes - it just sends updates
+        # We detect completion by tracking when candle_end (etime) changes
+        # etime is always rounded to interval boundary (e.g., 15:25:00 for 5-min candles)
+        # When etime changes, we've moved to a new candle and the previous one is complete
+        self._last_candle_end: dict[str, datetime] = {}  # key = "pair-interval"
         self._last_candle_data: dict[str, dict[str, Any]] = {}  # Store last candle for completion
 
         # Reconnection settings
@@ -284,7 +286,7 @@ class KrakenWebSocketClient:
 
         self._subscriptions.clear()
         self._channel_ids.clear()
-        self._last_candle_start.clear()
+        self._last_candle_end.clear()
         self._last_candle_data.clear()
 
     async def _reconnect(self) -> None:
@@ -650,10 +652,12 @@ class KrakenWebSocketClient:
                 trades_count=int(data[8]) if len(data) > 8 else None,
             )
 
-            # Detect candle transition: if candle_start changed, previous candle is complete
-            if key in self._last_candle_start:
-                if candle_start > self._last_candle_start[key]:
-                    # New candle started! The PREVIOUS candle is now complete.
+            # Detect candle transition: if candle_end changed, we've moved to a new candle
+            # candle_end (etime) is always rounded to interval boundary (e.g., 15:25:00 for 5-min)
+            # When it changes, the previous candle is complete
+            if key in self._last_candle_end:
+                if candle_end > self._last_candle_end[key]:
+                    # New candle! The PREVIOUS candle is now complete.
                     if key in self._last_candle_data:
                         prev_data = self._last_candle_data[key]
 
@@ -701,7 +705,7 @@ class KrakenWebSocketClient:
                         )
 
             # Update tracking with current candle data
-            self._last_candle_start[key] = candle_start
+            self._last_candle_end[key] = candle_end
             self._last_candle_data[key] = {
                 "timestamp": candle_start,
                 "candle_end": candle_end,
