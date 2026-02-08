@@ -215,6 +215,9 @@ class ThresholdRollingStrategy(BaseStrategy):
         if self._warming_up:
             self._warming_up = False
             self._warmup_open_price = None
+            # Add first reference immediately (no pending delay)
+            # This avoids the 5-minute gap with no reference after warmup
+            self._reference_prices.append(close_price)
             self.logger.info(
                 "warmup_complete",
                 first_ref=float(close_price),
@@ -258,7 +261,9 @@ class ThresholdRollingStrategy(BaseStrategy):
                 self._used_references.discard(removed_ref)
 
         # Store this candle's close as pending - will be added as reference on NEXT candle
-        self._pending_reference = close_price
+        # Skip if we just added this price directly (warmup case)
+        if close_price not in self._reference_prices:
+            self._pending_reference = close_price
 
         self.logger.debug(
             "ohlc_processed",
