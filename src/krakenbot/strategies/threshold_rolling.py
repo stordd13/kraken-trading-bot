@@ -95,6 +95,7 @@ class ThresholdRollingStrategy(BaseStrategy):
         self._skip_db_sync: bool = False
         self._used_references: set[Decimal] = set()  # Track which refs already have positions
         self._pending_reference: Decimal | None = None  # Delayed reference to add on next candle
+        self._bought_this_candle: bool = False  # Limit to 1 BUY per candle
 
         self.logger.debug(
             "threshold_rolling_strategy_initialized",
@@ -198,6 +199,9 @@ class ThresholdRollingStrategy(BaseStrategy):
         # Kraken WS sends updates on every trade - we only want final closes
         if not ohlc_data.get("is_complete", False):
             return
+
+        # Reset buy flag on new complete candle - allows 1 BUY per candle
+        self._bought_this_candle = False
 
         # Store timestamp for holding time calculations
         if "timestamp" in ohlc_data:
@@ -336,6 +340,10 @@ class ThresholdRollingStrategy(BaseStrategy):
 
         # BUY LOGIC: Check if we can open a new position
         if len(self._open_positions) < self.max_open_positions:
+            # Skip if already bought this candle (limit 1 BUY per candle)
+            if self._bought_this_candle:
+                return None
+
             # Check ALL reference prices in the rolling window
             for ref_price in self._reference_prices:
                 # Skip if this reference already has an open position
@@ -349,6 +357,8 @@ class ThresholdRollingStrategy(BaseStrategy):
                 if drop_pct <= Decimal(str(self.buy_threshold_pct)):
                     # Mark this reference as used
                     self._used_references.add(ref_price)
+                    # Mark that we bought this candle (no more BUY until next candle)
+                    self._bought_this_candle = True
 
                     return TradingSignal(
                         signal_type=SignalType.BUY,
@@ -520,6 +530,7 @@ class ThresholdRollingStrategy(BaseStrategy):
         self._used_references.clear()
         self._pending_reference = None
         self._next_position_id = 1
+        self._bought_this_candle = False
         self.logger.debug("threshold_rolling_strategy_state_reset", strategy=self.get_name())
 
     async def on_trade_filled(
