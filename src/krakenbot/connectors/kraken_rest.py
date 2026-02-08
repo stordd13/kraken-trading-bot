@@ -483,7 +483,8 @@ class KrakenRestClient:
             # Parse order response
             order_id = order.get("id")
             filled_amount = Decimal(str(order.get("filled", amount)))
-            avg_price = Decimal(str(order.get("average", order.get("price", 0))))
+            avg_price_raw = order.get("average") or order.get("price") or 0
+            avg_price = Decimal(str(avg_price_raw))
 
             # Calculate fee
             fee_info = order.get("fee", {})
