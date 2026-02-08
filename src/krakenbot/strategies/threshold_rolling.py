@@ -698,7 +698,13 @@ class ThresholdRollingStrategy(BaseStrategy):
 
     @property
     def reference_price(self) -> Decimal | None:
-        """Get the most recent reference price (for backward compatibility with main.py)."""
+        """Get the current reference price for display.
+
+        During warmup: returns _warmup_open_price
+        After warmup: returns the most recent trading reference
+        """
+        if self._warming_up and self._warmup_open_price is not None:
+            return self._warmup_open_price
         return self._reference_prices[-1] if self._reference_prices else None
 
     @property
