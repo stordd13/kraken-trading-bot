@@ -480,15 +480,17 @@ class KrakenRestClient:
                 float(amount),
             )
 
-            # Parse order response
+            # Parse order response - use 'or' to handle None values
             order_id = order.get("id")
-            filled_amount = Decimal(str(order.get("filled", amount)))
+            filled_raw = order.get("filled") or amount
+            filled_amount = Decimal(str(filled_raw))
             avg_price_raw = order.get("average") or order.get("price") or 0
             avg_price = Decimal(str(avg_price_raw))
 
-            # Calculate fee
-            fee_info = order.get("fee", {})
-            fee = Decimal(str(fee_info.get("cost", 0))) if fee_info else Decimal("0")
+            # Calculate fee - handle None values
+            fee_info = order.get("fee") or {}
+            fee_cost = fee_info.get("cost") if fee_info else 0
+            fee = Decimal(str(fee_cost or 0))
             fee_currency = fee_info.get("currency", "EUR") if fee_info else "EUR"
 
             # Create trade record
