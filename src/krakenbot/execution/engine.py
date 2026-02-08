@@ -296,6 +296,24 @@ class ExecutionEngine:
             status=trade.status.value,
         )
 
+        # Publish TRADE_ORDER_FILLED event for strategy position tracking
+        await self.event_bus.publish(
+            EventType.TRADE_ORDER_FILLED,
+            {
+                "trade_id": str(trade.id),
+                "pair": trade.pair,
+                "side": side.value,
+                "amount": str(trade.amount),
+                "price": str(trade.price),
+                "fee": str(trade.fee),
+                "strategy": trade.strategy,
+                "timestamp": trade.timestamp.isoformat(),
+                # Metadata from signal for position tracking
+                "reference_price": str(signal.metadata.get("reference_price", "0")),
+                "position_id": signal.metadata.get("position_id"),
+            },
+        )
+
     async def _calculate_order_amount(
         self,
         pair: str,

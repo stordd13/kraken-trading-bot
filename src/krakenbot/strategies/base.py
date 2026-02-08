@@ -20,6 +20,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
 from krakenbot.core.event_bus import EventType
@@ -28,7 +29,6 @@ from krakenbot.models.base import SignalType
 
 if TYPE_CHECKING:
     from datetime import datetime
-    from decimal import Decimal
 
     from krakenbot.config.settings import Settings
     from krakenbot.core.database import DatabaseManager
@@ -219,6 +219,8 @@ class BaseStrategy(ABC):
         # Subscribe to market events
         await self.event_bus.subscribe(EventType.MARKET_TICK, self._handle_tick)
         await self.event_bus.subscribe(EventType.MARKET_OHLC, self._handle_ohlc)
+        # Subscribe to trade filled events for position tracking
+        await self.event_bus.subscribe(EventType.TRADE_ORDER_FILLED, self._handle_trade_filled)
 
     async def stop(self) -> None:
         """Stop the strategy.
@@ -231,6 +233,7 @@ class BaseStrategy(ABC):
         # Unsubscribe from events
         await self.event_bus.unsubscribe(EventType.MARKET_TICK, self._handle_tick)
         await self.event_bus.unsubscribe(EventType.MARKET_OHLC, self._handle_ohlc)
+        await self.event_bus.unsubscribe(EventType.TRADE_ORDER_FILLED, self._handle_trade_filled)
 
     async def _handle_tick(self, data: dict[str, Any]) -> None:
         """Internal handler for tick events.
@@ -297,6 +300,79 @@ class BaseStrategy(ABC):
                 strategy=self.get_name(),
                 exc_info=e,
             )
+
+    async def _handle_trade_filled(self, data: dict[str, Any]) -> None:
+        """Internal handler for TRADE_ORDER_FILLED events.
+
+        Called when a trade order is filled by the ExecutionEngine.
+        Routes to on_trade_filled() for strategy-specific position tracking.
+
+        Args:
+            data: Trade filled event data containing trade details.
+        """
+        if not self._running:
+            return
+
+        # Only process trades for this strategy
+        if data.get("strategy") != self.get_name():
+            return
+
+        try:
+            # Parse reference_price - handle "0" as None
+            reference_price_str = data.get("reference_price")
+            reference_price: Decimal | None = None
+            if reference_price_str and reference_price_str != "0":
+                reference_price = Decimal(reference_price_str)
+
+            await self.on_trade_filled(
+                trade_id=data["trade_id"],
+                pair=data["pair"],
+                side=data["side"],
+                amount=Decimal(data["amount"]),
+                price=Decimal(data["price"]),
+                fee=Decimal(data["fee"]),
+                reference_price=reference_price,
+                position_id=data.get("position_id"),
+            )
+        except Exception as e:
+            self.logger.error(
+                "trade_filled_handler_error",
+                error=str(e),
+                error_type=type(e).__name__,
+                trade_id=data.get("trade_id"),
+                strategy=self.get_name(),
+                exc_info=e,
+            )
+
+    async def on_trade_filled(
+        self,
+        trade_id: str,
+        pair: str,
+        side: str,
+        amount: Decimal,
+        price: Decimal,
+        fee: Decimal,
+        reference_price: Decimal | None,
+        position_id: int | None,
+    ) -> None:
+        """Called when a trade order is filled.
+
+        Subclasses should override this to track positions.
+        Default implementation does nothing (for strategies without position tracking).
+
+        Args:
+            trade_id: Unique trade identifier.
+            pair: Trading pair (e.g., "XBT/USDC").
+            side: "buy" or "sell".
+            amount: Trade amount in base currency.
+            price: Execution price.
+            fee: Trading fee.
+            reference_price: Reference price for BUY (from signal metadata).
+            position_id: Position ID for SELL (from signal metadata).
+        """
+        # Default implementation: no-op
+        # Strategies with position tracking should override this
+        pass
 
     @property
     def is_running(self) -> bool:

@@ -522,6 +522,94 @@ class ThresholdRollingStrategy(BaseStrategy):
         self._next_position_id = 1
         self.logger.debug("threshold_rolling_strategy_state_reset", strategy=self.get_name())
 
+    async def on_trade_filled(
+        self,
+        trade_id: str,
+        pair: str,
+        side: str,
+        amount: Decimal,
+        price: Decimal,
+        fee: Decimal,
+        reference_price: Decimal | None,
+        position_id: int | None,
+    ) -> None:
+        """Track positions after trade execution.
+
+        Called by BaseStrategy when a TRADE_ORDER_FILLED event is received.
+        Updates internal _open_positions list to stay in sync with actual trades.
+
+        Args:
+            trade_id: Unique trade identifier.
+            pair: Trading pair.
+            side: "buy" or "sell".
+            amount: Trade amount in base currency (XBT).
+            price: Execution price.
+            fee: Trading fee.
+            reference_price: Reference price for BUY (from signal metadata).
+            position_id: Position ID for SELL (from signal metadata).
+        """
+        if side == "buy":
+            if reference_price is None:
+                self.logger.warning(
+                    "trade_filled_missing_reference_price",
+                    trade_id=trade_id,
+                    pair=pair,
+                )
+                return
+
+            # Calculate USDC value (amount in XBT * price in USDC)
+            amount_usdc = amount * price
+
+            # Add position to in-memory tracking
+            new_position_id = self.add_position(
+                entry_price=price,
+                amount_usdc=amount_usdc,
+                reference_price=reference_price,
+            )
+
+            self.logger.info(
+                "position_opened_from_trade",
+                trade_id=trade_id,
+                position_id=new_position_id,
+                entry_price=float(price),
+                amount_usdc=float(amount_usdc),
+                reference_price=float(reference_price),
+                open_positions=len(self._open_positions),
+            )
+
+        elif side == "sell":
+            if position_id is None:
+                self.logger.warning(
+                    "trade_filled_missing_position_id",
+                    trade_id=trade_id,
+                    pair=pair,
+                )
+                return
+
+            # Close position in in-memory tracking
+            closed = self.close_position(position_id)
+
+            if closed:
+                # Calculate P&L
+                pnl = (price - closed.entry_price) * (closed.amount_usdc / closed.entry_price) - fee
+
+                self.logger.info(
+                    "position_closed_from_trade",
+                    trade_id=trade_id,
+                    position_id=position_id,
+                    entry_price=float(closed.entry_price),
+                    exit_price=float(price),
+                    pnl=float(pnl),
+                    open_positions=len(self._open_positions),
+                )
+            else:
+                self.logger.warning(
+                    "position_not_found_for_close",
+                    trade_id=trade_id,
+                    position_id=position_id,
+                    known_positions=[p.position_id for p in self._open_positions],
+                )
+
     @property
     def open_positions_count(self) -> int:
         """Get the number of open positions."""
