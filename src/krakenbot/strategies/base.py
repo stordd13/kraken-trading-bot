@@ -344,7 +344,7 @@ class BaseStrategy(ABC):
                 exc_info=e,
             )
 
-    async def on_trade_filled(
+    async def on_trade_filled(  # noqa: B027
         self,
         trade_id: str,
         pair: str,
@@ -370,9 +370,6 @@ class BaseStrategy(ABC):
             reference_price: Reference price for BUY (from signal metadata).
             position_id: Position ID for SELL (from signal metadata).
         """
-        # Default implementation: no-op
-        # Strategies with position tracking should override this
-        pass
 
     @property
     def is_running(self) -> bool:
