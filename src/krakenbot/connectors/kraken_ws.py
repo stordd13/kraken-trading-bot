@@ -617,8 +617,8 @@ class KrakenWebSocketClient:
         Kraken WebSocket sends OHLC updates on every trade during the candle.
         It does NOT send a notification when a candle completes.
 
-        We detect candle completion by tracking when candle_start changes,
-        which means a new candle has started and the previous one is complete.
+        We detect candle completion by tracking when candle_end (etime) changes.
+        etime is always rounded to the interval boundary.
 
         Args:
             pair: Trading pair.
@@ -630,17 +630,17 @@ class KrakenWebSocketClient:
             interval = int(channel_name.split("-")[1])
 
             # Parse OHLC data
-            # Format: [time, etime, open, high, low, close, vwap, volume, count]
-            # time = candle start time, etime = candle end time
-            candle_start = datetime.fromtimestamp(float(data[0]), tz=UTC)
+            # Format: [epoc_last, epoc_end, open, high, low, close, vwap, volume, count]
+            # epoc_last = last update time (not useful - exact timestamp of last trade)
+            # epoc_end = end time of interval (rounded to interval boundary) - this is our candle identifier
             candle_end = datetime.fromtimestamp(float(data[1]), tz=UTC)
 
             # Tracking key for this pair/interval combination
             key = f"{pair}-{interval}"
 
-            # Create OHLC object for event
+            # Create OHLC object - use candle_end as timestamp (it's rounded to interval)
             ohlc = OHLCData(
-                timestamp=candle_start,
+                timestamp=candle_end,
                 pair=pair,
                 interval=interval,
                 open=Decimal(data[2]),
@@ -682,7 +682,7 @@ class KrakenWebSocketClient:
                             pair=pair,
                             interval=interval,
                             close=prev_data["close"],
-                            candle_start=prev_data["timestamp"].isoformat(),
+                            candle_end=prev_data["timestamp"].isoformat(),
                         )
 
                         # Publish COMPLETED candle event
@@ -692,7 +692,6 @@ class KrakenWebSocketClient:
                                 "pair": prev_data["pair"],
                                 "interval": prev_data["interval"],
                                 "timestamp": prev_data["timestamp"].isoformat(),
-                                "candle_end": prev_data["candle_end"].isoformat(),
                                 "is_complete": True,
                                 "open": prev_data["open"],
                                 "high": prev_data["high"],
@@ -707,8 +706,7 @@ class KrakenWebSocketClient:
             # Update tracking with current candle data
             self._last_candle_end[key] = candle_end
             self._last_candle_data[key] = {
-                "timestamp": candle_start,
-                "candle_end": candle_end,
+                "timestamp": candle_end,
                 "pair": pair,
                 "interval": interval,
                 "open": str(ohlc.open),
@@ -726,7 +724,7 @@ class KrakenWebSocketClient:
                 pair=pair,
                 interval=interval,
                 close=str(ohlc.close),
-                candle_end=candle_end.isoformat(),
+                timestamp=candle_end.isoformat(),
             )
 
             await self._event_bus.publish(
@@ -734,8 +732,7 @@ class KrakenWebSocketClient:
                 {
                     "pair": pair,
                     "interval": interval,
-                    "timestamp": candle_start.isoformat(),
-                    "candle_end": candle_end.isoformat(),
+                    "timestamp": candle_end.isoformat(),
                     "is_complete": False,  # Current candle is always in-progress
                     "open": str(ohlc.open),
                     "high": str(ohlc.high),
