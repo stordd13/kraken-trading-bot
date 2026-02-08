@@ -125,6 +125,12 @@ class KrakenWebSocketClient:
         self._subscriptions: dict[str, dict[str, Any]] = {}
         self._channel_ids: dict[int, dict[str, Any]] = {}
 
+        # OHLC candle tracking for completion detection
+        # Kraken WS doesn't notify when a candle completes - it just sends updates
+        # We detect completion by tracking when candle_start changes (new candle started)
+        self._last_candle_start: dict[str, datetime] = {}  # key = "pair-interval"
+        self._last_candle_data: dict[str, dict[str, Any]] = {}  # Store last candle for completion
+
         # Reconnection settings
         self._reconnect_delay = settings.kraken.ws_reconnect_delay_sec
         self._max_reconnect_attempts = 10
@@ -278,6 +284,8 @@ class KrakenWebSocketClient:
 
         self._subscriptions.clear()
         self._channel_ids.clear()
+        self._last_candle_start.clear()
+        self._last_candle_data.clear()
 
     async def _reconnect(self) -> None:
         """Attempt to reconnect to WebSocket.
@@ -604,8 +612,11 @@ class KrakenWebSocketClient:
     ) -> None:
         """Handle OHLC candle data.
 
-        Kraken WebSocket sends OHLC updates on every trade. We only save
-        completed candles to avoid storing intermediate states.
+        Kraken WebSocket sends OHLC updates on every trade during the candle.
+        It does NOT send a notification when a candle completes.
+
+        We detect candle completion by tracking when candle_start changes,
+        which means a new candle has started and the previous one is complete.
 
         Args:
             pair: Trading pair.
@@ -621,9 +632,11 @@ class KrakenWebSocketClient:
             # time = candle start time, etime = candle end time
             candle_start = datetime.fromtimestamp(float(data[0]), tz=UTC)
             candle_end = datetime.fromtimestamp(float(data[1]), tz=UTC)
-            current_time = datetime.now(UTC)
 
-            # Create OHLC object for event (always publish for live price tracking)
+            # Tracking key for this pair/interval combination
+            key = f"{pair}-{interval}"
+
+            # Create OHLC object for event
             ohlc = OHLCData(
                 timestamp=candle_start,
                 pair=pair,
@@ -637,30 +650,81 @@ class KrakenWebSocketClient:
                 trades_count=int(data[8]) if len(data) > 8 else None,
             )
 
-            # Check if candle is complete (current time >= candle end time)
-            is_candle_complete = current_time >= candle_end
+            # Detect candle transition: if candle_start changed, previous candle is complete
+            if key in self._last_candle_start:
+                if candle_start > self._last_candle_start[key]:
+                    # New candle started! The PREVIOUS candle is now complete.
+                    if key in self._last_candle_data:
+                        prev_data = self._last_candle_data[key]
 
-            # Only save completed candles to database
-            if is_candle_complete:
-                await self._save_ohlc(ohlc)
-                self._stats["ohlc_received"] += 1
-                logger.debug(
-                    "kraken_ws_ohlc_saved",
-                    pair=pair,
-                    interval=interval,
-                    close=str(ohlc.close),
-                    candle_start=candle_start.isoformat(),
-                )
-            else:
-                logger.debug(
-                    "kraken_ws_ohlc_in_progress",
-                    pair=pair,
-                    interval=interval,
-                    close=str(ohlc.close),
-                    candle_end=candle_end.isoformat(),
-                )
+                        # Save completed candle to database
+                        prev_ohlc = OHLCData(
+                            timestamp=prev_data["timestamp"],
+                            pair=prev_data["pair"],
+                            interval=prev_data["interval"],
+                            open=Decimal(prev_data["open"]),
+                            high=Decimal(prev_data["high"]),
+                            low=Decimal(prev_data["low"]),
+                            close=Decimal(prev_data["close"]),
+                            vwap=Decimal(prev_data["vwap"]) if prev_data["vwap"] else None,
+                            volume=Decimal(prev_data["volume"]),
+                            trades_count=prev_data["trades_count"],
+                        )
+                        await self._save_ohlc(prev_ohlc)
+                        self._stats["ohlc_received"] += 1
 
-            # Always publish event for live price tracking (strategies need current price)
+                        logger.info(
+                            "kraken_ws_ohlc_complete",
+                            pair=pair,
+                            interval=interval,
+                            close=prev_data["close"],
+                            candle_start=prev_data["timestamp"].isoformat(),
+                        )
+
+                        # Publish COMPLETED candle event
+                        await self._event_bus.publish(
+                            EventType.MARKET_OHLC,
+                            {
+                                "pair": prev_data["pair"],
+                                "interval": prev_data["interval"],
+                                "timestamp": prev_data["timestamp"].isoformat(),
+                                "candle_end": prev_data["candle_end"].isoformat(),
+                                "is_complete": True,
+                                "open": prev_data["open"],
+                                "high": prev_data["high"],
+                                "low": prev_data["low"],
+                                "close": prev_data["close"],
+                                "volume": prev_data["volume"],
+                                "vwap": prev_data["vwap"],
+                                "trades_count": prev_data["trades_count"],
+                            },
+                        )
+
+            # Update tracking with current candle data
+            self._last_candle_start[key] = candle_start
+            self._last_candle_data[key] = {
+                "timestamp": candle_start,
+                "candle_end": candle_end,
+                "pair": pair,
+                "interval": interval,
+                "open": str(ohlc.open),
+                "high": str(ohlc.high),
+                "low": str(ohlc.low),
+                "close": str(ohlc.close),
+                "volume": str(ohlc.volume),
+                "vwap": str(ohlc.vwap) if ohlc.vwap else None,
+                "trades_count": ohlc.trades_count,
+            }
+
+            # Always publish IN-PROGRESS candle for live price tracking
+            logger.debug(
+                "kraken_ws_ohlc_update",
+                pair=pair,
+                interval=interval,
+                close=str(ohlc.close),
+                candle_end=candle_end.isoformat(),
+            )
+
             await self._event_bus.publish(
                 EventType.MARKET_OHLC,
                 {
@@ -668,7 +732,7 @@ class KrakenWebSocketClient:
                     "interval": interval,
                     "timestamp": candle_start.isoformat(),
                     "candle_end": candle_end.isoformat(),
-                    "is_complete": is_candle_complete,
+                    "is_complete": False,  # Current candle is always in-progress
                     "open": str(ohlc.open),
                     "high": str(ohlc.high),
                     "low": str(ohlc.low),

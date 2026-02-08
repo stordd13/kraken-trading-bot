@@ -14,9 +14,6 @@ make real API calls to Kraken.
 from __future__ import annotations
 
 import asyncio
-import json
-from datetime import datetime, timezone
-from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -373,10 +370,17 @@ class TestKrakenWebSocketClientStats:
     async def test_stats_increment_ohlc(
         self, ws_client: KrakenWebSocketClient
     ) -> None:
-        """Test that OHLC stats are incremented."""
-        ohlc_data = [
-            "1548111060.000000",
-            "1548111120.000000",
+        """Test that OHLC stats are incremented when candle completes.
+
+        Kraken WS doesn't notify candle completion - we detect it when a NEW
+        candle starts (candle_start changes). So we need 2 OHLC updates:
+        - First update: starts tracking first candle
+        - Second update with new candle_start: marks first as complete
+        """
+        # First candle (15:51:00 - 15:52:00)
+        ohlc_data_1 = [
+            "1548111060.000000",  # 2019-01-21 22:51:00
+            "1548111120.000000",  # 2019-01-21 22:52:00
             "3586.70000",
             "3586.70000",
             "3586.60000",
@@ -386,9 +390,24 @@ class TestKrakenWebSocketClientStats:
             "2",
         ]
 
-        await ws_client._handle_ohlc_data("XBT/EUR", ohlc_data, "ohlc-15")
+        # Second candle (15:52:00 - 15:53:00) - this triggers completion of first
+        ohlc_data_2 = [
+            "1548111120.000000",  # 2019-01-21 22:52:00 (start of new candle)
+            "1548111180.000000",  # 2019-01-21 22:53:00
+            "3587.00000",
+            "3587.50000",
+            "3586.80000",
+            "3587.20000",
+            "3587.00000",
+            "0.05000000",
+            "3",
+        ]
 
-        assert ws_client._stats["ohlc_received"] == 1
+        await ws_client._handle_ohlc_data("XBT/EUR", ohlc_data_1, "ohlc-15")
+        assert ws_client._stats["ohlc_received"] == 0  # First candle not complete yet
+
+        await ws_client._handle_ohlc_data("XBT/EUR", ohlc_data_2, "ohlc-15")
+        assert ws_client._stats["ohlc_received"] == 1  # First candle now complete
 
     async def test_stats_increment_ticks(
         self, ws_client: KrakenWebSocketClient
@@ -411,9 +430,9 @@ class TestKrakenWebSocketClientDataParsing:
     async def test_parse_ohlc_with_missing_fields(
         self, ws_client: KrakenWebSocketClient
     ) -> None:
-        """Test parsing OHLC with minimum fields."""
-        # Minimum required fields
-        ohlc_data = [
+        """Test parsing OHLC with minimum fields (no vwap, no trades_count)."""
+        # First candle with minimum required fields
+        ohlc_data_1 = [
             "1548111060.000000",
             "1548111120.000000",
             "3586.70000",
@@ -424,9 +443,22 @@ class TestKrakenWebSocketClientDataParsing:
             "0.03373000",
         ]
 
+        # Second candle triggers completion of first
+        ohlc_data_2 = [
+            "1548111120.000000",  # New candle start
+            "1548111180.000000",
+            "3587.00000",
+            "3587.00000",
+            "3587.00000",
+            "3587.00000",
+            "",
+            "0.01000000",
+        ]
+
         # Should handle gracefully
         initial_ohlc = ws_client._stats["ohlc_received"]
-        await ws_client._handle_ohlc_data("XBT/EUR", ohlc_data, "ohlc-15")
+        await ws_client._handle_ohlc_data("XBT/EUR", ohlc_data_1, "ohlc-15")
+        await ws_client._handle_ohlc_data("XBT/EUR", ohlc_data_2, "ohlc-15")
         assert ws_client._stats["ohlc_received"] == initial_ohlc + 1
 
     async def test_parse_invalid_ohlc_data(
