@@ -81,13 +81,15 @@ async def estimate_backfill_volume(
         total_candles += candles_for_interval
         total_api_calls += api_calls_for_interval
 
-        details.append({
-            "interval": interval,
-            "max_days": max_days,
-            "candles_per_pair": candles_per_pair,
-            "candles_total": candles_for_interval,
-            "api_calls": api_calls_for_interval,
-        })
+        details.append(
+            {
+                "interval": interval,
+                "max_days": max_days,
+                "candles_per_pair": candles_per_pair,
+                "candles_total": candles_for_interval,
+                "api_calls": api_calls_for_interval,
+            }
+        )
 
     # Estimate time (1 second per API call)
     estimated_seconds = total_api_calls
@@ -108,7 +110,8 @@ async def backfill_pair_interval(
     pair: str,
     interval: int,
     batch_size: int = 1000,
-) -> int:
+    bidirectional: bool = True,
+) -> dict:
     """Backfill data for a single pair and interval.
 
     Args:
@@ -117,11 +120,13 @@ async def backfill_pair_interval(
         pair: Trading pair (e.g., "XBT/USDC").
         interval: Candle interval in minutes.
         batch_size: Batch size for database inserts.
+        bidirectional: If True, fetch both historical and new data.
+                       If False, only fetch new data (forward).
 
     Returns:
-        Number of candles fetched.
+        Dictionary with fetch results (or int for backwards compatibility).
     """
-    from scripts.fetch_ohlc import fetch_ohlc_with_resume
+    from scripts.fetch_ohlc import fetch_ohlc_bidirectional, fetch_ohlc_with_resume
 
     max_days = get_max_days_for_interval(interval)
 
@@ -130,27 +135,55 @@ async def backfill_pair_interval(
         pair=pair,
         interval=interval,
         max_days=max_days,
+        bidirectional=bidirectional,
     )
 
     try:
-        total_candles = await fetch_ohlc_with_resume(
-            rest_client=rest_client,
-            db_manager=db_manager,
-            pair=pair,
-            interval=interval,
-            days=max_days,
-            resume=True,  # Resume from last timestamp if data exists
-            batch_size=batch_size,
-        )
+        if bidirectional:
+            # Fetch both historical (backwards) and new (forwards) data
+            result = await fetch_ohlc_bidirectional(
+                rest_client=rest_client,
+                db_manager=db_manager,
+                pair=pair,
+                interval=interval,
+                max_days=max_days,
+                batch_size=batch_size,
+            )
 
-        logger.info(
-            "backfill_completed",
-            pair=pair,
-            interval=interval,
-            candles_fetched=total_candles,
-        )
+            logger.info(
+                "backfill_completed",
+                pair=pair,
+                interval=interval,
+                backwards_candles=result["backwards_candles"],
+                forwards_candles=result["forwards_candles"],
+                total_candles=result["total_candles"],
+            )
 
-        return total_candles
+            return result
+        else:
+            # Only fetch new data (forward from last timestamp)
+            total_candles = await fetch_ohlc_with_resume(
+                rest_client=rest_client,
+                db_manager=db_manager,
+                pair=pair,
+                interval=interval,
+                days=max_days,
+                resume=True,
+                batch_size=batch_size,
+            )
+
+            logger.info(
+                "backfill_completed",
+                pair=pair,
+                interval=interval,
+                candles_fetched=total_candles,
+            )
+
+            return {
+                "total_candles": total_candles,
+                "backwards_candles": 0,
+                "forwards_candles": total_candles,
+            }
 
     except Exception as e:
         logger.error(
@@ -167,6 +200,7 @@ async def backfill_all(
     intervals: list[int],
     parallel: bool = False,
     batch_size: int = 1000,
+    bidirectional: bool = True,
 ) -> dict:
     """Backfill all pairs and intervals.
 
@@ -175,6 +209,7 @@ async def backfill_all(
         intervals: List of intervals in minutes.
         parallel: If True, run all backfills in parallel (NOT RECOMMENDED due to rate limits).
         batch_size: Batch size for database inserts.
+        bidirectional: If True, fetch both historical and new data.
 
     Returns:
         Dictionary with backfill results.
@@ -189,6 +224,8 @@ async def backfill_all(
     results = {
         "pairs": {},
         "total_candles": 0,
+        "backwards_candles": 0,
+        "forwards_candles": 0,
         "total_tasks": 0,
         "failed_tasks": 0,
     }
@@ -204,17 +241,19 @@ async def backfill_all(
                 if parallel:
                     # NOT RECOMMENDED: May hit rate limits
                     task = backfill_pair_interval(
-                        rest_client, db_manager, pair, interval, batch_size
+                        rest_client, db_manager, pair, interval, batch_size, bidirectional
                     )
                     tasks.append(task)
                 else:
                     # Sequential execution (respects rate limits)
                     try:
-                        candles = await backfill_pair_interval(
-                            rest_client, db_manager, pair, interval, batch_size
+                        result = await backfill_pair_interval(
+                            rest_client, db_manager, pair, interval, batch_size, bidirectional
                         )
-                        results["pairs"][pair][interval] = candles
-                        results["total_candles"] += candles
+                        results["pairs"][pair][interval] = result
+                        results["total_candles"] += result["total_candles"]
+                        results["backwards_candles"] += result.get("backwards_candles", 0)
+                        results["forwards_candles"] += result.get("forwards_candles", 0)
                     except Exception as e:
                         results["failed_tasks"] += 1
                         results["pairs"][pair][interval] = f"FAILED: {e}"
@@ -234,7 +273,9 @@ async def backfill_all(
                     results["pairs"][pair][interval] = f"FAILED: {result}"
                 else:
                     results["pairs"][pair][interval] = result
-                    results["total_candles"] += result
+                    results["total_candles"] += result["total_candles"]
+                    results["backwards_candles"] += result.get("backwards_candles", 0)
+                    results["forwards_candles"] += result.get("forwards_candles", 0)
 
                 interval_idx += 1
                 if interval_idx >= len(intervals):
@@ -267,7 +308,9 @@ def print_estimation(estimation: dict):
     print("\n" + "-" * 80)
     print(f"TOTAL CANDLES: {estimation['total_candles']:,}")
     print(f"TOTAL API CALLS: {estimation['total_api_calls']:,}")
-    print(f"ESTIMATED TIME: {estimation['estimated_time_minutes']:.1f} minutes (~{int(estimation['estimated_time_seconds'])} seconds)")
+    print(
+        f"ESTIMATED TIME: {estimation['estimated_time_minutes']:.1f} minutes (~{int(estimation['estimated_time_seconds'])} seconds)"
+    )
     print("=" * 80 + "\n")
 
 
@@ -283,18 +326,28 @@ def print_results(results: dict):
 
     for pair, intervals_data in results["pairs"].items():
         print(f"\nPair: {pair}")
-        for interval, candles in intervals_data.items():
-            if isinstance(candles, str):
-                print(f"  {interval}min: {candles}")
+        for interval, data in intervals_data.items():
+            if isinstance(data, str):
+                print(f"  {interval}min: {data}")
+            elif isinstance(data, dict):
+                backwards = data.get("backwards_candles", 0)
+                forwards = data.get("forwards_candles", 0)
+                total = data.get("total_candles", 0)
+                print(
+                    f"  {interval}min: {total:,} candles (historical: {backwards:,}, new: {forwards:,})"
+                )
             else:
-                print(f"  {interval}min: {candles:,} candles")
+                print(f"  {interval}min: {data:,} candles")
 
     print("\n" + "-" * 80)
     print(f"TOTAL CANDLES FETCHED: {results['total_candles']:,}")
+    if "backwards_candles" in results:
+        print(f"  - Historical (backwards): {results['backwards_candles']:,}")
+        print(f"  - New (forwards): {results['forwards_candles']:,}")
     print(f"TOTAL TASKS: {results['total_tasks']}")
     print(f"FAILED TASKS: {results['failed_tasks']}")
 
-    if results['failed_tasks'] == 0:
+    if results["failed_tasks"] == 0:
         print("\n✅ All backfill tasks completed successfully!")
     else:
         print(f"\n⚠️  {results['failed_tasks']} tasks failed. Check logs for details.")
@@ -344,6 +397,12 @@ async def main():
         help="Estimate volume without fetching data",
     )
 
+    parser.add_argument(
+        "--forward-only",
+        action="store_true",
+        help="Only fetch new data (after last timestamp). Skip historical backfill.",
+    )
+
     args = parser.parse_args()
 
     # Load settings
@@ -353,12 +412,15 @@ async def main():
     pairs = args.pairs if args.pairs else settings.scheduler.pairs
     intervals = args.intervals if args.intervals else settings.scheduler.intervals
 
+    bidirectional = not args.forward_only
+
     logger.info(
         "backfill_starting",
         pairs=pairs,
         intervals=intervals,
         parallel=args.parallel,
         dry_run=args.dry_run,
+        bidirectional=bidirectional,
     )
 
     if args.dry_run:
@@ -394,6 +456,7 @@ async def main():
             intervals=intervals,
             parallel=args.parallel,
             batch_size=args.batch_size,
+            bidirectional=bidirectional,
         )
 
         # Print results

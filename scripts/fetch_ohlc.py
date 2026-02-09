@@ -72,6 +72,31 @@ async def get_last_timestamp(
         return result.scalar()
 
 
+async def get_first_timestamp(
+    db_manager: DatabaseManager,
+    pair: str,
+    interval: int,
+) -> datetime | None:
+    """Get first (oldest) stored timestamp for pair/interval.
+
+    Args:
+        db_manager: Database manager instance.
+        pair: Trading pair (e.g., "XBT/USDC").
+        interval: Candle interval in minutes.
+
+    Returns:
+        First stored timestamp or None if no data exists.
+    """
+    async with db_manager.session() as session:
+        stmt = (
+            select(func.min(OHLCData.timestamp))
+            .where(OHLCData.pair == pair)
+            .where(OHLCData.interval == interval)
+        )
+        result = await session.execute(stmt)
+        return result.scalar()
+
+
 async def save_ohlc_batch(
     db_manager: DatabaseManager,
     candles: list[dict],
@@ -95,23 +120,27 @@ async def save_ohlc_batch(
     async with db_manager.session() as session:
         # Use PostgreSQL's ON CONFLICT DO UPDATE for deduplication
         for candle_data in candles:
-            stmt = pg_insert(OHLCData).values(
-                timestamp=candle_data["timestamp"],
-                pair=candle_data["pair"],
-                interval=candle_data["interval"],
-                open=candle_data["open"],
-                high=candle_data["high"],
-                low=candle_data["low"],
-                close=candle_data["close"],
-                volume=candle_data["volume"],
-            ).on_conflict_do_update(
-                index_elements=["timestamp", "pair", "interval"],
-                set_=dict(
+            stmt = (
+                pg_insert(OHLCData)
+                .values(
+                    timestamp=candle_data["timestamp"],
+                    pair=candle_data["pair"],
+                    interval=candle_data["interval"],
                     open=candle_data["open"],
                     high=candle_data["high"],
                     low=candle_data["low"],
                     close=candle_data["close"],
                     volume=candle_data["volume"],
+                )
+                .on_conflict_do_update(
+                    index_elements=["timestamp", "pair", "interval"],
+                    set_=dict(
+                        open=candle_data["open"],
+                        high=candle_data["high"],
+                        low=candle_data["low"],
+                        close=candle_data["close"],
+                        volume=candle_data["volume"],
+                    ),
                 )
             )
             await session.execute(stmt)
@@ -320,6 +349,151 @@ async def fetch_ohlc_with_resume(
         end_time=end_time,
         batch_size=batch_size,
     )
+
+
+async def fetch_ohlc_bidirectional(
+    rest_client: KrakenRestClient,
+    db_manager: DatabaseManager,
+    pair: str,
+    interval: int,
+    max_days: int,
+    batch_size: int = 1000,
+) -> dict:
+    """Fetch OHLC data in both directions: fill gaps before and after existing data.
+
+    This function:
+    1. Finds the first (oldest) and last (newest) timestamps in DB
+    2. Fetches historical data BEFORE the first timestamp (up to max_days limit)
+    3. Fetches new data AFTER the last timestamp (up to now)
+
+    Args:
+        rest_client: Kraken REST client.
+        db_manager: Database manager.
+        pair: Trading pair (e.g., "XBT/USDC").
+        interval: Candle interval in minutes.
+        max_days: Maximum days of history to fetch (based on Kraken API limits).
+        batch_size: Number of candles per database insert batch.
+
+    Returns:
+        Dictionary with fetch results:
+        {
+            "backwards_candles": int,  # Candles fetched before existing data
+            "forwards_candles": int,   # Candles fetched after existing data
+            "total_candles": int,      # Total candles fetched
+            "first_ts_before": datetime | None,  # First timestamp before backfill
+            "first_ts_after": datetime | None,   # First timestamp after backfill
+        }
+    """
+    now = datetime.now(UTC)
+    earliest_possible = now - timedelta(days=max_days)
+
+    # Get current data boundaries
+    first_ts = await get_first_timestamp(db_manager, pair, interval)
+    last_ts = await get_last_timestamp(db_manager, pair, interval)
+
+    result = {
+        "backwards_candles": 0,
+        "forwards_candles": 0,
+        "total_candles": 0,
+        "first_ts_before": first_ts,
+        "first_ts_after": None,
+    }
+
+    if first_ts is None:
+        # No existing data - fetch full range
+        logger.info(
+            "no_existing_data_fetching_full_range",
+            pair=pair,
+            interval=interval,
+            max_days=max_days,
+        )
+        candles = await fetch_ohlc_range(
+            rest_client=rest_client,
+            db_manager=db_manager,
+            pair=pair,
+            interval=interval,
+            start_time=earliest_possible,
+            end_time=now,
+            batch_size=batch_size,
+        )
+        result["backwards_candles"] = candles
+        result["total_candles"] = candles
+        result["first_ts_after"] = await get_first_timestamp(db_manager, pair, interval)
+        return result
+
+    # Step 1: Fetch BACKWARDS (historical data before first_ts)
+    if first_ts > earliest_possible:
+        # There's room to fetch older data
+        backwards_end = first_ts - timedelta(minutes=interval)
+        backwards_start = earliest_possible
+
+        logger.info(
+            "fetching_backwards",
+            pair=pair,
+            interval=interval,
+            from_ts=backwards_start,
+            to_ts=backwards_end,
+            days_to_fetch=(backwards_end - backwards_start).days,
+        )
+
+        if backwards_start < backwards_end:
+            result["backwards_candles"] = await fetch_ohlc_range(
+                rest_client=rest_client,
+                db_manager=db_manager,
+                pair=pair,
+                interval=interval,
+                start_time=backwards_start,
+                end_time=backwards_end,
+                batch_size=batch_size,
+            )
+    else:
+        logger.info(
+            "no_backwards_fetch_needed",
+            pair=pair,
+            interval=interval,
+            first_ts=first_ts,
+            earliest_possible=earliest_possible,
+        )
+
+    # Step 2: Fetch FORWARDS (new data after last_ts)
+    if last_ts and last_ts < now:
+        forwards_start = last_ts + timedelta(minutes=interval)
+        forwards_end = now
+
+        logger.info(
+            "fetching_forwards",
+            pair=pair,
+            interval=interval,
+            from_ts=forwards_start,
+            to_ts=forwards_end,
+        )
+
+        if forwards_start < forwards_end:
+            result["forwards_candles"] = await fetch_ohlc_range(
+                rest_client=rest_client,
+                db_manager=db_manager,
+                pair=pair,
+                interval=interval,
+                start_time=forwards_start,
+                end_time=forwards_end,
+                batch_size=batch_size,
+            )
+
+    result["total_candles"] = result["backwards_candles"] + result["forwards_candles"]
+    result["first_ts_after"] = await get_first_timestamp(db_manager, pair, interval)
+
+    logger.info(
+        "bidirectional_fetch_complete",
+        pair=pair,
+        interval=interval,
+        backwards_candles=result["backwards_candles"],
+        forwards_candles=result["forwards_candles"],
+        total_candles=result["total_candles"],
+        first_ts_before=result["first_ts_before"],
+        first_ts_after=result["first_ts_after"],
+    )
+
+    return result
 
 
 async def main():
