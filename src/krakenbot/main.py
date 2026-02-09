@@ -470,22 +470,21 @@ class KrakenBot:
         This ensures the dashboard shows "RUNNING" immediately on startup,
         without waiting for the first trade to execute.
         """
+        bot_id = self.get_bot_id()
         async with self.db_manager.session() as session:
-            result = await session.execute(
-                select(BotState).where(BotState.bot_id == self.strategy.get_name())
-            )
+            result = await session.execute(select(BotState).where(BotState.bot_id == bot_id))
             bot_state = result.scalar_one_or_none()
 
             if bot_state is None:
                 bot_state = BotState(
-                    bot_id=self.strategy.get_name(),
+                    bot_id=bot_id,
                     strategy=self.strategy.get_name(),
                     status=BotStatus.RUNNING,
                 )
                 session.add(bot_state)
                 self.logger.info(
                     "bot_state_created",
-                    bot_id=self.strategy.get_name(),
+                    bot_id=bot_id,
                     status="running",
                 )
             else:
@@ -493,7 +492,7 @@ class KrakenBot:
                 bot_state.updated_at = datetime.now(UTC)
                 self.logger.info(
                     "bot_state_updated",
-                    bot_id=self.strategy.get_name(),
+                    bot_id=bot_id,
                     status="running",
                 )
 
@@ -506,10 +505,9 @@ class KrakenBot:
         indicating the bot is still alive.
         """
         try:
+            bot_id = self.get_bot_id()
             async with self.db_manager.session() as session:
-                result = await session.execute(
-                    select(BotState).where(BotState.bot_id == self.strategy.get_name())
-                )
+                result = await session.execute(select(BotState).where(BotState.bot_id == bot_id))
                 bot_state = result.scalar_one_or_none()
                 if bot_state:
                     bot_state.updated_at = datetime.now(UTC)
@@ -528,10 +526,9 @@ class KrakenBot:
         ensuring the dashboard shows the correct state.
         """
         try:
+            bot_id = self.get_bot_id()
             async with self.db_manager.session() as session:
-                result = await session.execute(
-                    select(BotState).where(BotState.bot_id == self.strategy.get_name())
-                )
+                result = await session.execute(select(BotState).where(BotState.bot_id == bot_id))
                 bot_state = result.scalar_one_or_none()
                 if bot_state:
                     bot_state.status = BotStatus.STOPPED
@@ -539,7 +536,7 @@ class KrakenBot:
                     await session.commit()
                     self.logger.info(
                         "bot_state_stopped",
-                        bot_id=self.strategy.get_name(),
+                        bot_id=bot_id,
                     )
         except Exception as e:
             self.logger.warning(
@@ -568,6 +565,24 @@ class KrakenBot:
             True if the bot is running and not shutting down.
         """
         return self._running and not self._shutdown_requested
+
+    def get_bot_id(self) -> str:
+        """Generate unique bot_id for this instance.
+
+        Combines strategy name with optional instance identifier to create
+        a unique bot_id. This allows multiple instances of the same strategy
+        to run simultaneously with different configurations.
+
+        Returns:
+            Unique bot identifier (e.g., "threshold_rolling" or "threshold_rolling_xbt_prod").
+        """
+        if self.strategy is None:
+            return "unknown"
+        base = self.strategy.get_name()
+        instance_id = self.settings.trading.bot_instance_id
+        if instance_id:
+            return f"{base}_{instance_id}"
+        return base
 
 
 async def main() -> None:

@@ -114,3 +114,17 @@ class SignalType(str, Enum):
     BUY = "buy"
     SELL = "sell"
     HOLD = "hold"
+
+
+class PositionStatus(str, Enum):
+    """Status of an open position.
+
+    Attributes:
+        OPEN: Position is currently active.
+        CLOSED: Position has been closed (sold).
+        CANCELLED: Position was cancelled before execution.
+    """
+
+    OPEN = "open"
+    CLOSED = "closed"
+    CANCELLED = "cancelled"

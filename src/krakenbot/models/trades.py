@@ -16,7 +16,7 @@ from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from krakenbot.core.database import Base
-from krakenbot.models.base import BotStatus, TradeSide, TradeStatus
+from krakenbot.models.base import BotStatus, PositionStatus, TradeSide, TradeStatus
 
 
 def utc_now() -> datetime:
@@ -375,6 +375,176 @@ class BotState(Base):
         if not self.has_position or self.entry_price is None:
             return Decimal("0")
         return (current_price - self.entry_price) * self.position_size
+
+
+class OpenPosition(Base):
+    """Open position tracking model.
+
+    This table stores individual open positions for multi-position strategies.
+    Each position is tracked separately with its own entry price, reference
+    price, and P&L. This supports multiple instances running simultaneously
+    by filtering on bot_id.
+
+    Attributes:
+        id: Unique position identifier (UUID).
+        bot_id: Bot instance identifier (strategy_name + instance_id).
+        strategy: Strategy name that opened this position.
+        position_id: Strategy-assigned position ID (unique per bot).
+        pair: Trading pair.
+        entry_price: Entry price for this position.
+        amount_btc: Position size in base currency.
+        reference_price: Reference price that triggered the entry.
+        entry_time: When the position was opened.
+        entry_trade_id: FK to trades_history for the BUY trade.
+        exit_trade_id: FK to trades_history for the SELL trade (if closed).
+        status: Position status (OPEN, CLOSED, CANCELLED).
+        closed_at: When the position was closed.
+        pnl: Realized P&L (calculated on close).
+        created_at: Record creation timestamp.
+        updated_at: Last update timestamp.
+    """
+
+    __tablename__ = "open_positions"
+
+    # Primary key
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        primary_key=True,
+        default=uuid.uuid4,
+        comment="Unique position identifier",
+    )
+
+    # Bot identification
+    bot_id: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False,
+        index=True,
+        comment="Bot instance identifier (strategy_name + instance_id)",
+    )
+    strategy: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+        index=True,
+        comment="Strategy name",
+    )
+    position_id: Mapped[int] = mapped_column(
+        nullable=False,
+        comment="Strategy-assigned position ID (unique per bot)",
+    )
+    pair: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        index=True,
+        comment="Trading pair",
+    )
+
+    # Position details
+    entry_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Entry price",
+    )
+    amount_btc: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Position size in base currency",
+    )
+    reference_price: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        comment="Reference price that triggered entry",
+    )
+    entry_time: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        comment="Position entry timestamp",
+    )
+
+    # Trade linking
+    entry_trade_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+        comment="FK to trades_history (BUY trade)",
+    )
+    exit_trade_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=True,
+        comment="FK to trades_history (SELL trade)",
+    )
+
+    # Status
+    status: Mapped[PositionStatus] = mapped_column(
+        Enum(PositionStatus, native_enum=False, length=20),
+        nullable=False,
+        default=PositionStatus.OPEN,
+        index=True,
+        comment="Position status",
+    )
+    closed_at: Mapped[datetime | None] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=True,
+        comment="Position close timestamp",
+    )
+    pnl: Mapped[Decimal | None] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=True,
+        comment="Realized P&L on close",
+    )
+
+    # Timestamps
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=utc_now,
+        comment="Record creation timestamp",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        comment="Last update timestamp",
+    )
+
+    # Indexes
+    __table_args__ = (
+        Index("ix_open_positions_bot_status", "bot_id", "status"),
+        Index("ix_open_positions_bot_position", "bot_id", "position_id"),
+        {
+            "comment": "Open positions for multi-position strategies",
+        },
+    )
+
+    def __repr__(self) -> str:
+        """Return string representation of position."""
+        return (
+            f"OpenPosition(id={self.id!r}, bot_id={self.bot_id!r}, "
+            f"position_id={self.position_id}, status={self.status.value}, "
+            f"amount_btc={self.amount_btc}, pnl={self.pnl})"
+        )
+
+    @property
+    def is_open(self) -> bool:
+        """Check if position is still open."""
+        return self.status == PositionStatus.OPEN
+
+    @property
+    def is_closed(self) -> bool:
+        """Check if position has been closed."""
+        return self.status == PositionStatus.CLOSED
+
+    def calculate_unrealized_pnl(self, current_price: Decimal) -> Decimal:
+        """Calculate unrealized P&L based on current price.
+
+        Args:
+            current_price: Current market price.
+
+        Returns:
+            Unrealized P&L amount.
+        """
+        if not self.is_open:
+            return self.pnl or Decimal("0")
+        return (current_price - self.entry_price) * self.amount_btc
 
 
 class BacktestRun(Base):

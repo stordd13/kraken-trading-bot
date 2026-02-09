@@ -65,9 +65,27 @@ def mock_database_manager():
     mock_db = MagicMock()
     mock_db.init_db = AsyncMock()
     mock_db.close_db = AsyncMock()
-    mock_db.session = AsyncMock()
-    mock_db.read_session = AsyncMock()
     mock_db.is_initialized = True
+
+    # Create mock for query result
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none = MagicMock(return_value=None)  # No existing bot_state
+
+    # Create async context manager mocks for session() and read_session()
+    mock_session = MagicMock()
+    mock_session.execute = AsyncMock(return_value=mock_result)
+    mock_session.commit = AsyncMock()
+    mock_session.merge = AsyncMock()
+    mock_session.add = MagicMock()
+
+    # Create async context manager that yields mock_session
+    async_cm = AsyncMock()
+    async_cm.__aenter__ = AsyncMock(return_value=mock_session)
+    async_cm.__aexit__ = AsyncMock(return_value=None)
+
+    mock_db.session = MagicMock(return_value=async_cm)
+    mock_db.read_session = MagicMock(return_value=async_cm)
+
     with patch("krakenbot.main.DatabaseManager", return_value=mock_db):
         yield mock_db
 

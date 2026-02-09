@@ -222,8 +222,8 @@ class ExecutionEngine:
         # Determine order side
         side = TradeSide.BUY if signal.is_buy else TradeSide.SELL
 
-        # Calculate order amount
-        amount = await self._calculate_order_amount(signal.pair, side, signal.price)
+        # Calculate order amount (pass signal for SELL metadata)
+        amount = await self._calculate_order_amount(signal.pair, side, signal.price, signal)
 
         if amount <= Decimal("0"):
             self.logger.warning(
@@ -320,16 +320,19 @@ class ExecutionEngine:
         pair: str,
         side: TradeSide,
         price: Decimal,
+        signal: TradingSignal | None = None,
     ) -> Decimal:
         """Calculate the order amount based on side and settings.
 
         For BUY orders, converts the default EUR amount to base currency.
-        For SELL orders, returns the full position size.
+        For SELL orders, reads amount from signal metadata if available,
+        otherwise falls back to querying BotState.
 
         Args:
             pair: Trading pair.
             side: Order side.
             price: Current price.
+            signal: Optional signal containing position metadata for SELL orders.
 
         Returns:
             Order amount in base currency.
@@ -342,7 +345,12 @@ class ExecutionEngine:
             # Round to appropriate precision (8 decimal places for crypto)
             return amount.quantize(Decimal("0.00000001"))
         else:
-            # For SELL: get position size from BotState
+            # For SELL: prefer amount from signal metadata (multi-position support)
+            if signal and "amount_btc" in signal.metadata:
+                amount = Decimal(str(signal.metadata["amount_btc"]))
+                return amount.quantize(Decimal("0.00000001"))
+
+            # Fallback: get position size from BotState (legacy single-position)
             position_size = await self._get_position_size(pair)
             return position_size
 
@@ -429,7 +437,7 @@ class ExecutionEngine:
     ) -> None:
         """Handle BotState update for a buy trade.
 
-        Updates position size and entry price.
+        Creates an OpenPosition record and updates BotState aggregates.
 
         Args:
             session: Database session.
@@ -437,8 +445,35 @@ class ExecutionEngine:
             trade: Executed buy trade.
             signal: Original signal.
         """
-        # Update position
-        bot_state.position_size = trade.amount
+        import uuid
+
+        from krakenbot.models.base import PositionStatus
+        from krakenbot.models.trades import OpenPosition
+
+        # Get position_id from signal metadata (strategy assigns this)
+        # For BUY signals, position_id might not be set yet - will be assigned after
+        position_id = signal.metadata.get("position_id", 0)
+        reference_price = Decimal(str(signal.metadata.get("reference_price", 0)))
+
+        # Create OpenPosition record
+        open_position = OpenPosition(
+            id=uuid.uuid4(),
+            bot_id=signal.strategy,
+            strategy=signal.strategy,
+            position_id=position_id,
+            pair=trade.pair,
+            entry_price=trade.price,
+            amount_btc=trade.amount,
+            reference_price=reference_price,
+            entry_time=trade.timestamp,
+            entry_trade_id=trade.id,
+            status=PositionStatus.OPEN,
+        )
+        session.add(open_position)
+
+        # Update BotState aggregates (cumulative instead of overwrite)
+        bot_state.position_size += trade.amount
+        # Keep entry_price as latest for backward compatibility
         bot_state.entry_price = trade.price
         bot_state.last_trade_at = trade.timestamp
         bot_state.daily_trades_count += 1
@@ -449,6 +484,8 @@ class ExecutionEngine:
             pair=trade.pair,
             amount=float(trade.amount),
             entry_price=float(trade.price),
+            reference_price=float(reference_price),
+            position_id=position_id,
             trade_id=str(trade.id),
         )
 
@@ -461,7 +498,7 @@ class ExecutionEngine:
     ) -> None:
         """Handle BotState update for a sell trade.
 
-        Calculates P&L and resets position.
+        Closes the specific OpenPosition and updates BotState aggregates.
 
         Args:
             session: Database session.
@@ -469,50 +506,101 @@ class ExecutionEngine:
             trade: Executed sell trade.
             signal: Original signal.
         """
+        from sqlalchemy import select
+
+        from krakenbot.models.base import PositionStatus
+        from krakenbot.models.trades import OpenPosition
         from krakenbot.models.trades import Trade as TradeModel
 
         pnl = Decimal("0")
+        position_id = signal.metadata.get("position_id")
+        entry_price = Decimal(str(signal.metadata.get("entry_price", 0)))
 
-        # Calculate P&L if we have entry price
-        if bot_state.entry_price is not None and bot_state.entry_price > Decimal("0"):
-            # P&L = (exit_price - entry_price) * amount - fees
-            price_diff = trade.price - bot_state.entry_price
-            pnl = (price_diff * trade.amount) - trade.fee
-
-            # Update P&L tracking
-            bot_state.daily_pnl += pnl
-            bot_state.total_pnl += pnl
-
-            # Update the trade with P&L
-            trade_record = await session.get(TradeModel, trade.id)
-            if trade_record:
-                trade_record.pnl = pnl
-
-            self.logger.info(
-                "position_closed",
-                strategy=signal.strategy,
-                pair=trade.pair,
-                amount=float(trade.amount),
-                entry_price=float(bot_state.entry_price),
-                exit_price=float(trade.price),
-                pnl=float(pnl),
-                total_pnl=float(bot_state.total_pnl),
-                trade_id=str(trade.id),
+        # Try to find and close the specific OpenPosition
+        if position_id is not None:
+            result = await session.execute(
+                select(OpenPosition)
+                .where(OpenPosition.position_id == position_id)
+                .where(OpenPosition.bot_id == signal.strategy)
+                .where(OpenPosition.status == PositionStatus.OPEN)
             )
+            open_position = result.scalar_one_or_none()
+
+            if open_position:
+                # Calculate P&L from the actual position entry price
+                pnl = (trade.price - open_position.entry_price) * trade.amount - trade.fee
+
+                # Update OpenPosition
+                open_position.status = PositionStatus.CLOSED
+                open_position.closed_at = trade.timestamp
+                open_position.exit_trade_id = trade.id
+                open_position.pnl = pnl
+                entry_price = open_position.entry_price
+
+                self.logger.info(
+                    "position_closed",
+                    strategy=signal.strategy,
+                    pair=trade.pair,
+                    amount=float(trade.amount),
+                    entry_price=float(open_position.entry_price),
+                    exit_price=float(trade.price),
+                    pnl=float(pnl),
+                    position_id=position_id,
+                    trade_id=str(trade.id),
+                )
+            else:
+                self.logger.warning(
+                    "position_not_found_for_close",
+                    position_id=position_id,
+                    strategy=signal.strategy,
+                )
         else:
-            self.logger.warning(
-                "position_closed_no_entry_price",
-                strategy=signal.strategy,
-                pair=trade.pair,
-                amount=float(trade.amount),
-                exit_price=float(trade.price),
-            )
+            # Legacy: no position_id, use BotState entry_price
+            if bot_state.entry_price is not None and bot_state.entry_price > Decimal("0"):
+                pnl = (trade.price - bot_state.entry_price) * trade.amount - trade.fee
+                entry_price = bot_state.entry_price
+                self.logger.info(
+                    "position_closed_legacy",
+                    strategy=signal.strategy,
+                    pair=trade.pair,
+                    amount=float(trade.amount),
+                    entry_price=float(entry_price),
+                    exit_price=float(trade.price),
+                    pnl=float(pnl),
+                    trade_id=str(trade.id),
+                )
+            else:
+                self.logger.warning(
+                    "position_closed_no_entry_price",
+                    strategy=signal.strategy,
+                    pair=trade.pair,
+                    amount=float(trade.amount),
+                    exit_price=float(trade.price),
+                )
 
-        # Reset position
-        bot_state.position_size = Decimal("0")
-        bot_state.entry_price = None
+        # Update P&L tracking in BotState
+        bot_state.daily_pnl += pnl
+        bot_state.total_pnl += pnl
+
+        # Update the trade with P&L
+        trade_record = await session.get(TradeModel, trade.id)
+        if trade_record:
+            trade_record.pnl = pnl
+
+        # Update BotState aggregates (decrement position size)
+        bot_state.position_size = max(Decimal("0"), bot_state.position_size - trade.amount)
+        if bot_state.position_size == Decimal("0"):
+            bot_state.entry_price = None
         bot_state.last_trade_at = trade.timestamp
         bot_state.daily_trades_count += 1
+
+        self.logger.info(
+            "bot_state_updated",
+            strategy=signal.strategy,
+            remaining_position_size=float(bot_state.position_size),
+            daily_pnl=float(bot_state.daily_pnl),
+            total_pnl=float(bot_state.total_pnl),
+        )
 
     @property
     def is_running(self) -> bool:

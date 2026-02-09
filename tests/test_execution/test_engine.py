@@ -419,16 +419,19 @@ class TestBotStateUpdates:
             daily_trades_count=0,
         )
 
-        mock_session = AsyncMock()
+        mock_session = MagicMock()
+        mock_session.add = MagicMock()  # Mock session.add() for OpenPosition creation
 
         await execution_engine._handle_buy_trade(
             mock_session, bot_state, sample_trade, sample_buy_signal
         )
 
-        # Verify state was updated
+        # Verify state was updated (cumulative now instead of overwrite)
         assert bot_state.position_size == sample_trade.amount
         assert bot_state.entry_price == sample_trade.price
         assert bot_state.daily_trades_count == 1
+        # Verify OpenPosition was added to session
+        mock_session.add.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_handle_sell_trade_helper_with_pnl(

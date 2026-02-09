@@ -119,6 +119,8 @@ class ThresholdRollingStrategy(BaseStrategy):
         # Pre-load reference prices from DB so signals can be generated immediately
         if not self._skip_db_sync:
             await self._load_historical_references()
+            # Recover open positions from database (for restart recovery)
+            await self._load_open_positions_from_db()
 
     async def _load_historical_references(self) -> None:
         """Load historical refs for DISPLAY ONLY (dashboard).
@@ -173,6 +175,64 @@ class ThresholdRollingStrategy(BaseStrategy):
                 note="Non-fatal: trading will work without display refs",
             )
             # NOT a fatal error anymore - trading works without historical refs
+
+    async def _load_open_positions_from_db(self) -> None:
+        """Recover open positions from database after restart.
+
+        Loads all positions with status='open' for this strategy and
+        rebuilds the in-memory position tracking. This ensures positions
+        opened before a restart are properly tracked for SELL signals.
+        """
+        from sqlalchemy import select
+
+        from krakenbot.models.base import PositionStatus
+        from krakenbot.models.trades import OpenPosition
+
+        try:
+            async with self.db_manager.read_session() as session:
+                result = await session.execute(
+                    select(OpenPosition)
+                    .where(OpenPosition.strategy == self.get_name())
+                    .where(OpenPosition.status == PositionStatus.OPEN)
+                    .order_by(OpenPosition.position_id)
+                )
+                positions = result.scalars().all()
+
+                if not positions:
+                    self.logger.info(
+                        "no_open_positions_to_recover",
+                        strategy=self.get_name(),
+                    )
+                    return
+
+                # Rebuild in-memory tracking
+                for pos in positions:
+                    self._open_positions.append(
+                        RollingPosition(
+                            entry_price=pos.entry_price,
+                            entry_time=pos.entry_time,
+                            amount_usdc=pos.amount_btc * pos.entry_price,
+                            position_id=pos.position_id,
+                            reference_price=pos.reference_price,
+                        )
+                    )
+                    self._used_references.add(pos.reference_price)
+                    self._next_position_id = max(self._next_position_id, pos.position_id + 1)
+
+                self.logger.info(
+                    "positions_recovered",
+                    strategy=self.get_name(),
+                    count=len(positions),
+                    position_ids=[p.position_id for p in self._open_positions],
+                    next_position_id=self._next_position_id,
+                )
+        except Exception as e:
+            self.logger.warning(
+                "positions_recovery_failed",
+                error=str(e),
+                strategy=self.get_name(),
+                note="Positions opened before restart may not be tracked",
+            )
 
     async def on_tick(self, tick_data: dict[str, Any]) -> None:
         """Update current price from tick data."""
@@ -312,6 +372,9 @@ class ThresholdRollingStrategy(BaseStrategy):
             holding_time = current_time - position.entry_time
             holding_minutes = holding_time.total_seconds() / 60
 
+            # Calculate position size in BTC for SELL orders
+            amount_btc = position.amount_usdc / position.entry_price
+
             # Check profit target
             if profit_pct >= Decimal(str(self.sell_threshold_pct)):
                 return TradingSignal(
@@ -324,6 +387,7 @@ class ThresholdRollingStrategy(BaseStrategy):
                     timestamp=current_time,
                     metadata={
                         "position_id": position.position_id,
+                        "amount_btc": float(amount_btc),
                         "entry_price": float(position.entry_price),
                         "reference_price": float(position.reference_price),
                         "profit_pct": float(profit_pct),
@@ -344,6 +408,7 @@ class ThresholdRollingStrategy(BaseStrategy):
                     timestamp=current_time,
                     metadata={
                         "position_id": position.position_id,
+                        "amount_btc": float(amount_btc),
                         "entry_price": float(position.entry_price),
                         "reference_price": float(position.reference_price),
                         "profit_pct": float(profit_pct),
@@ -364,6 +429,7 @@ class ThresholdRollingStrategy(BaseStrategy):
                     timestamp=current_time,
                     metadata={
                         "position_id": position.position_id,
+                        "amount_btc": float(amount_btc),
                         "entry_price": float(position.entry_price),
                         "reference_price": float(position.reference_price),
                         "profit_pct": float(profit_pct),

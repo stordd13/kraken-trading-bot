@@ -140,9 +140,14 @@ class TestRiskManager:
     async def test_check_balance_sufficient_for_sell(
         self, risk_manager: RiskManager
     ) -> None:
-        """Test balance check passes with sufficient XBT for sell."""
+        """Test balance check passes with sufficient BTC for sell.
+
+        Note: ccxt returns balances with 'BTC' not 'XBT', so the RiskManager
+        normalizes XBT to BTC when checking sell balance.
+        """
         result = RiskCheckResult(approved=True)
-        balance = {"EUR": Decimal("0.0"), "XBT": Decimal("0.05")}
+        # Use BTC (not XBT) because ccxt returns balances with BTC
+        balance = {"EUR": Decimal("0.0"), "BTC": Decimal("0.05")}
 
         await risk_manager._check_balance(
             result=result,
@@ -160,21 +165,27 @@ class TestRiskManager:
     async def test_check_balance_insufficient_for_sell(
         self, risk_manager: RiskManager
     ) -> None:
-        """Test balance check fails with insufficient XBT for sell."""
+        """Test balance check fails with insufficient BTC for sell.
+
+        Note: ccxt returns balances with 'BTC' not 'XBT', so the RiskManager
+        normalizes XBT to BTC when checking sell balance.
+        """
         result = RiskCheckResult(approved=True)
-        balance = {"EUR": Decimal("1000.00"), "XBT": Decimal("0.001")}
+        # Use BTC (not XBT) because ccxt returns balances with BTC
+        balance = {"EUR": Decimal("1000.00"), "BTC": Decimal("0.001")}
 
         await risk_manager._check_balance(
             result=result,
             pair="XBT/EUR",
             side=TradeSide.SELL,
-            amount=Decimal("0.01"),  # Requires 0.01 XBT
+            amount=Decimal("0.01"),  # Requires 0.01 BTC
             price=Decimal("42000"),
             balance=balance,
         )
 
         assert result.rejected is True
-        assert any("Insufficient XBT" in reason for reason in result.reasons)
+        # Error message uses BTC (normalized from XBT)
+        assert any("Insufficient BTC" in reason for reason in result.reasons)
 
     @pytest.mark.asyncio
     async def test_check_balance_missing_currency(
@@ -540,8 +551,12 @@ class TestRiskManager:
     async def test_check_order_sell_with_position(
         self, risk_manager: RiskManager
     ) -> None:
-        """Test sell order validation with existing position."""
-        balance = {"EUR": Decimal("1000.00"), "XBT": Decimal("0.01")}
+        """Test sell order validation with existing position.
+
+        Note: ccxt returns balances with 'BTC' not 'XBT', so we use BTC here.
+        """
+        # Use BTC (not XBT) because ccxt returns balances with BTC
+        balance = {"EUR": Decimal("1000.00"), "BTC": Decimal("0.01")}
 
         with (
             patch.object(

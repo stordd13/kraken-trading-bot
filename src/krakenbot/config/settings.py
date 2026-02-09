@@ -139,6 +139,10 @@ class TradingSettings(BaseSettings):
         default="XBT/USDC",  # Changed from XBT/EUR to match backtests
         description="Trading pair",
     )
+    bot_instance_id: str = Field(
+        default="",
+        description="Unique identifier for this bot instance. If empty, uses strategy name only.",
+    )
     default_order_amount_eur: float = Field(
         default=100.0,  # Increased from 15.0 for better profit potential
         description="Default order amount in EUR",

@@ -131,15 +131,19 @@ class RiskManager:
         self,
         settings: Settings,
         db_manager: DatabaseManager,
+        bot_id: str | None = None,
     ) -> None:
         """Initialize the RiskManager.
 
         Args:
             settings: Application settings containing risk configuration.
             db_manager: Database manager for querying trade history.
+            bot_id: Optional bot instance identifier for filtering queries.
+                    If provided, queries will be scoped to this bot only.
         """
         self.settings = settings
         self.db_manager = db_manager
+        self.bot_id = bot_id
         self.logger = get_logger(__name__)
 
         # Extract risk limits from settings
@@ -151,11 +155,23 @@ class RiskManager:
 
         self.logger.info(
             "risk_manager_initialized",
+            bot_id=bot_id,
             max_position_pct=self.max_position_pct,
             daily_loss_limit_eur=float(self.daily_loss_limit),
             max_open_positions=self.max_open_positions,
             min_trade_interval_sec=self.min_trade_interval.total_seconds(),
         )
+
+    def set_bot_id(self, bot_id: str) -> None:
+        """Set the bot_id for filtering queries.
+
+        This is useful when bot_id is not known at initialization time.
+
+        Args:
+            bot_id: Bot instance identifier.
+        """
+        self.bot_id = bot_id
+        self.logger.debug("risk_manager_bot_id_set", bot_id=bot_id)
 
     async def check_order(
         self,
@@ -388,7 +404,8 @@ class RiskManager:
         """Get the total realized P&L for today.
 
         Queries the trades_history table for all filled trades today
-        and sums up their P&L values.
+        and sums up their P&L values. If bot_id is set, only counts
+        trades for this bot instance.
 
         Returns:
             Total P&L for today in EUR.
@@ -399,36 +416,51 @@ class RiskManager:
 
         async with self.db_manager.read_session() as session:
             today = datetime.now(UTC).date()
-            result = await session.execute(
+            query = (
                 select(func.coalesce(func.sum(Trade.pnl), 0))
                 .where(func.date(Trade.timestamp) == today)
                 .where(Trade.status == TradeStatus.FILLED)
             )
+
+            # Filter by bot_id (strategy name) if set
+            if self.bot_id:
+                query = query.where(Trade.strategy == self.bot_id)
+
+            result = await session.execute(query)
             scalar_result = result.scalar()
             return Decimal(str(scalar_result)) if scalar_result else Decimal("0")
 
     async def _get_open_positions_count(self) -> int:
         """Get the number of currently open positions.
 
-        Queries the bot_state table for all bots with non-zero position sizes.
+        Queries the open_positions table for positions with status='open'.
+        If bot_id is set, only counts positions for this bot instance.
 
         Returns:
             Number of open positions.
         """
         from sqlalchemy import func, select
 
-        from krakenbot.models.trades import BotState
+        from krakenbot.models.base import PositionStatus
+        from krakenbot.models.trades import OpenPosition
 
         async with self.db_manager.read_session() as session:
-            result = await session.execute(
-                select(func.count(BotState.bot_id)).where(BotState.position_size > Decimal("0"))
+            query = select(func.count(OpenPosition.id)).where(
+                OpenPosition.status == PositionStatus.OPEN
             )
+
+            # Filter by bot_id if set (for multi-instance isolation)
+            if self.bot_id:
+                query = query.where(OpenPosition.bot_id == self.bot_id)
+
+            result = await session.execute(query)
             return result.scalar() or 0
 
     async def _get_last_trade_time(self) -> datetime | None:
         """Get the timestamp of the most recent filled trade.
 
         Queries the trades_history table for the latest filled trade.
+        If bot_id is set, only considers trades for this bot instance.
 
         Returns:
             Datetime of last trade, or None if no trades exist.
@@ -438,12 +470,18 @@ class RiskManager:
         from krakenbot.models.trades import Trade
 
         async with self.db_manager.read_session() as session:
-            result = await session.execute(
+            query = (
                 select(Trade.timestamp)
                 .where(Trade.status == TradeStatus.FILLED)
                 .order_by(Trade.timestamp.desc())
                 .limit(1)
             )
+
+            # Filter by bot_id if set
+            if self.bot_id:
+                query = query.where(Trade.strategy == self.bot_id)
+
+            result = await session.execute(query)
             return result.scalar()
 
     async def check_emergency_stop_loss(
