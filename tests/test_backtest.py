@@ -1,20 +1,17 @@
 """Tests for backtesting framework."""
 
-import sys
 from pathlib import Path
+import sys
 
 # Add scripts directory to path
 scripts_dir = Path(__file__).parent.parent / "scripts"
 sys.path.insert(0, str(scripts_dir))
 
-import pytest
-from datetime import datetime, timedelta, UTC
+from datetime import UTC, datetime
 from decimal import Decimal
 
-from krakenbot.models.market_data import OHLCData
-from krakenbot.config.settings import get_settings
-from krakenbot.core.database import DatabaseManager
 from backtest import BacktestEngine, BacktestMetrics, BacktestTrade
+import pytest
 
 
 @pytest.mark.asyncio

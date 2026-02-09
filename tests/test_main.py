@@ -11,7 +11,6 @@ This module tests:
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -129,18 +128,18 @@ def mock_execution_engine():
 
 @pytest.fixture
 def mock_strategy():
-    """Mock ThresholdStrategy."""
+    """Mock ThresholdRollingStrategy."""
     mock_strat = MagicMock()
     mock_strat.start = AsyncMock()
     mock_strat.stop = AsyncMock()
-    mock_strat.get_name.return_value = "threshold"
+    mock_strat.get_name.return_value = "threshold_rolling"
     mock_strat.is_running = True
     mock_strat.current_price = Decimal("42000.00")
     mock_strat.reference_price = Decimal("41800.00")
     mock_strat.has_position = False
     mock_strat.entry_price = None
     mock_strat.price_history_len = 10
-    with patch("krakenbot.main.ThresholdStrategy", return_value=mock_strat):
+    with patch("krakenbot.main.ThresholdRollingStrategy", return_value=mock_strat):
         yield mock_strat
 
 

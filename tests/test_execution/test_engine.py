@@ -9,10 +9,10 @@ This module tests the execution engine functionality including:
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
+import uuid
 
 import pytest
 
@@ -22,7 +22,6 @@ from krakenbot.execution.risk import RiskCheckResult
 from krakenbot.models.base import BotStatus, SignalType, TradeSide, TradeStatus
 from krakenbot.models.trades import BotState, Trade
 from krakenbot.strategies.base import TradingSignal
-
 
 # =============================================================================
 # Fixtures
@@ -112,7 +111,7 @@ def sample_buy_signal() -> TradingSignal:
         confidence=0.85,
         reason="Price dropped 1%",
         strategy="threshold_v1",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
 
@@ -126,7 +125,7 @@ def sample_sell_signal() -> TradingSignal:
         confidence=0.90,
         reason="Price rose 2%",
         strategy="threshold_v1",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
 
@@ -140,7 +139,7 @@ def sample_hold_signal() -> TradingSignal:
         confidence=0.50,
         reason="No action needed",
         strategy="threshold_v1",
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
     )
 
 
@@ -149,7 +148,7 @@ def sample_trade() -> Trade:
     """Create a sample trade object."""
     return Trade(
         id=uuid.uuid4(),
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime.now(UTC),
         pair="XBT/EUR",
         side=TradeSide.BUY,
         amount=Decimal("0.00035714"),
@@ -440,7 +439,7 @@ class TestBotStateUpdates:
         # Create sell trade
         sell_trade = Trade(
             id=uuid.uuid4(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             side=TradeSide.SELL,
             amount=Decimal("0.001"),
@@ -459,7 +458,7 @@ class TestBotStateUpdates:
             confidence=0.90,
             reason="Price rose",
             strategy="threshold_v1",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         # Existing state with position

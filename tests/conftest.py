@@ -9,11 +9,11 @@ This module provides common fixtures used across all test modules including:
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
+from collections.abc import Generator
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import AsyncGenerator, Generator
 from unittest.mock import AsyncMock, MagicMock, patch
+import uuid
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -100,7 +100,7 @@ def sample_ohlc_data() -> list[dict]:
     Returns:
         List of OHLC data dictionaries.
     """
-    base_timestamp = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+    base_timestamp = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
     return [
         {
             "timestamp": base_timestamp,
@@ -115,7 +115,7 @@ def sample_ohlc_data() -> list[dict]:
             "trades_count": 150,
         },
         {
-            "timestamp": datetime(2024, 1, 15, 12, 15, 0, tzinfo=timezone.utc),
+            "timestamp": datetime(2024, 1, 15, 12, 15, 0, tzinfo=UTC),
             "pair": "XBT/EUR",
             "interval": 15,
             "open": Decimal("42300.00000000"),
@@ -136,7 +136,7 @@ def sample_tick_data() -> list[dict]:
     Returns:
         List of tick data dictionaries.
     """
-    base_timestamp = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
+    base_timestamp = datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC)
     return [
         {
             "timestamp": base_timestamp,
@@ -166,7 +166,7 @@ def sample_trade_data() -> dict:
     """
     return {
         "id": uuid.uuid4(),
-        "timestamp": datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc),
+        "timestamp": datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC),
         "pair": "XBT/EUR",
         "side": TradeSide.BUY,
         "amount": Decimal("0.00012000"),
@@ -196,8 +196,8 @@ def sample_bot_state_data() -> dict:
         "daily_pnl": Decimal("1.50000000"),
         "total_pnl": Decimal("15.30000000"),
         "daily_trades_count": 3,
-        "last_signal_at": datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc),
-        "last_trade_at": datetime(2024, 1, 15, 11, 45, 0, tzinfo=timezone.utc),
+        "last_signal_at": datetime(2024, 1, 15, 12, 0, 0, tzinfo=UTC),
+        "last_trade_at": datetime(2024, 1, 15, 11, 45, 0, tzinfo=UTC),
     }
 
 
@@ -224,4 +224,4 @@ def utc_now() -> datetime:
     Returns:
         Current datetime with UTC timezone.
     """
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)

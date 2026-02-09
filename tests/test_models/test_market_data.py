@@ -8,10 +8,8 @@ This module tests the OHLCData and TickData models including:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-
-import pytest
 
 from krakenbot.models.base import TradeSide
 from krakenbot.models.market_data import OHLCData, TickData
@@ -37,7 +35,7 @@ class TestOHLCData:
     def test_ohlc_price_change(self) -> None:
         """Test price_change property calculation."""
         ohlc = OHLCData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             interval=15,
             open=Decimal("42000.00000000"),
@@ -52,7 +50,7 @@ class TestOHLCData:
     def test_ohlc_price_change_negative(self) -> None:
         """Test price_change property with negative change."""
         ohlc = OHLCData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             interval=15,
             open=Decimal("42000.00000000"),
@@ -67,7 +65,7 @@ class TestOHLCData:
     def test_ohlc_price_change_pct(self) -> None:
         """Test price_change_pct property calculation."""
         ohlc = OHLCData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             interval=15,
             open=Decimal("42000.00000000"),
@@ -82,7 +80,7 @@ class TestOHLCData:
     def test_ohlc_price_change_pct_zero_open(self) -> None:
         """Test price_change_pct handles zero open price."""
         ohlc = OHLCData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             interval=15,
             open=Decimal("0"),
@@ -97,7 +95,7 @@ class TestOHLCData:
     def test_ohlc_is_bullish(self) -> None:
         """Test is_bullish property."""
         ohlc_bullish = OHLCData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             interval=15,
             open=Decimal("42000.00000000"),
@@ -108,7 +106,7 @@ class TestOHLCData:
         )
 
         ohlc_bearish = OHLCData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             interval=15,
             open=Decimal("42000.00000000"),
@@ -154,7 +152,7 @@ class TestTickData:
     def test_tick_value_property(self) -> None:
         """Test value property calculation."""
         tick = TickData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             sequence=0,
             price=Decimal("42000.00000000"),
@@ -182,7 +180,7 @@ class TestTickData:
     def test_tick_with_trade_id(self) -> None:
         """Test TickData with optional trade_id."""
         tick = TickData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             sequence=0,
             price=Decimal("42000.00000000"),
@@ -196,7 +194,7 @@ class TestTickData:
     def test_tick_without_trade_id(self) -> None:
         """Test TickData without trade_id."""
         tick = TickData(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             sequence=0,
             price=Decimal("42000.00000000"),

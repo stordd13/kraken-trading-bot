@@ -30,6 +30,11 @@ import os
 import sys
 import threading
 
+from dotenv import load_dotenv
+
+# Load .env file BEFORE accessing os.environ
+load_dotenv()
+
 import dash
 from dash import Input, Output, State, callback, dash_table, dcc, html
 import dash_bootstrap_components as dbc
@@ -63,6 +68,7 @@ app = dash.Dash(
     external_stylesheets=[dbc.themes.DARKLY],
     title="KrakenBot Dashboard",
     update_title=None,
+    suppress_callback_exceptions=True,
 )
 
 # ============================================================================

@@ -303,7 +303,7 @@ class BacktestEngine:
                 crypto_sold = crypto_amount
 
                 # Check if all positions are closed
-                if not self.strategy.positions:
+                if not self.strategy.open_positions:
                     self.in_position = False
 
                 self.logger.debug("multi_position_closed", position_id=position_id)

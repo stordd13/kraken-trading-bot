@@ -11,11 +11,10 @@ Usage:
 
 import argparse
 import asyncio
-import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
 from pathlib import Path
+import sys
 
 from dotenv import load_dotenv
 
@@ -25,9 +24,9 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 # Add scripts dir to path for importing backtest
 sys.path.insert(0, str(Path(__file__).parent))
 
-from backtest import BacktestEngine, BacktestMetrics
+from backtest import BacktestEngine
 
-from krakenbot.config.settings import Settings, get_settings, reload_settings
+from krakenbot.config.settings import get_settings, reload_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.logger import get_logger
 
@@ -79,7 +78,7 @@ async def run_backtest_with_params(
 
     try:
         metrics = await engine.run(pair, start_time, end_time)
-    except Exception as e:
+    except Exception:
         # Return empty result on error
         return GridSearchResult(
             buy_threshold=buy_threshold,
@@ -225,7 +224,7 @@ async def main() -> None:
 
         if results[0].net_pnl != 0:
             best = results[0]
-            print(f"\nBest configuration:")
+            print("\nBest configuration:")
             print(f"  Buy threshold: {best.buy_threshold}%")
             print(f"  Sell threshold: {best.sell_threshold}%")
             print(f"  Lookback: {best.lookback} periods")

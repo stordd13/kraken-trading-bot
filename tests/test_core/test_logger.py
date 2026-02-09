@@ -9,9 +9,6 @@ This module tests the structlog-based logging system including:
 from __future__ import annotations
 
 import logging
-from unittest.mock import MagicMock, patch
-
-import pytest
 
 from krakenbot.core.logger import (
     _looks_like_secret,

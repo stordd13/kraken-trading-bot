@@ -12,8 +12,6 @@ API requests to Kraken.
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -28,8 +26,8 @@ from krakenbot.config.settings import (
     TradingSettings,
 )
 from krakenbot.connectors.kraken_rest import (
-    KrakenRestClient,
     MIN_ORDER_SIZE,
+    KrakenRestClient,
 )
 from krakenbot.core.event_bus import EventBus, EventType, reset_event_bus
 from krakenbot.core.exceptions import (

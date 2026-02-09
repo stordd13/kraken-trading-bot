@@ -9,11 +9,11 @@ This module tests the ThresholdStrategy including:
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, AsyncGenerator
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -148,7 +148,7 @@ class TestThresholdStrategyOnTick:
     async def test_on_tick_updates_price(self, strategy: ThresholdStrategy) -> None:
         """Test on_tick updates current price."""
         tick_data = {
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC),
             "pair": "XBT/EUR",
             "price": "42000.00",
             "volume": "0.5",
@@ -166,7 +166,7 @@ class TestThresholdStrategyOnTick:
     ) -> None:
         """Test on_tick ignores ticks for other pairs."""
         tick_data = {
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC),
             "pair": "ETH/EUR",  # Different pair
             "price": "2500.00",
             "volume": "1.0",
@@ -200,7 +200,7 @@ class TestThresholdStrategyOnOhlc:
     async def test_on_ohlc_builds_history(self, strategy: ThresholdStrategy) -> None:
         """Test on_ohlc builds price history."""
         ohlc_data = {
-            "timestamp": datetime.now(timezone.utc),
+            "timestamp": datetime.now(UTC),
             "pair": "XBT/EUR",
             "open": "42000.00",
             "high": "42500.00",
@@ -230,7 +230,7 @@ class TestThresholdStrategyOnOhlc:
 
         for i, price in enumerate(prices):
             ohlc_data = {
-                "timestamp": datetime.now(timezone.utc),
+                "timestamp": datetime.now(UTC),
                 "pair": "XBT/EUR",
                 "open": str(price),
                 "high": str(price + 100),

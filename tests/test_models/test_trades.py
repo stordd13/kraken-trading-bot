@@ -8,11 +8,9 @@ This module tests the Trade and BotState models including:
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
-
-import pytest
+import uuid
 
 from krakenbot.models.base import BotStatus, TradeSide, TradeStatus
 from krakenbot.models.trades import BotState, Trade
@@ -39,7 +37,7 @@ class TestTrade:
         """Test value property calculation."""
         trade = Trade(
             id=uuid.uuid4(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             side=TradeSide.BUY,
             amount=Decimal("0.00100000"),
@@ -56,7 +54,7 @@ class TestTrade:
         """Test is_buy property."""
         buy_trade = Trade(
             id=uuid.uuid4(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             side=TradeSide.BUY,
             amount=Decimal("0.00100000"),
@@ -68,7 +66,7 @@ class TestTrade:
 
         sell_trade = Trade(
             id=uuid.uuid4(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             side=TradeSide.SELL,
             amount=Decimal("0.00100000"),
@@ -87,7 +85,7 @@ class TestTrade:
         """Test is_filled property."""
         filled_trade = Trade(
             id=uuid.uuid4(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             side=TradeSide.BUY,
             amount=Decimal("0.00100000"),
@@ -99,7 +97,7 @@ class TestTrade:
 
         pending_trade = Trade(
             id=uuid.uuid4(),
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             side=TradeSide.BUY,
             amount=Decimal("0.00100000"),
@@ -128,7 +126,7 @@ class TestTrade:
     def test_trade_default_uuid(self) -> None:
         """Test that Trade generates UUID by default."""
         trade = Trade(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             pair="XBT/EUR",
             side=TradeSide.BUY,
             amount=Decimal("0.00100000"),

@@ -8,7 +8,7 @@ This module tests:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -32,7 +32,7 @@ class TestTradingSignal:
             confidence=0.8,
             reason="Price drop detected: -1.5%",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         assert signal.signal_type == SignalType.BUY
@@ -53,7 +53,7 @@ class TestTradingSignal:
             confidence=0.9,
             reason="Profit target reached",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             metadata=metadata,
         )
 
@@ -69,7 +69,7 @@ class TestTradingSignal:
             confidence=1.0,
             reason="No conditions met",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         assert signal.signal_type == SignalType.HOLD
@@ -83,7 +83,7 @@ class TestTradingSignal:
             confidence=0.8,
             reason="Test",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         assert signal.should_trade is True
@@ -97,7 +97,7 @@ class TestTradingSignal:
             confidence=0.8,
             reason="Test",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         assert signal.should_trade is True
@@ -111,7 +111,7 @@ class TestTradingSignal:
             confidence=1.0,
             reason="Test",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         assert signal.should_trade is False
@@ -125,7 +125,7 @@ class TestTradingSignal:
             confidence=0.8,
             reason="Test",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         sell_signal = TradingSignal(
@@ -135,7 +135,7 @@ class TestTradingSignal:
             confidence=0.8,
             reason="Test",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         hold_signal = TradingSignal(
@@ -145,7 +145,7 @@ class TestTradingSignal:
             confidence=1.0,
             reason="Test",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         assert buy_signal.is_buy is True
@@ -164,7 +164,7 @@ class TestTradingSignal:
             confidence=0.8,
             reason="Test",
             strategy="threshold",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
 
         assert signal.is_sell is True
@@ -172,7 +172,7 @@ class TestTradingSignal:
 
     def test_to_dict(self) -> None:
         """Test converting signal to dictionary."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         signal = TradingSignal(
             signal_type=SignalType.BUY,
             pair="XBT/EUR",
@@ -205,7 +205,7 @@ class TestTradingSignal:
                 confidence=-0.1,
                 reason="Test",
                 strategy="threshold",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
             )
 
     def test_validation_confidence_too_high(self) -> None:
@@ -218,7 +218,7 @@ class TestTradingSignal:
                 confidence=1.5,
                 reason="Test",
                 strategy="threshold",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
             )
 
     def test_validation_empty_pair(self) -> None:
@@ -231,7 +231,7 @@ class TestTradingSignal:
                 confidence=0.8,
                 reason="Test",
                 strategy="threshold",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
             )
 
     def test_validation_empty_strategy(self) -> None:
@@ -244,7 +244,7 @@ class TestTradingSignal:
                 confidence=0.8,
                 reason="Test",
                 strategy="",
-                timestamp=datetime.now(timezone.utc),
+                timestamp=datetime.now(UTC),
             )
 
     def test_validation_naive_timestamp(self) -> None:
@@ -346,13 +346,14 @@ class TestBaseStrategy:
         await strategy.start()
 
         assert strategy.is_running is True
-        assert mock_event_bus.subscribe.call_count == 2
+        assert mock_event_bus.subscribe.call_count == 3
 
         # Verify subscriptions to correct event types
         calls = mock_event_bus.subscribe.call_args_list
         event_types = [call[0][0] for call in calls]
         assert EventType.MARKET_TICK in event_types
         assert EventType.MARKET_OHLC in event_types
+        assert EventType.TRADE_ORDER_FILLED in event_types
 
     @pytest.mark.asyncio
     async def test_stop(
@@ -365,7 +366,7 @@ class TestBaseStrategy:
         await strategy.stop()
 
         assert strategy.is_running is False
-        assert mock_event_bus.unsubscribe.call_count == 2
+        assert mock_event_bus.unsubscribe.call_count == 3
 
     @pytest.mark.asyncio
     async def test_handle_tick_when_running(
@@ -442,7 +443,7 @@ class TestBaseStrategy:
             confidence=0.8,
             reason="Test",
             strategy="test_strategy",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
         strategy.set_signal(buy_signal)
 
@@ -472,7 +473,7 @@ class TestBaseStrategy:
             confidence=1.0,
             reason="No conditions met",
             strategy="test_strategy",
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
         )
         strategy.set_signal(hold_signal)
 
@@ -518,7 +519,7 @@ class TestBaseStrategy:
 
     def test_reset_state(self, strategy: ConcreteStrategy) -> None:
         """Test resetting strategy state."""
-        strategy._last_signal_at = datetime.now(timezone.utc)
+        strategy._last_signal_at = datetime.now(UTC)
 
         strategy.reset_state()
 

@@ -257,6 +257,9 @@ class RiskManager:
         else:
             # For SELL: need base currency
             base_currency = pair.split("/")[0]
+            # Normalize XBT to BTC (Kraken uses XBT in pairs but BTC in balances via ccxt)
+            if base_currency == "XBT":
+                base_currency = "BTC"
             available = balance.get(base_currency, Decimal("0"))
 
             if amount > available:
