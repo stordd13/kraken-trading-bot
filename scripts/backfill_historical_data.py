@@ -403,6 +403,13 @@ async def main():
         help="Only fetch new data (after last timestamp). Skip historical backfill.",
     )
 
+    parser.add_argument(
+        "-y",
+        "--yes",
+        action="store_true",
+        help="Skip confirmation prompts (for non-interactive use)",
+    )
+
     args = parser.parse_args()
 
     # Load settings
@@ -430,7 +437,7 @@ async def main():
         return
 
     # Warn if parallel mode
-    if args.parallel:
+    if args.parallel and not args.yes:
         print("⚠️  WARNING: Parallel mode may hit Kraken API rate limits (15 req/min)")
         print("This is NOT RECOMMENDED. Sequential mode is safer.")
         print("\nContinue anyway? [y/N]: ", end="")
@@ -443,11 +450,12 @@ async def main():
     estimation = await estimate_backfill_volume(pairs, intervals)
     print_estimation(estimation)
 
-    print("Start backfill? [y/N]: ", end="")
-    response = input().lower()
-    if response != "y":
-        print("Aborted.")
-        return
+    if not args.yes:
+        print("Start backfill? [y/N]: ", end="")
+        response = input().lower()
+        if response != "y":
+            print("Aborted.")
+            return
 
     # Execute backfill
     try:
