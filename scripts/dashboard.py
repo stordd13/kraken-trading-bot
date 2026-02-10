@@ -45,6 +45,12 @@ from sqlalchemy import create_engine, text
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+from krakenbot.config.settings import get_settings
+
+# Get sell threshold from settings for target price calculation
+_settings = get_settings()
+SELL_THRESHOLD_PCT = _settings.strategy.sell_threshold_pct  # e.g., 2.0 for +2%
+
 # Database URL
 DATABASE_URL = os.environ.get(
     "DATABASE_URL", "postgresql://krakenbot:bruno@localhost:5432/krakenbot"
@@ -77,20 +83,41 @@ app = dash.Dash(
 
 
 def fetch_bot_state() -> dict | None:
-    """Fetch current bot state."""
+    """Fetch aggregated bot state across all running instances.
+
+    Returns aggregated metrics:
+    - active_instances: count of running bots
+    - total_position: sum of all position sizes
+    - total_daily_pnl: sum of daily P&L across instances
+    - total_pnl: sum of total P&L across instances
+    - total_trades_today: sum of daily trades count
+    """
     query = """
-    SELECT bot_id, strategy, status, position_size, entry_price,
-           daily_pnl, total_pnl, daily_trades_count,
-           last_signal_at, last_trade_at, error_message, updated_at
+    SELECT
+        COUNT(DISTINCT bot_id) as active_instances,
+        COALESCE(SUM(position_size), 0) as total_position,
+        COALESCE(SUM(daily_pnl), 0) as total_daily_pnl,
+        COALESCE(SUM(total_pnl), 0) as total_pnl,
+        COALESCE(SUM(daily_trades_count), 0) as total_trades_today,
+        MAX(updated_at) as last_updated,
+        MAX(last_trade_at) as last_trade_at,
+        STRING_AGG(DISTINCT status, ', ') as statuses
     FROM bot_state
-    ORDER BY updated_at DESC
-    LIMIT 1
+    WHERE status IN ('RUNNING', 'PAUSED')
+       OR updated_at > NOW() - INTERVAL '1 hour'
     """
     try:
         df = pd.read_sql(query, engine)
         if df.empty:
             return None
-        return df.iloc[0].to_dict()
+        result = df.iloc[0].to_dict()
+        # Convert numpy types to Python types
+        result["active_instances"] = int(result.get("active_instances") or 0)
+        result["total_position"] = float(result.get("total_position") or 0)
+        result["total_daily_pnl"] = float(result.get("total_daily_pnl") or 0)
+        result["total_pnl"] = float(result.get("total_pnl") or 0)
+        result["total_trades_today"] = int(result.get("total_trades_today") or 0)
+        return result
     except Exception as e:
         print(f"Error fetching bot state: {e}")
         return None
@@ -119,11 +146,31 @@ def fetch_ohlc_data(pair: str = "XBT/USDC", hours: int = 24, interval: int = 1) 
 
 
 def fetch_recent_trades(limit: int = 20) -> pd.DataFrame:
-    """Fetch recent trades."""
+    """Fetch recent trades with position context.
+
+    Joins with open_positions to show:
+    - Entry price for the position
+    - Position ID for pairing BUY/SELL
+    """
     query = f"""
-    SELECT timestamp, pair, side, amount, price, fee, pnl, strategy, status
-    FROM trades_history
-    ORDER BY timestamp DESC
+    SELECT
+        t.timestamp,
+        t.pair,
+        t.side,
+        t.amount,
+        t.price,
+        t.fee,
+        t.pnl,
+        t.strategy,
+        t.status,
+        op.entry_price as position_entry_price,
+        op.position_id
+    FROM trades_history t
+    LEFT JOIN open_positions op ON (
+        t.id = op.entry_trade_id OR t.id = op.exit_trade_id
+    )
+    WHERE t.strategy NOT LIKE 'backtest_%'
+    ORDER BY t.timestamp DESC
     LIMIT {limit}
     """
     try:
@@ -227,75 +274,24 @@ def execute_custom_query(query: str) -> tuple[pd.DataFrame | None, str | None]:
 
 
 def fetch_open_positions() -> pd.DataFrame:
-    """Fetch open positions (buys without matching sells).
+    """Fetch open positions from open_positions table.
 
-    Uses FIFO matching: calculates net position by pair and computes
-    weighted average entry price from unmatched buy trades.
+    Uses the dedicated open_positions table which tracks individual positions
+    with their entry prices, reference prices, and status.
     """
     query = """
-    WITH trade_flows AS (
-        SELECT
-            pair,
-            side,
-            timestamp,
-            amount,
-            price,
-            strategy,
-            -- Running sum of position changes
-            SUM(CASE WHEN side = 'buy' THEN amount ELSE -amount END)
-                OVER (PARTITION BY pair ORDER BY timestamp) as running_position
-        FROM trades_history
-        WHERE status = 'filled'
-          AND strategy NOT LIKE 'backtest_%'
-        ORDER BY pair, timestamp
-    ),
-    current_positions AS (
-        SELECT
-            pair,
-            SUM(CASE WHEN side = 'buy' THEN amount ELSE -amount END) as net_position
-        FROM trades_history
-        WHERE status = 'filled'
-          AND strategy NOT LIKE 'backtest_%'
-        GROUP BY pair
-        HAVING SUM(CASE WHEN side = 'buy' THEN amount ELSE -amount END) > 0.00000001
-    ),
-    -- Get the most recent buys that make up the current position
-    recent_buys AS (
-        SELECT
-            t.pair,
-            t.timestamp as entry_time,
-            t.amount,
-            t.price,
-            t.strategy,
-            SUM(t.amount) OVER (PARTITION BY t.pair ORDER BY t.timestamp DESC) as cumulative_amount
-        FROM trades_history t
-        INNER JOIN current_positions cp ON t.pair = cp.pair
-        WHERE t.side = 'buy'
-          AND t.status = 'filled'
-          AND t.strategy NOT LIKE 'backtest_%'
-        ORDER BY t.pair, t.timestamp DESC
-    ),
-    -- Calculate weighted average entry price for open position
-    position_details AS (
-        SELECT
-            rb.pair,
-            cp.net_position as amount,
-            MIN(rb.entry_time) as entry_time,
-            SUM(rb.amount * rb.price) / SUM(rb.amount) as avg_entry_price,
-            MAX(rb.strategy) as strategy
-        FROM recent_buys rb
-        INNER JOIN current_positions cp ON rb.pair = cp.pair
-        WHERE rb.cumulative_amount <= cp.net_position * 1.5  -- Include relevant buys
-        GROUP BY rb.pair, cp.net_position
-    )
     SELECT
+        bot_id,
+        position_id,
         pair,
-        amount,
-        avg_entry_price as entry_price,
+        amount_btc as amount,
+        entry_price,
+        reference_price,
         entry_time,
         strategy
-    FROM position_details
-    ORDER BY entry_time DESC
+    FROM open_positions
+    WHERE status = 'OPEN'
+    ORDER BY bot_id, position_id
     """
     try:
         return pd.read_sql(query, engine)
@@ -1207,37 +1203,41 @@ app.layout = dbc.Container(
     [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
 )
 def update_metrics(n_intervals, n_clicks):
-    """Update metric cards."""
+    """Update metric cards with aggregated data from all bot instances."""
     bot_state = fetch_bot_state()
     now = datetime.now(UTC).strftime("%H:%M:%S UTC")
 
-    if bot_state:
-        status = bot_state.get("status", "unknown")
-        status_color = (
-            "success" if status == "running" else "warning" if status == "stopped" else "danger"
-        )
-
+    if bot_state and bot_state.get("active_instances", 0) > 0:
+        # Status card - show number of active instances
+        active_count = bot_state.get("active_instances", 0)
+        statuses = bot_state.get("statuses", "UNKNOWN")
+        status_color = "success" if "RUNNING" in statuses else "warning"
         status_card = create_metric_card(
-            "Bot Status", status.upper(), bot_state.get("strategy", ""), status_color
+            "Bot Status",
+            f"{active_count} instance(s)",
+            statuses,
+            status_color,
         )
 
-        position = float(bot_state.get("position_size", 0) or 0)
-        entry = bot_state.get("entry_price")
+        # Position card - aggregated across all instances
+        position = bot_state.get("total_position", 0)
         position_card = create_metric_card(
-            "Position",
+            "Total Position",
             f"{position:.6f} BTC" if position > 0 else "No position",
-            f"Entry: {float(entry):.2f}" if entry else "",
+            f"Across {active_count} instance(s)" if active_count > 1 else "",
             "info" if position > 0 else "secondary",
         )
 
-        daily_pnl = float(bot_state.get("daily_pnl", 0) or 0)
-        total_pnl = float(bot_state.get("total_pnl", 0) or 0)
+        # P&L card - aggregated
+        daily_pnl = bot_state.get("total_daily_pnl", 0)
+        total_pnl = bot_state.get("total_pnl", 0)
         pnl_color = "success" if total_pnl >= 0 else "danger"
         pnl_card = create_metric_card(
             "Total P&L", f"{total_pnl:+.2f} USDC", f"Today: {daily_pnl:+.2f}", pnl_color
         )
 
-        trades_count = int(bot_state.get("daily_trades_count", 0) or 0)
+        # Trades card - aggregated
+        trades_count = bot_state.get("total_trades_today", 0)
         trades_card = create_metric_card("Trades Today", str(trades_count), "", "primary")
     else:
         status_card = create_metric_card("Bot Status", "OFFLINE", "", "danger")
@@ -1269,22 +1269,68 @@ def update_chart(n_intervals, n_clicks, hours):
     [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
 )
 def update_trades_table(n_intervals, n_clicks):
-    """Update trades table."""
+    """Update trades table with entry/exit price distinction.
+
+    Shows:
+    - Entry Price (from position for context)
+    - Exit Price (trade execution price for SELL)
+    - Fee (real value from exchange)
+    - Position ID for pairing BUY/SELL
+    """
     df = fetch_recent_trades(limit=50)
 
     if df.empty:
         return dbc.Alert("No trades found", color="info")
 
-    # Format columns
-    df["timestamp"] = pd.to_datetime(df["timestamp"]).dt.strftime("%Y-%m-%d %H:%M")
-    df["price"] = df["price"].apply(lambda x: f"{float(x):.2f}" if x else "—")
-    df["amount"] = df["amount"].apply(lambda x: f"{float(x):.6f}" if x else "—")
-    df["pnl"] = df["pnl"].apply(lambda x: f"{float(x):+.2f}" if x else "—")
-    df["fee"] = df["fee"].apply(lambda x: f"{float(x):.4f}" if x else "—")
+    # Build display rows with better column names
+    rows = []
+    for _, row in df.iterrows():
+        timestamp = pd.to_datetime(row["timestamp"]).strftime("%Y-%m-%d %H:%M")
+        side = row["side"]
+        amount = float(row["amount"]) if row["amount"] else 0
+        price = float(row["price"]) if row["price"] else 0
+        fee = float(row["fee"]) if row["fee"] else 0
+        pnl = float(row["pnl"]) if row["pnl"] else None
+        position_entry = (
+            float(row["position_entry_price"]) if row.get("position_entry_price") else None
+        )
+        position_id = row.get("position_id")
+
+        # Determine entry vs exit price based on side
+        if side == "buy":
+            entry_price = price  # BUY price is the entry
+            exit_price = None
+        else:
+            entry_price = position_entry  # Use position's entry price for context
+            exit_price = price  # SELL price is the exit
+
+        rows.append(
+            {
+                "timestamp": timestamp,
+                "side": side.upper(),
+                "amount": f"{amount:.6f}",
+                "entry_price": f"${entry_price:.2f}" if entry_price else "—",
+                "exit_price": f"${exit_price:.2f}" if exit_price else "—",
+                "fee": f"${fee:.4f}" if fee else "—",
+                "pnl": f"{pnl:+.2f}" if pnl else "—",
+                "position_id": f"#{position_id}" if position_id else "—",
+            }
+        )
+
+    display_df = pd.DataFrame(rows)
 
     return dash_table.DataTable(
-        data=df.to_dict("records"),
-        columns=[{"name": col.upper(), "id": col} for col in df.columns],
+        data=display_df.to_dict("records"),
+        columns=[
+            {"name": "Time", "id": "timestamp"},
+            {"name": "Side", "id": "side"},
+            {"name": "Amount", "id": "amount"},
+            {"name": "Entry Price", "id": "entry_price"},
+            {"name": "Exit Price", "id": "exit_price"},
+            {"name": "Fee", "id": "fee"},
+            {"name": "P&L", "id": "pnl"},
+            {"name": "Position", "id": "position_id"},
+        ],
         style_table={"overflowX": "auto"},
         style_header={
             "backgroundColor": "rgb(30, 30, 30)",
@@ -1297,15 +1343,24 @@ def update_trades_table(n_intervals, n_clicks):
             "border": "1px solid rgb(70, 70, 70)",
             "textAlign": "left",
             "padding": "10px",
+            "fontSize": "13px",
         },
         style_data_conditional=[
             {
-                "if": {"filter_query": "{side} = buy"},
+                "if": {"filter_query": "{side} = BUY"},
                 "backgroundColor": "rgba(0, 255, 136, 0.1)",
             },
             {
-                "if": {"filter_query": "{side} = sell"},
+                "if": {"filter_query": "{side} = SELL"},
                 "backgroundColor": "rgba(255, 68, 68, 0.1)",
+            },
+            {
+                "if": {"filter_query": "{pnl} contains '+'"},
+                "color": "#00ff88",
+            },
+            {
+                "if": {"filter_query": "{pnl} contains '-'"},
+                "color": "#ff4444",
             },
         ],
         page_size=20,
@@ -1317,7 +1372,14 @@ def update_trades_table(n_intervals, n_clicks):
     [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
 )
 def update_positions_table(n_intervals, n_clicks):
-    """Update open positions table with unrealized P&L."""
+    """Update open positions table with unrealized P&L.
+
+    Now uses open_positions table directly and shows:
+    - Position ID and Bot ID
+    - Entry Price and Reference Price
+    - Target Price (calculated from sell_threshold_pct)
+    - Unrealized P&L
+    """
     df = fetch_open_positions()
 
     if df.empty:
@@ -1339,6 +1401,19 @@ def update_positions_table(n_intervals, n_clicks):
         amount = float(row["amount"])
         entry_time = pd.to_datetime(row["entry_time"])
 
+        # Get reference price (may be None for older positions)
+        reference_price = float(row["reference_price"]) if row["reference_price"] else None
+
+        # Calculate target price based on sell_threshold_pct
+        target_price = entry_price * (1 + SELL_THRESHOLD_PCT / 100)
+
+        # Extract short bot_id (last part after underscore or full if no underscore)
+        bot_id = row.get("bot_id", "")
+        short_bot_id = bot_id.split("_")[-1] if "_" in bot_id else bot_id
+
+        # Position ID
+        position_id = row.get("position_id", "—")
+
         # Calculate duration
         if entry_time.tzinfo is None:
             entry_time = entry_time.replace(tzinfo=UTC)
@@ -1356,22 +1431,30 @@ def update_positions_table(n_intervals, n_clicks):
             unrealized_pnl = (current_price - entry_price) * amount
             unrealized_pnl_pct = ((current_price / entry_price) - 1) * 100
             total_unrealized_pnl += unrealized_pnl
+            # Calculate distance to target
+            distance_to_target_pct = ((target_price / current_price) - 1) * 100
         else:
             unrealized_pnl = None
             unrealized_pnl_pct = None
+            distance_to_target_pct = None
 
         rows.append(
             {
-                "pair": row["pair"],
+                "position_id": f"#{position_id}",
+                "bot_id": short_bot_id,
                 "amount": f"{amount:.6f}",
-                "entry_price": f"{entry_price:.2f}",
-                "current_price": f"{current_price:.2f}" if current_price else "—",
+                "entry_price": f"${entry_price:.2f}",
+                "reference_price": f"${reference_price:.2f}" if reference_price else "—",
+                "target_price": f"${target_price:.2f}",
+                "current_price": f"${current_price:.2f}" if current_price else "—",
                 "unrealized_pnl": f"{unrealized_pnl:+.2f}" if unrealized_pnl is not None else "—",
                 "unrealized_pnl_pct": f"{unrealized_pnl_pct:+.2f}%"
                 if unrealized_pnl_pct is not None
                 else "—",
+                "to_target": f"{distance_to_target_pct:+.2f}%"
+                if distance_to_target_pct is not None
+                else "—",
                 "duration": duration_str,
-                "strategy": row["strategy"],
             }
         )
 
@@ -1383,20 +1466,24 @@ def update_positions_table(n_intervals, n_clicks):
         [
             dbc.Badge(f"{len(rows)} position(s)", color="info", className="me-2"),
             dbc.Badge(f"P&L: {total_unrealized_pnl:+.2f} USDC", color=pnl_color),
+            dbc.Badge(f"Target: +{SELL_THRESHOLD_PCT}%", color="warning", className="ms-2"),
         ]
     )
 
     table = dash_table.DataTable(
         data=display_df.to_dict("records"),
         columns=[
-            {"name": "Pair", "id": "pair"},
+            {"name": "#", "id": "position_id"},
+            {"name": "Bot", "id": "bot_id"},
             {"name": "Amount", "id": "amount"},
-            {"name": "Entry Price", "id": "entry_price"},
-            {"name": "Current Price", "id": "current_price"},
-            {"name": "P&L (USDC)", "id": "unrealized_pnl"},
-            {"name": "P&L (%)", "id": "unrealized_pnl_pct"},
+            {"name": "Entry", "id": "entry_price"},
+            {"name": "Reference", "id": "reference_price"},
+            {"name": "Target", "id": "target_price"},
+            {"name": "Current", "id": "current_price"},
+            {"name": "P&L", "id": "unrealized_pnl"},
+            {"name": "P&L %", "id": "unrealized_pnl_pct"},
+            {"name": "To Target", "id": "to_target"},
             {"name": "Duration", "id": "duration"},
-            {"name": "Strategy", "id": "strategy"},
         ],
         style_table={"overflowX": "auto"},
         style_header={
@@ -1409,16 +1496,17 @@ def update_positions_table(n_intervals, n_clicks):
             "color": "white",
             "border": "1px solid rgb(70, 70, 70)",
             "textAlign": "left",
-            "padding": "10px",
+            "padding": "8px",
+            "fontSize": "13px",
         },
         style_data_conditional=[
             {
                 "if": {"filter_query": "{unrealized_pnl} contains '+'"},
-                "color": "#00ff88",
+                "color": "#00ff88",  # Vert pour P&L positif
             },
             {
                 "if": {"filter_query": "{unrealized_pnl} contains '-'"},
-                "color": "#ff4444",
+                "color": "#ff4444",  # Rouge pour P&L négatif
             },
         ],
         page_size=10,

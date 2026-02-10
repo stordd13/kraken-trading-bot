@@ -30,11 +30,12 @@ from __future__ import annotations
 
 import asyncio
 from datetime import UTC, datetime
+from decimal import Decimal
 import signal
 import sys
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from krakenbot.config.settings import get_settings
 from krakenbot.connectors.kraken_rest import KrakenRestClient
@@ -43,8 +44,8 @@ from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
 from krakenbot.execution.engine import ExecutionEngine
-from krakenbot.models.base import BotStatus
-from krakenbot.models.trades import BotState
+from krakenbot.models.base import BotStatus, PositionStatus
+from krakenbot.models.trades import BotState, OpenPosition
 from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 
 if TYPE_CHECKING:
@@ -237,14 +238,17 @@ class KrakenBot:
         await self.execution_engine.start()
         self.logger.debug("execution_engine_started")
 
-        # 2. Start strategy
+        # 2. Reconcile positions with exchange (before strategy loads positions)
+        await self._reconcile_positions_with_exchange()
+
+        # 3. Start strategy
         await self.strategy.start()
         self.logger.debug("strategy_started")
 
-        # 3. Initialize bot state in database (for dashboard)
+        # 4. Initialize bot state in database (for dashboard)
         await self._init_bot_state()
 
-        # 4. Connect WebSocket and subscribe to market data
+        # 5. Connect WebSocket and subscribe to market data
         await self.ws_client.connect()
         await self.ws_client.subscribe_ohlc(
             self.settings.trading.pair,
@@ -351,6 +355,116 @@ class KrakenBot:
                 )
 
         self.logger.info("krakenbot_stopped")
+
+    async def _reconcile_positions_with_exchange(self) -> None:
+        """Reconcile open positions in DB with actual exchange balance.
+
+        This method is called at startup to detect manual position closures
+        that happened while the bot was stopped. It:
+        1. Gets the actual BTC balance from Kraken
+        2. Compares with sum of open positions in DB
+        3. If exchange balance < DB positions, marks excess positions as CLOSED
+
+        This prevents the bot from thinking it has positions that don't exist
+        on the exchange, which would block new trades due to position limits.
+        """
+        if not self.rest_client or not self.db_manager:
+            self.logger.warning("reconciliation_skipped_no_client")
+            return
+
+        try:
+            # Get actual balance from exchange
+            balances = await self.rest_client.get_balance()
+
+            # Normalize XBT to BTC (Kraken uses XBT internally)
+            btc_balance = balances.get("BTC", Decimal("0")) or balances.get("XBT", Decimal("0"))
+
+            self.logger.info(
+                "reconciliation_exchange_balance",
+                btc_balance=float(btc_balance),
+            )
+
+            # Get sum of open positions from DB
+            async with self.db_manager.session() as session:
+                result = await session.execute(
+                    select(func.sum(OpenPosition.amount_btc)).where(
+                        OpenPosition.status == PositionStatus.OPEN
+                    )
+                )
+                db_position_sum = result.scalar() or Decimal("0")
+
+                self.logger.info(
+                    "reconciliation_db_positions",
+                    db_position_sum=float(db_position_sum),
+                )
+
+                # Compare: if exchange has less BTC than DB thinks we have,
+                # some positions were closed manually
+                if btc_balance < db_position_sum:
+                    deficit = db_position_sum - btc_balance
+
+                    self.logger.warning(
+                        "reconciliation_deficit_detected",
+                        deficit=float(deficit),
+                        btc_balance=float(btc_balance),
+                        db_position_sum=float(db_position_sum),
+                        action="marking_oldest_positions_as_closed",
+                    )
+
+                    # Get oldest open positions to close (FIFO)
+                    result = await session.execute(
+                        select(OpenPosition)
+                        .where(OpenPosition.status == PositionStatus.OPEN)
+                        .order_by(OpenPosition.entry_time.asc())
+                    )
+                    open_positions = result.scalars().all()
+
+                    # Mark positions as CLOSED until we account for the deficit
+                    remaining_deficit = deficit
+                    closed_count = 0
+
+                    for pos in open_positions:
+                        if remaining_deficit <= Decimal("0.00000001"):
+                            break
+
+                        # Mark position as CLOSED (manual closure)
+                        pos.status = PositionStatus.CLOSED
+                        pos.closed_at = datetime.now(UTC)
+                        pos.pnl = Decimal("0")  # Unknown P&L for manual closure
+
+                        remaining_deficit -= pos.amount_btc
+                        closed_count += 1
+
+                        self.logger.warning(
+                            "reconciliation_position_closed",
+                            position_id=pos.position_id,
+                            amount_btc=float(pos.amount_btc),
+                            entry_price=float(pos.entry_price),
+                            reason="manual_closure_detected",
+                        )
+
+                    await session.commit()
+
+                    self.logger.warning(
+                        "reconciliation_completed",
+                        positions_closed=closed_count,
+                        remaining_open=len(open_positions) - closed_count,
+                    )
+                else:
+                    self.logger.info(
+                        "reconciliation_ok",
+                        message="Exchange balance matches or exceeds DB positions",
+                        btc_balance=float(btc_balance),
+                        db_position_sum=float(db_position_sum),
+                    )
+
+        except Exception as e:
+            self.logger.error(
+                "reconciliation_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+                note="Continuing without reconciliation - positions may be out of sync",
+            )
 
     async def run(self) -> None:
         """Main execution loop.

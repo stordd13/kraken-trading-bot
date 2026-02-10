@@ -57,6 +57,7 @@ async def run_backtest_with_params(
     sell_threshold: float,
     lookback: int,
     candle_interval: int = 1,
+    strategy_name: str = "threshold_rolling",
 ) -> GridSearchResult:
     """Run a single backtest with specific parameters."""
 
@@ -72,7 +73,7 @@ async def run_backtest_with_params(
     engine = BacktestEngine(
         settings,
         db_manager,
-        strategy_name="threshold_rolling",
+        strategy_name=strategy_name,
         candle_interval=candle_interval,
     )
 
@@ -118,6 +119,13 @@ async def main() -> None:
         default=5,
         help="Candle interval in minutes (default: 5 for realistic trading)",
     )
+    parser.add_argument(
+        "--strategy",
+        type=str,
+        default="threshold_rolling",
+        choices=["threshold", "threshold_multi", "threshold_rolling", "technical_indicator"],
+        help="Strategy to optimize (default: threshold_rolling)",
+    )
     args = parser.parse_args()
 
     # Parse dates
@@ -155,14 +163,15 @@ async def main() -> None:
 
     total_combinations = len(buy_thresholds) * len(sell_thresholds) * len(lookbacks)
 
-    print(f"\n{'='*80}")
+    print(f"\n{'=' * 80}")
     print(f"GRID SEARCH - {args.pair} ({args.interval}-min candles)")
-    print(f"{'='*80}")
+    print(f"{'=' * 80}")
+    print(f"Strategy: {args.strategy}")
     print(f"Period: {start_time.date()} to {end_time.date()} ({args.days} days)")
     print(f"Candle interval: {args.interval} min")
     print(f"Testing {total_combinations} parameter combinations...")
     print(f"Lookbacks tested: {lookbacks}")
-    print(f"{'='*80}\n")
+    print(f"{'=' * 80}\n")
 
     results: list[GridSearchResult] = []
     completed = 0
@@ -180,6 +189,7 @@ async def main() -> None:
                         sell_threshold=sell_thresh,
                         lookback=lookback,
                         candle_interval=args.interval,
+                        strategy_name=args.strategy,
                     )
                     results.append(result)
                     completed += 1
@@ -193,34 +203,46 @@ async def main() -> None:
         results.sort(key=lambda r: r.net_pnl, reverse=True)
 
         # Print top 10 results
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("TOP 10 PARAMETER COMBINATIONS (by Net P&L)")
-        print(f"{'='*80}")
-        print(f"{'Buy%':>6} {'Sell%':>6} {'Look':>5} {'Trades':>7} {'WinRate':>8} {'P&L':>10} {'Return%':>8} {'MaxDD%':>7} {'Sharpe':>7}")
+        print(f"{'=' * 80}")
+        print(
+            f"{'Buy%':>6} {'Sell%':>6} {'Look':>5} {'Trades':>7} {'WinRate':>8} {'P&L':>10} {'Return%':>8} {'MaxDD%':>7} {'Sharpe':>7}"
+        )
         print("-" * 80)
 
         for r in results[:10]:
-            print(f"{r.buy_threshold:>6.2f} {r.sell_threshold:>6.2f} {r.lookback:>5} {r.total_trades:>7} {r.win_rate:>7.1f}% {r.net_pnl:>+10.2f} {r.total_return_pct:>+7.2f}% {r.max_drawdown_pct:>6.2f}% {r.sharpe_ratio:>7.2f}")
+            print(
+                f"{r.buy_threshold:>6.2f} {r.sell_threshold:>6.2f} {r.lookback:>5} {r.total_trades:>7} {r.win_rate:>7.1f}% {r.net_pnl:>+10.2f} {r.total_return_pct:>+7.2f}% {r.max_drawdown_pct:>6.2f}% {r.sharpe_ratio:>7.2f}"
+            )
 
         # Print worst 5 for reference
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("BOTTOM 5 PARAMETER COMBINATIONS")
-        print(f"{'='*80}")
-        print(f"{'Buy%':>6} {'Sell%':>6} {'Look':>5} {'Trades':>7} {'WinRate':>8} {'P&L':>10} {'Return%':>8} {'MaxDD%':>7} {'Sharpe':>7}")
+        print(f"{'=' * 80}")
+        print(
+            f"{'Buy%':>6} {'Sell%':>6} {'Look':>5} {'Trades':>7} {'WinRate':>8} {'P&L':>10} {'Return%':>8} {'MaxDD%':>7} {'Sharpe':>7}"
+        )
         print("-" * 80)
 
         for r in results[-5:]:
-            print(f"{r.buy_threshold:>6.2f} {r.sell_threshold:>6.2f} {r.lookback:>5} {r.total_trades:>7} {r.win_rate:>7.1f}% {r.net_pnl:>+10.2f} {r.total_return_pct:>+7.2f}% {r.max_drawdown_pct:>6.2f}% {r.sharpe_ratio:>7.2f}")
+            print(
+                f"{r.buy_threshold:>6.2f} {r.sell_threshold:>6.2f} {r.lookback:>5} {r.total_trades:>7} {r.win_rate:>7.1f}% {r.net_pnl:>+10.2f} {r.total_return_pct:>+7.2f}% {r.max_drawdown_pct:>6.2f}% {r.sharpe_ratio:>7.2f}"
+            )
 
         # Summary statistics
         profitable = [r for r in results if r.net_pnl > 0]
         with_trades = [r for r in results if r.total_trades > 0]
 
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("SUMMARY")
-        print(f"{'='*80}")
-        print(f"Combinations with trades: {len(with_trades)}/{len(results)} ({len(with_trades)/len(results)*100:.1f}%)")
-        print(f"Profitable combinations: {len(profitable)}/{len(results)} ({len(profitable)/len(results)*100:.1f}%)")
+        print(f"{'=' * 80}")
+        print(
+            f"Combinations with trades: {len(with_trades)}/{len(results)} ({len(with_trades) / len(results) * 100:.1f}%)"
+        )
+        print(
+            f"Profitable combinations: {len(profitable)}/{len(results)} ({len(profitable) / len(results) * 100:.1f}%)"
+        )
 
         if results[0].net_pnl != 0:
             best = results[0]
@@ -238,7 +260,7 @@ async def main() -> None:
             avg_pnl = sum(r.net_pnl for r in profitable) / len(profitable)
             print(f"\nAvg P&L (profitable only): {avg_pnl:+.2f} USDC")
 
-        print(f"{'='*80}\n")
+        print(f"{'=' * 80}\n")
 
     finally:
         await db_manager.close_db()
