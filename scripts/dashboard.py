@@ -123,6 +123,18 @@ def fetch_bot_state() -> dict | None:
         return None
 
 
+def get_optimal_interval(hours: int) -> int:
+    """Select optimal candle interval based on timeframe to avoid gaps."""
+    if hours <= 6:
+        return 1
+    elif hours <= 24:
+        return 5
+    elif hours <= 72:
+        return 15
+    else:
+        return 60
+
+
 def fetch_ohlc_data(pair: str = "XBT/USDC", hours: int = 24, interval: int = 1) -> pd.DataFrame:
     """Fetch OHLC data for chart."""
     query = """
@@ -500,8 +512,12 @@ def fetch_backtest_trades(strategy_filter: str) -> pd.DataFrame:
 # ============================================================================
 
 
-def create_candlestick_chart(df: pd.DataFrame, trades_df: pd.DataFrame = None) -> go.Figure:
-    """Create candlestick chart with trades overlay."""
+def create_candlestick_chart(
+    df: pd.DataFrame,
+    trades_df: pd.DataFrame = None,
+    positions_df: pd.DataFrame = None,
+) -> go.Figure:
+    """Create candlestick chart with trades overlay and open position levels."""
     fig = go.Figure()
 
     if not df.empty:
@@ -553,6 +569,37 @@ def create_candlestick_chart(df: pd.DataFrame, trades_df: pd.DataFrame = None) -
                         "line": {"color": "white", "width": 1},
                     },
                 )
+            )
+
+    # Add open position entry/target lines
+    if positions_df is not None and not positions_df.empty:
+        for _, pos in positions_df.iterrows():
+            entry_price = float(pos["entry_price"])
+            target_price = entry_price * (1 + SELL_THRESHOLD_PCT / 100)
+            pos_id = pos.get("position_id", "?")
+
+            # Entry price - solid green line
+            fig.add_hline(
+                y=entry_price,
+                line_dash="solid",
+                line_color="rgba(0, 255, 136, 0.5)",
+                line_width=1,
+                annotation_text=f"Entry #{pos_id}",
+                annotation_position="left",
+                annotation_font_color="rgba(0, 255, 136, 0.7)",
+                annotation_font_size=10,
+            )
+
+            # Target price - dashed yellow line
+            fig.add_hline(
+                y=target_price,
+                line_dash="dash",
+                line_color="rgba(255, 215, 0, 0.5)",
+                line_width=1,
+                annotation_text=f"Target #{pos_id}",
+                annotation_position="left",
+                annotation_font_color="rgba(255, 215, 0, 0.7)",
+                annotation_font_size=10,
             )
 
     fig.update_layout(
@@ -1259,9 +1306,11 @@ def update_metrics(n_intervals, n_clicks):
 def update_chart(n_intervals, n_clicks, hours):
     """Update price chart."""
     hours = int(hours) if hours else 24
-    df = fetch_ohlc_data(hours=hours)
+    interval = get_optimal_interval(hours)
+    df = fetch_ohlc_data(hours=hours, interval=interval)
     trades_df = fetch_recent_trades(limit=50)
-    return create_candlestick_chart(df, trades_df)
+    positions_df = fetch_open_positions()
+    return create_candlestick_chart(df, trades_df, positions_df)
 
 
 @callback(
@@ -1716,9 +1765,11 @@ def update_backtest_runs(n_clicks, active_tab, delete_status):
     # Format for display
     display_df = df.copy()
     display_df["period"] = display_df.apply(
-        lambda r: f"{r['start_time'].strftime('%m/%d')} - {r['end_time'].strftime('%m/%d')}"
-        if pd.notna(r["start_time"])
-        else "—",
+        lambda r: (
+            f"{r['start_time'].strftime('%m/%d')} - {r['end_time'].strftime('%m/%d')}"
+            if pd.notna(r["start_time"])
+            else "—"
+        ),
         axis=1,
     )
     display_df["return"] = display_df["total_return_pct"].apply(
@@ -2097,9 +2148,11 @@ def update_backtest_runs_table(df: pd.DataFrame) -> dash_table.DataTable:
     """Helper to create backtest runs DataTable."""
     display_df = df.copy()
     display_df["period"] = display_df.apply(
-        lambda r: f"{r['start_time'].strftime('%m/%d')} - {r['end_time'].strftime('%m/%d')}"
-        if pd.notna(r["start_time"])
-        else "—",
+        lambda r: (
+            f"{r['start_time'].strftime('%m/%d')} - {r['end_time'].strftime('%m/%d')}"
+            if pd.notna(r["start_time"])
+            else "—"
+        ),
         axis=1,
     )
     display_df["return"] = display_df["total_return_pct"].apply(

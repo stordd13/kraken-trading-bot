@@ -563,6 +563,7 @@ class BacktestEngine:
                 "low": candle.low,
                 "close": candle.close,
                 "volume": candle.volume,
+                "is_complete": True,
             }
 
             await self.strategy.on_ohlc(ohlc_data)
