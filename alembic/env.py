@@ -31,6 +31,7 @@ from krakenbot.core.database import Base
 from krakenbot.models import (  # noqa: F401
     BotState,
     OHLCData,
+    Order,
     TickData,
     Trade,
 )

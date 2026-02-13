@@ -44,6 +44,7 @@ from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
 from krakenbot.execution.engine import ExecutionEngine
+from krakenbot.execution.order_manager import OrderManager
 from krakenbot.execution.risk import GlobalRiskManager
 from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
@@ -129,6 +130,7 @@ class KrakenBot:
         self.strategy: ThresholdRollingStrategy | None = None  # Legacy single strategy
         self.strategies: list[BaseStrategy] = []  # Multi-strategy list
         self.execution_engine: ExecutionEngine | None = None
+        self.order_manager: OrderManager | None = None
         self.global_risk_manager: GlobalRiskManager | None = None
 
         # State
@@ -136,6 +138,7 @@ class KrakenBot:
         self._shutdown_requested: bool = False
         self._setup_completed: bool = False
         self._multi_strategy_mode: bool = self.settings.multi_strategy.enabled
+        self._order_check_task: asyncio.Task[None] | None = None
 
     async def setup(self) -> None:
         """Initialize all components in the correct order.
@@ -200,13 +203,23 @@ class KrakenBot:
             self.settings.multi_strategy if self._multi_strategy_mode else None,
         )
 
-        # 6. Initialize execution engine with global risk manager
+        # 6. Initialize order manager for limit order support
+        self.order_manager = OrderManager(
+            self.rest_client,
+            self.db_manager,
+            self.event_bus,
+            self.settings,
+        )
+        self.logger.debug("order_manager_initialized")
+
+        # 7. Initialize execution engine with global risk manager + order manager
         self.execution_engine = ExecutionEngine(
             self.settings,
             self.event_bus,
             self.db_manager,
             self.rest_client,
             risk_manager=self.global_risk_manager,
+            order_manager=self.order_manager,
         )
         self.logger.debug("execution_engine_initialized")
 
@@ -324,10 +337,16 @@ class KrakenBot:
             await self.strategy.start()
             self.logger.debug("strategy_started")
 
-        # 4. Initialize bot state in database (for dashboard)
+        # 4. Load pending orders from DB and subscribe OrderManager to OHLC
+        if self.order_manager:
+            await self.order_manager.load_pending_from_db()
+            await self.event_bus.subscribe("market.ohlc", self.order_manager.on_ohlc)
+            self.logger.debug("order_manager_started")
+
+        # 5. Initialize bot state in database (for dashboard)
         await self._init_bot_state()
 
-        # 5. Connect WebSocket and subscribe to market data
+        # 6. Connect WebSocket and subscribe to market data
         await self.ws_client.connect()
 
         if self._multi_strategy_mode:
@@ -414,7 +433,19 @@ class KrakenBot:
                     error_type=type(e).__name__,
                 )
 
-        # 2. Stop execution engine
+        # 2. Cancel pending orders (before closing REST client)
+        if self.order_manager:
+            try:
+                await self.order_manager.cancel_all_pending()
+                self.logger.debug("order_manager_stopped")
+            except Exception as e:
+                self.logger.error(
+                    "order_manager_stop_error",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+
+        # 3. Stop execution engine
         if self.execution_engine:
             try:
                 await self.execution_engine.stop()
@@ -426,7 +457,7 @@ class KrakenBot:
                     error_type=type(e).__name__,
                 )
 
-        # 3. Close WebSocket
+        # 4. Close WebSocket
         if self.ws_client:
             try:
                 await self.ws_client.close()
@@ -438,7 +469,7 @@ class KrakenBot:
                     error_type=type(e).__name__,
                 )
 
-        # 4. Close REST client
+        # 5. Close REST client
         if self.rest_client:
             try:
                 await self.rest_client.close()
@@ -450,7 +481,7 @@ class KrakenBot:
                     error_type=type(e).__name__,
                 )
 
-        # 5. Close database
+        # 6. Close database
         if self.db_manager:
             try:
                 await self.db_manager.close_db()
@@ -597,6 +628,10 @@ class KrakenBot:
             stats_interval_sec=stats_interval_sec,
         )
 
+        # Start periodic order check task
+        if self.order_manager:
+            self._order_check_task = asyncio.create_task(self._periodic_order_check())
+
         try:
             while self._running and not self._shutdown_requested:
                 # Sleep briefly to avoid busy-waiting
@@ -624,7 +659,36 @@ class KrakenBot:
             )
             raise
         finally:
+            # Cancel the order check task
+            if self._order_check_task and not self._order_check_task.done():
+                self._order_check_task.cancel()
+                try:
+                    await self._order_check_task
+                except asyncio.CancelledError:
+                    pass
             await self.stop()
+
+    async def _periodic_order_check(self) -> None:
+        """Periodically check pending orders for fills or expiry.
+
+        Runs every check_interval_seconds (default 30s) until cancelled.
+        """
+        interval = self.settings.order.check_interval_seconds
+        self.logger.info("order_check_task_started", interval_seconds=interval)
+
+        try:
+            while self._running and not self._shutdown_requested:
+                await asyncio.sleep(interval)
+                if self.order_manager:
+                    await self.order_manager.check_pending_orders()
+        except asyncio.CancelledError:
+            self.logger.debug("order_check_task_cancelled")
+        except Exception as e:
+            self.logger.error(
+                "order_check_task_error",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
 
     async def _log_stats(self) -> None:
         """Log periodic statistics from all components.
@@ -647,6 +711,11 @@ class KrakenBot:
         # REST client stats
         if self.rest_client:
             stats["rest_client"] = self.rest_client.stats
+
+        # Order manager stats
+        if self.order_manager:
+            stats["order_manager"] = self.order_manager.stats
+            stats["order_manager"]["pending_count"] = self.order_manager.pending_count
 
         # Strategy state
         if self._multi_strategy_mode and self.strategies:

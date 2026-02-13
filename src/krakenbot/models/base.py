@@ -128,3 +128,33 @@ class PositionStatus(str, Enum):
     OPEN = "open"
     CLOSED = "closed"
     CANCELLED = "cancelled"
+
+
+class OrderType(str, Enum):
+    """Type of order placement.
+
+    Attributes:
+        MARKET: Immediate execution at current market price.
+        LIMIT: Execution at specified price or better.
+    """
+
+    MARKET = "market"
+    LIMIT = "limit"
+
+
+class OrderStatus(str, Enum):
+    """Status of a limit order.
+
+    Attributes:
+        PENDING: Order placed, awaiting fill.
+        PARTIALLY_FILLED: Order partially filled.
+        FILLED: Order completely filled.
+        CANCELLED: Order cancelled by user or system.
+        EXPIRED: Order expired without filling.
+    """
+
+    PENDING = "pending"
+    PARTIALLY_FILLED = "partially_filled"
+    FILLED = "filled"
+    CANCELLED = "cancelled"
+    EXPIRED = "expired"

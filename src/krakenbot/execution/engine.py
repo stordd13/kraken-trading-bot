@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from krakenbot.connectors.kraken_rest import KrakenRestClient
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
+    from krakenbot.execution.order_manager import OrderManager
     from krakenbot.models.trades import Trade
     from krakenbot.strategies.base import TradingSignal
 
@@ -80,6 +81,7 @@ class ExecutionEngine:
         db_manager: DatabaseManager,
         rest_client: KrakenRestClient,
         risk_manager: GlobalRiskManager | RiskManager | None = None,
+        order_manager: OrderManager | None = None,
     ) -> None:
         """Initialize the execution engine.
 
@@ -90,6 +92,7 @@ class ExecutionEngine:
             rest_client: Kraken REST API client.
             risk_manager: Optional risk manager (GlobalRiskManager for multi-strategy,
                          RiskManager for legacy). If None, creates a default RiskManager.
+            order_manager: Optional order manager for limit order support.
         """
         self.settings = settings
         self.event_bus = event_bus
@@ -98,6 +101,7 @@ class ExecutionEngine:
         self.risk_manager: GlobalRiskManager | RiskManager = (
             risk_manager if risk_manager is not None else RiskManager(settings, db_manager)
         )
+        self.order_manager: OrderManager | None = order_manager
         self.logger = get_logger(__name__)
 
         self._running = False
@@ -280,49 +284,94 @@ class ExecutionEngine:
             )
             return
 
-        # Execute the order
-        trade = await self.rest_client.place_market_order(
-            pair=signal.pair,
-            side=side,
-            amount=amount,
-            strategy=signal.strategy,
-            signal_price=signal.price,  # Fallback price if Kraken returns None
-        )
+        # Determine order type from signal metadata
+        order_type = signal.metadata.get("order_type", self.settings.order.default_order_type)
+        limit_price = signal.metadata.get("limit_price")
 
-        self._stats["signals_executed"] += 1
+        # Before executing a SELL (stop-loss/trailing), cancel any existing profit target
+        if side == TradeSide.SELL and self.order_manager:
+            position_id = signal.metadata.get("position_id")
+            if position_id is not None:
+                await self.order_manager.cancel_profit_target(position_id)
 
-        # Update bot state
-        await self._update_bot_state(trade, signal)
+        # Route to limit or market order
+        if order_type == "limit" and self.order_manager and limit_price:
+            # Limit order via OrderManager
+            order = await self.order_manager.place_and_track(
+                pair=signal.pair,
+                side=side,
+                amount=amount,
+                price=Decimal(str(limit_price)),
+                strategy=signal.strategy,
+                signal_metadata=signal.metadata,
+            )
 
-        self.logger.info(
-            "order_executed",
-            trade_id=str(trade.id),
-            pair=trade.pair,
-            side=trade.side.value,
-            amount=float(trade.amount),
-            price=float(trade.price),
-            fee=float(trade.fee),
-            strategy=trade.strategy,
-            status=trade.status.value,
-        )
+            self._stats["signals_executed"] += 1
 
-        # Publish TRADE_ORDER_FILLED event for strategy position tracking
-        await self.event_bus.publish(
-            EventType.TRADE_ORDER_FILLED,
-            {
-                "trade_id": str(trade.id),
-                "pair": trade.pair,
-                "side": side.value,
-                "amount": str(trade.amount),
-                "price": str(trade.price),
-                "fee": str(trade.fee),
-                "strategy": trade.strategy,
-                "timestamp": trade.timestamp.isoformat(),
-                # Metadata from signal for position tracking
-                "reference_price": str(signal.metadata.get("reference_price", "0")),
-                "position_id": signal.metadata.get("position_id"),
-            },
-        )
+            self.logger.info(
+                "limit_order_placed",
+                order_id=order.order_id,
+                pair=signal.pair,
+                side=side.value,
+                amount=float(amount),
+                limit_price=float(Decimal(str(limit_price))),
+                status=order.status.value,
+                strategy=signal.strategy,
+            )
+
+            # If immediately filled, update bot state
+            if order.is_filled:
+                from krakenbot.models.trades import Trade as TradeModel
+
+                # Build a Trade-like object for bot state update
+                async with self.db_manager.read_session() as session:
+                    trade_record = await session.get(TradeModel, order.id)
+                if trade_record:
+                    await self._update_bot_state(trade_record, signal)
+        else:
+            # Market order (default / stop-loss / trailing)
+            trade = await self.rest_client.place_market_order(
+                pair=signal.pair,
+                side=side,
+                amount=amount,
+                strategy=signal.strategy,
+                signal_price=signal.price,  # Fallback price if Kraken returns None
+            )
+
+            self._stats["signals_executed"] += 1
+
+            # Update bot state
+            await self._update_bot_state(trade, signal)
+
+            self.logger.info(
+                "order_executed",
+                trade_id=str(trade.id),
+                pair=trade.pair,
+                side=trade.side.value,
+                amount=float(trade.amount),
+                price=float(trade.price),
+                fee=float(trade.fee),
+                strategy=trade.strategy,
+                status=trade.status.value,
+            )
+
+            # Publish TRADE_ORDER_FILLED event for strategy position tracking
+            await self.event_bus.publish(
+                EventType.TRADE_ORDER_FILLED,
+                {
+                    "trade_id": str(trade.id),
+                    "pair": trade.pair,
+                    "side": side.value,
+                    "amount": str(trade.amount),
+                    "price": str(trade.price),
+                    "fee": str(trade.fee),
+                    "strategy": trade.strategy,
+                    "timestamp": trade.timestamp.isoformat(),
+                    # Metadata from signal for position tracking
+                    "reference_price": str(signal.metadata.get("reference_price", "0")),
+                    "position_id": signal.metadata.get("position_id"),
+                },
+            )
 
     async def _calculate_order_amount(
         self,

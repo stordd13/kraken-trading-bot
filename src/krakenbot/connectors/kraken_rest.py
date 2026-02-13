@@ -29,7 +29,7 @@ Example:
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 import uuid
@@ -46,7 +46,8 @@ from krakenbot.core.exceptions import (
     RateLimitError,
 )
 from krakenbot.core.logger import get_logger
-from krakenbot.models.base import TradeSide, TradeStatus
+from krakenbot.models.base import OrderStatus, OrderType, TradeSide, TradeStatus
+from krakenbot.models.orders import Order
 from krakenbot.models.trades import Trade
 
 if TYPE_CHECKING:
@@ -731,6 +732,396 @@ class KrakenRestClient:
                 message=f"Failed to cancel order: {e}",
                 order_id=order_id,
             ) from e
+
+    async def place_limit_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        price: Decimal,
+        strategy: str = "manual",
+        expires_in_seconds: int = 900,
+    ) -> Order:
+        """Place a limit order.
+
+        In paper mode: fills immediately if price is favorable,
+        otherwise creates a PENDING order.
+        In live mode: places a real limit order via ccxt.
+
+        Args:
+            pair: Trading pair (e.g., "XBT/USDC").
+            side: Order side (BUY or SELL).
+            amount: Order amount in base currency.
+            price: Limit price.
+            strategy: Strategy name for tracking.
+            expires_in_seconds: Auto-cancel after this many seconds.
+
+        Returns:
+            Order object with current status.
+
+        Raises:
+            InsufficientBalanceError: If not enough balance (paper mode).
+            OrderExecutionError: If order placement fails.
+            KrakenAPIError: If API call fails (live mode).
+        """
+        kraken_pair = PAIR_TO_KRAKEN.get(pair, pair)
+
+        # Validate minimum order size
+        min_size = MIN_ORDER_SIZE.get(pair, Decimal("0.0001"))
+        if amount < min_size:
+            raise OrderExecutionError(
+                message=f"Order amount below minimum ({min_size})",
+                pair=pair,
+                side=side.value,
+                amount=amount,
+            )
+
+        expires_at = datetime.now(UTC) + timedelta(seconds=expires_in_seconds)
+
+        if self.is_paper_mode:
+            return await self._paper_limit_order(pair, side, amount, price, strategy, expires_at)
+        else:
+            return await self._live_limit_order(
+                kraken_pair, pair, side, amount, price, strategy, expires_at
+            )
+
+    async def _paper_limit_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        price: Decimal,
+        strategy: str,
+        expires_at: datetime,
+    ) -> Order:
+        """Simulate a limit order in paper mode.
+
+        Fills immediately if price is favorable (BUY at price >= current,
+        SELL at price <= current), otherwise creates PENDING order.
+
+        Args:
+            pair: Trading pair.
+            side: Order side.
+            amount: Order amount.
+            price: Limit price.
+            strategy: Strategy name.
+            expires_at: Order expiry time.
+
+        Returns:
+            Order object (FILLED or PENDING).
+        """
+        current_price = self._last_prices.get(pair)
+        order_id = f"paper-limit-{uuid.uuid4().hex[:8]}"
+
+        # Check if order should fill immediately
+        immediate_fill = False
+        if current_price is not None:
+            if side == TradeSide.BUY and price >= current_price:
+                immediate_fill = True
+            elif side == TradeSide.SELL and price <= current_price:
+                immediate_fill = True
+
+        if immediate_fill:
+            # Check balance for immediate fill
+            value = amount * price
+            fee = value * Decimal("0.0016")  # Maker fee ~0.16%
+            quote_currency = pair.split("/")[1]
+            base_currency = pair.split("/")[0]
+
+            if side == TradeSide.BUY:
+                required = value + fee
+                available = self._paper_balance.get(quote_currency, Decimal("0"))
+                if available < required:
+                    raise InsufficientBalanceError(
+                        message="Insufficient balance for paper limit order",
+                        required=required,
+                        available=available,
+                        currency=quote_currency,
+                    )
+                self._paper_balance[quote_currency] = available - required
+                self._paper_balance[base_currency] = (
+                    self._paper_balance.get(base_currency, Decimal("0")) + amount
+                )
+            else:
+                available = self._paper_balance.get(base_currency, Decimal("0"))
+                if available < amount:
+                    raise InsufficientBalanceError(
+                        message="Insufficient balance for paper limit order",
+                        required=amount,
+                        available=available,
+                        currency=base_currency,
+                    )
+                self._paper_balance[base_currency] = available - amount
+                self._paper_balance[quote_currency] = (
+                    self._paper_balance.get(quote_currency, Decimal("0")) + value - fee
+                )
+
+            order = Order(
+                id=uuid.uuid4(),
+                order_id=order_id,
+                bot_id=strategy,
+                pair=pair,
+                side=side,
+                order_type=OrderType.LIMIT,
+                amount=amount,
+                price=price,
+                filled_amount=amount,
+                filled_price=price,
+                fee=fee,
+                status=OrderStatus.FILLED,
+                strategy=strategy,
+                expires_at=expires_at,
+            )
+
+            self._stats["orders_placed"] += 1
+            self._stats["orders_filled"] += 1
+
+            logger.info(
+                f"{self._mode_prefix} limit_order_filled_immediately",
+                order_id=order_id,
+                pair=pair,
+                side=side.value,
+                amount=str(amount),
+                price=str(price),
+                fee=str(fee),
+            )
+        else:
+            # Create PENDING order
+            order = Order(
+                id=uuid.uuid4(),
+                order_id=order_id,
+                bot_id=strategy,
+                pair=pair,
+                side=side,
+                order_type=OrderType.LIMIT,
+                amount=amount,
+                price=price,
+                filled_amount=Decimal("0"),
+                fee=Decimal("0"),
+                status=OrderStatus.PENDING,
+                strategy=strategy,
+                expires_at=expires_at,
+            )
+
+            # Track in paper orders for cancel support
+            self._paper_orders[order_id] = {
+                "order_id": order_id,
+                "pair": pair,
+                "side": side.value,
+                "amount": str(amount),
+                "price": str(price),
+                "type": "limit",
+                "status": "pending",
+            }
+
+            self._stats["orders_placed"] += 1
+
+            logger.info(
+                f"{self._mode_prefix} limit_order_pending",
+                order_id=order_id,
+                pair=pair,
+                side=side.value,
+                amount=str(amount),
+                price=str(price),
+                expires_at=expires_at.isoformat(),
+            )
+
+        # Save to database if available
+        if self._db_manager:
+            await self._save_order(order)
+
+        return order
+
+    async def _live_limit_order(
+        self,
+        kraken_pair: str,
+        original_pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        price: Decimal,
+        strategy: str,
+        expires_at: datetime,
+    ) -> Order:
+        """Place a real limit order via ccxt.
+
+        Args:
+            kraken_pair: Kraken-format trading pair.
+            original_pair: Original pair format.
+            side: Order side.
+            amount: Order amount.
+            price: Limit price.
+            strategy: Strategy name.
+            expires_at: Order expiry time.
+
+        Returns:
+            Order object with exchange order ID.
+        """
+        try:
+            self._stats["api_calls"] += 1
+            self._stats["orders_placed"] += 1
+
+            order_side = "buy" if side == TradeSide.BUY else "sell"
+            ccxt_order = await self._exchange.create_limit_order(
+                kraken_pair,
+                order_side,
+                float(amount),
+                float(price),
+            )
+
+            exchange_order_id = ccxt_order.get("id", f"kraken-{uuid.uuid4().hex[:8]}")
+
+            # Check if already filled (rare for limit orders)
+            ccxt_status = ccxt_order.get("status", "open")
+            filled_raw = ccxt_order.get("filled") or Decimal("0")
+            filled_amount = Decimal(str(filled_raw))
+
+            if ccxt_status == "closed":
+                status = OrderStatus.FILLED
+                avg_price = Decimal(str(ccxt_order.get("average") or price))
+                fee_info = ccxt_order.get("fee") or {}
+                fee = Decimal(str(fee_info.get("cost", 0) or 0))
+                self._stats["orders_filled"] += 1
+            else:
+                status = OrderStatus.PENDING
+                avg_price = None
+                fee = Decimal("0")
+
+            order = Order(
+                id=uuid.uuid4(),
+                order_id=exchange_order_id,
+                bot_id=strategy,
+                pair=original_pair,
+                side=side,
+                order_type=OrderType.LIMIT,
+                amount=amount,
+                price=price,
+                filled_amount=filled_amount,
+                filled_price=avg_price,
+                fee=fee,
+                status=status,
+                strategy=strategy,
+                expires_at=expires_at,
+            )
+
+            if self._db_manager:
+                await self._save_order(order)
+
+            logger.info(
+                f"{self._mode_prefix} limit_order_placed",
+                order_id=exchange_order_id,
+                pair=original_pair,
+                side=side.value,
+                amount=str(amount),
+                price=str(price),
+                status=status.value,
+            )
+
+            return order
+
+        except ccxt.InsufficientFunds as e:
+            self._stats["orders_failed"] += 1
+            raise InsufficientBalanceError(
+                message=f"Insufficient funds for limit order: {e}",
+            ) from e
+        except ccxt.ExchangeError as e:
+            self._stats["orders_failed"] += 1
+            raise OrderExecutionError(
+                message=f"Limit order placement failed: {e}",
+                pair=original_pair,
+                side=side.value,
+                amount=amount,
+            ) from e
+
+    async def get_order_status(self, order_id: str, pair: str | None = None) -> dict[str, Any]:
+        """Get the current status of an order.
+
+        Args:
+            order_id: Exchange order ID.
+            pair: Trading pair (used for API call).
+
+        Returns:
+            Dictionary with order status details.
+
+        Raises:
+            KrakenAPIError: If API call fails.
+        """
+        if self.is_paper_mode:
+            # Paper mode: return from tracked paper orders
+            paper_order = self._paper_orders.get(order_id)
+            if paper_order:
+                return {
+                    "order_id": order_id,
+                    "status": paper_order.get("status", "pending"),
+                    "filled": Decimal("0"),
+                    "amount": Decimal(paper_order.get("amount", "0")),
+                    "price": Decimal(paper_order.get("price", "0")),
+                }
+            return {
+                "order_id": order_id,
+                "status": "not_found",
+                "filled": Decimal("0"),
+                "amount": Decimal("0"),
+            }
+
+        try:
+            self._stats["api_calls"] += 1
+            kraken_pair = PAIR_TO_KRAKEN.get(pair, pair) if pair else None
+            order = await self._exchange.fetch_order(order_id, kraken_pair)
+
+            filled_raw = order.get("filled") or 0
+            avg_price_raw = order.get("average") or order.get("price") or 0
+            fee_info = order.get("fee") or {}
+
+            return {
+                "order_id": order_id,
+                "status": order.get("status", "unknown"),
+                "filled": Decimal(str(filled_raw)),
+                "amount": Decimal(str(order.get("amount", 0))),
+                "price": Decimal(str(order.get("price", 0))),
+                "average": Decimal(str(avg_price_raw)),
+                "fee": Decimal(str(fee_info.get("cost", 0) or 0)),
+                "fee_currency": fee_info.get("currency", ""),
+            }
+
+        except ccxt.OrderNotFound:
+            logger.warning(
+                "order_not_found",
+                order_id=order_id,
+            )
+            return {
+                "order_id": order_id,
+                "status": "not_found",
+                "filled": Decimal("0"),
+                "amount": Decimal("0"),
+            }
+        except ccxt.ExchangeError as e:
+            logger.error(
+                "get_order_status_error",
+                error=str(e),
+                order_id=order_id,
+            )
+            raise KrakenAPIError(
+                message=f"Failed to get order status: {e}",
+            ) from e
+
+    async def _save_order(self, order: Order) -> None:
+        """Save order to database.
+
+        Args:
+            order: Order to save.
+        """
+        if not self._db_manager:
+            return
+
+        try:
+            async with self._db_manager.session() as session:
+                session.add(order)
+        except Exception as e:
+            logger.error(
+                "save_order_error",
+                error=str(e),
+                order_id=order.order_id,
+            )
 
     async def get_trade_history(
         self,
