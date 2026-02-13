@@ -48,6 +48,7 @@ from krakenbot.execution.order_manager import OrderManager
 from krakenbot.execution.risk import GlobalRiskManager
 from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
+from krakenbot.strategies.adaptive import AdaptiveStrategy
 from krakenbot.strategies.base import BaseStrategy
 from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 
@@ -58,6 +59,7 @@ if TYPE_CHECKING:
 # Strategy registry: maps strategy name to class
 STRATEGY_REGISTRY: dict[str, type[BaseStrategy]] = {
     "threshold_rolling": ThresholdRollingStrategy,
+    "adaptive": AdaptiveStrategy,
 }
 
 
