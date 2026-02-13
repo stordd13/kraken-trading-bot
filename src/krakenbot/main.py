@@ -50,6 +50,7 @@ from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
 from krakenbot.strategies.adaptive import AdaptiveStrategy
 from krakenbot.strategies.base import BaseStrategy
+from krakenbot.strategies.capitulation import CapitulationStrategy
 from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 
 if TYPE_CHECKING:
@@ -60,6 +61,7 @@ if TYPE_CHECKING:
 STRATEGY_REGISTRY: dict[str, type[BaseStrategy]] = {
     "threshold_rolling": ThresholdRollingStrategy,
     "adaptive": AdaptiveStrategy,
+    "capitulation": CapitulationStrategy,
 }
 
 
