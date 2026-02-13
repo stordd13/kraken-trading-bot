@@ -47,9 +47,34 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from krakenbot.config.settings import get_settings
 
-# Get sell threshold from settings for target price calculation
+# Load settings and build per-strategy exit configuration
 _settings = get_settings()
-SELL_THRESHOLD_PCT = _settings.strategy.sell_threshold_pct  # e.g., 2.0 for +2%
+
+# Per-strategy exit configuration for target price calculation.
+# Replaces the old single global SELL_THRESHOLD_PCT.
+_default_sell_pct = _settings.strategy.sell_threshold_pct  # e.g., 2.0 for +2%
+STRATEGY_EXIT_CONFIG: dict[str, dict] = {
+    "threshold": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
+    "threshold_multi": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
+    "threshold_rolling": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
+    "technical_indicator": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
+    "adaptive": {"type": "trailing_stop", "trailing_stop_pct": 3.0},
+    "capitulation": {"type": "profit_target", "profit_target_pct": 15.0},
+}
+
+# Override from strategies.yaml if multi-strategy is enabled
+if _settings.multi_strategy.enabled:
+    for _strat_cfg in _settings.multi_strategy.strategies:
+        if _strat_cfg.name == "adaptive":
+            STRATEGY_EXIT_CONFIG["adaptive"] = {
+                "type": "trailing_stop",
+                "trailing_stop_pct": _strat_cfg.params.get("trailing_stop_pct", 3.0),
+            }
+        elif _strat_cfg.name == "capitulation":
+            STRATEGY_EXIT_CONFIG["capitulation"] = {
+                "type": "profit_target",
+                "profit_target_pct": _strat_cfg.params.get("max_profit_target_pct", 15.0),
+            }
 
 # Database URL
 DATABASE_URL = os.environ.get(
@@ -76,6 +101,53 @@ app = dash.Dash(
     update_title=None,
     suppress_callback_exceptions=True,
 )
+
+# ============================================================================
+# STRATEGY TARGET LOGIC
+# ============================================================================
+
+
+def compute_target_for_position(strategy: str, entry_price: float) -> dict:
+    """Compute target price and label for a position based on its strategy.
+
+    Args:
+        strategy: Strategy name or bot_id (e.g., "adaptive_prod", "capitulation_prod").
+        entry_price: Position entry price.
+
+    Returns:
+        dict with keys: target_price (float|None), label (str), color (str).
+    """
+    strategy_lower = (strategy or "").lower()
+
+    if "capitulation" in strategy_lower:
+        config = STRATEGY_EXIT_CONFIG.get("capitulation", {})
+        pct = config.get("profit_target_pct", 15.0)
+        target = entry_price * (1 + pct / 100)
+        return {
+            "target_price": target,
+            "label": f"+{pct}%",
+            "color": "rgba(255, 100, 100, 0.5)",
+        }
+
+    if "adaptive" in strategy_lower:
+        config = STRATEGY_EXIT_CONFIG.get("adaptive", {})
+        trailing_pct = config.get("trailing_stop_pct", 3.0)
+        return {
+            "target_price": None,
+            "label": f"Trailing {trailing_pct}%",
+            "color": "rgba(100, 200, 255, 0.5)",
+        }
+
+    # Default: threshold-based strategies
+    config = STRATEGY_EXIT_CONFIG.get("threshold", {})
+    pct = config.get("sell_threshold_pct", _default_sell_pct)
+    target = entry_price * (1 + pct / 100)
+    return {
+        "target_price": target,
+        "label": f"+{pct}%",
+        "color": "rgba(255, 215, 0, 0.5)",
+    }
+
 
 # ============================================================================
 # DATA FETCHING FUNCTIONS
@@ -157,13 +229,22 @@ def fetch_ohlc_data(pair: str = "XBT/USDC", hours: int = 24, interval: int = 1) 
         return pd.DataFrame()
 
 
-def fetch_recent_trades(limit: int = 20) -> pd.DataFrame:
+def fetch_recent_trades(limit: int = 20, strategy_filter: str | None = None) -> pd.DataFrame:
     """Fetch recent trades with position context.
 
-    Joins with open_positions to show:
-    - Entry price for the position
-    - Position ID for pairing BUY/SELL
+    Args:
+        limit: Maximum rows to return.
+        strategy_filter: Filter by strategy/bot_id. None or "all" = no filter.
     """
+    conditions = ["t.strategy NOT LIKE 'backtest_%'"]
+    params: dict = {}
+
+    if strategy_filter and strategy_filter != "all":
+        conditions.append("(t.strategy = :strat)")
+        params["strat"] = strategy_filter
+
+    where_clause = " AND ".join(conditions)
+
     query = f"""
     SELECT
         t.timestamp,
@@ -181,12 +262,12 @@ def fetch_recent_trades(limit: int = 20) -> pd.DataFrame:
     LEFT JOIN open_positions op ON (
         t.id = op.entry_trade_id OR t.id = op.exit_trade_id
     )
-    WHERE t.strategy NOT LIKE 'backtest_%'
+    WHERE {where_clause}
     ORDER BY t.timestamp DESC
     LIMIT {limit}
     """
     try:
-        return pd.read_sql(query, engine)
+        return pd.read_sql(text(query), engine, params=params)
     except Exception as e:
         print(f"Error fetching trades: {e}")
         return pd.DataFrame()
@@ -285,13 +366,22 @@ def execute_custom_query(query: str) -> tuple[pd.DataFrame | None, str | None]:
         return None, str(e)
 
 
-def fetch_open_positions() -> pd.DataFrame:
+def fetch_open_positions(strategy_filter: str | None = None) -> pd.DataFrame:
     """Fetch open positions from open_positions table.
 
-    Uses the dedicated open_positions table which tracks individual positions
-    with their entry prices, reference prices, and status.
+    Args:
+        strategy_filter: Filter by strategy/bot_id. None or "all" = no filter.
     """
-    query = """
+    conditions = ["status = 'OPEN'"]
+    params: dict = {}
+
+    if strategy_filter and strategy_filter != "all":
+        conditions.append("(bot_id = :strat OR strategy = :strat)")
+        params["strat"] = strategy_filter
+
+    where_clause = " AND ".join(conditions)
+
+    query = f"""
     SELECT
         bot_id,
         position_id,
@@ -302,11 +392,11 @@ def fetch_open_positions() -> pd.DataFrame:
         entry_time,
         strategy
     FROM open_positions
-    WHERE status = 'OPEN'
+    WHERE {where_clause}
     ORDER BY bot_id, position_id
     """
     try:
-        return pd.read_sql(query, engine)
+        return pd.read_sql(text(query), engine, params=params)
     except Exception as e:
         print(f"Error fetching open positions: {e}")
         return pd.DataFrame()
@@ -386,6 +476,87 @@ def fetch_data_range_stats() -> dict:
             "global_earliest": None,
             "global_latest": None,
         }
+
+
+def fetch_bot_states_per_strategy() -> pd.DataFrame:
+    """Fetch bot state for each strategy instance individually."""
+    query = """
+    SELECT
+        bot_id,
+        strategy,
+        status,
+        position_size,
+        daily_pnl,
+        total_pnl,
+        daily_trades_count,
+        updated_at,
+        last_trade_at
+    FROM bot_state
+    WHERE status IN ('RUNNING', 'PAUSED')
+       OR updated_at > NOW() - INTERVAL '1 hour'
+    ORDER BY strategy, bot_id
+    """
+    try:
+        return pd.read_sql(query, engine)
+    except Exception as e:
+        print(f"Error fetching per-strategy bot states: {e}")
+        return pd.DataFrame()
+
+
+def fetch_orders(strategy_filter: str | None = None, limit: int = 50) -> pd.DataFrame:
+    """Fetch orders from the orders table.
+
+    Args:
+        strategy_filter: Filter by strategy/bot_id. None or "all" = no filter.
+        limit: Maximum rows to return.
+    """
+    base_query = """
+    SELECT
+        order_id, bot_id, pair, side, order_type,
+        amount, price, filled_amount, filled_price, fee,
+        status, strategy, expires_at, created_at, updated_at
+    FROM orders
+    """
+    if strategy_filter and strategy_filter != "all":
+        base_query += " WHERE (strategy = :strat OR bot_id = :strat)"
+        base_query += f" ORDER BY created_at DESC LIMIT {limit}"
+        try:
+            return pd.read_sql(text(base_query), engine, params={"strat": strategy_filter})
+        except Exception as e:
+            print(f"Error fetching orders: {e}")
+            return pd.DataFrame()
+    else:
+        base_query += f" ORDER BY created_at DESC LIMIT {limit}"
+        try:
+            return pd.read_sql(base_query, engine)
+        except Exception as e:
+            print(f"Error fetching orders: {e}")
+            return pd.DataFrame()
+
+
+def fetch_distinct_strategies() -> list[dict]:
+    """Fetch distinct strategies/bot_ids for filter dropdowns."""
+    query = """
+    SELECT DISTINCT bot_id, strategy
+    FROM bot_state
+    WHERE bot_id IS NOT NULL
+    UNION
+    SELECT DISTINCT bot_id, strategy
+    FROM open_positions
+    WHERE bot_id IS NOT NULL
+    ORDER BY strategy, bot_id
+    """
+    try:
+        df = pd.read_sql(query, engine)
+        options = [{"label": "All Strategies", "value": "all"}]
+        for _, row in df.iterrows():
+            bot_id = row["bot_id"]
+            strategy = row.get("strategy", "")
+            label = f"{strategy} ({bot_id})" if strategy and strategy != bot_id else bot_id
+            options.append({"label": label, "value": bot_id})
+        return options
+    except Exception:
+        return [{"label": "All Strategies", "value": "all"}]
 
 
 def run_backtest_in_thread(strategy: str, days: int, interval: int, pair: str) -> None:
@@ -571,12 +742,17 @@ def create_candlestick_chart(
                 )
             )
 
-    # Add open position entry/target lines
+    # Add open position entry/target lines (per-strategy)
     if positions_df is not None and not positions_df.empty:
         for _, pos in positions_df.iterrows():
             entry_price = float(pos["entry_price"])
-            target_price = entry_price * (1 + SELL_THRESHOLD_PCT / 100)
+            strategy = pos.get("strategy", "threshold_rolling")
             pos_id = pos.get("position_id", "?")
+
+            target_info = compute_target_for_position(strategy, entry_price)
+            target_price = target_info["target_price"]
+            target_label = target_info["label"]
+            target_color = target_info["color"]
 
             # Entry price - solid green line
             fig.add_hline(
@@ -590,17 +766,30 @@ def create_candlestick_chart(
                 annotation_font_size=10,
             )
 
-            # Target price - dashed yellow line
-            fig.add_hline(
-                y=target_price,
-                line_dash="dash",
-                line_color="rgba(255, 215, 0, 0.5)",
-                line_width=1,
-                annotation_text=f"Target #{pos_id}",
-                annotation_position="left",
-                annotation_font_color="rgba(255, 215, 0, 0.7)",
-                annotation_font_size=10,
-            )
+            if target_price is not None:
+                # Fixed target (threshold / capitulation)
+                fig.add_hline(
+                    y=target_price,
+                    line_dash="dash",
+                    line_color=target_color,
+                    line_width=1,
+                    annotation_text=f"Target #{pos_id} ({target_label})",
+                    annotation_position="left",
+                    annotation_font_color=target_color,
+                    annotation_font_size=10,
+                )
+            else:
+                # Trailing stop (adaptive) - annotate entry line
+                fig.add_annotation(
+                    x=0.02,
+                    y=entry_price,
+                    xref="paper",
+                    text=f"#{pos_id} {target_label}",
+                    showarrow=False,
+                    font={"color": target_color, "size": 10},
+                    xanchor="left",
+                    yshift=12,
+                )
 
     fig.update_layout(
         template="plotly_dark",
@@ -732,13 +921,20 @@ app.layout = dbc.Container(
         dcc.Interval(id="interval-component", interval=10 * 1000, n_intervals=0),
         # Store for delete status
         dcc.Store(id="delete-status-store", data=None),
-        # Metrics Row
+        # Metrics Row (aggregated)
         dbc.Row(
             [
                 dbc.Col(html.Div(id="metric-status"), width=3),
                 dbc.Col(html.Div(id="metric-position"), width=3),
                 dbc.Col(html.Div(id="metric-pnl"), width=3),
                 dbc.Col(html.Div(id="metric-trades"), width=3),
+            ],
+            className="mb-2",
+        ),
+        # Per-strategy breakdown row
+        dbc.Row(
+            [
+                dbc.Col(html.Div(id="metric-strategy-breakdown"), width=12),
             ],
             className="mb-4",
         ),
@@ -827,7 +1023,25 @@ app.layout = dbc.Container(
                     [
                         dbc.Card(
                             [
-                                dbc.CardHeader(html.H5("Recent Trades", className="mb-0")),
+                                dbc.CardHeader(
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                html.H5("Recent Trades", className="mb-0"),
+                                                width=8,
+                                            ),
+                                            dbc.Col(
+                                                dbc.Select(
+                                                    id="trades-strategy-filter",
+                                                    options=[],
+                                                    value="all",
+                                                    size="sm",
+                                                ),
+                                                width=4,
+                                            ),
+                                        ]
+                                    )
+                                ),
                                 dbc.CardBody(
                                     [
                                         html.Div(id="trades-table"),
@@ -849,7 +1063,16 @@ app.layout = dbc.Container(
                                         [
                                             dbc.Col(
                                                 html.H5("Open Positions", className="mb-0"),
-                                                width=8,
+                                                width=4,
+                                            ),
+                                            dbc.Col(
+                                                dbc.Select(
+                                                    id="positions-strategy-filter",
+                                                    options=[],
+                                                    value="all",
+                                                    size="sm",
+                                                ),
+                                                width=4,
                                             ),
                                             dbc.Col(
                                                 html.Div(
@@ -871,7 +1094,49 @@ app.layout = dbc.Container(
                     label="Positions",
                     tab_id="tab-positions",
                 ),
-                # Tab 4: SQL Explorer
+                # Tab 4: Orders
+                dbc.Tab(
+                    [
+                        dbc.Card(
+                            [
+                                dbc.CardHeader(
+                                    dbc.Row(
+                                        [
+                                            dbc.Col(
+                                                html.H5("Orders", className="mb-0"),
+                                                width=4,
+                                            ),
+                                            dbc.Col(
+                                                dbc.Select(
+                                                    id="orders-strategy-filter",
+                                                    options=[],
+                                                    value="all",
+                                                    size="sm",
+                                                ),
+                                                width=4,
+                                            ),
+                                            dbc.Col(
+                                                html.Div(
+                                                    id="orders-summary",
+                                                    className="text-end",
+                                                ),
+                                                width=4,
+                                            ),
+                                        ]
+                                    )
+                                ),
+                                dbc.CardBody(
+                                    [
+                                        html.Div(id="orders-table"),
+                                    ]
+                                ),
+                            ]
+                        ),
+                    ],
+                    label="Orders",
+                    tab_id="tab-orders",
+                ),
+                # Tab 5: SQL Explorer
                 dbc.Tab(
                     [
                         dbc.Card(
@@ -918,12 +1183,16 @@ app.layout = dbc.Container(
                                                     html.Code("market_data_ohlc"), className="mb-1"
                                                 ),
                                                 html.Li(
-                                                    html.Code("market_data_ticks"), className="mb-1"
-                                                ),
-                                                html.Li(
                                                     html.Code("trades_history"), className="mb-1"
                                                 ),
+                                                html.Li(
+                                                    html.Code("open_positions"), className="mb-1"
+                                                ),
+                                                html.Li(html.Code("orders"), className="mb-1"),
                                                 html.Li(html.Code("bot_state"), className="mb-1"),
+                                                html.Li(
+                                                    html.Code("backtest_runs"), className="mb-1"
+                                                ),
                                                 html.Li(
                                                     html.Code("task_execution_logs"),
                                                     className="mb-1",
@@ -978,6 +1247,18 @@ app.layout = dbc.Container(
                                                             id="backtest-strategy-select",
                                                             options=[
                                                                 {
+                                                                    "label": "Threshold Rolling",
+                                                                    "value": "threshold_rolling",
+                                                                },
+                                                                {
+                                                                    "label": "Adaptive",
+                                                                    "value": "adaptive",
+                                                                },
+                                                                {
+                                                                    "label": "Capitulation",
+                                                                    "value": "capitulation",
+                                                                },
+                                                                {
                                                                     "label": "Threshold",
                                                                     "value": "threshold",
                                                                 },
@@ -986,15 +1267,11 @@ app.layout = dbc.Container(
                                                                     "value": "threshold_multi",
                                                                 },
                                                                 {
-                                                                    "label": "Threshold Rolling",
-                                                                    "value": "threshold_rolling",
-                                                                },
-                                                                {
                                                                     "label": "Technical Indicator",
                                                                     "value": "technical_indicator",
                                                                 },
                                                             ],
-                                                            value="threshold",
+                                                            value="threshold_rolling",
                                                         ),
                                                     ],
                                                     width=3,
@@ -1246,6 +1523,7 @@ app.layout = dbc.Container(
         Output("metric-pnl", "children"),
         Output("metric-trades", "children"),
         Output("last-update", "children"),
+        Output("metric-strategy-breakdown", "children"),
     ],
     [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
 )
@@ -1292,7 +1570,69 @@ def update_metrics(n_intervals, n_clicks):
         pnl_card = create_metric_card("Total P&L", "—", "", "secondary")
         trades_card = create_metric_card("Trades Today", "—", "", "secondary")
 
-    return status_card, position_card, pnl_card, trades_card, f"Last update: {now}"
+    # Per-strategy breakdown
+    per_strategy_df = fetch_bot_states_per_strategy()
+    if per_strategy_df.empty:
+        breakdown = html.Div()
+    else:
+        cards = []
+        for _, row in per_strategy_df.iterrows():
+            bot_id = row.get("bot_id", "")
+            strategy = row.get("strategy", "")
+            status = str(row.get("status", "unknown"))
+            total_pnl_s = float(row.get("total_pnl", 0) or 0)
+            daily_pnl_s = float(row.get("daily_pnl", 0) or 0)
+            trades_today = int(row.get("daily_trades_count", 0) or 0)
+            pnl_color_s = "success" if total_pnl_s >= 0 else "danger"
+            status_color_s = "success" if status.lower() == "running" else "warning"
+
+            card = dbc.Col(
+                dbc.Card(
+                    dbc.CardBody(
+                        [
+                            html.H6(strategy, className="mb-1 text-muted"),
+                            html.Small(bot_id, className="text-muted d-block mb-1"),
+                            dbc.Badge(status.upper(), color=status_color_s, className="me-1"),
+                            html.Span(
+                                f"P&L: {total_pnl_s:+.2f}",
+                                className=f"text-{pnl_color_s} ms-1",
+                            ),
+                            html.Small(
+                                f" | Today: {daily_pnl_s:+.2f} | {trades_today} trades",
+                                className="text-muted d-block",
+                            ),
+                        ],
+                        className="p-2",
+                    ),
+                    className="mb-2",
+                ),
+                width=4,
+            )
+            cards.append(card)
+        breakdown = dbc.Row(cards)
+
+    return (
+        status_card,
+        position_card,
+        pnl_card,
+        trades_card,
+        f"Last update: {now}",
+        breakdown,
+    )
+
+
+@callback(
+    [
+        Output("trades-strategy-filter", "options"),
+        Output("positions-strategy-filter", "options"),
+        Output("orders-strategy-filter", "options"),
+    ],
+    [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
+)
+def update_strategy_filters(n_intervals, n_clicks):
+    """Populate strategy filter dropdowns from database."""
+    options = fetch_distinct_strategies()
+    return options, options, options
 
 
 @callback(
@@ -1315,23 +1655,20 @@ def update_chart(n_intervals, n_clicks, hours):
 
 @callback(
     Output("trades-table", "children"),
-    [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
+    [
+        Input("interval-component", "n_intervals"),
+        Input("refresh-btn", "n_clicks"),
+        Input("trades-strategy-filter", "value"),
+    ],
 )
-def update_trades_table(n_intervals, n_clicks):
-    """Update trades table with entry/exit price distinction.
-
-    Shows:
-    - Entry Price (from position for context)
-    - Exit Price (trade execution price for SELL)
-    - Fee (real value from exchange)
-    - Position ID for pairing BUY/SELL
-    """
-    df = fetch_recent_trades(limit=50)
+def update_trades_table(n_intervals, n_clicks, strategy_filter):
+    """Update trades table with strategy filter and entry/exit price distinction."""
+    df = fetch_recent_trades(limit=50, strategy_filter=strategy_filter)
 
     if df.empty:
         return dbc.Alert("No trades found", color="info")
 
-    # Build display rows with better column names
+    # Build display rows
     rows = []
     for _, row in df.iterrows():
         timestamp = pd.to_datetime(row["timestamp"]).strftime("%Y-%m-%d %H:%M")
@@ -1344,18 +1681,20 @@ def update_trades_table(n_intervals, n_clicks):
             float(row["position_entry_price"]) if row.get("position_entry_price") else None
         )
         position_id = row.get("position_id")
+        strategy = row.get("strategy", "")
 
         # Determine entry vs exit price based on side
         if side == "buy":
-            entry_price = price  # BUY price is the entry
+            entry_price = price
             exit_price = None
         else:
-            entry_price = position_entry  # Use position's entry price for context
-            exit_price = price  # SELL price is the exit
+            entry_price = position_entry
+            exit_price = price
 
         rows.append(
             {
                 "timestamp": timestamp,
+                "strategy": strategy,
                 "side": side.upper(),
                 "amount": f"{amount:.6f}",
                 "entry_price": f"${entry_price:.2f}" if entry_price else "—",
@@ -1372,6 +1711,7 @@ def update_trades_table(n_intervals, n_clicks):
         data=display_df.to_dict("records"),
         columns=[
             {"name": "Time", "id": "timestamp"},
+            {"name": "Strategy", "id": "strategy"},
             {"name": "Side", "id": "side"},
             {"name": "Amount", "id": "amount"},
             {"name": "Entry Price", "id": "entry_price"},
@@ -1418,18 +1758,15 @@ def update_trades_table(n_intervals, n_clicks):
 
 @callback(
     [Output("positions-table", "children"), Output("positions-summary", "children")],
-    [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
+    [
+        Input("interval-component", "n_intervals"),
+        Input("refresh-btn", "n_clicks"),
+        Input("positions-strategy-filter", "value"),
+    ],
 )
-def update_positions_table(n_intervals, n_clicks):
-    """Update open positions table with unrealized P&L.
-
-    Now uses open_positions table directly and shows:
-    - Position ID and Bot ID
-    - Entry Price and Reference Price
-    - Target Price (calculated from sell_threshold_pct)
-    - Unrealized P&L
-    """
-    df = fetch_open_positions()
+def update_positions_table(n_intervals, n_clicks, strategy_filter):
+    """Update open positions table with per-strategy targets and unrealized P&L."""
+    df = fetch_open_positions(strategy_filter=strategy_filter)
 
     if df.empty:
         return (
@@ -1449,14 +1786,17 @@ def update_positions_table(n_intervals, n_clicks):
         entry_price = float(row["entry_price"])
         amount = float(row["amount"])
         entry_time = pd.to_datetime(row["entry_time"])
+        strategy = row.get("strategy", "threshold_rolling")
 
         # Get reference price (may be None for older positions)
         reference_price = float(row["reference_price"]) if row["reference_price"] else None
 
-        # Calculate target price based on sell_threshold_pct
-        target_price = entry_price * (1 + SELL_THRESHOLD_PCT / 100)
+        # Per-strategy target price calculation
+        target_info = compute_target_for_position(strategy, entry_price)
+        target_price = target_info["target_price"]
+        target_label = target_info["label"]
 
-        # Extract short bot_id (last part after underscore or full if no underscore)
+        # Extract short bot_id
         bot_id = row.get("bot_id", "")
         short_bot_id = bot_id.split("_")[-1] if "_" in bot_id else bot_id
 
@@ -1467,21 +1807,24 @@ def update_positions_table(n_intervals, n_clicks):
         if entry_time.tzinfo is None:
             entry_time = entry_time.replace(tzinfo=UTC)
         duration = now - entry_time
-        hours = duration.total_seconds() / 3600
-        if hours < 1:
+        dur_hours = duration.total_seconds() / 3600
+        if dur_hours < 1:
             duration_str = f"{int(duration.total_seconds() / 60)}m"
-        elif hours < 24:
-            duration_str = f"{hours:.1f}h"
+        elif dur_hours < 24:
+            duration_str = f"{dur_hours:.1f}h"
         else:
-            duration_str = f"{duration.days}d {int(hours % 24)}h"
+            duration_str = f"{duration.days}d {int(dur_hours % 24)}h"
 
         # Calculate unrealized P&L
         if current_price:
             unrealized_pnl = (current_price - entry_price) * amount
             unrealized_pnl_pct = ((current_price / entry_price) - 1) * 100
             total_unrealized_pnl += unrealized_pnl
-            # Calculate distance to target
-            distance_to_target_pct = ((target_price / current_price) - 1) * 100
+            # Calculate distance to target (only if fixed target)
+            if target_price:
+                distance_to_target_pct = ((target_price / current_price) - 1) * 100
+            else:
+                distance_to_target_pct = None
         else:
             unrealized_pnl = None
             unrealized_pnl_pct = None
@@ -1491,10 +1834,11 @@ def update_positions_table(n_intervals, n_clicks):
             {
                 "position_id": f"#{position_id}",
                 "bot_id": short_bot_id,
+                "strategy": strategy,
                 "amount": f"{amount:.6f}",
                 "entry_price": f"${entry_price:.2f}",
                 "reference_price": f"${reference_price:.2f}" if reference_price else "—",
-                "target_price": f"${target_price:.2f}",
+                "target_price": f"${target_price:.2f}" if target_price else target_label,
                 "current_price": f"${current_price:.2f}" if current_price else "—",
                 "unrealized_pnl": f"{unrealized_pnl:+.2f}" if unrealized_pnl is not None else "—",
                 "unrealized_pnl_pct": f"{unrealized_pnl_pct:+.2f}%"
@@ -1502,20 +1846,19 @@ def update_positions_table(n_intervals, n_clicks):
                 else "—",
                 "to_target": f"{distance_to_target_pct:+.2f}%"
                 if distance_to_target_pct is not None
-                else "—",
+                else target_label,
                 "duration": duration_str,
             }
         )
 
     display_df = pd.DataFrame(rows)
 
-    # Summary badge
+    # Summary badge (no global target -- per-strategy now)
     pnl_color = "success" if total_unrealized_pnl >= 0 else "danger"
     summary = html.Span(
         [
             dbc.Badge(f"{len(rows)} position(s)", color="info", className="me-2"),
             dbc.Badge(f"P&L: {total_unrealized_pnl:+.2f} USDC", color=pnl_color),
-            dbc.Badge(f"Target: +{SELL_THRESHOLD_PCT}%", color="warning", className="ms-2"),
         ]
     )
 
@@ -1524,6 +1867,7 @@ def update_positions_table(n_intervals, n_clicks):
         columns=[
             {"name": "#", "id": "position_id"},
             {"name": "Bot", "id": "bot_id"},
+            {"name": "Strategy", "id": "strategy"},
             {"name": "Amount", "id": "amount"},
             {"name": "Entry", "id": "entry_price"},
             {"name": "Reference", "id": "reference_price"},
@@ -1551,14 +1895,134 @@ def update_positions_table(n_intervals, n_clicks):
         style_data_conditional=[
             {
                 "if": {"filter_query": "{unrealized_pnl} contains '+'"},
-                "color": "#00ff88",  # Vert pour P&L positif
+                "color": "#00ff88",
             },
             {
                 "if": {"filter_query": "{unrealized_pnl} contains '-'"},
-                "color": "#ff4444",  # Rouge pour P&L négatif
+                "color": "#ff4444",
             },
         ],
         page_size=10,
+    )
+
+    return table, summary
+
+
+@callback(
+    [Output("orders-table", "children"), Output("orders-summary", "children")],
+    [
+        Input("interval-component", "n_intervals"),
+        Input("refresh-btn", "n_clicks"),
+        Input("orders-strategy-filter", "value"),
+    ],
+)
+def update_orders_table(n_intervals, n_clicks, strategy_filter):
+    """Update orders table with color coding by status."""
+    df = fetch_orders(strategy_filter=strategy_filter)
+
+    if df.empty:
+        return (
+            dbc.Alert("No orders found", color="secondary"),
+            dbc.Badge("0 orders", color="secondary"),
+        )
+
+    rows = []
+    pending_count = 0
+    for _, row in df.iterrows():
+        status = str(row.get("status", "")).upper()
+        if status in ("PENDING", "PARTIALLY_FILLED"):
+            pending_count += 1
+
+        created = pd.to_datetime(row["created_at"]).strftime("%Y-%m-%d %H:%M")
+        expires = (
+            pd.to_datetime(row["expires_at"]).strftime("%m/%d %H:%M")
+            if row.get("expires_at") and pd.notna(row["expires_at"])
+            else "—"
+        )
+
+        rows.append(
+            {
+                "order_id": str(row.get("order_id", ""))[:16],
+                "bot_id": row.get("bot_id", ""),
+                "pair": row.get("pair", ""),
+                "side": str(row.get("side", "")).upper(),
+                "type": str(row.get("order_type", "")),
+                "amount": f"{float(row['amount']):.6f}" if row.get("amount") else "—",
+                "price": f"${float(row['price']):.2f}" if row.get("price") else "—",
+                "filled": f"{float(row.get('filled_amount', 0) or 0):.6f}",
+                "status": status,
+                "strategy": row.get("strategy", ""),
+                "expires_at": expires,
+                "created_at": created,
+            }
+        )
+
+    display_df = pd.DataFrame(rows)
+
+    summary = html.Span(
+        [
+            dbc.Badge(f"{len(rows)} order(s)", color="info", className="me-2"),
+            dbc.Badge(f"{pending_count} pending", color="warning") if pending_count > 0 else None,
+        ]
+    )
+
+    table = dash_table.DataTable(
+        data=display_df.to_dict("records"),
+        columns=[
+            {"name": "Order ID", "id": "order_id"},
+            {"name": "Bot", "id": "bot_id"},
+            {"name": "Pair", "id": "pair"},
+            {"name": "Side", "id": "side"},
+            {"name": "Type", "id": "type"},
+            {"name": "Amount", "id": "amount"},
+            {"name": "Price", "id": "price"},
+            {"name": "Filled", "id": "filled"},
+            {"name": "Status", "id": "status"},
+            {"name": "Strategy", "id": "strategy"},
+            {"name": "Expires", "id": "expires_at"},
+            {"name": "Created", "id": "created_at"},
+        ],
+        style_table={"overflowX": "auto"},
+        style_header={
+            "backgroundColor": "rgb(30, 30, 30)",
+            "color": "white",
+            "fontWeight": "bold",
+        },
+        style_cell={
+            "backgroundColor": "rgb(50, 50, 50)",
+            "color": "white",
+            "border": "1px solid rgb(70, 70, 70)",
+            "textAlign": "left",
+            "padding": "8px",
+            "fontSize": "13px",
+        },
+        style_data_conditional=[
+            {
+                "if": {"filter_query": "{status} = PENDING"},
+                "backgroundColor": "rgba(255, 215, 0, 0.15)",
+            },
+            {
+                "if": {"filter_query": "{status} = FILLED"},
+                "backgroundColor": "rgba(0, 255, 136, 0.1)",
+            },
+            {
+                "if": {"filter_query": "{status} = CANCELLED"},
+                "backgroundColor": "rgba(150, 150, 150, 0.1)",
+            },
+            {
+                "if": {"filter_query": "{status} = EXPIRED"},
+                "backgroundColor": "rgba(255, 68, 68, 0.1)",
+            },
+            {
+                "if": {"filter_query": "{side} = BUY"},
+                "color": "#00ff88",
+            },
+            {
+                "if": {"filter_query": "{side} = SELL"},
+                "color": "#ff4444",
+            },
+        ],
+        page_size=20,
     )
 
     return table, summary
