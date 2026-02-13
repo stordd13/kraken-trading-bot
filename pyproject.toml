@@ -46,6 +46,7 @@ dependencies = [
     "APScheduler>=3.10.0",      # Task scheduling with cron support
 
     # Utilities
+    "pyyaml>=6.0",              # YAML config loading
     "python-dateutil>=2.8.2",   # Date parsing
     "pytz>=2024.1",             # Timezone handling
     "tqdm>=4.66.0",             # Progress bars
@@ -187,6 +188,7 @@ module = [
     "structlog.*",
     "apscheduler.*",
     "tqdm.*",
+    "yaml.*",
 ]
 ignore_missing_imports = true
 

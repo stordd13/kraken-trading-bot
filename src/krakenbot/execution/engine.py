@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any
 
 from krakenbot.core.event_bus import EventType
 from krakenbot.core.logger import get_logger
-from krakenbot.execution.risk import RiskManager
+from krakenbot.execution.risk import GlobalRiskManager, RiskManager
 from krakenbot.models.base import BotStatus, TradeSide
 
 if TYPE_CHECKING:
@@ -79,6 +79,7 @@ class ExecutionEngine:
         event_bus: EventBus,
         db_manager: DatabaseManager,
         rest_client: KrakenRestClient,
+        risk_manager: GlobalRiskManager | RiskManager | None = None,
     ) -> None:
         """Initialize the execution engine.
 
@@ -87,12 +88,16 @@ class ExecutionEngine:
             event_bus: Event bus for pub/sub communication.
             db_manager: Database manager for persistence.
             rest_client: Kraken REST API client.
+            risk_manager: Optional risk manager (GlobalRiskManager for multi-strategy,
+                         RiskManager for legacy). If None, creates a default RiskManager.
         """
         self.settings = settings
         self.event_bus = event_bus
         self.db_manager = db_manager
         self.rest_client = rest_client
-        self.risk_manager = RiskManager(settings, db_manager)
+        self.risk_manager: GlobalRiskManager | RiskManager = (
+            risk_manager if risk_manager is not None else RiskManager(settings, db_manager)
+        )
         self.logger = get_logger(__name__)
 
         self._running = False
@@ -239,13 +244,17 @@ class ExecutionEngine:
         balance = await self.rest_client.get_balance()
 
         # Perform risk validation
-        risk_result = await self.risk_manager.check_order(
-            pair=signal.pair,
-            side=side,
-            amount=amount,
-            price=signal.price,
-            balance=balance,
-        )
+        # Pass bot_id for per-strategy checks in GlobalRiskManager
+        risk_kwargs: dict[str, Any] = {
+            "pair": signal.pair,
+            "side": side,
+            "amount": amount,
+            "price": signal.price,
+            "balance": balance,
+        }
+        if isinstance(self.risk_manager, GlobalRiskManager):
+            risk_kwargs["bot_id"] = signal.strategy
+        risk_result = await self.risk_manager.check_order(**risk_kwargs)
 
         if risk_result.rejected:
             self._stats["signals_rejected"] += 1
@@ -340,6 +349,13 @@ class ExecutionEngine:
         if side == TradeSide.BUY:
             # For BUY: convert default EUR amount to base currency
             eur_amount = Decimal(str(self.settings.trading.default_order_amount_eur))
+
+            # Apply position size multiplier from signal metadata (multi-strategy support)
+            multiplier = Decimal("1.0")
+            if signal and "position_size_multiplier" in signal.metadata:
+                multiplier = Decimal(str(signal.metadata["position_size_multiplier"]))
+            eur_amount = eur_amount * multiplier
+
             amount = eur_amount / price
 
             # Round to appropriate precision (8 decimal places for crypto)

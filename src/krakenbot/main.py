@@ -44,13 +44,20 @@ from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
 from krakenbot.execution.engine import ExecutionEngine
+from krakenbot.execution.risk import GlobalRiskManager
 from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
+from krakenbot.strategies.base import BaseStrategy
 from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
     from krakenbot.core.event_bus import EventBus
+
+# Strategy registry: maps strategy name to class
+STRATEGY_REGISTRY: dict[str, type[BaseStrategy]] = {
+    "threshold_rolling": ThresholdRollingStrategy,
+}
 
 
 class KrakenBot:
@@ -119,13 +126,16 @@ class KrakenBot:
         self.db_manager: DatabaseManager | None = None
         self.ws_client: KrakenWebSocketClient | None = None
         self.rest_client: KrakenRestClient | None = None
-        self.strategy: ThresholdRollingStrategy | None = None
+        self.strategy: ThresholdRollingStrategy | None = None  # Legacy single strategy
+        self.strategies: list[BaseStrategy] = []  # Multi-strategy list
         self.execution_engine: ExecutionEngine | None = None
+        self.global_risk_manager: GlobalRiskManager | None = None
 
         # State
         self._running: bool = False
         self._shutdown_requested: bool = False
         self._setup_completed: bool = False
+        self._multi_strategy_mode: bool = self.settings.multi_strategy.enabled
 
     async def setup(self) -> None:
         """Initialize all components in the correct order.
@@ -183,39 +193,103 @@ class KrakenBot:
         )
         self.logger.debug("websocket_client_initialized")
 
-        # 5. Initialize execution engine
+        # 5. Initialize risk manager (global for multi-strategy)
+        self.global_risk_manager = GlobalRiskManager(
+            self.settings,
+            self.db_manager,
+            self.settings.multi_strategy if self._multi_strategy_mode else None,
+        )
+
+        # 6. Initialize execution engine with global risk manager
         self.execution_engine = ExecutionEngine(
             self.settings,
             self.event_bus,
             self.db_manager,
             self.rest_client,
+            risk_manager=self.global_risk_manager,
         )
         self.logger.debug("execution_engine_initialized")
 
-        # 6. Initialize strategy (rolling reference threshold)
-        self.strategy = ThresholdRollingStrategy(
-            self.settings,
-            self.event_bus,
-            self.db_manager,
-        )
-        self.logger.debug("strategy_initialized")
+        # 7. Initialize strategies
+        self._setup_strategies()
 
         self._setup_completed = True
 
-        components_list = [
-            "event_bus",
-            "database",
-            "rest_client",
-            "websocket_client",
-            "execution_engine",
-            "strategy",
-        ]
+        strategy_names = (
+            [s.get_name() for s in self.strategies]
+            if self._multi_strategy_mode
+            else [self.strategy.get_name() if self.strategy else "none"]
+        )
 
         self.logger.info(
             "krakenbot_initialized",
             status="ready",
-            components=components_list,
+            multi_strategy=self._multi_strategy_mode,
+            strategies=strategy_names,
         )
+
+    def _setup_strategies(self) -> None:
+        """Initialize strategies based on mode (legacy or multi-strategy).
+
+        In legacy mode: creates a single ThresholdRollingStrategy.
+        In multi-strategy mode: iterates strategies.yaml, instantiates each
+        enabled strategy via the registry, and registers budgets.
+        """
+        if not self._multi_strategy_mode:
+            # Legacy mode: single strategy
+            self.strategy = ThresholdRollingStrategy(
+                self.settings,
+                self.event_bus,
+                self.db_manager,
+            )
+            self.logger.debug("strategy_initialized", mode="legacy")
+            return
+
+        # Multi-strategy mode
+        for strat_config in self.settings.multi_strategy.strategies:
+            if not strat_config.enabled:
+                self.logger.info(
+                    "strategy_skipped_disabled",
+                    name=strat_config.name,
+                    bot_id=strat_config.bot_id,
+                )
+                continue
+
+            strategy_class = STRATEGY_REGISTRY.get(strat_config.name)
+            if strategy_class is None:
+                self.logger.warning(
+                    "strategy_not_found_in_registry",
+                    name=strat_config.name,
+                    available=list(STRATEGY_REGISTRY.keys()),
+                )
+                continue
+
+            strategy = strategy_class(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id=strat_config.bot_id,
+                strategy_params=strat_config.params,
+            )
+            self.strategies.append(strategy)
+
+            # Register per-strategy budget in GlobalRiskManager
+            if self.global_risk_manager:
+                self.global_risk_manager.register_strategy(strat_config.bot_id, strat_config.budget)
+
+            self.logger.info(
+                "strategy_initialized",
+                mode="multi",
+                name=strat_config.name,
+                bot_id=strat_config.bot_id,
+                budget=strat_config.budget.model_dump(),
+            )
+
+        if not self.strategies:
+            self.logger.warning(
+                "no_strategies_enabled",
+                message="Multi-strategy mode enabled but no strategies configured",
+            )
 
     async def start(self) -> None:
         """Start all components in the correct order.
@@ -223,7 +297,7 @@ class KrakenBot:
         Components must be started in a specific order to ensure
         dependencies are satisfied:
             1. Execution engine (must be ready before signals)
-            2. Strategy (starts generating signals)
+            2. Strategy/strategies (starts generating signals)
             3. WebSocket (connects and subscribes)
 
         Raises:
@@ -241,31 +315,53 @@ class KrakenBot:
         # 2. Reconcile positions with exchange (before strategy loads positions)
         await self._reconcile_positions_with_exchange()
 
-        # 3. Start strategy
-        await self.strategy.start()
-        self.logger.debug("strategy_started")
+        # 3. Start strategies
+        if self._multi_strategy_mode:
+            for strategy in self.strategies:
+                await strategy.start()
+                self.logger.debug("strategy_started", name=strategy.get_name())
+        else:
+            await self.strategy.start()
+            self.logger.debug("strategy_started")
 
         # 4. Initialize bot state in database (for dashboard)
         await self._init_bot_state()
 
         # 5. Connect WebSocket and subscribe to market data
         await self.ws_client.connect()
-        await self.ws_client.subscribe_ohlc(
-            self.settings.trading.pair,
-            self.settings.trading.candle_interval_min,
-        )
+
+        if self._multi_strategy_mode:
+            # Multi-strategy: subscribe to all required timeframes
+            pair = self.settings.trading.pair
+            mtf = self.settings.multi_timeframe
+            for interval in [mtf.trigger_timeframe, mtf.zone_timeframe, mtf.trend_timeframe]:
+                await self.ws_client.subscribe_ohlc(pair, interval)
+                self.logger.debug("ws_subscribed_ohlc", pair=pair, interval=interval)
+        else:
+            # Legacy: single pair + single interval
+            await self.ws_client.subscribe_ohlc(
+                self.settings.trading.pair,
+                self.settings.trading.candle_interval_min,
+            )
+
         await self.ws_client.subscribe_ticker(self.settings.trading.pair)
         self.logger.debug("websocket_connected_and_subscribed")
 
         self._running = True
+
+        strategy_names = (
+            [s.get_name() for s in self.strategies]
+            if self._multi_strategy_mode
+            else [self.strategy.get_name() if self.strategy else "unknown"]
+        )
 
         self.logger.info(
             "krakenbot_started",
             status="running",
             mode=self.settings.trading.mode.value,
             pair=self.settings.trading.pair,
-            interval=f"{self.settings.trading.candle_interval_min}m",
-            strategy=self.strategy.get_name(),
+            multi_strategy=self._multi_strategy_mode,
+            strategies=strategy_names,
         )
 
     async def stop(self) -> None:
@@ -289,13 +385,25 @@ class KrakenBot:
         self._running = False
 
         # Mark bot as stopped in database first (while db is still open)
-        if self.db_manager and self.strategy:
+        if self.db_manager and (self.strategy or self.strategies):
             await self._mark_bot_stopped()
 
         # Stop in reverse order
 
-        # 1. Stop strategy
-        if self.strategy:
+        # 1. Stop strategies
+        if self._multi_strategy_mode:
+            for strategy in self.strategies:
+                try:
+                    await strategy.stop()
+                    self.logger.debug("strategy_stopped", name=strategy.get_name())
+                except Exception as e:
+                    self.logger.error(
+                        "strategy_stop_error",
+                        error=str(e),
+                        error_type=type(e).__name__,
+                        strategy=strategy.get_name(),
+                    )
+        elif self.strategy:
             try:
                 await self.strategy.stop()
                 self.logger.debug("strategy_stopped")
@@ -541,7 +649,24 @@ class KrakenBot:
             stats["rest_client"] = self.rest_client.stats
 
         # Strategy state
-        if self.strategy:
+        if self._multi_strategy_mode and self.strategies:
+            strategy_stats = []
+            for strat in self.strategies:
+                s_info: dict[str, Any] = {
+                    "name": strat.get_name(),
+                    "bot_id": strat.bot_id,
+                    "running": strat.is_running,
+                }
+                # ThresholdRolling-compatible properties
+                if hasattr(strat, "current_price"):
+                    s_info["current_price"] = (
+                        float(strat.current_price) if strat.current_price else None
+                    )
+                if hasattr(strat, "open_positions_count"):
+                    s_info["open_positions"] = strat.open_positions_count
+                strategy_stats.append(s_info)
+            stats["strategies"] = strategy_stats
+        elif self.strategy:
             stats["strategy"] = {
                 "name": self.strategy.get_name(),
                 "running": self.strategy.is_running,
@@ -580,35 +705,35 @@ class KrakenBot:
     async def _init_bot_state(self) -> None:
         """Initialize bot state in database on startup.
 
-        Creates or updates the BotState record to indicate the bot is running.
-        This ensures the dashboard shows "RUNNING" immediately on startup,
-        without waiting for the first trade to execute.
+        Creates or updates BotState records to indicate the bot is running.
+        In multi-strategy mode, creates one BotState per strategy.
         """
-        bot_id = self.get_bot_id()
+        bot_ids = self._get_all_bot_ids()
         async with self.db_manager.session() as session:
-            result = await session.execute(select(BotState).where(BotState.bot_id == bot_id))
-            bot_state = result.scalar_one_or_none()
+            for bot_id, strategy_name in bot_ids:
+                result = await session.execute(select(BotState).where(BotState.bot_id == bot_id))
+                bot_state = result.scalar_one_or_none()
 
-            if bot_state is None:
-                bot_state = BotState(
-                    bot_id=bot_id,
-                    strategy=self.strategy.get_name(),
-                    status=BotStatus.RUNNING,
-                )
-                session.add(bot_state)
-                self.logger.info(
-                    "bot_state_created",
-                    bot_id=bot_id,
-                    status="running",
-                )
-            else:
-                bot_state.status = BotStatus.RUNNING
-                bot_state.updated_at = datetime.now(UTC)
-                self.logger.info(
-                    "bot_state_updated",
-                    bot_id=bot_id,
-                    status="running",
-                )
+                if bot_state is None:
+                    bot_state = BotState(
+                        bot_id=bot_id,
+                        strategy=strategy_name,
+                        status=BotStatus.RUNNING,
+                    )
+                    session.add(bot_state)
+                    self.logger.info(
+                        "bot_state_created",
+                        bot_id=bot_id,
+                        status="running",
+                    )
+                else:
+                    bot_state.status = BotStatus.RUNNING
+                    bot_state.updated_at = datetime.now(UTC)
+                    self.logger.info(
+                        "bot_state_updated",
+                        bot_id=bot_id,
+                        status="running",
+                    )
 
             await session.commit()
 
@@ -619,13 +744,16 @@ class KrakenBot:
         indicating the bot is still alive.
         """
         try:
-            bot_id = self.get_bot_id()
+            bot_ids = [bid for bid, _ in self._get_all_bot_ids()]
             async with self.db_manager.session() as session:
-                result = await session.execute(select(BotState).where(BotState.bot_id == bot_id))
-                bot_state = result.scalar_one_or_none()
-                if bot_state:
-                    bot_state.updated_at = datetime.now(UTC)
-                    await session.commit()
+                for bot_id in bot_ids:
+                    result = await session.execute(
+                        select(BotState).where(BotState.bot_id == bot_id)
+                    )
+                    bot_state = result.scalar_one_or_none()
+                    if bot_state:
+                        bot_state.updated_at = datetime.now(UTC)
+                await session.commit()
         except Exception as e:
             self.logger.warning(
                 "bot_heartbeat_update_failed",
@@ -634,24 +762,24 @@ class KrakenBot:
             )
 
     async def _mark_bot_stopped(self) -> None:
-        """Mark bot as stopped in database.
+        """Mark bot(s) as stopped in database.
 
-        Called during shutdown to update the BotState status to STOPPED,
+        Called during shutdown to update BotState status to STOPPED,
         ensuring the dashboard shows the correct state.
         """
         try:
-            bot_id = self.get_bot_id()
+            bot_ids = [bid for bid, _ in self._get_all_bot_ids()]
             async with self.db_manager.session() as session:
-                result = await session.execute(select(BotState).where(BotState.bot_id == bot_id))
-                bot_state = result.scalar_one_or_none()
-                if bot_state:
-                    bot_state.status = BotStatus.STOPPED
-                    bot_state.updated_at = datetime.now(UTC)
-                    await session.commit()
-                    self.logger.info(
-                        "bot_state_stopped",
-                        bot_id=bot_id,
+                for bot_id in bot_ids:
+                    result = await session.execute(
+                        select(BotState).where(BotState.bot_id == bot_id)
                     )
+                    bot_state = result.scalar_one_or_none()
+                    if bot_state:
+                        bot_state.status = BotStatus.STOPPED
+                        bot_state.updated_at = datetime.now(UTC)
+                        self.logger.info("bot_state_stopped", bot_id=bot_id)
+                await session.commit()
         except Exception as e:
             self.logger.warning(
                 "bot_state_stop_failed",
@@ -681,11 +809,7 @@ class KrakenBot:
         return self._running and not self._shutdown_requested
 
     def get_bot_id(self) -> str:
-        """Generate unique bot_id for this instance.
-
-        Combines strategy name with optional instance identifier to create
-        a unique bot_id. This allows multiple instances of the same strategy
-        to run simultaneously with different configurations.
+        """Generate unique bot_id for the legacy single strategy.
 
         Returns:
             Unique bot identifier (e.g., "threshold_rolling" or "threshold_rolling_xbt_prod").
@@ -697,6 +821,18 @@ class KrakenBot:
         if instance_id:
             return f"{base}_{instance_id}"
         return base
+
+    def _get_all_bot_ids(self) -> list[tuple[str, str]]:
+        """Get all bot_ids for all active strategies.
+
+        Returns:
+            List of (bot_id, strategy_name) tuples.
+        """
+        if self._multi_strategy_mode and self.strategies:
+            return [(s.bot_id, s.get_name()) for s in self.strategies]
+        if self.strategy:
+            return [(self.get_bot_id(), self.strategy.get_name())]
+        return []
 
 
 async def main() -> None:

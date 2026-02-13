@@ -137,6 +137,9 @@ class BaseStrategy(ABC):
         settings: Settings,
         event_bus: EventBus,
         db_manager: DatabaseManager,
+        bot_id: str | None = None,
+        strategy_params: dict[str, Any] | None = None,
+        analyzer: Any | None = None,
     ) -> None:
         """Initialize strategy.
 
@@ -144,15 +147,33 @@ class BaseStrategy(ABC):
             settings: Application settings.
             event_bus: Event bus for pub/sub.
             db_manager: Database manager.
+            bot_id: Unique identifier for this strategy instance.
+                    Defaults to get_name() if not provided.
+            strategy_params: Custom parameters from strategies.yaml.
+            analyzer: Shared MultiTimeframeAnalyzer instance (avoids duplication).
         """
         self.settings = settings
         self.event_bus = event_bus
         self.db_manager = db_manager
         self.logger = get_logger(self.__class__.__name__)
 
+        # Multi-strategy support
+        self._bot_id = bot_id
+        self.strategy_params: dict[str, Any] = strategy_params or {}
+        self.analyzer = analyzer
+
         # State tracking
         self._running: bool = False
         self._last_signal_at: datetime | None = None
+
+    @property
+    def bot_id(self) -> str:
+        """Get the bot_id for this strategy instance.
+
+        Returns:
+            The bot_id if explicitly set, otherwise the strategy name.
+        """
+        return self._bot_id or self.get_name()
 
     @abstractmethod
     async def on_tick(self, tick_data: dict[str, Any]) -> None:
@@ -313,8 +334,11 @@ class BaseStrategy(ABC):
         if not self._running:
             return
 
-        # Only process trades for this strategy
-        if data.get("strategy") != self.get_name():
+        # Only process trades for this strategy instance
+        # In multi-strategy mode, bot_id is unique per instance (e.g., "adaptive_prod")
+        # In legacy mode, strategy name is used as bot_id
+        trade_strategy = data.get("strategy", "")
+        if trade_strategy != self.bot_id and trade_strategy != self.get_name():
             return
 
         try:

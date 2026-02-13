@@ -30,13 +30,17 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from krakenbot.core.logger import get_logger
 from krakenbot.models.base import TradeSide, TradeStatus
 
 if TYPE_CHECKING:
-    from krakenbot.config.settings import Settings
+    from krakenbot.config.settings import (
+        MultiStrategySettings,
+        Settings,
+        StrategyBudget,
+    )
     from krakenbot.core.database import DatabaseManager
 
 
@@ -531,3 +535,266 @@ class RiskManager:
             "min_trade_interval_sec": self.min_trade_interval.total_seconds(),
             "emergency_stop_loss_pct": self.emergency_stop_loss_pct,
         }
+
+
+class GlobalRiskManager:
+    """Two-level risk manager for multi-strategy mode.
+
+    Composes the existing RiskManager with an additional global check layer.
+    Level 1: Global checks (all strategies combined, no bot_id filter)
+    Level 2: Per-strategy checks (filtered by bot_id via StrategyBudget)
+
+    When multi_strategy is disabled, delegates directly to the legacy RiskManager.
+    """
+
+    def __init__(
+        self,
+        settings: Settings,
+        db_manager: DatabaseManager,
+        multi_strategy_settings: MultiStrategySettings | None = None,
+    ) -> None:
+        self.settings = settings
+        self.db_manager = db_manager
+        self.logger = get_logger(__name__)
+
+        self._multi_enabled = (
+            multi_strategy_settings is not None and multi_strategy_settings.enabled
+        )
+
+        # Global limits
+        if self._multi_enabled and multi_strategy_settings is not None:
+            self._global_max_positions = multi_strategy_settings.global_max_open_positions
+            self._global_daily_loss = Decimal(
+                str(multi_strategy_settings.global_daily_loss_limit_eur)
+            )
+            self._global_max_exposure_pct = (
+                multi_strategy_settings.global_max_portfolio_exposure_pct
+            )
+        else:
+            self._global_max_positions = settings.risk.max_open_positions
+            self._global_daily_loss = Decimal(str(settings.risk.daily_loss_limit_eur))
+            self._global_max_exposure_pct = 100.0
+
+        # Per-strategy budgets: bot_id -> StrategyBudget
+        self._budgets: dict[str, StrategyBudget] = {}
+
+        # Per-strategy RiskManagers (with bot_id filtering)
+        self._strategy_risk_managers: dict[str, RiskManager] = {}
+
+        # Legacy fallback RiskManager (no bot_id filter)
+        self._legacy_risk_manager = RiskManager(settings, db_manager)
+
+        # Global RiskManager (no bot_id filter for global checks)
+        self._global_risk_manager = RiskManager(settings, db_manager)
+
+        self.logger.info(
+            "global_risk_manager_initialized",
+            multi_strategy_enabled=self._multi_enabled,
+            global_max_positions=self._global_max_positions,
+            global_daily_loss=float(self._global_daily_loss),
+        )
+
+    def register_strategy(self, bot_id: str, budget: StrategyBudget) -> None:
+        """Register a strategy with its budget for per-strategy risk checks.
+
+        Args:
+            bot_id: Unique strategy instance identifier.
+            budget: Budget allocation for this strategy.
+        """
+        self._budgets[bot_id] = budget
+
+        # Create a dedicated RiskManager scoped to this bot_id
+        rm = RiskManager(self.settings, self.db_manager, bot_id=bot_id)
+        # Override risk limits with per-strategy budget
+        rm.max_open_positions = budget.max_open_positions
+        rm.daily_loss_limit = Decimal(str(budget.daily_loss_limit_eur))
+        rm.max_position_pct = budget.max_position_pct
+        self._strategy_risk_managers[bot_id] = rm
+
+        self.logger.info(
+            "strategy_budget_registered",
+            bot_id=bot_id,
+            max_positions=budget.max_open_positions,
+            daily_loss_limit=budget.daily_loss_limit_eur,
+            max_position_pct=budget.max_position_pct,
+            position_size_multiplier=budget.position_size_multiplier,
+        )
+
+    async def check_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        price: Decimal,
+        balance: dict[str, Decimal],
+        bot_id: str | None = None,
+    ) -> RiskCheckResult:
+        """Validate order with two-level risk checks.
+
+        Level 1 (Global): Balance, total positions, total daily loss, portfolio exposure
+        Level 2 (Per-strategy): Strategy positions, strategy daily loss, position size, interval
+
+        Args:
+            pair: Trading pair.
+            side: Order side.
+            amount: Order amount in base currency.
+            price: Current market price.
+            balance: Available balances by currency.
+            bot_id: Strategy instance identifier for per-strategy checks.
+
+        Returns:
+            RiskCheckResult with approval status and rejection reasons.
+        """
+        # Legacy mode: delegate directly to the existing RiskManager
+        if not self._multi_enabled:
+            if bot_id:
+                self._legacy_risk_manager.set_bot_id(bot_id)
+            return await self._legacy_risk_manager.check_order(pair, side, amount, price, balance)
+
+        result = RiskCheckResult(approved=True)
+
+        # === Level 1: Global checks (no bot_id filter) ===
+        # Balance check (global - uses actual exchange balance)
+        await self._global_risk_manager._check_balance(result, pair, side, amount, price, balance)
+
+        if side == TradeSide.BUY:
+            # Global position count (all strategies)
+            global_positions = await self._get_global_open_positions_count()
+            if global_positions >= self._global_max_positions:
+                result.add_reason(
+                    f"Global max positions reached: {global_positions} "
+                    f">= {self._global_max_positions}"
+                )
+
+            # Global daily loss (all strategies)
+            global_daily_pnl = await self._get_global_daily_pnl()
+            if global_daily_pnl <= -self._global_daily_loss:
+                result.add_reason(
+                    f"Global daily loss limit reached: {global_daily_pnl:.2f} "
+                    f"<= -{self._global_daily_loss:.2f}"
+                )
+
+            # Global portfolio exposure
+            await self._check_global_exposure(result, pair, amount, price, balance)
+
+        # === Level 2: Per-strategy checks (filtered by bot_id) ===
+        if bot_id and bot_id in self._strategy_risk_managers:
+            strategy_rm = self._strategy_risk_managers[bot_id]
+            strategy_result = await strategy_rm.check_order(pair, side, amount, price, balance)
+            if strategy_result.rejected:
+                for reason in strategy_result.reasons:
+                    result.add_reason(f"[{bot_id}] {reason}")
+
+        # Log result
+        if result.approved:
+            self.logger.info(
+                "global_risk_check_passed",
+                pair=pair,
+                side=side.value,
+                bot_id=bot_id,
+            )
+        else:
+            self.logger.warning(
+                "global_risk_check_failed",
+                pair=pair,
+                side=side.value,
+                bot_id=bot_id,
+                reasons=result.reasons,
+            )
+
+        return result
+
+    async def check_emergency_stop_loss(
+        self,
+        entry_price: Decimal,
+        current_price: Decimal,
+    ) -> bool:
+        """Delegate emergency stop-loss check to legacy RiskManager."""
+        return await self._legacy_risk_manager.check_emergency_stop_loss(entry_price, current_price)
+
+    async def _get_global_open_positions_count(self) -> int:
+        """Get total open positions across ALL strategies (no bot_id filter)."""
+        from sqlalchemy import func, select
+
+        from krakenbot.models.base import PositionStatus
+        from krakenbot.models.trades import OpenPosition
+
+        async with self.db_manager.read_session() as session:
+            result = await session.execute(
+                select(func.count(OpenPosition.id)).where(
+                    OpenPosition.status == PositionStatus.OPEN
+                )
+            )
+            return result.scalar() or 0
+
+    async def _get_global_daily_pnl(self) -> Decimal:
+        """Get total daily P&L across ALL strategies (no bot_id filter)."""
+        from sqlalchemy import func, select
+
+        from krakenbot.models.trades import Trade
+
+        async with self.db_manager.read_session() as session:
+            today = datetime.now(UTC).date()
+            result = await session.execute(
+                select(func.coalesce(func.sum(Trade.pnl), 0))
+                .where(func.date(Trade.timestamp) == today)
+                .where(Trade.status == TradeStatus.FILLED)
+            )
+            scalar_result = result.scalar()
+            return Decimal(str(scalar_result)) if scalar_result else Decimal("0")
+
+    async def _check_global_exposure(
+        self,
+        result: RiskCheckResult,
+        pair: str,
+        amount: Decimal,
+        price: Decimal,
+        balance: dict[str, Decimal],
+    ) -> None:
+        """Check that total portfolio exposure doesn't exceed global limit."""
+        from sqlalchemy import func, select
+
+        from krakenbot.models.base import PositionStatus
+        from krakenbot.models.trades import OpenPosition
+
+        quote_currency = pair.split("/")[1] if "/" in pair else "EUR"
+        portfolio_value = balance.get(quote_currency, Decimal("0"))
+        if portfolio_value <= Decimal("0"):
+            return
+
+        # Sum of all open position values
+        async with self.db_manager.read_session() as session:
+            result_db = await session.execute(
+                select(func.sum(OpenPosition.amount_btc * OpenPosition.entry_price)).where(
+                    OpenPosition.status == PositionStatus.OPEN
+                )
+            )
+            current_exposure = result_db.scalar() or Decimal("0")
+
+        new_order_value = amount * price
+        total_exposure = current_exposure + new_order_value
+        exposure_pct = (total_exposure / portfolio_value) * Decimal("100")
+
+        if exposure_pct > Decimal(str(self._global_max_exposure_pct)):
+            result.add_reason(
+                f"Global portfolio exposure too high: {exposure_pct:.1f}% "
+                f"> {self._global_max_exposure_pct}%"
+            )
+
+    def get_risk_summary(self) -> dict[str, Any]:
+        """Get a summary of global and per-strategy risk configuration."""
+        summary: dict[str, Any] = {
+            "multi_strategy_enabled": self._multi_enabled,
+            "global_max_positions": self._global_max_positions,
+            "global_daily_loss_limit": float(self._global_daily_loss),
+            "global_max_exposure_pct": self._global_max_exposure_pct,
+            "registered_strategies": list(self._budgets.keys()),
+        }
+        for bot_id, budget in self._budgets.items():
+            summary[f"budget_{bot_id}"] = {
+                "max_positions": budget.max_open_positions,
+                "daily_loss_limit": budget.daily_loss_limit_eur,
+                "max_position_pct": budget.max_position_pct,
+                "position_size_multiplier": budget.position_size_multiplier,
+            }
+        return summary

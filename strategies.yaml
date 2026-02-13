@@ -1,0 +1,41 @@
+# Multi-Strategy Configuration
+# If this file exists and enabled: true, the bot runs in multi-strategy mode.
+# If this file is missing or enabled: false, the bot runs in legacy single-strategy mode.
+
+enabled: true
+
+# Global limits (across ALL strategies combined)
+global_max_open_positions: 10
+global_daily_loss_limit_eur: 50.0
+global_max_portfolio_exposure_pct: 30.0
+
+strategies:
+  - name: adaptive
+    enabled: true
+    bot_id: adaptive_prod
+    budget:
+      max_open_positions: 7
+      daily_loss_limit_eur: 35.0
+      max_position_pct: 5.0
+      position_size_multiplier: 1.0
+    params:
+      trailing_stop_pct: 3.0
+      min_volume_ratio: 0.8
+      block_overbought_15m: true
+
+  - name: capitulation
+    enabled: true
+    bot_id: capitulation_prod
+    budget:
+      max_open_positions: 3
+      daily_loss_limit_eur: 15.0
+      max_position_pct: 5.0
+      position_size_multiplier: 2.0
+    params:
+      rsi_1h_threshold: 20.0
+      rsi_5m_threshold: 15.0
+      volume_spike_multiplier: 3.0
+      trailing_stop_pct: 2.0
+      max_profit_target_pct: 15.0
+      max_holding_minutes: 2880
+      cooldown_hours: 4

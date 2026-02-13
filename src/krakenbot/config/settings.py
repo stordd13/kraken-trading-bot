@@ -4,11 +4,16 @@ This module defines all configuration settings for the KrakenBot application.
 Settings are loaded from environment variables with validation.
 """
 
-from enum import Enum
-from typing import Literal
+from __future__ import annotations
 
-from pydantic import Field, PostgresDsn, SecretStr, model_validator
+from enum import Enum
+import logging
+from pathlib import Path
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field, PostgresDsn, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import yaml
 
 
 class TradingMode(str, Enum):
@@ -161,7 +166,7 @@ class TradingSettings(BaseSettings):
     )
 
     @model_validator(mode="after")
-    def validate_live_mode(self) -> "TradingSettings":
+    def validate_live_mode(self) -> TradingSettings:
         """Ensure live mode requires explicit confirmation."""
         if self.mode == TradingMode.LIVE:
             if self.confirm_live.lower() != "yes":
@@ -310,6 +315,125 @@ class ScheduledTasksSettings(BaseSettings):
     )
 
 
+class StrategyBudget(BaseModel):
+    """Per-strategy budget and risk allocation."""
+
+    max_open_positions: int = Field(default=5, ge=1, le=20)
+    daily_loss_limit_eur: float = Field(default=25.0, ge=0.0)
+    max_position_pct: float = Field(default=5.0, ge=0.1, le=100.0)
+    position_size_multiplier: float = Field(default=1.0, ge=0.1, le=10.0)
+
+
+class StrategyInstanceConfig(BaseModel):
+    """Configuration for a single strategy instance."""
+
+    name: str
+    enabled: bool = True
+    bot_id: str
+    budget: StrategyBudget = Field(default_factory=StrategyBudget)
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+class MultiStrategySettings(BaseSettings):
+    """Multi-strategy orchestration settings."""
+
+    model_config = SettingsConfigDict(env_prefix="MULTI_STRATEGY_")
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable multi-strategy mode. False = legacy single strategy.",
+    )
+    strategies: list[StrategyInstanceConfig] = Field(default_factory=list)
+    global_max_open_positions: int = Field(default=10, ge=1, le=50)
+    global_daily_loss_limit_eur: float = Field(default=50.0, ge=0.0)
+    global_max_portfolio_exposure_pct: float = Field(default=30.0, ge=1.0, le=100.0)
+
+
+class MultiTimeframeSettings(BaseSettings):
+    """Multi-timeframe analysis settings."""
+
+    model_config = SettingsConfigDict(env_prefix="MTF_")
+
+    enabled: bool = Field(default=True, description="Enable multi-timeframe analysis")
+    trend_timeframe: int = Field(default=60, description="Trend timeframe in minutes (1h)")
+    zone_timeframe: int = Field(default=15, description="Zone timeframe in minutes")
+    trigger_timeframe: int = Field(default=5, description="Trigger timeframe in minutes")
+    ema_fast_period: int = Field(default=20, ge=5, le=100)
+    ema_slow_period: int = Field(default=50, ge=10, le=200)
+    atr_period: int = Field(default=14, ge=5, le=50)
+    regime_neutral_threshold: float = Field(
+        default=0.5,
+        description="EMA spread threshold (%) to distinguish neutral from trend",
+    )
+    warmup_candles_1h: int = Field(default=50, ge=10, le=200)
+
+
+class CapitulationSettings(BaseSettings):
+    """Capitulation strategy specific settings."""
+
+    model_config = SettingsConfigDict(env_prefix="CAPITULATION_")
+
+    rsi_1h_threshold: float = Field(default=20.0, ge=5.0, le=40.0)
+    rsi_5m_threshold: float = Field(default=15.0, ge=5.0, le=40.0)
+    volume_spike_multiplier: float = Field(default=3.0, ge=1.5, le=10.0)
+    trailing_stop_pct: float = Field(default=2.0, ge=0.5, le=10.0)
+    max_profit_target_pct: float = Field(default=15.0, ge=2.0, le=50.0)
+    max_holding_minutes: int = Field(default=2880, ge=60, le=20160)
+    cooldown_hours: int = Field(default=4, ge=1, le=48)
+
+
+class OrderSettings(BaseSettings):
+    """Order execution settings (limit vs market)."""
+
+    model_config = SettingsConfigDict(env_prefix="ORDER_")
+
+    default_order_type: str = Field(
+        default="limit",
+        description="Default order type: 'limit' or 'market'",
+    )
+    limit_buy_offset_pct: float = Field(
+        default=0.05,
+        description="Place limit buy this % below current price to ensure maker",
+        ge=0.0,
+        le=1.0,
+    )
+    limit_order_expiry_minutes: int = Field(
+        default=15,
+        description="Cancel limit orders after this many minutes",
+        ge=1,
+        le=1440,
+    )
+    check_interval_seconds: int = Field(
+        default=30,
+        description="How often to check pending order status",
+        ge=5,
+        le=300,
+    )
+    profit_target_as_limit: bool = Field(
+        default=True,
+        description="Place profit target SELL as limit order",
+    )
+    stop_loss_as_market: bool = Field(
+        default=True,
+        description="Always use market order for stop-loss (guaranteed execution)",
+    )
+
+
+def _load_strategies_yaml() -> dict[str, Any] | None:
+    """Load strategies.yaml from project root if it exists.
+
+    Returns:
+        Parsed YAML dict or None if file doesn't exist.
+    """
+    # Search in current dir and parent dirs up to 3 levels
+    for parent in [Path.cwd()] + list(Path.cwd().parents)[:3]:
+        yaml_path = parent / "strategies.yaml"
+        if yaml_path.exists():
+            with open(yaml_path) as f:
+                return yaml.safe_load(f)
+    return None
+
+
 class Settings(BaseSettings):
     """Main application settings."""
 
@@ -348,6 +472,34 @@ class Settings(BaseSettings):
     technical_indicator: TechnicalIndicatorSettings = Field(
         default_factory=TechnicalIndicatorSettings
     )
+    multi_strategy: MultiStrategySettings = Field(default_factory=MultiStrategySettings)
+    multi_timeframe: MultiTimeframeSettings = Field(default_factory=MultiTimeframeSettings)
+    capitulation: CapitulationSettings = Field(default_factory=CapitulationSettings)
+    order: OrderSettings = Field(default_factory=OrderSettings)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Load strategies.yaml after settings init."""
+        # Skip YAML loading in testing environment
+        if self.environment == "testing":
+            return
+        yaml_data = _load_strategies_yaml()
+        if yaml_data and yaml_data.get("enabled", False):
+            strategies_list = []
+            for s in yaml_data.get("strategies", []):
+                strategies_list.append(StrategyInstanceConfig(**s))
+            self.multi_strategy = MultiStrategySettings(
+                enabled=True,
+                strategies=strategies_list,
+                global_max_open_positions=yaml_data.get("global_max_open_positions", 10),
+                global_daily_loss_limit_eur=yaml_data.get("global_daily_loss_limit_eur", 50.0),
+                global_max_portfolio_exposure_pct=yaml_data.get(
+                    "global_max_portfolio_exposure_pct", 30.0
+                ),
+            )
+            logging.getLogger(__name__).info(
+                "Loaded strategies.yaml: %d strategies enabled",
+                len([s for s in strategies_list if s.enabled]),
+            )
 
     def validate_all(self) -> None:
         """Validate all settings and secrets at startup."""
@@ -367,6 +519,25 @@ class Settings(BaseSettings):
         # Validate risk settings make sense
         if self.risk.emergency_stop_loss_pct <= self.strategy.sell_threshold_pct:
             errors.append("Emergency stop-loss must be greater than sell threshold")
+
+        # Validate multi-strategy budgets don't exceed global limits
+        if self.multi_strategy.enabled:
+            total_positions = sum(
+                s.budget.max_open_positions for s in self.multi_strategy.strategies if s.enabled
+            )
+            total_loss = sum(
+                s.budget.daily_loss_limit_eur for s in self.multi_strategy.strategies if s.enabled
+            )
+            if total_positions > self.multi_strategy.global_max_open_positions:
+                errors.append(
+                    f"Sum of per-strategy max_open_positions ({total_positions}) exceeds "
+                    f"global limit ({self.multi_strategy.global_max_open_positions})"
+                )
+            if total_loss > self.multi_strategy.global_daily_loss_limit_eur:
+                errors.append(
+                    f"Sum of per-strategy daily_loss_limit ({total_loss}) exceeds "
+                    f"global limit ({self.multi_strategy.global_daily_loss_limit_eur})"
+                )
 
         if errors:
             raise ValueError(
