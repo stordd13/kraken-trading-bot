@@ -47,6 +47,7 @@ class CapitulationPosition:
     entry_price: Decimal
     entry_time: datetime
     amount_btc: Decimal
+    amount_usdc: Decimal  # For backtest compatibility
     position_id: int
     highest_price: Decimal  # For trailing stop
 
@@ -428,6 +429,7 @@ class CapitulationStrategy(BaseStrategy):
                     entry_price=price,
                     entry_time=datetime.now(UTC),
                     amount_btc=amount,
+                    amount_usdc=amount * price,
                     position_id=pid,
                     highest_price=price,
                 )
@@ -504,6 +506,57 @@ class CapitulationStrategy(BaseStrategy):
         self._last_buy_time = None
         self._hourly_closes.clear()
         self._hourly_changes.clear()
+
+    def add_position(
+        self,
+        entry_price: Decimal,
+        amount_usdc: Decimal,
+        entry_time: datetime | None = None,
+    ) -> int:
+        """Add a position (for backtest compatibility).
+
+        Args:
+            entry_price: Entry price.
+            amount_usdc: Position size in USDC.
+            entry_time: Entry timestamp.
+
+        Returns:
+            Position ID.
+        """
+        pid = self._next_position_id
+        self._next_position_id += 1
+
+        amount_btc = amount_usdc / entry_price
+        self._open_positions.append(
+            CapitulationPosition(
+                entry_price=entry_price,
+                entry_time=entry_time or datetime.now(UTC),
+                amount_btc=amount_btc,
+                amount_usdc=amount_usdc,
+                position_id=pid,
+                highest_price=entry_price,
+            )
+        )
+        return pid
+
+    def close_position(self, position_id: int) -> CapitulationPosition | None:
+        """Close a position by ID (for backtest compatibility).
+
+        Args:
+            position_id: ID of position to close.
+
+        Returns:
+            The closed position, or None.
+        """
+        for i, pos in enumerate(self._open_positions):
+            if pos.position_id == position_id:
+                return self._open_positions.pop(i)
+        return None
+
+    @property
+    def open_positions(self) -> list[CapitulationPosition]:
+        """Get list of open positions."""
+        return self._open_positions.copy()
 
     @property
     def open_positions_count(self) -> int:

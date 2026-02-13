@@ -183,7 +183,12 @@ class BacktestEngine:
         slippage_pct = Decimal("0.0001")  # 0.01% slippage (small orders)
 
         # Handle multi-position strategies differently
-        is_multi = self.strategy_name in ["threshold_multi", "threshold_rolling"]
+        is_multi = self.strategy_name in [
+            "threshold_multi",
+            "threshold_rolling",
+            "adaptive",
+            "capitulation",
+        ]
 
         if signal.signal_type == SignalType.BUY and (is_multi or not self.in_position):
             # Buy with available USDC
@@ -222,8 +227,8 @@ class BacktestEngine:
             # Update strategy position state for next signal generation
             if is_multi:
                 # For multi-position, notify strategy of new position
-                if self.strategy_name == "threshold_rolling":
-                    # Extract reference_price from signal metadata
+                if self.strategy_name in ["threshold_rolling", "adaptive"]:
+                    # These strategies need reference_price
                     reference_price = Decimal(
                         str(signal.metadata.get("reference_price", current_price))
                     )
@@ -234,7 +239,7 @@ class BacktestEngine:
                         entry_time=signal.timestamp,
                     )
                 else:
-                    # threshold_multi doesn't need reference_price
+                    # threshold_multi, capitulation don't need reference_price
                     position_id = self.strategy.add_position(
                         entry_price=current_price,  # Use mid-price for strategy
                         amount_usdc=order_amount,
@@ -543,10 +548,33 @@ class BacktestEngine:
                 db_manager=self.db_manager,
                 settings=self.settings,
             )
+        elif self.strategy_name == "adaptive":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.adaptive import AdaptiveStrategy
+
+            analyzer = MultiTimeframeAnalyzer(settings=self.settings)
+            self.strategy = AdaptiveStrategy(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                analyzer=analyzer,
+            )
+        elif self.strategy_name == "capitulation":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.capitulation import CapitulationStrategy
+
+            analyzer = MultiTimeframeAnalyzer(settings=self.settings)
+            self.strategy = CapitulationStrategy(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                analyzer=analyzer,
+            )
         else:
             raise ValueError(
                 f"Unknown strategy: {self.strategy_name}. "
-                f"Available: threshold, threshold_multi, threshold_rolling, technical_indicator"
+                f"Available: threshold, threshold_multi, threshold_rolling, "
+                f"technical_indicator, adaptive, capitulation"
             )
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies
@@ -563,6 +591,7 @@ class BacktestEngine:
                 "low": candle.low,
                 "close": candle.close,
                 "volume": candle.volume,
+                "interval": self.candle_interval,
                 "is_complete": True,
             }
 

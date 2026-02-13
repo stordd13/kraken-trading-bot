@@ -46,6 +46,7 @@ from krakenbot.core.logger import configure_logging, get_logger
 from krakenbot.execution.engine import ExecutionEngine
 from krakenbot.execution.order_manager import OrderManager
 from krakenbot.execution.risk import GlobalRiskManager
+from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
 from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
 from krakenbot.strategies.adaptive import AdaptiveStrategy
@@ -136,6 +137,7 @@ class KrakenBot:
         self.execution_engine: ExecutionEngine | None = None
         self.order_manager: OrderManager | None = None
         self.global_risk_manager: GlobalRiskManager | None = None
+        self.analyzer: MultiTimeframeAnalyzer | None = None
 
         # State
         self._running: bool = False
@@ -262,7 +264,10 @@ class KrakenBot:
             self.logger.debug("strategy_initialized", mode="legacy")
             return
 
-        # Multi-strategy mode
+        # Multi-strategy mode: create shared analyzer
+        self.analyzer = MultiTimeframeAnalyzer(settings=self.settings)
+        self.logger.debug("multi_timeframe_analyzer_initialized")
+
         for strat_config in self.settings.multi_strategy.strategies:
             if not strat_config.enabled:
                 self.logger.info(
@@ -287,6 +292,7 @@ class KrakenBot:
                 db_manager=self.db_manager,
                 bot_id=strat_config.bot_id,
                 strategy_params=strat_config.params,
+                analyzer=self.analyzer,
             )
             self.strategies.append(strategy)
 
@@ -329,10 +335,22 @@ class KrakenBot:
         await self.execution_engine.start()
         self.logger.debug("execution_engine_started")
 
-        # 2. Reconcile positions with exchange (before strategy loads positions)
+        # 2. Initialize shared analyzer with historical data
+        if self._multi_strategy_mode and self.analyzer:
+            try:
+                await self.analyzer.initialize(self.db_manager)
+                self.logger.info("multi_timeframe_analyzer_warmed_up")
+            except Exception as e:
+                self.logger.warning(
+                    "analyzer_initialization_failed",
+                    error=str(e),
+                    note="Analyzer will warm up from live data",
+                )
+
+        # 3. Reconcile positions with exchange (before strategy loads positions)
         await self._reconcile_positions_with_exchange()
 
-        # 3. Start strategies
+        # 4. Start strategies
         if self._multi_strategy_mode:
             for strategy in self.strategies:
                 await strategy.start()

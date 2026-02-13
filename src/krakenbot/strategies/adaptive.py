@@ -544,6 +544,59 @@ class AdaptiveStrategy(BaseStrategy):
         self._warming_up = True
         self._warmup_open_price = None
 
+    def add_position(
+        self,
+        entry_price: Decimal,
+        amount_usdc: Decimal,
+        reference_price: Decimal,
+        entry_time: datetime | None = None,
+    ) -> int:
+        """Add a position (for backtest compatibility).
+
+        Args:
+            entry_price: Entry price.
+            amount_usdc: Position size in USDC.
+            reference_price: Reference price that triggered entry.
+            entry_time: Entry timestamp.
+
+        Returns:
+            Position ID.
+        """
+        pid = self._next_position_id
+        self._next_position_id += 1
+
+        self._open_positions.append(
+            AdaptivePosition(
+                entry_price=entry_price,
+                entry_time=entry_time or datetime.now(UTC),
+                amount_usdc=amount_usdc,
+                position_id=pid,
+                reference_price=reference_price,
+                highest_price=entry_price,
+            )
+        )
+        self._used_references.add(reference_price)
+        return pid
+
+    def close_position(self, position_id: int) -> AdaptivePosition | None:
+        """Close a position by ID (for backtest compatibility).
+
+        Args:
+            position_id: ID of position to close.
+
+        Returns:
+            The closed position, or None.
+        """
+        for i, pos in enumerate(self._open_positions):
+            if pos.position_id == position_id:
+                return self._open_positions.pop(i)
+        return None
+
+    @property
+    def open_positions(self) -> list[AdaptivePosition]:
+        """Get list of open positions."""
+        return self._open_positions.copy()
+
     @property
     def open_positions_count(self) -> int:
         """Get number of open positions."""
