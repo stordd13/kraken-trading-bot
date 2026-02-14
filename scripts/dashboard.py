@@ -222,17 +222,15 @@ def fetch_bot_state() -> dict | None:
     Returns aggregated metrics:
     - active_instances: count of running bots
     - total_position: sum of all position sizes
-    - total_daily_pnl: sum of daily P&L across instances
+    - total_daily_pnl: today's realized P&L from trades_history
     - total_pnl: sum of total P&L across instances
-    - total_trades_today: sum of daily trades count
+    - total_trades_today: today's trade count from trades_history
     """
-    query = """
+    bot_query = """
     SELECT
         COUNT(DISTINCT bot_id) as active_instances,
         COALESCE(SUM(position_size), 0) as total_position,
-        COALESCE(SUM(daily_pnl), 0) as total_daily_pnl,
         COALESCE(SUM(total_pnl), 0) as total_pnl,
-        COALESCE(SUM(daily_trades_count), 0) as total_trades_today,
         MAX(updated_at) as last_updated,
         MAX(last_trade_at) as last_trade_at,
         STRING_AGG(DISTINCT status, ', ') as statuses
@@ -240,17 +238,31 @@ def fetch_bot_state() -> dict | None:
     WHERE status IN ('RUNNING', 'PAUSED')
        OR updated_at > NOW() - INTERVAL '1 hour'
     """
+    today_query = """
+    SELECT
+        COALESCE(SUM(CASE WHEN pnl IS NOT NULL THEN pnl ELSE 0 END), 0) as today_pnl,
+        COUNT(*) as today_trades
+    FROM trades_history
+    WHERE DATE(timestamp AT TIME ZONE 'UTC') = CURRENT_DATE
+      AND status = 'filled'
+    """
     try:
-        df = pd.read_sql(query, engine)
+        df = pd.read_sql(bot_query, engine)
         if df.empty:
             return None
         result = df.iloc[0].to_dict()
+
+        # Get real today's P&L and trades from trades_history
+        today_df = pd.read_sql(today_query, engine)
+        today_pnl = float(today_df.iloc[0]["today_pnl"]) if not today_df.empty else 0.0
+        today_trades = int(today_df.iloc[0]["today_trades"]) if not today_df.empty else 0
+
         # Convert numpy types to Python types
         result["active_instances"] = int(result.get("active_instances") or 0)
         result["total_position"] = float(result.get("total_position") or 0)
-        result["total_daily_pnl"] = float(result.get("total_daily_pnl") or 0)
+        result["total_daily_pnl"] = today_pnl
         result["total_pnl"] = float(result.get("total_pnl") or 0)
-        result["total_trades_today"] = int(result.get("total_trades_today") or 0)
+        result["total_trades_today"] = today_trades
         return result
     except Exception as e:
         print(f"Error fetching bot state: {e}")
