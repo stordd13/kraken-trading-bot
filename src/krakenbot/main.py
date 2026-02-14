@@ -265,7 +265,7 @@ class KrakenBot:
             return
 
         # Multi-strategy mode: create shared analyzer
-        self.analyzer = MultiTimeframeAnalyzer(settings=self.settings)
+        self.analyzer = MultiTimeframeAnalyzer()
         self.logger.debug("multi_timeframe_analyzer_initialized")
 
         for strat_config in self.settings.multi_strategy.strategies:

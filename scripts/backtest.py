@@ -552,7 +552,7 @@ class BacktestEngine:
             from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
             from krakenbot.strategies.adaptive import AdaptiveStrategy
 
-            analyzer = MultiTimeframeAnalyzer(settings=self.settings)
+            analyzer = MultiTimeframeAnalyzer()
             self.strategy = AdaptiveStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -563,7 +563,7 @@ class BacktestEngine:
             from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
             from krakenbot.strategies.capitulation import CapitulationStrategy
 
-            analyzer = MultiTimeframeAnalyzer(settings=self.settings)
+            analyzer = MultiTimeframeAnalyzer()
             self.strategy = CapitulationStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
