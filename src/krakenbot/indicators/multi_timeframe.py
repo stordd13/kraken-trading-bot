@@ -283,9 +283,7 @@ class MultiTimeframeAnalyzer:
         volume_ratio_15m = self._calc_volume_ratio(self._volume_15m)
 
         # 5. Adaptive thresholds
-        buy_threshold, sell_threshold = self._calc_adaptive_thresholds(
-            regime, volatility_pct
-        )
+        buy_threshold, sell_threshold = self._calc_adaptive_thresholds(regime, volatility_pct)
 
         # 6. Adaptive position sizing
         position_size_pct = self._calc_adaptive_position_size(regime, volatility_pct)
@@ -331,9 +329,7 @@ class MultiTimeframeAnalyzer:
         else:
             return MarketRegime.NEUTRAL
 
-    def _classify_zone(
-        self, rsi_value: float | None, bb_value: Any
-    ) -> TimeframeZone:
+    def _classify_zone(self, rsi_value: float | None, bb_value: Any) -> TimeframeZone:
         """Classify zone from RSI + Bollinger Bands.
 
         Args:
@@ -433,9 +429,7 @@ class MultiTimeframeAnalyzer:
 
         return buy_threshold, sell_threshold
 
-    def _calc_adaptive_position_size(
-        self, regime: MarketRegime, volatility_pct: float
-    ) -> float:
+    def _calc_adaptive_position_size(self, regime: MarketRegime, volatility_pct: float) -> float:
         """Calculate adaptive position size as % of portfolio.
 
         Higher in low volatility + bull, lower in high volatility + bear.

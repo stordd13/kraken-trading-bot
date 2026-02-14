@@ -41,9 +41,7 @@ class ATRIndicator:
         self._tr_values: deque[Decimal] = deque(maxlen=period)
         self._count: int = 0
 
-    def update(
-        self, high: Decimal, low: Decimal, close: Decimal
-    ) -> Decimal | None:
+    def update(self, high: Decimal, low: Decimal, close: Decimal) -> Decimal | None:
         """Update ATR with a new OHLC candle.
 
         Args:
