@@ -332,6 +332,7 @@ class StrategyInstanceConfig(BaseModel):
     bot_id: str
     budget: StrategyBudget = Field(default_factory=StrategyBudget)
     params: dict[str, Any] = Field(default_factory=dict)
+    dashboard: dict[str, Any] = Field(default_factory=dict)
 
 
 class MultiStrategySettings(BaseSettings):

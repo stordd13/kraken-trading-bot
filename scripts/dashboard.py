@@ -51,30 +51,79 @@ from krakenbot.config.settings import get_settings
 _settings = get_settings()
 
 # Per-strategy exit configuration for target price calculation.
-# Replaces the old single global SELL_THRESHOLD_PCT.
+# Built dynamically from strategies.yaml — zero code changes when adding a new strategy.
 _default_sell_pct = _settings.strategy.sell_threshold_pct  # e.g., 2.0 for +2%
-STRATEGY_EXIT_CONFIG: dict[str, dict] = {
-    "threshold": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
-    "threshold_multi": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
-    "threshold_rolling": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
-    "technical_indicator": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
-    "adaptive": {"type": "trailing_stop", "trailing_stop_pct": 3.0},
-    "capitulation": {"type": "profit_target", "profit_target_pct": 15.0},
+
+_DEFAULT_EXIT_TYPE = "fixed_pct"
+
+_EXIT_TYPE_COLORS = {
+    "fixed_pct": "rgba(255, 215, 0, 0.5)",
+    "trailing_stop": "rgba(100, 200, 255, 0.5)",
+    "profit_target": "rgba(255, 100, 100, 0.5)",
 }
 
-# Override from strategies.yaml if multi-strategy is enabled
-if _settings.multi_strategy.enabled:
-    for _strat_cfg in _settings.multi_strategy.strategies:
-        if _strat_cfg.name == "adaptive":
-            STRATEGY_EXIT_CONFIG["adaptive"] = {
-                "type": "trailing_stop",
-                "trailing_stop_pct": _strat_cfg.params.get("trailing_stop_pct", 3.0),
-            }
-        elif _strat_cfg.name == "capitulation":
-            STRATEGY_EXIT_CONFIG["capitulation"] = {
-                "type": "profit_target",
-                "profit_target_pct": _strat_cfg.params.get("max_profit_target_pct", 15.0),
-            }
+
+def _build_strategy_exit_config() -> dict[str, dict]:
+    """Build exit config from strategies.yaml. Falls back to __default__ for unknown strategies."""
+    config: dict[str, dict] = {
+        "__default__": {"type": "fixed_pct", "sell_threshold_pct": _default_sell_pct},
+    }
+
+    if _settings.multi_strategy.enabled:
+        for strat_cfg in _settings.multi_strategy.strategies:
+            dashboard_meta = strat_cfg.dashboard or {}
+            exit_type = dashboard_meta.get("exit_type", _DEFAULT_EXIT_TYPE)
+
+            if exit_type == "trailing_stop":
+                entry = {
+                    "type": "trailing_stop",
+                    "trailing_stop_pct": strat_cfg.params.get("trailing_stop_pct", 3.0),
+                }
+            elif exit_type == "profit_target":
+                entry = {
+                    "type": "profit_target",
+                    "profit_target_pct": strat_cfg.params.get("max_profit_target_pct", 15.0),
+                }
+            else:
+                entry = {
+                    "type": "fixed_pct",
+                    "sell_threshold_pct": strat_cfg.params.get(
+                        "sell_threshold_pct", _default_sell_pct
+                    ),
+                }
+
+            config[strat_cfg.name] = entry
+            if strat_cfg.bot_id and strat_cfg.bot_id != strat_cfg.name:
+                config[strat_cfg.bot_id] = entry
+
+    return config
+
+
+STRATEGY_EXIT_CONFIG = _build_strategy_exit_config()
+
+
+def _build_backtest_strategy_options() -> list[dict[str, str]]:
+    """Build backtest strategy dropdown options dynamically from strategies.yaml."""
+    options = {
+        "threshold_rolling": "Threshold Rolling",
+        "adaptive": "Adaptive",
+        "capitulation": "Capitulation",
+        "threshold": "Threshold",
+        "threshold_multi": "Threshold Multi",
+        "technical_indicator": "Technical Indicator",
+    }
+    # Add strategies from strategies.yaml not already listed
+    if _settings.multi_strategy.enabled:
+        for strat_cfg in _settings.multi_strategy.strategies:
+            if strat_cfg.name not in options:
+                dashboard_meta = strat_cfg.dashboard or {}
+                label = dashboard_meta.get("label", strat_cfg.name.replace("_", " ").title())
+                options[strat_cfg.name] = label
+
+    return [{"label": label, "value": name} for name, label in options.items()]
+
+
+_BACKTEST_STRATEGY_OPTIONS = _build_backtest_strategy_options()
 
 # Database URL
 DATABASE_URL = os.environ.get(
@@ -110,6 +159,9 @@ app = dash.Dash(
 def compute_target_for_position(strategy: str, entry_price: float) -> dict:
     """Compute target price and label for a position based on its strategy.
 
+    Looks up exit config by exact name/bot_id, then tries base name fallback
+    (e.g., "adaptive_prod" -> "adaptive"), then falls back to __default__.
+
     Args:
         strategy: Strategy name or bot_id (e.g., "adaptive_prod", "capitulation_prod").
         entry_price: Position entry price.
@@ -117,35 +169,45 @@ def compute_target_for_position(strategy: str, entry_price: float) -> dict:
     Returns:
         dict with keys: target_price (float|None), label (str), color (str).
     """
-    strategy_lower = (strategy or "").lower()
+    strategy_key = (strategy or "").lower()
 
-    if "capitulation" in strategy_lower:
-        config = STRATEGY_EXIT_CONFIG.get("capitulation", {})
+    # Lookup exact (by name or bot_id)
+    config = STRATEGY_EXIT_CONFIG.get(strategy_key)
+
+    # Fallback: extract base name from bot_id (e.g., "adaptive_prod" -> "adaptive")
+    if config is None and "_" in strategy_key:
+        base_name = strategy_key.rsplit("_", 1)[0]
+        config = STRATEGY_EXIT_CONFIG.get(base_name)
+
+    # Ultimate fallback
+    if config is None:
+        config = STRATEGY_EXIT_CONFIG["__default__"]
+
+    exit_type = config.get("type", "fixed_pct")
+    color = _EXIT_TYPE_COLORS.get(exit_type, "rgba(255, 215, 0, 0.5)")
+
+    if exit_type == "profit_target":
         pct = config.get("profit_target_pct", 15.0)
-        target = entry_price * (1 + pct / 100)
         return {
-            "target_price": target,
+            "target_price": entry_price * (1 + pct / 100),
             "label": f"+{pct}%",
-            "color": "rgba(255, 100, 100, 0.5)",
+            "color": color,
         }
 
-    if "adaptive" in strategy_lower:
-        config = STRATEGY_EXIT_CONFIG.get("adaptive", {})
-        trailing_pct = config.get("trailing_stop_pct", 3.0)
+    if exit_type == "trailing_stop":
+        pct = config.get("trailing_stop_pct", 3.0)
         return {
             "target_price": None,
-            "label": f"Trailing {trailing_pct}%",
-            "color": "rgba(100, 200, 255, 0.5)",
+            "label": f"Trailing {pct}%",
+            "color": color,
         }
 
-    # Default: threshold-based strategies
-    config = STRATEGY_EXIT_CONFIG.get("threshold", {})
+    # fixed_pct (default)
     pct = config.get("sell_threshold_pct", _default_sell_pct)
-    target = entry_price * (1 + pct / 100)
     return {
-        "target_price": target,
+        "target_price": entry_price * (1 + pct / 100),
         "label": f"+{pct}%",
-        "color": "rgba(255, 215, 0, 0.5)",
+        "color": color,
     }
 
 
@@ -1245,32 +1307,7 @@ app.layout = dbc.Container(
                                                         dbc.Label("Strategy"),
                                                         dbc.Select(
                                                             id="backtest-strategy-select",
-                                                            options=[
-                                                                {
-                                                                    "label": "Threshold Rolling",
-                                                                    "value": "threshold_rolling",
-                                                                },
-                                                                {
-                                                                    "label": "Adaptive",
-                                                                    "value": "adaptive",
-                                                                },
-                                                                {
-                                                                    "label": "Capitulation",
-                                                                    "value": "capitulation",
-                                                                },
-                                                                {
-                                                                    "label": "Threshold",
-                                                                    "value": "threshold",
-                                                                },
-                                                                {
-                                                                    "label": "Threshold Multi",
-                                                                    "value": "threshold_multi",
-                                                                },
-                                                                {
-                                                                    "label": "Technical Indicator",
-                                                                    "value": "technical_indicator",
-                                                                },
-                                                            ],
+                                                            options=_BACKTEST_STRATEGY_OPTIONS,
                                                             value="threshold_rolling",
                                                         ),
                                                     ],

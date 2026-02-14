@@ -18,6 +18,9 @@ strategies:
       daily_loss_limit_eur: 35.0
       max_position_pct: 5.0
       position_size_multiplier: 1.0
+    dashboard:
+      exit_type: trailing_stop
+      label: "Adaptive"
     params:
       trailing_stop_pct: 3.0
       min_volume_ratio: 0.8
@@ -31,6 +34,9 @@ strategies:
       daily_loss_limit_eur: 15.0
       max_position_pct: 5.0
       position_size_multiplier: 2.0
+    dashboard:
+      exit_type: profit_target
+      label: "Capitulation"
     params:
       rsi_1h_threshold: 20.0
       rsi_5m_threshold: 15.0
