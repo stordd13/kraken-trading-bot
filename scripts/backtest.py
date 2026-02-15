@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 from dotenv import load_dotenv
 from sqlalchemy import select
@@ -125,6 +126,15 @@ class BacktestEngine:
         # Strategy instance (will be created during run)
         self.event_bus = EventBus()
         self.strategy = None  # Will be created during run
+
+    def _load_strategy_params(self, strategy_name: str) -> dict[str, Any] | None:
+        """Load strategy params from strategies.yaml via settings."""
+        if not self.settings.multi_strategy.enabled:
+            return None
+        for s in self.settings.multi_strategy.strategies:
+            if s.name == strategy_name:
+                return s.params
+        return None
 
     async def _load_candles_for_interval(
         self,
@@ -273,6 +283,11 @@ class BacktestEngine:
         if signal.signal_type == SignalType.HOLD:
             return
 
+        # Route margin (short) signals to separate handler
+        if signal.metadata and signal.metadata.get("mode") == "margin":
+            await self._execute_short_signal(signal, current_price)
+            return
+
         # Realistic trading costs
         fee_pct = Decimal("0.0026")  # 0.26% maker fee on Kraken (tier 1)
         spread_pct = Decimal("0.0002")  # 0.02% typical BTC/USDC spread
@@ -284,6 +299,7 @@ class BacktestEngine:
             "threshold_rolling",
             "adaptive",
             "capitulation",
+            "bear_short",
         ]
 
         if signal.signal_type == SignalType.BUY and (is_multi or not self.in_position):
@@ -467,6 +483,127 @@ class BacktestEngine:
 
             self.entry_price = None
 
+    async def _execute_short_signal(self, signal: TradingSignal, current_price: Decimal) -> None:
+        """Execute a margin short signal in the simulation.
+
+        SELL with is_short_open: open a short (lock margin collateral).
+        BUY with is_short_close: close a short (release margin, calculate PnL).
+
+        Rollover fee: 0.01% per 4h of position value.
+        """
+        fee_pct = Decimal("0.0026")  # 0.26% taker fee
+        spread_pct = Decimal("0.0002")
+        slippage_pct = Decimal("0.0001")
+
+        if signal.metadata.get("is_short_open") and signal.signal_type == SignalType.SELL:
+            # Open short: lock margin collateral
+            leverage = signal.metadata.get("leverage", 2)
+            order_amount = min(
+                self.usdc_balance,
+                Decimal(str(self.settings.trading.default_order_amount_eur)),
+            )
+
+            if order_amount < Decimal("1"):
+                return
+
+            # Execution: selling at bid (lower)
+            execution_price = current_price * (Decimal("1") - spread_pct - slippage_pct)
+            fee = order_amount * fee_pct
+
+            # Lock margin collateral (order_amount / leverage)
+            collateral = order_amount / Decimal(str(leverage))
+            self.usdc_balance -= collateral
+
+            # Notify strategy
+            position_id = self.strategy.add_position(
+                entry_price=current_price,
+                amount_usdc=order_amount,
+                entry_time=signal.timestamp,
+            )
+
+            self.in_position = True
+
+            trade = BacktestTrade(
+                timestamp=signal.timestamp,
+                side=TradeSide.SELL,
+                price=execution_price,
+                amount_usdc=order_amount,
+                amount_crypto=order_amount / execution_price,
+                fee=fee,
+            )
+            self.metrics.trades.append(trade)
+            self.metrics.total_fees += fee
+
+            self.logger.debug(
+                "backtest_short_open",
+                price=float(current_price),
+                amount_usdc=float(order_amount),
+                collateral=float(collateral),
+                position_id=position_id,
+            )
+
+        elif signal.metadata.get("is_short_close") and signal.signal_type == SignalType.BUY:
+            # Close short: release collateral, calculate PnL
+            position_id = signal.metadata.get("position_id")
+            if not position_id:
+                return
+
+            closed_pos = self.strategy.close_position(position_id)
+            if not closed_pos:
+                self.logger.warning("short_position_not_found", position_id=position_id)
+                return
+
+            # Execution: buying at ask (higher)
+            execution_price = current_price * (Decimal("1") + spread_pct + slippage_pct)
+            crypto_amount = closed_pos.amount_usdc / closed_pos.entry_price
+            close_value = crypto_amount * execution_price
+            fee = close_value * fee_pct
+
+            # Short PnL: (entry - exit) * amount
+            gross_pnl = (closed_pos.entry_price - execution_price) * crypto_amount
+
+            # Rollover fee: 0.01% per 4h of position value
+            holding_hours = (signal.timestamp - closed_pos.entry_time).total_seconds() / 3600
+            rollover_periods = holding_hours / 4
+            position_value = closed_pos.amount_usdc
+            rollover_fee = position_value * Decimal("0.0001") * Decimal(str(rollover_periods))
+
+            pnl = gross_pnl - fee - rollover_fee
+
+            # Release collateral and apply PnL
+            leverage = signal.metadata.get("leverage", 2)
+            collateral = closed_pos.amount_usdc / Decimal(str(leverage))
+            self.usdc_balance += collateral + pnl
+
+            if not self.strategy.open_positions:
+                self.in_position = False
+
+            trade = BacktestTrade(
+                timestamp=signal.timestamp,
+                side=TradeSide.BUY,
+                price=execution_price,
+                amount_usdc=close_value,
+                amount_crypto=crypto_amount,
+                fee=fee + rollover_fee,
+                pnl=pnl,
+            )
+            self.metrics.trades.append(trade)
+            self.metrics.total_fees += fee + rollover_fee
+            self.metrics.total_pnl += pnl
+
+            if pnl > 0:
+                self.metrics.winning_trades += 1
+            else:
+                self.metrics.losing_trades += 1
+
+            self.logger.debug(
+                "backtest_short_close",
+                price=float(current_price),
+                pnl=float(pnl),
+                rollover_fee=float(rollover_fee),
+                holding_hours=round(holding_hours, 1),
+            )
+
     def calculate_final_metrics(self) -> None:
         """Calculate final performance metrics after backtest completes."""
         self.metrics.total_trades = len(
@@ -649,35 +786,52 @@ class BacktestEngine:
             from krakenbot.strategies.adaptive import AdaptiveStrategy
 
             analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_strategy_params("adaptive")
             self.strategy = AdaptiveStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
                 db_manager=self.db_manager,
                 analyzer=analyzer,
+                strategy_params=strategy_params,
             )
         elif self.strategy_name == "capitulation":
             from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
             from krakenbot.strategies.capitulation import CapitulationStrategy
 
             analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_strategy_params("capitulation")
             self.strategy = CapitulationStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
                 db_manager=self.db_manager,
                 analyzer=analyzer,
+                strategy_params=strategy_params,
+            )
+        elif self.strategy_name == "bear_short":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.bear_short import BearShortStrategy
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_strategy_params("bear_short")
+            self.strategy = BearShortStrategy(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                analyzer=analyzer,
+                strategy_params=strategy_params,
             )
         else:
             raise ValueError(
                 f"Unknown strategy: {self.strategy_name}. "
                 f"Available: threshold, threshold_multi, threshold_rolling, "
-                f"technical_indicator, adaptive, capitulation"
+                f"technical_indicator, adaptive, capitulation, bear_short"
             )
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies
         self.strategy._skip_db_sync = True
 
         # Build replay sequence (with MTF warmup for adaptive/capitulation)
-        needs_mtf = self.strategy_name in ["adaptive", "capitulation"]
+        needs_mtf = self.strategy_name in ["adaptive", "capitulation", "bear_short"]
         if needs_mtf:
             replay_sequence = await self._build_replay_sequence(pair, start_time, end_time, candles)
         else:
