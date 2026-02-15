@@ -174,12 +174,12 @@ class BacktestEngine:
         pair: str,
         start_time: datetime,
         end_time: datetime,
-        candles_5m: list[OHLCData],
+        candles_trading: list[OHLCData],
     ) -> list[tuple[OHLCData, int, bool]]:
         """Build interleaved replay sequence with multi-timeframe warmup.
 
         Loads 15m and 1h candles (with warmup period before start_time),
-        merges them with the 5m trading candles, and sorts chronologically.
+        merges them with the trading candles, and sorts chronologically.
         Higher timeframes are processed first on timestamp ties so the
         analyzer is updated before the trigger timeframe generates signals.
 
@@ -187,35 +187,38 @@ class BacktestEngine:
             pair: Trading pair.
             start_time: Start of backtest trading period.
             end_time: End of backtest period.
-            candles_5m: Already-loaded 5m candles for the trading period.
+            candles_trading: Already-loaded trading candles for the period.
 
         Returns:
             List of (candle, interval, is_tradeable) tuples.
         """
+        ci = self.candle_interval  # Trading interval (e.g., 5, 1, 15)
+
         # Warmup periods before start_time
         warmup_1h = start_time - timedelta(days=3)  # ~72 candles (> 50 warmup)
         warmup_15m = start_time - timedelta(hours=10)  # ~40 candles (> 20 warmup)
-        warmup_5m = start_time - timedelta(hours=3)  # ~36 candles (> 20 warmup)
+        warmup_trading = start_time - timedelta(hours=3)  # ~36 candles (> 20 warmup)
 
         # Load higher timeframe data (full range: warmup + backtest period)
         candles_1h = await self._load_candles_for_interval(pair, 60, warmup_1h, end_time)
         candles_15m = await self._load_candles_for_interval(pair, 15, warmup_15m, end_time)
-        candles_5m_warmup = await self._load_candles_for_interval(pair, 5, warmup_5m, start_time)
+        candles_warmup = await self._load_candles_for_interval(pair, ci, warmup_trading, start_time)
 
         self.logger.info(
             "mtf_data_loaded",
+            trading_interval=ci,
             candles_1h=len(candles_1h),
             candles_15m=len(candles_15m),
-            candles_5m_warmup=len(candles_5m_warmup),
-            candles_5m_trading=len(candles_5m),
+            candles_warmup=len(candles_warmup),
+            candles_trading=len(candles_trading),
         )
 
         # Build sequence
         sequence: list[tuple[OHLCData, int, bool]] = []
 
-        # 5m warmup (before start_time) - not tradeable
-        for c in candles_5m_warmup:
-            sequence.append((c, 5, False))
+        # Trading interval warmup (before start_time) - not tradeable
+        for c in candles_warmup:
+            sequence.append((c, ci, False))
 
         # 1h candles - never tradeable (feed analyzer + capitulation hourly tracking)
         for c in candles_1h:
@@ -225,12 +228,12 @@ class BacktestEngine:
         for c in candles_15m:
             sequence.append((c, 15, False))
 
-        # 5m trading candles
-        for c in candles_5m:
-            sequence.append((c, 5, True))
+        # Trading candles
+        for c in candles_trading:
+            sequence.append((c, ci, True))
 
-        # Sort: timestamp ASC, then higher timeframes first (60 > 15 > 5)
-        interval_order = {60: 0, 15: 1, 5: 2}
+        # Sort: timestamp ASC, then higher timeframes first (60 > 15 > trading)
+        interval_order = {60: 0, 15: 1, ci: 2}
         sequence.sort(key=lambda x: (x[0].timestamp, interval_order.get(x[1], 3)))
 
         return sequence

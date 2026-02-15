@@ -464,7 +464,8 @@ def fetch_open_positions(strategy_filter: str | None = None) -> pd.DataFrame:
         entry_price,
         reference_price,
         entry_time,
-        strategy
+        strategy,
+        COALESCE(trading_mode, 'spot') as trading_mode
     FROM open_positions
     WHERE {where_clause}
     ORDER BY bot_id, position_id
@@ -1966,18 +1967,31 @@ def update_trades_table(n_intervals, n_clicks, strategy_filter):
         strategy = row.get("strategy", "")
 
         # Determine entry vs exit price based on side
-        if side == "buy":
-            entry_price = price
-            exit_price = None
+        # For margin shorts: SELL = open (entry), BUY = close (exit)
+        is_short = "bear_short" in (strategy or "")
+        if is_short:
+            if side == "sell":
+                entry_price = price
+                exit_price = None
+            else:
+                entry_price = position_entry
+                exit_price = price
         else:
-            entry_price = position_entry
-            exit_price = price
+            if side == "buy":
+                entry_price = price
+                exit_price = None
+            else:
+                entry_price = position_entry
+                exit_price = price
+
+        # Display side with SHORT indicator for margin
+        display_side = f"SHORT {side.upper()}" if is_short else side.upper()
 
         rows.append(
             {
                 "timestamp": timestamp,
                 "strategy": strategy,
-                "side": side.upper(),
+                "side": display_side,
                 "amount": f"{amount:.6f}",
                 "entry_price": f"${entry_price:.2f}" if entry_price else "—",
                 "exit_price": f"${exit_price:.2f}" if exit_price else "—",
@@ -2069,6 +2083,8 @@ def update_positions_table(n_intervals, n_clicks, strategy_filter):
         amount = float(row["amount"])
         entry_time = pd.to_datetime(row["entry_time"])
         strategy = row.get("strategy", "threshold_rolling")
+        trading_mode = row.get("trading_mode", "spot")
+        is_short = trading_mode == "margin"
 
         # Get reference price (may be None for older positions)
         reference_price = float(row["reference_price"]) if row["reference_price"] else None
@@ -2078,9 +2094,11 @@ def update_positions_table(n_intervals, n_clicks, strategy_filter):
         target_price = target_info["target_price"]
         target_label = target_info["label"]
 
-        # Extract short bot_id
+        # Extract short bot_id + short indicator
         bot_id = row.get("bot_id", "")
         short_bot_id = bot_id.split("_")[-1] if "_" in bot_id else bot_id
+        if is_short:
+            short_bot_id = f"SHORT {short_bot_id}"
 
         # Position ID
         position_id = row.get("position_id", "—")
@@ -2097,10 +2115,14 @@ def update_positions_table(n_intervals, n_clicks, strategy_filter):
         else:
             duration_str = f"{duration.days}d {int(dur_hours % 24)}h"
 
-        # Calculate unrealized P&L
+        # Calculate unrealized P&L (inverted for margin shorts)
         if current_price:
-            unrealized_pnl = (current_price - entry_price) * amount
-            unrealized_pnl_pct = ((current_price / entry_price) - 1) * 100
+            if is_short:
+                unrealized_pnl = (entry_price - current_price) * amount
+                unrealized_pnl_pct = ((entry_price / current_price) - 1) * 100
+            else:
+                unrealized_pnl = (current_price - entry_price) * amount
+                unrealized_pnl_pct = ((current_price / entry_price) - 1) * 100
             total_unrealized_pnl += unrealized_pnl
             # Calculate distance to target (only if fixed target)
             if target_price:
