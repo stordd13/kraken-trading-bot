@@ -552,6 +552,70 @@ def fetch_data_range_stats() -> dict:
         }
 
 
+def compute_market_regime(hours: int = 168) -> pd.DataFrame:
+    """Compute market regime from 1h OHLC data using EMA(20)/EMA(50) crossover.
+
+    Uses the same logic as MultiTimeframeAnalyzer._classify_regime():
+    EMA spread % thresholds at 0.5% (neutral) and 1.0% (strong).
+
+    Args:
+        hours: Number of hours of history to compute (default 7 days).
+
+    Returns:
+        DataFrame with columns: timestamp, regime, ema_spread_pct.
+    """
+    # Need extra history for EMA warmup (50 candles = 50 hours)
+    total_hours = hours + 60
+    query = """
+    SELECT timestamp, close
+    FROM market_data_ohlc
+    WHERE pair = 'XBT/USDC'
+      AND interval = 60
+      AND timestamp >= NOW() - INTERVAL ':hours hours'
+    ORDER BY timestamp ASC
+    """
+    try:
+        df = pd.read_sql(
+            text(query.replace(":hours", str(total_hours))),
+            engine,
+        )
+        if df.empty or len(df) < 50:
+            return pd.DataFrame()
+
+        df["close"] = df["close"].astype(float)
+        df["ema20"] = df["close"].ewm(span=20, adjust=False).mean()
+        df["ema50"] = df["close"].ewm(span=50, adjust=False).mean()
+        df["ema_spread_pct"] = ((df["ema20"] - df["ema50"]) / df["ema50"]) * 100
+
+        threshold = 0.5  # Same as MultiTimeframeAnalyzer default
+        df["regime"] = df["ema_spread_pct"].apply(
+            lambda s: (
+                "STRONG_BULL"
+                if s > threshold * 2
+                else (
+                    "BULL"
+                    if s > threshold
+                    else (
+                        "STRONG_BEAR"
+                        if s < -threshold * 2
+                        else "BEAR"
+                        if s < -threshold
+                        else "NEUTRAL"
+                    )
+                )
+            )
+        )
+
+        # Trim warmup period
+        cutoff = pd.Timestamp.now(tz="UTC") - pd.Timedelta(hours=hours)
+        df = df[df["timestamp"] >= cutoff]
+
+        return df[["timestamp", "regime", "ema_spread_pct"]]
+    except Exception as e:
+        print(f"Error computing market regime: {e}")
+        return pd.DataFrame()
+
+
 def fetch_bot_states_per_strategy() -> pd.DataFrame:
     """Fetch bot state for each strategy instance individually."""
     query = """
@@ -761,12 +825,32 @@ def create_candlestick_chart(
     df: pd.DataFrame,
     trades_df: pd.DataFrame = None,
     positions_df: pd.DataFrame = None,
+    regime_df: pd.DataFrame = None,
 ) -> go.Figure:
-    """Create candlestick chart with trades overlay and open position levels."""
-    fig = go.Figure()
+    """Create candlestick chart with trades overlay, position levels, and regime subplot."""
+    from plotly.subplots import make_subplots
+
+    has_regime = regime_df is not None and not regime_df.empty
+
+    if has_regime:
+        fig = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+            row_heights=[0.82, 0.18],
+        )
+    else:
+        fig = go.Figure()
+
+    def _add_trace(trace: go.Scatter | go.Candlestick) -> None:
+        if has_regime:
+            fig.add_trace(trace, row=1, col=1)
+        else:
+            fig.add_trace(trace)
 
     if not df.empty:
-        fig.add_trace(
+        _add_trace(
             go.Candlestick(
                 x=df["timestamp"],
                 open=df["open"],
@@ -785,7 +869,7 @@ def create_candlestick_chart(
         sells = trades_df[trades_df["side"] == "sell"]
 
         if not buys.empty:
-            fig.add_trace(
+            _add_trace(
                 go.Scatter(
                     x=buys["timestamp"],
                     y=buys["price"],
@@ -801,7 +885,7 @@ def create_candlestick_chart(
             )
 
         if not sells.empty:
-            fig.add_trace(
+            _add_trace(
                 go.Scatter(
                     x=sells["timestamp"],
                     y=sells["price"],
@@ -838,10 +922,11 @@ def create_candlestick_chart(
                 annotation_position="left",
                 annotation_font_color="rgba(0, 255, 136, 0.7)",
                 annotation_font_size=10,
+                row=1 if has_regime else None,
+                col=1 if has_regime else None,
             )
 
             if target_price is not None:
-                # Fixed target (threshold / capitulation)
                 fig.add_hline(
                     y=target_price,
                     line_dash="dash",
@@ -851,9 +936,10 @@ def create_candlestick_chart(
                     annotation_position="left",
                     annotation_font_color=target_color,
                     annotation_font_size=10,
+                    row=1 if has_regime else None,
+                    col=1 if has_regime else None,
                 )
             else:
-                # Trailing stop (adaptive) - annotate entry line
                 fig.add_annotation(
                     x=0.02,
                     y=entry_price,
@@ -865,11 +951,48 @@ def create_candlestick_chart(
                     yshift=12,
                 )
 
+    # Add regime subplot
+    if has_regime:
+        regime_colors = {
+            "STRONG_BEAR": "#ff4444",
+            "BEAR": "#ff8c00",
+            "NEUTRAL": "#888888",
+            "BULL": "#90ee90",
+            "STRONG_BULL": "#00ff88",
+        }
+        fig.add_trace(
+            go.Bar(
+                x=regime_df["timestamp"],
+                y=[1] * len(regime_df),
+                marker_color=[regime_colors.get(r, "#888") for r in regime_df["regime"]],
+                hovertext=[
+                    f"{r} ({s:+.2f}%)"
+                    for r, s in zip(regime_df["regime"], regime_df["ema_spread_pct"], strict=True)
+                ],
+                hoverinfo="text+x",
+                showlegend=False,
+            ),
+            row=2,
+            col=1,
+        )
+        fig.update_yaxes(
+            visible=False,
+            row=2,
+            col=1,
+        )
+        fig.update_xaxes(
+            gridcolor="rgba(255,255,255,0.1)",
+            row=2,
+            col=1,
+        )
+
+    chart_height = 520 if has_regime else 450
+
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
-        height=450,
+        height=chart_height,
         margin={"l": 50, "r": 50, "t": 30, "b": 50},
         xaxis_rangeslider_visible=False,
         xaxis={"gridcolor": "rgba(255,255,255,0.1)"},
@@ -1548,6 +1671,16 @@ app.layout = dbc.Container(
                                 ),
                             ]
                         ),
+                        # Trade analysis row (shown when a backtest is selected)
+                        dbc.Row(
+                            [
+                                dbc.Col(
+                                    html.Div(id="backtest-trades-detail"),
+                                    width=12,
+                                ),
+                            ],
+                            className="mt-3",
+                        ),
                     ],
                     label="Backtest",
                     tab_id="tab-backtest",
@@ -1792,13 +1925,14 @@ def update_strategy_filters(n_intervals, n_clicks):
     ],
 )
 def update_chart(n_intervals, n_clicks, hours):
-    """Update price chart."""
+    """Update price chart with market regime subplot."""
     hours = int(hours) if hours else 24
     interval = get_optimal_interval(hours)
     df = fetch_ohlc_data(hours=hours, interval=interval)
     trades_df = fetch_recent_trades(limit=50)
     positions_df = fetch_open_positions()
-    return create_candlestick_chart(df, trades_df, positions_df)
+    regime_df = compute_market_regime(hours=max(hours, 48))
+    return create_candlestick_chart(df, trades_df, positions_df, regime_df)
 
 
 @callback(
@@ -2480,15 +2614,24 @@ def handle_delete_backtest(n_clicks, selected_rows, data):
 
 
 @callback(
-    [Output("backtest-details", "children"), Output("backtest-equity-chart", "figure")],
+    [
+        Output("backtest-details", "children"),
+        Output("backtest-equity-chart", "figure"),
+        Output("backtest-trades-detail", "children"),
+    ],
     [Input("backtest-runs-datatable", "selected_rows"), Input("backtest-runs-datatable", "data")],
 )
 def update_backtest_details(selected_rows, data):
     """Update backtest details when a row is selected."""
     empty_fig = create_backtest_equity_chart(pd.DataFrame())
+    empty_trades = html.Div()
 
     if not selected_rows or not data:
-        return dbc.Alert("Select a backtest run to see details", color="secondary"), empty_fig
+        return (
+            dbc.Alert("Select a backtest run to see details", color="secondary"),
+            empty_fig,
+            empty_trades,
+        )
 
     selected_row = data[selected_rows[0]]
     run_id = selected_row.get("id_short", "")
@@ -2496,16 +2639,23 @@ def update_backtest_details(selected_rows, data):
     # Fetch full backtest data
     df = fetch_backtest_runs()
     if df.empty:
-        return dbc.Alert("Backtest data not found", color="warning"), empty_fig
+        return dbc.Alert("Backtest data not found", color="warning"), empty_fig, empty_trades
 
     # Find matching row by id prefix
     matching = df[df["id"].astype(str).str.startswith(run_id)]
     if matching.empty:
-        return dbc.Alert("Backtest not found", color="warning"), empty_fig
+        return dbc.Alert("Backtest not found", color="warning"), empty_fig, empty_trades
 
     bt = matching.iloc[0]
 
-    # Create details card
+    # Extract win/loss analysis metrics from backtest_runs
+    avg_win = float(bt.get("average_win", 0) or 0)
+    avg_loss = float(bt.get("average_loss", 0) or 0)
+    profit_factor = float(bt.get("profit_factor", 0) or 0)
+    net_pnl = float(bt.get("net_pnl", 0) or 0)
+    total_fees = float(bt.get("total_fees", 0) or 0)
+
+    # Create details card with additional win/loss analysis
     details = html.Div(
         [
             html.H6(bt.get("run_name", "Unknown"), className="text-primary"),
@@ -2562,6 +2712,12 @@ def update_backtest_details(selected_rows, data):
                                     f"{bt.get('winning_trades', 0)}/{bt.get('losing_trades', 0)}",
                                 ]
                             ),
+                            html.P(
+                                [
+                                    html.Strong("Win Rate: "),
+                                    f"{float(bt.get('win_rate', 0)) * 100:.1f}%",
+                                ]
+                            ),
                         ],
                         width=6,
                     ),
@@ -2569,14 +2725,26 @@ def update_backtest_details(selected_rows, data):
                         [
                             html.P(
                                 [
-                                    html.Strong("Win Rate: "),
-                                    f"{float(bt.get('win_rate', 0)) * 100:.1f}%",
+                                    html.Strong("Avg Win: "),
+                                    html.Span(
+                                        f"+{avg_win:.2f} USDC",
+                                        className="text-success",
+                                    ),
+                                ]
+                            ),
+                            html.P(
+                                [
+                                    html.Strong("Avg Loss: "),
+                                    html.Span(
+                                        f"{avg_loss:.2f} USDC",
+                                        className="text-danger",
+                                    ),
                                 ]
                             ),
                             html.P(
                                 [
                                     html.Strong("Profit Factor: "),
-                                    f"{float(bt.get('profit_factor', 0)):.2f}",
+                                    f"{profit_factor:.2f}",
                                 ]
                             ),
                         ],
@@ -2595,6 +2763,12 @@ def update_backtest_details(selected_rows, data):
                                     f"{float(bt.get('max_drawdown_pct', 0)):.2f}%",
                                 ]
                             ),
+                            html.P(
+                                [
+                                    html.Strong("Sharpe Ratio: "),
+                                    f"{float(bt.get('sharpe_ratio', 0)):.2f}",
+                                ]
+                            ),
                         ],
                         width=6,
                     ),
@@ -2602,8 +2776,17 @@ def update_backtest_details(selected_rows, data):
                         [
                             html.P(
                                 [
-                                    html.Strong("Sharpe Ratio: "),
-                                    f"{float(bt.get('sharpe_ratio', 0)):.2f}",
+                                    html.Strong("Net P&L: "),
+                                    html.Span(
+                                        f"{net_pnl:+.2f} USDC",
+                                        className="text-success" if net_pnl >= 0 else "text-danger",
+                                    ),
+                                ]
+                            ),
+                            html.P(
+                                [
+                                    html.Strong("Total Fees: "),
+                                    f"{total_fees:.2f} USDC",
                                 ]
                             ),
                         ],
@@ -2614,11 +2797,187 @@ def update_backtest_details(selected_rows, data):
         ]
     )
 
-    # Fetch trades for equity curve
+    # Fetch trades for equity curve and trade detail table
     trades_df = fetch_backtest_trades(str(bt.get("id", "")))
     equity_fig = create_backtest_equity_chart(trades_df, float(bt.get("starting_balance", 1000)))
 
-    return details, equity_fig
+    # Build trade detail table
+    trades_detail = _build_backtest_trades_table(trades_df)
+
+    return details, equity_fig, trades_detail
+
+
+def _build_backtest_trades_table(trades_df: pd.DataFrame):
+    """Build a detailed trade analysis table from backtest trades.
+
+    Pairs BUY/SELL trades to show entry/exit price, P&L, and holding time.
+    Includes summary metrics (biggest win, biggest loss, avg holding time).
+    """
+    if trades_df.empty:
+        return html.Div()
+
+    # Pair BUY/SELL trades
+    paired_trades = []
+    pending_buys = []
+
+    for _, trade in trades_df.iterrows():
+        side = str(trade.get("side", "")).lower()
+        if side == "buy":
+            pending_buys.append(trade)
+        elif side == "sell" and pending_buys:
+            buy = pending_buys.pop(0)
+            entry_price = float(buy["price"])
+            exit_price = float(trade["price"])
+            pnl = float(trade["pnl"]) if pd.notna(trade.get("pnl")) else 0
+            buy_time = pd.to_datetime(buy["timestamp"])
+            sell_time = pd.to_datetime(trade["timestamp"])
+            holding = sell_time - buy_time
+            holding_min = holding.total_seconds() / 60
+
+            paired_trades.append(
+                {
+                    "entry_time": buy_time.strftime("%m/%d %H:%M"),
+                    "exit_time": sell_time.strftime("%m/%d %H:%M"),
+                    "entry_price": f"${entry_price:,.2f}",
+                    "exit_price": f"${exit_price:,.2f}",
+                    "pnl": f"{pnl:+.2f}",
+                    "pnl_raw": pnl,
+                    "return_pct": f"{((exit_price - entry_price) / entry_price) * 100:+.2f}%",
+                    "holding": (
+                        f"{int(holding_min)}m" if holding_min < 60 else f"{holding_min / 60:.1f}h"
+                    ),
+                }
+            )
+
+    if not paired_trades:
+        return dbc.Alert("No completed round-trips found", color="secondary", className="mt-3")
+
+    paired_df = pd.DataFrame(paired_trades)
+    pnl_values = [t["pnl_raw"] for t in paired_trades]
+    wins = [p for p in pnl_values if p > 0]
+    losses = [p for p in pnl_values if p <= 0]
+
+    # Summary metrics
+    biggest_win = max(pnl_values) if pnl_values else 0
+    biggest_loss = min(pnl_values) if pnl_values else 0
+    avg_win = sum(wins) / len(wins) if wins else 0
+    avg_loss = sum(losses) / len(losses) if losses else 0
+
+    summary = dbc.Row(
+        [
+            dbc.Col(
+                dbc.Card(
+                    dbc.CardBody(
+                        [
+                            html.Small("Biggest Win", className="text-muted"),
+                            html.H5(
+                                f"+{biggest_win:.2f}",
+                                className="text-success mb-0",
+                            ),
+                        ],
+                        className="p-2 text-center",
+                    ),
+                ),
+                width=3,
+            ),
+            dbc.Col(
+                dbc.Card(
+                    dbc.CardBody(
+                        [
+                            html.Small("Biggest Loss", className="text-muted"),
+                            html.H5(
+                                f"{biggest_loss:.2f}",
+                                className="text-danger mb-0",
+                            ),
+                        ],
+                        className="p-2 text-center",
+                    ),
+                ),
+                width=3,
+            ),
+            dbc.Col(
+                dbc.Card(
+                    dbc.CardBody(
+                        [
+                            html.Small("Avg Win", className="text-muted"),
+                            html.H5(
+                                f"+{avg_win:.2f}",
+                                className="text-success mb-0",
+                            ),
+                        ],
+                        className="p-2 text-center",
+                    ),
+                ),
+                width=3,
+            ),
+            dbc.Col(
+                dbc.Card(
+                    dbc.CardBody(
+                        [
+                            html.Small("Avg Loss", className="text-muted"),
+                            html.H5(
+                                f"{avg_loss:.2f}",
+                                className="text-danger mb-0",
+                            ),
+                        ],
+                        className="p-2 text-center",
+                    ),
+                ),
+                width=3,
+            ),
+        ],
+        className="mb-2",
+    )
+
+    table = dash_table.DataTable(
+        data=paired_df.drop(columns=["pnl_raw"]).to_dict("records"),
+        columns=[
+            {"name": "Entry", "id": "entry_time"},
+            {"name": "Exit", "id": "exit_time"},
+            {"name": "Entry $", "id": "entry_price"},
+            {"name": "Exit $", "id": "exit_price"},
+            {"name": "Return", "id": "return_pct"},
+            {"name": "P&L", "id": "pnl"},
+            {"name": "Duration", "id": "holding"},
+        ],
+        style_table={"overflowX": "auto", "maxHeight": "400px", "overflowY": "auto"},
+        style_header={
+            "backgroundColor": "rgb(30, 30, 30)",
+            "color": "white",
+            "fontWeight": "bold",
+        },
+        style_cell={
+            "backgroundColor": "rgb(50, 50, 50)",
+            "color": "white",
+            "border": "1px solid rgb(70, 70, 70)",
+            "textAlign": "center",
+            "padding": "8px",
+            "fontSize": "12px",
+        },
+        style_data_conditional=[
+            {
+                "if": {"filter_query": "{pnl} contains '+'"},
+                "color": "#00ff88",
+            },
+            {
+                "if": {"filter_query": "{pnl} contains '-'"},
+                "color": "#ff4444",
+            },
+        ],
+        page_size=15,
+    )
+
+    return dbc.Card(
+        [
+            dbc.CardHeader(
+                html.H5(
+                    f"Trade Details ({len(paired_trades)} round-trips)",
+                    className="mb-0",
+                )
+            ),
+            dbc.CardBody([summary, table]),
+        ]
+    )
 
 
 # ============================================================================
