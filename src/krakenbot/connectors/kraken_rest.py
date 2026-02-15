@@ -139,6 +139,11 @@ class KrakenRestClient:
         }
         self._paper_orders: dict[str, dict[str, Any]] = {}
 
+        # Paper margin trading state
+        self._paper_margin_balance: Decimal = Decimal("500.00")
+        self._paper_margin_positions: list[dict[str, Any]] = []
+        self._paper_margin_used: Decimal = Decimal("0")
+
         # Last known price for paper trading simulation
         self._last_prices: dict[str, Decimal] = {}
 
@@ -604,6 +609,358 @@ class KrakenRestClient:
                 side=side.value,
                 amount=amount,
             ) from e
+
+    # =========================================================================
+    # Margin Trading Methods
+    # =========================================================================
+
+    async def place_margin_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        strategy: str = "manual",
+        signal_price: Decimal | None = None,
+        leverage: int = 2,
+    ) -> Trade:
+        """Place a margin order (for short selling).
+
+        For shorts: SELL opens the position (borrow + sell BTC),
+        BUY closes it (buy BTC + repay).
+
+        Args:
+            pair: Trading pair (e.g., "XBT/USDC").
+            side: Order side (SELL to open short, BUY to close short).
+            amount: Order amount in base currency.
+            strategy: Strategy name for tracking.
+            signal_price: Expected price (fallback).
+            leverage: Leverage level (default 2x).
+
+        Returns:
+            Trade object representing the executed margin order.
+
+        Raises:
+            InsufficientBalanceError: If not enough margin.
+            OrderExecutionError: If order execution fails.
+        """
+        kraken_pair = PAIR_TO_KRAKEN.get(pair, pair)
+
+        # Validate minimum order size
+        min_size = MIN_ORDER_SIZE.get(pair, Decimal("0.0001"))
+        if amount < min_size:
+            raise OrderExecutionError(
+                message=f"Order amount below minimum ({min_size})",
+                pair=pair,
+                side=side.value,
+                amount=amount,
+            )
+
+        if self.is_paper_mode:
+            return await self._paper_margin_order(pair, side, amount, strategy, leverage)
+        else:
+            return await self._live_margin_order(
+                kraken_pair, side, amount, strategy, signal_price, leverage
+            )
+
+    async def _paper_margin_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        strategy: str,
+        leverage: int,
+    ) -> Trade:
+        """Simulate a margin order in paper trading mode.
+
+        Args:
+            pair: Trading pair.
+            side: Order side (SELL to open, BUY to close).
+            amount: Order amount in base currency.
+            strategy: Strategy name.
+            leverage: Leverage level.
+
+        Returns:
+            Simulated Trade object.
+        """
+        # Get current price
+        price = self._last_prices.get(pair)
+        if price is None:
+            ticker = await self.get_ticker(pair)
+            price = ticker.get("last") or Decimal("42000")
+
+        value = amount * price
+        fee = value * Decimal("0.0026")  # Same fee as spot
+        quote_currency = pair.split("/")[1]
+
+        if side == TradeSide.SELL:
+            # Opening a short: lock margin collateral
+            margin_required = value / Decimal(str(leverage))
+            available_margin = self._paper_margin_balance - self._paper_margin_used
+            if available_margin < margin_required:
+                raise InsufficientBalanceError(
+                    message="Insufficient margin for paper short",
+                    required=margin_required,
+                    available=available_margin,
+                    currency=quote_currency,
+                )
+            self._paper_margin_used += margin_required
+            self._paper_margin_positions.append(
+                {
+                    "pair": pair,
+                    "amount": amount,
+                    "entry_price": price,
+                    "leverage": leverage,
+                    "margin_required": margin_required,
+                    "strategy": strategy,
+                }
+            )
+        elif side == TradeSide.BUY:
+            # Closing a short: find matching position, release margin
+            closed = False
+            for i, pos in enumerate(self._paper_margin_positions):
+                if pos["pair"] == pair and pos["strategy"] == strategy:
+                    self._paper_margin_used -= pos["margin_required"]
+                    # PnL: entry sold high, now buying back (hopefully lower)
+                    pnl = (pos["entry_price"] - price) * pos["amount"] - fee
+                    self._paper_margin_balance += pnl
+                    self._paper_margin_positions.pop(i)
+                    closed = True
+                    break
+            if not closed:
+                raise OrderExecutionError(
+                    message="No matching margin position to close",
+                    pair=pair,
+                    side=side.value,
+                    amount=amount,
+                )
+
+        # Create trade record
+        trade = Trade(
+            id=uuid.uuid4(),
+            timestamp=datetime.now(UTC),
+            pair=pair,
+            side=side,
+            amount=amount,
+            price=price,
+            fee=fee,
+            fee_currency=quote_currency,
+            strategy=strategy,
+            status=TradeStatus.FILLED,
+            order_id=f"paper-margin-{uuid.uuid4().hex[:8]}",
+            notes=f"Paper margin trade - {self._mode_prefix}",
+            trading_mode="margin",
+        )
+
+        # Save to database if available
+        if self._db_manager:
+            await self._save_trade(trade)
+
+        self._stats["orders_placed"] += 1
+        self._stats["orders_filled"] += 1
+
+        # Publish event
+        await self._event_bus.publish(
+            EventType.TRADE_ORDER_FILLED,
+            {
+                "mode": "paper",
+                "trade_id": str(trade.id),
+                "pair": pair,
+                "side": side.value,
+                "amount": str(amount),
+                "price": str(price),
+                "fee": str(fee),
+                "strategy": strategy,
+                "trading_mode": "margin",
+            },
+        )
+
+        logger.info(
+            f"{self._mode_prefix} margin_order_filled",
+            pair=pair,
+            side=side.value,
+            amount=str(amount),
+            price=str(price),
+            fee=str(fee),
+            leverage=leverage,
+        )
+
+        return trade
+
+    async def _live_margin_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        strategy: str,
+        signal_price: Decimal | None,
+        leverage: int,
+    ) -> Trade:
+        """Execute a real margin order via Kraken API.
+
+        Args:
+            pair: Trading pair (Kraken format).
+            side: Order side.
+            amount: Order amount in base currency.
+            strategy: Strategy name.
+            signal_price: Expected price (fallback).
+            leverage: Leverage level.
+
+        Returns:
+            Trade object with execution details.
+        """
+        try:
+            self._stats["api_calls"] += 1
+            self._stats["orders_placed"] += 1
+
+            order_side = "buy" if side == TradeSide.BUY else "sell"
+            order = await self._exchange.create_market_order(
+                pair,
+                order_side,
+                float(amount),
+                params={"leverage": leverage},
+            )
+
+            # Parse order response
+            order_id = order.get("id")
+            filled_raw = order.get("filled") or amount
+            filled_amount = Decimal(str(filled_raw))
+            avg_price_raw = order.get("average") or order.get("price") or signal_price or 0
+            avg_price = Decimal(str(avg_price_raw))
+
+            fee_info = order.get("fee") or {}
+            fee_cost = fee_info.get("cost") if fee_info else 0
+            fee = Decimal(str(fee_cost or 0))
+            fee_currency = fee_info.get("currency", "USDC") if fee_info else "USDC"
+
+            trade = Trade(
+                id=uuid.uuid4(),
+                timestamp=datetime.now(UTC),
+                pair=pair,
+                side=side,
+                amount=filled_amount,
+                price=avg_price,
+                fee=fee,
+                fee_currency=fee_currency,
+                strategy=strategy,
+                status=TradeStatus.FILLED,
+                order_id=order_id,
+                notes=f"Live margin trade - {self._mode_prefix}",
+                trading_mode="margin",
+            )
+
+            if self._db_manager:
+                await self._save_trade(trade)
+
+            self._stats["orders_filled"] += 1
+
+            await self._event_bus.publish(
+                EventType.TRADE_ORDER_FILLED,
+                {
+                    "mode": "live",
+                    "trade_id": str(trade.id),
+                    "order_id": order_id,
+                    "pair": pair,
+                    "side": side.value,
+                    "amount": str(filled_amount),
+                    "price": str(avg_price),
+                    "fee": str(fee),
+                    "strategy": strategy,
+                    "trading_mode": "margin",
+                },
+            )
+
+            logger.info(
+                f"{self._mode_prefix} margin_order_filled",
+                order_id=order_id,
+                pair=pair,
+                side=side.value,
+                amount=str(filled_amount),
+                price=str(avg_price),
+                leverage=leverage,
+            )
+
+            return trade
+
+        except ccxt.InsufficientFunds as e:
+            self._stats["orders_failed"] += 1
+            logger.error(
+                "kraken_rest_margin_insufficient_funds",
+                error=str(e),
+                pair=pair,
+                amount=str(amount),
+            )
+            raise InsufficientBalanceError(
+                message=f"Insufficient margin funds: {e}",
+            ) from e
+
+        except ccxt.ExchangeError as e:
+            self._stats["orders_failed"] += 1
+            logger.error(
+                "kraken_rest_margin_order_error",
+                error=str(e),
+                pair=pair,
+                side=side.value,
+            )
+            raise OrderExecutionError(
+                message=f"Margin order execution failed: {e}",
+                pair=pair,
+                side=side.value,
+                amount=amount,
+            ) from e
+
+    async def get_margin_balance(self) -> dict[str, Decimal]:
+        """Get margin balance information.
+
+        Returns:
+            Dictionary with total_margin, used_margin, available_margin.
+        """
+        if self.is_paper_mode:
+            return {
+                "total_margin": self._paper_margin_balance,
+                "used_margin": self._paper_margin_used,
+                "available_margin": self._paper_margin_balance - self._paper_margin_used,
+            }
+
+        try:
+            self._stats["api_calls"] += 1
+            balance = await self._exchange.fetch_balance(params={"type": "margin"})
+            total = Decimal(str(balance.get("total", {}).get("USDC", 0)))
+            used = Decimal(str(balance.get("used", {}).get("USDC", 0)))
+            return {
+                "total_margin": total,
+                "used_margin": used,
+                "available_margin": total - used,
+            }
+        except ccxt.ExchangeError as e:
+            logger.error("kraken_rest_margin_balance_error", error=str(e))
+            raise KrakenAPIError(message=f"Failed to fetch margin balance: {e}") from e
+
+    async def get_open_margin_positions(self) -> list[dict[str, Any]]:
+        """Get currently open margin positions.
+
+        Returns:
+            List of open margin position dictionaries.
+        """
+        if self.is_paper_mode:
+            return self._paper_margin_positions.copy()
+
+        try:
+            self._stats["api_calls"] += 1
+            positions = await self._exchange.fetch_positions()
+            return [
+                {
+                    "pair": p.get("symbol", ""),
+                    "amount": Decimal(str(p.get("contracts", 0))),
+                    "entry_price": Decimal(str(p.get("entryPrice", 0))),
+                    "leverage": p.get("leverage", 2),
+                    "unrealized_pnl": Decimal(str(p.get("unrealizedPnl", 0))),
+                }
+                for p in positions
+                if p.get("contracts", 0) != 0
+            ]
+        except ccxt.ExchangeError as e:
+            logger.error("kraken_rest_margin_positions_error", error=str(e))
+            raise KrakenAPIError(message=f"Failed to fetch margin positions: {e}") from e
 
     async def get_open_orders(self, pair: str | None = None) -> list[dict[str, Any]]:
         """Get open orders.
