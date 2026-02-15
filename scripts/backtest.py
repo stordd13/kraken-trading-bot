@@ -42,6 +42,7 @@ class BacktestTrade:
     amount_crypto: Decimal
     fee: Decimal
     pnl: Decimal | None = None  # Profit/loss (set when closing position)
+    regime: str | None = None  # Market regime at trade time
 
 
 @dataclass
@@ -122,6 +123,8 @@ class BacktestEngine:
         # Metrics tracking
         self.metrics = BacktestMetrics(starting_balance=self.usdc_balance)
         self.equity_curve: list[tuple[datetime, Decimal]] = []
+        self._current_regime: str | None = None
+        self._regime_stats: dict[str, dict] = {}
 
         # Strategy instance (will be created during run)
         self.event_bus = EventBus()
@@ -371,6 +374,7 @@ class BacktestEngine:
                 amount_usdc=order_amount,
                 amount_crypto=crypto_bought,
                 fee=fee,
+                regime=signal.metadata.get("regime") if signal.metadata else self._current_regime,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
@@ -454,6 +458,7 @@ class BacktestEngine:
                 amount_crypto=crypto_sold,
                 fee=fee,
                 pnl=pnl,
+                regime=self._current_regime,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
@@ -530,6 +535,7 @@ class BacktestEngine:
                 amount_usdc=order_amount,
                 amount_crypto=order_amount / execution_price,
                 fee=fee,
+                regime=signal.metadata.get("regime") if signal.metadata else self._current_regime,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
@@ -586,6 +592,7 @@ class BacktestEngine:
                 amount_crypto=crypto_amount,
                 fee=fee + rollover_fee,
                 pnl=pnl,
+                regime=self._current_regime,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee + rollover_fee
@@ -705,6 +712,26 @@ class BacktestEngine:
                     if downside_std > 0:
                         # Annualized Sortino (assuming 365 days)
                         self.metrics.sortino_ratio = (avg_return / downside_std) * (365**0.5)
+
+        # Regime breakdown: aggregate P&L per market regime
+        regime_stats: dict[str, dict] = {}
+        for trade in self.metrics.trades:
+            r = trade.regime or "unknown"
+            if r not in regime_stats:
+                regime_stats[r] = {
+                    "trades": 0,
+                    "pnl": Decimal("0"),
+                    "wins": 0,
+                    "losses": 0,
+                }
+            if trade.pnl is not None:
+                regime_stats[r]["trades"] += 1
+                regime_stats[r]["pnl"] += trade.pnl
+                if trade.pnl > 0:
+                    regime_stats[r]["wins"] += 1
+                else:
+                    regime_stats[r]["losses"] += 1
+        self._regime_stats = regime_stats
 
     async def run(
         self,
@@ -876,6 +903,13 @@ class BacktestEngine:
             # Generate signal
             signal = await self.strategy.generate_signal()
 
+            # Track current regime from analyzer
+            analyzer = getattr(self.strategy, "_analyzer", None)
+            if analyzer:
+                last_analysis = getattr(analyzer, "_last_analysis", None)
+                if last_analysis:
+                    self._current_regime = last_analysis.regime.value
+
             # DEBUG: Log all BUY/SELL signals
             if signal and signal.signal_type.value in ["buy", "sell"]:
                 self.logger.info(
@@ -970,6 +1004,30 @@ class BacktestEngine:
         print(f"{'Max Drawdown %:':<30} {self.metrics.max_drawdown_pct:.2f}%")
         print(f"{'Sharpe Ratio:':<30} {self.metrics.sharpe_ratio:.2f}")
         print(f"{'Sortino Ratio:':<30} {self.metrics.sortino_ratio:.2f}")
+
+        # Regime breakdown
+        if self._regime_stats:
+            print("\n" + "-" * 80)
+            print("REGIME BREAKDOWN")
+            print("-" * 80)
+            print(f"  {'Regime':<16} {'Trades':>7} {'Win Rate':>10} {'Net P&L':>14}")
+            print(f"  {'-' * 16} {'-' * 7} {'-' * 10} {'-' * 14}")
+
+            # Display in canonical order
+            regime_order = ["strong_bull", "bull", "neutral", "bear", "strong_bear", "unknown"]
+            for regime in regime_order:
+                if regime not in self._regime_stats:
+                    continue
+                stats = self._regime_stats[regime]
+                trades = stats["trades"]
+                if trades > 0:
+                    win_rate = stats["wins"] / trades * 100
+                    pnl = float(stats["pnl"])
+                    print(
+                        f"  {regime.upper():<16} {trades:>7} {win_rate:>9.1f}% {pnl:>+13.2f} USDC"
+                    )
+                else:
+                    print(f"  {regime.upper():<16} {trades:>7} {'N/A':>10} {'0.00':>13} USDC")
 
         print("\n" + "=" * 80 + "\n")
 

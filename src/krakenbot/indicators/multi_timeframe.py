@@ -293,7 +293,7 @@ class MultiTimeframeAnalyzer:
         position_size_pct = self._calc_adaptive_position_size(regime, volatility_pct)
         max_positions = self._calc_adaptive_max_positions(regime)
 
-        return MultiTimeframeAnalysis(
+        analysis = MultiTimeframeAnalysis(
             regime=regime,
             zone_15m=zone_15m,
             zone_5m=zone_5m,
@@ -315,6 +315,8 @@ class MultiTimeframeAnalyzer:
                 "ema_slow_1h": float(ema_slow) if ema_slow else None,
             },
         )
+        self._last_analysis = analysis
+        return analysis
 
     def _classify_regime(self, ema_spread_pct: float) -> MarketRegime:
         """Classify market regime from EMA spread.
