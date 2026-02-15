@@ -97,6 +97,7 @@ class AdaptiveStrategy(BaseStrategy):
         )
         self.min_volume_ratio = float(params.get("min_volume_ratio", 0.8))
         self.block_overbought_15m = bool(params.get("block_overbought_15m", True))
+        self.neutral_min_drop_pct = Decimal(str(params.get("neutral_min_drop_pct", 0)))
 
         # Budget params
         budget = None
@@ -387,6 +388,15 @@ class AdaptiveStrategy(BaseStrategy):
                 continue
 
             drop_pct = ((self._current_price - ref_price) / ref_price) * Decimal("100")
+
+            # NEUTRAL filter: require minimum drop to avoid over-trading
+            if (
+                self.neutral_min_drop_pct > 0
+                and analysis
+                and analysis.regime == MarketRegime.NEUTRAL
+                and drop_pct > -self.neutral_min_drop_pct
+            ):
+                continue
 
             if drop_pct <= Decimal(str(buy_threshold)):
                 self._used_references.add(ref_price)

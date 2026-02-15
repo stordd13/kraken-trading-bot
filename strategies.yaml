@@ -26,6 +26,7 @@ strategies:
       min_profit_for_trailing_pct: 1.0
       min_volume_ratio: 1.2
       block_overbought_15m: true
+      neutral_min_drop_pct: 4.0
 
   - name: capitulation
     enabled: true

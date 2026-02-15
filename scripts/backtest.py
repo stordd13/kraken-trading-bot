@@ -125,6 +125,8 @@ class BacktestEngine:
         self.equity_curve: list[tuple[datetime, Decimal]] = []
         self._current_regime: str | None = None
         self._regime_stats: dict[str, dict] = {}
+        self._entry_regimes: dict[int, str] = {}  # position_id → entry regime
+        self._entry_regime: str | None = None  # single-position mode
 
         # Strategy instance (will be created during run)
         self.event_bus = EventBus()
@@ -279,25 +281,69 @@ class BacktestEngine:
         )
         return candles
 
-    async def execute_signal(self, signal: TradingSignal, current_price: Decimal) -> None:
+    def _resolve_fill(self, signal: TradingSignal, candle: OHLCData) -> tuple[Decimal | None, bool]:
+        """Resolve fill price using the NEXT candle's OHLC (no look-ahead bias).
+
+        Args:
+            signal: Pending signal from previous candle.
+            candle: The NEXT candle (N+1) used for fill simulation.
+
+        Returns:
+            Tuple of (fill_price, is_limit_fill).
+            fill_price is None if a limit order wasn't reached.
+        """
+        order_type = (signal.metadata or {}).get("order_type", "market")
+
+        if order_type == "limit":
+            limit_price = Decimal(
+                str(signal.metadata.get("limit_price") or signal.price or candle.open)
+            )
+            if signal.signal_type == SignalType.BUY:
+                if candle.low <= limit_price:
+                    return limit_price, True
+                return None, True
+            else:  # SELL limit
+                if candle.high >= limit_price:
+                    return limit_price, True
+                return None, True
+        else:
+            # Market order: fill at open of N+1 (spread+slippage added by execute_signal)
+            return candle.open, False
+
+    @staticmethod
+    def _is_short_signal(signal: TradingSignal) -> bool:
+        """Check if a signal is a margin/short signal."""
+        if not signal.metadata:
+            return False
+        return bool(signal.metadata.get("is_short_open") or signal.metadata.get("is_short_close"))
+
+    async def execute_signal(
+        self, signal: TradingSignal, current_price: Decimal, *, is_limit_fill: bool = False
+    ) -> None:
         """Execute a trading signal in the simulation.
 
         Args:
             signal: Trading signal from strategy
-            current_price: Current market price
+            current_price: Current market price (open of next candle for market, limit price for limit)
+            is_limit_fill: If True, skip spread/slippage and use maker fee
         """
         if signal.signal_type == SignalType.HOLD:
             return
 
         # Route margin (short) signals to separate handler
         if signal.metadata and signal.metadata.get("mode") == "margin":
-            await self._execute_short_signal(signal, current_price)
+            await self._execute_short_signal(signal, current_price, is_limit_fill=is_limit_fill)
             return
 
         # Realistic trading costs
-        fee_pct = Decimal("0.0026")  # 0.26% maker fee on Kraken (tier 1)
-        spread_pct = Decimal("0.0002")  # 0.02% typical BTC/USDC spread
-        slippage_pct = Decimal("0.0001")  # 0.01% slippage (small orders)
+        if is_limit_fill:
+            fee_pct = Decimal("0.0016")  # 0.16% maker fee on Kraken
+            spread_pct = Decimal("0")  # Limit order: no spread
+            slippage_pct = Decimal("0")  # Limit order: no slippage
+        else:
+            fee_pct = Decimal("0.0026")  # 0.26% taker fee on Kraken (tier 1)
+            spread_pct = Decimal("0.0002")  # 0.02% typical BTC/USDC spread
+            slippage_pct = Decimal("0.0001")  # 0.01% slippage (small orders)
 
         # Handle multi-position strategies differently
         is_multi = self.strategy_name in [
@@ -369,7 +415,10 @@ class BacktestEngine:
                 # Use current_price (not execution_price) so strategy sees mid-market price
                 self.strategy.set_position_state(has_position=True, entry_price=current_price)
 
-            # Record trade
+            # Record trade with entry regime
+            entry_regime = (
+                signal.metadata.get("regime") if signal.metadata else self._current_regime
+            )
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.BUY,
@@ -377,10 +426,16 @@ class BacktestEngine:
                 amount_usdc=order_amount,
                 amount_crypto=crypto_bought,
                 fee=fee,
-                regime=signal.metadata.get("regime") if signal.metadata else self._current_regime,
+                regime=entry_regime,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
+
+            # Store entry regime for future SELL trade
+            if is_multi:
+                self._entry_regimes[position_id] = entry_regime or "unknown"
+            else:
+                self._entry_regime = entry_regime
 
             self.logger.debug(
                 "backtest_buy",
@@ -452,7 +507,12 @@ class BacktestEngine:
                 # Single position mode
                 self.strategy.set_position_state(has_position=False, entry_price=None)
 
-            # Record trade
+            # Record trade with ENTRY regime (not exit regime)
+            if is_multi and position_id:
+                sell_regime = self._entry_regimes.pop(position_id, self._current_regime)
+            else:
+                sell_regime = self._entry_regime or self._current_regime
+                self._entry_regime = None
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.SELL,
@@ -461,7 +521,7 @@ class BacktestEngine:
                 amount_crypto=crypto_sold,
                 fee=fee,
                 pnl=pnl,
-                regime=self._current_regime,
+                regime=sell_regime,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
@@ -491,7 +551,9 @@ class BacktestEngine:
 
             self.entry_price = None
 
-    async def _execute_short_signal(self, signal: TradingSignal, current_price: Decimal) -> None:
+    async def _execute_short_signal(
+        self, signal: TradingSignal, current_price: Decimal, *, is_limit_fill: bool = False
+    ) -> None:
         """Execute a margin short signal in the simulation.
 
         SELL with is_short_open: open a short (lock margin collateral).
@@ -499,9 +561,14 @@ class BacktestEngine:
 
         Rollover fee: 0.01% per 4h of position value.
         """
-        fee_pct = Decimal("0.0026")  # 0.26% taker fee
-        spread_pct = Decimal("0.0002")
-        slippage_pct = Decimal("0.0001")
+        if is_limit_fill:
+            fee_pct = Decimal("0.0016")  # maker fee
+            spread_pct = Decimal("0")
+            slippage_pct = Decimal("0")
+        else:
+            fee_pct = Decimal("0.0026")  # taker fee
+            spread_pct = Decimal("0.0002")
+            slippage_pct = Decimal("0.0001")
 
         if signal.metadata.get("is_short_open") and signal.signal_type == SignalType.SELL:
             # Open short: lock margin collateral
@@ -531,6 +598,9 @@ class BacktestEngine:
 
             self.in_position = True
 
+            entry_regime = (
+                signal.metadata.get("regime") if signal.metadata else self._current_regime
+            )
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.SELL,
@@ -538,10 +608,12 @@ class BacktestEngine:
                 amount_usdc=order_amount,
                 amount_crypto=order_amount / execution_price,
                 fee=fee,
-                regime=signal.metadata.get("regime") if signal.metadata else self._current_regime,
+                regime=entry_regime,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
+            # Store entry regime for future short close
+            self._entry_regimes[position_id] = entry_regime or "unknown"
 
             self.logger.debug(
                 "backtest_short_open",
@@ -587,6 +659,8 @@ class BacktestEngine:
             if not self.strategy.open_positions:
                 self.in_position = False
 
+            # Use ENTRY regime for short close (not exit regime)
+            close_regime = self._entry_regimes.pop(position_id, self._current_regime)
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.BUY,
@@ -595,7 +669,7 @@ class BacktestEngine:
                 amount_crypto=crypto_amount,
                 fee=fee + rollover_fee,
                 pnl=pnl,
-                regime=self._current_regime,
+                regime=close_regime,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee + rollover_fee
@@ -869,10 +943,38 @@ class BacktestEngine:
 
         tradeable_total = sum(1 for _, _, t in replay_sequence if t)
 
-        # Replay historical data
+        # Replay historical data — NEXT-BAR EXECUTION MODEL
+        # Signal on candle N → fill at open of candle N+1 (market) or limit price (limit)
+        # This eliminates look-ahead bias: we never fill at a price we just analyzed.
         tradeable_idx = 0
+        pending: tuple[TradingSignal, str | None] | None = None  # (signal, entry_regime)
+
         for candle, interval, is_tradeable in replay_sequence:
-            # Feed OHLC to strategy (all timeframes)
+            # PHASE 1: Execute pending signal from PREVIOUS candle using THIS candle's OHLC
+            if is_tradeable and pending:
+                pending_signal, entry_regime = pending
+                fill_price, is_limit = self._resolve_fill(pending_signal, candle)
+                if fill_price is not None:
+                    saved_regime = self._current_regime
+                    self._current_regime = entry_regime
+                    if self._is_short_signal(pending_signal):
+                        await self._execute_short_signal(
+                            pending_signal, fill_price, is_limit_fill=is_limit
+                        )
+                    else:
+                        await self.execute_signal(
+                            pending_signal, fill_price, is_limit_fill=is_limit
+                        )
+                    self._current_regime = saved_regime
+                else:
+                    self.logger.debug(
+                        "limit_order_not_filled",
+                        timestamp=candle.timestamp,
+                        signal=pending_signal.signal_type.value,
+                    )
+                pending = None
+
+            # PHASE 2: Feed OHLC to strategy (all timeframes)
             ohlc_data = {
                 "pair": candle.pair,
                 "timestamp": candle.timestamp,
@@ -887,13 +989,13 @@ class BacktestEngine:
 
             await self.strategy.on_ohlc(ohlc_data)
 
-            # Only trade on tradeable 5m candles (skip warmup + higher TFs)
+            # Only trade on tradeable candles (skip warmup + higher TFs)
             if not is_tradeable:
                 continue
 
             tradeable_idx += 1
 
-            # Simulate tick with closing price for strategy
+            # Simulate tick with closing price for strategy analysis
             tick_data = {
                 "pair": candle.pair,
                 "timestamp": candle.timestamp,
@@ -903,17 +1005,17 @@ class BacktestEngine:
             }
             await self.strategy.on_tick(tick_data)
 
-            # Generate signal
+            # PHASE 3: Generate signal → defer to NEXT candle
             signal = await self.strategy.generate_signal()
 
             # Track current regime from analyzer
-            analyzer = getattr(self.strategy, "analyzer", None)
-            if analyzer:
-                last_analysis = getattr(analyzer, "_last_analysis", None)
+            bt_analyzer = getattr(self.strategy, "analyzer", None)
+            if bt_analyzer:
+                last_analysis = getattr(bt_analyzer, "_last_analysis", None)
                 if last_analysis:
                     self._current_regime = last_analysis.regime.value
 
-            # DEBUG: Log all BUY/SELL signals
+            # Log signals for debugging
             if signal and signal.signal_type.value in ["buy", "sell"]:
                 self.logger.info(
                     "backtest_signal",
@@ -923,11 +1025,11 @@ class BacktestEngine:
                     price=float(candle.close),
                 )
 
-            # Execute signal
+            # Queue signal for next-bar execution (no look-ahead bias)
             if signal:
-                await self.execute_signal(signal, candle.close)
+                pending = (signal, self._current_regime)
 
-            # Track equity curve
+            # Track equity curve (mark-to-market at close is fine)
             current_equity = self.usdc_balance
             if self.crypto_balance > 0:
                 current_equity += self.crypto_balance * candle.close
