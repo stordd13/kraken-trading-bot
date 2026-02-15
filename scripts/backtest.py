@@ -904,7 +904,7 @@ class BacktestEngine:
             signal = await self.strategy.generate_signal()
 
             # Track current regime from analyzer
-            analyzer = getattr(self.strategy, "_analyzer", None)
+            analyzer = getattr(self.strategy, "analyzer", None)
             if analyzer:
                 last_analysis = getattr(analyzer, "_last_analysis", None)
                 if last_analysis:
