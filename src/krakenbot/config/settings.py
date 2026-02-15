@@ -11,6 +11,7 @@ import logging
 from pathlib import Path
 from typing import Any, Literal
 
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field, PostgresDsn, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import yaml
@@ -568,6 +569,10 @@ def get_settings() -> Settings:
     """
     global _settings
     if _settings is None:
+        # Load .env into OS environment so nested BaseSettings models
+        # (DatabaseSettings, KrakenSettings, etc.) can read their env vars.
+        # Without this, only the root Settings reads .env via Pydantic's env_file.
+        load_dotenv()
         _settings = Settings()
         _settings.validate_all()
     return _settings
@@ -580,6 +585,7 @@ def reload_settings() -> Settings:
         A fresh Settings instance.
     """
     global _settings
+    load_dotenv(override=True)
     _settings = Settings()
     _settings.validate_all()
     return _settings

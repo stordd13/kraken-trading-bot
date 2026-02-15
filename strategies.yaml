@@ -6,8 +6,8 @@ enabled: true
 
 # Global limits (across ALL strategies combined)
 global_max_open_positions: 10
-global_daily_loss_limit_eur: 50.0
-global_max_portfolio_exposure_pct: 30.0
+global_daily_loss_limit_eur: 30.0
+global_max_portfolio_exposure_pct: 80.0
 
 strategies:
   - name: adaptive
@@ -15,8 +15,8 @@ strategies:
     bot_id: adaptive_prod
     budget:
       max_open_positions: 7
-      daily_loss_limit_eur: 35.0
-      max_position_pct: 5.0
+      daily_loss_limit_eur: 20.0
+      max_position_pct: 15.0
       position_size_multiplier: 1.0
     dashboard:
       exit_type: trailing_stop
@@ -31,8 +31,8 @@ strategies:
     bot_id: capitulation_prod
     budget:
       max_open_positions: 3
-      daily_loss_limit_eur: 15.0
-      max_position_pct: 5.0
+      daily_loss_limit_eur: 10.0
+      max_position_pct: 30.0
       position_size_multiplier: 2.0
     dashboard:
       exit_type: profit_target

@@ -20,7 +20,6 @@ from krakenbot.config.settings import MultiStrategySettings, StrategyBudget
 from krakenbot.execution.risk import GlobalRiskManager, RiskCheckResult
 from krakenbot.models.base import TradeSide
 
-
 # =============================================================================
 # Helpers
 # =============================================================================

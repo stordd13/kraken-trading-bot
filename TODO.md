@@ -6,12 +6,12 @@
 
 ## Urgent — Debug & Stabilisation
 
-- [ ] Valider le multi-strategy en paper mode (les 2 stratégies tournent sans crash)
-- [ ] Vérifier que le mode legacy fonctionne toujours (`strategies.yaml` absent)
+- [x] Valider le multi-strategy en paper mode (les 2 stratégies tournent sans crash)
+- [x] Vérifier que le mode legacy fonctionne toujours (`strategies.yaml` absent)
 - [ ] Tester le cycle complet limit orders : place → fill → profit target auto → cancel on stop
 - [ ] Vérifier la réconciliation au démarrage avec positions ouvertes existantes
-- [ ] Backtest AdaptiveStrategy sur 30 jours, comparer vs ThresholdRolling
-- [ ] Backtest CapitulationStrategy sur le crash du 9 février (doit détecter l'événement)
+- [x] Backtest AdaptiveStrategy sur 30 jours, comparer vs ThresholdRolling
+- [x] Backtest CapitulationStrategy (détecte les capitulations avec MTF actif)
 
 ---
 

@@ -126,6 +126,102 @@ class BacktestEngine:
         self.event_bus = EventBus()
         self.strategy = None  # Will be created during run
 
+    async def _load_candles_for_interval(
+        self,
+        pair: str,
+        interval: int,
+        start_time: datetime,
+        end_time: datetime,
+    ) -> list[OHLCData]:
+        """Load OHLC candles for a specific interval.
+
+        Args:
+            pair: Trading pair.
+            interval: Candle interval in minutes (5, 15, 60).
+            start_time: Start of period.
+            end_time: End of period.
+
+        Returns:
+            List of OHLC candles sorted by timestamp.
+        """
+        async with self.db_manager.session() as session:
+            stmt = (
+                select(OHLCData)
+                .where(OHLCData.pair == pair)
+                .where(OHLCData.interval == interval)
+                .where(OHLCData.timestamp >= start_time)
+                .where(OHLCData.timestamp <= end_time)
+                .order_by(OHLCData.timestamp.asc())
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+
+    async def _build_replay_sequence(
+        self,
+        pair: str,
+        start_time: datetime,
+        end_time: datetime,
+        candles_5m: list[OHLCData],
+    ) -> list[tuple[OHLCData, int, bool]]:
+        """Build interleaved replay sequence with multi-timeframe warmup.
+
+        Loads 15m and 1h candles (with warmup period before start_time),
+        merges them with the 5m trading candles, and sorts chronologically.
+        Higher timeframes are processed first on timestamp ties so the
+        analyzer is updated before the trigger timeframe generates signals.
+
+        Args:
+            pair: Trading pair.
+            start_time: Start of backtest trading period.
+            end_time: End of backtest period.
+            candles_5m: Already-loaded 5m candles for the trading period.
+
+        Returns:
+            List of (candle, interval, is_tradeable) tuples.
+        """
+        # Warmup periods before start_time
+        warmup_1h = start_time - timedelta(days=3)  # ~72 candles (> 50 warmup)
+        warmup_15m = start_time - timedelta(hours=10)  # ~40 candles (> 20 warmup)
+        warmup_5m = start_time - timedelta(hours=3)  # ~36 candles (> 20 warmup)
+
+        # Load higher timeframe data (full range: warmup + backtest period)
+        candles_1h = await self._load_candles_for_interval(pair, 60, warmup_1h, end_time)
+        candles_15m = await self._load_candles_for_interval(pair, 15, warmup_15m, end_time)
+        candles_5m_warmup = await self._load_candles_for_interval(pair, 5, warmup_5m, start_time)
+
+        self.logger.info(
+            "mtf_data_loaded",
+            candles_1h=len(candles_1h),
+            candles_15m=len(candles_15m),
+            candles_5m_warmup=len(candles_5m_warmup),
+            candles_5m_trading=len(candles_5m),
+        )
+
+        # Build sequence
+        sequence: list[tuple[OHLCData, int, bool]] = []
+
+        # 5m warmup (before start_time) - not tradeable
+        for c in candles_5m_warmup:
+            sequence.append((c, 5, False))
+
+        # 1h candles - never tradeable (feed analyzer + capitulation hourly tracking)
+        for c in candles_1h:
+            sequence.append((c, 60, False))
+
+        # 15m candles - never tradeable (feed analyzer)
+        for c in candles_15m:
+            sequence.append((c, 15, False))
+
+        # 5m trading candles
+        for c in candles_5m:
+            sequence.append((c, 5, True))
+
+        # Sort: timestamp ASC, then higher timeframes first (60 > 15 > 5)
+        interval_order = {60: 0, 15: 1, 5: 2}
+        sequence.sort(key=lambda x: (x[0].timestamp, interval_order.get(x[1], 3)))
+
+        return sequence
+
     async def load_historical_data(
         self,
         pair: str,
@@ -580,9 +676,19 @@ class BacktestEngine:
         # CRITICAL: Skip DB sync in backtest mode for all strategies
         self.strategy._skip_db_sync = True
 
+        # Build replay sequence (with MTF warmup for adaptive/capitulation)
+        needs_mtf = self.strategy_name in ["adaptive", "capitulation"]
+        if needs_mtf:
+            replay_sequence = await self._build_replay_sequence(pair, start_time, end_time, candles)
+        else:
+            replay_sequence = [(c, self.candle_interval, True) for c in candles]
+
+        tradeable_total = sum(1 for _, _, t in replay_sequence if t)
+
         # Replay historical data
-        for i, candle in enumerate(candles):
-            # Feed OHLC to strategy
+        tradeable_idx = 0
+        for candle, interval, is_tradeable in replay_sequence:
+            # Feed OHLC to strategy (all timeframes)
             ohlc_data = {
                 "pair": candle.pair,
                 "timestamp": candle.timestamp,
@@ -591,11 +697,17 @@ class BacktestEngine:
                 "low": candle.low,
                 "close": candle.close,
                 "volume": candle.volume,
-                "interval": self.candle_interval,
+                "interval": interval,
                 "is_complete": True,
             }
 
             await self.strategy.on_ohlc(ohlc_data)
+
+            # Only trade on tradeable 5m candles (skip warmup + higher TFs)
+            if not is_tradeable:
+                continue
+
+            tradeable_idx += 1
 
             # Simulate tick with closing price for strategy
             tick_data = {
@@ -630,13 +742,13 @@ class BacktestEngine:
                 current_equity += self.crypto_balance * candle.close
             self.equity_curve.append((candle.timestamp, current_equity))
 
-            # Log progress every 100 candles
-            if (i + 1) % 100 == 0:
+            # Log progress every 100 tradeable candles
+            if tradeable_idx % 100 == 0:
                 self.logger.info(
                     "backtest_progress",
-                    processed=i + 1,
-                    total=len(candles),
-                    pct=round((i + 1) / len(candles) * 100, 1),
+                    processed=tradeable_idx,
+                    total=tradeable_total,
+                    pct=round(tradeable_idx / tradeable_total * 100, 1),
                 )
 
         # Calculate final metrics

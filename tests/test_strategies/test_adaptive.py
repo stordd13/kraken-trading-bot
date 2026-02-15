@@ -39,8 +39,7 @@ from krakenbot.indicators.multi_timeframe import (
     TimeframeZone,
 )
 from krakenbot.models.base import SignalType
-from krakenbot.strategies.adaptive import AdaptivePosition, AdaptiveStrategy
-
+from krakenbot.strategies.adaptive import AdaptiveStrategy
 
 # ---------------------------------------------------------------------------
 # Helpers

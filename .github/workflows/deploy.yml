@@ -14,11 +14,16 @@ jobs:
     steps:
       - name: Deploy to Hetzner VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          KRAKEN_API_KEY: ${{ secrets.KRAKEN_API_KEY }}
+          KRAKEN_API_SECRET: ${{ secrets.KRAKEN_API_SECRET }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: 2222
+          envs: KRAKEN_API_KEY,KRAKEN_API_SECRET,DATABASE_URL
           script: |
             cd ~/apps/kraken-trading-bot
 
@@ -29,7 +34,27 @@ jobs:
             # Install dependencies (if poetry.lock changed)
             ~/.local/bin/poetry install --no-interaction
 
-            # Install/update systemd service files (if they changed)
+            # Generate .env from GitHub Secrets
+            echo "Generating .env from GitHub Secrets..."
+            cat > .env << EOF
+            KRAKEN_API_KEY=${KRAKEN_API_KEY}
+            KRAKEN_API_SECRET=${KRAKEN_API_SECRET}
+            DATABASE_URL=${DATABASE_URL}
+            TRADING_MODE=live
+            TRADING_CONFIRM_LIVE=yes
+            TRADING_PAIR=XBT/USDC
+            TRADING_DEFAULT_ORDER_AMOUNT_EUR=50
+            TRADING_CANDLE_INTERVAL_MIN=5
+            RISK_MIN_TRADE_INTERVAL_SEC=60
+            RISK_EMERGENCY_STOP_LOSS_PCT=10.0
+            SCHEDULER_ENABLED=true
+            ENVIRONMENT=production
+            LOG_LEVEL=INFO
+            LOG_JSON=true
+            EOF
+            chmod 600 .env
+
+            # Install/update systemd service files
             echo "Installing systemd service files..."
             sudo cp deploy/krakenbot.service /etc/systemd/system/
             sudo cp deploy/krakenbot-collector.service /etc/systemd/system/
@@ -58,4 +83,4 @@ jobs:
             sudo systemctl status krakenbot --no-pager || true
 
             echo ""
-            echo "✅ Deployment complete!"
+            echo "Deployment complete!"
