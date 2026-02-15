@@ -414,8 +414,8 @@ class MultiTimeframeAnalyzer:
 
         # BUY regime multiplier
         regime_mult = {
-            MarketRegime.STRONG_BULL: 0.7,  # Buy dips sooner
-            MarketRegime.BULL: 0.85,
+            MarketRegime.STRONG_BULL: 1.0,  # Require real dip, not noise
+            MarketRegime.BULL: 1.0,
             MarketRegime.NEUTRAL: 1.0,
             MarketRegime.BEAR: 1.5,  # Wait for bigger drops
             MarketRegime.STRONG_BEAR: 2.0,  # Require deep dip (-6%)
@@ -430,13 +430,13 @@ class MultiTimeframeAnalyzer:
             MarketRegime.STRONG_BEAR: 0.6,
         }[regime]
 
-        # STOP-LOSS regime multiplier (tighter in bear = cut losses fast)
+        # STOP-LOSS regime multiplier (tighter in bull = cut fast, wider in bear = let breathe)
         stop_loss_regime_mult = {
-            MarketRegime.STRONG_BULL: 1.5,  # Let positions breathe
-            MarketRegime.BULL: 1.2,
+            MarketRegime.STRONG_BULL: 0.7,  # Cut fast — dips are short in bull
+            MarketRegime.BULL: 0.8,
             MarketRegime.NEUTRAL: 1.0,
-            MarketRegime.BEAR: 0.8,  # Cut losses sooner
-            MarketRegime.STRONG_BEAR: 0.6,  # Cut losses fast
+            MarketRegime.BEAR: 1.3,  # Let breathe — higher volatility
+            MarketRegime.STRONG_BEAR: 1.5,  # Wide stop — extreme vol
         }[regime]
 
         # Volatility multiplier (higher vol = wider thresholds)
