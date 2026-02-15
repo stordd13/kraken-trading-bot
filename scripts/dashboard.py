@@ -991,6 +991,8 @@ app.layout = dbc.Container(
             ],
             className="mb-4 pt-3",
         ),
+        # Trading mode banner
+        html.Div(id="trading-mode-banner", className="mb-3"),
         # Auto-refresh interval
         dcc.Interval(id="interval-component", interval=10 * 1000, n_intervals=0),
         # Store for delete status
@@ -1667,6 +1669,103 @@ def update_metrics(n_intervals, n_clicks):
         trades_card,
         f"Last update: {now}",
         breakdown,
+    )
+
+
+@callback(
+    Output("trading-mode-banner", "children"),
+    [Input("interval-component", "n_intervals"), Input("refresh-btn", "n_clicks")],
+)
+def update_trading_mode_banner(n_intervals, n_clicks):
+    """Show trading mode, active strategies, and data collection status."""
+    # Trading mode from settings
+    mode = _settings.trading.mode.value.upper()
+    is_live = mode == "LIVE"
+
+    mode_badge = dbc.Badge(
+        f"  {mode}  ",
+        color="danger" if is_live else "warning",
+        className="me-2 fs-6",
+    )
+
+    # Per-strategy status from DB
+    per_strategy_df = fetch_bot_states_per_strategy()
+    strategy_badges = []
+    for _, row in per_strategy_df.iterrows():
+        strategy = row.get("strategy", "?")
+        status = str(row.get("status", "unknown")).upper()
+        updated = row.get("updated_at")
+
+        if status == "RUNNING":
+            color = "success"
+        elif status == "PAUSED":
+            color = "warning"
+        else:
+            color = "secondary"
+
+        # Show how long ago the last heartbeat was
+        age_str = ""
+        if updated is not None:
+            try:
+                if hasattr(updated, "tzinfo") and updated.tzinfo is None:
+                    from zoneinfo import ZoneInfo
+
+                    updated = updated.replace(tzinfo=ZoneInfo("UTC"))
+                age = datetime.now(UTC) - updated
+                if age.total_seconds() < 120:
+                    age_str = f" ({int(age.total_seconds())}s ago)"
+                else:
+                    age_str = f" ({int(age.total_seconds() / 60)}m ago)"
+            except Exception:
+                pass
+
+        strategy_badges.append(
+            dbc.Badge(
+                f"{strategy}: {status}{age_str}",
+                color=color,
+                className="me-1",
+            )
+        )
+
+    if not strategy_badges:
+        strategy_badges = [dbc.Badge("No strategies detected", color="secondary", className="me-1")]
+
+    # Data freshness
+    data_stats = fetch_data_range_stats()
+    data_info = ""
+    if data_stats.get("global_latest"):
+        latest = data_stats["global_latest"]
+        try:
+            if hasattr(latest, "tzinfo") and latest.tzinfo is None:
+                from zoneinfo import ZoneInfo
+
+                latest = latest.replace(tzinfo=ZoneInfo("UTC"))
+            data_age = datetime.now(UTC) - latest
+            if data_age.total_seconds() < 300:
+                data_info = "Data: live"
+            else:
+                data_info = f"Data: {int(data_age.total_seconds() / 60)}m stale"
+        except Exception:
+            pass
+
+    return dbc.Alert(
+        [
+            html.Div(
+                [
+                    html.Strong("Mode: "),
+                    mode_badge,
+                    html.Strong("Strategies: ", className="ms-3"),
+                    *strategy_badges,
+                    html.Span(
+                        f"  |  {data_info}" if data_info else "",
+                        className="text-muted ms-2",
+                    ),
+                ],
+                className="d-flex align-items-center flex-wrap",
+            ),
+        ],
+        color="danger" if is_live else "info",
+        className="py-2 mb-0",
     )
 
 

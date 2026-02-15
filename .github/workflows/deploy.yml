@@ -40,8 +40,8 @@ jobs:
             KRAKEN_API_KEY=${KRAKEN_API_KEY}
             KRAKEN_API_SECRET=${KRAKEN_API_SECRET}
             DATABASE_URL=${DATABASE_URL}
-            TRADING_MODE=live
-            TRADING_CONFIRM_LIVE=yes
+            TRADING_MODE=paper
+            TRADING_CONFIRM_LIVE=no
             TRADING_PAIR=XBT/USDC
             TRADING_DEFAULT_ORDER_AMOUNT_EUR=50
             TRADING_CANDLE_INTERVAL_MIN=5
