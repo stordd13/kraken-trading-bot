@@ -628,11 +628,18 @@ class GlobalRiskManager:
         price: Decimal,
         balance: dict[str, Decimal],
         bot_id: str | None = None,
+        trading_mode: str = "spot",
+        margin_balance: dict[str, Decimal] | None = None,
+        leverage: int = 2,
     ) -> RiskCheckResult:
         """Validate order with two-level risk checks.
 
         Level 1 (Global): Balance, total positions, total daily loss, portfolio exposure
         Level 2 (Per-strategy): Strategy positions, strategy daily loss, position size, interval
+
+        For margin orders:
+        - BUY-to-close (closing a short): always approved
+        - SELL-to-open (opening a short): margin + global checks
 
         Args:
             pair: Trading pair.
@@ -641,10 +648,72 @@ class GlobalRiskManager:
             price: Current market price.
             balance: Available balances by currency.
             bot_id: Strategy instance identifier for per-strategy checks.
+            trading_mode: "spot" or "margin".
+            margin_balance: Margin balance info (required for margin orders).
+            leverage: Leverage level for margin orders.
 
         Returns:
             RiskCheckResult with approval status and rejection reasons.
         """
+        # === Margin orders: special handling ===
+        if trading_mode == "margin":
+            # BUY-to-close (closing a short): always approved
+            if side == TradeSide.BUY:
+                self.logger.info(
+                    "margin_buy_to_close_approved",
+                    pair=pair,
+                    bot_id=bot_id,
+                )
+                return RiskCheckResult(approved=True)
+
+            # SELL-to-open (opening a short): margin + global checks
+            result = RiskCheckResult(approved=True)
+
+            # Check margin availability
+            if margin_balance:
+                await self._check_margin_available(result, amount, price, margin_balance, leverage)
+
+            # Check liquidation distance
+            await self._check_liquidation_distance(result, price, leverage)
+
+            # Global position count
+            if self._multi_enabled:
+                global_positions = await self._get_global_open_positions_count()
+                if global_positions >= self._global_max_positions:
+                    result.add_reason(
+                        f"Global max positions reached: {global_positions} "
+                        f">= {self._global_max_positions}"
+                    )
+
+                # Global daily loss
+                global_daily_pnl = await self._get_global_daily_pnl()
+                if global_daily_pnl <= -self._global_daily_loss:
+                    result.add_reason(
+                        f"Global daily loss limit reached: {global_daily_pnl:.2f} "
+                        f"<= -{self._global_daily_loss:.2f}"
+                    )
+
+            # Per-strategy checks
+            if bot_id and bot_id in self._strategy_risk_managers:
+                strategy_rm = self._strategy_risk_managers[bot_id]
+                strategy_result = await strategy_rm.check_order(pair, side, amount, price, balance)
+                if strategy_result.rejected:
+                    for reason in strategy_result.reasons:
+                        result.add_reason(f"[{bot_id}] {reason}")
+
+            if result.approved:
+                self.logger.info("margin_sell_to_open_approved", pair=pair, bot_id=bot_id)
+            else:
+                self.logger.warning(
+                    "margin_sell_to_open_rejected",
+                    pair=pair,
+                    bot_id=bot_id,
+                    reasons=result.reasons,
+                )
+            return result
+
+        # === Spot orders: existing logic ===
+
         # Legacy mode: delegate directly to the existing RiskManager
         if not self._multi_enabled:
             if bot_id:
@@ -703,6 +772,57 @@ class GlobalRiskManager:
             )
 
         return result
+
+    async def _check_margin_available(
+        self,
+        result: RiskCheckResult,
+        amount: Decimal,
+        price: Decimal,
+        margin_balance: dict[str, Decimal],
+        leverage: int = 2,
+    ) -> None:
+        """Check that sufficient margin collateral is available.
+
+        Margin required = (amount * price) / leverage.
+
+        Args:
+            result: Risk check result to update.
+            amount: Order amount in base currency.
+            price: Current market price.
+            margin_balance: Margin balance info with "available_margin" key.
+            leverage: Leverage level.
+        """
+        margin_required = (amount * price) / Decimal(str(leverage))
+        available = margin_balance.get("available_margin", Decimal("0"))
+        if margin_required > available:
+            result.add_reason(
+                f"Insufficient margin: need {margin_required:.2f}, available {available:.2f}"
+            )
+
+    async def _check_liquidation_distance(
+        self,
+        result: RiskCheckResult,
+        price: Decimal,
+        leverage: int = 2,
+        min_distance_pct: float = 20.0,
+    ) -> None:
+        """Check that liquidation price is far enough from current price.
+
+        For a short at leverage L, liquidation occurs at approximately:
+        liquidation_price = entry_price * (1 + 1/L)
+
+        Args:
+            result: Risk check result to update.
+            price: Current market price (entry price for new short).
+            leverage: Leverage level.
+            min_distance_pct: Minimum acceptable distance to liquidation (%).
+        """
+        liquidation_price = price * (Decimal("1") + Decimal("1") / Decimal(str(leverage)))
+        distance_pct = ((liquidation_price - price) / price) * Decimal("100")
+        if distance_pct < Decimal(str(min_distance_pct)):
+            result.add_reason(
+                f"Liquidation too close: {float(distance_pct):.1f}% < {min_distance_pct}%"
+            )
 
     async def check_emergency_stop_loss(
         self,
