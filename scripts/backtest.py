@@ -417,8 +417,8 @@ class BacktestEngine:
 
             # Record trade with entry regime
             entry_regime = (
-                signal.metadata.get("regime") if signal.metadata else self._current_regime
-            )
+                signal.metadata.get("regime") if signal.metadata else None
+            ) or self._current_regime
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.BUY,
@@ -599,8 +599,8 @@ class BacktestEngine:
             self.in_position = True
 
             entry_regime = (
-                signal.metadata.get("regime") if signal.metadata else self._current_regime
-            )
+                signal.metadata.get("regime") if signal.metadata else None
+            ) or self._current_regime
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.SELL,
