@@ -228,8 +228,10 @@ class ExecutionEngine:
         Args:
             signal: The trading signal to execute.
         """
-        # Determine order side
+        # Determine order side and trading mode
         side = TradeSide.BUY if signal.is_buy else TradeSide.SELL
+        trading_mode = signal.metadata.get("mode", "spot")
+        is_margin = trading_mode == "margin"
 
         # Calculate order amount (pass signal for SELL metadata)
         amount = await self._calculate_order_amount(signal.pair, side, signal.price, signal)
@@ -258,6 +260,12 @@ class ExecutionEngine:
         }
         if isinstance(self.risk_manager, GlobalRiskManager):
             risk_kwargs["bot_id"] = signal.strategy
+            # Add margin-specific risk kwargs
+            if is_margin:
+                margin_balance = await self.rest_client.get_margin_balance()
+                risk_kwargs["trading_mode"] = "margin"
+                risk_kwargs["margin_balance"] = margin_balance
+                risk_kwargs["leverage"] = signal.metadata.get("leverage", 2)
         risk_result = await self.risk_manager.check_order(**risk_kwargs)
 
         if risk_result.rejected:
@@ -289,12 +297,63 @@ class ExecutionEngine:
         limit_price = signal.metadata.get("limit_price")
 
         # Before executing a SELL (stop-loss/trailing), cancel any existing profit target
-        if side == TradeSide.SELL and self.order_manager:
+        # For margin: before closing a short (BUY), also cancel pending orders
+        if side == TradeSide.SELL and self.order_manager and not is_margin:
+            position_id = signal.metadata.get("position_id")
+            if position_id is not None:
+                await self.order_manager.cancel_profit_target(position_id)
+        elif is_margin and side == TradeSide.BUY and self.order_manager:
             position_id = signal.metadata.get("position_id")
             if position_id is not None:
                 await self.order_manager.cancel_profit_target(position_id)
 
-        # Route to limit or market order
+        # Route to margin or spot order
+        if is_margin:
+            # Margin order (all margin orders are market for guaranteed execution)
+            trade = await self.rest_client.place_margin_order(
+                pair=signal.pair,
+                side=side,
+                amount=amount,
+                strategy=signal.strategy,
+                signal_price=signal.price,
+                leverage=signal.metadata.get("leverage", 2),
+            )
+
+            self._stats["signals_executed"] += 1
+            await self._update_bot_state(trade, signal)
+
+            self.logger.info(
+                "margin_order_executed",
+                trade_id=str(trade.id),
+                pair=trade.pair,
+                side=trade.side.value,
+                amount=float(trade.amount),
+                price=float(trade.price),
+                fee=float(trade.fee),
+                strategy=trade.strategy,
+                trading_mode="margin",
+            )
+
+            # Publish TRADE_ORDER_FILLED event
+            await self.event_bus.publish(
+                EventType.TRADE_ORDER_FILLED,
+                {
+                    "trade_id": str(trade.id),
+                    "pair": trade.pair,
+                    "side": side.value,
+                    "amount": str(trade.amount),
+                    "price": str(trade.price),
+                    "fee": str(trade.fee),
+                    "strategy": trade.strategy,
+                    "timestamp": trade.timestamp.isoformat(),
+                    "reference_price": str(signal.metadata.get("reference_price", "0")),
+                    "position_id": signal.metadata.get("position_id"),
+                    "trading_mode": "margin",
+                },
+            )
+            return
+
+        # Spot order routing (existing logic unchanged)
         if order_type == "limit" and self.order_manager and limit_price:
             # Limit order via OrderManager
             order = await self.order_manager.place_and_track(
@@ -395,6 +454,20 @@ class ExecutionEngine:
         Returns:
             Order amount in base currency.
         """
+        # Margin signals: short-open calculates like BUY, short-close uses exact amount
+        if signal and signal.metadata.get("mode") == "margin":
+            if signal.metadata.get("is_short_open"):
+                # Opening short: calculate size from USDC like a BUY
+                eur_amount = Decimal(str(self.settings.trading.default_order_amount_eur))
+                multiplier = Decimal("1.0")
+                if "position_size_multiplier" in signal.metadata:
+                    multiplier = Decimal(str(signal.metadata["position_size_multiplier"]))
+                eur_amount = eur_amount * multiplier
+                return (eur_amount / price).quantize(Decimal("0.00000001"))
+            elif "amount_btc" in signal.metadata:
+                # Closing short: use exact position amount
+                return Decimal(str(signal.metadata["amount_btc"])).quantize(Decimal("0.00000001"))
+
         if side == TradeSide.BUY:
             # For BUY: convert default EUR amount to base currency
             eur_amount = Decimal(str(self.settings.trading.default_order_amount_eur))
@@ -482,11 +555,17 @@ class ExecutionEngine:
                 session.add(bot_state)
 
             # Update based on trade type
-            if trade.side == TradeSide.BUY:
-                # Opening or adding to position
+            if signal.metadata.get("mode") == "margin":
+                # Margin: SELL opens position, BUY closes position (inverted)
+                if signal.metadata.get("is_short_open"):
+                    await self._handle_buy_trade(session, bot_state, trade, signal)
+                elif signal.metadata.get("is_short_close"):
+                    await self._handle_sell_trade(session, bot_state, trade, signal)
+            elif trade.side == TradeSide.BUY:
+                # Spot: Opening or adding to position
                 await self._handle_buy_trade(session, bot_state, trade, signal)
             else:
-                # Closing position
+                # Spot: Closing position
                 await self._handle_sell_trade(session, bot_state, trade, signal)
 
             # Common updates
@@ -533,6 +612,7 @@ class ExecutionEngine:
             entry_time=trade.timestamp,
             entry_trade_id=trade.id,
             status=PositionStatus.OPEN,
+            trading_mode=signal.metadata.get("mode", "spot"),
         )
         session.add(open_position)
 
@@ -593,7 +673,11 @@ class ExecutionEngine:
 
             if open_position:
                 # Calculate P&L from the actual position entry price
-                pnl = (trade.price - open_position.entry_price) * trade.amount - trade.fee
+                if open_position.trading_mode == "margin":
+                    # Short position: profit when price drops
+                    pnl = (open_position.entry_price - trade.price) * trade.amount - trade.fee
+                else:
+                    pnl = (trade.price - open_position.entry_price) * trade.amount - trade.fee
 
                 # Update OpenPosition
                 open_position.status = PositionStatus.CLOSED
