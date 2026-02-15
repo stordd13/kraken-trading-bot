@@ -378,8 +378,8 @@ class CapitulationSettings(BaseSettings):
     rsi_1h_threshold: float = Field(default=20.0, ge=5.0, le=40.0)
     rsi_5m_threshold: float = Field(default=15.0, ge=5.0, le=40.0)
     volume_spike_multiplier: float = Field(default=3.0, ge=1.5, le=10.0)
-    trailing_stop_pct: float = Field(default=2.0, ge=0.5, le=10.0)
-    max_profit_target_pct: float = Field(default=15.0, ge=2.0, le=50.0)
+    trailing_stop_pct: float = Field(default=5.0, ge=0.5, le=10.0)
+    max_profit_target_pct: float = Field(default=10.0, ge=2.0, le=50.0)
     max_holding_minutes: int = Field(default=2880, ge=60, le=20160)
     cooldown_hours: int = Field(default=4, ge=1, le=48)
 

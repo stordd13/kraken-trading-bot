@@ -316,50 +316,55 @@ class TestAdaptiveThresholds:
     def test_neutral_regime_low_volatility(self) -> None:
         """Neutral regime with normal vol returns base-like thresholds."""
         analyzer = MultiTimeframeAnalyzer()
-        buy, sell = analyzer._calc_adaptive_thresholds(MarketRegime.NEUTRAL, volatility_pct=1.5)
-        # regime_mult=1.0, vol_mult=1.5/1.5=1.0 => buy=-1*1*1=-1, sell=2*1*1=2
+        buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.NEUTRAL, volatility_pct=1.5)
+        # regime_mult=1.0, vol_mult=1.5/1.5=1.0 => buy=-1*1*1=-1, sell=2*1*1=2, sl=5*1*1=5
         assert buy == pytest.approx(-1.0, abs=0.01)
         assert sell == pytest.approx(2.0, abs=0.01)
+        assert sl == pytest.approx(5.0, abs=0.01)
 
     def test_bull_regime_tighter_buy_wider_sell(self) -> None:
-        """Bull regime: tighter buy (closer to 0), wider sell."""
+        """Bull regime: tighter buy (closer to 0), wider sell, wider stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
-        buy, sell = analyzer._calc_adaptive_thresholds(MarketRegime.BULL, volatility_pct=1.5)
-        # regime_mult=0.85, sell_regime_mult=1.2, vol_mult=1.0
+        buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.BULL, volatility_pct=1.5)
+        # regime_mult=0.85, sell_regime_mult=1.3, sl_regime_mult=1.2, vol_mult=1.0
         assert buy == pytest.approx(-1.0 * 0.85 * 1.0, abs=0.01)
-        assert sell == pytest.approx(2.0 * 1.2 * 1.0, abs=0.01)
+        assert sell == pytest.approx(2.0 * 1.3 * 1.0, abs=0.01)
+        assert sl == pytest.approx(5.0 * 1.2 * 1.0, abs=0.01)
 
     def test_strong_bull_tightest_buy(self) -> None:
-        """Strong bull: even tighter buy, widest sell."""
+        """Strong bull: even tighter buy, widest sell, widest stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
-        buy, sell = analyzer._calc_adaptive_thresholds(MarketRegime.STRONG_BULL, volatility_pct=1.5)
-        # regime_mult=0.7, sell_regime_mult=1.5
+        buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.STRONG_BULL, volatility_pct=1.5)
+        # regime_mult=0.7, sell_regime_mult=1.5, sl_regime_mult=1.5
         assert buy == pytest.approx(-1.0 * 0.7 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 1.5 * 1.0, abs=0.01)
+        assert sl == pytest.approx(5.0 * 1.5 * 1.0, abs=0.01)
 
     def test_bear_regime_wider_buy_tighter_sell(self) -> None:
-        """Bear regime: wider buy (bigger drop needed), tighter sell."""
+        """Bear regime: wider buy (bigger drop needed), tighter sell, tighter stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
-        buy, sell = analyzer._calc_adaptive_thresholds(MarketRegime.BEAR, volatility_pct=1.5)
-        # regime_mult=1.3, sell_regime_mult=0.8
-        assert buy == pytest.approx(-1.0 * 1.3 * 1.0, abs=0.01)
+        buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.BEAR, volatility_pct=1.5)
+        # regime_mult=1.5, sell_regime_mult=0.8, sl_regime_mult=0.8
+        assert buy == pytest.approx(-1.0 * 1.5 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 0.8 * 1.0, abs=0.01)
+        assert sl == pytest.approx(5.0 * 0.8 * 1.0, abs=0.01)
 
     def test_strong_bear_widest_buy(self) -> None:
-        """Strong bear: widest buy, tightest sell."""
+        """Strong bear: widest buy, tightest sell, tightest stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
-        buy, sell = analyzer._calc_adaptive_thresholds(MarketRegime.STRONG_BEAR, volatility_pct=1.5)
-        # regime_mult=1.6, sell_regime_mult=0.6
-        assert buy == pytest.approx(-1.0 * 1.6 * 1.0, abs=0.01)
+        buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.STRONG_BEAR, volatility_pct=1.5)
+        # regime_mult=2.0, sell_regime_mult=0.6, sl_regime_mult=0.6
+        assert buy == pytest.approx(-1.0 * 2.0 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 0.6 * 1.0, abs=0.01)
+        assert sl == pytest.approx(5.0 * 0.6 * 1.0, abs=0.01)
 
     def test_high_volatility_widens_thresholds(self) -> None:
         """Higher volatility widens both buy and sell thresholds."""
         analyzer = MultiTimeframeAnalyzer()
-        buy_low, sell_low = analyzer._calc_adaptive_thresholds(
+        buy_low, sell_low, _ = analyzer._calc_adaptive_thresholds(
             MarketRegime.NEUTRAL, volatility_pct=0.75
         )
-        buy_high, sell_high = analyzer._calc_adaptive_thresholds(
+        buy_high, sell_high, _ = analyzer._calc_adaptive_thresholds(
             MarketRegime.NEUTRAL, volatility_pct=3.0
         )
         # vol 0.75 => vol_mult = 0.75/1.5 = 0.5
@@ -371,11 +376,11 @@ class TestAdaptiveThresholds:
         """Volatility multiplier is clamped between 0.5 and 2.0."""
         analyzer = MultiTimeframeAnalyzer()
         # Very low vol
-        buy_lo, sell_lo = analyzer._calc_adaptive_thresholds(
+        buy_lo, sell_lo, _ = analyzer._calc_adaptive_thresholds(
             MarketRegime.NEUTRAL, volatility_pct=0.01
         )
         # Very high vol
-        buy_hi, sell_hi = analyzer._calc_adaptive_thresholds(
+        buy_hi, sell_hi, _ = analyzer._calc_adaptive_thresholds(
             MarketRegime.NEUTRAL, volatility_pct=100.0
         )
         # Both should be clamped; vol_mult floors at 0.5, caps at 2.0
@@ -384,11 +389,12 @@ class TestAdaptiveThresholds:
         assert buy_hi == pytest.approx(-2.0, abs=0.01)
 
     def test_thresholds_clamped_to_safe_range(self) -> None:
-        """Buy clamped to [-5, -0.3], sell clamped to [0.5, 10]."""
+        """Buy clamped to [-5, -0.3], sell clamped to [0.5, 10], stop-loss to [1.5, 15]."""
         analyzer = MultiTimeframeAnalyzer()
-        buy, sell = analyzer._calc_adaptive_thresholds(MarketRegime.NEUTRAL, volatility_pct=1.5)
+        buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.NEUTRAL, volatility_pct=1.5)
         assert -5.0 <= buy <= -0.3
         assert 0.5 <= sell <= 10.0
+        assert 1.5 <= sl <= 15.0
 
 
 # ===========================================================================

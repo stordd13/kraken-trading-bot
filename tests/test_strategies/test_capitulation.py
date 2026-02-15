@@ -148,6 +148,7 @@ def _make_analysis(
         rsi_1h=rsi_1h,
         recommended_buy_threshold=-2.0,
         recommended_sell_threshold=3.0,
+        recommended_stop_loss_pct=3.0,
         recommended_position_size_pct=2.0,
         recommended_max_positions=3,
     )
