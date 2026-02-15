@@ -69,6 +69,7 @@ class MultiTimeframeAnalysis:
         rsi_1h: Current 1h RSI value.
         recommended_buy_threshold: Adaptive buy threshold (negative %).
         recommended_sell_threshold: Adaptive sell threshold (positive %).
+        recommended_stop_loss_pct: Adaptive stop-loss (positive %).
         recommended_position_size_pct: Adaptive position size (% of portfolio).
         recommended_max_positions: Adaptive max positions.
     """
@@ -86,6 +87,7 @@ class MultiTimeframeAnalysis:
     rsi_1h: float | None
     recommended_buy_threshold: float
     recommended_sell_threshold: float
+    recommended_stop_loss_pct: float
     recommended_position_size_pct: float
     recommended_max_positions: int
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -283,7 +285,9 @@ class MultiTimeframeAnalyzer:
         volume_ratio_15m = self._calc_volume_ratio(self._volume_15m)
 
         # 5. Adaptive thresholds
-        buy_threshold, sell_threshold = self._calc_adaptive_thresholds(regime, volatility_pct)
+        buy_threshold, sell_threshold, stop_loss = self._calc_adaptive_thresholds(
+            regime, volatility_pct
+        )
 
         # 6. Adaptive position sizing
         position_size_pct = self._calc_adaptive_position_size(regime, volatility_pct)
@@ -303,8 +307,13 @@ class MultiTimeframeAnalyzer:
             rsi_1h=self._rsi_1h.value,
             recommended_buy_threshold=buy_threshold,
             recommended_sell_threshold=sell_threshold,
+            recommended_stop_loss_pct=stop_loss,
             recommended_position_size_pct=position_size_pct,
             recommended_max_positions=max_positions,
+            metadata={
+                "ema_fast_1h": float(ema_fast) if ema_fast else None,
+                "ema_slow_1h": float(ema_slow) if ema_slow else None,
+            },
         )
 
     def _classify_regime(self, ema_spread_pct: float) -> MarketRegime:
@@ -381,40 +390,51 @@ class MultiTimeframeAnalyzer:
 
     def _calc_adaptive_thresholds(
         self, regime: MarketRegime, volatility_pct: float
-    ) -> tuple[float, float]:
-        """Calculate adaptive buy/sell thresholds.
+    ) -> tuple[float, float, float]:
+        """Calculate adaptive buy/sell/stop-loss thresholds.
 
         In bull markets: tighter buy thresholds (buy dips sooner),
-        wider sell thresholds (let profits run).
+        wider sell thresholds (let profits run), wider stop-loss (let breathe).
         In bear markets: wider buy thresholds (wait for bigger drops),
-        tighter sell thresholds (take profits sooner).
+        tighter sell thresholds (take profits sooner), tighter stop-loss (cut fast).
 
         Args:
             regime: Current market regime.
             volatility_pct: ATR as % of price.
 
         Returns:
-            Tuple of (buy_threshold, sell_threshold) in percentage.
+            Tuple of (buy_threshold, sell_threshold, stop_loss_pct) in percentage.
         """
         # Base thresholds
         base_buy = -1.0  # -1%
         base_sell = 2.0  # +2%
+        base_stop_loss = 5.0  # 5%
 
-        # Regime multiplier
+        # BUY regime multiplier
         regime_mult = {
             MarketRegime.STRONG_BULL: 0.7,  # Buy dips sooner
             MarketRegime.BULL: 0.85,
             MarketRegime.NEUTRAL: 1.0,
-            MarketRegime.BEAR: 1.3,  # Wait for bigger drops
-            MarketRegime.STRONG_BEAR: 1.6,
+            MarketRegime.BEAR: 1.5,  # Wait for bigger drops
+            MarketRegime.STRONG_BEAR: 2.0,  # Require deep dip (-6%)
         }[regime]
 
+        # SELL regime multiplier
         sell_regime_mult = {
             MarketRegime.STRONG_BULL: 1.5,  # Let profits run
-            MarketRegime.BULL: 1.2,
+            MarketRegime.BULL: 1.3,
             MarketRegime.NEUTRAL: 1.0,
             MarketRegime.BEAR: 0.8,  # Take profits sooner
             MarketRegime.STRONG_BEAR: 0.6,
+        }[regime]
+
+        # STOP-LOSS regime multiplier (tighter in bear = cut losses fast)
+        stop_loss_regime_mult = {
+            MarketRegime.STRONG_BULL: 1.5,  # Let positions breathe
+            MarketRegime.BULL: 1.2,
+            MarketRegime.NEUTRAL: 1.0,
+            MarketRegime.BEAR: 0.8,  # Cut losses sooner
+            MarketRegime.STRONG_BEAR: 0.6,  # Cut losses fast
         }[regime]
 
         # Volatility multiplier (higher vol = wider thresholds)
@@ -422,12 +442,14 @@ class MultiTimeframeAnalyzer:
 
         buy_threshold = base_buy * regime_mult * vol_mult
         sell_threshold = base_sell * sell_regime_mult * vol_mult
+        stop_loss = base_stop_loss * stop_loss_regime_mult * vol_mult
 
         # Clamp to reasonable ranges
         buy_threshold = max(-5.0, min(-0.3, buy_threshold))
         sell_threshold = max(0.5, min(10.0, sell_threshold))
+        stop_loss = max(1.5, min(15.0, stop_loss))
 
-        return buy_threshold, sell_threshold
+        return buy_threshold, sell_threshold, stop_loss
 
     def _calc_adaptive_position_size(self, regime: MarketRegime, volatility_pct: float) -> float:
         """Calculate adaptive position size as % of portfolio.
