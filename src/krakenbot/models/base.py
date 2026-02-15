@@ -158,3 +158,15 @@ class OrderStatus(str, Enum):
     FILLED = "filled"
     CANCELLED = "cancelled"
     EXPIRED = "expired"
+
+
+class TradingMode(str, Enum):
+    """Trading mode for an order or position.
+
+    Attributes:
+        SPOT: Standard spot trading (buy/sell own assets).
+        MARGIN: Margin trading (borrow to short or leverage).
+    """
+
+    SPOT = "spot"
+    MARGIN = "margin"

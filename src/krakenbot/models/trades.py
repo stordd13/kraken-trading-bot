@@ -102,6 +102,13 @@ class Trade(Base):
         default="EUR",
         comment="Currency of the fee",
     )
+    trading_mode: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        server_default="spot",
+        default="spot",
+        comment="Trading mode: spot or margin",
+    )
 
     # Strategy and P&L
     strategy: Mapped[str] = mapped_column(
@@ -437,6 +444,13 @@ class OpenPosition(Base):
         index=True,
         comment="Trading pair",
     )
+    trading_mode: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        server_default="spot",
+        default="spot",
+        comment="Trading mode: spot or margin",
+    )
 
     # Position details
     entry_price: Mapped[Decimal] = mapped_column(
@@ -544,6 +558,9 @@ class OpenPosition(Base):
         """
         if not self.is_open:
             return self.pnl or Decimal("0")
+        if self.trading_mode == "margin":
+            # Short position: profit when price drops
+            return (self.entry_price - current_price) * self.amount_btc
         return (current_price - self.entry_price) * self.amount_btc
 
 

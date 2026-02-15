@@ -94,6 +94,13 @@ class Order(Base):
         default=OrderType.LIMIT,
         comment="Order type (market/limit)",
     )
+    trading_mode: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        server_default="spot",
+        default="spot",
+        comment="Trading mode: spot or margin",
+    )
 
     # Amounts and prices
     amount: Mapped[Decimal] = mapped_column(
