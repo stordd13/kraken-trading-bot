@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
-from krakenbot.indicators.multi_timeframe import TimeframeZone
+from krakenbot.indicators.multi_timeframe import MarketRegime, TimeframeZone
 from krakenbot.models.base import PositionStatus, SignalType
 from krakenbot.models.trades import OpenPosition
 from krakenbot.strategies.base import BaseStrategy, TradingSignal
@@ -92,6 +92,9 @@ class AdaptiveStrategy(BaseStrategy):
 
         # Adaptive params from strategies.yaml
         self.trailing_stop_pct = Decimal(str(params.get("trailing_stop_pct", 3.0)))
+        self.min_profit_for_trailing_pct = Decimal(
+            str(params.get("min_profit_for_trailing_pct", 1.0))
+        )
         self.min_volume_ratio = float(params.get("min_volume_ratio", 0.8))
         self.block_overbought_15m = bool(params.get("block_overbought_15m", True))
 
@@ -129,6 +132,7 @@ class AdaptiveStrategy(BaseStrategy):
             "adaptive_strategy_initialized",
             bot_id=self.bot_id,
             trailing_stop_pct=float(self.trailing_stop_pct),
+            min_profit_for_trailing_pct=float(self.min_profit_for_trailing_pct),
             min_volume_ratio=self.min_volume_ratio,
             block_overbought_15m=self.block_overbought_15m,
             max_open_positions=self.max_open_positions,
@@ -273,6 +277,13 @@ class AdaptiveStrategy(BaseStrategy):
             buy_threshold = self._fallback_buy_threshold
             sell_threshold = self._fallback_sell_threshold
 
+        # Adaptive stop-loss from analyzer (fallback to emergency setting)
+        adaptive_stop_loss = (
+            Decimal(str(analysis.recommended_stop_loss_pct))
+            if analysis
+            else Decimal(str(self.stop_loss_pct))
+        )
+
         # SELL LOGIC: Check each position
         for pos in self._open_positions:
             profit_pct = ((self._current_price - pos.entry_price) / pos.entry_price) * Decimal(
@@ -282,27 +293,23 @@ class AdaptiveStrategy(BaseStrategy):
             holding_minutes = (current_time - pos.entry_time).total_seconds() / 60
             amount_btc = pos.amount_usdc / pos.entry_price
 
-            # 1. Trailing stop: price dropped from highest
-            if pos.highest_price > pos.entry_price:
-                drop_from_high = (
-                    (pos.highest_price - self._current_price) / pos.highest_price
-                ) * Decimal("100")
-                if drop_from_high >= self.trailing_stop_pct:
-                    return self._sell_signal(
-                        pos,
-                        amount_btc,
-                        profit_pct,
-                        holding_minutes,
-                        current_time,
-                        reason="trailing_stop",
-                        order_type="market",
-                        confidence=0.95,
-                        extra_reason=f"trailing stop: -{float(drop_from_high):.2f}% from high {float(pos.highest_price):.2f}",
-                    )
+            # 1. Stop-loss (adaptive: tighter in bear, wider in bull)
+            if profit_pct <= -adaptive_stop_loss:
+                return self._sell_signal(
+                    pos,
+                    amount_btc,
+                    profit_pct,
+                    holding_minutes,
+                    current_time,
+                    reason="stop_loss",
+                    order_type="market",
+                    confidence=1.0,
+                    extra_reason=f"STOP-LOSS: {float(profit_pct):.2f}% <= -{float(adaptive_stop_loss):.1f}%",
+                )
 
             # 2. Adaptive profit target
             if profit_pct >= Decimal(str(sell_threshold)):
-                limit_price = self._current_price  # Sell at current price as limit
+                limit_price = self._current_price
                 return self._sell_signal(
                     pos,
                     amount_btc,
@@ -316,19 +323,26 @@ class AdaptiveStrategy(BaseStrategy):
                     limit_price=limit_price,
                 )
 
-            # 3. Stop-loss
-            if profit_pct <= -Decimal(str(self.stop_loss_pct)):
-                return self._sell_signal(
-                    pos,
-                    amount_btc,
-                    profit_pct,
-                    holding_minutes,
-                    current_time,
-                    reason="stop_loss",
-                    order_type="market",
-                    confidence=1.0,
-                    extra_reason=f"STOP-LOSS: {float(profit_pct):.2f}% <= -{self.stop_loss_pct}%",
-                )
+            # 3. Trailing stop: only activates after position reached min profit
+            profit_at_high = ((pos.highest_price - pos.entry_price) / pos.entry_price) * Decimal(
+                "100"
+            )
+            if profit_at_high >= self.min_profit_for_trailing_pct:
+                drop_from_high = (
+                    (pos.highest_price - self._current_price) / pos.highest_price
+                ) * Decimal("100")
+                if drop_from_high >= self.trailing_stop_pct:
+                    return self._sell_signal(
+                        pos,
+                        amount_btc,
+                        profit_pct,
+                        holding_minutes,
+                        current_time,
+                        reason="trailing_stop",
+                        order_type="market",
+                        confidence=0.95,
+                        extra_reason=f"trailing stop: -{float(drop_from_high):.2f}% from high {float(pos.highest_price):.2f} (held {holding_minutes:.0f}min)",
+                    )
 
             # 4. Timeout
             if holding_minutes >= self.max_holding_minutes:
@@ -357,6 +371,10 @@ class AdaptiveStrategy(BaseStrategy):
 
         # Volume filter: block buys with insufficient volume
         if analysis and analysis.volume_ratio_5m < self.min_volume_ratio:
+            return None
+
+        # Regime filter: delegate BEAR/STRONG_BEAR to BearShortStrategy
+        if analysis and analysis.regime in (MarketRegime.BEAR, MarketRegime.STRONG_BEAR):
             return None
 
         # Check references for buy signal

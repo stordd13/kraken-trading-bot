@@ -51,6 +51,7 @@ from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
 from krakenbot.strategies.adaptive import AdaptiveStrategy
 from krakenbot.strategies.base import BaseStrategy
+from krakenbot.strategies.bear_short import BearShortStrategy
 from krakenbot.strategies.capitulation import CapitulationStrategy
 from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 
@@ -63,6 +64,7 @@ STRATEGY_REGISTRY: dict[str, type[BaseStrategy]] = {
     "threshold_rolling": ThresholdRollingStrategy,
     "adaptive": AdaptiveStrategy,
     "capitulation": CapitulationStrategy,
+    "bear_short": BearShortStrategy,
 }
 
 
@@ -545,12 +547,12 @@ class KrakenBot:
                 btc_balance=float(btc_balance),
             )
 
-            # Get sum of open positions from DB
+            # Get sum of open SPOT positions from DB (exclude margin shorts)
             async with self.db_manager.session() as session:
                 result = await session.execute(
-                    select(func.sum(OpenPosition.amount_btc)).where(
-                        OpenPosition.status == PositionStatus.OPEN
-                    )
+                    select(func.sum(OpenPosition.amount_btc))
+                    .where(OpenPosition.status == PositionStatus.OPEN)
+                    .where(OpenPosition.trading_mode == "spot")
                 )
                 db_position_sum = result.scalar() or Decimal("0")
 

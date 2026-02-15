@@ -5,8 +5,8 @@
 enabled: true
 
 # Global limits (across ALL strategies combined)
-global_max_open_positions: 10
-global_daily_loss_limit_eur: 30.0
+global_max_open_positions: 12
+global_daily_loss_limit_eur: 40.0
 global_max_portfolio_exposure_pct: 80.0
 
 strategies:
@@ -23,7 +23,8 @@ strategies:
       label: "Adaptive"
     params:
       trailing_stop_pct: 3.0
-      min_volume_ratio: 0.8
+      min_profit_for_trailing_pct: 1.0
+      min_volume_ratio: 1.2
       block_overbought_15m: true
 
   - name: capitulation
@@ -41,7 +42,29 @@ strategies:
       rsi_1h_threshold: 20.0
       rsi_5m_threshold: 15.0
       volume_spike_multiplier: 3.0
-      trailing_stop_pct: 2.0
-      max_profit_target_pct: 15.0
+      trailing_stop_pct: 5.0
+      max_profit_target_pct: 10.0
       max_holding_minutes: 2880
       cooldown_hours: 4
+
+  - name: bear_short
+    enabled: true
+    bot_id: bear_short_prod
+    budget:
+      max_open_positions: 2
+      daily_loss_limit_eur: 10.0
+      max_position_pct: 15.0
+      position_size_multiplier: 1.0
+    dashboard:
+      exit_type: trailing_stop
+      label: "Bear Short"
+    params:
+      active_regimes: [BEAR, STRONG_BEAR]
+      leverage: 2
+      profit_target_bear_pct: 2.0
+      profit_target_strong_bear_pct: 3.0
+      stop_loss_pct: 2.0
+      trailing_stop_pct: 1.0
+      min_profit_for_trailing_pct: 1.5
+      max_holding_hours: 48
+      rsi_15m_min_entry: 60
