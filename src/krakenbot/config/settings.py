@@ -384,6 +384,17 @@ class CapitulationSettings(BaseSettings):
     cooldown_hours: int = Field(default=4, ge=1, le=48)
 
 
+class PaperSettings(BaseSettings):
+    """Paper trading configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="PAPER_")
+
+    balance_reset: bool = Field(
+        default=False,
+        description="Force re-fetch real Kraken balance on next startup",
+    )
+
+
 class OrderSettings(BaseSettings):
     """Order execution settings (limit vs market)."""
 
@@ -478,6 +489,7 @@ class Settings(BaseSettings):
     multi_timeframe: MultiTimeframeSettings = Field(default_factory=MultiTimeframeSettings)
     capitulation: CapitulationSettings = Field(default_factory=CapitulationSettings)
     order: OrderSettings = Field(default_factory=OrderSettings)
+    paper: PaperSettings = Field(default_factory=PaperSettings)
 
     def model_post_init(self, __context: Any) -> None:
         """Load strategies.yaml after settings init."""

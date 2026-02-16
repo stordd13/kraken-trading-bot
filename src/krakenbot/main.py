@@ -355,6 +355,12 @@ class KrakenBot:
                     note="Analyzer will warm up from live data",
                 )
 
+        # 2b. Initialize paper balance from DB or real Kraken balance
+        if self.rest_client and self.rest_client.is_paper_mode:
+            await self.rest_client.initialize_paper_balance(
+                force_reset=self.settings.paper.balance_reset,
+            )
+
         # 3. Reconcile positions with exchange (before strategy loads positions)
         await self._reconcile_positions_with_exchange()
 

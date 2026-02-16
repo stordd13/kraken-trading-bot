@@ -131,11 +131,14 @@ class KrakenRestClient:
             }
         )
 
-        # Paper trading state
+        # Paper trading state — populated by initialize_paper_balance() at startup
+        pair = settings.trading.pair
+        _base = pair.split("/")[0]
+        _quote = pair.split("/")[1]
+        _base_norm = "BTC" if _base in ("XBT", "BTC") else _base
         self._paper_balance: dict[str, Decimal] = {
-            "EUR": Decimal("1000.00"),  # Default paper balance
-            "XBT": Decimal("0.0"),
-            "ETH": Decimal("0.0"),
+            _quote: Decimal("0"),
+            _base_norm: Decimal("0"),
         }
         self._paper_orders: dict[str, dict[str, Any]] = {}
 
@@ -407,6 +410,9 @@ class KrakenRestClient:
             self._paper_balance[quote_currency] = (
                 self._paper_balance.get(quote_currency, Decimal("0")) + value - fee
             )
+
+        # Persist paper balance to DB
+        await self.persist_paper_balance()
 
         # Create trade record
         trade = Trade(
@@ -1213,6 +1219,9 @@ class KrakenRestClient:
                     self._paper_balance.get(quote_currency, Decimal("0")) + value - fee
                 )
 
+            # Persist paper balance to DB
+            await self.persist_paper_balance()
+
             order = Order(
                 id=uuid.uuid4(),
                 order_id=order_id,
@@ -1692,11 +1701,11 @@ class KrakenRestClient:
             )
             raise
 
-    def set_paper_balance(self, currency: str, amount: Decimal) -> None:
-        """Set paper trading balance for a currency.
+    async def set_paper_balance(self, currency: str, amount: Decimal) -> None:
+        """Set paper trading balance for a currency and persist to DB.
 
         Args:
-            currency: Currency symbol (e.g., "EUR", "XBT").
+            currency: Currency symbol (e.g., "USDC", "BTC").
             amount: Balance amount.
         """
         if not self.is_paper_mode:
@@ -1704,6 +1713,7 @@ class KrakenRestClient:
             return
 
         self._paper_balance[currency] = amount
+        await self.persist_paper_balance()
         logger.info(
             f"{self._mode_prefix} set_balance",
             currency=currency,
@@ -1717,3 +1727,155 @@ class KrakenRestClient:
             Dictionary of paper balances.
         """
         return self._paper_balance.copy()
+
+    async def initialize_paper_balance(
+        self,
+        force_reset: bool = False,
+    ) -> None:
+        """Initialize paper balance from DB or real Kraken balance.
+
+        On first startup (empty DB), fetches real balance from Kraken API
+        and saves it as both initial and current balance. On subsequent
+        startups, loads from DB to continue where it left off.
+
+        Args:
+            force_reset: If True, re-fetch from Kraken and overwrite DB.
+        """
+        if not self.is_paper_mode:
+            return
+
+        if not self._db_manager:
+            logger.warning("paper_balance_init_no_db_manager")
+            return
+
+        if not force_reset:
+            loaded = await self._load_paper_balance_from_db()
+            if loaded:
+                logger.info(
+                    "paper_balance_loaded_from_db",
+                    balance=str(self._paper_balance),
+                )
+                return
+
+        # First startup or force reset: fetch real balance from Kraken
+        real_balance = await self._fetch_real_balance()
+
+        pair = self._settings.trading.pair
+        base = pair.split("/")[0]
+        quote = pair.split("/")[1]
+        base_norm = "BTC" if base in ("XBT", "BTC") else base
+
+        btc_amount = real_balance.get(base_norm, Decimal("0"))
+        quote_amount = real_balance.get(quote, Decimal("0"))
+
+        self._paper_balance = {
+            base_norm: btc_amount,
+            quote: quote_amount,
+        }
+
+        await self._save_paper_balance_to_db(initial=True)
+
+        logger.info(
+            "paper_balance_initialized_from_kraken",
+            base=str(btc_amount),
+            base_currency=base_norm,
+            quote=str(quote_amount),
+            quote_currency=quote,
+        )
+
+    async def persist_paper_balance(self) -> None:
+        """Persist current paper balance to DB after a trade."""
+        if self._db_manager:
+            await self._save_paper_balance_to_db(initial=False)
+
+    async def _fetch_real_balance(self) -> dict[str, Decimal]:
+        """Fetch real balance from Kraken API (even in paper mode).
+
+        The CCXT exchange object already has real API credentials.
+
+        Returns:
+            Dictionary of currency -> amount from real Kraken account.
+        """
+        try:
+            self._stats["api_calls"] += 1
+            balance = await self._exchange.fetch_balance()
+            result: dict[str, Decimal] = {}
+            for currency, amounts in balance.get("free", {}).items():
+                if amounts and float(amounts) > 0:
+                    result[currency] = Decimal(str(amounts))
+
+            logger.info(
+                "real_balance_fetched_for_paper",
+                currencies=list(result.keys()),
+            )
+            return result
+
+        except Exception as e:
+            logger.error(
+                "real_balance_fetch_failed",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+            return {}
+
+    async def _load_paper_balance_from_db(self) -> bool:
+        """Load paper balance from paper_balance table.
+
+        Returns:
+            True if records were found and loaded.
+        """
+        from krakenbot.models.trades import PaperBalance
+
+        if not self._db_manager:
+            return False
+
+        try:
+            from sqlalchemy import select
+
+            async with self._db_manager.session() as session:
+                result = await session.execute(select(PaperBalance))
+                rows = result.scalars().all()
+
+                if not rows:
+                    return False
+
+                self._paper_balance = {}
+                for row in rows:
+                    self._paper_balance[row.currency] = row.amount
+
+                return True
+
+        except Exception as e:
+            logger.error("load_paper_balance_db_error", error=str(e))
+            return False
+
+    async def _save_paper_balance_to_db(self, initial: bool = False) -> None:
+        """Save current paper balance to paper_balance table.
+
+        Args:
+            initial: If True, also update initial_amount (first-time snapshot).
+        """
+        from krakenbot.models.trades import PaperBalance
+
+        if not self._db_manager:
+            return
+
+        try:
+            async with self._db_manager.session() as session:
+                for currency, amount in self._paper_balance.items():
+                    existing = await session.get(PaperBalance, currency)
+                    if existing:
+                        existing.amount = amount
+                        existing.updated_at = datetime.now(UTC)
+                        if initial:
+                            existing.initial_amount = amount
+                    else:
+                        record = PaperBalance(
+                            currency=currency,
+                            amount=amount,
+                            initial_amount=amount if initial else Decimal("0"),
+                        )
+                        session.add(record)
+
+        except Exception as e:
+            logger.error("save_paper_balance_db_error", error=str(e))

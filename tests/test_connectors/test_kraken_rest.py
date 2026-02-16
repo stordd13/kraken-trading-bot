@@ -169,49 +169,43 @@ def live_client(
 class TestKrakenRestClientInit:
     """Tests for REST client initialization."""
 
-    def test_init_paper_mode(
-        self, mock_paper_settings: Settings, event_bus: EventBus
-    ) -> None:
+    def test_init_paper_mode(self, mock_paper_settings: Settings, event_bus: EventBus) -> None:
         """Test initialization in paper mode."""
         with patch("ccxt.async_support.kraken"):
             client = KrakenRestClient(mock_paper_settings, event_bus)
 
         assert client.is_paper_mode is True
 
-    def test_init_live_mode(
-        self, mock_live_settings: Settings, event_bus: EventBus
-    ) -> None:
+    def test_init_live_mode(self, mock_live_settings: Settings, event_bus: EventBus) -> None:
         """Test initialization in live mode."""
         with patch("ccxt.async_support.kraken"):
             client = KrakenRestClient(mock_live_settings, event_bus)
 
         assert client.is_paper_mode is False
 
-    def test_paper_balance_initialized(
-        self, paper_client: KrakenRestClient
-    ) -> None:
-        """Test that paper balance is initialized."""
+    def test_paper_balance_initialized(self, paper_client: KrakenRestClient) -> None:
+        """Test that paper balance is initialized with zeros (populated by initialize_paper_balance)."""
         balance = paper_client.get_paper_balance()
 
+        # Balance starts at zero — real balance is loaded at startup via initialize_paper_balance()
         assert "EUR" in balance
-        assert balance["EUR"] == Decimal("1000.00")
+        assert balance["EUR"] == Decimal("0")
+        assert "BTC" in balance
+        assert balance["BTC"] == Decimal("0")
 
 
 class TestKrakenRestClientBalance:
     """Tests for balance queries."""
 
-    async def test_get_balance_paper_mode(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_get_balance_paper_mode(self, paper_client: KrakenRestClient) -> None:
         """Test getting balance in paper mode."""
+        await paper_client.set_paper_balance("EUR", Decimal("1000"))
         balance = await paper_client.get_balance()
 
         assert "EUR" in balance
-        assert balance["EUR"] == Decimal("1000.00")
+        assert balance["EUR"] == Decimal("1000")
 
-    async def test_get_balance_live_mode(
-        self, live_client: KrakenRestClient
-    ) -> None:
+    async def test_get_balance_live_mode(self, live_client: KrakenRestClient) -> None:
         """Test getting balance in live mode."""
         # Mock the ccxt fetch_balance
         live_client._exchange.fetch_balance = AsyncMock(
@@ -230,15 +224,11 @@ class TestKrakenRestClientBalance:
         assert balance["EUR"] == Decimal("500.0")
         assert balance["XBT"] == Decimal("0.1")
 
-    async def test_get_balance_api_error(
-        self, live_client: KrakenRestClient
-    ) -> None:
+    async def test_get_balance_api_error(self, live_client: KrakenRestClient) -> None:
         """Test balance query with API error."""
         import ccxt
 
-        live_client._exchange.fetch_balance = AsyncMock(
-            side_effect=ccxt.ExchangeError("API error")
-        )
+        live_client._exchange.fetch_balance = AsyncMock(side_effect=ccxt.ExchangeError("API error"))
 
         with pytest.raises(KrakenAPIError):
             await live_client.get_balance()
@@ -258,7 +248,8 @@ class TestKrakenRestClientPaperTrading:
 
         await event_bus.subscribe(EventType.TRADE_ORDER_FILLED, capture_event)
 
-        # Set a price for paper trading
+        # Set initial balance and price for paper trading
+        await paper_client.set_paper_balance("EUR", Decimal("1000"))
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
         trade = await paper_client.place_market_order(
@@ -278,12 +269,10 @@ class TestKrakenRestClientPaperTrading:
         assert len(received_events) == 1
         assert received_events[0]["mode"] == "paper"
 
-    async def test_place_market_order_sell(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_place_market_order_sell(self, paper_client: KrakenRestClient) -> None:
         """Test placing a sell order in paper mode."""
         # First buy some XBT
-        paper_client.set_paper_balance("XBT", Decimal("0.1"))
+        await paper_client.set_paper_balance("XBT", Decimal("0.1"))
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
         trade = await paper_client.place_market_order(
@@ -296,10 +285,9 @@ class TestKrakenRestClientPaperTrading:
         assert trade.side == TradeSide.SELL
         assert trade.status == TradeStatus.FILLED
 
-    async def test_paper_balance_updates_on_buy(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_paper_balance_updates_on_buy(self, paper_client: KrakenRestClient) -> None:
         """Test that paper balance updates correctly on buy."""
+        await paper_client.set_paper_balance("EUR", Decimal("1000"))
         initial_eur = paper_client.get_paper_balance()["EUR"]
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
@@ -317,12 +305,10 @@ class TestKrakenRestClientPaperTrading:
         # Should have gained XBT
         assert final_balance["XBT"] == Decimal("0.001")
 
-    async def test_paper_balance_updates_on_sell(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_paper_balance_updates_on_sell(self, paper_client: KrakenRestClient) -> None:
         """Test that paper balance updates correctly on sell."""
-        paper_client.set_paper_balance("XBT", Decimal("0.1"))
-        paper_client.set_paper_balance("EUR", Decimal("0"))
+        await paper_client.set_paper_balance("XBT", Decimal("0.1"))
+        await paper_client.set_paper_balance("EUR", Decimal("0"))
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
         await paper_client.place_market_order(
@@ -339,11 +325,9 @@ class TestKrakenRestClientPaperTrading:
         # Should have gained EUR
         assert final_balance["EUR"] > 0
 
-    async def test_paper_insufficient_balance_buy(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_paper_insufficient_balance_buy(self, paper_client: KrakenRestClient) -> None:
         """Test buy order fails with insufficient balance."""
-        paper_client.set_paper_balance("EUR", Decimal("1"))  # Very little EUR
+        await paper_client.set_paper_balance("EUR", Decimal("1"))  # Very little EUR
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
         with pytest.raises(InsufficientBalanceError):
@@ -354,11 +338,9 @@ class TestKrakenRestClientPaperTrading:
                 strategy="test",
             )
 
-    async def test_paper_insufficient_balance_sell(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_paper_insufficient_balance_sell(self, paper_client: KrakenRestClient) -> None:
         """Test sell order fails with insufficient balance."""
-        paper_client.set_paper_balance("XBT", Decimal("0"))
+        await paper_client.set_paper_balance("XBT", Decimal("0"))
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
         with pytest.raises(InsufficientBalanceError):
@@ -437,9 +419,7 @@ class TestKrakenRestClientLiveTrading:
         # Check failure event was published
         assert len(received_events) == 1
 
-    async def test_live_order_api_error(
-        self, live_client: KrakenRestClient
-    ) -> None:
+    async def test_live_order_api_error(self, live_client: KrakenRestClient) -> None:
         """Test live order with API error."""
         import ccxt
 
@@ -459,9 +439,7 @@ class TestKrakenRestClientLiveTrading:
 class TestKrakenRestClientOrderValidation:
     """Tests for order validation."""
 
-    async def test_minimum_order_size_validation(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_minimum_order_size_validation(self, paper_client: KrakenRestClient) -> None:
         """Test that orders below minimum size are rejected."""
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
@@ -485,17 +463,13 @@ class TestKrakenRestClientOrderValidation:
 class TestKrakenRestClientOrderManagement:
     """Tests for order management functionality."""
 
-    async def test_get_open_orders_paper(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_get_open_orders_paper(self, paper_client: KrakenRestClient) -> None:
         """Test getting open orders in paper mode."""
         orders = await paper_client.get_open_orders()
 
         assert isinstance(orders, list)
 
-    async def test_get_open_orders_live(
-        self, live_client: KrakenRestClient
-    ) -> None:
+    async def test_get_open_orders_live(self, live_client: KrakenRestClient) -> None:
         """Test getting open orders in live mode."""
         live_client._exchange.fetch_open_orders = AsyncMock(
             return_value=[
@@ -536,9 +510,7 @@ class TestKrakenRestClientOrderManagement:
         assert result is True
         assert len(received_events) == 1
 
-    async def test_cancel_nonexistent_order_paper(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_cancel_nonexistent_order_paper(self, paper_client: KrakenRestClient) -> None:
         """Test cancelling non-existent paper order."""
         result = await paper_client.cancel_order("nonexistent")
 
@@ -587,9 +559,7 @@ class TestKrakenRestClientTicker:
         assert ticker["bid"] == Decimal("41900")
         assert ticker["ask"] == Decimal("42100")
 
-    async def test_get_ticker_updates_last_price(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_get_ticker_updates_last_price(self, paper_client: KrakenRestClient) -> None:
         """Test that get_ticker updates last price for paper trading."""
         paper_client._exchange.fetch_ticker = AsyncMock(
             return_value={
@@ -614,10 +584,9 @@ class TestKrakenRestClientStatistics:
         assert stats["orders_failed"] == 0
         assert stats["api_calls"] == 0
 
-    async def test_stats_track_paper_orders(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_stats_track_paper_orders(self, paper_client: KrakenRestClient) -> None:
         """Test that paper orders are tracked in stats."""
+        await paper_client.set_paper_balance("EUR", Decimal("1000"))
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
         await paper_client.place_market_order(
@@ -631,9 +600,7 @@ class TestKrakenRestClientStatistics:
         assert stats["orders_placed"] == 1
         assert stats["orders_filled"] == 1
 
-    async def test_stats_track_live_orders(
-        self, live_client: KrakenRestClient
-    ) -> None:
+    async def test_stats_track_live_orders(self, live_client: KrakenRestClient) -> None:
         """Test that live orders are tracked in stats."""
         live_client._exchange.create_market_order = AsyncMock(
             return_value={
@@ -660,28 +627,24 @@ class TestKrakenRestClientStatistics:
 class TestKrakenRestClientPaperBalance:
     """Tests for paper balance management."""
 
-    def test_set_paper_balance(self, paper_client: KrakenRestClient) -> None:
+    async def test_set_paper_balance(self, paper_client: KrakenRestClient) -> None:
         """Test setting paper balance."""
-        paper_client.set_paper_balance("EUR", Decimal("5000"))
+        await paper_client.set_paper_balance("EUR", Decimal("5000"))
 
         balance = paper_client.get_paper_balance()
         assert balance["EUR"] == Decimal("5000")
 
-    def test_set_paper_balance_live_mode_ignored(
-        self, live_client: KrakenRestClient
-    ) -> None:
+    async def test_set_paper_balance_live_mode_ignored(self, live_client: KrakenRestClient) -> None:
         """Test that set_paper_balance is ignored in live mode."""
         # This should not raise but log a warning
-        live_client.set_paper_balance("EUR", Decimal("5000"))
+        await live_client.set_paper_balance("EUR", Decimal("5000"))
         # Live mode doesn't use paper balance
 
 
 class TestKrakenRestClientClose:
     """Tests for client cleanup."""
 
-    async def test_close_calls_exchange_close(
-        self, paper_client: KrakenRestClient
-    ) -> None:
+    async def test_close_calls_exchange_close(self, paper_client: KrakenRestClient) -> None:
         """Test that close properly cleans up."""
         paper_client._exchange.close = AsyncMock()
 

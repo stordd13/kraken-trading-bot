@@ -117,6 +117,8 @@ def mock_rest_client():
     mock_rest.get_balance = AsyncMock(
         return_value={"EUR": Decimal("1000.00"), "XBT": Decimal("0.0")}
     )
+    mock_rest.initialize_paper_balance = AsyncMock()
+    mock_rest.is_paper_mode = True
     mock_rest.stats = {
         "orders_placed": 0,
         "orders_filled": 0,
@@ -290,9 +292,7 @@ class TestKrakenBotStart:
             mock_get_settings.trading.pair,
             mock_get_settings.trading.candle_interval_min,
         )
-        mock_ws_client.subscribe_ticker.assert_called_once_with(
-            mock_get_settings.trading.pair
-        )
+        mock_ws_client.subscribe_ticker.assert_called_once_with(mock_get_settings.trading.pair)
 
         assert bot._running is True
 

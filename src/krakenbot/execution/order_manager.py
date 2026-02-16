@@ -337,6 +337,9 @@ class OrderManager:
                 self._rest_client._paper_balance.get(quote_currency, Decimal("0")) + value - fee
             )
 
+        # Persist paper balance to DB
+        await self._rest_client.persist_paper_balance()
+
         # Update order state
         order.status = OrderStatus.FILLED
         order.filled_amount = order.amount

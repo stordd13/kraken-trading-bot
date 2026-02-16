@@ -759,3 +759,61 @@ class BacktestRun(Base):
             f"strategy={self.strategy!r}, pair={self.pair!r}, "
             f"net_pnl={self.net_pnl}, total_return_pct={self.total_return_pct})"
         )
+
+
+class PaperBalance(Base):
+    """Persistent paper trading balance.
+
+    Stores the current simulated balance per currency, along with
+    the initial snapshot taken from the real Kraken balance on first startup.
+    This enables realistic paper trading and P&L tracking.
+
+    Attributes:
+        currency: Currency symbol (e.g., "USDC", "BTC").
+        amount: Current paper balance for this currency.
+        initial_amount: Snapshot of real Kraken balance at first paper start.
+        updated_at: Last time this balance was modified.
+        created_at: When this record was first created.
+    """
+
+    __tablename__ = "paper_balance"
+
+    currency: Mapped[str] = mapped_column(
+        String(20),
+        primary_key=True,
+        comment="Currency symbol (e.g., USDC, BTC)",
+    )
+    amount: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        default=Decimal("0"),
+        comment="Current paper balance",
+    )
+    initial_amount: Mapped[Decimal] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=False,
+        default=Decimal("0"),
+        comment="Initial real balance snapshot from Kraken",
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=utc_now,
+        onupdate=utc_now,
+        comment="Last update timestamp",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        default=utc_now,
+        comment="Record creation timestamp",
+    )
+
+    __table_args__ = ({"comment": "Persistent paper trading balance with initial snapshot"},)
+
+    def __repr__(self) -> str:
+        """Return string representation."""
+        return (
+            f"PaperBalance(currency={self.currency!r}, "
+            f"amount={self.amount}, initial_amount={self.initial_amount})"
+        )

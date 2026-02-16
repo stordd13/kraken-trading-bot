@@ -14,7 +14,7 @@ from krakenbot.models.base import (
 )
 from krakenbot.models.market_data import OHLCData, TickData
 from krakenbot.models.orders import Order
-from krakenbot.models.trades import BotState, Trade
+from krakenbot.models.trades import BotState, PaperBalance, Trade
 
 __all__ = [
     "BotState",
@@ -27,6 +27,8 @@ __all__ = [
     "OrderType",
     # Order model
     "Order",
+    # Paper trading
+    "PaperBalance",
     "SignalType",
     "TickData",
     # Trade models
