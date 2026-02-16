@@ -47,6 +47,7 @@ class TrendPosition:
     position_id: int
     highest_price: Decimal  # For trailing stop
     ema50_at_entry: Decimal  # For hard stop reference
+    amount_usdc: Decimal = Decimal("0")  # For backtest compat
 
 
 class TrendFollowingStrategy(BaseStrategy):
@@ -428,6 +429,7 @@ class TrendFollowingStrategy(BaseStrategy):
                 position_id=pid,
                 highest_price=price,
                 ema50_at_entry=ema50_val,
+                amount_usdc=amount * price,
             )
 
             self.logger.info(
@@ -458,26 +460,49 @@ class TrendFollowingStrategy(BaseStrategy):
     def add_position(
         self,
         entry_price: Decimal,
-        entry_time: datetime,
-        amount_btc: Decimal,
-        position_id: int,
-    ) -> None:
-        """Add a position (backtest compatibility)."""
+        entry_time: datetime | None = None,
+        amount_btc: Decimal | None = None,
+        amount_usdc: Decimal | None = None,
+        position_id: int | None = None,
+        **_kwargs: Any,
+    ) -> int:
+        """Add a position (backtest compatibility).
+
+        Accepts both amount_btc (direct) and amount_usdc (backtest engine pattern).
+        Returns the position ID for backtest tracking.
+        """
+        if entry_time is None:
+            entry_time = self._current_timestamp or datetime.now(UTC)
+
+        if amount_btc is None and amount_usdc is not None:
+            amount_btc = amount_usdc / entry_price if entry_price > 0 else Decimal("0")
+        elif amount_btc is None:
+            amount_btc = Decimal("0")
+
+        pid = position_id if position_id is not None else self._next_position_id
         ema50_val = self._ema_slow.value or entry_price
         self._position = TrendPosition(
             entry_price=entry_price,
             entry_time=entry_time,
             amount_btc=amount_btc,
-            position_id=position_id,
+            position_id=pid,
             highest_price=entry_price,
             ema50_at_entry=ema50_val,
+            amount_usdc=amount_usdc or (amount_btc * entry_price),
         )
-        self._next_position_id = max(self._next_position_id, position_id + 1)
+        self._next_position_id = max(self._next_position_id, pid + 1)
+        return pid
 
-    def close_position(self, position_id: int) -> None:
-        """Close position (backtest compatibility)."""
+    def close_position(self, position_id: int) -> TrendPosition | None:
+        """Close position (backtest compatibility).
+
+        Returns the closed position for P&L calculation.
+        """
         if self._position and self._position.position_id == position_id:
+            closed = self._position
             self._position = None
+            return closed
+        return None
 
     @property
     def has_position(self) -> bool:

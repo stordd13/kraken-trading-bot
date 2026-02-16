@@ -6,7 +6,7 @@ enabled: true
 
 # Global limits (across ALL strategies combined)
 global_max_open_positions: 20
-global_daily_loss_limit_eur: 30.0
+global_daily_loss_limit_eur: 50.0
 global_max_portfolio_exposure_pct: 90.0
 
 strategies:
