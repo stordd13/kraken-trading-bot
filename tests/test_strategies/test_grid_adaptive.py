@@ -5,6 +5,9 @@ Tests cover:
 - ATR high -> wide range, ATR low -> tight range
 - Periodic recalculation every N hours
 - min_spacing_pct respected
+- max_spacing_pct cap
+- Profitability floor (MIN_PROFITABLE_SPACING)
+- Directional pause (SMA50 deviation)
 - Inherits grid functionality from GridSpotStrategy
 """
 
@@ -156,9 +159,11 @@ def strategy(
         strategy_params={
             "grid_levels": 8,
             "atr_multiplier": 3.0,
-            "recalculate_hours": 4,
+            "recalculate_hours": 6,
             "order_amount_usdc": 25,
-            "min_spacing_pct": 0.5,
+            "min_spacing_pct": 1.5,
+            "max_spacing_pct": 4.0,
+            "directional_pause_pct": 25.0,
             "allow_short": False,
         },
         analyzer=mock_analyzer,
@@ -192,8 +197,10 @@ class TestGridAdaptiveInit:
 
     def test_default_params(self, strategy: GridAdaptiveStrategy) -> None:
         assert strategy.atr_multiplier == Decimal("3.0")
-        assert strategy.recalculate_hours == 4
-        assert strategy.min_spacing_pct == Decimal("0.5")
+        assert strategy.recalculate_hours == 6
+        assert strategy.min_spacing_pct == Decimal("1.5")
+        assert strategy.max_spacing_pct == Decimal("4.0")
+        assert strategy.directional_pause_pct == Decimal("25.0")
         assert strategy.allow_short is False
         assert strategy.grid_levels == 8
         assert strategy.order_amount_usdc == Decimal("25")
@@ -204,9 +211,12 @@ class TestGridAdaptiveInit:
     def test_get_config(self, strategy: GridAdaptiveStrategy) -> None:
         config = strategy.get_config()
         assert config["atr_multiplier"] == 3.0
-        assert config["recalculate_hours"] == 4
-        assert config["min_spacing_pct"] == 0.5
+        assert config["recalculate_hours"] == 6
+        assert config["min_spacing_pct"] == 1.5
+        assert config["max_spacing_pct"] == 4.0
+        assert config["directional_pause_pct"] == 25.0
         assert config["allow_short"] is False
+        assert config["grid_paused"] is False
 
     def test_inherits_grid_spot(self, strategy: GridAdaptiveStrategy) -> None:
         """GridAdaptive inherits from GridSpotStrategy."""
@@ -250,23 +260,61 @@ class TestGridAdaptiveATRRange:
         assert wide_range > tight_range
 
     def test_low_atr_tight_range(self, strategy: GridAdaptiveStrategy) -> None:
-        """Low ATR -> tighter range."""
+        """Low ATR -> tighter range, clamped to min_spacing."""
         strategy._current_atr = Decimal("200")
         strategy._update_range_from_atr(Decimal("50000"))
         # 200 * 3 = 600 per side -> 1200 total -> 2.4%
-        # Spacing = 2.4% / 8 = 0.3% -> below min_spacing_pct (0.5%)
-        # Should be clamped to min_spacing_pct
+        # Spacing = 2.4% / 8 = 0.3% -> below min_spacing_pct (1.5%)
         assert strategy.grid_spacing_pct >= strategy.min_spacing_pct
 
     def test_min_spacing_pct_enforced(self, strategy: GridAdaptiveStrategy) -> None:
         """When ATR gives spacing below min, min is used."""
-        # Very low ATR -> tiny spacing
         strategy._current_atr = Decimal("50")
         strategy._update_range_from_atr(Decimal("50000"))
 
         assert strategy.grid_spacing_pct == strategy.min_spacing_pct
-        # Range adjusted: 0.5% * 8 = 4.0%
-        assert strategy.range_size_pct == Decimal("4.0")
+        # Range adjusted: 1.5% * 8 = 12.0%
+        assert strategy.range_size_pct == Decimal("12.0")
+
+    def test_max_spacing_pct_enforced(self, strategy: GridAdaptiveStrategy) -> None:
+        """When ATR gives spacing above max, max is used."""
+        # Very high ATR: 5000 * 3 = 15000 -> 30000 total -> 60% range
+        # Spacing = 60% / 8 = 7.5% -> above max_spacing_pct (4.0%)
+        strategy._current_atr = Decimal("5000")
+        strategy._update_range_from_atr(Decimal("50000"))
+
+        assert strategy.grid_spacing_pct == strategy.max_spacing_pct
+        # Range adjusted: 4.0% * 8 = 32.0%
+        assert strategy.range_size_pct == Decimal("32.0")
+
+    def test_profitability_floor(
+        self,
+        settings: Settings,
+        mock_event_bus: AsyncMock,
+        mock_db_manager: MagicMock,
+        mock_analyzer: MagicMock,
+    ) -> None:
+        """Profitability floor (0.64%) overrides min_spacing if min_spacing is lower."""
+        s = GridAdaptiveStrategy(
+            settings,
+            mock_event_bus,
+            mock_db_manager,
+            strategy_params={
+                "grid_levels": 8,
+                "atr_multiplier": 3.0,
+                "min_spacing_pct": 0.3,  # Below profitability floor
+                "max_spacing_pct": 4.0,
+            },
+            analyzer=mock_analyzer,
+        )
+        s._skip_db_sync = True
+
+        # Very low ATR
+        s._current_atr = Decimal("50")
+        s._update_range_from_atr(Decimal("50000"))
+
+        # Should use profitability floor (0.64%), not min_spacing (0.3%)
+        assert s.grid_spacing_pct == Decimal("0.64")
 
     def test_no_update_when_no_atr(self, strategy: GridAdaptiveStrategy) -> None:
         """No range update when ATR is None."""
@@ -333,21 +381,21 @@ class TestGridAdaptiveRecalculation:
     def test_should_recalculate_after_interval(self, strategy: GridAdaptiveStrategy) -> None:
         """Recalculate when enough time has passed."""
         now = datetime.now(UTC)
-        strategy._last_recalc_time = now - timedelta(hours=5)
+        strategy._last_recalc_time = now - timedelta(hours=7)
         strategy._current_timestamp = now
         assert strategy._should_recalculate() is True
 
     def test_should_not_recalculate_too_soon(self, strategy: GridAdaptiveStrategy) -> None:
         """No recalculate before interval."""
         now = datetime.now(UTC)
-        strategy._last_recalc_time = now - timedelta(hours=2)
+        strategy._last_recalc_time = now - timedelta(hours=3)
         strategy._current_timestamp = now
         assert strategy._should_recalculate() is False
 
     def test_should_recalculate_exactly_at_boundary(self, strategy: GridAdaptiveStrategy) -> None:
-        """Recalculate at exactly 4 hours."""
+        """Recalculate at exactly 6 hours."""
         now = datetime.now(UTC)
-        strategy._last_recalc_time = now - timedelta(hours=4)
+        strategy._last_recalc_time = now - timedelta(hours=6)
         strategy._current_timestamp = now
         assert strategy._should_recalculate() is True
 
@@ -405,7 +453,107 @@ class TestGridAdaptiveRecalculation:
 
 
 # ---------------------------------------------------------------------------
-# on_ohlc feeds analyzer
+# Directional pause
+# ---------------------------------------------------------------------------
+
+
+class TestGridAdaptiveDirectionalPause:
+    """Tests for directional pause based on SMA50 deviation."""
+
+    def test_no_pause_with_insufficient_data(self, strategy: GridAdaptiveStrategy) -> None:
+        """No pause when fewer than 50 hourly prices."""
+        strategy._current_price = Decimal("80000")
+        # Only 10 prices
+        for _ in range(10):
+            strategy._hourly_prices.append(Decimal("50000"))
+        strategy._check_directional_pause()
+        assert strategy._grid_paused is False
+
+    def test_pause_when_price_far_above_sma50(self, strategy: GridAdaptiveStrategy) -> None:
+        """Grid pauses when price >25% above SMA50."""
+        # SMA50 = 50000
+        for _ in range(50):
+            strategy._hourly_prices.append(Decimal("50000"))
+        strategy._current_price = Decimal("65000")  # 30% above
+        strategy._check_directional_pause()
+        assert strategy._grid_paused is True
+
+    def test_pause_when_price_far_below_sma50(self, strategy: GridAdaptiveStrategy) -> None:
+        """Grid pauses when price >25% below SMA50."""
+        for _ in range(50):
+            strategy._hourly_prices.append(Decimal("50000"))
+        strategy._current_price = Decimal("35000")  # 30% below
+        strategy._check_directional_pause()
+        assert strategy._grid_paused is True
+
+    def test_no_pause_when_within_threshold(self, strategy: GridAdaptiveStrategy) -> None:
+        """Grid does not pause when within 25% of SMA50."""
+        for _ in range(50):
+            strategy._hourly_prices.append(Decimal("50000"))
+        strategy._current_price = Decimal("55000")  # 10% above
+        strategy._check_directional_pause()
+        assert strategy._grid_paused is False
+
+    def test_resume_when_price_returns(self, strategy: GridAdaptiveStrategy) -> None:
+        """Grid resumes when price comes back within threshold."""
+        for _ in range(50):
+            strategy._hourly_prices.append(Decimal("50000"))
+
+        # Pause
+        strategy._current_price = Decimal("65000")
+        strategy._check_directional_pause()
+        assert strategy._grid_paused is True
+
+        # Resume
+        strategy._current_price = Decimal("52000")
+        strategy._check_directional_pause()
+        assert strategy._grid_paused is False
+
+    def test_pause_disabled_when_zero(
+        self,
+        settings: Settings,
+        mock_event_bus: AsyncMock,
+        mock_db_manager: MagicMock,
+        mock_analyzer: MagicMock,
+    ) -> None:
+        """Directional pause disabled when directional_pause_pct = 0."""
+        s = GridAdaptiveStrategy(
+            settings,
+            mock_event_bus,
+            mock_db_manager,
+            strategy_params={
+                "grid_levels": 8,
+                "directional_pause_pct": 0.0,
+            },
+            analyzer=mock_analyzer,
+        )
+        s._skip_db_sync = True
+
+        for _ in range(50):
+            s._hourly_prices.append(Decimal("50000"))
+        s._current_price = Decimal("80000")  # 60% above
+        s._check_directional_pause()
+        assert s._grid_paused is False
+
+    def test_sma50_calculation(self, strategy: GridAdaptiveStrategy) -> None:
+        """SMA50 correctly averages 50 prices."""
+        for i in range(50):
+            strategy._hourly_prices.append(Decimal(str(49000 + i * 40)))
+        sma = strategy._get_sma50()
+        assert sma is not None
+        # Average of 49000, 49040, ..., 49960
+        expected = Decimal("49000") + Decimal("49") * Decimal("40") / Decimal("2")
+        assert abs(sma - expected) < Decimal("1")
+
+    def test_sma50_none_with_insufficient_data(self, strategy: GridAdaptiveStrategy) -> None:
+        """SMA50 returns None with fewer than 50 prices."""
+        for _ in range(30):
+            strategy._hourly_prices.append(Decimal("50000"))
+        assert strategy._get_sma50() is None
+
+
+# ---------------------------------------------------------------------------
+# on_ohlc feeds analyzer + tracks hourly prices
 # ---------------------------------------------------------------------------
 
 
@@ -435,6 +583,19 @@ class TestGridAdaptiveOnOhlc:
         """on_ohlc updates current price via parent."""
         await strategy.on_ohlc(_ohlc("50000"))
         assert strategy._current_price == Decimal("50000")
+
+    @pytest.mark.asyncio
+    async def test_on_ohlc_tracks_1h_prices(self, strategy: GridAdaptiveStrategy) -> None:
+        """1h candles are tracked for SMA50."""
+        await strategy.on_ohlc(_ohlc("50000", interval=60))
+        assert len(strategy._hourly_prices) == 1
+        assert strategy._hourly_prices[0] == Decimal("50000")
+
+    @pytest.mark.asyncio
+    async def test_on_ohlc_ignores_5m_for_sma(self, strategy: GridAdaptiveStrategy) -> None:
+        """5m candles are NOT tracked for SMA50."""
+        await strategy.on_ohlc(_ohlc("50000", interval=5))
+        assert len(strategy._hourly_prices) == 0
 
 
 # ---------------------------------------------------------------------------
@@ -480,3 +641,21 @@ class TestGridAdaptiveHandleOhlc:
 
         await s._handle_ohlc(_ohlc("50000"))
         assert s._grid_initialized is True
+
+    @pytest.mark.asyncio
+    async def test_paused_grid_does_not_initialize(
+        self, strategy: GridAdaptiveStrategy, mock_analyzer: MagicMock
+    ) -> None:
+        """Grid does not initialize when directional pause is active."""
+        mock_analyzer.analyze.return_value = _make_analysis(volatility_atr=Decimal("1000"))
+        strategy._running = True
+
+        # Fill SMA50 data and set price far from SMA
+        for _ in range(50):
+            strategy._hourly_prices.append(Decimal("50000"))
+
+        # Price 40% above SMA50 -> should pause
+        await strategy._handle_ohlc(_ohlc("70000"))
+
+        assert strategy._grid_paused is True
+        assert strategy._grid_initialized is False

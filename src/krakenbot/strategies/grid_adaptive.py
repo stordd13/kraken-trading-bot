@@ -11,14 +11,17 @@ Range recalculates every N hours (not continuously, to avoid churning orders).
 Params (from strategies.yaml):
     grid_levels: Number of grid levels (default 8)
     atr_multiplier: Range = ATR * multiplier per side (default 3.0)
-    recalculate_hours: Recalculate range every N hours (default 4)
+    recalculate_hours: Recalculate range every N hours (default 6)
     order_amount_usdc: USDC per grid level (default 25)
-    min_spacing_pct: Minimum spacing to avoid fees > profit (default 0.5)
+    min_spacing_pct: Minimum spacing to avoid fees > profit (default 1.5)
+    max_spacing_pct: Maximum spacing cap (default 4.0)
+    directional_pause_pct: Pause grid when price deviates >N% from SMA50 (default 25.0, 0=disabled)
     allow_short: Allow shorts when price exits grid top (default false, V1)
 """
 
 from __future__ import annotations
 
+from collections import deque
 from datetime import datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
@@ -29,6 +32,9 @@ if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
+
+# Minimum spacing that covers 2x round-trip fees (0.16% * 2 sides * 2 margin)
+MIN_PROFITABLE_SPACING = Decimal("0.64")
 
 
 class GridAdaptiveStrategy(GridSpotStrategy):
@@ -64,13 +70,19 @@ class GridAdaptiveStrategy(GridSpotStrategy):
 
         # Adaptive-specific params
         self.atr_multiplier = Decimal(str(params.get("atr_multiplier", 3.0)))
-        self.recalculate_hours = int(params.get("recalculate_hours", 4))
-        self.min_spacing_pct = Decimal(str(params.get("min_spacing_pct", 0.5)))
+        self.recalculate_hours = int(params.get("recalculate_hours", 6))
+        self.min_spacing_pct = Decimal(str(params.get("min_spacing_pct", 1.5)))
+        self.max_spacing_pct = Decimal(str(params.get("max_spacing_pct", 4.0)))
+        self.directional_pause_pct = Decimal(str(params.get("directional_pause_pct", 25.0)))
         self.allow_short = bool(params.get("allow_short", False))
 
         # Recalculation tracking
         self._last_recalc_time: datetime | None = None
         self._current_atr: Decimal | None = None
+
+        # Directional pause: SMA50 tracking on 1h prices
+        self._hourly_prices: deque[Decimal] = deque(maxlen=50)
+        self._grid_paused: bool = False
 
         self.logger.debug(
             "grid_adaptive_initialized",
@@ -78,6 +90,8 @@ class GridAdaptiveStrategy(GridSpotStrategy):
             atr_multiplier=float(self.atr_multiplier),
             recalculate_hours=self.recalculate_hours,
             min_spacing_pct=float(self.min_spacing_pct),
+            max_spacing_pct=float(self.max_spacing_pct),
+            directional_pause_pct=float(self.directional_pause_pct),
         )
 
     # ------------------------------------------------------------------
@@ -96,8 +110,11 @@ class GridAdaptiveStrategy(GridSpotStrategy):
                 "atr_multiplier": float(self.atr_multiplier),
                 "recalculate_hours": self.recalculate_hours,
                 "min_spacing_pct": float(self.min_spacing_pct),
+                "max_spacing_pct": float(self.max_spacing_pct),
+                "directional_pause_pct": float(self.directional_pause_pct),
                 "allow_short": self.allow_short,
                 "current_atr": float(self._current_atr) if self._current_atr else None,
+                "grid_paused": self._grid_paused,
             }
         )
         return config
@@ -116,6 +133,13 @@ class GridAdaptiveStrategy(GridSpotStrategy):
             interval = ohlc_data.get("interval", 5)
             self.analyzer.update(ohlc_data, interval)
 
+        # Track 1h prices for SMA50 (directional pause)
+        interval = ohlc_data.get("interval", 5)
+        if interval == 60:
+            close = ohlc_data.get("close")
+            if close is not None:
+                self._hourly_prices.append(Decimal(str(close)))
+
     async def _handle_ohlc(self, data: dict[str, Any]) -> None:
         """Override to add periodic recalculation check."""
         if not self._running:
@@ -132,8 +156,13 @@ class GridAdaptiveStrategy(GridSpotStrategy):
             if atr is not None:
                 self._current_atr = atr
 
+            # Check directional pause
+            self._check_directional_pause()
+
             # Initialize grid on first price (using ATR range if available)
             if not self._grid_initialized:
+                if self._grid_paused:
+                    return
                 if self._current_atr is not None:
                     self._update_range_from_atr(self._current_price)
                 orders = self.initialize_grid(self._current_price)
@@ -143,12 +172,12 @@ class GridAdaptiveStrategy(GridSpotStrategy):
                         await self._emit_grid_signal(order)
                 return
 
-            # Check periodic recalculation
-            if self._should_recalculate():
+            # Check periodic recalculation (skip if paused)
+            if not self._grid_paused and self._should_recalculate():
                 await self._recalculate_grid()
 
-            # Check rebalance (from parent)
-            if self._should_rebalance(self._current_price):
+            # Check rebalance (skip if paused)
+            if not self._grid_paused and self._should_rebalance(self._current_price):
                 await self._rebalance_grid(self._current_price)
 
         except Exception as e:
@@ -157,6 +186,47 @@ class GridAdaptiveStrategy(GridSpotStrategy):
                 error=str(e),
                 error_type=type(e).__name__,
                 exc_info=e,
+            )
+
+    # ------------------------------------------------------------------
+    # Directional pause
+    # ------------------------------------------------------------------
+
+    def _get_sma50(self) -> Decimal | None:
+        """Calculate SMA50 from hourly price history."""
+        if len(self._hourly_prices) < 50:
+            return None
+        return sum(self._hourly_prices) / Decimal(str(len(self._hourly_prices)))
+
+    def _check_directional_pause(self) -> None:
+        """Pause grid when price deviates too far from SMA50."""
+        if self.directional_pause_pct <= 0 or self._current_price is None:
+            self._grid_paused = False
+            return
+
+        sma50 = self._get_sma50()
+        if sma50 is None or sma50 <= 0:
+            return
+
+        deviation_pct = abs(self._current_price - sma50) / sma50 * Decimal("100")
+        was_paused = self._grid_paused
+        self._grid_paused = deviation_pct > self.directional_pause_pct
+
+        if self._grid_paused and not was_paused:
+            self.logger.info(
+                "grid_adaptive_paused",
+                deviation_pct=float(deviation_pct),
+                threshold_pct=float(self.directional_pause_pct),
+                current_price=float(self._current_price),
+                sma50=float(sma50),
+            )
+        elif not self._grid_paused and was_paused:
+            self.logger.info(
+                "grid_adaptive_resumed",
+                deviation_pct=float(deviation_pct),
+                threshold_pct=float(self.directional_pause_pct),
+                current_price=float(self._current_price),
+                sma50=float(sma50),
             )
 
     # ------------------------------------------------------------------
@@ -178,6 +248,7 @@ class GridAdaptiveStrategy(GridSpotStrategy):
         """Update grid range parameters based on current ATR.
 
         Computes range_size_pct and grid_spacing_pct from ATR value.
+        Clamps spacing between effective_min and max_spacing_pct.
         """
         if self._current_atr is None or current_price <= 0:
             return
@@ -189,9 +260,15 @@ class GridAdaptiveStrategy(GridSpotStrategy):
         # Spacing = total range / grid levels
         spacing_pct = total_range_pct / Decimal(str(self.grid_levels))
 
-        # Enforce minimum spacing
-        if spacing_pct < self.min_spacing_pct:
-            spacing_pct = self.min_spacing_pct
+        # Enforce profitability floor and min_spacing
+        effective_min = max(self.min_spacing_pct, MIN_PROFITABLE_SPACING)
+        if spacing_pct < effective_min:
+            spacing_pct = effective_min
+            total_range_pct = spacing_pct * Decimal(str(self.grid_levels))
+
+        # Enforce max spacing
+        if spacing_pct > self.max_spacing_pct:
+            spacing_pct = self.max_spacing_pct
             total_range_pct = spacing_pct * Decimal(str(self.grid_levels))
 
         self.range_size_pct = total_range_pct

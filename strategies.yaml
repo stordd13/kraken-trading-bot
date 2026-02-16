@@ -15,7 +15,7 @@ strategies:
     enabled: true
     bot_id: grid_spot_prod
     budget:
-      max_open_positions: 10
+      max_open_positions: 15
       daily_loss_limit_eur: 15.0
       max_position_pct: 40.0
       position_size_multiplier: 1.0
@@ -23,11 +23,11 @@ strategies:
       exit_type: grid
       label: "Grid Spot"
     params:
-      grid_levels: 10
-      grid_spacing_pct: 2.0
-      range_size_pct: 20.0
-      rebalance_threshold_pct: 5.0
-      order_amount_usdc: 30
+      grid_levels: 15
+      grid_spacing_pct: 1.5
+      range_size_pct: 40.0
+      rebalance_threshold_pct: 12.0
+      order_amount_usdc: 20
 
   - name: trend_following
     enabled: true
@@ -44,9 +44,11 @@ strategies:
       ema_fast_period: 20
       ema_slow_period: 50
       trailing_stop_pct: 6.0
-      take_profit_pct: 20.0
-      max_holding_days: 21
+      trailing_activation_pct: 3.0
+      take_profit_pct: 25.0
+      max_holding_days: 30
       hard_stop_below_ema50: true
+      min_cross_strength_pct: 0.1
 
   - name: grid_adaptive
     enabled: true
@@ -62,9 +64,11 @@ strategies:
     params:
       grid_levels: 8
       atr_multiplier: 3.0
-      recalculate_hours: 4
+      recalculate_hours: 6
       order_amount_usdc: 25
-      min_spacing_pct: 0.5
+      min_spacing_pct: 1.5
+      max_spacing_pct: 4.0
+      directional_pause_pct: 25.0
       allow_short: false
 
   # === DESACTIVEES (gardees pour backtest/reference) ===

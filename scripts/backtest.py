@@ -1291,7 +1291,15 @@ class GridBacktester:
 
         # For adaptive grid: ATR-based params
         self.atr_multiplier = Decimal(str(self._strategy_params.get("atr_multiplier", 3.0)))
-        self.min_spacing_pct = Decimal(str(self._strategy_params.get("min_spacing_pct", 0.5)))
+        self.min_spacing_pct = Decimal(str(self._strategy_params.get("min_spacing_pct", 1.5)))
+        self.max_spacing_pct = Decimal(str(self._strategy_params.get("max_spacing_pct", 4.0)))
+        self.directional_pause_pct = Decimal(
+            str(self._strategy_params.get("directional_pause_pct", 25.0))
+        )
+
+        # Directional pause tracking
+        self._hourly_prices: list[Decimal] = []
+        self._grid_paused: bool = False
 
     def _initialize_grid(self, current_price: Decimal) -> None:
         """Initialize the grid around the current price."""
@@ -1357,6 +1365,12 @@ class GridBacktester:
         # Place paired sell at upper level
         sell_price = fill_price * (Decimal("1") + self.grid_spacing_pct / Decimal("100"))
         sell_price = sell_price.quantize(Decimal("0.1"))
+
+        # Ensure sell price is profitable (covers 2x round-trip fees = 0.64%)
+        min_profitable_sell = fill_price * Decimal("1.0064")
+        if sell_price < min_profitable_sell:
+            sell_price = min_profitable_sell.quantize(Decimal("0.1"))
+
         self.active_sell_orders.append(
             {
                 "price": sell_price,
@@ -1431,12 +1445,36 @@ class GridBacktester:
         total_range_pct = (half_range * Decimal("2")) / current_price * Decimal("100")
         spacing_pct = total_range_pct / Decimal(str(self.grid_levels))
 
-        if spacing_pct < self.min_spacing_pct:
-            spacing_pct = self.min_spacing_pct
+        # Enforce profitability floor and min_spacing
+        min_profitable = Decimal("0.64")
+        effective_min = max(self.min_spacing_pct, min_profitable)
+        if spacing_pct < effective_min:
+            spacing_pct = effective_min
+            total_range_pct = spacing_pct * Decimal(str(self.grid_levels))
+
+        # Enforce max spacing
+        if spacing_pct > self.max_spacing_pct:
+            spacing_pct = self.max_spacing_pct
             total_range_pct = spacing_pct * Decimal(str(self.grid_levels))
 
         self.range_size_pct = total_range_pct
         self.grid_spacing_pct = spacing_pct
+
+    def _check_directional_pause(self, current_price: Decimal) -> None:
+        """Check and update directional pause state."""
+        if self.directional_pause_pct <= 0:
+            self._grid_paused = False
+            return
+
+        if len(self._hourly_prices) < 50:
+            return
+
+        sma50 = sum(self._hourly_prices[-50:]) / Decimal("50")
+        if sma50 <= 0:
+            return
+
+        deviation_pct = abs(current_price - sma50) / sma50 * Decimal("100")
+        self._grid_paused = deviation_pct > self.directional_pause_pct
 
     async def run(self, pair: str, start_time: datetime, end_time: datetime) -> BacktestMetrics:
         """Run grid backtest."""
@@ -1501,17 +1539,26 @@ class GridBacktester:
                 }
                 analyzer.update(ohlc_data, interval)
 
+                # Track 1h prices for SMA50 (directional pause)
+                if interval == 60:
+                    self._hourly_prices.append(current_price)
+
                 # Update ATR range for adaptive grid
                 if is_tradeable and interval == 60:
                     analysis = analyzer.analyze()
                     if analysis is not None and analysis.volatility_atr:
                         self._update_range_from_atr(current_price, analysis.volatility_atr)
 
+                # Check directional pause
+                self._check_directional_pause(current_price)
+
             if not is_tradeable:
                 continue
 
             # Initialize grid on first tradeable candle
             if not self._grid_initialized:
+                if self._grid_paused:
+                    continue
                 self._initialize_grid(current_price)
                 continue
 
@@ -1541,8 +1588,9 @@ class GridBacktester:
             for order in filled_sells:
                 self._process_sell_fill(order, candle)
 
-            # Check rebalance
-            self._check_rebalance(current_price)
+            # Check rebalance (skip if directional pause active)
+            if not self._grid_paused:
+                self._check_rebalance(current_price)
 
             # Track equity
             equity = self.usdc_balance + self.btc_held * current_price
