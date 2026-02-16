@@ -351,6 +351,7 @@ class BacktestEngine:
             "adaptive",
             "capitulation",
             "bear_short",
+            "trend_following",
         ]
 
         if signal.signal_type == SignalType.BUY and (is_multi or not self.in_position):
@@ -899,17 +900,33 @@ class BacktestEngine:
                 analyzer=analyzer,
                 strategy_params=strategy_params,
             )
+        elif self.strategy_name == "trend_following":
+            from krakenbot.strategies.trend_following import TrendFollowingStrategy
+
+            strategy_params = self._load_strategy_params("trend_following")
+            self.strategy = TrendFollowingStrategy(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                strategy_params=strategy_params,
+            )
         else:
             raise ValueError(
                 f"Unknown strategy: {self.strategy_name}. "
-                f"Available: threshold_rolling, adaptive, capitulation, bear_short"
+                f"Available: threshold_rolling, adaptive, capitulation, "
+                f"bear_short, trend_following, grid_spot, grid_adaptive"
             )
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies
         self.strategy._skip_db_sync = True
 
-        # Build replay sequence (with MTF warmup for adaptive/capitulation)
-        needs_mtf = self.strategy_name in ["adaptive", "capitulation", "bear_short"]
+        # Build replay sequence (with MTF warmup for adaptive/capitulation/trend_following)
+        needs_mtf = self.strategy_name in [
+            "adaptive",
+            "capitulation",
+            "bear_short",
+            "trend_following",
+        ]
         if needs_mtf:
             replay_sequence = await self._build_replay_sequence(pair, start_time, end_time, candles)
         else:
@@ -1206,6 +1223,532 @@ class BacktestEngine:
             )
 
 
+class GridBacktester:
+    """Backtest engine specialized for grid strategies.
+
+    Grid strategies manage multiple simultaneous limit orders.
+    Fills are detected by checking candle low/high against all active levels.
+    """
+
+    GRID_STRATEGIES = {"grid_spot", "grid_adaptive"}
+
+    def __init__(
+        self,
+        settings: Settings,
+        db_manager: DatabaseManager,
+        strategy_name: str = "grid_spot",
+        candle_interval: int = 5,
+    ):
+        """Initialize grid backtester."""
+        self.settings = settings
+        self.db_manager = db_manager
+        self.strategy_name = strategy_name
+        self.candle_interval = candle_interval
+        self.logger = get_logger().bind(component="grid_backtest")
+
+        # Simulation state
+        self.usdc_balance = Decimal("1000")
+        self.btc_held = Decimal("0")
+
+        # Grid state
+        self.active_buy_orders: list[dict[str, Decimal]] = []  # {price, amount_usdc}
+        self.active_sell_orders: list[dict[str, Any]] = []  # {price, amount_btc, entry_price}
+
+        # Grid metrics
+        self.pairs_completed: int = 0
+        self.grid_profit: Decimal = Decimal("0")
+        self.total_fees: Decimal = Decimal("0")
+        self.total_orders_placed: int = 0
+        self.rebalance_count: int = 0
+
+        # Standard metrics
+        self.metrics = BacktestMetrics(starting_balance=self.usdc_balance)
+        self.equity_curve: list[tuple[datetime, Decimal]] = []
+
+        # EventBus for strategy init
+        self.event_bus = EventBus()
+
+        # Strategy params
+        self._strategy_params: dict[str, Any] = {}
+        if settings.multi_strategy.enabled:
+            for s in settings.multi_strategy.strategies:
+                if s.name == strategy_name:
+                    self._strategy_params = s.params or {}
+                    break
+
+        # Grid config from strategy params
+        self.grid_levels = int(self._strategy_params.get("grid_levels", 10))
+        self.grid_spacing_pct = Decimal(str(self._strategy_params.get("grid_spacing_pct", 2.0)))
+        self.range_size_pct = Decimal(str(self._strategy_params.get("range_size_pct", 20.0)))
+        self.rebalance_threshold_pct = Decimal(
+            str(self._strategy_params.get("rebalance_threshold_pct", 5.0))
+        )
+        self.order_amount_usdc = Decimal(str(self._strategy_params.get("order_amount_usdc", 30)))
+
+        # Grid center tracking
+        self._grid_center: Decimal | None = None
+        self._grid_initialized = False
+
+        # For adaptive grid: ATR-based params
+        self.atr_multiplier = Decimal(str(self._strategy_params.get("atr_multiplier", 3.0)))
+        self.min_spacing_pct = Decimal(str(self._strategy_params.get("min_spacing_pct", 0.5)))
+
+    def _initialize_grid(self, current_price: Decimal) -> None:
+        """Initialize the grid around the current price."""
+        half_range = current_price * self.range_size_pct / Decimal("200")
+        grid_low = current_price - half_range
+        grid_high = current_price + half_range
+        self._grid_center = current_price
+
+        self.active_buy_orders.clear()
+        self.active_sell_orders.clear()
+
+        for i in range(self.grid_levels):
+            ratio = Decimal(str(i)) / Decimal(str(self.grid_levels - 1))
+            level_price = grid_low * (grid_high / grid_low) ** ratio
+            level_price = level_price.quantize(Decimal("0.1"))
+
+            if level_price < current_price:
+                self.active_buy_orders.append(
+                    {"price": level_price, "amount_usdc": self.order_amount_usdc}
+                )
+                self.total_orders_placed += 1
+            elif level_price > current_price:
+                # Sell orders need BTC — initially empty, they get created from fills
+                pass
+
+        self._grid_initialized = True
+        self.logger.info(
+            "grid_backtest_initialized",
+            center=float(current_price),
+            buy_levels=len(self.active_buy_orders),
+            low=float(grid_low),
+            high=float(grid_high),
+        )
+
+    def _process_buy_fill(self, order: dict[str, Decimal], candle: OHLCData) -> None:
+        """Process a buy order fill."""
+        fill_price = order["price"]
+        amount_usdc = order["amount_usdc"]
+
+        if self.usdc_balance < amount_usdc:
+            return  # Insufficient balance
+
+        fee = amount_usdc * Decimal("0.0016")  # 0.16% maker
+        net_usdc = amount_usdc - fee
+        btc_bought = net_usdc / fill_price
+
+        self.usdc_balance -= amount_usdc
+        self.btc_held += btc_bought
+        self.total_fees += fee
+
+        # Record trade
+        self.metrics.trades.append(
+            BacktestTrade(
+                timestamp=candle.timestamp,
+                side=TradeSide.BUY,
+                price=fill_price,
+                amount_usdc=amount_usdc,
+                amount_crypto=btc_bought,
+                fee=fee,
+            )
+        )
+
+        # Place paired sell at upper level
+        sell_price = fill_price * (Decimal("1") + self.grid_spacing_pct / Decimal("100"))
+        sell_price = sell_price.quantize(Decimal("0.1"))
+        self.active_sell_orders.append(
+            {
+                "price": sell_price,
+                "amount_btc": btc_bought,
+                "entry_price": fill_price,
+            }
+        )
+        self.total_orders_placed += 2  # buy filled + sell placed
+
+    def _process_sell_fill(self, order: dict[str, Any], candle: OHLCData) -> None:
+        """Process a sell order fill."""
+        fill_price = order["price"]
+        amount_btc = order["amount_btc"]
+        entry_price = order["entry_price"]
+
+        if self.btc_held < amount_btc:
+            return  # Insufficient BTC
+
+        gross_usdc = amount_btc * fill_price
+        fee = gross_usdc * Decimal("0.0016")  # 0.16% maker
+        net_usdc = gross_usdc - fee
+
+        self.btc_held -= amount_btc
+        self.usdc_balance += net_usdc
+        self.total_fees += fee
+
+        # Calculate profit
+        cost_basis = amount_btc * entry_price
+        pnl = net_usdc - cost_basis
+        self.grid_profit += pnl
+        self.metrics.total_pnl += pnl
+        self.pairs_completed += 1
+
+        if pnl > 0:
+            self.metrics.winning_trades += 1
+        else:
+            self.metrics.losing_trades += 1
+
+        # Record trade
+        self.metrics.trades.append(
+            BacktestTrade(
+                timestamp=candle.timestamp,
+                side=TradeSide.SELL,
+                price=fill_price,
+                amount_usdc=gross_usdc,
+                amount_crypto=amount_btc,
+                fee=fee,
+                pnl=pnl,
+            )
+        )
+
+        # Place paired buy at lower level
+        buy_price = fill_price * (Decimal("1") - self.grid_spacing_pct / Decimal("100"))
+        buy_price = buy_price.quantize(Decimal("0.1"))
+        self.active_buy_orders.append({"price": buy_price, "amount_usdc": self.order_amount_usdc})
+        self.total_orders_placed += 1
+
+    def _check_rebalance(self, current_price: Decimal) -> bool:
+        """Check and execute rebalance if needed."""
+        if self._grid_center is None:
+            return False
+        deviation_pct = abs(current_price - self._grid_center) / self._grid_center * Decimal("100")
+        if deviation_pct > self.rebalance_threshold_pct:
+            self._initialize_grid(current_price)
+            self.rebalance_count += 1
+            return True
+        return False
+
+    def _update_range_from_atr(self, current_price: Decimal, atr_value: Decimal) -> None:
+        """Update grid range based on ATR (for grid_adaptive)."""
+        half_range = atr_value * self.atr_multiplier
+        total_range_pct = (half_range * Decimal("2")) / current_price * Decimal("100")
+        spacing_pct = total_range_pct / Decimal(str(self.grid_levels))
+
+        if spacing_pct < self.min_spacing_pct:
+            spacing_pct = self.min_spacing_pct
+            total_range_pct = spacing_pct * Decimal(str(self.grid_levels))
+
+        self.range_size_pct = total_range_pct
+        self.grid_spacing_pct = spacing_pct
+
+    async def run(self, pair: str, start_time: datetime, end_time: datetime) -> BacktestMetrics:
+        """Run grid backtest."""
+        self.metrics.start_time = start_time
+        self.metrics.end_time = end_time
+        self.metrics.duration_days = (end_time - start_time).total_seconds() / 86400
+
+        self.settings.trading.pair = pair
+
+        # Load candles
+        candles = await self._load_candles(pair, start_time, end_time)
+        if len(candles) < 10:
+            raise ValueError(f"Insufficient data: only {len(candles)} candles")
+
+        self.logger.info(
+            "grid_backtest_started",
+            strategy=self.strategy_name,
+            pair=pair,
+            candles=len(candles),
+            period=f"{start_time.date()} to {end_time.date()}",
+        )
+
+        # For grid_adaptive: load MTF candles and create analyzer
+        analyzer = None
+        replay_sequence: list[tuple[OHLCData, int, bool]] = []
+
+        if self.strategy_name == "grid_adaptive":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+
+            analyzer = MultiTimeframeAnalyzer()
+
+            # Load 1h warmup candles (for ATR)
+            warmup_start = start_time - timedelta(hours=72)
+            candles_1h = await self._load_candles_for_interval(pair, 60, warmup_start, end_time)
+
+            # Build replay: 1h warmup + trading candles
+            for c in candles_1h:
+                is_tradeable = c.timestamp >= start_time
+                replay_sequence.append((c, 60, is_tradeable))
+            for c in candles:
+                replay_sequence.append((c, self.candle_interval, True))
+
+            # Sort by timestamp, higher intervals first on ties
+            replay_sequence.sort(key=lambda x: (x[0].timestamp, -x[1]))
+        else:
+            replay_sequence = [(c, self.candle_interval, True) for c in candles]
+
+        # Replay
+        for candle, interval, is_tradeable in replay_sequence:
+            current_price = candle.close
+
+            # Feed analyzer (for grid_adaptive ATR)
+            if analyzer is not None:
+                ohlc_data = {
+                    "timestamp": candle.timestamp,
+                    "open": float(candle.open),
+                    "high": float(candle.high),
+                    "low": float(candle.low),
+                    "close": float(candle.close),
+                    "volume": float(candle.volume),
+                    "interval": interval,
+                }
+                analyzer.update(ohlc_data, interval)
+
+                # Update ATR range for adaptive grid
+                if is_tradeable and interval == 60:
+                    analysis = analyzer.analyze()
+                    if analysis is not None and analysis.volatility_atr:
+                        self._update_range_from_atr(current_price, analysis.volatility_atr)
+
+            if not is_tradeable:
+                continue
+
+            # Initialize grid on first tradeable candle
+            if not self._grid_initialized:
+                self._initialize_grid(current_price)
+                continue
+
+            # Check buy fills: candle.low <= buy_price
+            filled_buys = []
+            remaining_buys = []
+            for order in self.active_buy_orders:
+                if candle.low <= order["price"]:
+                    filled_buys.append(order)
+                else:
+                    remaining_buys.append(order)
+            self.active_buy_orders = remaining_buys
+
+            for order in filled_buys:
+                self._process_buy_fill(order, candle)
+
+            # Check sell fills: candle.high >= sell_price
+            filled_sells = []
+            remaining_sells = []
+            for order in self.active_sell_orders:
+                if candle.high >= order["price"]:
+                    filled_sells.append(order)
+                else:
+                    remaining_sells.append(order)
+            self.active_sell_orders = remaining_sells
+
+            for order in filled_sells:
+                self._process_sell_fill(order, candle)
+
+            # Check rebalance
+            self._check_rebalance(current_price)
+
+            # Track equity
+            equity = self.usdc_balance + self.btc_held * current_price
+            self.equity_curve.append((candle.timestamp, equity))
+
+        # Calculate final metrics
+        self._calculate_final_metrics()
+
+        return self.metrics
+
+    async def _load_candles(
+        self, pair: str, start_time: datetime, end_time: datetime
+    ) -> list[OHLCData]:
+        """Load OHLC candles from database."""
+        async with self.db_manager.session() as session:
+            stmt = (
+                select(OHLCData)
+                .where(OHLCData.pair == pair)
+                .where(OHLCData.interval == self.candle_interval)
+                .where(OHLCData.timestamp >= start_time)
+                .where(OHLCData.timestamp <= end_time)
+                .order_by(OHLCData.timestamp.asc())
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+
+    async def _load_candles_for_interval(
+        self, pair: str, interval: int, start_time: datetime, end_time: datetime
+    ) -> list[OHLCData]:
+        """Load OHLC candles for a specific interval."""
+        async with self.db_manager.session() as session:
+            stmt = (
+                select(OHLCData)
+                .where(OHLCData.pair == pair)
+                .where(OHLCData.interval == interval)
+                .where(OHLCData.timestamp >= start_time)
+                .where(OHLCData.timestamp <= end_time)
+                .order_by(OHLCData.timestamp.asc())
+            )
+            result = await session.execute(stmt)
+            return list(result.scalars().all())
+
+    def _calculate_final_metrics(self) -> None:
+        """Calculate final performance metrics."""
+        self.metrics.total_trades = self.pairs_completed
+        self.metrics.total_fees = self.total_fees
+        self.metrics.net_pnl = self.metrics.total_pnl - self.total_fees
+
+        if self.metrics.total_trades > 0:
+            self.metrics.win_rate = self.metrics.winning_trades / self.metrics.total_trades
+
+        # Average win/loss
+        winning_pnls = [t.pnl for t in self.metrics.trades if t.pnl and t.pnl > 0]
+        losing_pnls = [t.pnl for t in self.metrics.trades if t.pnl and t.pnl < 0]
+
+        if winning_pnls:
+            self.metrics.average_win = sum(winning_pnls, Decimal("0")) / len(winning_pnls)
+        if losing_pnls:
+            self.metrics.average_loss = sum(losing_pnls, Decimal("0")) / len(losing_pnls)
+
+        # Profit factor
+        total_wins = sum(winning_pnls, Decimal("0"))
+        total_losses = abs(sum(losing_pnls, Decimal("0")))
+        if total_losses > 0:
+            self.metrics.profit_factor = float(total_wins / total_losses)
+
+        # Ending balance (include unrealized BTC value)
+        if self.equity_curve:
+            self.metrics.ending_balance = self.equity_curve[-1][1]
+        else:
+            self.metrics.ending_balance = self.usdc_balance
+
+        # Total return
+        if self.metrics.starting_balance > 0:
+            self.metrics.total_return_pct = float(
+                (self.metrics.ending_balance - self.metrics.starting_balance)
+                / self.metrics.starting_balance
+                * 100
+            )
+
+        # Max drawdown
+        peak = self.metrics.starting_balance
+        max_dd = Decimal("0")
+        for _ts, equity in self.equity_curve:
+            if equity > peak:
+                peak = equity
+            drawdown = peak - equity
+            if drawdown > max_dd:
+                max_dd = drawdown
+        self.metrics.max_drawdown = max_dd
+        if peak > 0:
+            self.metrics.max_drawdown_pct = float((max_dd / peak) * 100)
+
+        # Sharpe ratio
+        if len(self.equity_curve) > 1:
+            returns = []
+            for i in range(1, len(self.equity_curve)):
+                prev_eq = self.equity_curve[i - 1][1]
+                curr_eq = self.equity_curve[i][1]
+                if prev_eq > 0:
+                    returns.append(float((curr_eq - prev_eq) / prev_eq))
+            if returns:
+                avg_ret = sum(returns) / len(returns)
+                variance = sum((r - avg_ret) ** 2 for r in returns) / len(returns)
+                std_dev = variance**0.5
+                if std_dev > 0:
+                    self.metrics.sharpe_ratio = (avg_ret / std_dev) * (365**0.5)
+
+                # Sortino
+                neg_returns = [r for r in returns if r < 0]
+                if neg_returns:
+                    ds_var = sum(r**2 for r in neg_returns) / len(returns)
+                    ds_std = ds_var**0.5
+                    if ds_std > 0:
+                        self.metrics.sortino_ratio = (avg_ret / ds_std) * (365**0.5)
+
+    def print_report(self) -> None:
+        """Print grid-specific backtest report."""
+        print("\n" + "=" * 80)
+        print("GRID BACKTEST REPORT".center(80))
+        print("=" * 80)
+
+        print(f"\n{'Strategy:':<30} {self.strategy_name}")
+        if self.metrics.start_time and self.metrics.end_time:
+            print(
+                f"{'Period:':<30} {self.metrics.start_time.date()} to {self.metrics.end_time.date()}"
+            )
+        print(f"{'Duration:':<30} {self.metrics.duration_days:.1f} days")
+
+        print("\n" + "-" * 80)
+        print("GRID METRICS")
+        print("-" * 80)
+
+        print(f"{'Grid Pairs Completed:':<30} {self.pairs_completed}")
+        print(f"{'Grid Profit:':<30} {float(self.grid_profit):+.2f} USDC")
+        print(f"{'Total Fees:':<30} {float(self.total_fees):.2f} USDC")
+        print(f"{'Net Grid Profit:':<30} {float(self.grid_profit - self.total_fees):+.2f} USDC")
+
+        print(f"{'BTC Held (unrealized):':<30} {float(self.btc_held):.6f} BTC")
+
+        efficiency = (
+            (self.pairs_completed * 2) / self.total_orders_placed * 100
+            if self.total_orders_placed > 0
+            else 0
+        )
+        print(f"{'Grid Efficiency:':<30} {efficiency:.1f}%")
+        print(f"{'Total Orders Placed:':<30} {self.total_orders_placed}")
+        print(f"{'Rebalances:':<30} {self.rebalance_count}")
+
+        print("\n" + "-" * 80)
+        print("PERFORMANCE SUMMARY")
+        print("-" * 80)
+
+        print(f"{'Starting Balance:':<30} {float(self.metrics.starting_balance):.2f} USDC")
+        print(f"{'Ending Balance:':<30} {float(self.metrics.ending_balance):.2f} USDC")
+        print(f"{'Total Return:':<30} {self.metrics.total_return_pct:+.2f}%")
+        print(f"{'Net P&L:':<30} {float(self.metrics.net_pnl):+.2f} USDC")
+
+        print("\n" + "-" * 80)
+        print("RISK METRICS")
+        print("-" * 80)
+
+        print(f"{'Max Drawdown:':<30} {float(self.metrics.max_drawdown):.2f} USDC")
+        print(f"{'Max Drawdown %:':<30} {self.metrics.max_drawdown_pct:.2f}%")
+        print(f"{'Sharpe Ratio:':<30} {self.metrics.sharpe_ratio:.2f}")
+        print(f"{'Sortino Ratio:':<30} {self.metrics.sortino_ratio:.2f}")
+
+        print("\n" + "=" * 80 + "\n")
+
+    async def save_to_database(self, pair: str, run_name: str | None = None) -> BacktestRun:
+        """Save grid backtest results to database."""
+        if run_name is None:
+            run_name = f"{self.strategy_name}_{self.metrics.start_time.date()}_to_{self.metrics.end_time.date()}"
+
+        backtest_run = BacktestRun(
+            run_name=run_name,
+            strategy=self.strategy_name,
+            pair=pair,
+            start_time=self.metrics.start_time,
+            end_time=self.metrics.end_time,
+            starting_balance=self.metrics.starting_balance,
+            ending_balance=self.metrics.ending_balance,
+            total_trades=self.metrics.total_trades,
+            winning_trades=self.metrics.winning_trades,
+            losing_trades=self.metrics.losing_trades,
+            win_rate=Decimal(str(round(self.metrics.win_rate, 4))),
+            total_return_pct=Decimal(str(round(self.metrics.total_return_pct, 4))),
+            max_drawdown_pct=Decimal(str(round(self.metrics.max_drawdown_pct, 4))),
+            total_pnl=self.metrics.total_pnl,
+            net_pnl=self.metrics.net_pnl,
+            sharpe_ratio=Decimal(str(round(self.metrics.sharpe_ratio, 4))),
+            sortino_ratio=Decimal(str(round(self.metrics.sortino_ratio, 4))),
+            profit_factor=Decimal(str(round(self.metrics.profit_factor, 4))),
+            average_win=self.metrics.average_win,
+            average_loss=self.metrics.average_loss,
+            total_fees=self.total_fees,
+        )
+
+        async with self.db_manager.session() as session:
+            session.add(backtest_run)
+            await session.commit()
+            await session.refresh(backtest_run)
+
+        return backtest_run
+
+
 async def main() -> None:
     """CLI entry point for backtesting."""
     parser = argparse.ArgumentParser(description="Backtest KrakenBot trading strategies")
@@ -1387,13 +1930,22 @@ async def main() -> None:
                 print("\n✅ Good sign: Test performance matches or exceeds train performance.\n")
 
         else:
-            # Standard single backtest
-            engine = BacktestEngine(
-                settings,
-                db_manager,
-                strategy_name=args.strategy,
-                candle_interval=args.interval,
-            )
+            # Standard single backtest — route grid strategies to GridBacktester
+            if args.strategy in GridBacktester.GRID_STRATEGIES:
+                engine = GridBacktester(
+                    settings,
+                    db_manager,
+                    strategy_name=args.strategy,
+                    candle_interval=args.interval,
+                )
+            else:
+                engine = BacktestEngine(
+                    settings,
+                    db_manager,
+                    strategy_name=args.strategy,
+                    candle_interval=args.interval,
+                )
+
             await engine.run(args.pair, start_time, end_time)
 
             # Print report
@@ -1405,9 +1957,10 @@ async def main() -> None:
                 print(f"\n✅ Backtest results saved to database with ID: {backtest_run.id}")
                 print(f"   Run name: {backtest_run.run_name}")
 
-                # Save individual trades for dashboard visualization
-                await engine.save_trades_to_database(str(backtest_run.id), args.pair)
-                print(f"   Trades saved: {len(engine.metrics.trades)}")
+                # Save individual trades for dashboard visualization (signal-based only)
+                if hasattr(engine, "save_trades_to_database"):
+                    await engine.save_trades_to_database(str(backtest_run.id), args.pair)
+                    print(f"   Trades saved: {len(engine.metrics.trades)}")
                 print("   View in dashboard: python scripts/dashboard.py\n")
 
     finally:
