@@ -1778,6 +1778,7 @@ class GridBacktester:
             losing_trades=self.metrics.losing_trades,
             win_rate=Decimal(str(round(self.metrics.win_rate, 4))),
             total_return_pct=Decimal(str(round(self.metrics.total_return_pct, 4))),
+            max_drawdown=self.metrics.max_drawdown or Decimal("0"),
             max_drawdown_pct=Decimal(str(round(self.metrics.max_drawdown_pct, 4))),
             total_pnl=self.metrics.total_pnl,
             net_pnl=self.metrics.net_pnl,
