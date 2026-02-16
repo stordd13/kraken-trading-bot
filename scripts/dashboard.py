@@ -108,9 +108,7 @@ def _build_backtest_strategy_options() -> list[dict[str, str]]:
         "threshold_rolling": "Threshold Rolling",
         "adaptive": "Adaptive",
         "capitulation": "Capitulation",
-        "threshold": "Threshold",
-        "threshold_multi": "Threshold Multi",
-        "technical_indicator": "Technical Indicator",
+        "bear_short": "Bear Short",
     }
     # Add strategies from strategies.yaml not already listed
     if _settings.multi_strategy.enabled:

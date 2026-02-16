@@ -347,7 +347,6 @@ class BacktestEngine:
 
         # Handle multi-position strategies differently
         is_multi = self.strategy_name in [
-            "threshold_multi",
             "threshold_rolling",
             "adaptive",
             "capitulation",
@@ -853,34 +852,10 @@ class BacktestEngine:
         # Override settings pair with backtest pair
         self.settings.trading.pair = pair
 
-        if self.strategy_name == "threshold":
-            from krakenbot.strategies.threshold import ThresholdStrategy
-
-            self.strategy = ThresholdStrategy(
-                event_bus=self.event_bus,
-                db_manager=self.db_manager,
-                settings=self.settings,
-            )
-        elif self.strategy_name == "threshold_multi":
-            from krakenbot.strategies.threshold_multi import ThresholdMultiStrategy
-
-            self.strategy = ThresholdMultiStrategy(
-                event_bus=self.event_bus,
-                db_manager=self.db_manager,
-                settings=self.settings,
-            )
-        elif self.strategy_name == "threshold_rolling":
+        if self.strategy_name == "threshold_rolling":
             from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 
             self.strategy = ThresholdRollingStrategy(
-                event_bus=self.event_bus,
-                db_manager=self.db_manager,
-                settings=self.settings,
-            )
-        elif self.strategy_name == "technical_indicator":
-            from krakenbot.strategies.technical_indicator import TechnicalIndicatorStrategy
-
-            self.strategy = TechnicalIndicatorStrategy(
                 event_bus=self.event_bus,
                 db_manager=self.db_manager,
                 settings=self.settings,
@@ -927,8 +902,7 @@ class BacktestEngine:
         else:
             raise ValueError(
                 f"Unknown strategy: {self.strategy_name}. "
-                f"Available: threshold, threshold_multi, threshold_rolling, "
-                f"technical_indicator, adaptive, capitulation, bear_short"
+                f"Available: threshold_rolling, adaptive, capitulation, bear_short"
             )
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies

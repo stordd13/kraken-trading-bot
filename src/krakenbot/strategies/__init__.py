@@ -4,19 +4,18 @@ This package contains all trading strategies that generate signals
 based on market data analysis.
 
 Available strategies:
-- ThresholdStrategy: Simple mean reversion based on price thresholds
-- TechnicalIndicatorStrategy: RSI + MACD + Bollinger Bands with confluence
+- ThresholdRollingStrategy: Rolling mean reversion with multi-position support
+- AdaptiveStrategy: Adaptive thresholds based on market regime
+- CapitulationStrategy: Crash bounce detection with high conviction
+- BearShortStrategy: Margin shorts in bear markets
+- GridSpotStrategy: Grid trading with limit orders
+- GridAdaptiveStrategy: ATR-based adaptive grid trading
+- TrendFollowingStrategy: EMA cross trend riding
 """
 
 from krakenbot.strategies.base import BaseStrategy, TradingSignal
-from krakenbot.strategies.technical_indicator import TechnicalIndicatorStrategy
-from krakenbot.strategies.threshold import ThresholdStrategy
 
 __all__ = [
-    # Base classes
     "BaseStrategy",
-    # Strategies
-    "ThresholdStrategy",
-    "TechnicalIndicatorStrategy",
     "TradingSignal",
 ]
