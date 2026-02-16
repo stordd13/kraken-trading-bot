@@ -533,6 +533,114 @@ class TestGridBacktestCompat:
 
 
 # ---------------------------------------------------------------------------
+# Min profit on paired sell
+# ---------------------------------------------------------------------------
+
+
+class TestGridMinProfit:
+    """Tests for minimum profit check on paired sell orders."""
+
+    @pytest.mark.asyncio
+    async def test_sell_level_respects_min_profit(self) -> None:
+        """When spacing is tiny, sell level is bumped to min profitable."""
+        settings = Settings(
+            app_name="KrakenBot-Test",
+            environment="testing",
+            log_level=LogLevel.DEBUG,
+            log_json=False,
+            kraken=KrakenSettings(api_key="test_key", api_secret="test_secret"),
+            database=DatabaseSettings(
+                url="postgresql+asyncpg://test:test@localhost:5432/test",
+                echo=False,
+                pool_size=2,
+                max_overflow=2,
+            ),
+            risk=RiskManagementSettings(
+                max_position_pct=5.0,
+                daily_loss_limit_eur=50.0,
+                max_open_positions=10,
+                min_trade_interval_sec=60,
+                emergency_stop_loss_pct=10.0,
+            ),
+            trading=TradingSettings(
+                mode=TradingMode.PAPER,
+                pair="XBT/USDC",
+                default_order_amount_eur=15.0,
+                candle_interval_min=5,
+            ),
+            strategy=StrategySettings(
+                name="grid_spot",
+                buy_threshold_pct=-1.0,
+                sell_threshold_pct=2.0,
+                lookback_periods=5,
+                max_holding_minutes=120,
+            ),
+            multi_strategy=MultiStrategySettings(enabled=False),
+            multi_timeframe=MultiTimeframeSettings(trigger_timeframe=5),
+            order=OrderSettings(limit_buy_offset_pct=0.05),
+        )
+        bus = AsyncMock()
+        bus.subscribe = AsyncMock()
+        bus.unsubscribe = AsyncMock()
+        bus.publish = AsyncMock()
+        db = MagicMock()
+
+        # Very small spacing: 0.1% (below 0.64% threshold)
+        s = GridSpotStrategy(
+            settings,
+            bus,
+            db,
+            strategy_params={
+                "grid_levels": 10,
+                "grid_spacing_pct": 0.1,
+                "range_size_pct": 20.0,
+                "rebalance_threshold_pct": 5.0,
+                "order_amount_usdc": 30,
+            },
+        )
+        s._skip_db_sync = True
+        s._current_timestamp = datetime.now(UTC)
+
+        await s.on_trade_filled(
+            trade_id="T1",
+            pair="XBT/USDC",
+            side="buy",
+            amount=Decimal("0.001"),
+            price=Decimal("50000"),
+            fee=Decimal("0.05"),
+            reference_price=None,
+            position_id=None,
+        )
+
+        pos = s._grid_positions[0]
+        # Min profitable = 50000 * 1.0064 = 50320
+        # Normal spacing would give 50000 * 1.001 = 50050 (too low)
+        assert pos.sell_level >= Decimal("50320")
+
+    @pytest.mark.asyncio
+    async def test_sell_level_unchanged_when_spacing_sufficient(
+        self, strategy: GridSpotStrategy
+    ) -> None:
+        """When spacing (2%) is above min profit, sell level is unchanged."""
+        strategy._current_timestamp = datetime.now(UTC)
+        await strategy.on_trade_filled(
+            trade_id="T1",
+            pair="XBT/USDC",
+            side="buy",
+            amount=Decimal("0.001"),
+            price=Decimal("50000"),
+            fee=Decimal("0.05"),
+            reference_price=None,
+            position_id=None,
+        )
+
+        pos = strategy._grid_positions[0]
+        # Normal spacing: 50000 * 1.02 = 51000 (well above min)
+        expected_sell = Decimal("51000.0")
+        assert pos.sell_level == expected_sell
+
+
+# ---------------------------------------------------------------------------
 # Properties
 # ---------------------------------------------------------------------------
 

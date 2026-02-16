@@ -369,6 +369,11 @@ class GridSpotStrategy(BaseStrategy):
             sell_level = price * (Decimal("1") + self.grid_spacing_pct / Decimal("100"))
             sell_level = sell_level.quantize(Decimal("0.1"))
 
+            # Ensure sell level is profitable (covers 2× round-trip fees = 0.64%)
+            min_profitable_sell = price * Decimal("1.0064")
+            if sell_level < min_profitable_sell:
+                sell_level = min_profitable_sell.quantize(Decimal("0.1"))
+
             pos = GridPosition(
                 entry_price=price,
                 entry_time=now,
