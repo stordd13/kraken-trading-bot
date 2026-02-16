@@ -53,7 +53,10 @@ from krakenbot.strategies.adaptive import AdaptiveStrategy
 from krakenbot.strategies.base import BaseStrategy
 from krakenbot.strategies.bear_short import BearShortStrategy
 from krakenbot.strategies.capitulation import CapitulationStrategy
+from krakenbot.strategies.grid_adaptive import GridAdaptiveStrategy
+from krakenbot.strategies.grid_spot import GridSpotStrategy
 from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
+from krakenbot.strategies.trend_following import TrendFollowingStrategy
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
@@ -65,6 +68,9 @@ STRATEGY_REGISTRY: dict[str, type[BaseStrategy]] = {
     "adaptive": AdaptiveStrategy,
     "capitulation": CapitulationStrategy,
     "bear_short": BearShortStrategy,
+    "grid_spot": GridSpotStrategy,
+    "grid_adaptive": GridAdaptiveStrategy,
+    "trend_following": TrendFollowingStrategy,
 }
 
 

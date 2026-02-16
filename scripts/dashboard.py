@@ -60,6 +60,7 @@ _EXIT_TYPE_COLORS = {
     "fixed_pct": "rgba(255, 215, 0, 0.5)",
     "trailing_stop": "rgba(100, 200, 255, 0.5)",
     "profit_target": "rgba(255, 100, 100, 0.5)",
+    "grid": "rgba(100, 255, 100, 0.5)",
 }
 
 
@@ -197,6 +198,14 @@ def compute_target_for_position(strategy: str, entry_price: float) -> dict:
         return {
             "target_price": None,
             "label": f"Trailing {pct}%",
+            "color": color,
+        }
+
+    if exit_type == "grid":
+        spacing = config.get("grid_spacing_pct", 2.0)
+        return {
+            "target_price": entry_price * (1 + spacing / 100),
+            "label": f"Grid +{spacing}%",
             "color": color,
         }
 
