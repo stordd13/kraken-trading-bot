@@ -1,12 +1,14 @@
 """Tests for TrendFollowingStrategy.
 
 Tests cover:
-- BUY signal on golden cross (EMA20 crosses above EMA50)
-- No signal when already in position
-- Exit: trailing stop 6%
+- Cross state machine: _update_cross_state, golden cross, death cross
+- BUY signal on golden cross (one-shot)
+- No re-entry without death cross first
 - Exit: hard stop below EMA50
-- Exit: take profit 20%
-- Exit: timeout 21 days
+- Exit: death cross (EMA fast below slow)
+- Exit: trailing stop with activation threshold
+- Exit: take profit 25%
+- Exit: timeout 30 days
 - Only reacts to 1h candles (ignores 5min)
 - EMA warmup behavior
 - Backtest compatibility: add_position, close_position
@@ -111,9 +113,11 @@ def strategy(
             "ema_fast_period": 3,  # Small periods for test convenience
             "ema_slow_period": 5,
             "trailing_stop_pct": 6.0,
+            "trailing_activation_pct": 3.0,
             "take_profit_pct": 20.0,
             "max_holding_days": 21,
             "hard_stop_below_ema50": True,
+            "min_cross_strength_pct": 0.1,
         },
     )
     s._skip_db_sync = True
@@ -172,9 +176,11 @@ class TestTrendFollowingInit:
         assert strategy._ema_fast.period == 3
         assert strategy._ema_slow.period == 5
         assert strategy.trailing_stop_pct == Decimal("6.0")
+        assert strategy.trailing_activation_pct == Decimal("3.0")
         assert strategy.take_profit_pct == Decimal("20.0")
         assert strategy.max_holding_days == 21
         assert strategy.hard_stop_below_ema50 is True
+        assert strategy.min_cross_strength_pct == Decimal("0.1")
 
     def test_get_name(self, strategy: TrendFollowingStrategy) -> None:
         assert strategy.get_name() == "trend_following"
@@ -184,11 +190,15 @@ class TestTrendFollowingInit:
         assert config["ema_fast_period"] == 3
         assert config["ema_slow_period"] == 5
         assert config["has_position"] is False
+        assert config["ema_position"] is None
+        assert config["cross_detected"] is False
 
     def test_initial_state(self, strategy: TrendFollowingStrategy) -> None:
         assert strategy.current_price is None
         assert strategy.has_position is False
         assert strategy.open_positions_count == 0
+        assert strategy._ema_position is None
+        assert strategy._cross_detected is False
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +259,101 @@ class TestTrendEmaWarmup:
 
 
 # ---------------------------------------------------------------------------
+# Cross state machine
+# ---------------------------------------------------------------------------
+
+
+class TestTrendCrossState:
+    """Tests for the _update_cross_state mechanism."""
+
+    @pytest.mark.asyncio
+    async def test_golden_cross_sets_flag(self, strategy: TrendFollowingStrategy) -> None:
+        """Golden cross transition sets _cross_detected = True."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        # Force _ema_position to "below" (simulate prior state)
+        strategy._ema_position = "below"
+
+        # Set EMAs to show fast > slow (golden cross)
+        strategy._ema_fast._ema = Decimal("50500")
+        strategy._ema_slow._ema = Decimal("50000")
+
+        strategy._update_cross_state()
+        assert strategy._cross_detected is True
+        assert strategy._ema_position == "above"
+
+    @pytest.mark.asyncio
+    async def test_death_cross_clears_flag(self, strategy: TrendFollowingStrategy) -> None:
+        """Death cross transition clears _cross_detected."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy._ema_position = "above"
+        strategy._cross_detected = True  # Pending cross
+
+        # Set EMAs to show fast < slow (death cross)
+        strategy._ema_fast._ema = Decimal("49500")
+        strategy._ema_slow._ema = Decimal("50000")
+
+        strategy._update_cross_state()
+        assert strategy._cross_detected is False
+        assert strategy._ema_position == "below"
+
+    @pytest.mark.asyncio
+    async def test_no_cross_when_staying_above(self, strategy: TrendFollowingStrategy) -> None:
+        """No new cross when EMAs stay in same relative position."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy._ema_position = "above"
+        strategy._ema_fast._ema = Decimal("51000")
+        strategy._ema_slow._ema = Decimal("50000")
+
+        strategy._update_cross_state()
+        assert strategy._cross_detected is False  # No transition, no flag
+        assert strategy._ema_position == "above"
+
+    @pytest.mark.asyncio
+    async def test_no_golden_cross_when_in_position(self, strategy: TrendFollowingStrategy) -> None:
+        """Golden cross does NOT set flag when already holding a position."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy.add_position(
+            entry_price=Decimal("50000"),
+            entry_time=datetime.now(UTC),
+            amount_btc=Decimal("0.001"),
+            position_id=1,
+        )
+        strategy._ema_position = "below"
+        strategy._ema_fast._ema = Decimal("50500")
+        strategy._ema_slow._ema = Decimal("50000")
+
+        strategy._update_cross_state()
+        assert strategy._cross_detected is False  # Already in position
+
+    @pytest.mark.asyncio
+    async def test_min_cross_strength_filter(self, strategy: TrendFollowingStrategy) -> None:
+        """Weak cross (< 0.1% strength) does not set flag."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy._ema_position = "below"
+        # EMA diff = 50001 - 50000 = 1 → 0.002% < 0.1%
+        strategy._ema_fast._ema = Decimal("50001")
+        strategy._ema_slow._ema = Decimal("50000")
+
+        strategy._update_cross_state()
+        assert strategy._cross_detected is False  # Too weak
+
+    @pytest.mark.asyncio
+    async def test_first_ema_position_none(self, strategy: TrendFollowingStrategy) -> None:
+        """First call with _ema_position=None just sets position, no cross."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        assert strategy._ema_position is None or strategy._ema_position in ("above", "below")
+        # After warmup, _update_cross_state was called but _ema_position started as None
+        # so no transition was detected
+        assert strategy._cross_detected is False
+
+
+# ---------------------------------------------------------------------------
 # BUY signal (golden cross)
 # ---------------------------------------------------------------------------
 
@@ -263,7 +368,6 @@ class TestTrendBuySignal:
         await _warmup_emas(strategy, ["52000", "51000", "50000", "49000", "48000"])
 
         # Now feed a sharp rise to trigger cross
-        # After decline, slow EMA should be above fast. Rising prices make fast catch up.
         await strategy.on_ohlc(_ohlc_1h("55000"))
         await strategy.on_ohlc(_ohlc_1h("58000"))
 
@@ -271,7 +375,6 @@ class TestTrendBuySignal:
         signal = await strategy.generate_signal()
 
         # The cross may or may not have happened yet depending on EMA math.
-        # But verify the mechanism works if we force the cross.
         if signal is not None:
             assert signal.signal_type == SignalType.BUY
             assert signal.metadata["order_type"] == "limit"
@@ -281,10 +384,9 @@ class TestTrendBuySignal:
     @pytest.mark.asyncio
     async def test_no_buy_when_already_in_position(self, strategy: TrendFollowingStrategy) -> None:
         """No BUY signal when already holding a position."""
-        # Warm up EMAs
         await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
 
-        # Add a position
+        # Add a position first
         strategy.add_position(
             entry_price=Decimal("50000"),
             entry_time=datetime.now(UTC),
@@ -292,11 +394,11 @@ class TestTrendBuySignal:
             position_id=1,
         )
 
-        # Even with a cross, should not buy
-        strategy._prev_ema_fast = Decimal("49000")
-        strategy._prev_ema_slow = Decimal("49500")
+        # Force cross detected (shouldn't matter — position exists)
+        strategy._cross_detected = True
         strategy._ema_fast._ema = Decimal("50500")
         strategy._ema_slow._ema = Decimal("50000")
+        strategy._ema_position = "above"
         strategy._current_price = Decimal("51000")
         strategy._current_timestamp = datetime.now(UTC)
 
@@ -307,13 +409,12 @@ class TestTrendBuySignal:
 
     @pytest.mark.asyncio
     async def test_forced_golden_cross(self, strategy: TrendFollowingStrategy) -> None:
-        """Directly test cross detection by setting EMA state."""
-        # Warm up EMAs first
+        """Directly test cross detection by setting cross state."""
         await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
 
-        # Force a cross scenario
-        strategy._prev_ema_fast = Decimal("49000")
-        strategy._prev_ema_slow = Decimal("49500")
+        # Force a cross scenario using the new state machine
+        strategy._cross_detected = True
+        strategy._ema_position = "above"
         strategy._ema_fast._ema = Decimal("50500")
         strategy._ema_slow._ema = Decimal("50000")
         strategy._current_price = Decimal("51000")
@@ -326,13 +427,34 @@ class TestTrendBuySignal:
         assert signal.confidence == 0.85
 
     @pytest.mark.asyncio
-    async def test_no_buy_without_cross(self, strategy: TrendFollowingStrategy) -> None:
-        """No BUY when fast EMA stays below slow EMA."""
+    async def test_cross_detected_consumed_after_buy(
+        self, strategy: TrendFollowingStrategy
+    ) -> None:
+        """_cross_detected is consumed (set False) after generating BUY signal."""
         await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
 
-        # Fast already below slow, stays below
-        strategy._prev_ema_fast = Decimal("49000")
-        strategy._prev_ema_slow = Decimal("49500")
+        strategy._cross_detected = True
+        strategy._ema_position = "above"
+        strategy._ema_fast._ema = Decimal("50500")
+        strategy._ema_slow._ema = Decimal("50000")
+        strategy._current_price = Decimal("51000")
+        strategy._current_timestamp = datetime.now(UTC)
+
+        signal = await strategy.generate_signal()
+        assert signal is not None
+        assert strategy._cross_detected is False  # Consumed
+
+        # Second call should return None
+        signal2 = await strategy.generate_signal()
+        assert signal2 is None
+
+    @pytest.mark.asyncio
+    async def test_no_buy_without_cross(self, strategy: TrendFollowingStrategy) -> None:
+        """No BUY when _cross_detected is False."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy._cross_detected = False
+        strategy._ema_position = "below"
         strategy._ema_fast._ema = Decimal("49200")
         strategy._ema_slow._ema = Decimal("49500")
         strategy._current_price = Decimal("49300")
@@ -343,33 +465,101 @@ class TestTrendBuySignal:
 
     @pytest.mark.asyncio
     async def test_no_buy_price_below_fast_ema(self, strategy: TrendFollowingStrategy) -> None:
-        """No BUY when cross happens but price is below fast EMA."""
+        """No BUY when cross detected but price is below fast EMA."""
         await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
 
-        # Cross happened
-        strategy._prev_ema_fast = Decimal("49000")
-        strategy._prev_ema_slow = Decimal("49500")
+        strategy._cross_detected = True
+        strategy._ema_position = "above"
         strategy._ema_fast._ema = Decimal("50500")
         strategy._ema_slow._ema = Decimal("50000")
-        # But price is below fast EMA
+        # Price below fast EMA
         strategy._current_price = Decimal("50000")
         strategy._current_timestamp = datetime.now(UTC)
 
         signal = await strategy.generate_signal()
         assert signal is None
+        assert strategy._cross_detected is False  # Consumed even though no signal
+
+    @pytest.mark.asyncio
+    async def test_no_repeat_buy_after_sell(self, strategy: TrendFollowingStrategy) -> None:
+        """After SELL, no immediate re-entry even if EMAs still show golden cross."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        # BUY
+        strategy._cross_detected = True
+        strategy._ema_position = "above"
+        strategy._ema_fast._ema = Decimal("50500")
+        strategy._ema_slow._ema = Decimal("50000")
+        strategy._current_price = Decimal("51000")
+        strategy._current_timestamp = datetime.now(UTC)
+
+        signal = await strategy.generate_signal()
+        assert signal is not None and signal.signal_type == SignalType.BUY
+
+        # Simulate fill + sell
+        strategy.add_position(
+            entry_price=Decimal("51000"),
+            entry_time=datetime.now(UTC),
+            amount_btc=Decimal("0.001"),
+            position_id=1,
+        )
+        strategy.close_position(1)
+
+        # Try to generate again — should NOT buy (cross consumed, need death cross first)
+        signal = await strategy.generate_signal()
+        assert signal is None
+
+    @pytest.mark.asyncio
+    async def test_death_cross_required_before_new_entry(
+        self, strategy: TrendFollowingStrategy
+    ) -> None:
+        """After a complete buy/sell cycle, need death cross then golden cross."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        # Complete buy/sell cycle
+        strategy._cross_detected = True
+        strategy._ema_position = "above"
+        strategy._ema_fast._ema = Decimal("50500")
+        strategy._ema_slow._ema = Decimal("50000")
+        strategy._current_price = Decimal("51000")
+        strategy._current_timestamp = datetime.now(UTC)
+
+        await strategy.generate_signal()  # consumes cross
+        strategy.add_position(
+            entry_price=Decimal("51000"),
+            entry_time=datetime.now(UTC),
+            amount_btc=Decimal("0.001"),
+        )
+        strategy.close_position(strategy._position.position_id)
+
+        # EMAs still "above" — calling _update_cross_state won't set cross
+        strategy._update_cross_state()
+        assert strategy._cross_detected is False
+
+        # Now simulate death cross
+        strategy._ema_fast._ema = Decimal("49500")
+        strategy._ema_slow._ema = Decimal("50000")
+        strategy._update_cross_state()
+        assert strategy._ema_position == "below"
+
+        # Now golden cross again
+        strategy._ema_fast._ema = Decimal("50500")
+        strategy._ema_slow._ema = Decimal("50000")
+        strategy._update_cross_state()
+        assert strategy._cross_detected is True  # New cross after death cross!
 
 
 # ---------------------------------------------------------------------------
-# Exit: trailing stop
+# Exit: trailing stop (with activation threshold)
 # ---------------------------------------------------------------------------
 
 
 class TestTrendTrailingStop:
-    """Tests for trailing stop exit."""
+    """Tests for trailing stop exit with activation threshold."""
 
     @pytest.mark.asyncio
     async def test_trailing_stop_triggers(self, strategy: TrendFollowingStrategy) -> None:
-        """SELL when price drops 6% from highest."""
+        """SELL when price drops 6% from highest (after 3% activation)."""
         await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
 
         strategy.add_position(
@@ -378,8 +568,9 @@ class TestTrendTrailingStop:
             amount_btc=Decimal("0.001"),
             position_id=1,
         )
-        # Highest was 55000
+        # Highest 55000 = +10% from entry → activation threshold (3%) met
         strategy._position.highest_price = Decimal("55000")
+        strategy._ema_position = "above"
 
         # 6% drop from 55000 = 51700. Price at 51500 -> triggers
         strategy._current_price = Decimal("51500")
@@ -390,6 +581,33 @@ class TestTrendTrailingStop:
         assert signal.signal_type == SignalType.SELL
         assert signal.metadata["order_type"] == "market"
         assert "Trailing stop" in signal.reason
+
+    @pytest.mark.asyncio
+    async def test_trailing_stop_not_activated_below_threshold(
+        self, strategy: TrendFollowingStrategy
+    ) -> None:
+        """Trailing stop does NOT trigger when peak gain < activation threshold."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy.add_position(
+            entry_price=Decimal("50000"),
+            entry_time=datetime.now(UTC),
+            amount_btc=Decimal("0.001"),
+            position_id=1,
+        )
+        # Peak only +2% from entry (below 3% activation)
+        strategy._position.highest_price = Decimal("51000")
+        strategy._ema_position = "above"
+
+        # Price dropped 6.3% from high but trailing not activated
+        strategy._current_price = Decimal("47800")
+        strategy._current_timestamp = datetime.now(UTC)
+        # Keep above EMA50 to avoid hard stop
+        strategy._ema_slow._ema = Decimal("45000")
+
+        signal = await strategy.generate_signal()
+        # Trailing should NOT trigger because peak was only +2%
+        assert signal is None
 
     @pytest.mark.asyncio
     async def test_trailing_stop_no_trigger(self, strategy: TrendFollowingStrategy) -> None:
@@ -403,11 +621,11 @@ class TestTrendTrailingStop:
             position_id=1,
         )
         strategy._position.highest_price = Decimal("55000")
+        strategy._ema_position = "above"
 
         # 4% drop from 55000 = 52800. Not enough for 6% threshold.
         strategy._current_price = Decimal("52800")
         strategy._current_timestamp = datetime.now(UTC)
-        # Make sure hard stop doesn't fire (price above EMA50)
         strategy._ema_slow._ema = Decimal("50000")
 
         signal = await strategy.generate_signal()
@@ -434,6 +652,7 @@ class TestTrendHardStop:
             position_id=1,
         )
         strategy._position.highest_price = Decimal("51000")
+        strategy._ema_position = "above"
 
         # EMA50 at 50000, price drops below
         strategy._ema_slow._ema = Decimal("50000")
@@ -474,14 +693,72 @@ class TestTrendHardStop:
             position_id=1,
         )
         s._position.highest_price = Decimal("51000")
+        s._ema_position = "above"
         s._ema_slow._ema = Decimal("50000")
         s._current_price = Decimal("49500")
         s._current_timestamp = datetime.now(UTC)
 
         signal = await s.generate_signal()
-        # Should not be hard stop (might be trailing stop though)
+        # Should not be hard stop (might be trailing or death cross though)
         if signal is not None:
             assert "Hard stop" not in signal.reason
+
+
+# ---------------------------------------------------------------------------
+# Exit: death cross
+# ---------------------------------------------------------------------------
+
+
+class TestTrendDeathCrossExit:
+    """Tests for death cross exit."""
+
+    @pytest.mark.asyncio
+    async def test_death_cross_exit(self, strategy: TrendFollowingStrategy) -> None:
+        """SELL when EMA fast crosses below EMA slow while in position."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy.add_position(
+            entry_price=Decimal("50000"),
+            entry_time=datetime.now(UTC),
+            amount_btc=Decimal("0.001"),
+            position_id=1,
+        )
+        strategy._position.highest_price = Decimal("52000")
+
+        # Death cross: _ema_position changed to "below"
+        strategy._ema_position = "below"
+        strategy._ema_fast._ema = Decimal("49500")
+        strategy._ema_slow._ema = Decimal("50000")
+        # Price still above EMA50 (so hard stop doesn't fire first)
+        strategy._current_price = Decimal("50500")
+        strategy._current_timestamp = datetime.now(UTC)
+
+        signal = await strategy.generate_signal()
+        assert signal is not None
+        assert signal.signal_type == SignalType.SELL
+        assert signal.metadata["order_type"] == "market"
+        assert "Death cross" in signal.reason
+
+    @pytest.mark.asyncio
+    async def test_no_death_cross_when_ema_above(self, strategy: TrendFollowingStrategy) -> None:
+        """No death cross exit when _ema_position is still 'above'."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy.add_position(
+            entry_price=Decimal("50000"),
+            entry_time=datetime.now(UTC),
+            amount_btc=Decimal("0.001"),
+            position_id=1,
+        )
+        strategy._position.highest_price = Decimal("51000")
+        strategy._ema_position = "above"
+        strategy._ema_fast._ema = Decimal("50500")
+        strategy._ema_slow._ema = Decimal("50000")
+        strategy._current_price = Decimal("50500")
+        strategy._current_timestamp = datetime.now(UTC)
+
+        signal = await strategy.generate_signal()
+        assert signal is None
 
 
 # ---------------------------------------------------------------------------
@@ -504,6 +781,7 @@ class TestTrendTakeProfit:
             position_id=1,
         )
         strategy._position.highest_price = Decimal("60500")
+        strategy._ema_position = "above"
 
         # 20% profit: 50000 * 1.20 = 60000
         strategy._current_price = Decimal("60500")
@@ -538,8 +816,8 @@ class TestTrendTimeout:
             amount_btc=Decimal("0.001"),
             position_id=1,
         )
-        # Price slightly above entry, above EMA50, no trailing stop
         strategy._position.highest_price = Decimal("51000")
+        strategy._ema_position = "above"
         strategy._current_price = Decimal("50500")
         strategy._current_timestamp = datetime.now(UTC)
         strategy._ema_slow._ema = Decimal("49000")
@@ -563,6 +841,7 @@ class TestTrendTimeout:
             position_id=1,
         )
         strategy._position.highest_price = Decimal("51000")
+        strategy._ema_position = "above"
         strategy._current_price = Decimal("50500")
         strategy._current_timestamp = datetime.now(UTC)
         strategy._ema_slow._ema = Decimal("49000")
@@ -577,7 +856,7 @@ class TestTrendTimeout:
 
 
 class TestTrendExitPriority:
-    """Tests for exit priority: hard stop > trailing > take profit > timeout."""
+    """Tests for exit priority: hard stop > death cross > trailing > take profit > timeout."""
 
     @pytest.mark.asyncio
     async def test_hard_stop_priority_over_trailing(self, strategy: TrendFollowingStrategy) -> None:
@@ -591,6 +870,7 @@ class TestTrendExitPriority:
             position_id=1,
         )
         strategy._position.highest_price = Decimal("55000")
+        strategy._ema_position = "above"
 
         # Price below EMA50 AND dropped > 6% from high
         strategy._ema_slow._ema = Decimal("50000")
@@ -600,6 +880,32 @@ class TestTrendExitPriority:
         signal = await strategy.generate_signal()
         assert signal is not None
         assert "Hard stop" in signal.reason
+
+    @pytest.mark.asyncio
+    async def test_hard_stop_priority_over_death_cross(
+        self, strategy: TrendFollowingStrategy
+    ) -> None:
+        """Hard stop fires before death cross."""
+        await _warmup_emas(strategy, ["50000", "50100", "50200", "50300", "50400"])
+
+        strategy.add_position(
+            entry_price=Decimal("50000"),
+            entry_time=datetime.now(UTC),
+            amount_btc=Decimal("0.001"),
+            position_id=1,
+        )
+        strategy._position.highest_price = Decimal("51000")
+        strategy._ema_position = "below"  # Death cross happened
+
+        # Price below EMA50
+        strategy._ema_slow._ema = Decimal("50000")
+        strategy._ema_fast._ema = Decimal("49500")
+        strategy._current_price = Decimal("49000")
+        strategy._current_timestamp = datetime.now(UTC)
+
+        signal = await strategy.generate_signal()
+        assert signal is not None
+        assert "Hard stop" in signal.reason  # Hard stop fires first
 
 
 # ---------------------------------------------------------------------------
@@ -650,6 +956,7 @@ class TestTrendTradeFilled:
             position_id=1,
         )
         assert not strategy.has_position
+        assert strategy._cross_detected is False  # Reset after sell
 
 
 # ---------------------------------------------------------------------------
@@ -717,6 +1024,7 @@ class TestTrendBacktestCompat:
         )
         strategy.close_position(1)
         assert not strategy.has_position
+        assert strategy._cross_detected is False  # Reset on close
 
     def test_close_wrong_id_does_nothing(self, strategy: TrendFollowingStrategy) -> None:
         strategy.add_position(

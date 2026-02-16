@@ -2,18 +2,20 @@
 
 The simplest and most proven strategy. Buys when trend is bullish
 (EMA20 crosses above EMA50 on 1h), exits with a wide trailing stop.
-Few trades (20-50/year), large gains per trade.
+Few trades (15-30 over 3 years), large gains per trade.
 
 Uses its own EMA instances (NOT the shared MultiTimeframeAnalyzer).
-Only reacts to 1h candles — ignores 5m/15m entirely.
+Cross detection on 1h candles only. Position monitoring on 5min for reactivity.
 
 Params (from strategies.yaml):
     ema_fast_period: Fast EMA period (default 20)
     ema_slow_period: Slow EMA period (default 50)
     trailing_stop_pct: Trailing stop % from highest (default 6.0)
-    take_profit_pct: Take profit % (default 20.0)
-    max_holding_days: Max holding period in days (default 21)
+    trailing_activation_pct: Min gain % before trailing activates (default 3.0)
+    take_profit_pct: Take profit % (default 25.0)
+    max_holding_days: Max holding period in days (default 30)
     hard_stop_below_ema50: Exit if price drops below EMA50 (default true)
+    min_cross_strength_pct: Min EMA spread % to validate cross (default 0.1)
 """
 
 from __future__ import annotations
@@ -53,9 +55,12 @@ class TrendPosition:
 class TrendFollowingStrategy(BaseStrategy):
     """Trend following strategy with EMA crossover.
 
-    Entry: EMA20 1h crosses above EMA50 1h (golden cross).
-    Exit: Trailing stop 6%, hard stop below EMA50, take profit 20%, timeout 21d.
+    Entry: EMA20 1h crosses above EMA50 1h (golden cross, one-shot).
+    Exit: Hard stop < EMA50, death cross, trailing stop (after +3%), take profit 25%, timeout 30d.
     Max 1 position at a time (high conviction).
+
+    After a SELL, a new BUY requires a death cross FIRST, then a new golden cross.
+    This prevents whipsaw re-entries when EMAs are near each other.
     """
 
     def __init__(
@@ -88,9 +93,11 @@ class TrendFollowingStrategy(BaseStrategy):
 
         # Strategy params
         self.trailing_stop_pct = Decimal(str(params.get("trailing_stop_pct", 6.0)))
-        self.take_profit_pct = Decimal(str(params.get("take_profit_pct", 20.0)))
-        self.max_holding_days = int(params.get("max_holding_days", 21))
+        self.trailing_activation_pct = Decimal(str(params.get("trailing_activation_pct", 3.0)))
+        self.take_profit_pct = Decimal(str(params.get("take_profit_pct", 25.0)))
+        self.max_holding_days = int(params.get("max_holding_days", 30))
         self.hard_stop_below_ema50 = bool(params.get("hard_stop_below_ema50", True))
+        self.min_cross_strength_pct = Decimal(str(params.get("min_cross_strength_pct", 0.1)))
 
         # Budget params
         budget = None
@@ -105,9 +112,9 @@ class TrendFollowingStrategy(BaseStrategy):
         self._position: TrendPosition | None = None
         self._next_position_id: int = 1
 
-        # EMA state for crossover detection
-        self._prev_ema_fast: Decimal | None = None
-        self._prev_ema_slow: Decimal | None = None
+        # Cross state machine (replaces stale _prev_ema comparisons)
+        self._ema_position: str | None = None  # "above" | "below" — persistent EMA state
+        self._cross_detected: bool = False  # one-shot flag: True only on new golden cross
 
         # Price state
         self._current_price: Decimal | None = None
@@ -122,8 +129,10 @@ class TrendFollowingStrategy(BaseStrategy):
             ema_fast=ema_fast,
             ema_slow=ema_slow,
             trailing_stop_pct=float(self.trailing_stop_pct),
+            trailing_activation_pct=float(self.trailing_activation_pct),
             take_profit_pct=float(self.take_profit_pct),
             max_holding_days=self.max_holding_days,
+            min_cross_strength_pct=float(self.min_cross_strength_pct),
         )
 
     # ------------------------------------------------------------------
@@ -186,7 +195,7 @@ class TrendFollowingStrategy(BaseStrategy):
                 self._position.highest_price = self._current_price
 
     async def on_ohlc(self, ohlc_data: dict[str, Any]) -> None:
-        """Handle OHLC data — only process 1h candles for EMA update."""
+        """Handle OHLC data — update price on all candles, EMAs on 1h only."""
         close = ohlc_data.get("close")
         if close is not None:
             self._current_price = Decimal(str(close))
@@ -205,17 +214,56 @@ class TrendFollowingStrategy(BaseStrategy):
         if self._current_price is None:
             return
 
-        # Save previous EMA values for crossover detection
-        self._prev_ema_fast = self._ema_fast.value
-        self._prev_ema_slow = self._ema_slow.value
-
         # Update EMAs
         self._ema_fast.update(self._current_price)
         self._ema_slow.update(self._current_price)
 
+        # Update cross state after EMA update (one-shot flag)
+        if self._ema_fast.is_ready and self._ema_slow.is_ready:
+            self._update_cross_state()
+
         # Update highest price for trailing stop
         if self._position and self._current_price > self._position.highest_price:
             self._position.highest_price = self._current_price
+
+    def _update_cross_state(self) -> None:
+        """Update persistent cross state after 1h EMA update.
+
+        Called only from on_ohlc when interval == 60 and both EMAs are ready.
+        Detects golden cross (below→above) and death cross (above→below).
+        Sets _cross_detected = True exactly once per golden cross.
+        """
+        curr_fast = self._ema_fast.value
+        curr_slow = self._ema_slow.value
+        if curr_fast is None or curr_slow is None:
+            return
+
+        current_position = "above" if curr_fast > curr_slow else "below"
+
+        if self._ema_position is not None:
+            # Golden cross: below → above
+            if self._ema_position == "below" and current_position == "above":
+                # Strength check: EMA diff must be >= min_cross_strength_pct
+                diff_pct = (curr_fast - curr_slow) / curr_slow * Decimal("100")
+                if diff_pct >= self.min_cross_strength_pct and not self.has_position:
+                    self._cross_detected = True
+                    self.logger.info(
+                        "trend_golden_cross_state",
+                        ema_fast=float(curr_fast),
+                        ema_slow=float(curr_slow),
+                        strength_pct=float(diff_pct),
+                    )
+
+            # Death cross: above → below
+            elif self._ema_position == "above" and current_position == "below":
+                self._cross_detected = False  # Cancel any pending cross
+                self.logger.info(
+                    "trend_death_cross_state",
+                    ema_fast=float(curr_fast),
+                    ema_slow=float(curr_slow),
+                )
+
+        self._ema_position = current_position
 
     async def generate_signal(self) -> TradingSignal | None:
         """Generate signal based on EMA crossover and exit conditions."""
@@ -243,10 +291,14 @@ class TrendFollowingStrategy(BaseStrategy):
             "ema_fast_period": self._ema_fast.period,
             "ema_slow_period": self._ema_slow.period,
             "trailing_stop_pct": float(self.trailing_stop_pct),
+            "trailing_activation_pct": float(self.trailing_activation_pct),
             "take_profit_pct": float(self.take_profit_pct),
             "max_holding_days": self.max_holding_days,
             "hard_stop_below_ema50": self.hard_stop_below_ema50,
+            "min_cross_strength_pct": float(self.min_cross_strength_pct),
             "has_position": self._position is not None,
+            "ema_position": self._ema_position,
+            "cross_detected": self._cross_detected,
         }
 
     # ------------------------------------------------------------------
@@ -254,60 +306,66 @@ class TrendFollowingStrategy(BaseStrategy):
     # ------------------------------------------------------------------
 
     def _check_entry(self) -> TradingSignal | None:
-        """Check for golden cross entry signal."""
-        if self._prev_ema_fast is None or self._prev_ema_slow is None:
+        """Check for golden cross entry signal (one-shot)."""
+        # Only enter if _cross_detected was set by _update_cross_state
+        if not self._cross_detected:
             return None
+
+        # Consume the flag immediately — prevents repeat entries on subsequent 5min candles
+        self._cross_detected = False
 
         curr_fast = self._ema_fast.value
         curr_slow = self._ema_slow.value
-
         if curr_fast is None or curr_slow is None:
             return None
 
-        # Golden cross: prev fast <= prev slow AND current fast > current slow
-        prev_above = self._prev_ema_fast > self._prev_ema_slow
-        curr_above = curr_fast > curr_slow
+        # Price must be above fast EMA (confirmation)
+        if self._current_price <= curr_fast:
+            return None
 
-        if not prev_above and curr_above:
-            # Cross just happened — check price is above both EMAs
-            if self._current_price > curr_fast:
-                # Calculate limit price slightly below current
-                limit_price = self._current_price * Decimal("0.999")
+        # Calculate limit price slightly below current
+        limit_price = self._current_price * Decimal("0.999")
 
-                self.logger.info(
-                    "trend_golden_cross_detected",
-                    price=float(self._current_price),
-                    ema_fast=float(curr_fast),
-                    ema_slow=float(curr_slow),
-                )
+        self.logger.info(
+            "trend_golden_cross_detected",
+            price=float(self._current_price),
+            ema_fast=float(curr_fast),
+            ema_slow=float(curr_slow),
+        )
 
-                return TradingSignal(
-                    signal_type=SignalType.BUY,
-                    pair=self.pair,
-                    price=self._current_price,
-                    confidence=0.85,
-                    reason=f"Golden cross: EMA{self._ema_fast.period} crossed above EMA{self._ema_slow.period}",
-                    strategy=self.bot_id,
-                    timestamp=self._current_timestamp,
-                    metadata={
-                        "order_type": "limit",
-                        "limit_price": float(limit_price),
-                        "position_size_multiplier": self.position_size_multiplier,
-                        "mode": "spot",
-                        "reference_price": float(self._current_price),
-                        "ema_fast": float(curr_fast),
-                        "ema_slow": float(curr_slow),
-                    },
-                )
-
-        return None
+        return TradingSignal(
+            signal_type=SignalType.BUY,
+            pair=self.pair,
+            price=self._current_price,
+            confidence=0.85,
+            reason=f"Golden cross: EMA{self._ema_fast.period} crossed above EMA{self._ema_slow.period}",
+            strategy=self.bot_id,
+            timestamp=self._current_timestamp,
+            metadata={
+                "order_type": "limit",
+                "limit_price": float(limit_price),
+                "position_size_multiplier": self.position_size_multiplier,
+                "mode": "spot",
+                "reference_price": float(self._current_price),
+                "ema_fast": float(curr_fast),
+                "ema_slow": float(curr_slow),
+            },
+        )
 
     # ------------------------------------------------------------------
     # Exit logic
     # ------------------------------------------------------------------
 
     def _check_exit(self) -> TradingSignal | None:
-        """Check exit conditions for open position."""
+        """Check exit conditions for open position.
+
+        Priority order:
+        1. Hard stop: price below EMA50
+        2. Death cross: EMA fast crossed below EMA slow
+        3. Trailing stop: activates after +trailing_activation_pct%, trails at trailing_stop_pct%
+        4. Take profit: +take_profit_pct%
+        5. Timeout: max_holding_days
+        """
         pos = self._position
         if pos is None or self._current_price is None or self._current_timestamp is None:
             return None
@@ -323,21 +381,35 @@ class TrendFollowingStrategy(BaseStrategy):
                     position=pos,
                 )
 
-        # 2. Trailing stop: price dropped X% from highest
-        trailing_trigger = pos.highest_price * (
-            Decimal("1") - self.trailing_stop_pct / Decimal("100")
-        )
-        if self._current_price <= trailing_trigger:
-            drop_pct = (
-                (pos.highest_price - self._current_price) / pos.highest_price * Decimal("100")
-            )
-            return self._make_sell_signal(
-                reason=f"Trailing stop: dropped {drop_pct:.1f}% from high {pos.highest_price}",
-                order_type="market",
-                position=pos,
-            )
+        # 2. Death cross: EMA fast crossed below EMA slow while in position
+        if self._ema_position == "below":
+            curr_fast = self._ema_fast.value
+            if curr_fast is not None and curr_slow is not None and curr_fast < curr_slow:
+                return self._make_sell_signal(
+                    reason=f"Death cross: EMA{self._ema_fast.period} below EMA{self._ema_slow.period}",
+                    order_type="market",
+                    position=pos,
+                )
 
-        # 3. Take profit
+        # 3. Trailing stop: only activates after price has risen trailing_activation_pct from entry
+        activation_price = pos.entry_price * (
+            Decimal("1") + self.trailing_activation_pct / Decimal("100")
+        )
+        if pos.highest_price >= activation_price:
+            trailing_trigger = pos.highest_price * (
+                Decimal("1") - self.trailing_stop_pct / Decimal("100")
+            )
+            if self._current_price <= trailing_trigger:
+                drop_pct = (
+                    (pos.highest_price - self._current_price) / pos.highest_price * Decimal("100")
+                )
+                return self._make_sell_signal(
+                    reason=f"Trailing stop: dropped {drop_pct:.1f}% from high {pos.highest_price}",
+                    order_type="market",
+                    position=pos,
+                )
+
+        # 4. Take profit
         profit_pct = (self._current_price - pos.entry_price) / pos.entry_price * Decimal("100")
         if profit_pct >= self.take_profit_pct:
             limit_price = self._current_price * Decimal("1.001")
@@ -348,7 +420,7 @@ class TrendFollowingStrategy(BaseStrategy):
                 limit_price=limit_price,
             )
 
-        # 4. Timeout
+        # 5. Timeout
         holding_time = self._current_timestamp - pos.entry_time
         max_holding = timedelta(days=self.max_holding_days)
         if holding_time >= max_holding:
@@ -452,6 +524,8 @@ class TrendFollowingStrategy(BaseStrategy):
                     holding_days=(now - self._position.entry_time).days,
                 )
                 self._position = None
+                # After selling, require death cross before next golden cross
+                self._cross_detected = False
 
     # ------------------------------------------------------------------
     # Backtest compatibility
@@ -501,6 +575,8 @@ class TrendFollowingStrategy(BaseStrategy):
         if self._position and self._position.position_id == position_id:
             closed = self._position
             self._position = None
+            # After selling, require death cross before next golden cross
+            self._cross_detected = False
             return closed
         return None
 
