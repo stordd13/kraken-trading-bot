@@ -30,7 +30,7 @@ strategies:
       order_amount_usdc: 20
 
   - name: trend_following
-    enabled: true
+    enabled: false  # -0.21% sur 3 ans de BTC +180%. Ne capture aucun trend.
     bot_id: trend_following_prod
     budget:
       max_open_positions: 1
