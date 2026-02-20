@@ -16,8 +16,8 @@ strategies:
     bot_id: grid_spot_prod
     budget:
       max_open_positions: 15
-      daily_loss_limit_eur: 15.0
-      max_position_pct: 40.0
+      daily_loss_limit_eur: 25.0
+      max_position_pct: 50.0
       position_size_multiplier: 1.0
     dashboard:
       exit_type: grid
@@ -25,8 +25,8 @@ strategies:
     params:
       grid_levels: 15
       grid_spacing_pct: 1.5
-      range_size_pct: 40.0
-      rebalance_threshold_pct: 12.0
+      range_size_pct: 30.0
+      rebalance_threshold_pct: 10.0
       order_amount_usdc: 20
 
   - name: trend_following
@@ -55,8 +55,8 @@ strategies:
     bot_id: grid_adaptive_prod
     budget:
       max_open_positions: 8
-      daily_loss_limit_eur: 10.0
-      max_position_pct: 30.0
+      daily_loss_limit_eur: 25.0
+      max_position_pct: 50.0
       position_size_multiplier: 1.0
     dashboard:
       exit_type: grid
