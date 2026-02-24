@@ -3418,4 +3418,4 @@ if __name__ == "__main__":
     ╚══════════════════════════════════════════════════════════╝
     """)
 
-    app.run(debug=args.debug, port=args.port, host="0.0.0.0")
+    app.run(debug=args.debug, port=args.port, host="127.0.0.1")
