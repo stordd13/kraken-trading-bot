@@ -126,6 +126,25 @@ Chaque stratégie filtre par `bot_id` dans `on_trade_filled`, pas par nom de str
 
 ---
 
+## Workflow de Sélection Darwinienne
+
+Le principe : lancer large, garder les gagnantes, tuer les perdantes.
+
+1. **Implémenter** une nouvelle stratégie (hériter de `BaseStrategy`, ajouter au router)
+2. **Backtester** individuellement (`--strategy <nom> --days 1095`)
+3. **Activer** dans `strategies.yaml` : `active: true` (aucun autre fichier à toucher)
+4. **Paper trading** minimum 2 semaines via le router
+5. **Évaluer** : garder si profitable → augmenter `max_allocation_pct` / désactiver si perdante → `active: false`
+6. **Scaler** le capital sur les survivantes (1k → 10k → 20k USDC)
+
+### Backtesting Policy
+- **Développement rapide** : walk-forward 18-24 mois ou 1 an
+- **Validation finale obligatoire** : full 3 ans (2023-02 → 2026-02)
+- **Critères de validation** : battre buy-and-hold BTC, Sharpe > 0.3, max drawdown < -25%
+- **Fees réalistes toujours** : maker 0.16%, taker 0.26%, spread 0.02%, slippage 0.01%
+
+---
+
 ## Commandes
 
 ```bash
@@ -157,8 +176,10 @@ sudo journalctl -u krakenbot -f
 ## Vision Long Terme
 
 1. ✅ Bot live multi-stratégie avec limit orders
-2. 🚧 Alertes Telegram/Discord, monitoring avancé
-3. 📋 Multi-pair (ETH/USDC, SOL/USDC)
-4. 📋 Strategy registry dynamique (ajouter une strat sans redémarrer)
-5. 🔮 ML : features engineering sur les données accumulées
-6. 🔮 RL : agent qui apprend à optimiser les seuils en continu
+2. 🚧 Backtester les 7 stratégies → sélection Darwinienne → garder 2-4 gagnantes
+3. 🚧 Alertes Telegram/Discord, monitoring avancé
+4. 📋 Scaler le capital progressivement (1k → 10k → 20k USDC) sur les survivantes
+5. 📋 Multi-pair (ETH/USDC, SOL/USDC)
+6. 🔮 ML : XGBoost/Random Forest sur features techniques (3 ans de données disponibles)
+7. 🔮 DL : LSTM / Transformer pour séries temporelles
+8. 🔮 RL : PPO/DQN avec reward = Sharpe ratio, même modularité BaseStrategy
