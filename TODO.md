@@ -31,7 +31,10 @@
 - [ ] Tester le cycle complet limit orders : place → fill → profit target auto → cancel on stop
 - [ ] Vérifier la réconciliation au démarrage avec positions ouvertes existantes
 - [ ] Désactiver les stratégies non-rentables après analyse backtest
-- [ ] Backfill 1d + 1w via Binance (5 ans) : `poetry run python scripts/import_external_ohlc.py --intervals 1440 10080 --days 1825 -y`
+- [ ] Backfill max historique via Binance (9 ans, s'arrête automatiquement quand plus de data) :
+  - `poetry run python scripts/import_external_ohlc.py --intervals 1440 10080 --days 3285 -y` (1d + 1w)
+  - `poetry run python scripts/import_external_ohlc.py --intervals 60 240 --days 3285 -y` (1h + 4h)
+  - `poetry run python scripts/import_external_ohlc.py --intervals 5 15 --days 1095 -y` (5m + 15m, ~3 ans dispo)
 - [ ] Vérifier les périodes de données en DB : `SELECT interval, COUNT(*), MIN(timestamp), MAX(timestamp) FROM market_data_ohlc WHERE pair = 'XBT/USDC' GROUP BY interval ORDER BY interval;`
 
 ---
