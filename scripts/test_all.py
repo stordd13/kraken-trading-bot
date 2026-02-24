@@ -100,7 +100,9 @@ async def test_backtest_runs_table():
             if count > 0:
                 print("✅ Backtest runs table exists and has data")
             else:
-                print("⚠️  No backtest runs found. Run: python -m scripts.backtest --pair XBT/USDC --days 7 --save")
+                print(
+                    "⚠️  No backtest runs found. Run: python -m scripts.backtest --pair XBT/USDC --days 7 --save"
+                )
 
             await db_manager.close_db()
             return True
@@ -153,6 +155,7 @@ def test_dash_installed():
     try:
         import dash
         import plotly
+
         print(f"✅ Dash {dash.__version__} installed")
         print(f"✅ Plotly {plotly.__version__} installed")
         return True
@@ -170,11 +173,12 @@ def test_docker_running():
 
     try:
         import subprocess
+
         result = subprocess.run(
             ["docker", "compose", "ps", "--filter", "name=krakenbot-db", "--format", "json"],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
 
         if result.returncode == 0 and result.stdout.strip():

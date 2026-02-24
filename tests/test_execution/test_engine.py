@@ -39,9 +39,7 @@ def mock_event_bus() -> EventBus:
 def mock_rest_client() -> MagicMock:
     """Create a mock REST client."""
     client = MagicMock()
-    client.get_balance = AsyncMock(
-        return_value={"EUR": Decimal("1000.00"), "XBT": Decimal("0.01")}
-    )
+    client.get_balance = AsyncMock(return_value={"EUR": Decimal("1000.00"), "XBT": Decimal("0.01")})
     client.get_ticker = AsyncMock(
         return_value={"last": Decimal("42000.00"), "bid": Decimal("41990.00")}
     )
@@ -189,9 +187,7 @@ class TestExecutionEngineLifecycle:
         assert not execution_engine.is_running
 
     @pytest.mark.asyncio
-    async def test_start_already_running(
-        self, execution_engine: ExecutionEngine
-    ) -> None:
+    async def test_start_already_running(self, execution_engine: ExecutionEngine) -> None:
         """Test starting an already running engine."""
         await execution_engine.start()
         await execution_engine.start()  # Should log warning but not error
@@ -251,9 +247,7 @@ class TestSignalHandling:
         assert execution_engine.stats["signals_received"] == 0
 
     @pytest.mark.asyncio
-    async def test_handle_signal_missing_signal(
-        self, execution_engine: ExecutionEngine
-    ) -> None:
+    async def test_handle_signal_missing_signal(self, execution_engine: ExecutionEngine) -> None:
         """Test handling event data without signal."""
         await execution_engine.start()
 
@@ -300,9 +294,7 @@ class TestSignalHandling:
         with patch.object(
             execution_engine.risk_manager,
             "check_order",
-            return_value=RiskCheckResult(
-                approved=False, reasons=["Daily loss limit exceeded"]
-            ),
+            return_value=RiskCheckResult(approved=False, reasons=["Daily loss limit exceeded"]),
         ):
             await execution_engine.start()
             await execution_engine._handle_signal({"signal": sample_buy_signal})
@@ -344,9 +336,7 @@ class TestOrderAmountCalculation:
     """Tests for order amount calculation."""
 
     @pytest.mark.asyncio
-    async def test_calculate_order_amount_buy(
-        self, execution_engine: ExecutionEngine
-    ) -> None:
+    async def test_calculate_order_amount_buy(self, execution_engine: ExecutionEngine) -> None:
         """Test order amount calculation for buy orders."""
         # Default order amount is 15 EUR
         amount = await execution_engine._calculate_order_amount(
@@ -534,9 +524,7 @@ class TestManualOrders:
         with patch.object(
             execution_engine.risk_manager,
             "check_order",
-            return_value=RiskCheckResult(
-                approved=False, reasons=["Position too large"]
-            ),
+            return_value=RiskCheckResult(approved=False, reasons=["Position too large"]),
         ):
             result = await execution_engine.execute_manual_order(
                 pair="XBT/EUR",

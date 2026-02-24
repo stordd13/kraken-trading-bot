@@ -45,9 +45,7 @@ class TestDatabaseManager:
         """Test that init_db creates engine and session factory."""
         manager = DatabaseManager()
 
-        with patch(
-            "krakenbot.core.database.create_async_engine"
-        ) as mock_create_engine:
+        with patch("krakenbot.core.database.create_async_engine") as mock_create_engine:
             # Create a mock engine
             mock_engine = MagicMock()
 
@@ -76,9 +74,7 @@ class TestDatabaseManager:
         """Test that init_db can be called multiple times safely."""
         manager = DatabaseManager()
 
-        with patch(
-            "krakenbot.core.database.create_async_engine"
-        ) as mock_create_engine:
+        with patch("krakenbot.core.database.create_async_engine") as mock_create_engine:
             mock_engine = MagicMock()
 
             mock_connection = AsyncMock()

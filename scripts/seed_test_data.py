@@ -52,7 +52,7 @@ async def seed_ohlc_data(
     while current_time < end_time:
         # Simulate price movement (random walk with slight upward bias)
         price_change_pct = random.uniform(-0.02, 0.025)  # -2% to +2.5%
-        current_price *= (1 + price_change_pct)
+        current_price *= 1 + price_change_pct
 
         # Generate OHLC
         open_price = current_price
@@ -88,8 +88,12 @@ async def seed_ohlc_data(
         await session.commit()
 
     print(f"✅ Created {len(candles)} OHLC candles")
-    print(f"   Period: {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}")
-    print(f"   Price range: ${min(c.low for c in candles):.2f} - ${max(c.high for c in candles):.2f}")
+    print(
+        f"   Period: {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}"
+    )
+    print(
+        f"   Price range: ${min(c.low for c in candles):.2f} - ${max(c.high for c in candles):.2f}"
+    )
 
     return len(candles)
 

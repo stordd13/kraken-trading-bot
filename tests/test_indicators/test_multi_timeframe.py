@@ -334,7 +334,9 @@ class TestAdaptiveThresholds:
     def test_strong_bull_tightest_buy(self) -> None:
         """Strong bull: even tighter buy, widest sell, widest stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
-        buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.STRONG_BULL, volatility_pct=1.5)
+        buy, sell, sl = analyzer._calc_adaptive_thresholds(
+            MarketRegime.STRONG_BULL, volatility_pct=1.5
+        )
         # regime_mult=0.7, sell_regime_mult=1.5, sl_regime_mult=1.5
         assert buy == pytest.approx(-1.0 * 0.7 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 1.5 * 1.0, abs=0.01)
@@ -352,7 +354,9 @@ class TestAdaptiveThresholds:
     def test_strong_bear_widest_buy(self) -> None:
         """Strong bear: widest buy, tightest sell, tightest stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
-        buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.STRONG_BEAR, volatility_pct=1.5)
+        buy, sell, sl = analyzer._calc_adaptive_thresholds(
+            MarketRegime.STRONG_BEAR, volatility_pct=1.5
+        )
         # regime_mult=2.0, sell_regime_mult=0.6, sl_regime_mult=0.6
         assert buy == pytest.approx(-1.0 * 2.0 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 0.6 * 1.0, abs=0.01)

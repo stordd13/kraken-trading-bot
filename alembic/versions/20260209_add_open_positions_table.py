@@ -131,12 +131,8 @@ def upgrade() -> None:
     op.create_index("ix_open_positions_strategy", "open_positions", ["strategy"])
     op.create_index("ix_open_positions_pair", "open_positions", ["pair"])
     op.create_index("ix_open_positions_status", "open_positions", ["status"])
-    op.create_index(
-        "ix_open_positions_bot_status", "open_positions", ["bot_id", "status"]
-    )
-    op.create_index(
-        "ix_open_positions_bot_position", "open_positions", ["bot_id", "position_id"]
-    )
+    op.create_index("ix_open_positions_bot_status", "open_positions", ["bot_id", "status"])
+    op.create_index("ix_open_positions_bot_position", "open_positions", ["bot_id", "position_id"])
 
 
 def downgrade() -> None:

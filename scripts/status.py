@@ -68,9 +68,7 @@ async def get_status() -> None:
             print("-" * 40)
 
             # Count total candles
-            result = await session.execute(
-                select(func.count()).select_from(OHLCData)
-            )
+            result = await session.execute(select(func.count()).select_from(OHLCData))
             total_candles = result.scalar() or 0
             print(f"Total candles: {total_candles:,}")
 
@@ -86,9 +84,7 @@ async def get_status() -> None:
 
             # Get latest candle
             result = await session.execute(
-                select(OHLCData)
-                .order_by(OHLCData.timestamp.desc())
-                .limit(1)
+                select(OHLCData).order_by(OHLCData.timestamp.desc()).limit(1)
             )
             latest_candle = result.scalar()
             if latest_candle:
@@ -119,11 +115,16 @@ async def get_status() -> None:
                         "error": "❌",
                         "paused": "⏸️",
                         "initializing": "🔄",
-                    }.get(state.status.value if hasattr(state.status, "value") else str(state.status), "❓")
+                    }.get(
+                        state.status.value if hasattr(state.status, "value") else str(state.status),
+                        "❓",
+                    )
 
                     print(f"{status_emoji} Bot: {state.bot_id}")
                     print(f"  • Strategy: {state.strategy}")
-                    print(f"  • Status: {state.status.value if hasattr(state.status, 'value') else state.status}")
+                    print(
+                        f"  • Status: {state.status.value if hasattr(state.status, 'value') else state.status}"
+                    )
                     print(f"  • Position: {state.position_size}")
                     print(f"  • Entry price: {state.entry_price or 'N/A'}")
                     print(f"  • Daily P&L: {state.daily_pnl}")
@@ -137,11 +138,7 @@ async def get_status() -> None:
             print("💰 RECENT TRADES (Last 10)")
             print("-" * 40)
 
-            result = await session.execute(
-                select(Trade)
-                .order_by(Trade.timestamp.desc())
-                .limit(10)
-            )
+            result = await session.execute(select(Trade).order_by(Trade.timestamp.desc()).limit(10))
             trades = result.scalars().all()
 
             if not trades:
@@ -162,8 +159,7 @@ async def get_status() -> None:
 
             yesterday = datetime.now(UTC) - timedelta(days=1)
             result = await session.execute(
-                select(func.count(), func.sum(Trade.pnl))
-                .where(Trade.timestamp >= yesterday)
+                select(func.count(), func.sum(Trade.pnl)).where(Trade.timestamp >= yesterday)
             )
             row = result.one()
             trade_count = row[0] or 0
@@ -174,8 +170,7 @@ async def get_status() -> None:
 
             # Count candles in last 24h
             result = await session.execute(
-                select(func.count())
-                .where(OHLCData.timestamp >= yesterday)
+                select(func.count()).where(OHLCData.timestamp >= yesterday)
             )
             candles_24h = result.scalar() or 0
             print(f"Candles received: {candles_24h}")

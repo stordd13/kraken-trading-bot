@@ -10,6 +10,7 @@ This migration:
 3. Converts market_data_ohlc to a TimescaleDB hypertable
 4. Creates all necessary indexes
 """
+
 from collections.abc import Sequence
 
 import sqlalchemy as sa

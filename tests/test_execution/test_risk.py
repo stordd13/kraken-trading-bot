@@ -97,9 +97,7 @@ class TestRiskManager:
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_check_balance_sufficient_for_buy(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_balance_sufficient_for_buy(self, risk_manager: RiskManager) -> None:
         """Test balance check passes with sufficient EUR for buy."""
         result = RiskCheckResult(approved=True)
         balance = {"EUR": Decimal("1000.00"), "XBT": Decimal("0.0")}
@@ -117,9 +115,7 @@ class TestRiskManager:
         assert len(result.reasons) == 0
 
     @pytest.mark.asyncio
-    async def test_check_balance_insufficient_for_buy(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_balance_insufficient_for_buy(self, risk_manager: RiskManager) -> None:
         """Test balance check fails with insufficient EUR for buy."""
         result = RiskCheckResult(approved=True)
         balance = {"EUR": Decimal("100.00"), "XBT": Decimal("0.0")}
@@ -137,9 +133,7 @@ class TestRiskManager:
         assert any("Insufficient balance" in reason for reason in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_check_balance_sufficient_for_sell(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_balance_sufficient_for_sell(self, risk_manager: RiskManager) -> None:
         """Test balance check passes with sufficient BTC for sell.
 
         Note: ccxt returns balances with 'BTC' not 'XBT', so the RiskManager
@@ -162,9 +156,7 @@ class TestRiskManager:
         assert len(result.reasons) == 0
 
     @pytest.mark.asyncio
-    async def test_check_balance_insufficient_for_sell(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_balance_insufficient_for_sell(self, risk_manager: RiskManager) -> None:
         """Test balance check fails with insufficient BTC for sell.
 
         Note: ccxt returns balances with 'BTC' not 'XBT', so the RiskManager
@@ -188,9 +180,7 @@ class TestRiskManager:
         assert any("Insufficient BTC" in reason for reason in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_check_balance_missing_currency(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_balance_missing_currency(self, risk_manager: RiskManager) -> None:
         """Test balance check fails when currency is not in balance dict."""
         result = RiskCheckResult(approved=True)
         balance = {"USD": Decimal("1000.00")}  # No EUR
@@ -212,9 +202,7 @@ class TestRiskManager:
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_check_position_size_within_limit(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_position_size_within_limit(self, risk_manager: RiskManager) -> None:
         """Test position size check passes when within limits."""
         result = RiskCheckResult(approved=True)
         balance = {"EUR": Decimal("10000.00")}
@@ -231,9 +219,7 @@ class TestRiskManager:
         assert result.approved is True
 
     @pytest.mark.asyncio
-    async def test_check_position_size_exceeds_limit(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_position_size_exceeds_limit(self, risk_manager: RiskManager) -> None:
         """Test position size check fails when exceeding limit."""
         result = RiskCheckResult(approved=True)
         balance = {"EUR": Decimal("1000.00")}
@@ -251,9 +237,7 @@ class TestRiskManager:
         assert any("Position size too large" in reason for reason in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_check_position_size_zero_portfolio(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_position_size_zero_portfolio(self, risk_manager: RiskManager) -> None:
         """Test position size check fails with zero portfolio value."""
         result = RiskCheckResult(approved=True)
         balance = {"EUR": Decimal("0")}
@@ -271,9 +255,7 @@ class TestRiskManager:
         assert any("zero" in reason.lower() for reason in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_check_position_size_skipped_for_sell(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_position_size_skipped_for_sell(self, risk_manager: RiskManager) -> None:
         """Test position size check is skipped for sell orders."""
         result = RiskCheckResult(approved=True)
         balance = {"EUR": Decimal("1000.00")}
@@ -289,9 +271,7 @@ class TestRiskManager:
         )
 
     @pytest.mark.asyncio
-    async def test_check_position_size_with_usdc(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_position_size_with_usdc(self, risk_manager: RiskManager) -> None:
         """Test position size check works with USDC as quote currency."""
         result = RiskCheckResult(approved=True)
         balance = {"USDC": Decimal("10000.00")}
@@ -314,59 +294,43 @@ class TestRiskManager:
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_check_daily_loss_limit_ok(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_daily_loss_limit_ok(self, risk_manager: RiskManager) -> None:
         """Test daily loss check passes when within limit."""
         result = RiskCheckResult(approved=True)
 
-        with patch.object(
-            risk_manager, "_get_daily_pnl", return_value=Decimal("-10.00")
-        ):
+        with patch.object(risk_manager, "_get_daily_pnl", return_value=Decimal("-10.00")):
             await risk_manager._check_daily_loss_limit(result)
 
         assert result.approved is True
 
     @pytest.mark.asyncio
-    async def test_check_daily_loss_limit_exceeded(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_daily_loss_limit_exceeded(self, risk_manager: RiskManager) -> None:
         """Test daily loss check fails when limit exceeded."""
         result = RiskCheckResult(approved=True)
 
         # Default limit is 50 EUR
-        with patch.object(
-            risk_manager, "_get_daily_pnl", return_value=Decimal("-60.00")
-        ):
+        with patch.object(risk_manager, "_get_daily_pnl", return_value=Decimal("-60.00")):
             await risk_manager._check_daily_loss_limit(result)
 
         assert result.rejected is True
         assert any("Daily loss limit" in reason for reason in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_check_daily_loss_limit_exactly_at_limit(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_daily_loss_limit_exactly_at_limit(self, risk_manager: RiskManager) -> None:
         """Test daily loss check fails when exactly at limit."""
         result = RiskCheckResult(approved=True)
 
-        with patch.object(
-            risk_manager, "_get_daily_pnl", return_value=Decimal("-50.00")
-        ):
+        with patch.object(risk_manager, "_get_daily_pnl", return_value=Decimal("-50.00")):
             await risk_manager._check_daily_loss_limit(result)
 
         assert result.rejected is True
 
     @pytest.mark.asyncio
-    async def test_check_daily_loss_limit_positive_pnl(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_daily_loss_limit_positive_pnl(self, risk_manager: RiskManager) -> None:
         """Test daily loss check passes with positive P&L."""
         result = RiskCheckResult(approved=True)
 
-        with patch.object(
-            risk_manager, "_get_daily_pnl", return_value=Decimal("100.00")
-        ):
+        with patch.object(risk_manager, "_get_daily_pnl", return_value=Decimal("100.00")):
             await risk_manager._check_daily_loss_limit(result)
 
         assert result.approved is True
@@ -376,9 +340,7 @@ class TestRiskManager:
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_check_max_open_positions_ok(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_max_open_positions_ok(self, risk_manager: RiskManager) -> None:
         """Test max positions check passes when under limit."""
         result = RiskCheckResult(approved=True)
 
@@ -388,9 +350,7 @@ class TestRiskManager:
         assert result.approved is True
 
     @pytest.mark.asyncio
-    async def test_check_max_open_positions_at_limit(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_max_open_positions_at_limit(self, risk_manager: RiskManager) -> None:
         """Test max positions check fails at limit."""
         result = RiskCheckResult(approved=True)
 
@@ -402,9 +362,7 @@ class TestRiskManager:
         assert any("Max open positions" in reason for reason in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_check_max_open_positions_exceeds_limit(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_max_open_positions_exceeds_limit(self, risk_manager: RiskManager) -> None:
         """Test max positions check fails when exceeding limit."""
         result = RiskCheckResult(approved=True)
 
@@ -414,9 +372,7 @@ class TestRiskManager:
         assert result.rejected is True
 
     @pytest.mark.asyncio
-    async def test_check_max_open_positions_sell_allowed(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_max_open_positions_sell_allowed(self, risk_manager: RiskManager) -> None:
         """Test max positions check is skipped for sell orders."""
         result = RiskCheckResult(approved=True)
 
@@ -431,40 +387,30 @@ class TestRiskManager:
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_check_trade_interval_ok(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_trade_interval_ok(self, risk_manager: RiskManager) -> None:
         """Test trade interval check passes when enough time has elapsed."""
         result = RiskCheckResult(approved=True)
         last_trade = datetime.now(UTC) - timedelta(seconds=120)
 
-        with patch.object(
-            risk_manager, "_get_last_trade_time", return_value=last_trade
-        ):
+        with patch.object(risk_manager, "_get_last_trade_time", return_value=last_trade):
             await risk_manager._check_trade_interval(result)
 
         assert result.approved is True
 
     @pytest.mark.asyncio
-    async def test_check_trade_interval_too_soon(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_trade_interval_too_soon(self, risk_manager: RiskManager) -> None:
         """Test trade interval check fails when trading too soon."""
         result = RiskCheckResult(approved=True)
         last_trade = datetime.now(UTC) - timedelta(seconds=30)
 
-        with patch.object(
-            risk_manager, "_get_last_trade_time", return_value=last_trade
-        ):
+        with patch.object(risk_manager, "_get_last_trade_time", return_value=last_trade):
             await risk_manager._check_trade_interval(result)
 
         assert result.rejected is True
         assert any("Trade too soon" in reason for reason in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_check_trade_interval_no_previous_trade(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_trade_interval_no_previous_trade(self, risk_manager: RiskManager) -> None:
         """Test trade interval check passes with no previous trades."""
         result = RiskCheckResult(approved=True)
 
@@ -474,17 +420,13 @@ class TestRiskManager:
         assert result.approved is True
 
     @pytest.mark.asyncio
-    async def test_check_trade_interval_exactly_at_minimum(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_trade_interval_exactly_at_minimum(self, risk_manager: RiskManager) -> None:
         """Test trade interval check passes when exactly at minimum."""
         result = RiskCheckResult(approved=True)
         # Default minimum is 60 seconds
         last_trade = datetime.now(UTC) - timedelta(seconds=60)
 
-        with patch.object(
-            risk_manager, "_get_last_trade_time", return_value=last_trade
-        ):
+        with patch.object(risk_manager, "_get_last_trade_time", return_value=last_trade):
             await risk_manager._check_trade_interval(result)
 
         assert result.approved is True
@@ -494,16 +436,12 @@ class TestRiskManager:
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_check_order_all_checks_pass(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_order_all_checks_pass(self, risk_manager: RiskManager) -> None:
         """Test full order validation when all checks pass."""
         balance = {"EUR": Decimal("10000.00"), "XBT": Decimal("0.0")}
 
         with (
-            patch.object(
-                risk_manager, "_get_daily_pnl", return_value=Decimal("0")
-            ),
+            patch.object(risk_manager, "_get_daily_pnl", return_value=Decimal("0")),
             patch.object(risk_manager, "_get_open_positions_count", return_value=0),
             patch.object(risk_manager, "_get_last_trade_time", return_value=None),
         ):
@@ -519,21 +457,15 @@ class TestRiskManager:
         assert len(result.reasons) == 0
 
     @pytest.mark.asyncio
-    async def test_check_order_multiple_failures(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_order_multiple_failures(self, risk_manager: RiskManager) -> None:
         """Test full order validation collects multiple failure reasons."""
         balance = {"EUR": Decimal("100.00")}  # Insufficient balance
         last_trade = datetime.now(UTC) - timedelta(seconds=10)  # Too soon
 
         with (
-            patch.object(
-                risk_manager, "_get_daily_pnl", return_value=Decimal("-60")
-            ),
+            patch.object(risk_manager, "_get_daily_pnl", return_value=Decimal("-60")),
             patch.object(risk_manager, "_get_open_positions_count", return_value=5),
-            patch.object(
-                risk_manager, "_get_last_trade_time", return_value=last_trade
-            ),
+            patch.object(risk_manager, "_get_last_trade_time", return_value=last_trade),
         ):
             result = await risk_manager.check_order(
                 pair="XBT/EUR",
@@ -548,9 +480,7 @@ class TestRiskManager:
         assert len(result.reasons) >= 3
 
     @pytest.mark.asyncio
-    async def test_check_order_sell_with_position(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_check_order_sell_with_position(self, risk_manager: RiskManager) -> None:
         """Test sell order validation with existing position.
 
         Note: ccxt returns balances with 'BTC' not 'XBT', so we use BTC here.
@@ -559,9 +489,7 @@ class TestRiskManager:
         balance = {"EUR": Decimal("1000.00"), "BTC": Decimal("0.01")}
 
         with (
-            patch.object(
-                risk_manager, "_get_daily_pnl", return_value=Decimal("0")
-            ),
+            patch.object(risk_manager, "_get_daily_pnl", return_value=Decimal("0")),
             patch.object(risk_manager, "_get_open_positions_count", return_value=1),
             patch.object(risk_manager, "_get_last_trade_time", return_value=None),
         ):
@@ -580,41 +508,29 @@ class TestRiskManager:
     # -------------------------------------------------------------------------
 
     @pytest.mark.asyncio
-    async def test_emergency_stop_loss_not_triggered(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_emergency_stop_loss_not_triggered(self, risk_manager: RiskManager) -> None:
         """Test emergency stop loss not triggered with small loss."""
         entry_price = Decimal("42000")
         current_price = Decimal("41000")  # ~2.4% loss
 
-        triggered = await risk_manager.check_emergency_stop_loss(
-            entry_price, current_price
-        )
+        triggered = await risk_manager.check_emergency_stop_loss(entry_price, current_price)
 
         assert triggered is False
 
     @pytest.mark.asyncio
-    async def test_emergency_stop_loss_triggered(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_emergency_stop_loss_triggered(self, risk_manager: RiskManager) -> None:
         """Test emergency stop loss triggered with large loss."""
         entry_price = Decimal("42000")
         current_price = Decimal("37000")  # ~11.9% loss (> 10% default)
 
-        triggered = await risk_manager.check_emergency_stop_loss(
-            entry_price, current_price
-        )
+        triggered = await risk_manager.check_emergency_stop_loss(entry_price, current_price)
 
         assert triggered is True
 
     @pytest.mark.asyncio
-    async def test_emergency_stop_loss_zero_entry_price(
-        self, risk_manager: RiskManager
-    ) -> None:
+    async def test_emergency_stop_loss_zero_entry_price(self, risk_manager: RiskManager) -> None:
         """Test emergency stop loss returns False with zero entry price."""
-        triggered = await risk_manager.check_emergency_stop_loss(
-            Decimal("0"), Decimal("42000")
-        )
+        triggered = await risk_manager.check_emergency_stop_loss(Decimal("0"), Decimal("42000"))
 
         assert triggered is False
 

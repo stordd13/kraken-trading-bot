@@ -157,9 +157,7 @@ class TestEMACalculation:
         result = ema.update(Decimal("42050.55555555"))
 
         expected_sma = (
-            Decimal("42000.12345678")
-            + Decimal("42100.98765432")
-            + Decimal("42050.55555555")
+            Decimal("42000.12345678") + Decimal("42100.98765432") + Decimal("42050.55555555")
         ) / Decimal("3")
         assert result == expected_sma
 

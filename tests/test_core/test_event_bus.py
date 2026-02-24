@@ -87,9 +87,7 @@ class TestEventBusSubscription:
         assert result is True
         assert event_bus.get_subscriber_count("test.event") == 0
 
-    async def test_unsubscribe_nonexistent_returns_false(
-        self, event_bus: EventBus
-    ) -> None:
+    async def test_unsubscribe_nonexistent_returns_false(self, event_bus: EventBus) -> None:
         """Test unsubscribing a non-existent callback returns False."""
         callback = MagicMock(__name__="callback")
         result = await event_bus.unsubscribe("test.event", callback)
@@ -149,9 +147,7 @@ class TestEventBusPublishing:
 
         assert count == 2
 
-    async def test_publish_no_subscribers_returns_zero(
-        self, event_bus: EventBus
-    ) -> None:
+    async def test_publish_no_subscribers_returns_zero(self, event_bus: EventBus) -> None:
         """Test publishing to event with no subscribers."""
         count = await event_bus.publish("no.subscribers", {})
 
@@ -167,9 +163,7 @@ class TestEventBusPublishing:
 
         assert callback.call_count == 2
 
-    async def test_publish_wildcard_ignores_non_matching(
-        self, event_bus: EventBus
-    ) -> None:
+    async def test_publish_wildcard_ignores_non_matching(self, event_bus: EventBus) -> None:
         """Test that wildcard doesn't match unrelated events."""
         callback = MagicMock(__name__="callback")
         await event_bus.subscribe("market.*", callback)
@@ -187,9 +181,7 @@ class TestEventBusPublishing:
 
         callback.assert_called_once_with({"price": "42000"})
 
-    async def test_callback_error_doesnt_stop_others(
-        self, event_bus: EventBus
-    ) -> None:
+    async def test_callback_error_doesnt_stop_others(self, event_bus: EventBus) -> None:
         """Test that error in one callback doesn't prevent others."""
         callback1 = MagicMock(__name__="callback1", side_effect=ValueError("test error"))
         callback2 = MagicMock(__name__="callback2")
@@ -249,9 +241,7 @@ class TestEventBusHistory:
         history = event_bus.get_history()
         assert len(history) == 0
 
-    async def test_history_enabled_stores_events(
-        self, event_bus_with_history: EventBus
-    ) -> None:
+    async def test_history_enabled_stores_events(self, event_bus_with_history: EventBus) -> None:
         """Test that enabled history stores events."""
         await event_bus_with_history.publish("test.event", {"key": "value"})
 
@@ -260,9 +250,7 @@ class TestEventBusHistory:
         assert history[0].event_type == "test.event"
         assert history[0].data == {"key": "value"}
 
-    async def test_history_respects_max_limit(
-        self, event_bus_with_history: EventBus
-    ) -> None:
+    async def test_history_respects_max_limit(self, event_bus_with_history: EventBus) -> None:
         """Test that history respects max_history limit."""
         # EventBus has max_history=100
         for i in range(150):
@@ -273,9 +261,7 @@ class TestEventBusHistory:
         # Should have most recent events
         assert history[-1].data["i"] == 149
 
-    async def test_history_filter_by_event_type(
-        self, event_bus_with_history: EventBus
-    ) -> None:
+    async def test_history_filter_by_event_type(self, event_bus_with_history: EventBus) -> None:
         """Test filtering history by event type."""
         await event_bus_with_history.publish("event.one", {"n": 1})
         await event_bus_with_history.publish("event.two", {"n": 2})
@@ -285,9 +271,7 @@ class TestEventBusHistory:
         assert len(history) == 2
         assert all(e.event_type == "event.one" for e in history)
 
-    async def test_history_limit_parameter(
-        self, event_bus_with_history: EventBus
-    ) -> None:
+    async def test_history_limit_parameter(self, event_bus_with_history: EventBus) -> None:
         """Test limiting history results."""
         for i in range(10):
             await event_bus_with_history.publish("test.event", {"i": i})
@@ -409,9 +393,7 @@ class TestEventType:
         assert EventType.TRADE_ORDER_FILLED.value == "trade.order_filled"
         assert EventType.BOT_STARTED.value == "bot.started"
 
-    async def test_event_type_usable_with_subscribe(
-        self, event_bus: EventBus
-    ) -> None:
+    async def test_event_type_usable_with_subscribe(self, event_bus: EventBus) -> None:
         """Test that EventType can be used for subscriptions."""
         callback = MagicMock(__name__="callback")
         await event_bus.subscribe(EventType.MARKET_TICK, callback)

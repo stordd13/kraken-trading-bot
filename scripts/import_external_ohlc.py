@@ -27,8 +27,8 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 import ccxt.async_support as ccxt
-import structlog
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+import structlog
 
 from krakenbot.config.settings import get_settings
 from krakenbot.core.database import DatabaseManager
@@ -80,8 +80,7 @@ async def fetch_candles_from_binance(
     timeframe = TIMEFRAME_MAP.get(interval)
     if not timeframe:
         raise ValueError(
-            f"Unsupported interval: {interval}. "
-            f"Supported: {list(TIMEFRAME_MAP.keys())}"
+            f"Unsupported interval: {interval}. Supported: {list(TIMEFRAME_MAP.keys())}"
         )
 
     since_ms = int(start_time.timestamp() * 1000)
@@ -115,16 +114,18 @@ async def fetch_candles_from_binance(
             if ts_ms >= end_ms:
                 break
 
-            all_candles.append({
-                "timestamp": datetime.fromtimestamp(ts_ms / 1000, tz=UTC),
-                "pair": TARGET_PAIR,
-                "interval": interval,
-                "open": Decimal(str(o)),
-                "high": Decimal(str(h)),
-                "low": Decimal(str(l)),
-                "close": Decimal(str(c)),
-                "volume": Decimal(str(v)),
-            })
+            all_candles.append(
+                {
+                    "timestamp": datetime.fromtimestamp(ts_ms / 1000, tz=UTC),
+                    "pair": TARGET_PAIR,
+                    "interval": interval,
+                    "open": Decimal(str(o)),
+                    "high": Decimal(str(h)),
+                    "low": Decimal(str(l)),
+                    "close": Decimal(str(c)),
+                    "volume": Decimal(str(v)),
+                }
+            )
 
         # Move to after the last candle
         last_ts = ohlcv[-1][0]
@@ -256,9 +257,7 @@ async def import_interval(
     start_time = end_time - timedelta(days=days)
 
     # Check existing data
-    earliest, latest, count = await get_existing_data_range(
-        db_manager, TARGET_PAIR, interval
-    )
+    earliest, latest, count = await get_existing_data_range(db_manager, TARGET_PAIR, interval)
 
     expected_candles = int(days * 24 * 60 / interval)
 
@@ -295,9 +294,7 @@ async def import_interval(
         }
 
     # Fetch from Binance
-    candles = await fetch_candles_from_binance(
-        exchange, interval, start_time, end_time
-    )
+    candles = await fetch_candles_from_binance(exchange, interval, start_time, end_time)
 
     logger.info(
         "fetch_complete",
@@ -316,9 +313,7 @@ async def import_interval(
         }
 
     # Save to DB (preserve existing)
-    total_attempted, total_inserted = await save_candles_preserve_existing(
-        db_manager, candles
-    )
+    total_attempted, total_inserted = await save_candles_preserve_existing(db_manager, candles)
 
     # Check new data range
     new_earliest, new_latest, new_count = await get_existing_data_range(
@@ -370,7 +365,8 @@ async def main() -> None:
         help="Estimate without inserting data",
     )
     parser.add_argument(
-        "-y", "--yes",
+        "-y",
+        "--yes",
         action="store_true",
         help="Skip confirmation prompt",
     )
@@ -379,8 +375,9 @@ async def main() -> None:
     # Validate intervals
     for interval in args.intervals:
         if interval not in TIMEFRAME_MAP:
-            print(f"Error: unsupported interval {interval}. "
-                  f"Supported: {list(TIMEFRAME_MAP.keys())}")
+            print(
+                f"Error: unsupported interval {interval}. Supported: {list(TIMEFRAME_MAP.keys())}"
+            )
             sys.exit(1)
 
     # Summary
@@ -409,16 +406,16 @@ async def main() -> None:
     await db_manager.init_db(settings)
 
     # Initialize Binance via CCXT (no API key needed for public data)
-    exchange = ccxt.binance({
-        "enableRateLimit": True,
-    })
+    exchange = ccxt.binance(
+        {
+            "enableRateLimit": True,
+        }
+    )
 
     try:
         results = []
         for interval in args.intervals:
-            result = await import_interval(
-                exchange, db_manager, interval, args.days, args.dry_run
-            )
+            result = await import_interval(exchange, db_manager, interval, args.days, args.dry_run)
             results.append(result)
 
         # Print summary

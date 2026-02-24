@@ -55,6 +55,7 @@ from krakenbot.strategies.bear_short import BearShortStrategy
 from krakenbot.strategies.capitulation import CapitulationStrategy
 from krakenbot.strategies.grid_adaptive import GridAdaptiveStrategy
 from krakenbot.strategies.grid_spot import GridSpotStrategy
+from krakenbot.strategies.multi_strategy_router import MultiStrategyRouter
 from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
 from krakenbot.strategies.trend_following import TrendFollowingStrategy
 
@@ -71,6 +72,8 @@ STRATEGY_REGISTRY: dict[str, type[BaseStrategy]] = {
     "grid_spot": GridSpotStrategy,
     "grid_adaptive": GridAdaptiveStrategy,
     "trend_following": TrendFollowingStrategy,
+    # New: router orchestrating 7 strategies + risk manager
+    "multi_strategy_router": MultiStrategyRouter,
 }
 
 

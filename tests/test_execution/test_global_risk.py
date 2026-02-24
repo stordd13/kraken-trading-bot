@@ -82,9 +82,7 @@ class TestGlobalRiskManagerLegacyMode:
         db_manager = _make_db_manager()
         return GlobalRiskManager(mock_settings, db_manager, multi_strategy_settings=None)
 
-    def test_legacy_mode_multi_enabled_is_false(
-        self, grm_legacy: GlobalRiskManager
-    ) -> None:
+    def test_legacy_mode_multi_enabled_is_false(self, grm_legacy: GlobalRiskManager) -> None:
         """Legacy mode should have _multi_enabled=False."""
         assert grm_legacy._multi_enabled is False
 
@@ -149,9 +147,7 @@ class TestGlobalRiskManagerLegacyMode:
         mock_set_bot_id.assert_called_once_with("bot-threshold-001")
 
     @pytest.mark.asyncio
-    async def test_legacy_mode_disabled_multi_settings(
-        self, mock_settings: MagicMock
-    ) -> None:
+    async def test_legacy_mode_disabled_multi_settings(self, mock_settings: MagicMock) -> None:
         """MultiStrategySettings with enabled=False should behave like legacy."""
         db_manager = _make_db_manager()
         ms = _make_multi_settings(enabled=False)
@@ -206,9 +202,7 @@ class TestRegisterStrategy:
         assert "bot-aggressive-001" in grm._budgets
         assert grm._budgets["bot-aggressive-001"] is budget
 
-    def test_register_strategy_creates_risk_manager(
-        self, grm: GlobalRiskManager
-    ) -> None:
+    def test_register_strategy_creates_risk_manager(self, grm: GlobalRiskManager) -> None:
         """register_strategy should create a per-strategy RiskManager with correct limits."""
         budget = StrategyBudget(
             max_open_positions=2,
@@ -239,9 +233,7 @@ class TestRegisterStrategy:
         assert grm._strategy_risk_managers["bot-a"].max_open_positions == 2
         assert grm._strategy_risk_managers["bot-b"].max_open_positions == 5
 
-    def test_get_risk_summary_includes_registered_strategies(
-        self, grm: GlobalRiskManager
-    ) -> None:
+    def test_get_risk_summary_includes_registered_strategies(self, grm: GlobalRiskManager) -> None:
         """get_risk_summary should include registered strategy budgets."""
         budget = StrategyBudget(
             max_open_positions=2,
@@ -280,9 +272,7 @@ class TestGlobalLevelChecks:
         return GlobalRiskManager(mock_settings, db_manager, multi_strategy_settings=ms)
 
     @pytest.mark.asyncio
-    async def test_global_balance_check_insufficient(
-        self, grm: GlobalRiskManager
-    ) -> None:
+    async def test_global_balance_check_insufficient(self, grm: GlobalRiskManager) -> None:
         """Global balance check should reject when balance is insufficient."""
         with (
             patch.object(
@@ -291,9 +281,7 @@ class TestGlobalLevelChecks:
             patch.object(
                 grm, "_get_global_daily_pnl", new_callable=AsyncMock, return_value=Decimal("0")
             ),
-            patch.object(
-                grm, "_check_global_exposure", new_callable=AsyncMock
-            ),
+            patch.object(grm, "_check_global_exposure", new_callable=AsyncMock),
         ):
             result = await grm.check_order(
                 pair="XBT/EUR",
@@ -307,22 +295,19 @@ class TestGlobalLevelChecks:
         assert any("Insufficient balance" in r for r in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_global_max_positions_reached(
-        self, grm: GlobalRiskManager
-    ) -> None:
+    async def test_global_max_positions_reached(self, grm: GlobalRiskManager) -> None:
         """Global check should reject when total positions >= global max."""
         with (
             patch.object(
-                grm, "_get_global_open_positions_count",
+                grm,
+                "_get_global_open_positions_count",
                 new_callable=AsyncMock,
                 return_value=5,  # == global_max_open_positions
             ),
             patch.object(
                 grm, "_get_global_daily_pnl", new_callable=AsyncMock, return_value=Decimal("0")
             ),
-            patch.object(
-                grm, "_check_global_exposure", new_callable=AsyncMock
-            ),
+            patch.object(grm, "_check_global_exposure", new_callable=AsyncMock),
         ):
             result = await grm.check_order(
                 pair="XBT/EUR",
@@ -336,22 +321,19 @@ class TestGlobalLevelChecks:
         assert any("Global max positions" in r for r in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_global_max_positions_under_limit(
-        self, grm: GlobalRiskManager
-    ) -> None:
+    async def test_global_max_positions_under_limit(self, grm: GlobalRiskManager) -> None:
         """Global check should pass when total positions < global max."""
         with (
             patch.object(
-                grm, "_get_global_open_positions_count",
+                grm,
+                "_get_global_open_positions_count",
                 new_callable=AsyncMock,
                 return_value=2,
             ),
             patch.object(
                 grm, "_get_global_daily_pnl", new_callable=AsyncMock, return_value=Decimal("0")
             ),
-            patch.object(
-                grm, "_check_global_exposure", new_callable=AsyncMock
-            ),
+            patch.object(grm, "_check_global_exposure", new_callable=AsyncMock),
         ):
             result = await grm.check_order(
                 pair="XBT/EUR",
@@ -364,24 +346,22 @@ class TestGlobalLevelChecks:
         assert result.approved is True
 
     @pytest.mark.asyncio
-    async def test_global_daily_loss_limit_reached(
-        self, grm: GlobalRiskManager
-    ) -> None:
+    async def test_global_daily_loss_limit_reached(self, grm: GlobalRiskManager) -> None:
         """Global check should reject when daily loss >= global limit."""
         with (
             patch.object(
-                grm, "_get_global_open_positions_count",
+                grm,
+                "_get_global_open_positions_count",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
             patch.object(
-                grm, "_get_global_daily_pnl",
+                grm,
+                "_get_global_daily_pnl",
                 new_callable=AsyncMock,
                 return_value=Decimal("-100"),  # == -global_daily_loss_limit_eur
             ),
-            patch.object(
-                grm, "_check_global_exposure", new_callable=AsyncMock
-            ),
+            patch.object(grm, "_check_global_exposure", new_callable=AsyncMock),
         ):
             result = await grm.check_order(
                 pair="XBT/EUR",
@@ -395,24 +375,22 @@ class TestGlobalLevelChecks:
         assert any("Global daily loss limit" in r for r in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_global_daily_loss_within_limit(
-        self, grm: GlobalRiskManager
-    ) -> None:
+    async def test_global_daily_loss_within_limit(self, grm: GlobalRiskManager) -> None:
         """Global check should pass when daily loss is within limit."""
         with (
             patch.object(
-                grm, "_get_global_open_positions_count",
+                grm,
+                "_get_global_open_positions_count",
                 new_callable=AsyncMock,
                 return_value=0,
             ),
             patch.object(
-                grm, "_get_global_daily_pnl",
+                grm,
+                "_get_global_daily_pnl",
                 new_callable=AsyncMock,
                 return_value=Decimal("-30"),  # Under the 100 limit
             ),
-            patch.object(
-                grm, "_check_global_exposure", new_callable=AsyncMock
-            ),
+            patch.object(grm, "_check_global_exposure", new_callable=AsyncMock),
         ):
             result = await grm.check_order(
                 pair="XBT/EUR",
@@ -425,18 +403,18 @@ class TestGlobalLevelChecks:
         assert result.approved is True
 
     @pytest.mark.asyncio
-    async def test_global_checks_skipped_for_sell_orders(
-        self, grm: GlobalRiskManager
-    ) -> None:
+    async def test_global_checks_skipped_for_sell_orders(self, grm: GlobalRiskManager) -> None:
         """Sell orders should skip global position/loss checks (only balance checked)."""
         with (
             patch.object(
-                grm, "_get_global_open_positions_count",
+                grm,
+                "_get_global_open_positions_count",
                 new_callable=AsyncMock,
                 return_value=100,  # Way over limit
             ),
             patch.object(
-                grm, "_get_global_daily_pnl",
+                grm,
+                "_get_global_daily_pnl",
                 new_callable=AsyncMock,
                 return_value=Decimal("-999"),  # Way over limit
             ),
@@ -493,19 +471,26 @@ class TestPerStrategyChecks:
         self, grm_with_strategies: GlobalRiskManager
     ) -> None:
         """Per-strategy check should reject when strategy positions >= budget max."""
-        strategy_result = RiskCheckResult(approved=False, reasons=["Max open positions reached: 2 >= 2"])
+        strategy_result = RiskCheckResult(
+            approved=False, reasons=["Max open positions reached: 2 >= 2"]
+        )
 
         with (
             patch.object(
-                grm_with_strategies, "_get_global_open_positions_count",
-                new_callable=AsyncMock, return_value=2,
+                grm_with_strategies,
+                "_get_global_open_positions_count",
+                new_callable=AsyncMock,
+                return_value=2,
             ),
             patch.object(
-                grm_with_strategies, "_get_global_daily_pnl",
-                new_callable=AsyncMock, return_value=Decimal("0"),
+                grm_with_strategies,
+                "_get_global_daily_pnl",
+                new_callable=AsyncMock,
+                return_value=Decimal("0"),
             ),
             patch.object(
-                grm_with_strategies, "_check_global_exposure",
+                grm_with_strategies,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
             patch.object(
@@ -540,15 +525,20 @@ class TestPerStrategyChecks:
 
         with (
             patch.object(
-                grm_with_strategies, "_get_global_open_positions_count",
-                new_callable=AsyncMock, return_value=1,
+                grm_with_strategies,
+                "_get_global_open_positions_count",
+                new_callable=AsyncMock,
+                return_value=1,
             ),
             patch.object(
-                grm_with_strategies, "_get_global_daily_pnl",
-                new_callable=AsyncMock, return_value=Decimal("-10"),
+                grm_with_strategies,
+                "_get_global_daily_pnl",
+                new_callable=AsyncMock,
+                return_value=Decimal("-10"),
             ),
             patch.object(
-                grm_with_strategies, "_check_global_exposure",
+                grm_with_strategies,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
             patch.object(
@@ -579,15 +569,20 @@ class TestPerStrategyChecks:
 
         with (
             patch.object(
-                grm_with_strategies, "_get_global_open_positions_count",
-                new_callable=AsyncMock, return_value=1,
+                grm_with_strategies,
+                "_get_global_open_positions_count",
+                new_callable=AsyncMock,
+                return_value=1,
             ),
             patch.object(
-                grm_with_strategies, "_get_global_daily_pnl",
-                new_callable=AsyncMock, return_value=Decimal("0"),
+                grm_with_strategies,
+                "_get_global_daily_pnl",
+                new_callable=AsyncMock,
+                return_value=Decimal("0"),
             ),
             patch.object(
-                grm_with_strategies, "_check_global_exposure",
+                grm_with_strategies,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
             patch.object(
@@ -615,15 +610,20 @@ class TestPerStrategyChecks:
         """An unregistered bot_id should skip per-strategy checks (only global checks run)."""
         with (
             patch.object(
-                grm_with_strategies, "_get_global_open_positions_count",
-                new_callable=AsyncMock, return_value=0,
+                grm_with_strategies,
+                "_get_global_open_positions_count",
+                new_callable=AsyncMock,
+                return_value=0,
             ),
             patch.object(
-                grm_with_strategies, "_get_global_daily_pnl",
-                new_callable=AsyncMock, return_value=Decimal("0"),
+                grm_with_strategies,
+                "_get_global_daily_pnl",
+                new_callable=AsyncMock,
+                return_value=Decimal("0"),
             ),
             patch.object(
-                grm_with_strategies, "_check_global_exposure",
+                grm_with_strategies,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
         ):
@@ -684,16 +684,20 @@ class TestGlobalLimitBlocksAllStrategies:
         for bot_id in ("bot-a", "bot-b"):
             with (
                 patch.object(
-                    grm_with_strategies, "_get_global_open_positions_count",
+                    grm_with_strategies,
+                    "_get_global_open_positions_count",
                     new_callable=AsyncMock,
                     return_value=3,  # == global_max_open_positions
                 ),
                 patch.object(
-                    grm_with_strategies, "_get_global_daily_pnl",
-                    new_callable=AsyncMock, return_value=Decimal("0"),
+                    grm_with_strategies,
+                    "_get_global_daily_pnl",
+                    new_callable=AsyncMock,
+                    return_value=Decimal("0"),
                 ),
                 patch.object(
-                    grm_with_strategies, "_check_global_exposure",
+                    grm_with_strategies,
+                    "_check_global_exposure",
                     new_callable=AsyncMock,
                 ),
                 patch.object(
@@ -725,16 +729,20 @@ class TestGlobalLimitBlocksAllStrategies:
         for bot_id in ("bot-a", "bot-b"):
             with (
                 patch.object(
-                    grm_with_strategies, "_get_global_open_positions_count",
-                    new_callable=AsyncMock, return_value=0,
+                    grm_with_strategies,
+                    "_get_global_open_positions_count",
+                    new_callable=AsyncMock,
+                    return_value=0,
                 ),
                 patch.object(
-                    grm_with_strategies, "_get_global_daily_pnl",
+                    grm_with_strategies,
+                    "_get_global_daily_pnl",
                     new_callable=AsyncMock,
                     return_value=Decimal("-50"),  # == -global_daily_loss_limit_eur
                 ),
                 patch.object(
-                    grm_with_strategies, "_check_global_exposure",
+                    grm_with_strategies,
+                    "_check_global_exposure",
                     new_callable=AsyncMock,
                 ),
                 patch.object(
@@ -810,15 +818,20 @@ class TestPerStrategyLimitBlocksOnlyThatStrategy:
         # Check bot-a - should be rejected
         with (
             patch.object(
-                grm_with_strategies, "_get_global_open_positions_count",
-                new_callable=AsyncMock, return_value=1,
+                grm_with_strategies,
+                "_get_global_open_positions_count",
+                new_callable=AsyncMock,
+                return_value=1,
             ),
             patch.object(
-                grm_with_strategies, "_get_global_daily_pnl",
-                new_callable=AsyncMock, return_value=Decimal("0"),
+                grm_with_strategies,
+                "_get_global_daily_pnl",
+                new_callable=AsyncMock,
+                return_value=Decimal("0"),
             ),
             patch.object(
-                grm_with_strategies, "_check_global_exposure",
+                grm_with_strategies,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
             patch.object(
@@ -840,15 +853,20 @@ class TestPerStrategyLimitBlocksOnlyThatStrategy:
         # Check bot-b - should be approved
         with (
             patch.object(
-                grm_with_strategies, "_get_global_open_positions_count",
-                new_callable=AsyncMock, return_value=1,
+                grm_with_strategies,
+                "_get_global_open_positions_count",
+                new_callable=AsyncMock,
+                return_value=1,
             ),
             patch.object(
-                grm_with_strategies, "_get_global_daily_pnl",
-                new_callable=AsyncMock, return_value=Decimal("0"),
+                grm_with_strategies,
+                "_get_global_daily_pnl",
+                new_callable=AsyncMock,
+                return_value=Decimal("0"),
             ),
             patch.object(
-                grm_with_strategies, "_check_global_exposure",
+                grm_with_strategies,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
             patch.object(
@@ -889,15 +907,20 @@ class TestPerStrategyLimitBlocksOnlyThatStrategy:
         # Check bot-a - should be rejected
         with (
             patch.object(
-                grm_with_strategies, "_get_global_open_positions_count",
-                new_callable=AsyncMock, return_value=0,
+                grm_with_strategies,
+                "_get_global_open_positions_count",
+                new_callable=AsyncMock,
+                return_value=0,
             ),
             patch.object(
-                grm_with_strategies, "_get_global_daily_pnl",
-                new_callable=AsyncMock, return_value=Decimal("-10"),
+                grm_with_strategies,
+                "_get_global_daily_pnl",
+                new_callable=AsyncMock,
+                return_value=Decimal("-10"),
             ),
             patch.object(
-                grm_with_strategies, "_check_global_exposure",
+                grm_with_strategies,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
             patch.object(
@@ -919,15 +942,20 @@ class TestPerStrategyLimitBlocksOnlyThatStrategy:
         # Check bot-b - should be approved
         with (
             patch.object(
-                grm_with_strategies, "_get_global_open_positions_count",
-                new_callable=AsyncMock, return_value=0,
+                grm_with_strategies,
+                "_get_global_open_positions_count",
+                new_callable=AsyncMock,
+                return_value=0,
             ),
             patch.object(
-                grm_with_strategies, "_get_global_daily_pnl",
-                new_callable=AsyncMock, return_value=Decimal("-10"),
+                grm_with_strategies,
+                "_get_global_daily_pnl",
+                new_callable=AsyncMock,
+                return_value=Decimal("-10"),
             ),
             patch.object(
-                grm_with_strategies, "_check_global_exposure",
+                grm_with_strategies,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
             patch.object(
@@ -990,17 +1018,20 @@ class TestCombinedFailures:
 
         with (
             patch.object(
-                grm, "_get_global_open_positions_count",
+                grm,
+                "_get_global_open_positions_count",
                 new_callable=AsyncMock,
                 return_value=2,  # == global max
             ),
             patch.object(
-                grm, "_get_global_daily_pnl",
+                grm,
+                "_get_global_daily_pnl",
                 new_callable=AsyncMock,
                 return_value=Decimal("-30"),  # == -global daily loss limit
             ),
             patch.object(
-                grm, "_check_global_exposure",
+                grm,
+                "_check_global_exposure",
                 new_callable=AsyncMock,
             ),
             patch.object(
@@ -1027,9 +1058,7 @@ class TestCombinedFailures:
         assert any("[bot-x]" in r for r in result.reasons)
 
     @pytest.mark.asyncio
-    async def test_emergency_stop_loss_delegates(
-        self, mock_settings: MagicMock
-    ) -> None:
+    async def test_emergency_stop_loss_delegates(self, mock_settings: MagicMock) -> None:
         """check_emergency_stop_loss should delegate to legacy RiskManager."""
         db_manager = _make_db_manager()
         grm = GlobalRiskManager(mock_settings, db_manager, multi_strategy_settings=None)

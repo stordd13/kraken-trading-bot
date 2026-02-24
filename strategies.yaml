@@ -21,9 +21,125 @@ common_indicators:
   adx_period: 14
 
 strategies:
-  # === ACTIVES ===
-  - name: grid_spot
+  # =============================================================
+  # === NEW: Multi-Strategy Router (7 strategies + risk manager)
+  # =============================================================
+  - name: multi_strategy_router
     enabled: true
+    bot_id: multi_router
+    budget:
+      max_open_positions: 25
+      daily_loss_limit_eur: 50.0
+      max_position_pct: 90.0
+      position_size_multiplier: 1.0
+    dashboard:
+      exit_type: mixed
+      label: "Multi Router"
+    params:
+      capital_usdc: 1000
+
+      # GeminiGlobalRiskManager config
+      risk:
+        risk_per_trade_pct: 1.0
+        atr_sl_multiplier: 3.0
+        atr_sl_timeframe: "4h"
+        atr_sl_period: 14
+        crash_threshold_pct: 7.0
+        crash_window_min: 30
+        crash_close_pct: 0.5
+        crash_suspend_hours: 2
+
+      # Inner strategies (active: false to disable individually)
+      strategies:
+        gemini_scalping_volatilite:
+          active: true
+          bot_id: scalping_vol
+          params:
+            rsi_period: 7
+            rsi_oversold: 30
+            sl_atr_mult: 1.5
+            tp_atr_mult: 1.0
+            trail_activation_atr: 0.5
+            trail_atr_mult: 1.0
+            order_size_usdc: 25
+            max_allocation_pct: 10.0
+            max_open_positions: 2
+            close_hour_utc: 23
+
+        gemini_suivi_tendance_momentum:
+          active: true
+          bot_id: tendance_mom
+          params:
+            adx_min: 20
+            initial_sl_atr_mult: 2.5
+            trailing_atr_mult: 2.0
+            order_size_usdc: 50
+            max_allocation_pct: 15.0
+            max_open_positions: 1
+
+        gemini_retour_moyenne:
+          active: true
+          bot_id: retour_moy
+          params:
+            dca_levels: 3
+            dca_spacing_pct: 0.5
+            sl_atr_mult: 2.0
+            order_size_usdc: 20
+            max_allocation_pct: 10.0
+            max_open_positions: 2
+
+        grok_grid_atr_adaptive_v4:
+          active: true
+          bot_id: grid_atr_v4
+          params:
+            grid_levels: 12
+            min_spacing_pct: 0.015
+            atr_period: 14
+            atr_multiplier: 4.0
+            recalc_hours: 6
+            order_size_usdc: 25
+            max_allocation_pct: 20.0
+            bias_1d: 0.2
+            pause_1w_strong_bear: true
+
+        grok_supertrend_4h:
+          active: true
+          bot_id: supertrend_4h
+          params:
+            st_atr_period: 10
+            st_multiplier: 3.0
+            sl_atr_mult: 3.5
+            order_size_usdc: 50
+            max_allocation_pct: 15.0
+
+        grok_ema_adx_atr:
+          active: true
+          bot_id: ema_cross_4h
+          params:
+            ema_fast: 27
+            ema_slow: 125
+            adx_threshold: 14
+            atr_mult_stop: 3.5
+            breakeven_atr: 1.5
+            trailing_atr: 3.0
+            order_size_usdc: 40
+            max_allocation_pct: 15.0
+
+        grok_adaptive_dca_weekly:
+          active: true
+          bot_id: dca_weekly
+          params:
+            base_amount_usdc: 15
+            oversold_multiplier: 2.5
+            bull_reduction: 0.5
+            rsi_oversold: 30
+            max_allocation_pct: 25.0
+
+  # =============================================================
+  # === LEGACY strategies (disabled — kept for backtest/reference)
+  # =============================================================
+  - name: grid_spot
+    enabled: false  # Replaced by grok_grid_atr_adaptive_v4 inside router
     bot_id: grid_spot_prod
     budget:
       max_open_positions: 15
@@ -32,7 +148,7 @@ strategies:
       position_size_multiplier: 1.0
     dashboard:
       exit_type: grid
-      label: "Grid Spot"
+      label: "Grid Spot (legacy)"
     params:
       grid_levels: 15
       grid_spacing_pct: 1.5
@@ -50,7 +166,7 @@ strategies:
       position_size_multiplier: 2.0
     dashboard:
       exit_type: trailing_stop
-      label: "Trend Following"
+      label: "Trend Following (legacy)"
     params:
       ema_fast_period: 20
       ema_slow_period: 50
@@ -62,7 +178,7 @@ strategies:
       min_cross_strength_pct: 0.1
 
   - name: grid_adaptive
-    enabled: true
+    enabled: false  # Replaced by grok_grid_atr_adaptive_v4 inside router
     bot_id: grid_adaptive_prod
     budget:
       max_open_positions: 8
@@ -71,7 +187,7 @@ strategies:
       position_size_multiplier: 1.0
     dashboard:
       exit_type: grid
-      label: "Grid Adaptive"
+      label: "Grid Adaptive (legacy)"
     params:
       grid_levels: 8
       atr_multiplier: 3.0

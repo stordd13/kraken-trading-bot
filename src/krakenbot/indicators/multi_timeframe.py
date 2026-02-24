@@ -218,6 +218,7 @@ class MultiTimeframeAnalyzer:
                 "ema_slow": {"default": EMAIndicator(period=ema_slow_period)},
                 "adx": {14: ADXIndicator(period=14)},
                 "supertrend": {},  # Lazy - created on first get_supertrend() call
+                "ema": {},  # Lazy - created on first get_ema() call
             }
             self._generic_candle_counts[tf] = 0
             self._generic_last_close[tf] = None
@@ -339,6 +340,8 @@ class MultiTimeframeAnalyzer:
         for indicator in tf_ind.get("ema_fast", {}).values():
             indicator.update(close)
         for indicator in tf_ind.get("ema_slow", {}).values():
+            indicator.update(close)
+        for indicator in tf_ind.get("ema", {}).values():
             indicator.update(close)
 
         # Update HLC-based indicators
@@ -598,6 +601,35 @@ class MultiTimeframeAnalyzer:
             "supertrend": indicator.value,
             "direction": indicator.direction,
         }
+
+    def get_ema(self, period: int, tf: str) -> Decimal | None:
+        """Get EMA value for a specific period and timeframe.
+
+        Creates the indicator lazily if the requested period is not yet tracked.
+        Common periods: 20, 27, 50, 125, 200.
+
+        Note: The default fast/slow EMAs (20/50) used by get_regime() are stored
+        separately in "ema_fast"/"ema_slow" to avoid interference.
+
+        Args:
+            period: EMA period.
+            tf: Timeframe string.
+
+        Returns:
+            EMA value as Decimal, or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        ema_dict = tf_ind.setdefault("ema", {})
+        if period not in ema_dict:
+            ema_dict[period] = EMAIndicator(period=period)
+            logger.info("lazy_ema_created", tf=tf, period=period)
+            return None
+        indicator = ema_dict[period]
+        if not indicator.is_ready:
+            return None
+        return indicator.value
 
     def get_regime(self, tf: str) -> str | None:
         """Get market regime for any timeframe.

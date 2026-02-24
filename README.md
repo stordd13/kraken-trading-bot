@@ -13,14 +13,15 @@ KrakenBot is an automated trading system for Kraken exchange (BTC/USDC) with:
 ## Architecture
 
 ```
-┌─────────────────────────────┐    ┌─────────────────────────────┐
-│   krakenbot-collector       │    │      krakenbot              │
-│   (Always running 24/7)     │    │   (Start/Stop as needed)    │
-│                             │    │                             │
-│  - WebSocket real-time      │    │  - ThresholdStrategy        │
-│  - REST API backfill        │    │  - ExecutionEngine          │
-│  - TaskScheduler            │    │  - Paper/Live trading       │
-└──────────────┬──────────────┘    └──────────────┬──────────────┘
+┌─────────────────────────────┐    ┌──────────────────────────────────────┐
+│   krakenbot-collector       │    │      krakenbot                       │
+│   (Always running 24/7)     │    │   (Start/Stop as needed)             │
+│                             │    │                                      │
+│  - WebSocket real-time      │    │  - MultiStrategyRouter (7 strategies)│
+│  - REST API backfill        │    │  - GeminiGlobalRiskManager           │
+│  - TaskScheduler            │    │  - ExecutionEngine                   │
+│                             │    │  - Paper/Live trading                │
+└──────────────┬──────────────┘    └──────────────┬───────────────────────┘
                └────────────┬──────────────────────┘
                             ▼
                ┌─────────────────────────┐
@@ -71,30 +72,21 @@ poetry run python scripts/dashboard.py
 
 ## Configuration
 
-All config via `.env` file:
+Base config via `.env` file, strategy config via `strategies.yaml`:
 
 ```bash
-# Kraken API
+# .env — base settings
 KRAKEN_API_KEY=xxx
 KRAKEN_API_SECRET=xxx
-
-# Database
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/krakenbot
-
-# Trading
 TRADING_MODE=paper          # paper | live
 TRADING_PAIR=XBT/USDC
 TRADING_DEFAULT_ORDER_AMOUNT_EUR=15.0
-
-# Risk Management
-RISK_MAX_POSITION_PCT=5.0         # Max 5% portfolio per trade
-RISK_DAILY_LOSS_LIMIT_EUR=50.0    # Stop if daily loss > 50€
-RISK_MIN_TRADE_INTERVAL_SEC=60    # Min 60s between trades
-
-# Strategy (Threshold)
-STRATEGY_BUY_THRESHOLD_PCT=-1.0   # Buy on -1% dip
-STRATEGY_SELL_THRESHOLD_PCT=2.0   # Sell on +2% profit
+RISK_MAX_POSITION_PCT=5.0
+RISK_DAILY_LOSS_LIMIT_EUR=50.0
 ```
+
+Strategy configuration lives in `strategies.yaml` (multi-strategy mode with 7 strategies + risk manager). See [CLAUDE.md](./CLAUDE.md) and [krakenbot-etat-complet-feb2026.md](./krakenbot-etat-complet-feb2026.md) for details.
 
 ## Deployment (Hetzner VPS)
 
@@ -125,20 +117,32 @@ poetry run mypy src/
 
 ```
 src/krakenbot/
-├── collector.py      # Data collector service
-├── main.py           # Trading bot
-├── config/           # Pydantic settings
-├── core/             # Database, EventBus, Logger
-├── connectors/       # KrakenWS, KrakenREST
-├── models/           # SQLAlchemy ORM
-├── strategies/       # ThresholdStrategy
-├── execution/        # ExecutionEngine, RiskManager
-└── scheduler/        # TaskScheduler
+├── collector.py          # Data collector service
+├── main.py               # Trading bot + STRATEGY_REGISTRY
+├── config/               # Pydantic settings
+├── core/                 # Database, EventBus, Logger
+├── connectors/           # KrakenWS, KrakenREST
+├── models/               # SQLAlchemy ORM
+├── indicators/           # MultiTimeframeAnalyzer, EMA, RSI, MACD, BB, ATR, ADX, SuperTrend
+├── strategies/           # 7 active strategies + router + risk manager + legacy
+│   ├── multi_strategy_router.py
+│   ├── gemini_global_risk_manager.py
+│   ├── gemini_scalping_volatilite.py
+│   ├── gemini_suivi_tendance_momentum.py
+│   ├── gemini_retour_moyenne.py
+│   ├── grok_grid_atr_adaptive_v4.py
+│   ├── grok_supertrend_4h.py
+│   ├── grok_ema_adx_atr.py
+│   └── grok_adaptive_dca_weekly.py
+├── execution/            # ExecutionEngine, RiskManager
+└── scheduler/            # TaskScheduler
 
 scripts/
-├── dashboard.py      # Dash dashboard
-└── backtest.py       # Backtesting
+├── dashboard.py          # Dash dashboard
+├── backtest.py           # BacktestEngine (signal + grid)
+└── backtest_grid.py      # Grid search parameters
 
+strategies.yaml           # Multi-strategy configuration
 deploy/
 ├── krakenbot.service
 └── krakenbot-collector.service
@@ -151,6 +155,7 @@ deploy/
 3. **Daily loss limits** - Auto-stops if daily loss exceeds limit
 4. **Position size limits** - Max % of portfolio per trade
 5. **Minimum trade interval** - Prevents rapid-fire trading
+6. **Global risk manager** - 1% max capital risk per trade, ATR-based stop-losses, crash protector (7% drop in 30min)
 
 ## Resources
 

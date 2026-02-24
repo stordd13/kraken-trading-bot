@@ -244,9 +244,7 @@ class TestBotState:
         current_price = Decimal("43000.00000000")
         unrealized_pnl = state.calculate_unrealized_pnl(current_price)
 
-        expected = (Decimal("43000.00000000") - Decimal("42000.00000000")) * Decimal(
-            "0.00100000"
-        )
+        expected = (Decimal("43000.00000000") - Decimal("42000.00000000")) * Decimal("0.00100000")
         assert unrealized_pnl == expected
 
     def test_bot_state_calculate_unrealized_pnl_no_position(self) -> None:

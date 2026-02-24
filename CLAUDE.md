@@ -30,7 +30,10 @@ Toujours vérifier les limites **globales** (toutes stratégies) ET **par strat�
 Quand un stop-loss se déclenche, **toujours annuler le limit sell** profit target existant d'abord.
 
 ### Multi-timeframe
-Le MultiTimeframeAnalyzer est une **instance partagée** entre toutes les stratégies. Ne pas en créer plusieurs. Il analyse 3 timeframes (5min trigger, 15min zone, 1h tendance) et produit un MarketRegime (STRONG_BEAR → STRONG_BULL) qui module les seuils de trading.
+Le MultiTimeframeAnalyzer est une **instance partagée** entre toutes les stratégies. Ne pas en créer plusieurs. Il analyse **6 timeframes** (5m, 15m, 1h, 4h, 1d, 1w) et fournit : EMA (période arbitraire, lazy), RSI, ATR, MACD, Bollinger, ADX, SuperTrend, et un MarketRegime (strong_bear → strong_bull) par timeframe.
+
+### MultiStrategyRouter
+En mode multi-stratégie, le `MultiStrategyRouter` est la **seule** BaseStrategy enregistrée dans l'EventBus. Il dispatch les candles vers 7 stratégies internes et applique le `GeminiGlobalRiskManager` (1% rule, ATR SL, crash protector) sur chaque signal BUY avant émission.
 
 ### Mode legacy
 Si `strategies.yaml` absent ou `enabled: false`, le bot fonctionne exactement comme avant (single strategy depuis .env). Ne jamais casser ce mode.
@@ -84,7 +87,8 @@ Toute nouvelle stratégie **doit** :
 - Mettre `position_size_multiplier` dans `signal.metadata`
 
 ### Indicateurs
-- Réutiliser les indicateurs existants dans `indicators/` (RSI, MACD, BB, EMA, ATR)
+- Réutiliser les indicateurs existants dans `indicators/` (RSI, MACD, BB, EMA, ATR, ADX, SuperTrend)
+- Accéder via `MultiTimeframeAnalyzer` : `get_ema(period, tf)`, `get_rsi(period, tf)`, `get_atr(period, tf)`, `get_adx(tf)`, `get_supertrend(tf, period, mult)`, etc.
 - Ne pas les réimplémenter
 - Nouveaux indicateurs : même interface (méthode `update()` incrémentale)
 
@@ -118,7 +122,7 @@ Chaque stratégie filtre par `bot_id` dans `on_trade_filled`, pas par nom de str
 - Committer après chaque composant fonctionnel
 - Tester en mode paper avant live
 - Ne pas casser les stratégies existantes quand on en ajoute une nouvelle
-- Le backtest doit supporter toutes les stratégies (`--strategy adaptive|capitulation|threshold_rolling`)
+- Le backtest doit supporter toutes les stratégies (`--strategy adaptive|capitulation|multi_strategy_router|...`)
 
 ---
 

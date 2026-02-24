@@ -158,15 +158,11 @@ class TestKrakenWebSocketClientConnection:
 
         mock_session.ws_connect.assert_called_once()
 
-    async def test_is_connected_false_initially(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_is_connected_false_initially(self, ws_client: KrakenWebSocketClient) -> None:
         """Test that is_connected is False before connecting."""
         assert ws_client.is_connected is False
 
-    async def test_close_without_connection(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_close_without_connection(self, ws_client: KrakenWebSocketClient) -> None:
         """Test that close works even without connection."""
         # Should not raise
         await ws_client.close()
@@ -184,9 +180,7 @@ class TestKrakenWebSocketClientSubscription:
         assert 60 in VALID_OHLC_INTERVALS
         assert 1440 in VALID_OHLC_INTERVALS
 
-    async def test_subscribe_ohlc_invalid_interval(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_subscribe_ohlc_invalid_interval(self, ws_client: KrakenWebSocketClient) -> None:
         """Test that invalid OHLC interval raises error."""
         # Mock connection
         ws_client._connected = True
@@ -310,18 +304,14 @@ class TestKrakenWebSocketClientMessageHandling:
         assert received_events[0]["side"] == "sell"
         assert received_events[1]["side"] == "buy"
 
-    async def test_handle_system_status(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_handle_system_status(self, ws_client: KrakenWebSocketClient) -> None:
         """Test handling system status message."""
         # Should not raise
         await ws_client._handle_system_message(
             {"event": "systemStatus", "status": "online", "version": "1.0.0"}
         )
 
-    async def test_handle_subscription_status(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_handle_subscription_status(self, ws_client: KrakenWebSocketClient) -> None:
         """Test handling subscription status message."""
         # Should store channel mapping
         await ws_client._handle_subscription_status(
@@ -341,16 +331,12 @@ class TestKrakenWebSocketClientMessageHandling:
         # Should not raise
         await ws_client._handle_system_message({"event": "heartbeat"})
 
-    async def test_handle_error_message(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_handle_error_message(self, ws_client: KrakenWebSocketClient) -> None:
         """Test handling error message."""
         # Should increment error counter
         initial_errors = ws_client._stats["errors"]
 
-        await ws_client._handle_system_message(
-            {"event": "error", "errorMessage": "Test error"}
-        )
+        await ws_client._handle_system_message({"event": "error", "errorMessage": "Test error"})
 
         assert ws_client._stats["errors"] == initial_errors + 1
 
@@ -367,9 +353,7 @@ class TestKrakenWebSocketClientStats:
         assert stats["ticks_received"] == 0
         assert stats["errors"] == 0
 
-    async def test_stats_increment_ohlc(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_stats_increment_ohlc(self, ws_client: KrakenWebSocketClient) -> None:
         """Test that OHLC stats are incremented when candle completes.
 
         Kraken WS doesn't notify candle completion - we detect it when a NEW
@@ -409,9 +393,7 @@ class TestKrakenWebSocketClientStats:
         await ws_client._handle_ohlc_data("XBT/EUR", ohlc_data_2, "ohlc-15")
         assert ws_client._stats["ohlc_received"] == 1  # First candle now complete
 
-    async def test_stats_increment_ticks(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_stats_increment_ticks(self, ws_client: KrakenWebSocketClient) -> None:
         """Test that tick stats are incremented."""
         ticker_data = {
             "a": ["5525.40000", "1", "1.000"],
@@ -427,9 +409,7 @@ class TestKrakenWebSocketClientStats:
 class TestKrakenWebSocketClientDataParsing:
     """Tests for data parsing edge cases."""
 
-    async def test_parse_ohlc_with_missing_fields(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_parse_ohlc_with_missing_fields(self, ws_client: KrakenWebSocketClient) -> None:
         """Test parsing OHLC with minimum fields (no vwap, no trades_count)."""
         # First candle with minimum required fields
         ohlc_data_1 = [
@@ -461,9 +441,7 @@ class TestKrakenWebSocketClientDataParsing:
         await ws_client._handle_ohlc_data("XBT/EUR", ohlc_data_2, "ohlc-15")
         assert ws_client._stats["ohlc_received"] == initial_ohlc + 1
 
-    async def test_parse_invalid_ohlc_data(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_parse_invalid_ohlc_data(self, ws_client: KrakenWebSocketClient) -> None:
         """Test parsing invalid OHLC data."""
         # Invalid data format
         ohlc_data = ["not", "enough", "fields"]
@@ -488,9 +466,7 @@ class TestKrakenWebSocketClientDataParsing:
 class TestKrakenWebSocketClientPairMapping:
     """Tests for pair name mapping."""
 
-    async def test_btc_eur_maps_to_xbt_eur(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_btc_eur_maps_to_xbt_eur(self, ws_client: KrakenWebSocketClient) -> None:
         """Test that BTC/EUR maps to XBT/EUR."""
         # Mock connection
         ws_client._connected = True
@@ -504,9 +480,7 @@ class TestKrakenWebSocketClientPairMapping:
         call_args = ws_client._ws.send_json.call_args[0][0]
         assert call_args["pair"] == ["XBT/EUR"]
 
-    async def test_unknown_pair_passes_through(
-        self, ws_client: KrakenWebSocketClient
-    ) -> None:
+    async def test_unknown_pair_passes_through(self, ws_client: KrakenWebSocketClient) -> None:
         """Test that unknown pairs pass through unchanged."""
         ws_client._connected = True
         ws_client._ws = AsyncMock()
