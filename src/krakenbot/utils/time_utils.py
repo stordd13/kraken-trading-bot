@@ -161,8 +161,10 @@ def get_max_days_for_interval(interval_minutes: int) -> int:
         return 180  # 30min: ~180 days
     elif interval_minutes == 60:
         return 365  # 1h: ~1 year
-    elif interval_minutes >= 240:
-        return 730  # 4h+: ~2 years
+    elif interval_minutes == 240:
+        return 730  # 4h: ~2 years
+    elif interval_minutes >= 1440:
+        return 1825  # 1d/1w: ~5 years (available via Binance import)
     else:
         # Unknown interval, use conservative default
         return 30

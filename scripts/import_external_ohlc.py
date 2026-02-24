@@ -44,6 +44,7 @@ TIMEFRAME_MAP = {
     60: "1h",
     240: "4h",
     1440: "1d",
+    10080: "1w",
 }
 
 # Target pair name in our database
