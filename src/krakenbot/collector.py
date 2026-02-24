@@ -153,16 +153,24 @@ class DataCollector:
         await self.ws_client.connect()
 
         # Subscribe to OHLC for all configured pairs and intervals
+        # Higher timeframes (4h, 1d, 1w) for the multi-timeframe data layer
+        higher_tf_intervals = [240, 1440, 10080]
         for pair in self.settings.scheduler.pairs:
             # Subscribe to the main trading interval for real-time data
             await self.ws_client.subscribe_ohlc(
                 pair,
                 self.settings.trading.candle_interval_min,
             )
+            # Subscribe to higher timeframes for data layer
+            for interval in higher_tf_intervals:
+                await self.ws_client.subscribe_ohlc(pair, interval)
             # Also subscribe to ticker for live prices
             await self.ws_client.subscribe_ticker(pair)
 
-        self.logger.debug("websocket_connected_and_subscribed")
+        self.logger.debug(
+            "websocket_connected_and_subscribed",
+            higher_tf_intervals=higher_tf_intervals,
+        )
 
         # 2. Start task scheduler (for REST API backfill)
         if self.task_scheduler:

@@ -389,7 +389,11 @@ class KrakenBot:
             # Multi-strategy: subscribe to all required timeframes
             pair = self.settings.trading.pair
             mtf = self.settings.multi_timeframe
-            for interval in [mtf.trigger_timeframe, mtf.zone_timeframe, mtf.trend_timeframe]:
+            core_intervals = [mtf.trigger_timeframe, mtf.zone_timeframe, mtf.trend_timeframe]
+            # Higher timeframes for the generic data layer
+            higher_intervals = [240, 1440, 10080]
+            all_intervals = sorted(set(core_intervals + higher_intervals))
+            for interval in all_intervals:
                 await self.ws_client.subscribe_ohlc(pair, interval)
                 self.logger.debug("ws_subscribed_ohlc", pair=pair, interval=interval)
         else:

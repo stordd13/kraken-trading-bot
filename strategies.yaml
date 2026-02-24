@@ -9,6 +9,17 @@ global_max_open_positions: 25
 global_daily_loss_limit_eur: 50.0
 global_max_portfolio_exposure_pct: 90.0
 
+# Common technical indicators - shared data layer across all strategies
+# These defaults are used by the MultiTimeframeAnalyzer generic registry.
+common_indicators:
+  timeframes: ["5m", "15m", "1h", "4h", "1d", "1w"]
+  ema_fast_period: 20
+  ema_slow_period: 50
+  rsi_default_period: 14
+  atr_default_period: 14
+  bb_default_period: 20
+  adx_period: 14
+
 strategies:
   # === ACTIVES ===
   - name: grid_spot

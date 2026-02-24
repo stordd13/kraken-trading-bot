@@ -1,13 +1,18 @@
 """Multi-timeframe analysis with market regime detection.
 
 This module provides a shared analyzer that combines indicators across
-multiple timeframes (5m, 15m, 1h) to produce adaptive trading parameters.
+multiple timeframes (5m, 15m, 1h, 4h, 1d, 1w) to produce adaptive trading
+parameters.
 
 Components:
-    - MarketRegime: Bull/Bear/Neutral classification from 1h EMA crossover
+    - MarketRegime: Bull/Bear/Neutral classification from EMA crossover
     - TimeframeZone: Oversold/Neutral/Overbought from RSI + Bollinger per timeframe
     - MultiTimeframeAnalysis: Aggregated analysis with recommended thresholds
     - MultiTimeframeAnalyzer: Main class, one instance shared across strategies
+
+The analyzer exposes two APIs:
+    - Legacy: analyze() returns MultiTimeframeAnalysis (5m/15m/1h only)
+    - Generic: get_macd(tf), get_rsi(period, tf), etc. for any timeframe
 """
 
 from __future__ import annotations
@@ -19,15 +24,47 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from krakenbot.core.logger import get_logger
+from krakenbot.indicators.adx import ADXIndicator
 from krakenbot.indicators.atr import ATRIndicator
 from krakenbot.indicators.bollinger import BollingerBandsIndicator
 from krakenbot.indicators.ema import EMAIndicator
+from krakenbot.indicators.macd import MACDIndicator
 from krakenbot.indicators.rsi import RSIIndicator
+from krakenbot.indicators.supertrend import SuperTrendIndicator
 
 if TYPE_CHECKING:
     from krakenbot.core.database import DatabaseManager
 
 logger = get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Timeframe mapping constants
+# ---------------------------------------------------------------------------
+
+TF_TO_INTERVAL: dict[str, int] = {
+    "1m": 1,
+    "5m": 5,
+    "15m": 15,
+    "1h": 60,
+    "4h": 240,
+    "1d": 1440,
+    "1w": 10080,
+}
+INTERVAL_TO_TF: dict[int, str] = {v: k for k, v in TF_TO_INTERVAL.items()}
+
+# All supported timeframe keys (ordered short -> long)
+ALL_TF_KEYS: list[str] = ["1m", "5m", "15m", "1h", "4h", "1d", "1w"]
+
+# MACD parameter presets: (fast, slow, signal) by timeframe group
+MACD_PARAMS: dict[str, tuple[int, int, int]] = {
+    "1m": (5, 13, 8),
+    "5m": (5, 13, 8),
+    "15m": (5, 13, 8),
+    "1h": (8, 17, 9),
+    "4h": (8, 17, 9),
+    "1d": (12, 26, 9),
+    "1w": (12, 26, 9),
+}
 
 
 class MarketRegime(str, Enum):
@@ -158,6 +195,34 @@ class MultiTimeframeAnalyzer:
         self._last_close_15m: Decimal | None = None
         self._last_close_5m: Decimal | None = None
 
+        # ---------------------------------------------------------------
+        # Generic indicator registry (data layer for all timeframes)
+        # Structure: _indicators[tf_key][indicator_type][param_key]
+        # This is SEPARATE from legacy attributes above (no interference).
+        # ---------------------------------------------------------------
+        self._indicators: dict[str, dict[str, dict[Any, Any]]] = {}
+        self._generic_candle_counts: dict[str, int] = {}
+        self._generic_last_close: dict[str, Decimal | None] = {}
+        self._generic_volumes: dict[str, deque[Decimal]] = {}
+
+        for tf in ALL_TF_KEYS:
+            fast, slow, sig = MACD_PARAMS[tf]
+            self._indicators[tf] = {
+                "macd": {
+                    "default": MACDIndicator(fast_period=fast, slow_period=slow, signal_period=sig)
+                },
+                "rsi": {rsi_period: RSIIndicator(period=rsi_period)},
+                "atr": {atr_period: ATRIndicator(period=atr_period)},
+                "bb": {bb_period: BollingerBandsIndicator(period=bb_period)},
+                "ema_fast": {"default": EMAIndicator(period=ema_fast_period)},
+                "ema_slow": {"default": EMAIndicator(period=ema_slow_period)},
+                "adx": {14: ADXIndicator(period=14)},
+                "supertrend": {},  # Lazy - created on first get_supertrend() call
+            }
+            self._generic_candle_counts[tf] = 0
+            self._generic_last_close[tf] = None
+            self._generic_volumes[tf] = deque(maxlen=20)
+
     async def initialize(self, db_manager: DatabaseManager, pair: str = "XBT/USDC") -> None:
         """Load historical candles from database for warmup.
 
@@ -172,7 +237,14 @@ class MultiTimeframeAnalyzer:
 
         from krakenbot.models.market_data import OHLCData
 
-        for interval, count in [(60, 100), (15, 100), (5, 100)]:
+        for interval, count in [
+            (60, 100),
+            (15, 100),
+            (5, 100),
+            (240, 100),  # 4h
+            (1440, 100),  # 1d
+            (10080, 60),  # 1w (fewer candles typically available)
+        ]:
             try:
                 async with db_manager.read_session() as session:
                     result = await session.execute(
@@ -222,6 +294,7 @@ class MultiTimeframeAnalyzer:
         low = Decimal(str(candle_data["low"]))
         volume = Decimal(str(candle_data.get("volume", 0)))
 
+        # --- Legacy routing (unchanged for backward compatibility) ---
         if interval == 60:
             self._ema_fast_1h.update(close)
             self._ema_slow_1h.update(close)
@@ -241,6 +314,40 @@ class MultiTimeframeAnalyzer:
             self._volume_5m.append(volume)
             self._last_close_5m = close
             self._candle_count_5m += 1
+
+        # --- Generic routing for data layer (all timeframes) ---
+        tf = INTERVAL_TO_TF.get(interval)
+        if tf is None:
+            return
+
+        self._generic_candle_counts[tf] = self._generic_candle_counts.get(tf, 0) + 1
+        self._generic_last_close[tf] = close
+        if tf in self._generic_volumes:
+            self._generic_volumes[tf].append(volume)
+
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return
+
+        # Update close-based indicators
+        for indicator in tf_ind.get("rsi", {}).values():
+            indicator.update(close)
+        for indicator in tf_ind.get("macd", {}).values():
+            indicator.update(close)
+        for indicator in tf_ind.get("bb", {}).values():
+            indicator.update(close)
+        for indicator in tf_ind.get("ema_fast", {}).values():
+            indicator.update(close)
+        for indicator in tf_ind.get("ema_slow", {}).values():
+            indicator.update(close)
+
+        # Update HLC-based indicators
+        for indicator in tf_ind.get("atr", {}).values():
+            indicator.update(high, low, close)
+        for indicator in tf_ind.get("adx", {}).values():
+            indicator.update(high, low, close)
+        for indicator in tf_ind.get("supertrend", {}).values():
+            indicator.update(high, low, close)
 
     def analyze(self) -> MultiTimeframeAnalysis | None:
         """Generate multi-timeframe analysis.
@@ -317,6 +424,213 @@ class MultiTimeframeAnalyzer:
         )
         self._last_analysis = analysis
         return analysis
+
+    # -------------------------------------------------------------------
+    # Generic data layer API (any timeframe)
+    # -------------------------------------------------------------------
+
+    def get_macd(self, tf: str) -> dict[str, Decimal] | None:
+        """Get MACD values for a timeframe.
+
+        Dynamic params per timeframe group:
+            - (5,13,8) for 1m/5m/15m
+            - (8,17,9) for 1h/4h
+            - (12,26,9) for 1d/1w
+
+        Args:
+            tf: Timeframe string ("5m", "15m", "1h", "4h", "1d", "1w").
+
+        Returns:
+            Dict with 'macd', 'signal', 'hist' as Decimal, or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf, {})
+        macd = tf_ind.get("macd", {}).get("default")
+        if macd is None or not macd.is_ready:
+            return None
+        result = macd.value
+        return {
+            "macd": Decimal(str(result.macd_line)),
+            "signal": Decimal(str(result.signal_line)),
+            "hist": Decimal(str(result.histogram)),
+        }
+
+    def get_rsi(self, period: int, tf: str) -> Decimal | None:
+        """Get RSI value for a specific period and timeframe.
+
+        Creates the indicator lazily if the requested period is not yet tracked.
+        Adaptive periods typically in [7, 9, 11, 14].
+
+        Args:
+            period: RSI period.
+            tf: Timeframe string.
+
+        Returns:
+            RSI value as Decimal (0-100), or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        rsi_dict = tf_ind.setdefault("rsi", {})
+        if period not in rsi_dict:
+            rsi_dict[period] = RSIIndicator(period=period)
+            logger.info("lazy_rsi_created", tf=tf, period=period)
+            return None
+        indicator = rsi_dict[period]
+        if not indicator.is_ready:
+            return None
+        val = indicator.value
+        return Decimal(str(val)) if val is not None else None
+
+    def get_atr(self, period: int, tf: str) -> Decimal | None:
+        """Get ATR value for a specific period and timeframe.
+
+        Creates the indicator lazily if the requested period is not yet tracked.
+        Typical periods: 7 to 14.
+
+        Args:
+            period: ATR period.
+            tf: Timeframe string.
+
+        Returns:
+            ATR value as Decimal, or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        atr_dict = tf_ind.setdefault("atr", {})
+        if period not in atr_dict:
+            atr_dict[period] = ATRIndicator(period=period)
+            logger.info("lazy_atr_created", tf=tf, period=period)
+            return None
+        indicator = atr_dict[period]
+        if not indicator.is_ready:
+            return None
+        return indicator.value
+
+    def get_adx(self, tf: str) -> Decimal | None:
+        """Get ADX (Average Directional Index) for a timeframe.
+
+        Uses standard period 14. ADX measures trend strength (0-100):
+            0-25 = weak/no trend, 25-50 = strong, 50+ = very strong.
+
+        Args:
+            tf: Timeframe string.
+
+        Returns:
+            ADX value as Decimal (0-100), or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        adx = tf_ind.get("adx", {}).get(14)
+        if adx is None or not adx.is_ready:
+            return None
+        return adx.value
+
+    def get_bollinger(self, tf: str) -> dict[str, Decimal] | None:
+        """Get Bollinger Bands for a timeframe.
+
+        Uses default period 20 and multiplier 2.0.
+
+        Args:
+            tf: Timeframe string.
+
+        Returns:
+            Dict with 'upper', 'middle', 'lower', 'width' as Decimal,
+            or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        bb_dict = tf_ind.get("bb", {})
+        # Find the first available BB (default period from init)
+        bb = next(iter(bb_dict.values()), None) if bb_dict else None
+        if bb is None or not bb.is_ready:
+            return None
+        result = bb.value
+        return {
+            "upper": result.upper,
+            "middle": result.middle,
+            "lower": result.lower,
+            "width": Decimal(str(result.bandwidth)),
+        }
+
+    def get_supertrend(
+        self,
+        tf: str,
+        atr_period: int = 10,
+        multiplier: float = 3.0,
+    ) -> dict[str, Any] | None:
+        """Get SuperTrend indicator for a timeframe.
+
+        Creates the indicator lazily on first call for a given parameter set.
+
+        Args:
+            tf: Timeframe string.
+            atr_period: ATR period for SuperTrend calculation.
+            multiplier: ATR multiplier for band width.
+
+        Returns:
+            Dict with 'supertrend' (Decimal) and 'direction' (1 or -1),
+            or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        st_dict = tf_ind.setdefault("supertrend", {})
+        key = (atr_period, multiplier)
+        if key not in st_dict:
+            st_dict[key] = SuperTrendIndicator(
+                atr_period=atr_period,
+                multiplier=Decimal(str(multiplier)),
+            )
+            logger.info(
+                "lazy_supertrend_created",
+                tf=tf,
+                atr_period=atr_period,
+                multiplier=multiplier,
+            )
+            return None
+        indicator = st_dict[key]
+        if not indicator.is_ready:
+            return None
+        return {
+            "supertrend": indicator.value,
+            "direction": indicator.direction,
+        }
+
+    def get_regime(self, tf: str) -> str | None:
+        """Get market regime for any timeframe.
+
+        Uses EMA fast/slow crossover spread to classify the regime.
+        Works on all timeframes including "4h", "1d", "1w".
+
+        Args:
+            tf: Timeframe string.
+
+        Returns:
+            MarketRegime value string (e.g. "bull", "strong_bear"),
+            or None if EMAs not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        ema_fast = tf_ind.get("ema_fast", {}).get("default")
+        ema_slow = tf_ind.get("ema_slow", {}).get("default")
+        if ema_fast is None or ema_slow is None:
+            return None
+        if not ema_fast.is_ready or not ema_slow.is_ready:
+            return None
+        fast_val = ema_fast.value
+        slow_val = ema_slow.value
+        if fast_val is None or slow_val is None or slow_val == Decimal("0"):
+            return None
+        spread_pct = float((fast_val - slow_val) / slow_val * Decimal("100"))
+        return self._classify_regime(spread_pct).value
+
+    # -------------------------------------------------------------------
+    # Internal classification helpers
+    # -------------------------------------------------------------------
 
     def _classify_regime(self, ema_spread_pct: float) -> MarketRegime:
         """Classify market regime from EMA spread.
@@ -511,9 +825,14 @@ class MultiTimeframeAnalyzer:
 
     @property
     def candle_counts(self) -> dict[str, int]:
-        """Get candle counts per timeframe."""
-        return {
+        """Get candle counts per timeframe (legacy + generic)."""
+        counts = {
             "1h": self._candle_count_1h,
             "15m": self._candle_count_15m,
             "5m": self._candle_count_5m,
         }
+        # Add generic counts for higher timeframes
+        for tf in ALL_TF_KEYS:
+            if tf not in counts:
+                counts[tf] = self._generic_candle_counts.get(tf, 0)
+        return counts

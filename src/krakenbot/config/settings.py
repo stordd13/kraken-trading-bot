@@ -305,7 +305,7 @@ class ScheduledTasksSettings(BaseSettings):
         description="Trading pairs to collect data for",
     )
     intervals: list[int] = Field(
-        default=[1, 5, 15, 60],
+        default=[1, 5, 15, 60, 240, 1440, 10080],
         description="OHLC intervals to collect (in minutes)",
     )
     batch_size: int = Field(
@@ -382,6 +382,26 @@ class CapitulationSettings(BaseSettings):
     max_profit_target_pct: float = Field(default=10.0, ge=2.0, le=50.0)
     max_holding_minutes: int = Field(default=2880, ge=60, le=20160)
     cooldown_hours: int = Field(default=4, ge=1, le=48)
+
+
+class CommonIndicatorsSettings(BaseModel):
+    """Common indicators configuration for the shared data layer.
+
+    These defaults apply to all timeframes in the MultiTimeframeAnalyzer
+    generic registry. Override via the common_indicators section in
+    strategies.yaml.
+    """
+
+    timeframes: list[str] = Field(
+        default=["5m", "15m", "1h", "4h", "1d", "1w"],
+        description="Timeframes to track indicators for",
+    )
+    ema_fast_period: int = Field(default=20, ge=5, le=200)
+    ema_slow_period: int = Field(default=50, ge=10, le=400)
+    rsi_default_period: int = Field(default=14, ge=5, le=50)
+    atr_default_period: int = Field(default=14, ge=5, le=50)
+    bb_default_period: int = Field(default=20, ge=5, le=50)
+    adx_period: int = Field(default=14, ge=5, le=50)
 
 
 class PaperSettings(BaseSettings):
@@ -490,6 +510,7 @@ class Settings(BaseSettings):
     capitulation: CapitulationSettings = Field(default_factory=CapitulationSettings)
     order: OrderSettings = Field(default_factory=OrderSettings)
     paper: PaperSettings = Field(default_factory=PaperSettings)
+    common_indicators: CommonIndicatorsSettings = Field(default_factory=CommonIndicatorsSettings)
 
     def model_post_init(self, __context: Any) -> None:
         """Load strategies.yaml after settings init."""
@@ -510,6 +531,11 @@ class Settings(BaseSettings):
                     "global_max_portfolio_exposure_pct", 30.0
                 ),
             )
+            # Parse common_indicators section if present
+            ci_data = yaml_data.get("common_indicators")
+            if ci_data and isinstance(ci_data, dict):
+                self.common_indicators = CommonIndicatorsSettings(**ci_data)
+
             logging.getLogger(__name__).info(
                 "Loaded strategies.yaml: %d strategies enabled",
                 len([s for s in strategies_list if s.enabled]),
