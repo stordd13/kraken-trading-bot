@@ -102,6 +102,9 @@ class GeminiSuiviTendanceMomentum(BaseStrategy):
         self._next_position_id: int = 1
 
         # Pullback detection on 4h: track previous close vs EMA(20)
+        # Two-step shift: current -> previous on each 4h candle
+        self._current_close_4h: Decimal | None = None
+        self._current_ema20_4h: Decimal | None = None
         self._prev_close_4h: Decimal | None = None
         self._prev_ema20_4h: Decimal | None = None
 
@@ -317,9 +320,12 @@ class GeminiSuiviTendanceMomentum(BaseStrategy):
         if self.analyzer is None:
             return
         ema20 = self.analyzer.get_ema(20, "4h")
-        # Store previous values before updating
-        self._prev_close_4h = close_4h
-        self._prev_ema20_4h = ema20
+        # Shift: current becomes previous before storing new values
+        self._prev_close_4h = self._current_close_4h
+        self._prev_ema20_4h = self._current_ema20_4h
+        # Store new current values
+        self._current_close_4h = close_4h
+        self._current_ema20_4h = ema20
 
     def _is_pullback_bounce(self, current_ema20: Decimal) -> bool:
         """Detect pullback bounce: prev close <= EMA(20), now price > EMA(20)."""

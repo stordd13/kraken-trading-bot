@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections import deque
 from decimal import Decimal
 
+_ZERO = Decimal("0")
+_ONE = Decimal("1")
+_HUNDRED = Decimal("100")
+
 
 class RSIIndicator:
     """Calculates RSI (Relative Strength Index).
@@ -29,18 +33,18 @@ class RSIIndicator:
         self._prices: deque[Decimal] = deque(maxlen=period + 1)
         self._gains: list[Decimal] = []
         self._losses: list[Decimal] = []
-        self._current_rsi: float | None = None
+        self._current_rsi: Decimal | None = None
         self._avg_gain: Decimal | None = None
         self._avg_loss: Decimal | None = None
 
-    def update(self, close_price: Decimal) -> float | None:
+    def update(self, close_price: Decimal) -> Decimal | None:
         """Update RSI with new price.
 
         Args:
             close_price: The closing price for this period.
 
         Returns:
-            RSI value (0-100) or None if not enough data yet.
+            RSI value (0-100) as Decimal, or None if not enough data yet.
         """
         self._prices.append(close_price)
 
@@ -49,8 +53,8 @@ class RSIIndicator:
 
         # Calculate price change
         change = self._prices[-1] - self._prices[-2]
-        gain = change if change > 0 else Decimal("0")
-        loss = abs(change) if change < 0 else Decimal("0")
+        gain = change if change > 0 else _ZERO
+        loss = abs(change) if change < 0 else _ZERO
 
         # Collect gains/losses until we have enough for initial SMA
         if self._avg_gain is None:
@@ -69,10 +73,10 @@ class RSIIndicator:
         # Calculate RSI
         if self._avg_gain is not None and self._avg_loss is not None:
             if self._avg_loss == 0:
-                self._current_rsi = 100.0
+                self._current_rsi = _HUNDRED
             else:
-                rs = float(self._avg_gain / self._avg_loss)
-                self._current_rsi = 100.0 - (100.0 / (1.0 + rs))
+                rs = self._avg_gain / self._avg_loss
+                self._current_rsi = _HUNDRED - (_HUNDRED / (_ONE + rs))
 
         return self._current_rsi
 
@@ -86,7 +90,7 @@ class RSIIndicator:
         self._avg_loss = None
 
     @property
-    def value(self) -> float | None:
+    def value(self) -> Decimal | None:
         """Current RSI value."""
         return self._current_rsi
 

@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import dataclass
 from decimal import Decimal
-import math
+
+_ZERO = Decimal("0")
 
 
 @dataclass
@@ -15,8 +16,8 @@ class BollingerBandsResult:
     upper: Decimal  # SMA + (std_dev * multiplier)
     middle: Decimal  # SMA (Simple Moving Average)
     lower: Decimal  # SMA - (std_dev * multiplier)
-    bandwidth: float  # (Upper - Lower) / Middle (volatility measure)
-    percent_b: float  # (Price - Lower) / (Upper - Lower) (position within bands)
+    bandwidth: Decimal  # (Upper - Lower) / Middle (volatility measure)
+    percent_b: Decimal  # (Price - Lower) / (Upper - Lower) (position within bands)
 
     def is_price_below_lower(self, price: Decimal) -> bool:
         """Check if price is below lower band (potential buy signal)."""
@@ -73,20 +74,20 @@ class BollingerBandsIndicator:
 
         # Calculate standard deviation
         variance = sum((p - sma) ** 2 for p in prices_list) / len(prices_list)
-        std_dev = Decimal(str(math.sqrt(float(variance))))
+        std_dev = variance.sqrt()
 
         # Calculate bands
         upper = sma + (std_dev * self.multiplier)
         lower = sma - (std_dev * self.multiplier)
 
         # Calculate metrics
-        bandwidth = float((upper - lower) / sma) if sma != 0 else 0.0
+        bandwidth = (upper - lower) / sma if sma != _ZERO else _ZERO
 
         band_width = upper - lower
-        if band_width != 0:
-            percent_b = float((close_price - lower) / band_width)
+        if band_width != _ZERO:
+            percent_b = (close_price - lower) / band_width
         else:
-            percent_b = 0.5
+            percent_b = Decimal("0.5")
 
         self._result = BollingerBandsResult(
             upper=upper,

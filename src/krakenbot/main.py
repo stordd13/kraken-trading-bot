@@ -594,12 +594,12 @@ class KrakenBot:
                     )
 
                     # Get oldest open positions to close (FIFO)
-                    result = await session.execute(
+                    pos_result = await session.execute(
                         select(OpenPosition)
                         .where(OpenPosition.status == PositionStatus.OPEN)
                         .order_by(OpenPosition.entry_time.asc())
                     )
-                    open_positions = result.scalars().all()
+                    open_positions = pos_result.scalars().all()
 
                     # Mark positions as CLOSED until we account for the deficit
                     remaining_deficit = deficit
