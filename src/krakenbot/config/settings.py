@@ -319,7 +319,7 @@ class ScheduledTasksSettings(BaseSettings):
 class StrategyBudget(BaseModel):
     """Per-strategy budget and risk allocation."""
 
-    max_open_positions: int = Field(default=5, ge=1, le=20)
+    max_open_positions: int = Field(default=5, ge=1, le=50)
     daily_loss_limit_eur: float = Field(default=25.0, ge=0.0)
     max_position_pct: float = Field(default=5.0, ge=0.1, le=100.0)
     position_size_multiplier: float = Field(default=1.0, ge=0.1, le=10.0)

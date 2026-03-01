@@ -112,11 +112,16 @@ class GrokEMA27_125_ADX_ATR(BaseStrategy):
         )
 
         # Internal state
+        self._is_4h: bool = False
         self._current_price: Decimal | None = None
+
+        # Pre-register lazy EMAs so warmup data feeds them
+        if self.analyzer:
+            self.analyzer.get_ema(self.ema_fast_period, "4h")
+            self.analyzer.get_ema(self.ema_slow_period, "4h")
         self._current_timestamp: datetime | None = None
         self._position: EMACrossPosition | None = None
         self._next_position_id: int = 1
-        self._is_4h: bool = False
 
         # Crossover detection: track previous EMA values
         self._prev_ema_fast: Decimal | None = None

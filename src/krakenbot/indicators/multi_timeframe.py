@@ -27,15 +27,21 @@ from krakenbot.core.logger import get_logger
 from krakenbot.indicators.adx import ADXIndicator
 from krakenbot.indicators.atr import ATRIndicator
 from krakenbot.indicators.bollinger import BollingerBandsIndicator
+from krakenbot.indicators.donchian import DonchianIndicator
 from krakenbot.indicators.ema import EMAIndicator
+from krakenbot.indicators.ichimoku import IchimokuIndicator
 from krakenbot.indicators.macd import MACDIndicator
 from krakenbot.indicators.rsi import RSIIndicator
 from krakenbot.indicators.supertrend import SuperTrendIndicator
+from krakenbot.indicators.vwap import VWAPIndicator
 
 if TYPE_CHECKING:
     from krakenbot.core.database import DatabaseManager
 
 logger = get_logger(__name__)
+
+_ZERO = Decimal("0")
+_ONE = Decimal("1")
 
 # ---------------------------------------------------------------------------
 # Timeframe mapping constants
@@ -119,9 +125,9 @@ class MultiTimeframeAnalysis:
     volatility_pct: float
     volume_ratio_5m: float
     volume_ratio_15m: float
-    rsi_5m: float | None
-    rsi_15m: float | None
-    rsi_1h: float | None
+    rsi_5m: Decimal | None
+    rsi_15m: Decimal | None
+    rsi_1h: Decimal | None
     recommended_buy_threshold: float
     recommended_sell_threshold: float
     recommended_stop_loss_pct: float
@@ -219,6 +225,9 @@ class MultiTimeframeAnalyzer:
                 "adx": {14: ADXIndicator(period=14)},
                 "supertrend": {},  # Lazy - created on first get_supertrend() call
                 "ema": {},  # Lazy - created on first get_ema() call
+                "ichimoku": {},  # Lazy - created on first get_ichimoku() call
+                "donchian": {},  # Lazy - created on first get_donchian() call
+                "vwap": {},  # Lazy - created on first get_vwap() call
             }
             self._generic_candle_counts[tf] = 0
             self._generic_last_close[tf] = None
@@ -351,6 +360,14 @@ class MultiTimeframeAnalyzer:
             indicator.update(high, low, close)
         for indicator in tf_ind.get("supertrend", {}).values():
             indicator.update(high, low, close)
+        for indicator in tf_ind.get("ichimoku", {}).values():
+            indicator.update(high, low, close)
+        for indicator in tf_ind.get("donchian", {}).values():
+            indicator.update(high, low, close)
+
+        # Close+volume based indicators
+        for indicator in tf_ind.get("vwap", {}).values():
+            indicator.update(close, volume)
 
     def analyze(self) -> MultiTimeframeAnalysis | None:
         """Generate multi-timeframe analysis.
@@ -481,8 +498,7 @@ class MultiTimeframeAnalyzer:
         indicator = rsi_dict[period]
         if not indicator.is_ready:
             return None
-        val = indicator.value
-        return Decimal(str(val)) if val is not None else None
+        return indicator.value
 
     def get_atr(self, period: int, tf: str) -> Decimal | None:
         """Get ATR value for a specific period and timeframe.
@@ -555,7 +571,7 @@ class MultiTimeframeAnalyzer:
             "upper": result.upper,
             "middle": result.middle,
             "lower": result.lower,
-            "width": Decimal(str(result.bandwidth)),
+            "width": result.bandwidth,
         }
 
     def get_supertrend(
@@ -631,6 +647,97 @@ class MultiTimeframeAnalyzer:
             return None
         return indicator.value
 
+    def get_ichimoku(self, tf: str) -> dict[str, Decimal] | None:
+        """Get Ichimoku Cloud values for a timeframe.
+
+        Creates the indicator lazily on first call.
+
+        Args:
+            tf: Timeframe string.
+
+        Returns:
+            Dict with 'tenkan', 'kijun', 'senkou_a', 'senkou_b', 'chikou',
+            'cloud_top', 'cloud_bottom' as Decimal, or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        ichi_dict = tf_ind.setdefault("ichimoku", {})
+        if "default" not in ichi_dict:
+            ichi_dict["default"] = IchimokuIndicator()
+            logger.info("lazy_ichimoku_created", tf=tf)
+            return None
+        indicator = ichi_dict["default"]
+        if not indicator.is_ready:
+            return None
+        return indicator.value
+
+    def get_donchian(
+        self,
+        tf: str,
+        period_upper: int = 20,
+        period_lower: int = 10,
+    ) -> dict[str, Decimal] | None:
+        """Get Donchian Channel values for a timeframe.
+
+        Creates the indicator lazily on first call for a given parameter set.
+
+        Args:
+            tf: Timeframe string.
+            period_upper: Look-back for the upper band (highest high).
+            period_lower: Look-back for the lower band (lowest low).
+
+        Returns:
+            Dict with 'upper', 'lower', 'middle', 'width' as Decimal,
+            or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        dc_dict = tf_ind.setdefault("donchian", {})
+        key = (period_upper, period_lower)
+        if key not in dc_dict:
+            dc_dict[key] = DonchianIndicator(
+                period_upper=period_upper,
+                period_lower=period_lower,
+            )
+            logger.info(
+                "lazy_donchian_created",
+                tf=tf,
+                period_upper=period_upper,
+                period_lower=period_lower,
+            )
+            return None
+        indicator = dc_dict[key]
+        if not indicator.is_ready:
+            return None
+        return indicator.value
+
+    def get_vwap(self, period: int, tf: str) -> Decimal | None:
+        """Get rolling VWAP for a timeframe.
+
+        Creates the indicator lazily if the requested period is not yet tracked.
+
+        Args:
+            period: Rolling window size.
+            tf: Timeframe string.
+
+        Returns:
+            VWAP value as Decimal, or None if not ready.
+        """
+        tf_ind = self._indicators.get(tf)
+        if tf_ind is None:
+            return None
+        vwap_dict = tf_ind.setdefault("vwap", {})
+        if period not in vwap_dict:
+            vwap_dict[period] = VWAPIndicator(period=period)
+            logger.info("lazy_vwap_created", tf=tf, period=period)
+            return None
+        indicator = vwap_dict[period]
+        if not indicator.is_ready:
+            return None
+        return indicator.value
+
     def get_regime(self, tf: str) -> str | None:
         """Get market regime for any timeframe.
 
@@ -686,7 +793,7 @@ class MultiTimeframeAnalyzer:
         else:
             return MarketRegime.NEUTRAL
 
-    def _classify_zone(self, rsi_value: float | None, bb_value: Any) -> TimeframeZone:
+    def _classify_zone(self, rsi_value: Decimal | None, bb_value: Any) -> TimeframeZone:
         """Classify zone from RSI + Bollinger Bands.
 
         Args:
@@ -709,9 +816,9 @@ class MultiTimeframeAnalyzer:
         if bb_value is not None and hasattr(bb_value, "percent_b"):
             pb = bb_value.percent_b
             if pb is not None:
-                if pb < 0.0:
+                if pb < _ZERO:
                     return TimeframeZone.OVERSOLD
-                elif pb > 1.0:
+                elif pb > _ONE:
                     return TimeframeZone.OVERBOUGHT
 
         return TimeframeZone.NEUTRAL

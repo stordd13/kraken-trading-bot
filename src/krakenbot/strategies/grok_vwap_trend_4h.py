@@ -1,20 +1,24 @@
-"""Grok SuperTrend 4h Regime — trend-following strategy on 4h SuperTrend.
+"""Grok VWAP Trend 4h — trend-following VWAP crossover strategy.
 
-Uses the SuperTrend indicator on the 4h timeframe as the primary signal,
-filtered by the daily regime. Only takes long positions when the 4h trend
-is UP and the 1d regime confirms bullish conditions.
+Uses a rolling VWAP(20) proxy on the 4h timeframe as the primary signal,
+filtered by the daily regime.
 
 Key rules:
-1. BUY when close > SuperTrend AND regime_1d in [bull, strong_bull]
-2. EXIT when close < SuperTrend OR regime_1d in [bear, strong_bear]
-3. Initial SL = 3.5 × ATR(14, "4h") below entry
-4. Trailing SL follows the SuperTrend line (natural trailing stop)
-5. Single position at a time (no pyramiding)
+1. BUY when close crosses above VWAP(20, 4h) AND prev_close <= prev_vwap
+   AND regime_1d in [bull, strong_bull]
+2. EXIT when close crosses below VWAP(20, 4h) → market order
+3. EXIT when regime_1d in [bear, strong_bear] → market order
+4. Initial SL = 3.0 × ATR(14, 4h) below entry
+5. Trailing: after +2.0×ATR profit → trail at VWAP (dynamic)
+6. Single position at a time
+
+Note: The VWAP is a rolling proxy = sum(close*vol, 20) / sum(vol, 20),
+not a true session-anchored VWAP.
 
 Params (from strategies.yaml):
-    st_atr_period: SuperTrend ATR period (default 10)
-    st_multiplier: SuperTrend multiplier (default 3.0)
-    sl_atr_mult: Initial SL ATR multiplier (default 3.5)
+    vwap_period: VWAP look-back (default 20)
+    sl_atr_mult: Initial SL ATR multiplier (default 3.0)
+    trail_atr_threshold: ATR profit before trailing activates (default 2.0)
     order_size_usdc: USDC per trade (default 50)
     max_allocation_pct: Max % of total capital (default 15.0)
 """
@@ -39,13 +43,12 @@ if TYPE_CHECKING:
 logger = get_logger(__name__)
 
 _ZERO = Decimal("0")
-_ONE = Decimal("1")
 _HUNDRED = Decimal("100")
 
 
 @dataclass
-class SuperTrendPosition:
-    """An open position managed by the SuperTrend strategy."""
+class VWAPPosition:
+    """An open position managed by the VWAP strategy."""
 
     position_id: int
     entry_price: Decimal
@@ -53,14 +56,14 @@ class SuperTrendPosition:
     amount_usdc: Decimal
     stop_loss: Decimal
     highest_price: Decimal
+    trailing_activated: bool = False
 
 
-class GrokSuperTrend4hRegime(BaseStrategy):
-    """Trend-following strategy using 4h SuperTrend + daily regime filter.
+class GrokVWAPTrendV1(BaseStrategy):
+    """Trend-following strategy using 4h rolling VWAP crossover + daily regime.
 
-    Simple and mechanical: long when SuperTrend says UP in a bull regime,
-    exit when either flips. The SuperTrend line itself acts as a natural
-    trailing stop.
+    Enters when price crosses above the rolling VWAP in a bullish regime,
+    exits when price crosses back below or regime turns bearish.
     """
 
     def __init__(
@@ -72,7 +75,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
         strategy_params: dict[str, Any] | None = None,
         analyzer: Any | None = None,
     ) -> None:
-        """Initialize GrokSuperTrend4hRegime."""
+        """Initialize GrokVWAPTrendV1."""
         super().__init__(
             settings,
             event_bus,
@@ -85,16 +88,17 @@ class GrokSuperTrend4hRegime(BaseStrategy):
         params = strategy_params or {}
         self.pair = settings.trading.pair
 
-        # SuperTrend parameters
-        self.st_atr_period: int = int(params.get("st_atr_period", 10))
-        self.st_multiplier = Decimal(str(params.get("st_multiplier", 3.0)))
+        # VWAP parameters
+        self.vwap_period: int = int(params.get("vwap_period", 20))
 
-        # Initial stop-loss
-        self.sl_atr_mult = Decimal(str(params.get("sl_atr_mult", 3.5)))
+        # Risk parameters
+        self.sl_atr_mult = Decimal(str(params.get("sl_atr_mult", 3.0)))
+        self.trail_atr_threshold = Decimal(str(params.get("trail_atr_threshold", 2.0)))
 
-        # Budget & position sizing (independent per strategy)
+        # Budget
         self.order_size_usdc = Decimal(str(params.get("order_size_usdc", 50)))
         self.max_allocation_pct = Decimal(str(params.get("max_allocation_pct", 15.0)))
+
         # Bridge for ExecutionEngine compat
         default_order = Decimal(str(settings.trading.default_order_amount_eur))
         self._position_size_multiplier = (
@@ -102,23 +106,23 @@ class GrokSuperTrend4hRegime(BaseStrategy):
         )
 
         # Internal state
-        self._is_4h: bool = False
         self._current_price: Decimal | None = None
         self._current_timestamp: datetime | None = None
-        self._position: SuperTrendPosition | None = None
+        self._position: VWAPPosition | None = None
         self._next_position_id: int = 1
+        self._is_4h: bool = False
 
-        # Track previous SuperTrend direction for crossover detection
-        self._prev_st_direction: int | None = None  # 1 = UP, -1 = DOWN
+        # Track previous values for crossover detection
+        self._prev_close: Decimal | None = None
+        self._prev_vwap: Decimal | None = None
 
         self.logger.info(
-            "grok_supertrend_4h_initialized",
+            "grok_vwap_trend_4h_initialized",
             bot_id=self.bot_id,
-            st_atr_period=self.st_atr_period,
-            st_multiplier=float(self.st_multiplier),
+            vwap_period=self.vwap_period,
             sl_atr_mult=float(self.sl_atr_mult),
+            trail_atr_threshold=float(self.trail_atr_threshold),
             order_size_usdc=float(self.order_size_usdc),
-            max_allocation_pct=float(self.max_allocation_pct),
         )
 
     # ------------------------------------------------------------------
@@ -143,10 +147,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
             )
 
     async def generate_signal(self) -> TradingSignal | None:
-        """Generate signal based on 4h SuperTrend + 1d regime.
-
-        Only triggers on 4h candles (checked in on_ohlc via _is_4h flag).
-        """
+        """Generate signal based on 4h VWAP crossover + 1d regime."""
         if self._current_price is None or self._current_price <= _ZERO:
             return None
         if self.analyzer is None:
@@ -157,43 +158,40 @@ class GrokSuperTrend4hRegime(BaseStrategy):
         now = self._current_timestamp or datetime.now(UTC)
         price = self._current_price
 
-        # Get SuperTrend on 4h
-        st = self.analyzer.get_supertrend("4h", self.st_atr_period, float(self.st_multiplier))
-        if st is None:
+        # Get VWAP on 4h
+        vwap = self.analyzer.get_vwap(self.vwap_period, "4h")
+        if vwap is None:
             return None
-
-        st_value = st["supertrend"]  # Decimal
-        st_direction = st["direction"]  # 1 = UP, -1 = DOWN
 
         # Get daily regime
         regime_1d = self.analyzer.get_regime("1d")
 
         # --- Exit logic (check before entry) ---
         if self._position is not None:
-            signal = self._check_exit(price, st_value, st_direction, regime_1d, now)
+            signal = self._check_exit(price, vwap, regime_1d, now)
             if signal:
+                self._prev_close = price
+                self._prev_vwap = vwap
                 return signal
 
-            # Update trailing stop to SuperTrend line (if higher than current SL)
-            if st_direction == 1 and st_value > self._position.stop_loss:
-                self._position.stop_loss = st_value
-                self.logger.debug(
-                    "supertrend_trailing_sl_updated",
-                    new_sl=float(st_value),
-                    price=float(price),
-                )
+            # Update trailing stop
+            self._update_trailing(price, vwap)
 
             # Track highest price
             if price > self._position.highest_price:
                 self._position.highest_price = price
 
+            self._prev_close = price
+            self._prev_vwap = vwap
             return None
 
         # --- Entry logic ---
-        signal = self._check_entry(price, st_value, st_direction, regime_1d, now)
+        rsi_4h = self.analyzer.get_rsi(14, "4h")
+        signal = self._check_entry(price, vwap, regime_1d, rsi_4h, now)
 
-        # Update previous direction for next candle
-        self._prev_st_direction = st_direction
+        # Update previous values
+        self._prev_close = price
+        self._prev_vwap = vwap
 
         return signal
 
@@ -204,33 +202,26 @@ class GrokSuperTrend4hRegime(BaseStrategy):
     def _check_exit(
         self,
         price: Decimal,
-        st_value: Decimal,
-        st_direction: int,
+        vwap: Decimal,
         regime_1d: str | None,
         now: datetime,
     ) -> TradingSignal | None:
-        """Check exit conditions for open position.
-
-        Exit when:
-        1. Price < SuperTrend (trend flip) → market order
-        2. Regime_1d goes bear/strong_bear → market order
-        3. Price < stop_loss → market order
-        """
+        """Check exit conditions."""
         pos = self._position
         if pos is None:
             return None
 
         profit_pct = (price - pos.entry_price) / pos.entry_price * _HUNDRED
 
-        # 1. SuperTrend flip (close < SuperTrend line)
-        if st_direction == -1 or price < st_value:
+        # 1. Price crosses below VWAP
+        if price < vwap:
             return self._make_exit_signal(
                 pos,
                 price,
                 now,
-                reason="supertrend_flip",
+                reason="below_vwap",
                 extra=(
-                    f"ST flip DOWN: price={float(price):.1f} < ST={float(st_value):.1f}"
+                    f"Below VWAP: price={float(price):.1f} < vwap={float(vwap):.1f}"
                     f" ({float(profit_pct):+.2f}%)"
                 ),
             )
@@ -242,7 +233,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
                 price,
                 now,
                 reason="regime_shift_bear",
-                extra=(f"Regime → {regime_1d}: exiting ({float(profit_pct):+.2f}%)"),
+                extra=f"Regime → {regime_1d} ({float(profit_pct):+.2f}%)",
             )
 
         # 3. Stop-loss hit
@@ -260,16 +251,39 @@ class GrokSuperTrend4hRegime(BaseStrategy):
 
         return None
 
+    def _update_trailing(self, price: Decimal, vwap: Decimal) -> None:
+        """Update trailing stop after profit threshold."""
+        pos = self._position
+        if pos is None:
+            return
+
+        atr = self.analyzer.get_atr(14, "4h") if self.analyzer else None
+        if atr is None or atr <= _ZERO:
+            return
+
+        profit = price - pos.entry_price
+        if not pos.trailing_activated and profit >= self.trail_atr_threshold * atr:
+            pos.trailing_activated = True
+            self.logger.debug("vwap_trailing_activated", price=float(price))
+
+        if pos.trailing_activated and vwap > pos.stop_loss:
+            pos.stop_loss = vwap
+            self.logger.debug(
+                "vwap_trailing_sl_updated",
+                new_sl=float(vwap),
+                price=float(price),
+            )
+
     def _make_exit_signal(
         self,
-        pos: SuperTrendPosition,
+        pos: VWAPPosition,
         price: Decimal,
         now: datetime,
         *,
         reason: str,
         extra: str,
     ) -> TradingSignal:
-        """Build a SELL signal for exiting an open position."""
+        """Build a SELL signal."""
         amount_btc = pos.amount_usdc / pos.entry_price if pos.entry_price > _ZERO else _ZERO
 
         return TradingSignal(
@@ -277,7 +291,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
             pair=self.pair,
             price=price,
             confidence=0.9,
-            reason=f"SUPERTREND EXIT: {extra}",
+            reason=f"VWAP EXIT: {extra}",
             strategy=self.bot_id,
             timestamp=now,
             metadata={
@@ -298,34 +312,33 @@ class GrokSuperTrend4hRegime(BaseStrategy):
     def _check_entry(
         self,
         price: Decimal,
-        st_value: Decimal,
-        st_direction: int,
+        vwap: Decimal,
         regime_1d: str | None,
+        rsi_4h: Decimal | None,
         now: datetime,
     ) -> TradingSignal | None:
         """Check entry conditions.
 
         BUY when:
-        1. close > SuperTrend (direction == 1, UP)
+        1. close > VWAP AND prev_close <= prev_vwap (crossover)
         2. regime_1d in [bull, strong_bull]
-        3. No position already open
-        4. Optional: direction just flipped from -1 to 1 (fresh crossover)
         """
         if self._position is not None:
             return None
 
-        # Must be in uptrend on SuperTrend
-        if st_direction != 1 or price <= st_value:
+        # Must be above VWAP
+        if price <= vwap:
             return None
+
+        # Fresh crossover: previous close was at or below VWAP
+        if self._prev_close is None or self._prev_vwap is None:
+            return None
+        if self._prev_close > self._prev_vwap:
+            return None  # Already above — not a fresh crossover
 
         # Daily regime must be bullish
         if regime_1d not in ("bull", "strong_bull"):
             return None
-
-        # Prefer fresh crossovers (direction just flipped)
-        # But also allow entry if we just started and direction is already UP
-        is_fresh_cross = self._prev_st_direction is not None and self._prev_st_direction == -1
-        confidence = 0.85 if is_fresh_cross else 0.7
 
         # ATR for initial stop-loss
         atr = self.analyzer.get_atr(14, "4h")
@@ -334,19 +347,21 @@ class GrokSuperTrend4hRegime(BaseStrategy):
 
         stop_loss = price - self.sl_atr_mult * atr
         if stop_loss <= _ZERO:
-            stop_loss = price * Decimal("0.90")  # Fallback: 10% below
+            stop_loss = price * Decimal("0.90")
 
-        # Limit order slightly below current price (maker fee)
+        # Confidence = RSI(14, 4h) / 100
+        confidence = float(rsi_4h / _HUNDRED) if rsi_4h is not None else 0.5
+        confidence = max(0.3, min(confidence, 1.0))
+
         limit_price = price * Decimal("0.999")
 
         self.logger.info(
-            "supertrend_entry_signal",
+            "vwap_entry_signal",
             price=float(price),
-            st_value=float(st_value),
+            vwap=float(vwap),
             regime_1d=regime_1d,
-            fresh_cross=is_fresh_cross,
+            rsi_4h=float(rsi_4h) if rsi_4h else None,
             stop_loss=float(stop_loss),
-            atr=float(atr),
         )
 
         return TradingSignal(
@@ -355,8 +370,9 @@ class GrokSuperTrend4hRegime(BaseStrategy):
             price=price,
             confidence=confidence,
             reason=(
-                f"SUPERTREND BUY: price={float(price):.1f} > ST={float(st_value):.1f}"
-                f" (regime={regime_1d}, cross={'fresh' if is_fresh_cross else 'ongoing'})"
+                f"VWAP BUY: crossover above VWAP "
+                f"price={float(price):.1f} > vwap={float(vwap):.1f}"
+                f" (regime={regime_1d})"
             ),
             strategy=self.bot_id,
             timestamp=now,
@@ -367,11 +383,10 @@ class GrokSuperTrend4hRegime(BaseStrategy):
                 "max_allocation_pct": float(self.max_allocation_pct),
                 "position_size_multiplier": self._position_size_multiplier,
                 "risk_stop_loss": float(stop_loss),
-                "st_value": float(st_value),
-                "st_direction": st_direction,
+                "vwap": float(vwap),
                 "regime_1d": regime_1d,
+                "rsi_4h": float(rsi_4h) if rsi_4h else None,
                 "atr_4h": float(atr),
-                "fresh_crossover": is_fresh_cross,
             },
         )
 
@@ -390,7 +405,6 @@ class GrokSuperTrend4hRegime(BaseStrategy):
 
             await self.on_ohlc(data)
 
-            # Only generate signals on 4h candles
             if not self._is_4h:
                 return
 
@@ -401,7 +415,6 @@ class GrokSuperTrend4hRegime(BaseStrategy):
                     EventType.TRADE_SIGNAL,
                     {"signal": signal, "strategy": self.get_name()},
                 )
-
                 self.logger.info(
                     "signal_generated",
                     signal_type=signal.signal_type.value,
@@ -412,7 +425,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
                 )
         except Exception as e:
             self.logger.error(
-                "supertrend_ohlc_error",
+                "vwap_ohlc_error",
                 error=str(e),
                 error_type=type(e).__name__,
                 exc_info=e,
@@ -441,13 +454,12 @@ class GrokSuperTrend4hRegime(BaseStrategy):
             pid = self._next_position_id
             self._next_position_id += 1
 
-            # Initial stop-loss
             atr = self.analyzer.get_atr(14, "4h") if self.analyzer else None
             sl = price - self.sl_atr_mult * (atr or price * Decimal("0.03"))
             if sl <= _ZERO:
                 sl = price * Decimal("0.90")
 
-            self._position = SuperTrendPosition(
+            self._position = VWAPPosition(
                 position_id=pid,
                 entry_price=price,
                 entry_time=now,
@@ -457,7 +469,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
             )
 
             self.logger.info(
-                "supertrend_position_opened",
+                "vwap_position_opened",
                 position_id=pid,
                 entry_price=float(price),
                 amount_btc=float(amount),
@@ -471,7 +483,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
                     (price - self._position.entry_price) / self._position.entry_price * _HUNDRED
                 )
                 self.logger.info(
-                    "supertrend_position_closed",
+                    "vwap_position_closed",
                     position_id=self._position.position_id,
                     entry_price=float(self._position.entry_price),
                     exit_price=float(price),
@@ -486,7 +498,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
 
     def get_name(self) -> str:
         """Return strategy name."""
-        return "grok_supertrend_4h"
+        return "grok_vwap_trend_4h"
 
     def get_config(self) -> dict[str, Any]:
         """Return strategy configuration."""
@@ -494,9 +506,9 @@ class GrokSuperTrend4hRegime(BaseStrategy):
             "name": self.get_name(),
             "bot_id": self.bot_id,
             "pair": self.pair,
-            "st_atr_period": self.st_atr_period,
-            "st_multiplier": float(self.st_multiplier),
+            "vwap_period": self.vwap_period,
             "sl_atr_mult": float(self.sl_atr_mult),
+            "trail_atr_threshold": float(self.trail_atr_threshold),
             "order_size_usdc": float(self.order_size_usdc),
             "max_allocation_pct": float(self.max_allocation_pct),
             "has_position": self._position is not None,

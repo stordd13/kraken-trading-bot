@@ -141,6 +141,48 @@ class BacktestEngine:
                 return s.params
         return None
 
+    def _load_inner_strategy_params(self, inner_name: str) -> dict[str, Any] | None:
+        """Load params for an inner strategy nested under multi_strategy_router."""
+        router_params = self._load_strategy_params("multi_strategy_router")
+        if router_params is None:
+            return None
+        strategies = router_params.get("strategies", {})
+        inner = strategies.get(inner_name, {})
+        return inner.get("params")
+
+    # Strategies that need specific higher timeframes loaded
+    _NEEDS_4H = {
+        "gemini_suivi_tendance_momentum",
+        "grok_supertrend_4h",
+        "grok_ema_adx_atr",
+        "grok_ichimoku_cloud_4h",
+        "grok_donchian_breakout_4h",
+        "grok_vwap_trend_4h",
+    }
+    _NEEDS_1D = {
+        "gemini_suivi_tendance_momentum",
+        "grok_supertrend_4h",
+        "grok_ema_adx_atr",
+        "grok_adaptive_dca_weekly",
+        "grok_ichimoku_cloud_4h",
+        "grok_donchian_breakout_4h",
+        "grok_vwap_trend_4h",
+    }
+    _NEEDS_1W = {
+        "gemini_suivi_tendance_momentum",
+        "grok_ema_adx_atr",
+        "grok_adaptive_dca_weekly",
+    }
+    # Strategies that check _is_4h / _is_daily in generate_signal()
+    _HAS_IS_4H = {
+        "grok_supertrend_4h",
+        "grok_ema_adx_atr",
+        "grok_ichimoku_cloud_4h",
+        "grok_donchian_breakout_4h",
+        "grok_vwap_trend_4h",
+    }
+    _HAS_IS_DAILY = {"grok_adaptive_dca_weekly"}
+
     async def _load_candles_for_interval(
         self,
         pair: str,
@@ -200,17 +242,34 @@ class BacktestEngine:
         warmup_1h = start_time - timedelta(days=3)  # ~72 candles (> 50 warmup)
         warmup_15m = start_time - timedelta(hours=10)  # ~40 candles (> 20 warmup)
         warmup_trading = start_time - timedelta(hours=3)  # ~36 candles (> 20 warmup)
+        warmup_4h = start_time - timedelta(days=15)  # ~90 candles (> 52 for Ichimoku)
+        warmup_1d = start_time - timedelta(days=100)  # ~100 candles for regime EMAs
+        warmup_1w = start_time - timedelta(days=400)  # ~57 candles
 
         # Load higher timeframe data (full range: warmup + backtest period)
         candles_1h = await self._load_candles_for_interval(pair, 60, warmup_1h, end_time)
         candles_15m = await self._load_candles_for_interval(pair, 15, warmup_15m, end_time)
         candles_warmup = await self._load_candles_for_interval(pair, ci, warmup_trading, start_time)
 
+        # Load 4h, 1d, 1w if the strategy needs them
+        candles_4h: list[OHLCData] = []
+        candles_1d: list[OHLCData] = []
+        candles_1w: list[OHLCData] = []
+        if self.strategy_name in self._NEEDS_4H:
+            candles_4h = await self._load_candles_for_interval(pair, 240, warmup_4h, end_time)
+        if self.strategy_name in self._NEEDS_1D:
+            candles_1d = await self._load_candles_for_interval(pair, 1440, warmup_1d, end_time)
+        if self.strategy_name in self._NEEDS_1W:
+            candles_1w = await self._load_candles_for_interval(pair, 10080, warmup_1w, end_time)
+
         self.logger.info(
             "mtf_data_loaded",
             trading_interval=ci,
             candles_1h=len(candles_1h),
             candles_15m=len(candles_15m),
+            candles_4h=len(candles_4h),
+            candles_1d=len(candles_1d),
+            candles_1w=len(candles_1w),
             candles_warmup=len(candles_warmup),
             candles_trading=len(candles_trading),
         )
@@ -230,13 +289,30 @@ class BacktestEngine:
         for c in candles_15m:
             sequence.append((c, 15, False))
 
-        # Trading candles
-        for c in candles_trading:
-            sequence.append((c, ci, True))
+        # 4h candles — tradeable only for 4h strategies
+        is_4h_trigger = self.strategy_name in self._HAS_IS_4H
+        for c in candles_4h:
+            is_tradeable = is_4h_trigger and c.timestamp >= start_time
+            sequence.append((c, 240, is_tradeable))
 
-        # Sort: timestamp ASC, then higher timeframes first (60 > 15 > trading)
-        interval_order = {60: 0, 15: 1, ci: 2}
-        sequence.sort(key=lambda x: (x[0].timestamp, interval_order.get(x[1], 3)))
+        # 1d candles — tradeable only for daily strategies
+        is_daily_trigger = self.strategy_name in self._HAS_IS_DAILY
+        for c in candles_1d:
+            is_tradeable = is_daily_trigger and c.timestamp >= start_time
+            sequence.append((c, 1440, is_tradeable))
+
+        # 1w candles — never tradeable (feed analyzer only)
+        for c in candles_1w:
+            sequence.append((c, 10080, False))
+
+        # Trading candles (skip if 4h is the trigger — already added above)
+        if not is_4h_trigger and not is_daily_trigger:
+            for c in candles_trading:
+                sequence.append((c, ci, True))
+
+        # Sort: timestamp ASC, then higher timeframes first
+        interval_order = {10080: 0, 1440: 1, 240: 2, 60: 3, 15: 4, ci: 5}
+        sequence.sort(key=lambda x: (x[0].timestamp, interval_order.get(x[1], 6)))
 
         return sequence
 
@@ -354,12 +430,38 @@ class BacktestEngine:
             "trend_following",
         ]
 
+        # Grok strategies use on_trade_filled() instead of set_position_state()
+        uses_otf = hasattr(self.strategy, "on_trade_filled") and self.strategy_name in [
+            "gemini_scalping_volatilite",
+            "gemini_retour_moyenne",
+            "gemini_suivi_tendance_momentum",
+            "grok_supertrend_4h",
+            "grok_ema_adx_atr",
+            "grok_adaptive_dca_weekly",
+            "grok_ichimoku_cloud_4h",
+            "grok_donchian_breakout_4h",
+            "grok_vwap_trend_4h",
+        ]
+
+        # Override order size from strategy metadata
+        if uses_otf and signal.metadata:
+            strategy_order_size = signal.metadata.get("order_size_usdc")
+            if strategy_order_size is not None:
+                order_amount_override = min(self.usdc_balance, Decimal(str(strategy_order_size)))
+            else:
+                order_amount_override = None
+        else:
+            order_amount_override = None
+
         if signal.signal_type == SignalType.BUY and (is_multi or not self.in_position):
             # Buy with available USDC
-            order_amount = min(
-                self.usdc_balance,
-                Decimal(str(self.settings.trading.default_order_amount_eur)),  # Convert to Decimal
-            )
+            if order_amount_override is not None:
+                order_amount = order_amount_override
+            else:
+                order_amount = min(
+                    self.usdc_balance,
+                    Decimal(str(self.settings.trading.default_order_amount_eur)),  # Convert to Decimal
+                )
 
             self.logger.debug(
                 "backtest_buy_attempt",
@@ -410,8 +512,20 @@ class BacktestEngine:
                         entry_time=signal.timestamp,
                     )
                 self.logger.debug("multi_position_opened", position_id=position_id)
+            elif uses_otf:
+                # Grok strategies: notify via on_trade_filled
+                await self.strategy.on_trade_filled(
+                    trade_id=f"bt-{len(self.metrics.trades)+1}",
+                    pair=signal.pair,
+                    side="buy",
+                    amount=crypto_bought,
+                    price=execution_price,
+                    fee=fee,
+                    reference_price=current_price,
+                    position_id=None,
+                )
             else:
-                # Single position mode
+                # Single position mode (legacy)
                 # Use current_price (not execution_price) so strategy sees mid-market price
                 self.strategy.set_position_state(has_position=True, entry_price=current_price)
 
@@ -486,6 +600,33 @@ class BacktestEngine:
                     self.in_position = False
 
                 self.logger.debug("multi_position_closed", position_id=position_id)
+            elif uses_otf:
+                # Grok strategies: sell via on_trade_filled
+                proceeds = self.crypto_balance * execution_price
+                fee = proceeds * fee_pct
+                amount_after_fee = proceeds - fee
+
+                cost_basis = (
+                    self.entry_price * self.crypto_balance if self.entry_price else Decimal("0")
+                )
+                pnl = amount_after_fee - cost_basis
+
+                crypto_sold = self.crypto_balance
+
+                await self.strategy.on_trade_filled(
+                    trade_id=f"bt-sell-{len(self.metrics.trades)+1}",
+                    pair=signal.pair,
+                    side="sell",
+                    amount=crypto_sold,
+                    price=execution_price,
+                    fee=fee,
+                    reference_price=current_price,
+                    position_id=signal.metadata.get("position_id") if signal.metadata else None,
+                )
+
+                self.usdc_balance += amount_after_fee
+                self.crypto_balance = Decimal("0")
+                self.in_position = False
             else:
                 # Single position mode - use global tracking
                 proceeds = self.crypto_balance * execution_price
@@ -910,22 +1051,217 @@ class BacktestEngine:
                 db_manager=self.db_manager,
                 strategy_params=strategy_params,
             )
+        # ---------------------------------------------------------------
+        # Gemini strategies (Phase-1A)
+        # ---------------------------------------------------------------
+        elif self.strategy_name == "gemini_scalping_volatilite":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.gemini_scalping_volatilite import (
+                GeminiScalpingVolatilite,
+            )
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("gemini_scalping_volatilite")
+            self.strategy = GeminiScalpingVolatilite(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="scalping_vol",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+        elif self.strategy_name == "gemini_retour_moyenne":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.gemini_retour_moyenne import GeminiRetourMoyenne
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("gemini_retour_moyenne")
+            self.strategy = GeminiRetourMoyenne(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="retour_moy",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+        elif self.strategy_name == "gemini_suivi_tendance_momentum":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.gemini_suivi_tendance_momentum import (
+                GeminiSuiviTendanceMomentum,
+            )
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("gemini_suivi_tendance_momentum")
+            self.strategy = GeminiSuiviTendanceMomentum(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="tendance_mom",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+        # ---------------------------------------------------------------
+        # Grok strategies (Phase-1A)
+        # ---------------------------------------------------------------
+        elif self.strategy_name == "grok_supertrend_4h":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.grok_supertrend_4h import (
+                GrokSuperTrend4hRegime,
+            )
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("grok_supertrend_4h")
+            self.strategy = GrokSuperTrend4hRegime(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="supertrend_4h",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+        elif self.strategy_name == "grok_ema_adx_atr":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.grok_ema_adx_atr import GrokEMA27_125_ADX_ATR
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("grok_ema_adx_atr")
+            self.strategy = GrokEMA27_125_ADX_ATR(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="ema_cross_4h",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+        elif self.strategy_name == "grok_adaptive_dca_weekly":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.grok_adaptive_dca_weekly import (
+                GrokAdaptiveDCAWeekly,
+            )
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("grok_adaptive_dca_weekly")
+            self.strategy = GrokAdaptiveDCAWeekly(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="dca_weekly",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+        # ---------------------------------------------------------------
+        # New trend-following strategies (Phase-1B)
+        # ---------------------------------------------------------------
+        elif self.strategy_name == "grok_ichimoku_cloud_4h":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.grok_ichimoku_cloud_4h import (
+                GrokIchimokuCloudBreakoutV1,
+            )
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("grok_ichimoku_cloud_4h")
+            self.strategy = GrokIchimokuCloudBreakoutV1(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="ichimoku_cloud_4h",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+        elif self.strategy_name == "grok_donchian_breakout_4h":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.grok_donchian_breakout_4h import (
+                GrokDonchianChannelBreakoutV1,
+            )
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("grok_donchian_breakout_4h")
+            self.strategy = GrokDonchianChannelBreakoutV1(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="donchian_breakout_4h",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+        elif self.strategy_name == "grok_vwap_trend_4h":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.grok_vwap_trend_4h import GrokVWAPTrendV1
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("grok_vwap_trend_4h")
+            self.strategy = GrokVWAPTrendV1(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="vwap_trend_4h",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
         else:
             raise ValueError(
                 f"Unknown strategy: {self.strategy_name}. "
                 f"Available: threshold_rolling, adaptive, capitulation, "
-                f"bear_short, trend_following, grid_spot, grid_adaptive"
+                f"bear_short, trend_following, "
+                f"gemini_scalping_volatilite, gemini_retour_moyenne, "
+                f"gemini_suivi_tendance_momentum, "
+                f"grok_supertrend_4h, grok_ema_adx_atr, "
+                f"grok_adaptive_dca_weekly, "
+                f"grok_ichimoku_cloud_4h, grok_donchian_breakout_4h, "
+                f"grok_vwap_trend_4h"
             )
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies
         self.strategy._skip_db_sync = True
 
-        # Build replay sequence (with MTF warmup for adaptive/capitulation/trend_following)
+        # Pre-register lazy indicators so they exist before warmup data flows.
+        # Without this, the first get_*() call returns None because the indicator
+        # was just created and has no data yet.
+        bt_analyzer = getattr(self.strategy, "analyzer", None)
+        if bt_analyzer is not None:
+            # EMAs used by regime calculation and strategies
+            _LAZY_EMAS = {
+                "grok_supertrend_4h": [(20, "4h"), (50, "4h")],
+                "grok_ema_adx_atr": [(27, "4h"), (125, "4h")],
+                "gemini_suivi_tendance_momentum": [(20, "4h"), (50, "4h")],
+                "grok_ichimoku_cloud_4h": [(20, "4h"), (50, "4h")],
+                "grok_donchian_breakout_4h": [(20, "4h"), (50, "4h")],
+                "grok_vwap_trend_4h": [(20, "4h"), (50, "4h")],
+            }
+            for period, tf in _LAZY_EMAS.get(self.strategy_name, []):
+                bt_analyzer.get_ema(period, tf)
+
+            # SuperTrend
+            if self.strategy_name == "grok_supertrend_4h":
+                bt_analyzer.get_supertrend("4h", atr_period=10, multiplier=3.0)
+
+            # Ichimoku
+            if self.strategy_name == "grok_ichimoku_cloud_4h":
+                bt_analyzer.get_ichimoku("4h")
+
+            # Donchian
+            if self.strategy_name == "grok_donchian_breakout_4h":
+                bt_analyzer.get_donchian("4h", period_upper=20, period_lower=10)
+
+            # VWAP
+            if self.strategy_name == "grok_vwap_trend_4h":
+                bt_analyzer.get_vwap(20, "4h")
+
+        # Build replay sequence (with MTF warmup for strategies using MultiTimeframeAnalyzer)
         needs_mtf = self.strategy_name in [
             "adaptive",
             "capitulation",
             "bear_short",
             "trend_following",
+            "gemini_scalping_volatilite",
+            "gemini_retour_moyenne",
+            "gemini_suivi_tendance_momentum",
+            "grok_supertrend_4h",
+            "grok_ema_adx_atr",
+            "grok_adaptive_dca_weekly",
+            "grok_ichimoku_cloud_4h",
+            "grok_donchian_breakout_4h",
+            "grok_vwap_trend_4h",
         ]
         if needs_mtf:
             replay_sequence = await self._build_replay_sequence(pair, start_time, end_time, candles)
@@ -978,6 +1314,12 @@ class BacktestEngine:
                 "is_complete": True,
             }
 
+            # Feed the analyzer BEFORE on_ohlc so indicators are up-to-date.
+            # Strategies like grok_* don't call analyzer.update() internally.
+            bt_analyzer = getattr(self.strategy, "analyzer", None)
+            if bt_analyzer is not None:
+                bt_analyzer.update(ohlc_data, interval)
+
             await self.strategy.on_ohlc(ohlc_data)
 
             # Only trade on tradeable candles (skip warmup + higher TFs)
@@ -985,6 +1327,12 @@ class BacktestEngine:
                 continue
 
             tradeable_idx += 1
+
+            # Set timeframe flags for strategies that check them in generate_signal()
+            if hasattr(self.strategy, "_is_4h"):
+                self.strategy._is_4h = interval == 240
+            if hasattr(self.strategy, "_is_daily"):
+                self.strategy._is_daily = interval == 1440
 
             # Simulate tick with closing price for strategy analysis
             tick_data = {

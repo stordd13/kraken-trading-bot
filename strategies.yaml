@@ -52,7 +52,7 @@ strategies:
       # Inner strategies (active: false to disable individually)
       strategies:
         gemini_scalping_volatilite:
-          active: true
+          active: false  # KILL Phase 1A: -14.8%, PF 0.86
           bot_id: scalping_vol
           params:
             rsi_period: 7
@@ -67,7 +67,7 @@ strategies:
             close_hour_utc: 23
 
         gemini_suivi_tendance_momentum:
-          active: true
+          active: false  # KILL Phase 1A: -19.3%, pullback bug
           bot_id: tendance_mom
           params:
             adx_min: 20
@@ -78,7 +78,7 @@ strategies:
             max_open_positions: 1
 
         gemini_retour_moyenne:
-          active: true
+          active: false  # KILL Phase 1A: -8.5%, DCA into falling knife
           bot_id: retour_moy
           params:
             dca_levels: 3
@@ -109,15 +109,15 @@ strategies:
             st_atr_period: 10
             st_multiplier: 3.0
             sl_atr_mult: 3.5
-            order_size_usdc: 50
+            order_size_usdc: 200  # Scaled 4x: MaxDD 6.28% < 10% threshold
             max_allocation_pct: 15.0
 
         grok_ema_adx_atr:
           active: true
           bot_id: ema_cross_4h
           params:
-            ema_fast: 27
-            ema_slow: 125
+            ema_fast: 20
+            ema_slow: 50
             adx_threshold: 14
             atr_mult_stop: 3.5
             breakeven_atr: 1.5
@@ -134,6 +134,37 @@ strategies:
             bull_reduction: 0.5
             rsi_oversold: 30
             max_allocation_pct: 25.0
+
+        grok_ichimoku_cloud_4h:
+          active: true
+          bot_id: ichimoku_cloud_4h
+          params:
+            sl_atr_mult: 3.0
+            trail_atr_threshold: 1.5
+            adx_threshold: 20
+            order_size_usdc: 50
+            max_allocation_pct: 15.0
+
+        grok_donchian_breakout_4h:
+          active: true
+          bot_id: donchian_breakout_4h
+          params:
+            period_upper: 20
+            period_lower: 10
+            sl_atr_mult: 3.5
+            adx_threshold: 18
+            order_size_usdc: 50
+            max_allocation_pct: 15.0
+
+        grok_vwap_trend_4h:
+          active: true
+          bot_id: vwap_trend_4h
+          params:
+            vwap_period: 20
+            sl_atr_mult: 3.0
+            trail_atr_threshold: 2.0
+            order_size_usdc: 50
+            max_allocation_pct: 15.0
 
   # =============================================================
   # === LEGACY strategies (disabled — kept for backtest/reference)
