@@ -24,7 +24,7 @@ jobs:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
-          port: 2222
+          port: 41922
           envs: KRAKEN_API_KEY,KRAKEN_API_SECRET,DATABASE_URL
           script: |
             cd ~/apps/kraken-trading-bot

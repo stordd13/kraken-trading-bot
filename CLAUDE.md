@@ -159,7 +159,7 @@ poetry run ruff check . --fix && ruff format .
 poetry run mypy src/
 
 # Dashboard (tunnel SSH depuis Mac)
-ssh -L 5432:localhost:5432 bruno@<IP> -N &
+ssh -p 41922 -L 5432:localhost:5432 bruno@<IP> -N &
 poetry run python scripts/dashboard.py      # http://localhost:8050
 
 # Backtest
