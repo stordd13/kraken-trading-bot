@@ -78,11 +78,13 @@ class ExternalDataFetcher:
                 results = []
                 for entry in entries:
                     ts = datetime.fromtimestamp(int(entry["timestamp"]), tz=UTC)
-                    results.append({
-                        "timestamp": ts,
-                        "value": float(entry["value"]),
-                        "classification": entry.get("value_classification", ""),
-                    })
+                    results.append(
+                        {
+                            "timestamp": ts,
+                            "value": float(entry["value"]),
+                            "classification": entry.get("value_classification", ""),
+                        }
+                    )
 
                 logger.info("fear_greed_fetched", entries=len(results))
                 return results
@@ -121,7 +123,10 @@ class ExternalDataFetcher:
                         source="fear_greed",
                         value=entry["value"],
                         value_classification=entry["classification"],
-                        raw_data={"value": entry["value"], "classification": entry["classification"]},
+                        raw_data={
+                            "value": entry["value"],
+                            "classification": entry["classification"],
+                        },
                     )
                     .on_conflict_do_update(
                         index_elements=["timestamp", "source"],
@@ -152,9 +157,7 @@ class ExternalDataFetcher:
     # Generic lookup (used by FeatureStore for forward-fill)
     # ------------------------------------------------------------------
 
-    async def get_latest_value(
-        self, source: str, before: datetime
-    ) -> float | None:
+    async def get_latest_value(self, source: str, before: datetime) -> float | None:
         """Get the most recent value for a source before a given timestamp.
 
         Used for forward-fill in feature computation.

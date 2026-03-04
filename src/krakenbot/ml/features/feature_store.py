@@ -94,9 +94,7 @@ class FeatureStore:
 
         # 1. Load candles with warmup
         warmup_start = start_date - timedelta(days=400)
-        candle_sequence = await self._load_replay_sequence(
-            pair, warmup_start, end_date
-        )
+        candle_sequence = await self._load_replay_sequence(pair, warmup_start, end_date)
         logger.info("candles_loaded", total=len(candle_sequence))
 
         # 2. Create fresh analyzer + pre-register lazy indicators
@@ -131,7 +129,13 @@ class FeatureStore:
             # Emit feature row on primary interval candles within date range
             if interval == self.PRIMARY_INTERVAL and ts >= start_date:
                 features = self._compute_features(
-                    analyzer, ts, pair, close_f, high_f, low_f, volume_f,
+                    analyzer,
+                    ts,
+                    pair,
+                    close_f,
+                    high_f,
+                    low_f,
+                    volume_f,
                 )
                 # Add external data (forward-fill from ml_external_data)
                 fear_greed = await self._get_external_value("fear_greed", ts)
@@ -196,7 +200,13 @@ class FeatureStore:
             return
 
         features = self._compute_features(
-            analyzer, timestamp, pair, close_f, high_f, low_f, volume_f,
+            analyzer,
+            timestamp,
+            pair,
+            close_f,
+            high_f,
+            low_f,
+            volume_f,
         )
         fear_greed = await self._get_external_value("fear_greed", timestamp)
         features["fear_greed_index"] = fear_greed
@@ -241,7 +251,8 @@ class FeatureStore:
 
             # Convert to dict, excluding PK and context columns
             feature_cols = [
-                c.key for c in MLFeatureRow.__table__.columns
+                c.key
+                for c in MLFeatureRow.__table__.columns
                 if c.key not in ("timestamp", "pair", "interval", "close_price", "volume")
                 and not c.key.startswith("target_")
                 and c.key != "extra_features"
@@ -333,9 +344,7 @@ class FeatureStore:
             if tf == "4h":
                 features["supertrend_dist_4h"] = tf_features.get("supertrend_dist")
                 st_dir = tf_features.get("supertrend_dir")
-                features["supertrend_dir_4h"] = (
-                    int(st_dir) if st_dir is not None else None
-                )
+                features["supertrend_dir_4h"] = int(st_dir) if st_dir is not None else None
                 features["macd_hist_4h"] = tf_features.get("macd_hist_norm")
                 features["adx_4h"] = tf_features.get("adx")
                 features["bb_width_4h"] = tf_features.get("bb_width")
@@ -359,9 +368,7 @@ class FeatureStore:
 
         # Parkinson volatility (high-low based, single candle)
         if high > 0 and low > 0 and high != low:
-            features["parkinson_vol_4h"] = math.sqrt(
-                math.log(high / low) ** 2 / (4 * math.log(2))
-            )
+            features["parkinson_vol_4h"] = math.sqrt(math.log(high / low) ** 2 / (4 * math.log(2)))
         else:
             features["parkinson_vol_4h"] = None
 
@@ -385,15 +392,13 @@ class FeatureStore:
     # Realized volatility
     # ------------------------------------------------------------------
 
-    def _compute_realized_vol(
-        self, pair: str, interval: int, window: int
-    ) -> float | None:
+    def _compute_realized_vol(self, pair: str, interval: int, window: int) -> float | None:
         """Compute realized volatility as std of log returns."""
         key = (pair, interval)
         history = self._close_history.get(key)
         if history is None or len(history) < window + 1:
             return None
-        closes = [c for _, c in list(history)[-(window + 1):]]
+        closes = [c for _, c in list(history)[-(window + 1) :]]
         log_returns = [
             math.log(closes[i] / closes[i - 1])
             for i in range(1, len(closes))
@@ -455,9 +460,7 @@ class FeatureStore:
                 sequence.append((c, interval))
 
         # Sort: timestamp ASC, higher timeframes first on ties
-        sequence.sort(
-            key=lambda x: (x[0].timestamp, _INTERVAL_ORDER.get(x[1], 99))
-        )
+        sequence.sort(key=lambda x: (x[0].timestamp, _INTERVAL_ORDER.get(x[1], 99)))
         return sequence
 
     async def _load_candles(
@@ -486,9 +489,7 @@ class FeatureStore:
     # External data lookup
     # ------------------------------------------------------------------
 
-    async def _get_external_value(
-        self, source: str, before: datetime
-    ) -> float | None:
+    async def _get_external_value(self, source: str, before: datetime) -> float | None:
         """Get the most recent external data value before a timestamp (forward-fill)."""
         async with self._db.read_session() as session:
             stmt = (
@@ -520,16 +521,15 @@ class FeatureStore:
                     .on_conflict_do_update(
                         index_elements=["timestamp", "pair", "interval"],
                         set_={
-                            k: v for k, v in row_data.items()
+                            k: v
+                            for k, v in row_data.items()
                             if k not in ("timestamp", "pair", "interval")
                         },
                     )
                 )
                 await session.execute(stmt)
 
-    async def _count_rows(
-        self, pair: str, start_date: datetime, end_date: datetime
-    ) -> int:
+    async def _count_rows(self, pair: str, start_date: datetime, end_date: datetime) -> int:
         """Count feature rows for a pair in a date range."""
         async with self._db.read_session() as session:
             stmt = text(
@@ -574,9 +574,7 @@ class FeatureStore:
             return 0
 
         # Build close price lookup: timestamp -> close_float
-        close_lookup: dict[datetime, float] = {
-            c.timestamp: float(c.close) for c in candles_4h
-        }
+        close_lookup: dict[datetime, float] = {c.timestamp: float(c.close) for c in candles_4h}
         timestamps_sorted = sorted(close_lookup.keys())
 
         # Also need regime data: build analyzer for the full period
@@ -625,9 +623,7 @@ class FeatureStore:
 
                 # target_realized_vol_4h: vol of next candle's H/L
                 if ts_4h and ts_4h in close_lookup:
-                    next_candle = next(
-                        (c for c in candles_4h if c.timestamp == ts_4h), None
-                    )
+                    next_candle = next((c for c in candles_4h if c.timestamp == ts_4h), None)
                     if next_candle and float(next_candle.high) > 0 and float(next_candle.low) > 0:
                         h = float(next_candle.high)
                         l_val = float(next_candle.low)

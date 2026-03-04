@@ -63,133 +63,211 @@ class MLFeatureRow(Base):
 
     # --- Trend & Regime features ---
     ema_spread_1h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="(EMA20-EMA50)/EMA50, 1h",
+        Float,
+        nullable=True,
+        comment="(EMA20-EMA50)/EMA50, 1h",
     )
     ema_spread_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="(EMA20-EMA50)/EMA50, 4h",
+        Float,
+        nullable=True,
+        comment="(EMA20-EMA50)/EMA50, 4h",
     )
     ema_spread_1d: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="(EMA20-EMA50)/EMA50, 1d",
+        Float,
+        nullable=True,
+        comment="(EMA20-EMA50)/EMA50, 1d",
     )
     supertrend_dist_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="(close - supertrend)/close, 4h",
+        Float,
+        nullable=True,
+        comment="(close - supertrend)/close, 4h",
     )
     supertrend_dir_4h: Mapped[int | None] = mapped_column(
-        Integer, nullable=True, comment="SuperTrend direction 4h: 1 or -1",
+        Integer,
+        nullable=True,
+        comment="SuperTrend direction 4h: 1 or -1",
     )
     adx_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="ADX(14) 4h, 0-100",
+        Float,
+        nullable=True,
+        comment="ADX(14) 4h, 0-100",
     )
     adx_1d: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="ADX(14) 1d, 0-100",
+        Float,
+        nullable=True,
+        comment="ADX(14) 1d, 0-100",
     )
     macd_hist_1h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="MACD histogram / close, 1h",
+        Float,
+        nullable=True,
+        comment="MACD histogram / close, 1h",
     )
     macd_hist_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="MACD histogram / close, 4h",
+        Float,
+        nullable=True,
+        comment="MACD histogram / close, 4h",
     )
     rsi_14_1h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="RSI(14) 1h, 0-100",
+        Float,
+        nullable=True,
+        comment="RSI(14) 1h, 0-100",
     )
     rsi_14_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="RSI(14) 4h, 0-100",
+        Float,
+        nullable=True,
+        comment="RSI(14) 4h, 0-100",
     )
     rsi_14_1d: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="RSI(14) 1d, 0-100",
+        Float,
+        nullable=True,
+        comment="RSI(14) 1d, 0-100",
     )
     regime_1h: Mapped[str | None] = mapped_column(
-        String(20), nullable=True, comment="Market regime 1h",
+        String(20),
+        nullable=True,
+        comment="Market regime 1h",
     )
     regime_4h: Mapped[str | None] = mapped_column(
-        String(20), nullable=True, comment="Market regime 4h",
+        String(20),
+        nullable=True,
+        comment="Market regime 4h",
     )
     regime_1d: Mapped[str | None] = mapped_column(
-        String(20), nullable=True, comment="Market regime 1d",
+        String(20),
+        nullable=True,
+        comment="Market regime 1d",
     )
 
     # --- Volatility features ---
     atr_ratio_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="ATR(14)/close, 4h",
+        Float,
+        nullable=True,
+        comment="ATR(14)/close, 4h",
     )
     atr_ratio_1d: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="ATR(14)/close, 1d",
+        Float,
+        nullable=True,
+        comment="ATR(14)/close, 1d",
     )
     bb_width_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Bollinger bandwidth, 4h",
+        Float,
+        nullable=True,
+        comment="Bollinger bandwidth, 4h",
     )
     bb_pctb_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Bollinger %B, 4h (0-1 inside bands)",
+        Float,
+        nullable=True,
+        comment="Bollinger %B, 4h (0-1 inside bands)",
     )
     realized_vol_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Std of log returns, last 6x4h candles",
+        Float,
+        nullable=True,
+        comment="Std of log returns, last 6x4h candles",
     )
     realized_vol_24h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Std of log returns, last 24x1h candles",
+        Float,
+        nullable=True,
+        comment="Std of log returns, last 24x1h candles",
     )
     realized_vol_7d: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Std of log returns, last 42x4h candles",
+        Float,
+        nullable=True,
+        comment="Std of log returns, last 42x4h candles",
     )
     parkinson_vol_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Parkinson vol estimator (high-low based)",
+        Float,
+        nullable=True,
+        comment="Parkinson vol estimator (high-low based)",
     )
 
     # --- Volume & Micro features ---
     volume_ratio_1h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Current volume / MA(20) volume, 1h",
+        Float,
+        nullable=True,
+        comment="Current volume / MA(20) volume, 1h",
     )
     volume_ratio_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Current volume / MA(20) volume, 4h",
+        Float,
+        nullable=True,
+        comment="Current volume / MA(20) volume, 4h",
     )
     vwap_deviation_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="(close - VWAP20) / close, 4h",
+        Float,
+        nullable=True,
+        comment="(close - VWAP20) / close, 4h",
     )
     hl_ratio: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="(high - low) / close",
+        Float,
+        nullable=True,
+        comment="(high - low) / close",
     )
 
     # --- Cyclic features ---
     hour_sin: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="sin(2*pi*hour/24)",
+        Float,
+        nullable=True,
+        comment="sin(2*pi*hour/24)",
     )
     hour_cos: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="cos(2*pi*hour/24)",
+        Float,
+        nullable=True,
+        comment="cos(2*pi*hour/24)",
     )
     dow_sin: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="sin(2*pi*day_of_week/7)",
+        Float,
+        nullable=True,
+        comment="sin(2*pi*day_of_week/7)",
     )
     dow_cos: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="cos(2*pi*day_of_week/7)",
+        Float,
+        nullable=True,
+        comment="cos(2*pi*day_of_week/7)",
     )
     month_sin: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="sin(2*pi*month/12)",
+        Float,
+        nullable=True,
+        comment="sin(2*pi*month/12)",
     )
     month_cos: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="cos(2*pi*month/12)",
+        Float,
+        nullable=True,
+        comment="cos(2*pi*month/12)",
     )
 
     # --- External data (forward-filled from ml_external_data) ---
     fear_greed_index: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Fear & Greed Index (0-100)",
+        Float,
+        nullable=True,
+        comment="Fear & Greed Index (0-100)",
     )
 
     # --- Targets (NULL in live, computed retrospectively for training) ---
     target_return_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="close[t+4h]/close[t] - 1",
+        Float,
+        nullable=True,
+        comment="close[t+4h]/close[t] - 1",
     )
     target_return_24h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="close[t+24h]/close[t] - 1",
+        Float,
+        nullable=True,
+        comment="close[t+24h]/close[t] - 1",
     )
     target_realized_vol_4h: Mapped[float | None] = mapped_column(
-        Float, nullable=True, comment="Realized vol over next 4h",
+        Float,
+        nullable=True,
+        comment="Realized vol over next 4h",
     )
     target_regime_24h: Mapped[str | None] = mapped_column(
-        String(20), nullable=True, comment="Regime classification 24h ahead",
+        String(20),
+        nullable=True,
+        comment="Regime classification 24h ahead",
     )
 
     # --- Extensibility ---
     extra_features: Mapped[dict | None] = mapped_column(
-        JSONB, nullable=True, comment="Additional features as JSON",
+        JSONB,
+        nullable=True,
+        comment="Additional features as JSON",
     )
 
     __table_args__ = (
