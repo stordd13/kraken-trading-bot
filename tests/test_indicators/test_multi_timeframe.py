@@ -323,44 +323,44 @@ class TestAdaptiveThresholds:
         assert sl == pytest.approx(5.0, abs=0.01)
 
     def test_bull_regime_tighter_buy_wider_sell(self) -> None:
-        """Bull regime: tighter buy (closer to 0), wider sell, wider stop-loss."""
+        """Bull regime: same buy, wider sell, tighter stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
         buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.BULL, volatility_pct=1.5)
-        # regime_mult=0.85, sell_regime_mult=1.3, sl_regime_mult=1.2, vol_mult=1.0
-        assert buy == pytest.approx(-1.0 * 0.85 * 1.0, abs=0.01)
+        # regime_mult=1.0, sell_regime_mult=1.3, sl_regime_mult=0.8, vol_mult=1.0
+        assert buy == pytest.approx(-1.0 * 1.0 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 1.3 * 1.0, abs=0.01)
-        assert sl == pytest.approx(5.0 * 1.2 * 1.0, abs=0.01)
+        assert sl == pytest.approx(5.0 * 0.8 * 1.0, abs=0.01)
 
     def test_strong_bull_tightest_buy(self) -> None:
-        """Strong bull: even tighter buy, widest sell, widest stop-loss."""
+        """Strong bull: same buy, widest sell, tightest stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
         buy, sell, sl = analyzer._calc_adaptive_thresholds(
             MarketRegime.STRONG_BULL, volatility_pct=1.5
         )
-        # regime_mult=0.7, sell_regime_mult=1.5, sl_regime_mult=1.5
-        assert buy == pytest.approx(-1.0 * 0.7 * 1.0, abs=0.01)
+        # regime_mult=1.0, sell_regime_mult=1.5, sl_regime_mult=0.7
+        assert buy == pytest.approx(-1.0 * 1.0 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 1.5 * 1.0, abs=0.01)
-        assert sl == pytest.approx(5.0 * 1.5 * 1.0, abs=0.01)
+        assert sl == pytest.approx(5.0 * 0.7 * 1.0, abs=0.01)
 
     def test_bear_regime_wider_buy_tighter_sell(self) -> None:
-        """Bear regime: wider buy (bigger drop needed), tighter sell, tighter stop-loss."""
+        """Bear regime: wider buy (bigger drop needed), tighter sell, wider stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
         buy, sell, sl = analyzer._calc_adaptive_thresholds(MarketRegime.BEAR, volatility_pct=1.5)
-        # regime_mult=1.5, sell_regime_mult=0.8, sl_regime_mult=0.8
+        # regime_mult=1.5, sell_regime_mult=0.8, sl_regime_mult=1.3
         assert buy == pytest.approx(-1.0 * 1.5 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 0.8 * 1.0, abs=0.01)
-        assert sl == pytest.approx(5.0 * 0.8 * 1.0, abs=0.01)
+        assert sl == pytest.approx(5.0 * 1.3 * 1.0, abs=0.01)
 
     def test_strong_bear_widest_buy(self) -> None:
-        """Strong bear: widest buy, tightest sell, tightest stop-loss."""
+        """Strong bear: widest buy, tightest sell, widest stop-loss."""
         analyzer = MultiTimeframeAnalyzer()
         buy, sell, sl = analyzer._calc_adaptive_thresholds(
             MarketRegime.STRONG_BEAR, volatility_pct=1.5
         )
-        # regime_mult=2.0, sell_regime_mult=0.6, sl_regime_mult=0.6
+        # regime_mult=2.0, sell_regime_mult=0.6, sl_regime_mult=1.5
         assert buy == pytest.approx(-1.0 * 2.0 * 1.0, abs=0.01)
         assert sell == pytest.approx(2.0 * 0.6 * 1.0, abs=0.01)
-        assert sl == pytest.approx(5.0 * 0.6 * 1.0, abs=0.01)
+        assert sl == pytest.approx(5.0 * 1.5 * 1.0, abs=0.01)
 
     def test_high_volatility_widens_thresholds(self) -> None:
         """Higher volatility widens both buy and sell thresholds."""
@@ -759,7 +759,7 @@ class TestCandleCounts:
     def test_initial_counts_are_zero(self, small_analyzer: MultiTimeframeAnalyzer) -> None:
         """All candle counts start at 0."""
         counts = small_analyzer.candle_counts
-        assert counts == {"1h": 0, "15m": 0, "5m": 0}
+        assert counts == {"1m": 0, "5m": 0, "15m": 0, "1h": 0, "4h": 0, "1d": 0, "1w": 0}
 
     def test_counts_accumulate_correctly(self, small_analyzer: MultiTimeframeAnalyzer) -> None:
         """Candle counts accumulate per timeframe."""

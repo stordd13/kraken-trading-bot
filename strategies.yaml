@@ -20,6 +20,20 @@ common_indicators:
   bb_default_period: 20
   adx_period: 14
 
+# ML pipeline configuration (LightGBM enhancer overlay)
+# When enabled: false, the bot operates in pure rule-based mode.
+ml:
+  enabled: false
+  mode: "enhancer"
+  confidence_threshold: 0.62
+  retrain_every: "30d"
+  fallback_on_error: true
+  models_dir: "models/"
+  features:
+    lookback_candles: 240
+    external_data: true
+    fear_greed_api: "https://api.alternative.me/fng/"
+
 strategies:
   # =============================================================
   # === NEW: Multi-Strategy Router (7 strategies + risk manager)
@@ -111,6 +125,7 @@ strategies:
             sl_atr_mult: 3.5
             order_size_usdc: 200  # Scaled 4x: MaxDD 6.28% < 10% threshold
             max_allocation_pct: 15.0
+          pairs: ["XBT/USDC", "ETH/USDC", "SOL/USDC"]  # Universal: all pass validation
 
         grok_ema_adx_atr:
           active: true
@@ -134,9 +149,10 @@ strategies:
             bull_reduction: 0.5
             rsi_oversold: 30
             max_allocation_pct: 25.0
+          pairs: ["XBT/USDC", "ETH/USDC", "SOL/USDC"]  # Pure accumulation, pair-agnostic
 
         grok_ichimoku_cloud_4h:
-          active: true
+          active: false  # KILL Phase 1B: Sharpe 0.16 < 0.3 threshold
           bot_id: ichimoku_cloud_4h
           params:
             sl_atr_mult: 3.0
@@ -155,9 +171,10 @@ strategies:
             adx_threshold: 18
             order_size_usdc: 50
             max_allocation_pct: 15.0
+          pairs: ["SOL/USDC"]  # SOL ok (Sharpe 0.28 PF 1.87), ETH weak (Sharpe 0.12)
 
         grok_vwap_trend_4h:
-          active: true
+          active: false  # KILL Phase 1B: net P&L negative after fees
           bot_id: vwap_trend_4h
           params:
             vwap_period: 20
@@ -165,6 +182,17 @@ strategies:
             trail_atr_threshold: 2.0
             order_size_usdc: 50
             max_allocation_pct: 15.0
+
+        grok_supertrend_short_4h:
+          active: false  # NEW: requires backtest validation + paper trading
+          bot_id: supertrend_short_4h
+          params:
+            st_atr_period: 10
+            st_multiplier: 3.0
+            sl_atr_mult: 3.5
+            order_size_usdc: 50
+            max_allocation_pct: 10.0
+            leverage: 2
 
   # =============================================================
   # === LEGACY strategies (disabled — kept for backtest/reference)

@@ -154,6 +154,7 @@ class BacktestEngine:
     _NEEDS_4H = {
         "gemini_suivi_tendance_momentum",
         "grok_supertrend_4h",
+        "grok_supertrend_short_4h",
         "grok_ema_adx_atr",
         "grok_ichimoku_cloud_4h",
         "grok_donchian_breakout_4h",
@@ -162,6 +163,7 @@ class BacktestEngine:
     _NEEDS_1D = {
         "gemini_suivi_tendance_momentum",
         "grok_supertrend_4h",
+        "grok_supertrend_short_4h",
         "grok_ema_adx_atr",
         "grok_adaptive_dca_weekly",
         "grok_ichimoku_cloud_4h",
@@ -176,6 +178,7 @@ class BacktestEngine:
     # Strategies that check _is_4h / _is_daily in generate_signal()
     _HAS_IS_4H = {
         "grok_supertrend_4h",
+        "grok_supertrend_short_4h",
         "grok_ema_adx_atr",
         "grok_ichimoku_cloud_4h",
         "grok_donchian_breakout_4h",
@@ -243,7 +246,7 @@ class BacktestEngine:
         warmup_15m = start_time - timedelta(hours=10)  # ~40 candles (> 20 warmup)
         warmup_trading = start_time - timedelta(hours=3)  # ~36 candles (> 20 warmup)
         warmup_4h = start_time - timedelta(days=15)  # ~90 candles (> 52 for Ichimoku)
-        warmup_1d = start_time - timedelta(days=100)  # ~100 candles for regime EMAs
+        warmup_1d = start_time - timedelta(days=250)  # ~250 candles for EMA(200, "1d") warmup
         warmup_1w = start_time - timedelta(days=400)  # ~57 candles
 
         # Load higher timeframe data (full range: warmup + backtest period)
@@ -427,6 +430,7 @@ class BacktestEngine:
             "adaptive",
             "capitulation",
             "bear_short",
+            "grok_supertrend_short_4h",
             "trend_following",
         ]
 
@@ -460,7 +464,9 @@ class BacktestEngine:
             else:
                 order_amount = min(
                     self.usdc_balance,
-                    Decimal(str(self.settings.trading.default_order_amount_eur)),  # Convert to Decimal
+                    Decimal(
+                        str(self.settings.trading.default_order_amount_eur)
+                    ),  # Convert to Decimal
                 )
 
             self.logger.debug(
@@ -515,7 +521,7 @@ class BacktestEngine:
             elif uses_otf:
                 # Grok strategies: notify via on_trade_filled
                 await self.strategy.on_trade_filled(
-                    trade_id=f"bt-{len(self.metrics.trades)+1}",
+                    trade_id=f"bt-{len(self.metrics.trades) + 1}",
                     pair=signal.pair,
                     side="buy",
                     amount=crypto_bought,
@@ -614,7 +620,7 @@ class BacktestEngine:
                 crypto_sold = self.crypto_balance
 
                 await self.strategy.on_trade_filled(
-                    trade_id=f"bt-sell-{len(self.metrics.trades)+1}",
+                    trade_id=f"bt-sell-{len(self.metrics.trades) + 1}",
                     pair=signal.pair,
                     side="sell",
                     amount=crypto_sold,
@@ -1133,6 +1139,22 @@ class BacktestEngine:
                 strategy_params=strategy_params,
                 analyzer=analyzer,
             )
+        elif self.strategy_name == "grok_supertrend_short_4h":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.grok_supertrend_short_4h import (
+                GrokSuperTrendShort4hRegime,
+            )
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = self._load_inner_strategy_params("grok_supertrend_short_4h")
+            self.strategy = GrokSuperTrendShort4hRegime(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="supertrend_short_4h",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
         elif self.strategy_name == "grok_adaptive_dca_weekly":
             from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
             from krakenbot.strategies.grok_adaptive_dca_weekly import (
@@ -1205,7 +1227,7 @@ class BacktestEngine:
                 f"bear_short, trend_following, "
                 f"gemini_scalping_volatilite, gemini_retour_moyenne, "
                 f"gemini_suivi_tendance_momentum, "
-                f"grok_supertrend_4h, grok_ema_adx_atr, "
+                f"grok_supertrend_4h, grok_supertrend_short_4h, grok_ema_adx_atr, "
                 f"grok_adaptive_dca_weekly, "
                 f"grok_ichimoku_cloud_4h, grok_donchian_breakout_4h, "
                 f"grok_vwap_trend_4h"
@@ -1222,6 +1244,7 @@ class BacktestEngine:
             # EMAs used by regime calculation and strategies
             _LAZY_EMAS = {
                 "grok_supertrend_4h": [(20, "4h"), (50, "4h")],
+                "grok_supertrend_short_4h": [(20, "4h"), (50, "4h")],
                 "grok_ema_adx_atr": [(27, "4h"), (125, "4h")],
                 "gemini_suivi_tendance_momentum": [(20, "4h"), (50, "4h")],
                 "grok_ichimoku_cloud_4h": [(20, "4h"), (50, "4h")],
@@ -1232,7 +1255,7 @@ class BacktestEngine:
                 bt_analyzer.get_ema(period, tf)
 
             # SuperTrend
-            if self.strategy_name == "grok_supertrend_4h":
+            if self.strategy_name in ("grok_supertrend_4h", "grok_supertrend_short_4h"):
                 bt_analyzer.get_supertrend("4h", atr_period=10, multiplier=3.0)
 
             # Ichimoku
@@ -1257,6 +1280,7 @@ class BacktestEngine:
             "gemini_retour_moyenne",
             "gemini_suivi_tendance_momentum",
             "grok_supertrend_4h",
+            "grok_supertrend_short_4h",
             "grok_ema_adx_atr",
             "grok_adaptive_dca_weekly",
             "grok_ichimoku_cloud_4h",
