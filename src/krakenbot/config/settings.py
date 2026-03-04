@@ -16,6 +16,8 @@ from pydantic import BaseModel, Field, PostgresDsn, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 import yaml
 
+from krakenbot.ml.config import MLSettings
+
 
 class TradingMode(str, Enum):
     """Trading mode enumeration."""
@@ -512,6 +514,9 @@ class Settings(BaseSettings):
     paper: PaperSettings = Field(default_factory=PaperSettings)
     common_indicators: CommonIndicatorsSettings = Field(default_factory=CommonIndicatorsSettings)
 
+    # ML settings (loaded from strategies.yaml ml: section)
+    ml: MLSettings = Field(default_factory=lambda: MLSettings())
+
     def model_post_init(self, __context: Any) -> None:
         """Load strategies.yaml after settings init."""
         # Skip YAML loading in testing environment
@@ -535,6 +540,11 @@ class Settings(BaseSettings):
             ci_data = yaml_data.get("common_indicators")
             if ci_data and isinstance(ci_data, dict):
                 self.common_indicators = CommonIndicatorsSettings(**ci_data)
+
+            # Parse ml section if present
+            ml_data = yaml_data.get("ml")
+            if ml_data and isinstance(ml_data, dict):
+                self.ml = MLSettings(**ml_data)
 
             logging.getLogger(__name__).info(
                 "Loaded strategies.yaml: %d strategies enabled",

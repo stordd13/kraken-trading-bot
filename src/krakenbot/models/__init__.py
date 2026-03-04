@@ -4,6 +4,7 @@ This package contains all SQLAlchemy ORM models used by the application.
 All models inherit from the Base class defined in core.database.
 """
 
+from krakenbot.ml.db_models import MLExternalData, MLFeatureRow
 from krakenbot.models.base import (
     BotStatus,
     OrderStatus,
@@ -21,6 +22,8 @@ __all__ = [
     # Enums
     "BotStatus",
     # Market data models
+    "MLExternalData",
+    "MLFeatureRow",
     "OHLCData",
     # Order enums
     "OrderStatus",

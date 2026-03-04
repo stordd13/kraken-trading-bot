@@ -768,6 +768,103 @@ class MultiTimeframeAnalyzer:
         return self._classify_regime(spread_pct).value
 
     # -------------------------------------------------------------------
+    # ML feature extraction
+    # -------------------------------------------------------------------
+
+    def get_features_dict(self, tf: str) -> dict[str, float | str | None]:
+        """Return all current indicator values for a timeframe as floats.
+
+        This is the ML-boundary method: Decimal -> float conversion happens here.
+        Returns None for any indicator that is not yet warmed up.
+        The returned dict keys are stable and used as ML feature names.
+
+        This method is READ-ONLY -- it does not modify any indicator state.
+
+        Args:
+            tf: Timeframe string ("1h", "4h", "1d", "1w").
+
+        Returns:
+            Dict of feature_name -> float | str | None.
+        """
+        features: dict[str, float | str | None] = {}
+        close = self._generic_last_close.get(tf)
+
+        # EMA spread: (EMA20 - EMA50) / EMA50
+        ema_fast = self.get_ema(20, tf)
+        ema_slow = self.get_ema(50, tf)
+        if ema_fast is not None and ema_slow is not None and ema_slow != _ZERO:
+            features["ema_spread"] = float((ema_fast - ema_slow) / ema_slow)
+        else:
+            features["ema_spread"] = None
+
+        # RSI(14) raw 0-100
+        rsi = self.get_rsi(14, tf)
+        features["rsi_14"] = float(rsi) if rsi is not None else None
+
+        # ATR(14) / close
+        atr = self.get_atr(14, tf)
+        if atr is not None and close is not None and close > _ZERO:
+            features["atr_ratio"] = float(atr / close)
+        else:
+            features["atr_ratio"] = None
+
+        # ADX(14) raw 0-100
+        adx = self.get_adx(tf)
+        features["adx"] = float(adx) if adx is not None else None
+
+        # MACD histogram / close (normalized)
+        macd = self.get_macd(tf)
+        if macd is not None and close is not None and close > _ZERO:
+            features["macd_hist_norm"] = float(macd["hist"] / close)
+        else:
+            features["macd_hist_norm"] = None
+
+        # Bollinger Bands: width + %B
+        bb = self.get_bollinger(tf)
+        if bb is not None:
+            features["bb_width"] = float(bb["width"])
+            upper_f = float(bb["upper"])
+            lower_f = float(bb["lower"])
+            close_f = float(close) if close is not None else 0.0
+            if upper_f != lower_f:
+                features["bb_pctb"] = (close_f - lower_f) / (upper_f - lower_f)
+            else:
+                features["bb_pctb"] = 0.5
+        else:
+            features["bb_width"] = None
+            features["bb_pctb"] = None
+
+        # SuperTrend: distance + direction
+        st = self.get_supertrend(tf, atr_period=10, multiplier=3.0)
+        if st is not None and close is not None and close > _ZERO:
+            features["supertrend_dist"] = float((close - st["supertrend"]) / close)
+            features["supertrend_dir"] = float(st["direction"])
+        else:
+            features["supertrend_dist"] = None
+            features["supertrend_dir"] = None
+
+        # Market regime (string)
+        features["regime"] = self.get_regime(tf)
+
+        # Volume ratio: current / MA(20)
+        vols = self._generic_volumes.get(tf)
+        if vols and len(vols) >= 2:
+            current = float(vols[-1])
+            avg = sum(float(v) for v in vols) / len(vols)
+            features["volume_ratio"] = current / avg if avg > 0 else 1.0
+        else:
+            features["volume_ratio"] = None
+
+        # VWAP deviation: (close - VWAP20) / close
+        vwap = self.get_vwap(20, tf)
+        if vwap is not None and close is not None and close > _ZERO:
+            features["vwap_deviation"] = float((close - vwap) / close)
+        else:
+            features["vwap_deviation"] = None
+
+        return features
+
+    # -------------------------------------------------------------------
     # Internal classification helpers
     # -------------------------------------------------------------------
 

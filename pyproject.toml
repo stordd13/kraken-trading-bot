@@ -73,10 +73,11 @@ dev = [
 ]
 
 ml = [
-    # Future ML dependencies
+    # ML pipeline dependencies
     "numpy>=1.26.0",
     "pandas>=2.1.0",
     "scikit-learn>=1.4.0",
+    "lightgbm>=4.3.0",
 ]
 
 monitoring = [
@@ -187,6 +188,7 @@ module = [
     "apscheduler.*",
     "tqdm.*",
     "yaml.*",
+    "lightgbm.*",
 ]
 ignore_missing_imports = true
 

@@ -25,10 +25,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 load_dotenv()
 
 # Import the Base and all models to register them
-from krakenbot.core.database import Base
+from krakenbot.core.database import Base  # noqa: E402
+from krakenbot.ml.db_models import MLExternalData, MLFeatureRow  # noqa: E402, F401
 
 # Import all models so they are registered with Base.metadata
-from krakenbot.models import (  # noqa: F401
+from krakenbot.models import (  # noqa: E402, F401
     BotState,
     OHLCData,
     Order,
