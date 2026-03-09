@@ -139,7 +139,11 @@ class GrokSuperTrend4hRegime(BaseStrategy):
         ts = ohlc_data.get("timestamp")
         if ts:
             self._current_timestamp = (
-                ts if isinstance(ts, datetime) else datetime.fromtimestamp(ts, tz=UTC)
+                ts
+                if isinstance(ts, datetime)
+                else datetime.fromisoformat(ts)
+                if isinstance(ts, str)
+                else datetime.fromtimestamp(ts, tz=UTC)
             )
 
     async def generate_signal(self) -> TradingSignal | None:

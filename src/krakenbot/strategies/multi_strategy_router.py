@@ -251,7 +251,13 @@ class MultiStrategyRouter(BaseStrategy):
                 from datetime import UTC, datetime
 
                 price = Decimal(str(close))
-                timestamp = ts if isinstance(ts, datetime) else datetime.fromtimestamp(ts, tz=UTC)
+                timestamp = (
+                    ts
+                    if isinstance(ts, datetime)
+                    else datetime.fromisoformat(ts)
+                    if isinstance(ts, str)
+                    else datetime.fromtimestamp(ts, tz=UTC)
+                )
                 self.risk_manager.update_price(price, timestamp)
 
                 # Check crash protector
