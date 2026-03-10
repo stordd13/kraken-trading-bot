@@ -132,6 +132,19 @@ DATABASE_URL = os.environ.get(
 # Create sync engine
 engine = create_engine(DATABASE_URL)
 
+# Test DB connection at startup
+try:
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1")).fetchone()
+    _db_host = DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL
+    print(f"  DB connection OK ({_db_host})")
+except Exception as _e:
+    _db_host = DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL
+    print(f"  DB connection FAILED: {_e}")
+    print(f"    URL: {_db_host}")
+    print("    -> Launch SSH tunnel first: tunnel_ssh_hetzner")
+    sys.exit(1)
+
 # Global state for background backtest execution
 _backtest_thread: threading.Thread | None = None
 _backtest_progress: dict = {
@@ -3406,16 +3419,30 @@ if __name__ == "__main__":
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     args = parser.parse_args()
 
+    # Quick data check
+    try:
+        with engine.connect() as conn:
+            trade_count = conn.execute(
+                text("SELECT COUNT(*) FROM trades_history WHERE strategy NOT LIKE 'backtest_%'")
+            ).scalar()
+            pos_count = conn.execute(
+                text("SELECT COUNT(*) FROM open_positions WHERE status = 'OPEN'")
+            ).scalar()
+        data_info = f"  Data: {trade_count} trades, {pos_count} open positions"
+    except Exception:
+        data_info = "  Data: could not query trades/positions"
+
     print(f"""
     ╔══════════════════════════════════════════════════════════╗
     ║           KrakenBot Dashboard                            ║
     ╠══════════════════════════════════════════════════════════╣
     ║  URL: http://localhost:{args.port}                           ║
     ║  Auto-refresh: Every 10 seconds                          ║
-    ║                                                          ║
-    ║  Make sure SSH tunnel is active:                         ║
-    ║  ssh -L 5432:localhost:5432 bruno@<IP> -N                ║
     ╚══════════════════════════════════════════════════════════╝
+    {data_info}
     """)
+
+    # Force Dash to process all registered callbacks before serving requests
+    app._setup_server()
 
     app.run(debug=args.debug, port=args.port, host="127.0.0.1")
