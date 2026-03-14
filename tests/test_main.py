@@ -19,6 +19,7 @@ import pytest
 from krakenbot.config.settings import (
     MultiStrategySettings,
     Settings,
+    StrategyBudget,
     StrategyInstanceConfig,
 )
 from krakenbot.core.event_bus import EventBus, EventType, reset_event_bus
@@ -125,13 +126,14 @@ def mock_rest_client():
     )
     mock_rest.initialize_paper_balance = AsyncMock()
     mock_rest.is_paper_mode = True
+    mock_rest.exchange_name = "kraken"
     mock_rest.stats = {
         "orders_placed": 0,
         "orders_filled": 0,
         "orders_failed": 0,
         "api_calls": 10,
     }
-    with patch("krakenbot.main.KrakenRestClient", return_value=mock_rest):
+    with patch("krakenbot.main.build_exchange_rest_client", return_value=mock_rest):
         yield mock_rest
 
 
@@ -250,6 +252,105 @@ class TestKrakenBotSetup:
         await bot.setup()
 
         mock_database_manager.init_db.assert_called_once_with(mock_get_settings)
+
+    @pytest.mark.asyncio
+    async def test_setup_registers_router_inner_bot_budgets(
+        self,
+        mock_get_settings: Settings,
+        mock_configure_logging: MagicMock,
+        mock_get_logger: MagicMock,
+        mock_event_bus: AsyncMock,
+        mock_database_manager: MagicMock,
+        mock_ws_client: MagicMock,
+        mock_rest_client: MagicMock,
+        mock_execution_engine: MagicMock,
+    ) -> None:
+        """Test that router inner bot_ids receive the budgets used at runtime."""
+        router_budget = StrategyBudget(
+            max_open_positions=6,
+            daily_loss_limit_eur=30.0,
+            max_position_pct=20.0,
+            position_size_multiplier=1.5,
+        )
+        mock_get_settings.multi_strategy = MultiStrategySettings(
+            enabled=True,
+            strategies=[
+                StrategyInstanceConfig(
+                    name="multi_strategy_router",
+                    bot_id="multi_router",
+                    budget=router_budget,
+                    params={
+                        "strategies": {
+                            "grok_supertrend_4h": {
+                                "active": True,
+                                "bot_id": "supertrend_4h",
+                                "params": {
+                                    "max_open_positions": 2,
+                                    "max_allocation_pct": 15.0,
+                                },
+                            },
+                            "grok_ema_adx_atr": {
+                                "active": True,
+                                "bot_id": "ema_cross_4h",
+                                "params": {
+                                    "position_size_multiplier": 0.8,
+                                },
+                            },
+                            "grok_donchian_breakout_4h": {
+                                "active": False,
+                                "bot_id": "donchian_breakout_4h",
+                                "params": {
+                                    "max_open_positions": 1,
+                                },
+                            },
+                        }
+                    },
+                )
+            ],
+        )
+
+        mock_router = MagicMock()
+        mock_router.start = AsyncMock()
+        mock_router.stop = AsyncMock()
+        mock_router.get_name.return_value = "multi_strategy_router"
+
+        mock_analyzer = MagicMock()
+        mock_analyzer.initialize = AsyncMock()
+
+        mock_global_risk_manager = MagicMock()
+        mock_global_risk_manager.register_strategy = MagicMock()
+
+        with (
+            patch("krakenbot.main.MultiTimeframeAnalyzer", return_value=mock_analyzer),
+            patch("krakenbot.main.GlobalRiskManager", return_value=mock_global_risk_manager),
+            patch.dict(
+                "krakenbot.main.STRATEGY_REGISTRY",
+                {"multi_strategy_router": MagicMock(return_value=mock_router)},
+            ),
+        ):
+            bot = KrakenBot()
+            await bot.setup()
+
+        registered_budgets = {
+            call.args[0]: call.args[1]
+            for call in mock_global_risk_manager.register_strategy.call_args_list
+        }
+
+        assert set(registered_budgets) == {"multi_router", "supertrend_4h", "ema_cross_4h"}
+
+        assert registered_budgets["multi_router"].model_dump() == router_budget.model_dump()
+
+        supertrend_budget = registered_budgets["supertrend_4h"]
+        assert supertrend_budget.max_open_positions == 2
+        assert supertrend_budget.daily_loss_limit_eur == 30.0
+        assert supertrend_budget.max_position_pct == 15.0
+        assert supertrend_budget.position_size_multiplier == 1.5
+
+        ema_budget = registered_budgets["ema_cross_4h"]
+        assert ema_budget.max_open_positions == 6
+        assert ema_budget.daily_loss_limit_eur == 30.0
+        assert ema_budget.max_position_pct == 20.0
+        assert ema_budget.position_size_multiplier == 0.8
 
 
 class TestKrakenBotStart:

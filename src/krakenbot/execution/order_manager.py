@@ -32,7 +32,7 @@ from krakenbot.models.orders import Order
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
-    from krakenbot.connectors.kraken_rest import KrakenRestClient
+    from krakenbot.connectors.exchange import ExchangeRestClient
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
 
@@ -99,7 +99,7 @@ class OrderManager:
 
     def __init__(
         self,
-        rest_client: KrakenRestClient,
+        rest_client: ExchangeRestClient,
         db_manager: DatabaseManager,
         event_bus: EventBus,
         settings: Settings,
@@ -350,9 +350,10 @@ class OrderManager:
         value = order.amount * fill_price
         fee = value * Decimal("0.0016")  # Maker fee ~0.16%
 
-        self._rest_client._paper_balance = normalize_asset_balances(
-            self._rest_client._paper_balance
-        )
+        paper_balance = self._rest_client.paper_balance
+        normalized_paper_balance = normalize_asset_balances(paper_balance)
+        paper_balance.clear()
+        paper_balance.update(normalized_paper_balance)
         pair = order.pair
         base_currency = normalize_asset_symbol(pair.split("/")[0])
         quote_currency = pair.split("/")[1]
@@ -360,7 +361,7 @@ class OrderManager:
         # Update paper balance
         if order.side == TradeSide.BUY:
             required = value + fee
-            available = self._rest_client._paper_balance.get(quote_currency, Decimal("0"))
+            available = paper_balance.get(quote_currency, Decimal("0"))
             if available < required:
                 logger.warning(
                     "paper_limit_fill_insufficient_balance",
@@ -371,12 +372,10 @@ class OrderManager:
                 await self._handle_expired_order(order)
                 return
 
-            self._rest_client._paper_balance[quote_currency] = available - required
-            self._rest_client._paper_balance[base_currency] = (
-                self._rest_client._paper_balance.get(base_currency, Decimal("0")) + order.amount
-            )
+            paper_balance[quote_currency] = available - required
+            paper_balance[base_currency] = paper_balance.get(base_currency, Decimal("0")) + order.amount
         else:
-            available = self._rest_client._paper_balance.get(base_currency, Decimal("0"))
+            available = paper_balance.get(base_currency, Decimal("0"))
             if available < order.amount:
                 logger.warning(
                     "paper_limit_fill_insufficient_balance",
@@ -387,10 +386,8 @@ class OrderManager:
                 await self._handle_expired_order(order)
                 return
 
-            self._rest_client._paper_balance[base_currency] = available - order.amount
-            self._rest_client._paper_balance[quote_currency] = (
-                self._rest_client._paper_balance.get(quote_currency, Decimal("0")) + value - fee
-            )
+            paper_balance[base_currency] = available - order.amount
+            paper_balance[quote_currency] = paper_balance.get(quote_currency, Decimal("0")) + value - fee
 
         # Persist paper balance to DB
         await self._rest_client.persist_paper_balance()
@@ -408,7 +405,7 @@ class OrderManager:
         self._pending_orders.pop(order.order_id, None)
 
         # Remove from paper orders in REST client
-        self._rest_client._paper_orders.pop(order.order_id, None)
+        self._rest_client.remove_paper_order(order.order_id)
 
         # Clean up profit target mapping
         self._cleanup_profit_target(order)

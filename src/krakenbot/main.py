@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 
 from krakenbot.config.settings import get_settings
-from krakenbot.connectors.kraken_rest import KrakenRestClient
+from krakenbot.connectors.exchange import ExchangeRestClient, build_exchange_rest_client
 from krakenbot.connectors.kraken_ws import KrakenWebSocketClient
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
@@ -142,7 +142,7 @@ class KrakenBot:
         self.event_bus: EventBus | None = None
         self.db_manager: DatabaseManager | None = None
         self.ws_client: KrakenWebSocketClient | None = None
-        self.rest_client: KrakenRestClient | None = None
+        self.rest_client: ExchangeRestClient | None = None
         self.strategy: ThresholdRollingStrategy | None = None  # Legacy single strategy
         self.strategies: list[BaseStrategy] = []  # Multi-strategy list
         self.execution_engine: ExecutionEngine | None = None
@@ -198,7 +198,7 @@ class KrakenBot:
         self.logger.debug("database_initialized")
 
         # 3. Initialize REST client
-        self.rest_client = KrakenRestClient(
+        self.rest_client = build_exchange_rest_client(
             self.settings,
             self.event_bus,
             self.db_manager,
@@ -309,7 +309,7 @@ class KrakenBot:
 
             # Register per-strategy budget in GlobalRiskManager
             if self.global_risk_manager:
-                self.global_risk_manager.register_strategy(strat_config.bot_id, strat_config.budget)
+                self._register_strategy_budgets(strat_config)
 
             self.logger.info(
                 "strategy_initialized",
@@ -332,6 +332,74 @@ class KrakenBot:
             return Decimal(str(value)) > Decimal("0")
         except Exception:
             return False
+
+    def _register_strategy_budgets(self, strat_config: Any) -> None:
+        """Register the top-level strategy budget and router inner budgets."""
+        if not self.global_risk_manager:
+            return
+
+        self.global_risk_manager.register_strategy(strat_config.bot_id, strat_config.budget)
+
+        if strat_config.name != "multi_strategy_router":
+            return
+
+        for inner_bot_id, inner_config in self._iter_active_router_inner_strategies(
+            strat_config.params
+        ):
+            inner_budget = self._derive_router_inner_budget(strat_config.budget, inner_config)
+            self.global_risk_manager.register_strategy(inner_bot_id, inner_budget)
+            self.logger.info(
+                "router_inner_strategy_budget_registered",
+                router_bot_id=strat_config.bot_id,
+                inner_bot_id=inner_bot_id,
+                budget=inner_budget.model_dump(),
+            )
+
+    def _iter_active_router_inner_strategies(
+        self, strategy_params: dict[str, Any]
+    ) -> list[tuple[str, dict[str, Any]]]:
+        """Return active router inner strategies keyed by emitted bot_id."""
+        inner_strategies = strategy_params.get("strategies")
+        if not isinstance(inner_strategies, dict):
+            return []
+
+        active_configs: list[tuple[str, dict[str, Any]]] = []
+        for inner_name, inner_config in inner_strategies.items():
+            if not isinstance(inner_config, dict) or not inner_config.get("active"):
+                continue
+
+            inner_bot_id = inner_config.get("bot_id")
+            if not isinstance(inner_bot_id, str) or not inner_bot_id:
+                self.logger.warning(
+                    "router_inner_strategy_missing_bot_id",
+                    router_inner_name=inner_name,
+                )
+                continue
+
+            active_configs.append((inner_bot_id, inner_config))
+
+        return active_configs
+
+    def _derive_router_inner_budget(
+        self, router_budget: Any, inner_config: dict[str, Any]
+    ) -> Any:
+        """Derive the effective risk budget for a router inner strategy."""
+        overrides: dict[str, float | int] = {}
+        params = inner_config.get("params")
+        if isinstance(params, dict):
+            max_open_positions = params.get("max_open_positions")
+            if isinstance(max_open_positions, int) and max_open_positions > 0:
+                overrides["max_open_positions"] = max_open_positions
+
+            max_allocation_pct = params.get("max_allocation_pct")
+            if self._has_positive_numeric_value(max_allocation_pct):
+                overrides["max_position_pct"] = float(max_allocation_pct)
+
+            position_size_multiplier = params.get("position_size_multiplier")
+            if self._has_positive_numeric_value(position_size_multiplier):
+                overrides["position_size_multiplier"] = float(position_size_multiplier)
+
+        return router_budget.model_copy(update=overrides)
 
     def _router_requires_1m_crash_feed(self, strategy_params: dict[str, Any]) -> bool:
         """Return True when router crash protector needs live 1m candles."""

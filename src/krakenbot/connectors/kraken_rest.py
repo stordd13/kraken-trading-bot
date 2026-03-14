@@ -179,6 +179,11 @@ class KrakenRestClient:
         )
 
     @property
+    def exchange_name(self) -> str:
+        """Return the canonical exchange identifier for this client."""
+        return "kraken"
+
+    @property
     def is_paper_mode(self) -> bool:
         """Check if running in paper trading mode.
 
@@ -195,6 +200,12 @@ class KrakenRestClient:
             Dictionary of statistics.
         """
         return self._stats.copy()
+
+    @property
+    def paper_balance(self) -> dict[str, Decimal]:
+        """Expose the mutable paper balance for runtime paper-fill simulation."""
+        self._normalize_paper_balance()
+        return self._paper_balance
 
     async def close(self) -> None:
         """Close the ccxt exchange connection.
@@ -1750,6 +1761,10 @@ class KrakenRestClient:
         """
         self._normalize_paper_balance()
         return self._paper_balance.copy()
+
+    def remove_paper_order(self, order_id: str) -> None:
+        """Remove a tracked paper order from the in-memory exchange state."""
+        self._paper_orders.pop(order_id, None)
 
     async def initialize_paper_balance(
         self,

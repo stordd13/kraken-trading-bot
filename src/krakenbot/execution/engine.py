@@ -431,28 +431,15 @@ class ExecutionEngine:
         # Margin signals: short-open calculates like BUY, short-close uses exact amount
         if signal and signal.metadata.get("mode") == "margin":
             if signal.metadata.get("is_short_open"):
-                # Opening short: calculate size from USDC like a BUY
-                eur_amount = Decimal(str(self.settings.trading.default_order_amount_eur))
-                multiplier = Decimal("1.0")
-                if "position_size_multiplier" in signal.metadata:
-                    multiplier = Decimal(str(signal.metadata["position_size_multiplier"]))
-                eur_amount = eur_amount * multiplier
-                return (eur_amount / price).quantize(Decimal("0.00000001"))
+                open_notional = self._resolve_open_order_notional(signal)
+                return (open_notional / price).quantize(Decimal("0.00000001"))
             elif "amount_btc" in signal.metadata:
                 # Closing short: use exact position amount
                 return Decimal(str(signal.metadata["amount_btc"])).quantize(Decimal("0.00000001"))
 
         if side == TradeSide.BUY:
-            # For BUY: convert default EUR amount to base currency
-            eur_amount = Decimal(str(self.settings.trading.default_order_amount_eur))
-
-            # Apply position size multiplier from signal metadata (multi-strategy support)
-            multiplier = Decimal("1.0")
-            if signal and "position_size_multiplier" in signal.metadata:
-                multiplier = Decimal(str(signal.metadata["position_size_multiplier"]))
-            eur_amount = eur_amount * multiplier
-
-            amount = eur_amount / price
+            open_notional = self._resolve_open_order_notional(signal)
+            amount = open_notional / price
 
             # Round to appropriate precision (8 decimal places for crypto)
             return amount.quantize(Decimal("0.00000001"))
@@ -465,6 +452,24 @@ class ExecutionEngine:
             # Fallback: get position size from BotState (legacy single-position)
             position_size = await self._get_position_size(pair)
             return position_size
+
+    def _resolve_open_order_notional(self, signal: TradingSignal | None) -> Decimal:
+        """Resolve the quote-currency notional for opening orders.
+
+        Runtime should honor explicit strategy sizing first so paper/live sizing
+        matches backtest behavior for the same processed signal.
+        """
+        if signal is not None:
+            strategy_order_size = signal.metadata.get("order_size_usdc")
+            if strategy_order_size is not None:
+                order_size = Decimal(str(strategy_order_size))
+                if order_size > Decimal("0"):
+                    return order_size
+
+        notional = Decimal(str(self.settings.trading.default_order_amount_eur))
+        if signal is not None and "position_size_multiplier" in signal.metadata:
+            notional *= Decimal(str(signal.metadata["position_size_multiplier"]))
+        return notional
 
     async def _get_position_size(self, pair: str) -> Decimal:
         """Get the current position size for a trading pair.

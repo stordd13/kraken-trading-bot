@@ -1,0 +1,106 @@
+"""Minimal REST exchange abstraction for runtime execution.
+
+This module keeps the current Kraken behavior unchanged while giving the
+runtime a stable surface that can later be implemented by another exchange.
+"""
+
+from __future__ import annotations
+
+from decimal import Decimal
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
+from krakenbot.models.base import TradeSide
+from krakenbot.models.orders import Order
+from krakenbot.models.trades import Trade
+
+if TYPE_CHECKING:
+    from krakenbot.config.settings import Settings
+    from krakenbot.core.database import DatabaseManager
+    from krakenbot.core.event_bus import EventBus
+
+
+@runtime_checkable
+class ExchangeRestClient(Protocol):
+    """Runtime REST surface consumed by KrakenBot execution code."""
+
+    @property
+    def exchange_name(self) -> str: ...
+
+    @property
+    def is_paper_mode(self) -> bool: ...
+
+    @property
+    def stats(self) -> dict[str, int]: ...
+
+    @property
+    def paper_balance(self) -> dict[str, Decimal]: ...
+
+    async def close(self) -> None: ...
+
+    def update_last_price(self, pair: str, price: Decimal) -> None: ...
+
+    async def get_balance(self) -> dict[str, Decimal]: ...
+
+    async def get_ticker(self, pair: str) -> dict[str, Any]: ...
+
+    async def get_margin_balance(self) -> dict[str, Decimal]: ...
+
+    async def place_market_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        strategy: str,
+        *,
+        reference_price: Decimal | None = None,
+        position_id: int | None = None,
+    ) -> Trade: ...
+
+    async def place_margin_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        leverage: int,
+        strategy: str,
+        *,
+        reference_price: Decimal | None = None,
+        position_id: int | None = None,
+    ) -> Trade: ...
+
+    async def place_limit_order(
+        self,
+        pair: str,
+        side: TradeSide,
+        amount: Decimal,
+        price: Decimal,
+        strategy: str,
+        *,
+        expires_in_seconds: int | None = None,
+    ) -> Order: ...
+
+    async def get_order_status(self, order_id: str, pair: str | None = None) -> dict[str, Any]: ...
+
+    async def cancel_order(self, order_id: str, pair: str | None = None) -> bool: ...
+
+    async def initialize_paper_balance(self, force_reset: bool = False) -> None: ...
+
+    async def persist_paper_balance(self) -> None: ...
+
+    def remove_paper_order(self, order_id: str) -> None: ...
+
+
+def build_exchange_rest_client(
+    settings: Settings,
+    event_bus: EventBus,
+    db_manager: DatabaseManager | None = None,
+) -> ExchangeRestClient:
+    """Build the REST client used by runtime execution.
+
+    Today this always returns Kraken. Keeping the decision in one place makes
+    a future exchange switch a configuration concern instead of a runtime
+    wiring rewrite.
+    """
+    from krakenbot.connectors.kraken_rest import KrakenRestClient
+
+    return KrakenRestClient(settings, event_bus, db_manager)

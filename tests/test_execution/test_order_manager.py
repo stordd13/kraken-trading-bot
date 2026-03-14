@@ -197,11 +197,13 @@ class TestOrderManager:
         client.get_order_status = AsyncMock()
         client.cancel_order = AsyncMock()
         client.is_paper_mode = True
+        client.exchange_name = "kraken"
         client._paper_balance = {
             "USDC": Decimal("10000"),
             "XBT": Decimal("0.1"),
         }
-        client._paper_orders = {}
+        client.paper_balance = client._paper_balance
+        client.remove_paper_order = MagicMock()
         return client
 
     @pytest.fixture
@@ -1076,6 +1078,7 @@ class TestOrderManager:
             "USDC": initial_usdc,
             "BTC": initial_btc,
         }
+        mock_rest_client.paper_balance = mock_rest_client._paper_balance
 
         buy_order = _make_order(
             order_id="paper-703",
@@ -1116,6 +1119,7 @@ class TestOrderManager:
             "USDC": initial_usdc,
             "BTC": initial_btc,
         }
+        mock_rest_client.paper_balance = mock_rest_client._paper_balance
 
         sell_order = _make_order(
             order_id="paper-703-sell",
@@ -1153,6 +1157,7 @@ class TestOrderManager:
             "USDC": Decimal("1"),  # Not enough
             "XBT": Decimal("0"),
         }
+        mock_rest_client.paper_balance = mock_rest_client._paper_balance
 
         buy_order = _make_order(
             order_id="paper-704",

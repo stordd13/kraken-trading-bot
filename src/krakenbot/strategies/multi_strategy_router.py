@@ -60,6 +60,36 @@ _INNER_STRATEGY_CLASSES: dict[str, type[BaseStrategy]] = {
 }
 
 
+class _RiskOverlayEventBusProxy:
+    """Proxy TRADE_SIGNAL emissions through the router risk overlay."""
+
+    def __init__(
+        self,
+        router: MultiStrategyRouter,
+        strategy: BaseStrategy,
+        event_bus: EventBus,
+    ) -> None:
+        self._router = router
+        self._strategy = strategy
+        self._event_bus = event_bus
+
+    async def publish(self, event_type: str | EventType, data: dict[str, Any]) -> None:
+        """Publish events, applying router risk overlay to trade signals."""
+        if event_type == EventType.TRADE_SIGNAL and isinstance(data, dict):
+            signal = data.get("signal")
+            if isinstance(signal, TradingSignal):
+                processed = self._router._apply_risk_overlay(signal)
+                if processed and processed.should_trade:
+                    await self._router._publish_processed_signal(self._strategy, processed, data)
+                return
+
+        await self._event_bus.publish(event_type, data)
+
+    def __getattr__(self, name: str) -> Any:
+        """Delegate any non-overridden attribute to the real event bus."""
+        return getattr(self._event_bus, name)
+
+
 class MultiStrategyRouter(BaseStrategy):
     """Orchestrator that dispatches OHLC to inner strategies and applies risk overlay.
 
@@ -308,14 +338,12 @@ class MultiStrategyRouter(BaseStrategy):
         has_custom_handle = type(strategy)._handle_ohlc is not BaseStrategy._handle_ohlc
 
         if has_custom_handle:
-            # Strategy has custom _handle_ohlc (e.g., grid, supertrend, ema_cross)
-            # It handles timeframe filtering + signal emission internally.
-            # We call it directly — it publishes to EventBus.
-            # Risk overlay is applied at router level via _intercept_signal.
-            #
-            # NOTE: For now, these strategies emit directly. In a future
-            # iteration we can intercept via a signal collector pattern.
-            await strategy._handle_ohlc(ohlc_data)  # noqa: SLF001
+            original_event_bus = strategy.event_bus
+            strategy.event_bus = _RiskOverlayEventBusProxy(self, strategy, self.event_bus)
+            try:
+                await strategy._handle_ohlc(ohlc_data)  # noqa: SLF001
+            finally:
+                strategy.event_bus = original_event_bus
         else:
             # Standard flow: on_ohlc + generate_signal
             await strategy.on_ohlc(ohlc_data)
@@ -323,16 +351,10 @@ class MultiStrategyRouter(BaseStrategy):
             if signal and signal.should_trade:
                 processed = self._apply_risk_overlay(signal)
                 if processed:
-                    await self.event_bus.publish(
-                        EventType.TRADE_SIGNAL,
+                    await self._publish_processed_signal(
+                        strategy,
+                        processed,
                         {"signal": processed, "strategy": strategy.get_name()},
-                    )
-                    self.logger.info(
-                        "router_signal_emitted",
-                        bot_id=strategy.bot_id,
-                        signal_type=processed.signal_type.value,
-                        price=float(processed.price),
-                        reason=processed.reason,
                     )
 
     def _apply_risk_overlay(self, signal: TradingSignal) -> TradingSignal | None:
@@ -351,6 +373,26 @@ class MultiStrategyRouter(BaseStrategy):
             signal=signal,
             capital=self.capital_usdc,
             analyzer=self.analyzer,
+        )
+
+    async def _publish_processed_signal(
+        self,
+        strategy: BaseStrategy,
+        signal: TradingSignal,
+        payload: dict[str, Any] | None = None,
+    ) -> None:
+        """Publish a risk-processed signal to the shared event bus."""
+        event_payload = dict(payload or {})
+        event_payload["signal"] = signal
+        event_payload.setdefault("strategy", strategy.get_name())
+
+        await self.event_bus.publish(EventType.TRADE_SIGNAL, event_payload)
+        self.logger.info(
+            "router_signal_emitted",
+            bot_id=strategy.bot_id,
+            signal_type=signal.signal_type.value,
+            price=float(signal.price),
+            reason=signal.reason,
         )
 
     # ------------------------------------------------------------------

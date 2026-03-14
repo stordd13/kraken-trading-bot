@@ -398,6 +398,36 @@ class TestOrderAmountCalculation:
         assert amount == expected.quantize(Decimal("0.00000001"))
 
     @pytest.mark.asyncio
+    async def test_calculate_order_amount_buy_prefers_order_size_usdc(
+        self,
+        execution_engine: ExecutionEngine,
+    ) -> None:
+        """Explicit order_size_usdc should override default amount and multiplier."""
+        signal = TradingSignal(
+            signal_type=SignalType.BUY,
+            pair="XBT/EUR",
+            price=Decimal("50000"),
+            confidence=0.9,
+            reason="test",
+            strategy="grok_supertrend_4h",
+            timestamp=datetime.now(UTC),
+            metadata={
+                "order_size_usdc": 200.0,
+                "position_size_multiplier": 0.0333333333,
+            },
+        )
+
+        amount = await execution_engine._calculate_order_amount(
+            pair="XBT/EUR",
+            side=TradeSide.BUY,
+            price=Decimal("50000"),
+            signal=signal,
+        )
+
+        expected = Decimal("200") / Decimal("50000")
+        assert amount == expected.quantize(Decimal("0.00000001"))
+
+    @pytest.mark.asyncio
     async def test_calculate_order_amount_sell_no_position(
         self,
         execution_engine: ExecutionEngine,
