@@ -28,7 +28,8 @@ from typing import TYPE_CHECKING, Any
 from krakenbot.core.event_bus import EventType
 from krakenbot.core.logger import get_logger
 from krakenbot.execution.risk import GlobalRiskManager, RiskManager
-from krakenbot.models.base import BotStatus, TradeSide
+from krakenbot.models.base import BotStatus, SignalType, TradeSide
+from krakenbot.strategies.base import TradingSignal
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
@@ -37,7 +38,6 @@ if TYPE_CHECKING:
     from krakenbot.core.event_bus import EventBus
     from krakenbot.execution.order_manager import OrderManager
     from krakenbot.models.trades import Trade
-    from krakenbot.strategies.base import TradingSignal
 
 
 class ExecutionEngine:
@@ -103,6 +103,8 @@ class ExecutionEngine:
         )
         self.order_manager: OrderManager | None = order_manager
         self.logger = get_logger(__name__)
+        if self.order_manager is not None and hasattr(self.order_manager, "set_fill_handler"):
+            self.order_manager.set_fill_handler(self._handle_limit_order_fill)
 
         self._running = False
 
@@ -320,7 +322,22 @@ class ExecutionEngine:
             )
 
             self._stats["signals_executed"] += 1
-            await self._update_bot_state(trade, signal)
+            if self._fill_opens_position(signal, side):
+                await self._publish_trade_fill_event(
+                    trade=trade,
+                    side=side,
+                    signal=signal,
+                    trading_mode="margin",
+                )
+                await self._update_bot_state(trade, signal)
+            else:
+                await self._update_bot_state(trade, signal)
+                await self._publish_trade_fill_event(
+                    trade=trade,
+                    side=side,
+                    signal=signal,
+                    trading_mode="margin",
+                )
 
             self.logger.info(
                 "margin_order_executed",
@@ -332,24 +349,6 @@ class ExecutionEngine:
                 fee=float(trade.fee),
                 strategy=trade.strategy,
                 trading_mode="margin",
-            )
-
-            # Publish TRADE_ORDER_FILLED event
-            await self.event_bus.publish(
-                EventType.TRADE_ORDER_FILLED,
-                {
-                    "trade_id": str(trade.id),
-                    "pair": trade.pair,
-                    "side": side.value,
-                    "amount": str(trade.amount),
-                    "price": str(trade.price),
-                    "fee": str(trade.fee),
-                    "strategy": trade.strategy,
-                    "timestamp": trade.timestamp.isoformat(),
-                    "reference_price": str(signal.metadata.get("reference_price", "0")),
-                    "position_id": signal.metadata.get("position_id"),
-                    "trading_mode": "margin",
-                },
             )
             return
 
@@ -366,7 +365,6 @@ class ExecutionEngine:
             )
 
             self._stats["signals_executed"] += 1
-
             self.logger.info(
                 "limit_order_placed",
                 order_id=order.order_id,
@@ -377,16 +375,6 @@ class ExecutionEngine:
                 status=order.status.value,
                 strategy=signal.strategy,
             )
-
-            # If immediately filled, update bot state
-            if order.is_filled:
-                from krakenbot.models.trades import Trade as TradeModel
-
-                # Build a Trade-like object for bot state update
-                async with self.db_manager.read_session() as session:
-                    trade_record = await session.get(TradeModel, order.id)
-                if trade_record:
-                    await self._update_bot_state(trade_record, signal)
         else:
             # Market order (default / stop-loss / trailing)
             trade = await self.rest_client.place_market_order(
@@ -399,8 +387,12 @@ class ExecutionEngine:
 
             self._stats["signals_executed"] += 1
 
-            # Update bot state
-            await self._update_bot_state(trade, signal)
+            if self._fill_opens_position(signal, side):
+                await self._publish_trade_fill_event(trade=trade, side=side, signal=signal)
+                await self._update_bot_state(trade, signal)
+            else:
+                await self._update_bot_state(trade, signal)
+                await self._publish_trade_fill_event(trade=trade, side=side, signal=signal)
 
             self.logger.info(
                 "order_executed",
@@ -412,24 +404,6 @@ class ExecutionEngine:
                 fee=float(trade.fee),
                 strategy=trade.strategy,
                 status=trade.status.value,
-            )
-
-            # Publish TRADE_ORDER_FILLED event for strategy position tracking
-            await self.event_bus.publish(
-                EventType.TRADE_ORDER_FILLED,
-                {
-                    "trade_id": str(trade.id),
-                    "pair": trade.pair,
-                    "side": side.value,
-                    "amount": str(trade.amount),
-                    "price": str(trade.price),
-                    "fee": str(trade.fee),
-                    "strategy": trade.strategy,
-                    "timestamp": trade.timestamp.isoformat(),
-                    # Metadata from signal for position tracking
-                    "reference_price": str(signal.metadata.get("reference_price", "0")),
-                    "position_id": signal.metadata.get("position_id"),
-                },
             )
 
     async def _calculate_order_amount(
@@ -594,9 +568,15 @@ class ExecutionEngine:
         from krakenbot.models.base import PositionStatus
         from krakenbot.models.trades import OpenPosition
 
-        # Get position_id from signal metadata (strategy assigns this)
-        # For BUY signals, position_id might not be set yet - will be assigned after
-        position_id = signal.metadata.get("position_id", 0)
+        position_id = signal.metadata.get("position_id")
+        if position_id is None:
+            position_id = await self._allocate_fallback_position_id(session, signal.strategy)
+            self.logger.warning(
+                "position_id_missing_on_open_fill",
+                strategy=signal.strategy,
+                trade_id=str(trade.id),
+                fallback_position_id=position_id,
+            )
         reference_price = Decimal(str(signal.metadata.get("reference_price", 0)))
 
         # Create OpenPosition record
@@ -633,6 +613,90 @@ class ExecutionEngine:
             position_id=position_id,
             trade_id=str(trade.id),
         )
+
+    async def _allocate_fallback_position_id(self, session: Any, bot_id: str) -> int:
+        """Allocate a unique fallback position_id when the strategy did not expose one."""
+        from sqlalchemy import func, select
+
+        from krakenbot.models.trades import OpenPosition
+
+        try:
+            result = await session.execute(
+                select(func.max(OpenPosition.position_id)).where(OpenPosition.bot_id == bot_id)
+            )
+            current_max = result.scalar_one_or_none()
+            if isinstance(current_max, int) and current_max > 0:
+                return current_max + 1
+        except Exception as e:
+            self.logger.warning(
+                "fallback_position_id_query_failed",
+                strategy=bot_id,
+                error=str(e),
+                error_type=type(e).__name__,
+            )
+
+        return 1
+
+    def _fill_opens_position(self, signal: TradingSignal, side: TradeSide) -> bool:
+        """Return True when the fill creates a new runtime position."""
+        if signal.metadata.get("mode") == "margin":
+            return bool(signal.metadata.get("is_short_open"))
+        return side == TradeSide.BUY
+
+    async def _publish_trade_fill_event(
+        self,
+        *,
+        trade: Trade,
+        side: TradeSide,
+        signal: TradingSignal,
+        trading_mode: str | None = None,
+    ) -> None:
+        """Publish a trade fill event with mutable signal metadata attached."""
+        payload: dict[str, Any] = {
+            "trade_id": str(trade.id),
+            "pair": trade.pair,
+            "side": side.value,
+            "amount": str(trade.amount),
+            "price": str(trade.price),
+            "fee": str(trade.fee),
+            "strategy": trade.strategy,
+            "timestamp": trade.timestamp.isoformat(),
+            "reference_price": str(signal.metadata.get("reference_price", "0")),
+            "position_id": signal.metadata.get("position_id"),
+            "signal_metadata": signal.metadata,
+        }
+        if trading_mode is not None:
+            payload["trading_mode"] = trading_mode
+
+        await self.event_bus.publish(EventType.TRADE_ORDER_FILLED, payload)
+
+    async def _handle_limit_order_fill(self, order: Any) -> None:
+        """Persist BotState/OpenPosition updates for limit order fills."""
+        from krakenbot.models.trades import Trade as TradeModel
+
+        async with self.db_manager.read_session() as session:
+            trade_record = await session.get(TradeModel, order.id)
+
+        if trade_record is None:
+            self.logger.warning(
+                "limit_fill_trade_record_missing",
+                order_id=getattr(order, "order_id", None),
+                trade_id=str(getattr(order, "id", "")),
+                strategy=getattr(order, "strategy", None),
+            )
+            return
+
+        signal = TradingSignal(
+            signal_type=SignalType.BUY if trade_record.side == TradeSide.BUY else SignalType.SELL,
+            pair=trade_record.pair,
+            price=trade_record.price,
+            confidence=1.0,
+            reason="limit_fill_sync",
+            strategy=trade_record.strategy,
+            timestamp=trade_record.timestamp,
+            metadata=dict(getattr(order, "signal_metadata", None) or {}),
+        )
+        await self._update_bot_state(trade_record, signal)
 
     async def _handle_sell_trade(
         self,

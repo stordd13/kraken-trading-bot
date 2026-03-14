@@ -35,7 +35,7 @@ from krakenbot.core.exceptions import (
     KrakenAPIError,
     OrderExecutionError,
 )
-from krakenbot.models.base import TradeSide, TradeStatus
+from krakenbot.models.base import OrderStatus, TradeSide, TradeStatus
 
 
 @pytest.fixture
@@ -271,8 +271,7 @@ class TestKrakenRestClientPaperTrading:
 
     async def test_place_market_order_sell(self, paper_client: KrakenRestClient) -> None:
         """Test placing a sell order in paper mode."""
-        # First buy some XBT
-        await paper_client.set_paper_balance("XBT", Decimal("0.1"))
+        await paper_client.set_paper_balance("BTC", Decimal("0.1"))
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
         trade = await paper_client.place_market_order(
@@ -302,12 +301,13 @@ class TestKrakenRestClientPaperTrading:
 
         # Should have less EUR
         assert final_balance["EUR"] < initial_eur
-        # Should have gained XBT
-        assert final_balance["XBT"] == Decimal("0.001")
+        # Paper balances should keep a single canonical BTC key
+        assert final_balance["BTC"] == Decimal("0.001")
+        assert "XBT" not in final_balance
 
     async def test_paper_balance_updates_on_sell(self, paper_client: KrakenRestClient) -> None:
         """Test that paper balance updates correctly on sell."""
-        await paper_client.set_paper_balance("XBT", Decimal("0.1"))
+        await paper_client.set_paper_balance("BTC", Decimal("0.1"))
         await paper_client.set_paper_balance("EUR", Decimal("0"))
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
@@ -320,8 +320,9 @@ class TestKrakenRestClientPaperTrading:
 
         final_balance = paper_client.get_paper_balance()
 
-        # Should have less XBT
-        assert final_balance["XBT"] == Decimal("0.099")
+        # Paper balances should keep a single canonical BTC key
+        assert final_balance["BTC"] == Decimal("0.099")
+        assert "XBT" not in final_balance
         # Should have gained EUR
         assert final_balance["EUR"] > 0
 
@@ -340,7 +341,7 @@ class TestKrakenRestClientPaperTrading:
 
     async def test_paper_insufficient_balance_sell(self, paper_client: KrakenRestClient) -> None:
         """Test sell order fails with insufficient balance."""
-        await paper_client.set_paper_balance("XBT", Decimal("0"))
+        await paper_client.set_paper_balance("BTC", Decimal("0"))
         paper_client.update_last_price("XBT/EUR", Decimal("42000"))
 
         with pytest.raises(InsufficientBalanceError):
@@ -350,6 +351,50 @@ class TestKrakenRestClientPaperTrading:
                 Decimal("0.001"),
                 strategy="test",
             )
+
+    async def test_place_limit_order_immediate_fill_buy_normalizes_btc(
+        self,
+        paper_client: KrakenRestClient,
+    ) -> None:
+        """Immediate paper BUY limit fills should credit BTC, not create XBT."""
+        await paper_client.set_paper_balance("EUR", Decimal("1000"))
+        paper_client.update_last_price("XBT/EUR", Decimal("42000"))
+
+        order = await paper_client.place_limit_order(
+            "XBT/EUR",
+            TradeSide.BUY,
+            Decimal("0.001"),
+            Decimal("43000"),
+            strategy="test",
+        )
+
+        final_balance = paper_client.get_paper_balance()
+
+        assert order.status == OrderStatus.FILLED
+        assert final_balance["BTC"] == Decimal("0.001")
+        assert "XBT" not in final_balance
+
+    async def test_place_limit_order_immediate_fill_sell_uses_btc_balance(
+        self,
+        paper_client: KrakenRestClient,
+    ) -> None:
+        """Immediate paper SELL limit fills should read the canonical BTC balance."""
+        await paper_client.set_paper_balance("BTC", Decimal("0.1"))
+        paper_client.update_last_price("XBT/EUR", Decimal("42000"))
+
+        order = await paper_client.place_limit_order(
+            "XBT/EUR",
+            TradeSide.SELL,
+            Decimal("0.001"),
+            Decimal("41000"),
+            strategy="test",
+        )
+
+        final_balance = paper_client.get_paper_balance()
+
+        assert order.status == OrderStatus.FILLED
+        assert final_balance["BTC"] == Decimal("0.099")
+        assert "XBT" not in final_balance
 
 
 class TestKrakenRestClientLiveTrading:

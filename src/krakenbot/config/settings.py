@@ -18,6 +18,9 @@ import yaml
 
 from krakenbot.ml.config import MLSettings
 
+_ROUTER_PARAM_KEYS = frozenset({"capital_usdc", "risk", "strategies"})
+_ROUTER_INNER_STRATEGY_KEYS = frozenset({"active", "bot_id", "params"})
+
 
 class TradingMode(str, Enum):
     """Trading mode enumeration."""
@@ -469,6 +472,60 @@ def _load_strategies_yaml() -> dict[str, Any] | None:
     return None
 
 
+def _get_supported_router_inner_strategy_names() -> set[str]:
+    """Return the inner strategy names actually supported by the runtime router."""
+    from krakenbot.strategies.multi_strategy_router import _INNER_STRATEGY_CLASSES
+
+    return set(_INNER_STRATEGY_CLASSES.keys())
+
+
+def _validate_router_runtime_alignment(
+    multi_strategy: MultiStrategySettings,
+) -> tuple[list[str], list[str]]:
+    """Validate router config against what the runtime actually consumes."""
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    supported_inner_strategies = _get_supported_router_inner_strategy_names()
+
+    for strat_config in multi_strategy.strategies:
+        if not strat_config.enabled or strat_config.name != "multi_strategy_router":
+            continue
+
+        router_params = strat_config.params
+        ignored_router_fields = sorted(set(router_params) - _ROUTER_PARAM_KEYS)
+        if ignored_router_fields:
+            warnings.append(
+                f"Router '{strat_config.bot_id}' has ignored runtime params: "
+                f"{', '.join(ignored_router_fields)}"
+            )
+
+        inner_configs = router_params.get("strategies", {})
+        if not isinstance(inner_configs, dict):
+            continue
+
+        for inner_name, inner_cfg in inner_configs.items():
+            if not isinstance(inner_cfg, dict):
+                continue
+
+            is_active = bool(inner_cfg.get("active", True))
+
+            if is_active and inner_name not in supported_inner_strategies:
+                errors.append(
+                    f"Router inner strategy '{inner_name}' is active in strategies.yaml "
+                    "but not supported by the runtime"
+                )
+
+            ignored_inner_fields = sorted(set(inner_cfg) - _ROUTER_INNER_STRATEGY_KEYS)
+            if is_active and ignored_inner_fields:
+                warnings.append(
+                    f"Router inner strategy '{inner_name}' has ignored runtime fields: "
+                    f"{', '.join(ignored_inner_fields)}"
+                )
+
+    return errors, warnings
+
+
 class Settings(BaseSettings):
     """Main application settings."""
 
@@ -588,6 +645,15 @@ class Settings(BaseSettings):
                     f"Sum of per-strategy daily_loss_limit ({total_loss}) exceeds "
                     f"global limit ({self.multi_strategy.global_daily_loss_limit_eur})"
                 )
+
+            router_errors, router_warnings = _validate_router_runtime_alignment(
+                self.multi_strategy
+            )
+            errors.extend(router_errors)
+
+            settings_logger = logging.getLogger(__name__)
+            for warning in router_warnings:
+                settings_logger.warning(warning)
 
         if errors:
             raise ValueError(

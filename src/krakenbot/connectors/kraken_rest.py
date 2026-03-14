@@ -83,6 +83,20 @@ MIN_ORDER_SIZE = {
 }
 
 
+def normalize_asset_symbol(asset: str) -> str:
+    """Return the canonical asset symbol used by paper balances."""
+    return "BTC" if asset in ("BTC", "XBT") else asset
+
+
+def normalize_asset_balances(balance: dict[str, Decimal]) -> dict[str, Decimal]:
+    """Merge asset aliases so paper balances keep a single canonical key."""
+    normalized: dict[str, Decimal] = {}
+    for asset, amount in balance.items():
+        canonical_asset = normalize_asset_symbol(asset)
+        normalized[canonical_asset] = normalized.get(canonical_asset, Decimal("0")) + amount
+    return normalized
+
+
 class KrakenRestClient:
     """Async REST client for Kraken API using ccxt.
 
@@ -135,7 +149,7 @@ class KrakenRestClient:
         pair = settings.trading.pair
         _base = pair.split("/")[0]
         _quote = pair.split("/")[1]
-        _base_norm = "BTC" if _base in ("XBT", "BTC") else _base
+        _base_norm = normalize_asset_symbol(_base)
         self._paper_balance: dict[str, Decimal] = {
             _quote: Decimal("0"),
             _base_norm: Decimal("0"),
@@ -201,6 +215,10 @@ class KrakenRestClient:
         """
         self._last_prices[pair] = price
 
+    def _normalize_paper_balance(self) -> None:
+        """Collapse asset aliases in the in-memory paper balance."""
+        self._paper_balance = normalize_asset_balances(self._paper_balance)
+
     async def get_balance(self) -> dict[str, Decimal]:
         """Get account balance.
 
@@ -215,6 +233,7 @@ class KrakenRestClient:
             >>> print(f"EUR: {balance['EUR']}, XBT: {balance.get('XBT', 0)}")
         """
         if self.is_paper_mode:
+            self._normalize_paper_balance()
             logger.info(
                 f"{self._mode_prefix} get_balance",
                 balance=str(self._paper_balance),
@@ -377,7 +396,8 @@ class KrakenRestClient:
         fee = value * Decimal("0.0026")  # Kraken maker/taker fee ~0.26%
 
         # Get currency symbols
-        base_currency = pair.split("/")[0]
+        self._normalize_paper_balance()
+        base_currency = normalize_asset_symbol(pair.split("/")[0])
         quote_currency = pair.split("/")[1]
 
         # Check balance
@@ -1189,7 +1209,8 @@ class KrakenRestClient:
             value = amount * price
             fee = value * Decimal("0.0016")  # Maker fee ~0.16%
             quote_currency = pair.split("/")[1]
-            base_currency = pair.split("/")[0]
+            self._normalize_paper_balance()
+            base_currency = normalize_asset_symbol(pair.split("/")[0])
 
             if side == TradeSide.BUY:
                 required = value + fee
@@ -1712,11 +1733,12 @@ class KrakenRestClient:
             logger.warning("set_paper_balance_not_paper_mode")
             return
 
-        self._paper_balance[currency] = amount
+        self._normalize_paper_balance()
+        self._paper_balance[normalize_asset_symbol(currency)] = amount
         await self.persist_paper_balance()
         logger.info(
             f"{self._mode_prefix} set_balance",
-            currency=currency,
+            currency=normalize_asset_symbol(currency),
             amount=str(amount),
         )
 
@@ -1726,6 +1748,7 @@ class KrakenRestClient:
         Returns:
             Dictionary of paper balances.
         """
+        self._normalize_paper_balance()
         return self._paper_balance.copy()
 
     async def initialize_paper_balance(
@@ -1758,12 +1781,12 @@ class KrakenRestClient:
                 return
 
         # First startup or force reset: fetch real balance from Kraken
-        real_balance = await self._fetch_real_balance()
+        real_balance = normalize_asset_balances(await self._fetch_real_balance())
 
         pair = self._settings.trading.pair
         base = pair.split("/")[0]
         quote = pair.split("/")[1]
-        base_norm = "BTC" if base in ("XBT", "BTC") else base
+        base_norm = normalize_asset_symbol(base)
 
         btc_amount = real_balance.get(base_norm, Decimal("0"))
         quote_amount = real_balance.get(quote, Decimal("0"))
@@ -1785,6 +1808,7 @@ class KrakenRestClient:
 
     async def persist_paper_balance(self) -> None:
         """Persist current paper balance to DB after a trade."""
+        self._normalize_paper_balance()
         if self._db_manager:
             await self._save_paper_balance_to_db(initial=False)
 
@@ -1839,9 +1863,14 @@ class KrakenRestClient:
                 if not rows:
                     return False
 
-                self._paper_balance = {}
+                loaded_balance: dict[str, Decimal] = {}
                 for row in rows:
-                    self._paper_balance[row.currency] = row.amount
+                    canonical_currency = normalize_asset_symbol(row.currency)
+                    loaded_balance[canonical_currency] = (
+                        loaded_balance.get(canonical_currency, Decimal("0")) + row.amount
+                    )
+
+                self._paper_balance = loaded_balance
 
                 return True
 
@@ -1861,6 +1890,7 @@ class KrakenRestClient:
             return
 
         try:
+            self._normalize_paper_balance()
             async with self._db_manager.session() as session:
                 for currency, amount in self._paper_balance.items():
                     existing = await session.get(PaperBalance, currency)
@@ -1876,6 +1906,10 @@ class KrakenRestClient:
                             initial_amount=amount if initial else Decimal("0"),
                         )
                         session.add(record)
+
+                legacy_btc_alias = await session.get(PaperBalance, "XBT")
+                if legacy_btc_alias is not None:
+                    await session.delete(legacy_btc_alias)
 
         except Exception as e:
             logger.error("save_paper_balance_db_error", error=str(e))

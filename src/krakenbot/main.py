@@ -325,6 +325,50 @@ class KrakenBot:
                 message="Multi-strategy mode enabled but no strategies configured",
             )
 
+    @staticmethod
+    def _has_positive_numeric_value(value: Any) -> bool:
+        """Return True when a config value is a positive number."""
+        try:
+            return Decimal(str(value)) > Decimal("0")
+        except Exception:
+            return False
+
+    def _router_requires_1m_crash_feed(self, strategy_params: dict[str, Any]) -> bool:
+        """Return True when router crash protector needs live 1m candles."""
+        risk_config = strategy_params.get("risk")
+        if risk_config is None:
+            return True
+        if not isinstance(risk_config, dict):
+            return True
+
+        crash_threshold = risk_config.get("crash_threshold_pct", 7.0)
+        crash_window = risk_config.get("crash_window_min", 30)
+
+        return self._has_positive_numeric_value(
+            crash_threshold
+        ) and self._has_positive_numeric_value(crash_window)
+
+    def _get_multi_strategy_ohlc_intervals(self) -> list[int]:
+        """Collect the OHLC intervals required by the multi-strategy runtime."""
+        mtf = self.settings.multi_timeframe
+        intervals = {
+            mtf.trigger_timeframe,
+            mtf.zone_timeframe,
+            mtf.trend_timeframe,
+            240,
+            1440,
+            10080,
+        }
+
+        for strat_config in self.settings.multi_strategy.strategies:
+            if not strat_config.enabled or strat_config.name != "multi_strategy_router":
+                continue
+            if self._router_requires_1m_crash_feed(strat_config.params):
+                intervals.add(1)
+                break
+
+        return sorted(intervals)
+
     async def start(self) -> None:
         """Start all components in the correct order.
 
@@ -391,12 +435,7 @@ class KrakenBot:
         if self._multi_strategy_mode:
             # Multi-strategy: subscribe to all required timeframes
             pair = self.settings.trading.pair
-            mtf = self.settings.multi_timeframe
-            core_intervals = [mtf.trigger_timeframe, mtf.zone_timeframe, mtf.trend_timeframe]
-            # Higher timeframes for the generic data layer
-            higher_intervals = [240, 1440, 10080]
-            all_intervals = sorted(set(core_intervals + higher_intervals))
-            for interval in all_intervals:
+            for interval in self._get_multi_strategy_ohlc_intervals():
                 await self.ws_client.subscribe_ohlc(pair, interval)
                 self.logger.debug("ws_subscribed_ohlc", pair=pair, interval=interval)
         else:

@@ -15,14 +15,18 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 import uuid
 
 import pytest
 
+from krakenbot.core.event_bus import EventBus
 from krakenbot.config.settings import TradingMode
 from krakenbot.execution.order_manager import OrderManager
 from krakenbot.models.base import OrderStatus, OrderType, TradeSide
+from krakenbot.strategies.base import BaseStrategy, TradingSignal
 
 # =============================================================================
 # Helpers
@@ -131,6 +135,52 @@ def _make_db_session_context(mock_session: AsyncMock):
     return _ctx
 
 
+class PositionAssigningStrategy(BaseStrategy):
+    """Minimal strategy used to assign a position_id during fill events."""
+
+    def __init__(
+        self,
+        settings: Any,
+        event_bus: EventBus,
+        db_manager: Any,
+        *,
+        bot_id: str,
+        assigned_position_id: int = 7,
+    ) -> None:
+        super().__init__(settings, event_bus, db_manager, bot_id=bot_id)
+        self.assigned_position_id = assigned_position_id
+        self._position: SimpleNamespace | None = None
+
+    async def on_tick(self, tick_data: dict[str, Any]) -> None:
+        return None
+
+    async def on_ohlc(self, ohlc_data: dict[str, Any]) -> None:
+        return None
+
+    async def generate_signal(self) -> TradingSignal | None:
+        return None
+
+    def get_name(self) -> str:
+        return "position_assigning_strategy"
+
+    def get_config(self) -> dict[str, Any]:
+        return {"name": self.get_name()}
+
+    async def on_trade_filled(
+        self,
+        trade_id: str,
+        pair: str,
+        side: str,
+        amount: Decimal,
+        price: Decimal,
+        fee: Decimal,
+        reference_price: Decimal | None,
+        position_id: int | None,
+    ) -> None:
+        if side == "buy":
+            self._position = SimpleNamespace(position_id=self.assigned_position_id)
+
+
 # =============================================================================
 # OrderManager Tests
 # =============================================================================
@@ -184,6 +234,8 @@ class TestOrderManager:
         settings = MagicMock()
         settings.order.limit_order_expiry_minutes = 15
         settings.trading.mode = TradingMode.PAPER
+        settings.trading.candle_interval_min = 5
+        settings.multi_strategy.enabled = False
         return settings
 
     @pytest.fixture
@@ -317,6 +369,50 @@ class TestOrderManager:
         mock_event_bus.publish.assert_awaited()
 
     @pytest.mark.asyncio
+    async def test_publish_fill_event_runs_fill_handler_after_strategy_assigns_position_id(
+        self,
+        mock_rest_client: AsyncMock,
+        mock_db_manager: MagicMock,
+        mock_order_settings: MagicMock,
+    ) -> None:
+        """The fill handler must see the position_id assigned during TRADE_ORDER_FILLED."""
+        event_bus = EventBus()
+        order_manager = OrderManager(
+            rest_client=mock_rest_client,
+            db_manager=mock_db_manager,
+            event_bus=event_bus,
+            settings=mock_order_settings,
+        )
+        strategy = PositionAssigningStrategy(
+            mock_order_settings,
+            event_bus,
+            mock_db_manager,
+            bot_id="threshold",
+            assigned_position_id=7,
+        )
+        await strategy.start()
+
+        captured: dict[str, int] = {}
+
+        async def fill_handler(order: FakeOrder) -> None:
+            captured["position_id"] = order.signal_metadata["position_id"]
+
+        order_manager.set_fill_handler(fill_handler)
+        order = _make_order(
+            order_id="paper-102",
+            status=OrderStatus.FILLED,
+            strategy="threshold",
+            signal_metadata={"reference_price": "42000"},
+        )
+        order.filled_amount = Decimal("0.001")
+        order.filled_price = Decimal("42000")
+        order.fee = Decimal("0.0672")
+
+        await order_manager._publish_fill_event(order)
+
+        assert captured["position_id"] == 7
+
+    @pytest.mark.asyncio
     async def test_place_and_track_uses_default_expiry(
         self,
         order_manager: OrderManager,
@@ -382,7 +478,10 @@ class TestOrderManager:
             signal_metadata=metadata,
         )
 
-        assert pending_order.signal_metadata == metadata
+        assert pending_order.signal_metadata is not None
+        assert pending_order.signal_metadata["reference_price"] == "42100"
+        assert pending_order.signal_metadata["position_id"] == 5
+        assert pending_order.signal_metadata["execution_interval"] == 5
 
     # -------------------------------------------------------------------------
     # on_ohlc Tests
@@ -392,6 +491,8 @@ class TestOrderManager:
     async def test_on_ohlc_stores_last_candle(self, order_manager: OrderManager) -> None:
         """Test that on_ohlc stores candle data for paper fill simulation."""
         candle = {
+            "pair": "XBT/USDC",
+            "interval": 5,
             "low": Decimal("41000"),
             "high": Decimal("43000"),
             "close": Decimal("42500"),
@@ -402,17 +503,19 @@ class TestOrderManager:
         assert order_manager._last_candle is not None
         assert order_manager._last_candle["low"] == Decimal("41000")
         assert order_manager._last_candle["high"] == Decimal("43000")
+        assert order_manager._last_candles[("XBT/USDC", 5)]["close"] == Decimal("42500")
 
     @pytest.mark.asyncio
     async def test_on_ohlc_replaces_previous_candle(self, order_manager: OrderManager) -> None:
         """Test that on_ohlc replaces the previously stored candle."""
-        candle_1 = {"low": Decimal("40000"), "high": Decimal("41000")}
-        candle_2 = {"low": Decimal("42000"), "high": Decimal("44000")}
+        candle_1 = {"pair": "XBT/USDC", "interval": 5, "low": Decimal("40000"), "high": Decimal("41000")}
+        candle_2 = {"pair": "XBT/USDC", "interval": 5, "low": Decimal("42000"), "high": Decimal("44000")}
 
         await order_manager.on_ohlc(candle_1)
         await order_manager.on_ohlc(candle_2)
 
         assert order_manager._last_candle["low"] == Decimal("42000")
+        assert order_manager._last_candles[("XBT/USDC", 5)]["low"] == Decimal("42000")
 
     # -------------------------------------------------------------------------
     # check_pending_orders: Paper Mode Fill Simulation
@@ -966,12 +1069,12 @@ class TestOrderManager:
         order_manager: OrderManager,
         mock_rest_client: AsyncMock,
     ) -> None:
-        """Test that paper BUY fill deducts USDC and adds XBT."""
+        """Test that paper BUY fill deducts USDC and adds BTC."""
         initial_usdc = Decimal("10000")
-        initial_xbt = Decimal("0.1")
+        initial_btc = Decimal("0.1")
         mock_rest_client._paper_balance = {
             "USDC": initial_usdc,
-            "XBT": initial_xbt,
+            "BTC": initial_btc,
         }
 
         buy_order = _make_order(
@@ -997,7 +1100,47 @@ class TestOrderManager:
         value = Decimal("0.001") * Decimal("42000")  # 42 USDC
         fee = value * Decimal("0.0016")  # ~0.0672 USDC
         assert mock_rest_client._paper_balance["USDC"] == initial_usdc - value - fee
-        assert mock_rest_client._paper_balance["XBT"] == initial_xbt + Decimal("0.001")
+        assert mock_rest_client._paper_balance["BTC"] == initial_btc + Decimal("0.001")
+        assert "XBT" not in mock_rest_client._paper_balance
+
+    @pytest.mark.asyncio
+    async def test_paper_fill_updates_paper_balance_sell_with_btc(
+        self,
+        order_manager: OrderManager,
+        mock_rest_client: AsyncMock,
+    ) -> None:
+        """Test that paper SELL fill reads and updates the canonical BTC balance."""
+        initial_usdc = Decimal("0")
+        initial_btc = Decimal("0.1")
+        mock_rest_client._paper_balance = {
+            "USDC": initial_usdc,
+            "BTC": initial_btc,
+        }
+
+        sell_order = _make_order(
+            order_id="paper-703-sell",
+            side=TradeSide.SELL,
+            price=Decimal("42000"),
+            amount=Decimal("0.001"),
+            pair="XBT/USDC",
+            expires_at=datetime.now(UTC) + timedelta(hours=1),
+        )
+        order_manager._pending_orders["paper-703-sell"] = sell_order
+
+        order_manager._last_candle = {
+            "low": Decimal("41000"),
+            "high": Decimal("43000"),
+        }
+
+        await order_manager.check_pending_orders()
+
+        assert sell_order.status == OrderStatus.FILLED
+
+        value = Decimal("0.001") * Decimal("42000")
+        fee = value * Decimal("0.0016")
+        assert mock_rest_client._paper_balance["BTC"] == initial_btc - Decimal("0.001")
+        assert mock_rest_client._paper_balance["USDC"] == initial_usdc + value - fee
+        assert "XBT" not in mock_rest_client._paper_balance
 
     @pytest.mark.asyncio
     async def test_paper_fill_insufficient_balance_expires_order(

@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from types import SimpleNamespace
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 import uuid
 
@@ -21,7 +23,7 @@ from krakenbot.execution.engine import ExecutionEngine
 from krakenbot.execution.risk import RiskCheckResult
 from krakenbot.models.base import BotStatus, SignalType, TradeSide, TradeStatus
 from krakenbot.models.trades import BotState, Trade
-from krakenbot.strategies.base import TradingSignal
+from krakenbot.strategies.base import BaseStrategy, TradingSignal
 
 # =============================================================================
 # Fixtures
@@ -157,6 +159,52 @@ def sample_trade() -> Trade:
         status=TradeStatus.FILLED,
         order_id="test-order-123",
     )
+
+
+class PositionAssigningStrategy(BaseStrategy):
+    """Minimal strategy used to assign position IDs during fill events."""
+
+    def __init__(
+        self,
+        settings: Any,
+        event_bus: EventBus,
+        db_manager: Any,
+        *,
+        bot_id: str,
+        assigned_position_id: int = 7,
+    ) -> None:
+        super().__init__(settings, event_bus, db_manager, bot_id=bot_id)
+        self.assigned_position_id = assigned_position_id
+        self._position: SimpleNamespace | None = None
+
+    async def on_tick(self, tick_data: dict[str, Any]) -> None:
+        return None
+
+    async def on_ohlc(self, ohlc_data: dict[str, Any]) -> None:
+        return None
+
+    async def generate_signal(self) -> TradingSignal | None:
+        return None
+
+    def get_name(self) -> str:
+        return "position_assigning_strategy"
+
+    def get_config(self) -> dict[str, Any]:
+        return {"name": self.get_name()}
+
+    async def on_trade_filled(
+        self,
+        trade_id: str,
+        pair: str,
+        side: str,
+        amount: Decimal,
+        price: Decimal,
+        fee: Decimal,
+        reference_price: Decimal | None,
+        position_id: int | None,
+    ) -> None:
+        if side == "buy":
+            self._position = SimpleNamespace(position_id=self.assigned_position_id)
 
 
 # =============================================================================
@@ -479,6 +527,84 @@ class TestBotStateUpdates:
         assert existing_state.total_pnl == expected_pnl
         assert existing_state.position_size == Decimal("0")
         assert existing_state.entry_price is None
+
+    @pytest.mark.asyncio
+    async def test_market_open_fill_assigns_position_id_before_bot_state_update(
+        self,
+        mock_settings: MagicMock,
+        mock_db_manager: MagicMock,
+        mock_rest_client: MagicMock,
+        sample_trade: Trade,
+    ) -> None:
+        """Opening market fills should persist the strategy-assigned position_id."""
+        event_bus = EventBus()
+        strategy = PositionAssigningStrategy(
+            mock_settings,
+            event_bus,
+            mock_db_manager,
+            bot_id="threshold_v1",
+            assigned_position_id=7,
+        )
+        await strategy.start()
+
+        signal = TradingSignal(
+            signal_type=SignalType.BUY,
+            pair="XBT/EUR",
+            price=Decimal("42000.00"),
+            confidence=0.85,
+            reason="Market open",
+            strategy="threshold_v1",
+            timestamp=datetime.now(UTC),
+            metadata={"reference_price": "42000"},
+        )
+        mock_rest_client.place_market_order.return_value = sample_trade
+        engine = ExecutionEngine(mock_settings, event_bus, mock_db_manager, mock_rest_client)
+
+        with (
+            patch.object(
+                engine.risk_manager,
+                "check_order",
+                return_value=RiskCheckResult(approved=True),
+            ),
+            patch.object(engine, "_update_bot_state", new=AsyncMock()) as update_bot_state,
+        ):
+            await engine._execute_signal(signal)
+
+        assert signal.metadata["position_id"] == 7
+        assert update_bot_state.await_args.args[1].metadata["position_id"] == 7
+
+    @pytest.mark.asyncio
+    async def test_handle_limit_order_fill_uses_order_position_metadata(
+        self,
+        mock_settings: MagicMock,
+        sample_trade: Trade,
+    ) -> None:
+        """Limit fill sync should rebuild bot-state updates from stored order metadata."""
+        sample_trade.strategy = "threshold_v1"
+        sample_trade.side = TradeSide.BUY
+
+        read_session = AsyncMock()
+        read_session.get = AsyncMock(return_value=sample_trade)
+        read_cm = MagicMock()
+        read_cm.__aenter__ = AsyncMock(return_value=read_session)
+        read_cm.__aexit__ = AsyncMock(return_value=None)
+
+        db_manager = MagicMock()
+        db_manager.read_session = MagicMock(return_value=read_cm)
+
+        engine = ExecutionEngine(mock_settings, EventBus(), db_manager, MagicMock())
+        order = SimpleNamespace(
+            id=sample_trade.id,
+            order_id="paper-123",
+            strategy="threshold_v1",
+            signal_metadata={"position_id": 7, "reference_price": "42000"},
+        )
+
+        with patch.object(engine, "_update_bot_state", new=AsyncMock()) as update_bot_state:
+            await engine._handle_limit_order_fill(order)
+
+        assert update_bot_state.await_args.args[0] == sample_trade
+        assert update_bot_state.await_args.args[1].metadata["position_id"] == 7
 
 
 # =============================================================================

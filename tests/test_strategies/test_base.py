@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
@@ -301,6 +302,38 @@ class ConcreteStrategy(BaseStrategy):
         self._signal_to_return = signal
 
 
+class PositionAssigningStrategy(ConcreteStrategy):
+    """Test strategy that assigns a position_id on fills."""
+
+    def __init__(
+        self,
+        settings: Any,
+        event_bus: EventBus,
+        db_manager: Any,
+        *,
+        assigned_position_id: int = 7,
+        open_side: str = "buy",
+    ) -> None:
+        super().__init__(settings, event_bus, db_manager)
+        self.assigned_position_id = assigned_position_id
+        self.open_side = open_side
+        self._position: SimpleNamespace | None = None
+
+    async def on_trade_filled(
+        self,
+        trade_id: str,
+        pair: str,
+        side: str,
+        amount: Decimal,
+        price: Decimal,
+        fee: Decimal,
+        reference_price: Decimal | None,
+        position_id: int | None,
+    ) -> None:
+        if side == self.open_side:
+            self._position = SimpleNamespace(position_id=self.assigned_position_id)
+
+
 class TestBaseStrategy:
     """Tests for BaseStrategy abstract class."""
 
@@ -516,6 +549,40 @@ class TestBaseStrategy:
 
         # Should not raise
         await strategy._handle_ohlc({"pair": "XBT/EUR", "close": "42000.00"})
+
+    @pytest.mark.asyncio
+    async def test_handle_trade_filled_infers_position_id_from_strategy_state(
+        self,
+        mock_settings: Any,
+        mock_event_bus: AsyncMock,
+        mock_db_manager: MagicMock,
+    ) -> None:
+        """BUY fills should propagate the strategy-assigned position_id to runtime metadata."""
+        strategy = PositionAssigningStrategy(
+            mock_settings,
+            mock_event_bus,
+            mock_db_manager,
+            assigned_position_id=7,
+        )
+        strategy._running = True
+
+        signal_metadata = {"reference_price": "42000"}
+        fill_event = {
+            "trade_id": "trade-123",
+            "pair": "XBT/EUR",
+            "side": "buy",
+            "amount": "0.001",
+            "price": "42000",
+            "fee": "0.04",
+            "strategy": strategy.bot_id,
+            "reference_price": "42000",
+            "signal_metadata": signal_metadata,
+        }
+
+        await strategy._handle_trade_filled(fill_event)
+
+        assert fill_event["position_id"] == 7
+        assert signal_metadata["position_id"] == 7
 
     def test_reset_state(self, strategy: ConcreteStrategy) -> None:
         """Test resetting strategy state."""

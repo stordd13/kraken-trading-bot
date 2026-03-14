@@ -180,6 +180,31 @@ class TestRiskManager:
         assert any("Insufficient BTC" in reason for reason in result.reasons)
 
     @pytest.mark.asyncio
+    async def test_check_balance_sufficient_for_sell_with_split_btc_xbt_balance(
+        self,
+        risk_manager: RiskManager,
+    ) -> None:
+        """A split BTC/XBT paper balance should still satisfy a SELL check."""
+        result = RiskCheckResult(approved=True)
+        balance = {
+            "EUR": Decimal("1000.00"),
+            "BTC": Decimal("0.005"),
+            "XBT": Decimal("0.005"),
+        }
+
+        await risk_manager._check_balance(
+            result=result,
+            pair="XBT/EUR",
+            side=TradeSide.SELL,
+            amount=Decimal("0.01"),
+            price=Decimal("42000"),
+            balance=balance,
+        )
+
+        assert result.approved is True
+        assert len(result.reasons) == 0
+
+    @pytest.mark.asyncio
     async def test_check_balance_missing_currency(self, risk_manager: RiskManager) -> None:
         """Test balance check fails when currency is not in balance dict."""
         result = RiskCheckResult(approved=True)

@@ -32,6 +32,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
+from krakenbot.connectors.kraken_rest import normalize_asset_balances, normalize_asset_symbol
 from krakenbot.core.logger import get_logger
 from krakenbot.models.base import TradeSide, TradeStatus
 
@@ -276,11 +277,9 @@ class RiskManager:
                 )
         else:
             # For SELL: need base currency
-            base_currency = pair.split("/")[0]
-            # Normalize XBT to BTC (Kraken uses XBT in pairs but BTC in balances via ccxt)
-            if base_currency == "XBT":
-                base_currency = "BTC"
-            available = balance.get(base_currency, Decimal("0"))
+            normalized_balance = normalize_asset_balances(balance)
+            base_currency = normalize_asset_symbol(pair.split("/")[0])
+            available = normalized_balance.get(base_currency, Decimal("0"))
 
             if amount > available:
                 result.add_reason(

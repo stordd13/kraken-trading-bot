@@ -20,10 +20,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Awaitable, Callable
 
 from sqlalchemy import select
 
+from krakenbot.connectors.kraken_rest import normalize_asset_balances, normalize_asset_symbol
 from krakenbot.core.event_bus import EventType
 from krakenbot.core.logger import get_logger
 from krakenbot.models.base import OrderStatus, TradeSide
@@ -36,6 +37,47 @@ if TYPE_CHECKING:
     from krakenbot.core.event_bus import EventBus
 
 logger = get_logger(__name__)
+
+_TIMEFRAME_TO_INTERVAL_MINUTES = {
+    "1m": 1,
+    "5m": 5,
+    "15m": 15,
+    "30m": 30,
+    "1h": 60,
+    "4h": 240,
+    "1d": 1440,
+    "1w": 10080,
+}
+
+_ROUTER_INNER_STRATEGY_INTERVALS = {
+    "gemini_scalping_volatilite": 5,
+    "gemini_retour_moyenne": 15,
+    "gemini_suivi_tendance_momentum": 240,
+    "grok_grid_atr_adaptive_v4": 240,
+    "grok_supertrend_4h": 240,
+    "grok_ema_adx_atr": 240,
+    "grok_adaptive_dca_weekly": 1440,
+}
+
+
+def _parse_interval_minutes(value: Any) -> int | None:
+    """Convert an interval or timeframe token to minutes."""
+    if value is None:
+        return None
+
+    if isinstance(value, int):
+        return value if value > 0 else None
+
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if not normalized:
+            return None
+        if normalized.isdigit():
+            interval = int(normalized)
+            return interval if interval > 0 else None
+        return _TIMEFRAME_TO_INTERVAL_MINUTES.get(normalized)
+
+    return None
 
 
 class OrderManager:
@@ -81,8 +123,10 @@ class OrderManager:
         # Profit target tracking (position_id -> order_id of limit sell)
         self._position_profit_targets: dict[int, str] = {}
 
-        # Last OHLC candle data for paper mode fill simulation
+        # Latest raw candle and keyed candle cache for paper fill simulation
         self._last_candle: dict[str, Any] | None = None
+        self._last_candles: dict[tuple[str, int], dict[str, Any]] = {}
+        self._strategy_execution_intervals = self._build_strategy_execution_intervals()
 
         # Statistics
         self._stats = {
@@ -92,6 +136,7 @@ class OrderManager:
             "orders_cancelled": 0,
             "check_cycles": 0,
         }
+        self._fill_handler: Callable[[Order], Awaitable[None]] | None = None
 
     @property
     def stats(self) -> dict[str, int]:
@@ -102,6 +147,10 @@ class OrderManager:
     def pending_count(self) -> int:
         """Get number of currently pending orders."""
         return len(self._pending_orders)
+
+    def set_fill_handler(self, handler: Callable[[Order], Awaitable[None]] | None) -> None:
+        """Register a callback invoked after a limit fill event is published."""
+        self._fill_handler = handler
 
     async def load_pending_from_db(self) -> None:
         """Load pending orders from database on startup.
@@ -168,6 +217,8 @@ class OrderManager:
         if expires_in_seconds is None:
             expires_in_seconds = self._settings.order.limit_order_expiry_minutes * 60
 
+        metadata = self._enrich_signal_metadata(signal_metadata, strategy)
+
         order = await self._rest_client.place_limit_order(
             pair=pair,
             side=side,
@@ -178,7 +229,7 @@ class OrderManager:
         )
 
         # Attach signal metadata
-        order.signal_metadata = signal_metadata
+        order.signal_metadata = metadata
 
         # Save metadata to DB
         if self._db_manager:
@@ -186,7 +237,7 @@ class OrderManager:
                 async with self._db_manager.session() as session:
                     db_order = await session.get(Order, order.id)
                     if db_order:
-                        db_order.signal_metadata = signal_metadata
+                        db_order.signal_metadata = metadata
             except Exception as e:
                 logger.warning("save_order_metadata_error", error=str(e))
 
@@ -265,11 +316,12 @@ class OrderManager:
         Args:
             order: The pending order to check.
         """
-        if self._last_candle is None:
+        candle = self._get_matching_paper_candle(order)
+        if candle is None:
             return
 
-        candle_low = Decimal(str(self._last_candle.get("low", 0)))
-        candle_high = Decimal(str(self._last_candle.get("high", 0)))
+        candle_low = Decimal(str(candle.get("low", 0)))
+        candle_high = Decimal(str(candle.get("high", 0)))
 
         if candle_low <= Decimal("0") or candle_high <= Decimal("0"):
             return
@@ -298,8 +350,11 @@ class OrderManager:
         value = order.amount * fill_price
         fee = value * Decimal("0.0016")  # Maker fee ~0.16%
 
+        self._rest_client._paper_balance = normalize_asset_balances(
+            self._rest_client._paper_balance
+        )
         pair = order.pair
-        base_currency = pair.split("/")[0]
+        base_currency = normalize_asset_symbol(pair.split("/")[0])
         quote_currency = pair.split("/")[1]
 
         # Update paper balance
@@ -552,6 +607,114 @@ class OrderManager:
             data: OHLC event data with keys: low, high, close, etc.
         """
         self._last_candle = data
+        pair = data.get("pair")
+        interval = _parse_interval_minutes(data.get("interval"))
+        if interval is None:
+            interval = _parse_interval_minutes(data.get("timeframe"))
+        if pair and interval is not None:
+            self._last_candles[(str(pair), interval)] = data
+
+    def _build_strategy_execution_intervals(self) -> dict[str, int]:
+        """Infer execution intervals for strategies from current runtime config."""
+        intervals: dict[str, int] = {}
+
+        if not self._settings.multi_strategy.enabled:
+            return intervals
+
+        for strat_config in self._settings.multi_strategy.strategies:
+            if not strat_config.enabled:
+                continue
+
+            if strat_config.name != "multi_strategy_router":
+                intervals[strat_config.bot_id] = self._settings.trading.candle_interval_min
+                continue
+
+            inner_configs = strat_config.params.get("strategies", {})
+            if not isinstance(inner_configs, dict):
+                continue
+
+            for inner_name, inner_cfg in inner_configs.items():
+                if not isinstance(inner_cfg, dict) or not inner_cfg.get("active", True):
+                    continue
+
+                interval = _ROUTER_INNER_STRATEGY_INTERVALS.get(inner_name)
+                if interval is None:
+                    continue
+
+                bot_id = str(inner_cfg.get("bot_id", inner_name))
+                intervals[bot_id] = interval
+
+        return intervals
+
+    def _resolve_execution_interval(
+        self,
+        strategy: str,
+        signal_metadata: dict[str, Any] | None,
+    ) -> int:
+        """Resolve the candle interval that should drive paper fills for an order."""
+        metadata = signal_metadata or {}
+
+        for key in ("execution_interval", "interval"):
+            interval = _parse_interval_minutes(metadata.get(key))
+            if interval is not None:
+                return interval
+
+        for key in ("execution_timeframe", "timeframe"):
+            interval = _parse_interval_minutes(metadata.get(key))
+            if interval is not None:
+                return interval
+
+        strategy_interval = self._strategy_execution_intervals.get(strategy)
+        if strategy_interval is not None:
+            return strategy_interval
+
+        trigger_interval = _parse_interval_minutes(
+            getattr(getattr(self._settings, "multi_timeframe", None), "trigger_timeframe", None)
+        )
+        default_interval = _parse_interval_minutes(
+            getattr(getattr(self._settings, "trading", None), "candle_interval_min", None)
+        )
+        if default_interval is None:
+            default_interval = 5
+
+        if bool(getattr(getattr(self._settings, "multi_strategy", None), "enabled", False)):
+            return trigger_interval if trigger_interval is not None else default_interval
+
+        return default_interval
+
+    def _enrich_signal_metadata(
+        self,
+        signal_metadata: dict[str, Any] | None,
+        strategy: str,
+    ) -> dict[str, Any] | None:
+        """Persist execution context needed for deterministic paper fills."""
+        if signal_metadata is None:
+            signal_metadata = {}
+        else:
+            signal_metadata = dict(signal_metadata)
+
+        signal_metadata.setdefault(
+            "execution_interval",
+            self._resolve_execution_interval(strategy, signal_metadata),
+        )
+        return signal_metadata
+
+    def _get_matching_paper_candle(self, order: Order) -> dict[str, Any] | None:
+        """Return the latest candle matching the order pair and execution timeframe."""
+        strategy = getattr(order, "strategy", "") or getattr(order, "bot_id", "")
+        interval = self._resolve_execution_interval(strategy, order.signal_metadata)
+        candle = self._last_candles.get((order.pair, interval))
+        if candle is not None:
+            return candle
+
+        # Backward-compatible fallback for tests/legacy state that injected a raw candle only.
+        if self._last_candle is None:
+            return None
+
+        if self._last_candle.get("pair") is None and self._last_candle.get("interval") is None:
+            return self._last_candle
+
+        return None
 
     def _cleanup_profit_target(self, order: Order) -> None:
         """Remove profit target mapping for a filled/cancelled order.
@@ -592,7 +755,9 @@ class OrderManager:
         Args:
             order: The filled order.
         """
-        metadata = order.signal_metadata or {}
+        await self._save_trade_record(order)
+
+        metadata = order.signal_metadata if order.signal_metadata is not None else {}
 
         await self._event_bus.publish(
             EventType.TRADE_ORDER_FILLED,
@@ -610,11 +775,12 @@ class OrderManager:
                 # Metadata from signal for position tracking
                 "reference_price": str(metadata.get("reference_price", "0")),
                 "position_id": metadata.get("position_id"),
+                "signal_metadata": metadata,
             },
         )
 
-        # Also save a Trade record for consistency with market orders
-        await self._save_trade_record(order)
+        if self._fill_handler is not None:
+            await self._fill_handler(order)
 
     async def _save_trade_record(self, order: Order) -> None:
         """Save a Trade record from a filled order.

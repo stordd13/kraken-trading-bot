@@ -19,6 +19,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
@@ -342,6 +343,8 @@ class BaseStrategy(ABC):
             return
 
         try:
+            before_position_ids = self._snapshot_position_ids()
+
             # Parse reference_price - handle "0" as None
             reference_price_str = data.get("reference_price")
             reference_price: Decimal | None = None
@@ -358,6 +361,8 @@ class BaseStrategy(ABC):
                 reference_price=reference_price,
                 position_id=data.get("position_id"),
             )
+
+            self._assign_runtime_position_id(data, before_position_ids)
         except Exception as e:
             self.logger.error(
                 "trade_filled_handler_error",
@@ -367,6 +372,81 @@ class BaseStrategy(ABC):
                 strategy=self.get_name(),
                 exc_info=e,
             )
+
+    def _assign_runtime_position_id(self, data: dict[str, Any], before_ids: set[int]) -> None:
+        """Infer the strategy-assigned position_id after an opening fill.
+
+        Runtime persistence happens outside strategies, so the strategy needs
+        a chance to assign its real position_id before DB state is written.
+        """
+        if data.get("position_id") is not None or not self._fill_opens_position(data):
+            return
+
+        after_ids = self._snapshot_position_ids()
+        new_ids = sorted(after_ids - before_ids)
+        assigned_id: int | None = None
+
+        if len(new_ids) == 1:
+            assigned_id = new_ids[0]
+        elif not before_ids and len(after_ids) == 1:
+            assigned_id = next(iter(after_ids))
+
+        if assigned_id is None:
+            return
+
+        data["position_id"] = assigned_id
+        signal_metadata = data.get("signal_metadata")
+        if isinstance(signal_metadata, dict):
+            signal_metadata["position_id"] = assigned_id
+
+        self.logger.debug(
+            "trade_fill_position_id_assigned",
+            strategy=self.get_name(),
+            trade_id=data.get("trade_id"),
+            position_id=assigned_id,
+        )
+
+    def _fill_opens_position(self, data: dict[str, Any]) -> bool:
+        """Return True when the fill corresponds to a position opening."""
+        metadata = data.get("signal_metadata")
+        if isinstance(metadata, dict) and metadata.get("mode") == "margin":
+            return bool(metadata.get("is_short_open"))
+        return data.get("side") == "buy"
+
+    def _snapshot_position_ids(self) -> set[int]:
+        """Capture currently tracked position IDs from common strategy state patterns."""
+        position_ids: set[int] = set()
+
+        for attr_name in ("_position", "_open_positions", "_grid_positions"):
+            position_ids.update(self._extract_position_ids(getattr(self, attr_name, None)))
+
+        try:
+            open_positions = getattr(self, "open_positions", None)
+        except Exception:
+            open_positions = None
+        position_ids.update(self._extract_position_ids(open_positions))
+
+        return position_ids
+
+    def _extract_position_ids(self, value: Any) -> set[int]:
+        """Extract positive integer position IDs from a strategy state value."""
+        if value is None:
+            return set()
+
+        if isinstance(value, dict):
+            values: Iterable[Any] = value.values()
+        elif isinstance(value, (list, tuple, set)):
+            values = value
+        else:
+            position_id = getattr(value, "position_id", None)
+            if isinstance(position_id, int) and position_id > 0:
+                return {position_id}
+            return set()
+
+        position_ids: set[int] = set()
+        for item in values:
+            position_ids.update(self._extract_position_ids(item))
+        return position_ids
 
     async def on_trade_filled(  # noqa: B027
         self,

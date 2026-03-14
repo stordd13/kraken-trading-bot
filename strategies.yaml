@@ -162,7 +162,7 @@ strategies:
             max_allocation_pct: 15.0
 
         grok_donchian_breakout_4h:
-          active: true
+          active: false  # Disabled until the current router runtime supports it
           bot_id: donchian_breakout_4h
           params:
             period_upper: 20
