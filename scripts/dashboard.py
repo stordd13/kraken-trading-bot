@@ -209,6 +209,33 @@ def _apply_missing_candle_rangebreaks(
         fig.update_xaxes(rangebreaks=rangebreaks)
 
 
+def _compute_display_window(df: pd.DataFrame, hours: int) -> tuple[pd.Timestamp, pd.Timestamp]:
+    """Compute the visible window anchored to the latest chart candle."""
+    if not df.empty:
+        display_end = pd.to_datetime(df["timestamp"], utc=True).max()
+    else:
+        display_end = pd.Timestamp.now(tz="UTC").floor("min")
+
+    display_start = display_end - pd.Timedelta(hours=hours)
+    return display_start, display_end
+
+
+def _filter_df_to_window(
+    df: pd.DataFrame | None,
+    display_start: pd.Timestamp,
+    display_end: pd.Timestamp,
+    *,
+    timestamp_col: str = "timestamp",
+) -> pd.DataFrame | None:
+    """Filter a dataframe to the visible chart window."""
+    if df is None or df.empty or timestamp_col not in df.columns:
+        return df
+
+    timestamps = pd.to_datetime(df[timestamp_col], utc=True)
+    mask = (timestamps >= display_start) & (timestamps <= display_end)
+    return df.loc[mask].copy()
+
+
 # Test DB connection at startup
 try:
     with engine.connect() as conn:
@@ -980,6 +1007,8 @@ def create_candlestick_chart(
     regime_df: pd.DataFrame = None,
     interval_min: int = 1,
     coverage: float | None = None,
+    display_start: pd.Timestamp | None = None,
+    display_end: pd.Timestamp | None = None,
 ) -> go.Figure:
     """Create candlestick chart with trades overlay, position levels, and regime subplot."""
     from plotly.subplots import make_subplots
@@ -1148,6 +1177,9 @@ def create_candlestick_chart(
         interval_min,
         has_regime,
     )
+
+    if display_start is not None and display_end is not None:
+        fig.update_xaxes(range=[display_start, display_end])
 
     title_text = f"XBT/USDC chart ({interval_min}m candles)"
     if coverage is not None:
@@ -2094,9 +2126,18 @@ def update_chart(n_intervals, n_clicks, hours):
     """Update price chart with market regime subplot."""
     hours = int(hours) if hours else 24
     df, interval, coverage = fetch_best_ohlc_data(hours=hours)
-    trades_df = fetch_recent_trades(limit=50)
+    display_start, display_end = _compute_display_window(df, hours)
+    trades_df = _filter_df_to_window(
+        fetch_recent_trades(limit=50),
+        display_start,
+        display_end,
+    )
     positions_df = fetch_open_positions()
-    regime_df = compute_market_regime(hours=max(hours, 48))
+    regime_df = _filter_df_to_window(
+        compute_market_regime(hours=max(hours, 48)),
+        display_start,
+        display_end,
+    )
     return create_candlestick_chart(
         df,
         trades_df,
@@ -2104,6 +2145,8 @@ def update_chart(n_intervals, n_clicks, hours):
         regime_df,
         interval_min=interval,
         coverage=coverage,
+        display_start=display_start,
+        display_end=display_end,
     )
 
 

@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 # Load .env from project root
 load_dotenv(Path(__file__).parent.parent / ".env")
@@ -29,6 +29,60 @@ from krakenbot.models.base import TradeSide
 from krakenbot.models.market_data import OHLCData
 from krakenbot.models.trades import BacktestRun, Trade, TradeStatus
 from krakenbot.strategies.base import SignalType, TradingSignal
+
+
+def _backtest_chunk_days(interval: int) -> int:
+    """Choose a conservative chunk size for hypertable reads."""
+    if interval >= 10080:
+        return 90
+    if interval >= 1440:
+        return 30
+    if interval >= 240:
+        return 14
+    if interval >= 60:
+        return 7
+    return 3
+
+
+async def _load_candles_chunked(
+    db_manager: DatabaseManager,
+    pair: str,
+    interval: int,
+    start_time: datetime,
+    end_time: datetime,
+) -> list[OHLCData]:
+    """Load OHLC candles in bounded windows to avoid Timescale lock exhaustion."""
+    candles: list[OHLCData] = []
+    chunk_days = _backtest_chunk_days(interval)
+    window_start = start_time
+
+    while window_start <= end_time:
+        window_end = min(window_start + timedelta(days=chunk_days), end_time)
+
+        async with db_manager.read_session() as session:
+            # Timescale can choose a generic prepared plan that touches too many
+            # chunks; forcing a custom plan keeps backtest reads bounded.
+            await session.execute(text("SET LOCAL plan_cache_mode = force_custom_plan"))
+            stmt = (
+                select(OHLCData)
+                .where(OHLCData.pair == pair)
+                .where(OHLCData.interval == interval)
+                .where(OHLCData.timestamp >= window_start)
+                .where(
+                    OHLCData.timestamp <= window_end
+                    if window_end == end_time
+                    else OHLCData.timestamp < window_end
+                )
+                .order_by(OHLCData.timestamp.asc())
+            )
+            result = await session.execute(stmt)
+            candles.extend(result.scalars().all())
+
+        if window_end >= end_time:
+            break
+        window_start = window_end
+
+    return candles
 
 
 @dataclass
@@ -175,6 +229,20 @@ class BacktestEngine:
         "grok_ema_adx_atr",
         "grok_adaptive_dca_weekly",
     }
+    _NEEDS_1H = {
+        "adaptive",
+        "capitulation",
+        "bear_short",
+        "trend_following",
+        "gemini_scalping_volatilite",
+        "gemini_retour_moyenne",
+    }
+    _NEEDS_15M = {
+        "adaptive",
+        "capitulation",
+        "bear_short",
+        "gemini_retour_moyenne",
+    }
     # Strategies that check _is_4h / _is_daily in generate_signal()
     _HAS_IS_4H = {
         "grok_supertrend_4h",
@@ -204,17 +272,13 @@ class BacktestEngine:
         Returns:
             List of OHLC candles sorted by timestamp.
         """
-        async with self.db_manager.session() as session:
-            stmt = (
-                select(OHLCData)
-                .where(OHLCData.pair == pair)
-                .where(OHLCData.interval == interval)
-                .where(OHLCData.timestamp >= start_time)
-                .where(OHLCData.timestamp <= end_time)
-                .order_by(OHLCData.timestamp.asc())
-            )
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+        return await _load_candles_chunked(
+            self.db_manager,
+            pair,
+            interval,
+            start_time,
+            end_time,
+        )
 
     async def _build_replay_sequence(
         self,
@@ -250,8 +314,12 @@ class BacktestEngine:
         warmup_1w = start_time - timedelta(days=400)  # ~57 candles
 
         # Load higher timeframe data (full range: warmup + backtest period)
-        candles_1h = await self._load_candles_for_interval(pair, 60, warmup_1h, end_time)
-        candles_15m = await self._load_candles_for_interval(pair, 15, warmup_15m, end_time)
+        candles_1h: list[OHLCData] = []
+        candles_15m: list[OHLCData] = []
+        if self.strategy_name in self._NEEDS_1H:
+            candles_1h = await self._load_candles_for_interval(pair, 60, warmup_1h, end_time)
+        if self.strategy_name in self._NEEDS_15M:
+            candles_15m = await self._load_candles_for_interval(pair, 15, warmup_15m, end_time)
         candles_warmup = await self._load_candles_for_interval(pair, ci, warmup_trading, start_time)
 
         # Load 4h, 1d, 1w if the strategy needs them
@@ -1993,17 +2061,13 @@ class GridBacktester:
         self, pair: str, interval: int, start_time: datetime, end_time: datetime
     ) -> list[OHLCData]:
         """Load OHLC candles for a specific interval."""
-        async with self.db_manager.session() as session:
-            stmt = (
-                select(OHLCData)
-                .where(OHLCData.pair == pair)
-                .where(OHLCData.interval == interval)
-                .where(OHLCData.timestamp >= start_time)
-                .where(OHLCData.timestamp <= end_time)
-                .order_by(OHLCData.timestamp.asc())
-            )
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+        return await _load_candles_chunked(
+            self.db_manager,
+            pair,
+            interval,
+            start_time,
+            end_time,
+        )
 
     def _calculate_final_metrics(self) -> None:
         """Calculate final performance metrics."""
