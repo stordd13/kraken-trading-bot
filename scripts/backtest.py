@@ -1670,7 +1670,7 @@ class GridBacktester:
     Fills are detected by checking candle low/high against all active levels.
     """
 
-    GRID_STRATEGIES = {"grid_spot", "grid_adaptive"}
+    GRID_STRATEGIES = {"grid_spot", "grid_adaptive", "grok_grid_atr_adaptive_v4"}
 
     def __init__(
         self,
@@ -1709,12 +1709,8 @@ class GridBacktester:
         self.event_bus = EventBus()
 
         # Strategy params
-        self._strategy_params: dict[str, Any] = {}
-        if settings.multi_strategy.enabled:
-            for s in settings.multi_strategy.strategies:
-                if s.name == strategy_name:
-                    self._strategy_params = s.params or {}
-                    break
+        self._strategy_bot_id = strategy_name
+        self._strategy_params = self._load_grid_strategy_params(strategy_name)
 
         # Grid config from strategy params
         self.grid_levels = int(self._strategy_params.get("grid_levels", 10))
@@ -1740,6 +1736,252 @@ class GridBacktester:
         # Directional pause tracking
         self._hourly_prices: list[Decimal] = []
         self._grid_paused: bool = False
+
+    def _load_strategy_params(self, strategy_name: str) -> dict[str, Any] | None:
+        """Load top-level strategy params from settings."""
+        if not self.settings.multi_strategy.enabled:
+            return None
+        for strategy in self.settings.multi_strategy.strategies:
+            if strategy.name == strategy_name:
+                self._strategy_bot_id = getattr(strategy, "bot_id", strategy_name)
+                return strategy.params or {}
+        return None
+
+    def _load_inner_strategy_entry(self, inner_name: str) -> dict[str, Any] | None:
+        """Load an inner router strategy entry from settings."""
+        if not self.settings.multi_strategy.enabled:
+            return None
+        for strategy in self.settings.multi_strategy.strategies:
+            if strategy.name != "multi_strategy_router":
+                continue
+            strategies = (strategy.params or {}).get("strategies", {})
+            entry = strategies.get(inner_name)
+            if entry is not None:
+                return entry
+        return None
+
+    def _load_grid_strategy_params(self, strategy_name: str) -> dict[str, Any]:
+        """Resolve params for grid strategies, including router inner strategies."""
+        if strategy_name == "grok_grid_atr_adaptive_v4":
+            entry = self._load_inner_strategy_entry(strategy_name) or {}
+            self._strategy_bot_id = entry.get("bot_id", "grid_atr_v4")
+            return entry.get("params") or {}
+        return self._load_strategy_params(strategy_name) or {}
+
+    def _make_ohlc_payload(self, candle: OHLCData, interval: int) -> dict[str, Any]:
+        """Build strategy-compatible OHLC payload."""
+        return {
+            "pair": candle.pair,
+            "timestamp": candle.timestamp,
+            "open": candle.open,
+            "high": candle.high,
+            "low": candle.low,
+            "close": candle.close,
+            "volume": candle.volume,
+            "interval": interval,
+            "timeframe": interval,
+            "is_complete": True,
+        }
+
+    async def _build_grok_grid_replay_sequence(
+        self,
+        pair: str,
+        start_time: datetime,
+        end_time: datetime,
+        candles_trading: list[OHLCData],
+    ) -> list[tuple[OHLCData, int, bool]]:
+        """Build replay for ATR grid using 4h trigger + 1d/1w context feeds."""
+        warmup_4h = start_time - timedelta(days=15)
+        warmup_1d = start_time - timedelta(days=250)
+        warmup_1w = start_time - timedelta(days=400)
+
+        candles_4h_warmup = await self._load_candles_for_interval(pair, 240, warmup_4h, start_time)
+        candles_1d = await self._load_candles_for_interval(pair, 1440, warmup_1d, end_time)
+        candles_1w = await self._load_candles_for_interval(pair, 10080, warmup_1w, end_time)
+
+        replay_sequence: list[tuple[OHLCData, int, bool]] = []
+        for candle in candles_4h_warmup:
+            replay_sequence.append((candle, 240, False))
+        for candle in candles_1w:
+            replay_sequence.append((candle, 10080, False))
+        for candle in candles_1d:
+            replay_sequence.append((candle, 1440, False))
+        for candle in candles_trading:
+            replay_sequence.append((candle, 240, True))
+
+        replay_sequence.sort(key=lambda item: (item[0].timestamp, -item[1]))
+        return replay_sequence
+
+    async def _create_grok_grid_strategy(self):
+        """Instantiate the real ATR-adaptive grid strategy for faithful replay."""
+        from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+        from krakenbot.strategies.grok_grid_atr_adaptive_v4 import GrokGridATRAdaptiveV4
+
+        analyzer = MultiTimeframeAnalyzer()
+        strategy = GrokGridATRAdaptiveV4(
+            settings=self.settings,
+            event_bus=self.event_bus,
+            db_manager=self.db_manager,
+            bot_id=self._strategy_bot_id,
+            strategy_params=self._strategy_params,
+            analyzer=analyzer,
+        )
+        strategy._skip_db_sync = True
+        strategy._running = True
+        return strategy, analyzer
+
+    def _get_grok_grid_pending_orders(self, strategy: Any) -> list[dict[str, Any]]:
+        """Return pending buy levels plus paired sell targets for open positions."""
+        pending_orders: list[dict[str, Any]] = []
+
+        for key, level in strategy._grid_levels.items():
+            if level.status != "pending" or level.side != "buy":
+                continue
+            pending_orders.append(
+                {
+                    "order_id": key,
+                    "side": "buy",
+                    "price": level.price,
+                    "amount_usdc": level.amount_usdc,
+                    "level": level,
+                }
+            )
+
+        for position in strategy.open_positions:
+            pending_orders.append(
+                {
+                    "order_id": f"sell_pos_{position.position_id}",
+                    "side": "sell",
+                    "price": position.sell_level,
+                    "amount_btc": position.amount_btc,
+                    "position_id": position.position_id,
+                }
+            )
+
+        return pending_orders
+
+    def _get_grok_grid_pending_order_ids(self, strategy: Any) -> set[str]:
+        """Return current pending order ids for order-placement accounting."""
+        return {order["order_id"] for order in self._get_grok_grid_pending_orders(strategy)}
+
+    def _mark_grok_grid_level_filled(self, strategy: Any, side: str, price: Decimal) -> None:
+        """Mark a matching grid level as filled when a simulated fill occurs."""
+        if side == "buy":
+            level = strategy._grid_levels.get(f"buy_{price}")
+            if level is not None:
+                level.status = "filled"
+            return
+
+        for level in strategy._grid_levels.values():
+            if (
+                level.side == side
+                and level.status == "pending"
+                and abs(level.price - price) < Decimal("1")
+            ):
+                level.status = "filled"
+                break
+
+    async def _process_grok_grid_buy_fill(
+        self, strategy: Any, order: dict[str, Any], candle: OHLCData
+    ) -> None:
+        """Process a grok ATR-grid BUY fill through the real strategy lifecycle."""
+        fill_price = order["price"]
+        amount_usdc = order["amount_usdc"]
+        if self.usdc_balance < amount_usdc:
+            return
+
+        fee = amount_usdc * Decimal("0.0016")
+        net_usdc = amount_usdc - fee
+        btc_bought = net_usdc / fill_price
+
+        self.usdc_balance -= amount_usdc
+        self.btc_held += btc_bought
+        self.total_fees += fee
+        self._mark_grok_grid_level_filled(strategy, "buy", fill_price)
+
+        self.metrics.trades.append(
+            BacktestTrade(
+                timestamp=candle.timestamp,
+                side=TradeSide.BUY,
+                price=fill_price,
+                amount_usdc=amount_usdc,
+                amount_crypto=btc_bought,
+                fee=fee,
+            )
+        )
+
+        strategy._current_timestamp = candle.timestamp
+        await strategy.on_trade_filled(
+            trade_id=f"grid-buy-{candle.timestamp.isoformat()}-{fill_price}",
+            pair=candle.pair,
+            side="buy",
+            amount=btc_bought,
+            price=fill_price,
+            fee=fee,
+            reference_price=None,
+            position_id=None,
+        )
+        self.total_orders_placed += 1
+
+    async def _process_grok_grid_sell_fill(
+        self, strategy: Any, order: dict[str, Any], candle: OHLCData
+    ) -> None:
+        """Process a grok ATR-grid SELL fill through the real strategy lifecycle."""
+        fill_price = order["price"]
+        amount_btc = order["amount_btc"]
+        if self.btc_held < amount_btc:
+            return
+
+        gross_usdc = amount_btc * fill_price
+        fee = gross_usdc * Decimal("0.0016")
+        net_usdc = gross_usdc - fee
+        self.btc_held -= amount_btc
+        self.usdc_balance += net_usdc
+        self.total_fees += fee
+        self._mark_grok_grid_level_filled(strategy, "sell", fill_price)
+
+        matched_position = None
+        for position in strategy.open_positions:
+            if position.position_id == order["position_id"]:
+                matched_position = position
+                break
+        if matched_position is None:
+            return
+
+        cost_basis = matched_position.amount_btc * matched_position.entry_price
+        pnl = net_usdc - cost_basis
+        self.grid_profit += pnl
+        self.metrics.total_pnl += pnl
+        self.pairs_completed += 1
+        if pnl > 0:
+            self.metrics.winning_trades += 1
+        else:
+            self.metrics.losing_trades += 1
+
+        self.metrics.trades.append(
+            BacktestTrade(
+                timestamp=candle.timestamp,
+                side=TradeSide.SELL,
+                price=fill_price,
+                amount_usdc=gross_usdc,
+                amount_crypto=amount_btc,
+                fee=fee,
+                pnl=pnl,
+            )
+        )
+
+        strategy._current_timestamp = candle.timestamp
+        await strategy.on_trade_filled(
+            trade_id=f"grid-sell-{candle.timestamp.isoformat()}-{fill_price}",
+            pair=candle.pair,
+            side="sell",
+            amount=amount_btc,
+            price=fill_price,
+            fee=fee,
+            reference_price=None,
+            position_id=order["position_id"],
+        )
+        self.total_orders_placed += 1
 
     def _initialize_grid(self, current_price: Decimal) -> None:
         """Initialize the grid around the current price."""
@@ -1937,8 +2179,9 @@ class GridBacktester:
             period=f"{start_time.date()} to {end_time.date()}",
         )
 
-        # For grid_adaptive: load MTF candles and create analyzer
+        # For MTF grid variants, load higher timeframe context candles
         analyzer = None
+        strategy = None
         replay_sequence: list[tuple[OHLCData, int, bool]] = []
 
         if self.strategy_name == "grid_adaptive":
@@ -1959,12 +2202,60 @@ class GridBacktester:
 
             # Sort by timestamp, higher intervals first on ties
             replay_sequence.sort(key=lambda x: (x[0].timestamp, -x[1]))
+        elif self.strategy_name == "grok_grid_atr_adaptive_v4":
+            strategy, analyzer = await self._create_grok_grid_strategy()
+            replay_sequence = await self._build_grok_grid_replay_sequence(
+                pair, start_time, end_time, candles
+            )
         else:
             replay_sequence = [(c, self.candle_interval, True) for c in candles]
 
         # Replay
         for candle, interval, is_tradeable in replay_sequence:
             current_price = candle.close
+
+            if self.strategy_name == "grok_grid_atr_adaptive_v4":
+                assert analyzer is not None
+                assert strategy is not None
+
+                if is_tradeable:
+                    pending_orders = self._get_grok_grid_pending_orders(strategy)
+                    filled_buys = [
+                        order
+                        for order in pending_orders
+                        if order["side"] == "buy" and candle.low <= order["price"]
+                    ]
+                    filled_sells = [
+                        order
+                        for order in pending_orders
+                        if order["side"] == "sell" and candle.high >= order["price"]
+                    ]
+                    for order in filled_buys:
+                        await self._process_grok_grid_buy_fill(strategy, order, candle)
+                    for order in filled_sells:
+                        await self._process_grok_grid_sell_fill(strategy, order, candle)
+
+                analyzer.update(self._make_ohlc_payload(candle, interval), interval)
+
+                if not is_tradeable:
+                    continue
+
+                old_center = strategy._grid_center
+                old_spacing = strategy._grid_spacing
+                before_ids = self._get_grok_grid_pending_order_ids(strategy)
+
+                await strategy._handle_ohlc(self._make_ohlc_payload(candle, interval))
+
+                after_ids = self._get_grok_grid_pending_order_ids(strategy)
+                self.total_orders_placed += len(after_ids - before_ids)
+                if old_center is not None and (
+                    strategy._grid_center != old_center or strategy._grid_spacing != old_spacing
+                ):
+                    self.rebalance_count += 1
+
+                equity = self.usdc_balance + self.btc_held * current_price
+                self.equity_curve.append((candle.timestamp, equity))
+                continue
 
             # Feed analyzer (for grid_adaptive ATR)
             if analyzer is not None:
@@ -2045,17 +2336,13 @@ class GridBacktester:
         self, pair: str, start_time: datetime, end_time: datetime
     ) -> list[OHLCData]:
         """Load OHLC candles from database."""
-        async with self.db_manager.session() as session:
-            stmt = (
-                select(OHLCData)
-                .where(OHLCData.pair == pair)
-                .where(OHLCData.interval == self.candle_interval)
-                .where(OHLCData.timestamp >= start_time)
-                .where(OHLCData.timestamp <= end_time)
-                .order_by(OHLCData.timestamp.asc())
-            )
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
+        return await _load_candles_chunked(
+            self.db_manager,
+            pair,
+            self.candle_interval,
+            start_time,
+            end_time,
+        )
 
     async def _load_candles_for_interval(
         self, pair: str, interval: int, start_time: datetime, end_time: datetime
