@@ -11,7 +11,7 @@ Usage:
     python scripts/status.py
 
 Via SSH tunnel (from local machine):
-    ssh -L 5432:localhost:5432 user@server -N &
+    Forward the local port configured in DATABASE_URL to the remote Postgres port.
     python scripts/status.py
 """
 
@@ -23,15 +23,37 @@ from decimal import Decimal
 import os
 import sys
 
+from dotenv import load_dotenv
+
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
+# Load .env before reading DATABASE_URL
+load_dotenv()
+
 from sqlalchemy import func, select, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
 from krakenbot.models.market_data import OHLCData
 from krakenbot.models.trades import BotState, Trade
+
+
+def _describe_database_endpoint(database_url: str) -> str:
+    """Return a concise host:port/database description for logs."""
+    url = make_url(database_url)
+    host = url.host or "localhost"
+    port = url.port or 5432
+    database = url.database or "postgres"
+    return f"{host}:{port}/{database}"
+
+
+def _tunnel_hint(database_url: str) -> str:
+    """Return SSH tunnel guidance aligned with DATABASE_URL."""
+    url = make_url(database_url)
+    port = url.port or 5432
+    return f"  2. SSH tunnel not active (forward local port {port} to the remote Postgres port)"
 
 
 async def get_status() -> None:
@@ -46,7 +68,7 @@ async def get_status() -> None:
     print("🤖 KRAKENBOT STATUS CHECK")
     print("=" * 60)
     print(f"📅 Time: {datetime.now(UTC).strftime('%Y-%m-%d %H:%M:%S')} UTC")
-    print(f"🔗 Database: {database_url.split('@')[1] if '@' in database_url else database_url}")
+    print(f"🔗 Database: {_describe_database_endpoint(database_url)}")
     print()
 
     try:
@@ -187,7 +209,7 @@ async def get_status() -> None:
         print()
         print("Possible issues:")
         print("  1. Database not running (docker compose up -d)")
-        print("  2. SSH tunnel not active (ssh -L 5432:localhost:5432 user@server -N)")
+        print(_tunnel_hint(database_url))
         print("  3. Wrong DATABASE_URL environment variable")
         sys.exit(1)
 

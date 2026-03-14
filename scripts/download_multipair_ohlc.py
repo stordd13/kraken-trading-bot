@@ -14,12 +14,12 @@ Usage:
 """
 
 import asyncio
-import os
-import sys
-import time
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+import os
 from pathlib import Path
+import sys
+import time
 
 import ccxt
 
@@ -27,10 +27,10 @@ import ccxt
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-import structlog
 from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+import structlog
 
 from krakenbot.models.market_data import OHLCData
 
@@ -40,25 +40,36 @@ logger = structlog.get_logger()
 
 # (pair stored in DB, Binance symbol to fetch, earliest start, note)
 DOWNLOAD_CONFIG = [
-    ("ETH/USDC", "ETH/USDT", datetime(2017, 8, 17, tzinfo=UTC), "Binance ETH/USDT → DB as ETH/USDC"),
-    ("SOL/USDC", "SOL/USDT", datetime(2020, 8, 11, tzinfo=UTC), "Binance SOL/USDT → DB as SOL/USDC"),
+    (
+        "ETH/USDC",
+        "ETH/USDT",
+        datetime(2017, 8, 17, tzinfo=UTC),
+        "Binance ETH/USDT → DB as ETH/USDC",
+    ),
+    (
+        "SOL/USDC",
+        "SOL/USDT",
+        datetime(2020, 8, 11, tzinfo=UTC),
+        "Binance SOL/USDT → DB as SOL/USDC",
+    ),
 ]
 
 # Intervals: 1h, 4h, 1d, 1w
 INTERVALS = {
-    60:    "1h",
-    240:   "4h",
-    1440:  "1d",
+    60: "1h",
+    240: "4h",
+    1440: "1d",
     10080: "1w",
 }
 
-BATCH_SIZE = 500
+BATCH_SIZE = 50
 RATE_LIMIT_SECONDS = 0.35  # Binance allows ~1200 req/min, be conservative
 MAX_RETRIES = 3
 CANDLES_PER_REQUEST = 1000  # Binance max
 
 
 # ─── DB helpers ──────────────────────────────────────────────────────────
+
 
 async def get_db_session_factory() -> async_sessionmaker[AsyncSession]:
     """Create async DB engine and session factory."""
@@ -117,35 +128,29 @@ async def save_batch(
         return 0
 
     async with session_factory() as session:
-        for c in candles:
-            stmt = (
-                pg_insert(OHLCData)
-                .values(
-                    timestamp=c["timestamp"],
-                    pair=c["pair"],
-                    interval=c["interval"],
-                    open=c["open"],
-                    high=c["high"],
-                    low=c["low"],
-                    close=c["close"],
-                    volume=c["volume"],
-                )
-                .on_conflict_do_nothing(
-                    index_elements=["timestamp", "pair", "interval"],
-                )
+        stmt = (
+            pg_insert(OHLCData)
+            .values(candles)
+            .on_conflict_do_nothing(
+                index_elements=["timestamp", "pair", "interval"],
             )
-            await session.execute(stmt)
+            .returning(OHLCData.timestamp)
+        )
+        result = await session.execute(stmt)
         await session.commit()
-    return len(candles)
+    return len(result.scalars().all())
 
 
 # ─── Download logic ──────────────────────────────────────────────────────
 
+
 def create_exchange() -> ccxt.binance:
     """Create ccxt Binance exchange (no API key needed for public data)."""
-    return ccxt.binance({
-        "enableRateLimit": False,  # We handle rate limiting manually
-    })
+    return ccxt.binance(
+        {
+            "enableRateLimit": False,  # We handle rate limiting manually
+        }
+    )
 
 
 def download_pair_interval_sync(
@@ -192,7 +197,7 @@ def download_pair_interval_sync(
             except (ccxt.NetworkError, ccxt.ExchangeNotAvailable) as e:
                 retry += 1
                 logger.warning("fetch_retry", retry=retry, error=str(e))
-                time.sleep(2 ** retry)
+                time.sleep(2**retry)
             except ccxt.ExchangeError as e:
                 logger.warning("pair_not_available", ccxt_symbol=ccxt_symbol, error=str(e))
                 return all_candles
@@ -205,20 +210,22 @@ def download_pair_interval_sync(
             break
 
         # Parse candles
-        for ts_ms, o, h, l, c, v in candles_raw:
+        for ts_ms, o, h, low, c, v in candles_raw:
             ts = datetime.fromtimestamp(ts_ms / 1000, tz=UTC)
             if ts >= now:
                 continue
-            all_candles.append({
-                "timestamp": ts,
-                "pair": pair_db,
-                "interval": interval_min,
-                "open": Decimal(str(o)),
-                "high": Decimal(str(h)),
-                "low": Decimal(str(l)),
-                "close": Decimal(str(c)),
-                "volume": Decimal(str(v)),
-            })
+            all_candles.append(
+                {
+                    "timestamp": ts,
+                    "pair": pair_db,
+                    "interval": interval_min,
+                    "open": Decimal(str(o)),
+                    "high": Decimal(str(h)),
+                    "low": Decimal(str(low)),
+                    "close": Decimal(str(c)),
+                    "volume": Decimal(str(v)),
+                }
+            )
 
         # Progress
         last_ts = datetime.fromtimestamp(candles_raw[-1][0] / 1000, tz=UTC)
@@ -262,17 +269,20 @@ async def get_data_summary(
                 result = await session.execute(stmt)
                 count = result.scalar() or 0
 
-            summary.append({
-                "pair": pair_db,
-                "interval": tf_label,
-                "count": count,
-                "first": first_ts,
-                "last": last_ts,
-            })
+            summary.append(
+                {
+                    "pair": pair_db,
+                    "interval": tf_label,
+                    "count": count,
+                    "first": first_ts,
+                    "last": last_ts,
+                }
+            )
     return summary
 
 
 # ─── Main ────────────────────────────────────────────────────────────────
+
 
 async def main() -> None:
     """Download all configured pairs and intervals."""

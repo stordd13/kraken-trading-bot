@@ -16,8 +16,8 @@ Usage:
     # Or with custom port
     python scripts/dashboard.py --port 8051
 
-    # With SSH tunnel (from Mac to Hetzner)
-    ssh -L 5432:localhost:5432 bruno@<IP> -N &
+    # With SSH tunnel (local forwarded port must match DATABASE_URL)
+    # Example: autossh -L 5433:localhost:5432 ...
     python scripts/dashboard.py
 """
 
@@ -41,6 +41,7 @@ import dash_bootstrap_components as dbc
 import pandas as pd
 import plotly.graph_objects as go
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -129,20 +130,94 @@ DATABASE_URL = os.environ.get(
     "DATABASE_URL", "postgresql://krakenbot:bruno@localhost:5432/krakenbot"
 ).replace("+asyncpg", "")  # Use sync driver for Dash
 
+
+def _trade_scope_filter(*, alias: str = "", exclude_backtests: bool = True) -> str:
+    """Build a trade scope filter for SQL queries."""
+    prefix = f"{alias}." if alias else ""
+    conditions: list[str] = []
+
+    if exclude_backtests:
+        conditions.append(f"COALESCE({prefix}strategy, '') NOT LIKE 'backtest_%'")
+
+    return " AND ".join(conditions) if conditions else "1=1"
+
+
+def _describe_database_endpoint(database_url: str) -> str:
+    """Return a concise host:port/database description for logs."""
+    url = make_url(database_url)
+    host = url.host or "localhost"
+    port = url.port or 5432
+    database = url.database or "postgres"
+    return f"{host}:{port}/{database}"
+
+
+def _dashboard_tunnel_hint(database_url: str) -> str:
+    """Return SSH tunnel guidance aligned with DATABASE_URL."""
+    url = make_url(database_url)
+    port = url.port or 5432
+    return (
+        f"    -> Start the SSH tunnel that forwards local port {port} "
+        "to the remote Postgres port, then retry"
+    )
+
+
 # Create sync engine
 engine = create_engine(DATABASE_URL)
+
+
+def _read_sql(query: str, params: dict | None = None) -> pd.DataFrame:
+    """Execute a SQL query through SQLAlchemy text() for pandas compatibility."""
+    return pd.read_sql(text(query), engine, params=params)
+
+
+def _expected_candle_count(hours: int, interval: int) -> int:
+    """Return the expected number of candles for a window."""
+    return max(1, (hours * 60) // interval)
+
+
+def _candidate_chart_intervals(hours: int) -> list[int]:
+    """Return chart intervals to try, in preferred order."""
+    if hours <= 6:
+        return [1, 5, 15]
+    if hours <= 24:
+        return [1, 5, 15]
+    if hours <= 72:
+        return [15, 5, 1, 60]
+    return [60, 15, 5]
+
+
+def _apply_missing_candle_rangebreaks(
+    fig: go.Figure, timestamps: pd.Series, interval_min: int, has_regime: bool
+) -> None:
+    """Compress missing-candle gaps so sparse data remains readable."""
+    if timestamps.empty or len(timestamps) < 2:
+        return
+
+    ts = pd.to_datetime(timestamps, utc=True).sort_values()
+    expected = pd.date_range(start=ts.iloc[0], end=ts.iloc[-1], freq=f"{interval_min}min")
+    missing = expected.difference(pd.DatetimeIndex(ts))
+
+    if missing.empty or len(missing) > 1500:
+        return
+
+    rangebreaks = [{"values": missing.to_pydatetime().tolist()}]
+
+    if has_regime:
+        fig.update_xaxes(rangebreaks=rangebreaks, row=1, col=1)
+        fig.update_xaxes(rangebreaks=rangebreaks, row=2, col=1)
+    else:
+        fig.update_xaxes(rangebreaks=rangebreaks)
+
 
 # Test DB connection at startup
 try:
     with engine.connect() as conn:
         conn.execute(text("SELECT 1")).fetchone()
-    _db_host = DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL
-    print(f"  DB connection OK ({_db_host})")
+    print(f"  DB connection OK ({_describe_database_endpoint(DATABASE_URL)})")
 except Exception as _e:
-    _db_host = DATABASE_URL.split("@")[-1] if "@" in DATABASE_URL else DATABASE_URL
     print(f"  DB connection FAILED: {_e}")
-    print(f"    URL: {_db_host}")
-    print("    -> Launch SSH tunnel first: tunnel_ssh_hetzner")
+    print(f"    URL: {_describe_database_endpoint(DATABASE_URL)}")
+    print(_dashboard_tunnel_hint(DATABASE_URL))
     sys.exit(1)
 
 # Global state for background backtest execution
@@ -242,15 +317,14 @@ def fetch_bot_state() -> dict | None:
     Returns aggregated metrics:
     - active_instances: count of running bots
     - total_position: sum of all position sizes
-    - total_daily_pnl: today's realized P&L from trades_history
+    - total_daily_pnl: today's realized runtime/paper P&L from trades_history
     - total_pnl: sum of total P&L across instances
-    - total_trades_today: today's trade count from trades_history
+    - total_trades_today: today's runtime/paper trade count from trades_history
     """
     bot_query = """
     SELECT
         COUNT(DISTINCT bot_id) as active_instances,
         COALESCE(SUM(position_size), 0) as total_position,
-        COALESCE(SUM(total_pnl), 0) as total_pnl,
         MAX(updated_at) as last_updated,
         MAX(last_trade_at) as last_trade_at,
         STRING_AGG(DISTINCT status, ', ') as statuses
@@ -264,24 +338,34 @@ def fetch_bot_state() -> dict | None:
         COUNT(*) as today_trades
     FROM trades_history
     WHERE DATE(timestamp AT TIME ZONE 'UTC') = CURRENT_DATE
-      AND status = 'filled'
+      AND UPPER(CAST(status AS TEXT)) = 'FILLED'
+      AND COALESCE(strategy, '') NOT LIKE 'backtest_%'
+    """
+    total_pnl_query = """
+    SELECT
+        COALESCE(SUM(CASE WHEN pnl IS NOT NULL THEN pnl ELSE 0 END), 0) as total_pnl
+    FROM trades_history
+    WHERE UPPER(CAST(status AS TEXT)) = 'FILLED'
+      AND COALESCE(strategy, '') NOT LIKE 'backtest_%'
     """
     try:
-        df = pd.read_sql(bot_query, engine)
+        df = _read_sql(bot_query)
         if df.empty:
             return None
         result = df.iloc[0].to_dict()
 
-        # Get real today's P&L and trades from trades_history
-        today_df = pd.read_sql(today_query, engine)
+        # Get realized runtime/paper P&L directly from trade history
+        today_df = _read_sql(today_query)
+        total_df = _read_sql(total_pnl_query)
         today_pnl = float(today_df.iloc[0]["today_pnl"]) if not today_df.empty else 0.0
         today_trades = int(today_df.iloc[0]["today_trades"]) if not today_df.empty else 0
+        total_pnl = float(total_df.iloc[0]["total_pnl"]) if not total_df.empty else 0.0
 
         # Convert numpy types to Python types
         result["active_instances"] = int(result.get("active_instances") or 0)
         result["total_position"] = float(result.get("total_position") or 0)
         result["total_daily_pnl"] = today_pnl
-        result["total_pnl"] = float(result.get("total_pnl") or 0)
+        result["total_pnl"] = total_pnl
         result["total_trades_today"] = today_trades
         return result
     except Exception as e:
@@ -291,14 +375,7 @@ def fetch_bot_state() -> dict | None:
 
 def get_optimal_interval(hours: int) -> int:
     """Select optimal candle interval based on timeframe to avoid gaps."""
-    if hours <= 6:
-        return 1
-    elif hours <= 24:
-        return 5
-    elif hours <= 72:
-        return 15
-    else:
-        return 60
+    return _candidate_chart_intervals(hours)[0]
 
 
 def fetch_ohlc_data(pair: str = "XBT/USDC", hours: int = 24, interval: int = 1) -> pd.DataFrame:
@@ -312,15 +389,35 @@ def fetch_ohlc_data(pair: str = "XBT/USDC", hours: int = 24, interval: int = 1) 
     ORDER BY timestamp ASC
     """
     try:
-        df = pd.read_sql(
-            text(query.replace(":hours", str(hours))),
-            engine,
-            params={"pair": pair, "interval": interval},
+        return _read_sql(
+            query.replace(":hours", str(hours)), params={"pair": pair, "interval": interval}
         )
-        return df
     except Exception as e:
         print(f"Error fetching OHLC: {e}")
         return pd.DataFrame()
+
+
+def fetch_best_ohlc_data(
+    pair: str = "XBT/USDC", hours: int = 24
+) -> tuple[pd.DataFrame, int, float]:
+    """Fetch the best available OHLC interval for the requested chart window."""
+    best_df = pd.DataFrame()
+    best_interval = get_optimal_interval(hours)
+    best_coverage = -1.0
+
+    for interval in _candidate_chart_intervals(hours):
+        df = fetch_ohlc_data(pair=pair, hours=hours, interval=interval)
+        coverage = len(df) / _expected_candle_count(hours, interval)
+
+        if coverage > best_coverage:
+            best_df = df
+            best_interval = interval
+            best_coverage = coverage
+
+        if coverage >= 0.7:
+            break
+
+    return best_df, best_interval, max(best_coverage, 0.0)
 
 
 def fetch_recent_trades(limit: int = 20, strategy_filter: str | None = None) -> pd.DataFrame:
@@ -330,7 +427,7 @@ def fetch_recent_trades(limit: int = 20, strategy_filter: str | None = None) -> 
         limit: Maximum rows to return.
         strategy_filter: Filter by strategy/bot_id. None or "all" = no filter.
     """
-    conditions = ["t.strategy NOT LIKE 'backtest_%'"]
+    conditions = [_trade_scope_filter(alias="t")]
     params: dict = {}
 
     if strategy_filter and strategy_filter != "all":
@@ -368,19 +465,21 @@ def fetch_recent_trades(limit: int = 20, strategy_filter: str | None = None) -> 
 
 
 def fetch_stats() -> dict:
-    """Fetch overall statistics."""
+    """Fetch dashboard statistics with runtime and backtest scopes separated."""
     stats = {}
 
     try:
         # OHLC stats
         result = pd.read_sql(
-            """
+            text(
+                """
             SELECT
                 COUNT(*) as total_candles,
                 MIN(timestamp) as first_candle,
                 MAX(timestamp) as last_candle
             FROM market_data_ohlc
-        """,
+        """
+            ),
             engine,
         )
         if not result.empty:
@@ -388,23 +487,48 @@ def fetch_stats() -> dict:
             stats["first_candle"] = result.iloc[0]["first_candle"]
             stats["last_candle"] = result.iloc[0]["last_candle"]
 
-        # Trade stats
-        result = pd.read_sql(
-            """
+        # Runtime/paper trading stats (exclude persisted backtests)
+        runtime_trade_query = f"""
             SELECT
                 COUNT(*) as total_trades,
                 SUM(CASE WHEN side = 'buy' THEN 1 ELSE 0 END) as buys,
                 SUM(CASE WHEN side = 'sell' THEN 1 ELSE 0 END) as sells,
                 COALESCE(SUM(pnl), 0) as total_pnl
             FROM trades_history
-        """,
-            engine,
+            WHERE {_trade_scope_filter()}
+        """
+        result = _read_sql(
+            runtime_trade_query.replace(
+                "side = 'buy'", "UPPER(CAST(side AS TEXT)) = 'BUY'"
+            ).replace("side = 'sell'", "UPPER(CAST(side AS TEXT)) = 'SELL'")
         )
         if not result.empty:
             stats["total_trades"] = int(result.iloc[0]["total_trades"])
             stats["total_buys"] = int(result.iloc[0]["buys"] or 0)
             stats["total_sells"] = int(result.iloc[0]["sells"] or 0)
             stats["total_pnl"] = float(result.iloc[0]["total_pnl"] or 0)
+
+        # Backtests are shown separately to avoid polluting runtime metrics
+        backtest_result = pd.read_sql(
+            text(
+                """
+            SELECT
+                COUNT(*) as total_backtest_runs,
+                COALESCE(SUM(total_trades), 0) as total_backtest_trades,
+                COALESCE(SUM(net_pnl), 0) as total_backtest_pnl,
+                MAX(created_at) as last_backtest_at
+            FROM backtest_runs
+            """
+            ),
+            engine,
+        )
+        if not backtest_result.empty:
+            stats["total_backtest_runs"] = int(backtest_result.iloc[0]["total_backtest_runs"])
+            stats["total_backtest_trades"] = int(
+                backtest_result.iloc[0]["total_backtest_trades"] or 0
+            )
+            stats["total_backtest_pnl"] = float(backtest_result.iloc[0]["total_backtest_pnl"] or 0)
+            stats["last_backtest_at"] = backtest_result.iloc[0]["last_backtest_at"]
 
     except Exception as e:
         print(f"Error fetching stats: {e}")
@@ -425,7 +549,7 @@ def execute_custom_query(query: str) -> tuple[pd.DataFrame | None, str | None]:
 
         # SELECT queries - always allowed
         if query_upper.startswith("SELECT"):
-            df = pd.read_sql(query, engine)
+            df = _read_sql(query)
             return df, None
 
         # DELETE queries - restricted to backtest data
@@ -529,7 +653,7 @@ def fetch_backtest_runs() -> pd.DataFrame:
     LIMIT 20
     """
     try:
-        return pd.read_sql(query, engine)
+        return _read_sql(query)
     except Exception as e:
         print(f"Error fetching backtest runs: {e}")
         return pd.DataFrame()
@@ -549,7 +673,7 @@ def fetch_data_range_stats() -> dict:
     ORDER BY interval
     """
     try:
-        df = pd.read_sql(query, engine)
+        df = _read_sql(query)
         if df.empty:
             return {
                 "intervals": [],
@@ -596,10 +720,7 @@ def compute_market_regime(hours: int = 168) -> pd.DataFrame:
     ORDER BY timestamp ASC
     """
     try:
-        df = pd.read_sql(
-            text(query.replace(":hours", str(total_hours))),
-            engine,
-        )
+        df = _read_sql(query.replace(":hours", str(total_hours)))
         if df.empty or len(df) < 50:
             return pd.DataFrame()
 
@@ -656,7 +777,7 @@ def fetch_bot_states_per_strategy() -> pd.DataFrame:
     ORDER BY strategy, bot_id
     """
     try:
-        return pd.read_sql(query, engine)
+        return _read_sql(query)
     except Exception as e:
         print(f"Error fetching per-strategy bot states: {e}")
         return pd.DataFrame()
@@ -687,7 +808,7 @@ def fetch_orders(strategy_filter: str | None = None, limit: int = 50) -> pd.Data
     else:
         base_query += f" ORDER BY created_at DESC LIMIT {limit}"
         try:
-            return pd.read_sql(base_query, engine)
+            return _read_sql(base_query)
         except Exception as e:
             print(f"Error fetching orders: {e}")
             return pd.DataFrame()
@@ -703,10 +824,20 @@ def fetch_distinct_strategies() -> list[dict]:
     SELECT DISTINCT bot_id, strategy
     FROM open_positions
     WHERE bot_id IS NOT NULL
+    UNION
+    SELECT DISTINCT bot_id, strategy
+    FROM orders
+    WHERE bot_id IS NOT NULL
+      AND COALESCE(strategy, '') NOT LIKE 'backtest_%'
+    UNION
+    SELECT DISTINCT strategy as bot_id, strategy
+    FROM trades_history
+    WHERE strategy IS NOT NULL
+      AND COALESCE(strategy, '') NOT LIKE 'backtest_%'
     ORDER BY strategy, bot_id
     """
     try:
-        df = pd.read_sql(query, engine)
+        df = _read_sql(query)
         options = [{"label": "All Strategies", "value": "all"}]
         for _, row in df.iterrows():
             bot_id = row["bot_id"]
@@ -847,6 +978,8 @@ def create_candlestick_chart(
     trades_df: pd.DataFrame = None,
     positions_df: pd.DataFrame = None,
     regime_df: pd.DataFrame = None,
+    interval_min: int = 1,
+    coverage: float | None = None,
 ) -> go.Figure:
     """Create candlestick chart with trades overlay, position levels, and regime subplot."""
     from plotly.subplots import make_subplots
@@ -1009,11 +1142,23 @@ def create_candlestick_chart(
 
     chart_height = 520 if has_regime else 450
 
+    _apply_missing_candle_rangebreaks(
+        fig,
+        df["timestamp"] if not df.empty else pd.Series(dtype="datetime64[ns, UTC]"),
+        interval_min,
+        has_regime,
+    )
+
+    title_text = f"XBT/USDC chart ({interval_min}m candles)"
+    if coverage is not None:
+        title_text += f" | coverage {coverage * 100:.0f}%"
+
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         height=chart_height,
+        title={"text": title_text, "x": 0.01, "xanchor": "left", "font": {"size": 14}},
         margin={"l": 50, "r": 50, "t": 30, "b": 50},
         xaxis_rangeslider_visible=False,
         xaxis={"gridcolor": "rgba(255,255,255,0.1)"},
@@ -1948,12 +2093,18 @@ def update_strategy_filters(n_intervals, n_clicks):
 def update_chart(n_intervals, n_clicks, hours):
     """Update price chart with market regime subplot."""
     hours = int(hours) if hours else 24
-    interval = get_optimal_interval(hours)
-    df = fetch_ohlc_data(hours=hours, interval=interval)
+    df, interval, coverage = fetch_best_ohlc_data(hours=hours)
     trades_df = fetch_recent_trades(limit=50)
     positions_df = fetch_open_positions()
     regime_df = compute_market_regime(hours=max(hours, 48))
-    return create_candlestick_chart(df, trades_df, positions_df, regime_df)
+    return create_candlestick_chart(
+        df,
+        trades_df,
+        positions_df,
+        regime_df,
+        interval_min=interval,
+        coverage=coverage,
+    )
 
 
 @callback(
@@ -2403,6 +2554,10 @@ def update_stats(n_intervals, n_clicks):
     """Update statistics tab with data range info."""
     stats = fetch_stats()
     data_range = fetch_data_range_stats()
+    last_backtest_at = stats.get("last_backtest_at")
+    last_backtest_label = (
+        last_backtest_at.strftime("%Y-%m-%d %H:%M") if pd.notna(last_backtest_at) else "—"
+    )
 
     # Create data range table
     intervals_data = data_range.get("intervals", [])
@@ -2495,7 +2650,7 @@ def update_stats(n_intervals, n_clicks):
                         [
                             dbc.Card(
                                 [
-                                    dbc.CardHeader("Trading"),
+                                    dbc.CardHeader("Runtime / Paper Trading"),
                                     dbc.CardBody(
                                         [
                                             html.P(f"Total trades: {stats.get('total_trades', 0)}"),
@@ -2505,6 +2660,33 @@ def update_stats(n_intervals, n_clicks):
                                             html.P(
                                                 f"Total P&L: {stats.get('total_pnl', 0):+.2f} USDC"
                                             ),
+                                            html.P("Backtests excluded from these numbers"),
+                                        ]
+                                    ),
+                                ]
+                            ),
+                        ],
+                        width=6,
+                    ),
+                    dbc.Col(
+                        [
+                            dbc.Card(
+                                [
+                                    dbc.CardHeader("Backtests"),
+                                    dbc.CardBody(
+                                        [
+                                            html.P(
+                                                f"Saved runs: {stats.get('total_backtest_runs', 0)}"
+                                            ),
+                                            html.P(
+                                                "Trades across runs: "
+                                                f"{stats.get('total_backtest_trades', 0)}"
+                                            ),
+                                            html.P(
+                                                "Combined net P&L: "
+                                                f"{stats.get('total_backtest_pnl', 0):+.2f} USDC"
+                                            ),
+                                            html.P(f"Last run: {last_backtest_label}"),
                                         ]
                                     ),
                                 ]
@@ -3428,7 +3610,11 @@ if __name__ == "__main__":
             pos_count = conn.execute(
                 text("SELECT COUNT(*) FROM open_positions WHERE status = 'OPEN'")
             ).scalar()
-        data_info = f"  Data: {trade_count} trades, {pos_count} open positions"
+            backtest_runs = conn.execute(text("SELECT COUNT(*) FROM backtest_runs")).scalar()
+        data_info = (
+            f"  Data: {trade_count} runtime/paper trades, {pos_count} open positions, "
+            f"{backtest_runs} backtest runs"
+        )
     except Exception:
         data_info = "  Data: could not query trades/positions"
 

@@ -57,8 +57,10 @@ SOURCE_SYMBOL = "BTC/USDT"
 # Binance returns max 1000 candles per request
 BINANCE_LIMIT = 1000
 
-# Batch size for DB inserts
-DB_BATCH_SIZE = 500
+# Batch size for DB inserts.
+# Keep this modest so one INSERT doesn't span too many TimescaleDB chunks,
+# which can exhaust max_locks_per_transaction on the remote server.
+DB_BATCH_SIZE = 50
 
 
 async def fetch_candles_from_binance(
@@ -175,64 +177,28 @@ async def save_candles_preserve_existing(
         batch = candles[i : i + DB_BATCH_SIZE]
 
         async with db_manager.session() as session:
-            for candle_data in batch:
-                stmt = (
-                    pg_insert(OHLCData)
-                    .values(
-                        timestamp=candle_data["timestamp"],
-                        pair=candle_data["pair"],
-                        interval=candle_data["interval"],
-                        open=candle_data["open"],
-                        high=candle_data["high"],
-                        low=candle_data["low"],
-                        close=candle_data["close"],
-                        volume=candle_data["volume"],
-                    )
-                    .on_conflict_do_nothing(
-                        index_elements=["timestamp", "pair", "interval"],
-                    )
+            stmt = (
+                pg_insert(OHLCData)
+                .values(batch)
+                .on_conflict_do_nothing(
+                    index_elements=["timestamp", "pair", "interval"],
                 )
-                result = await session.execute(stmt)
-                if result.rowcount > 0:
-                    total_inserted += 1
-
+                .returning(OHLCData.timestamp)
+            )
+            result = await session.execute(stmt)
+            inserted_rows = len(result.scalars().all())
             await session.commit()
+            total_inserted += inserted_rows
 
         logger.info(
             "batch_saved",
             batch_num=i // DB_BATCH_SIZE + 1,
             batch_size=len(batch),
+            inserted_rows=inserted_rows,
             total_inserted=total_inserted,
         )
 
     return len(candles), total_inserted
-
-
-async def get_existing_data_range(
-    db_manager: DatabaseManager,
-    pair: str,
-    interval: int,
-) -> tuple[datetime | None, datetime | None, int]:
-    """Get the existing data range for a pair/interval.
-
-    Returns:
-        Tuple of (earliest_timestamp, latest_timestamp, count).
-    """
-    from sqlalchemy import func, select
-
-    async with db_manager.session() as session:
-        stmt = (
-            select(
-                func.min(OHLCData.timestamp),
-                func.max(OHLCData.timestamp),
-                func.count(),
-            )
-            .where(OHLCData.pair == pair)
-            .where(OHLCData.interval == interval)
-        )
-        result = await session.execute(stmt)
-        row = result.one()
-        return row[0], row[1], row[2]
 
 
 async def import_interval(
@@ -257,9 +223,6 @@ async def import_interval(
     end_time = datetime.now(UTC)
     start_time = end_time - timedelta(days=days)
 
-    # Check existing data
-    earliest, latest, count = await get_existing_data_range(db_manager, TARGET_PAIR, interval)
-
     expected_candles = int(days * 24 * 60 / interval)
 
     logger.info(
@@ -272,24 +235,21 @@ async def import_interval(
         end=end_time.strftime("%Y-%m-%d"),
         days=days,
         expected_candles=expected_candles,
-        existing_candles=count,
-        existing_range=f"{earliest} → {latest}" if earliest else "none",
+        existing_stats="skipped_for_timescaledb_safety",
     )
 
     if dry_run:
-        gap = expected_candles - count
         logger.info(
             "dry_run_estimate",
             interval=interval,
             expected=expected_candles,
-            existing=count,
-            estimated_new=max(0, gap),
+            note="existing DB counts skipped to avoid large hypertable scans",
         )
         return {
             "interval": interval,
             "expected": expected_candles,
-            "existing": count,
-            "estimated_new": max(0, gap),
+            "existing": None,
+            "estimated_new": None,
             "fetched": 0,
             "inserted": 0,
         }
@@ -308,18 +268,15 @@ async def import_interval(
         return {
             "interval": interval,
             "expected": expected_candles,
-            "existing": count,
+            "existing": None,
             "fetched": 0,
             "inserted": 0,
         }
 
     # Save to DB (preserve existing)
     total_attempted, total_inserted = await save_candles_preserve_existing(db_manager, candles)
-
-    # Check new data range
-    new_earliest, new_latest, new_count = await get_existing_data_range(
-        db_manager, TARGET_PAIR, interval
-    )
+    imported_start = candles[0]["timestamp"]
+    imported_end = candles[-1]["timestamp"]
 
     logger.info(
         "import_complete",
@@ -327,18 +284,16 @@ async def import_interval(
         fetched=total_attempted,
         inserted=total_inserted,
         skipped=total_attempted - total_inserted,
-        new_total=new_count,
-        new_range=f"{new_earliest} → {new_latest}",
+        imported_range=f"{imported_start} → {imported_end}",
     )
 
     return {
         "interval": interval,
         "expected": expected_candles,
-        "existing_before": count,
         "fetched": total_attempted,
         "inserted": total_inserted,
         "skipped": total_attempted - total_inserted,
-        "total_after": new_count,
+        "total_after": None,
     }
 
 
@@ -428,13 +383,13 @@ async def main() -> None:
             print(f"\n  {tf} ({r['interval']}min):")
             if args.dry_run:
                 print(f"    Expected candles:  {r['expected']:,}")
-                print(f"    Existing candles:  {r['existing']:,}")
-                print(f"    Estimated new:     {r['estimated_new']:,}")
+                print("    Existing candles:  skipped (Timescale-safe mode)")
+                print("    Estimated new:     unknown until insert pass")
             else:
                 print(f"    Fetched from Binance:  {r['fetched']:,}")
                 print(f"    Inserted (new):        {r['inserted']:,}")
                 print(f"    Skipped (existing):    {r['skipped']:,}")
-                print(f"    Total in DB:           {r['total_after']:,}")
+                print("    Total in window:       not counted (Timescale-safe mode)")
 
         print("\n" + "=" * 60 + "\n")
 

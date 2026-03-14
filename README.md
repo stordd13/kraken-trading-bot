@@ -65,7 +65,9 @@ poetry run python -m krakenbot.collector
 poetry run python -m krakenbot
 
 # Dashboard (requires SSH tunnel to DB)
-ssh -L 5432:localhost:5432 bruno@<server-ip> -N &
+# Make the local forwarded port match DATABASE_URL.
+# Example if DATABASE_URL uses localhost:5433:
+# autossh -M 0 -f -N -L 5433:localhost:5432 bruno@<server-ip> -p <ssh-port>
 poetry run python scripts/dashboard.py
 # Open http://localhost:8050
 ```
@@ -78,7 +80,7 @@ Base config via `.env` file, strategy config via `strategies.yaml`:
 # .env — base settings
 KRAKEN_API_KEY=xxx
 KRAKEN_API_SECRET=xxx
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/krakenbot
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5433/krakenbot
 TRADING_MODE=paper          # paper | live
 TRADING_PAIR=XBT/USDC
 TRADING_DEFAULT_ORDER_AMOUNT_EUR=15.0
