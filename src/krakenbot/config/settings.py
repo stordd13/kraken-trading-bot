@@ -646,9 +646,7 @@ class Settings(BaseSettings):
                     f"global limit ({self.multi_strategy.global_daily_loss_limit_eur})"
                 )
 
-            router_errors, router_warnings = _validate_router_runtime_alignment(
-                self.multi_strategy
-            )
+            router_errors, router_warnings = _validate_router_runtime_alignment(self.multi_strategy)
             errors.extend(router_errors)
 
             settings_logger = logging.getLogger(__name__)

@@ -380,9 +380,7 @@ class KrakenBot:
 
         return active_configs
 
-    def _derive_router_inner_budget(
-        self, router_budget: Any, inner_config: dict[str, Any]
-    ) -> Any:
+    def _derive_router_inner_budget(self, router_budget: Any, inner_config: dict[str, Any]) -> Any:
         """Derive the effective risk budget for a router inner strategy."""
         overrides: dict[str, float | int] = {}
         params = inner_config.get("params")

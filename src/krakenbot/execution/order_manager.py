@@ -374,7 +374,9 @@ class OrderManager:
                 return
 
             paper_balance[quote_currency] = available - required
-            paper_balance[base_currency] = paper_balance.get(base_currency, Decimal("0")) + order.amount
+            paper_balance[base_currency] = (
+                paper_balance.get(base_currency, Decimal("0")) + order.amount
+            )
         else:
             available = paper_balance.get(base_currency, Decimal("0"))
             if available < order.amount:
@@ -388,7 +390,9 @@ class OrderManager:
                 return
 
             paper_balance[base_currency] = available - order.amount
-            paper_balance[quote_currency] = paper_balance.get(quote_currency, Decimal("0")) + value - fee
+            paper_balance[quote_currency] = (
+                paper_balance.get(quote_currency, Decimal("0")) + value - fee
+            )
 
         # Persist paper balance to DB
         await self._rest_client.persist_paper_balance()
