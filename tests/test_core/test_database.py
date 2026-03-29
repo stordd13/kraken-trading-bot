@@ -136,7 +136,7 @@ class TestSessionContextManager:
         manager._session_factory = mock_session_factory
         manager._initialized = True
 
-        async with manager.session() as session:
+        async with manager.session() as _session:
             pass  # Simulate successful operation
 
         mock_session.commit.assert_called_once()
@@ -153,7 +153,7 @@ class TestSessionContextManager:
         manager._initialized = True
 
         with pytest.raises(ValueError):
-            async with manager.session() as session:
+            async with manager.session() as _session:
                 raise ValueError("Test error")
 
         mock_session.rollback.assert_called_once()
@@ -169,7 +169,7 @@ class TestSessionContextManager:
         manager._session_factory = mock_session_factory
         manager._initialized = True
 
-        async with manager.read_session() as session:
+        async with manager.read_session() as _session:
             pass
 
         mock_session.commit.assert_not_called()

@@ -10,14 +10,11 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-import pytest
-
 from krakenbot.indicators.multi_timeframe import (
+    TF_TO_INTERVAL,
     MarketRegime,
     MultiTimeframeAnalyzer,
-    TF_TO_INTERVAL,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

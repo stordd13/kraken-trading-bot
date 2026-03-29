@@ -20,7 +20,6 @@ from krakenbot.strategies.grok_ema_adx_atr import GrokEMA27_125_ADX_ATR
 from krakenbot.strategies.grok_grid_atr_adaptive_v4 import GrokGridATRAdaptiveV4
 from krakenbot.strategies.grok_supertrend_4h import GrokSuperTrend4hRegime
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

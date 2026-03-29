@@ -58,9 +58,18 @@ class TestGetFeaturesDict:
         features = analyzer.get_features_dict("4h")
 
         expected_keys = {
-            "ema_spread", "rsi_14", "atr_ratio", "adx", "macd_hist_norm",
-            "bb_width", "bb_pctb", "supertrend_dist", "supertrend_dir",
-            "regime", "volume_ratio", "vwap_deviation",
+            "ema_spread",
+            "rsi_14",
+            "atr_ratio",
+            "adx",
+            "macd_hist_norm",
+            "bb_width",
+            "bb_pctb",
+            "supertrend_dist",
+            "supertrend_dir",
+            "regime",
+            "volume_ratio",
+            "vwap_deviation",
         }
         assert set(features.keys()) == expected_keys
 

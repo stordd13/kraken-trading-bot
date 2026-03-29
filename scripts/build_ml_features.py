@@ -167,9 +167,14 @@ async def _print_summary(
 
         # NULL percentage for key features
         feature_cols = [
-            "ema_spread_4h", "rsi_14_4h", "supertrend_dist_4h", "adx_4h",
-            "realized_vol_4h", "fear_greed_index",
-            "target_return_4h", "target_return_24h",
+            "ema_spread_4h",
+            "rsi_14_4h",
+            "supertrend_dist_4h",
+            "adx_4h",
+            "realized_vol_4h",
+            "fear_greed_index",
+            "target_return_4h",
+            "target_return_24h",
         ]
         if total > 0:
             print("    NULL % per feature:")

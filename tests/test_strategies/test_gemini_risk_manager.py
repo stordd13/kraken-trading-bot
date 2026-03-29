@@ -24,7 +24,6 @@ from krakenbot.strategies.gemini_global_risk_manager import (
     PriceSnapshot,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -506,53 +505,68 @@ class TestStrategyBudget:
 
     def test_within_budget_returns_true(self) -> None:
         rm = GeminiGlobalRiskManager()
-        assert rm.check_strategy_budget(
-            strategy_name="test",
-            order_size_usdc=Decimal("100"),
-            current_exposure_usdc=Decimal("400"),
-            total_capital=Decimal("10000"),
-            max_allocation_pct=Decimal("10"),  # 10% = 1000 USDC budget
-        ) is True
+        assert (
+            rm.check_strategy_budget(
+                strategy_name="test",
+                order_size_usdc=Decimal("100"),
+                current_exposure_usdc=Decimal("400"),
+                total_capital=Decimal("10000"),
+                max_allocation_pct=Decimal("10"),  # 10% = 1000 USDC budget
+            )
+            is True
+        )
 
     def test_over_budget_returns_false(self) -> None:
         rm = GeminiGlobalRiskManager()
-        assert rm.check_strategy_budget(
-            strategy_name="test",
-            order_size_usdc=Decimal("200"),
-            current_exposure_usdc=Decimal("900"),
-            total_capital=Decimal("10000"),
-            max_allocation_pct=Decimal("10"),  # budget = 1000, exposure would be 1100
-        ) is False
+        assert (
+            rm.check_strategy_budget(
+                strategy_name="test",
+                order_size_usdc=Decimal("200"),
+                current_exposure_usdc=Decimal("900"),
+                total_capital=Decimal("10000"),
+                max_allocation_pct=Decimal("10"),  # budget = 1000, exposure would be 1100
+            )
+            is False
+        )
 
     def test_exactly_at_budget_passes(self) -> None:
         rm = GeminiGlobalRiskManager()
-        assert rm.check_strategy_budget(
-            strategy_name="test",
-            order_size_usdc=Decimal("100"),
-            current_exposure_usdc=Decimal("900"),
-            total_capital=Decimal("10000"),
-            max_allocation_pct=Decimal("10"),  # budget = 1000, exposure = 1000
-        ) is True
+        assert (
+            rm.check_strategy_budget(
+                strategy_name="test",
+                order_size_usdc=Decimal("100"),
+                current_exposure_usdc=Decimal("900"),
+                total_capital=Decimal("10000"),
+                max_allocation_pct=Decimal("10"),  # budget = 1000, exposure = 1000
+            )
+            is True
+        )
 
     def test_zero_capital_returns_false(self) -> None:
         rm = GeminiGlobalRiskManager()
-        assert rm.check_strategy_budget(
-            strategy_name="test",
-            order_size_usdc=Decimal("100"),
-            current_exposure_usdc=Decimal("0"),
-            total_capital=Decimal("0"),
-            max_allocation_pct=Decimal("10"),
-        ) is False
+        assert (
+            rm.check_strategy_budget(
+                strategy_name="test",
+                order_size_usdc=Decimal("100"),
+                current_exposure_usdc=Decimal("0"),
+                total_capital=Decimal("0"),
+                max_allocation_pct=Decimal("10"),
+            )
+            is False
+        )
 
     def test_negative_capital_returns_false(self) -> None:
         rm = GeminiGlobalRiskManager()
-        assert rm.check_strategy_budget(
-            strategy_name="test",
-            order_size_usdc=Decimal("100"),
-            current_exposure_usdc=Decimal("0"),
-            total_capital=Decimal("-1000"),
-            max_allocation_pct=Decimal("10"),
-        ) is False
+        assert (
+            rm.check_strategy_budget(
+                strategy_name="test",
+                order_size_usdc=Decimal("100"),
+                current_exposure_usdc=Decimal("0"),
+                total_capital=Decimal("-1000"),
+                max_allocation_pct=Decimal("10"),
+            )
+            is False
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -593,11 +607,13 @@ class TestGetConfig:
         assert config["is_suspended"] is False
 
     def test_custom_config_values(self) -> None:
-        rm = GeminiGlobalRiskManager({
-            "risk_per_trade_pct": 2.0,
-            "atr_sl_multiplier": 2.5,
-            "crash_threshold_pct": 5.0,
-        })
+        rm = GeminiGlobalRiskManager(
+            {
+                "risk_per_trade_pct": 2.0,
+                "atr_sl_multiplier": 2.5,
+                "crash_threshold_pct": 5.0,
+            }
+        )
         config = rm.get_config()
         assert config["risk_per_trade_pct"] == 2.0
         assert config["atr_sl_multiplier"] == 2.5

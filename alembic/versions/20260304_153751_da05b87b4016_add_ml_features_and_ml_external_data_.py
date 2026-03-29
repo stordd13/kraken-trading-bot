@@ -5,17 +5,18 @@ Revises: e1f2a3b4c5d6
 Create Date: 2026-03-04 15:37:51.439495
 """
 
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
+from alembic import op
+
 # revision identifiers, used by Alembic.
 revision: str = "da05b87b4016"
-down_revision: Union[str, None] = "e1f2a3b4c5d6"
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = "e1f2a3b4c5d6"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -116,12 +117,8 @@ def upgrade() -> None:
         ),
         sa.Column("adx_4h", sa.Float(), nullable=True, comment="ADX(14) 4h, 0-100"),
         sa.Column("adx_1d", sa.Float(), nullable=True, comment="ADX(14) 1d, 0-100"),
-        sa.Column(
-            "macd_hist_1h", sa.Float(), nullable=True, comment="MACD histogram / close, 1h"
-        ),
-        sa.Column(
-            "macd_hist_4h", sa.Float(), nullable=True, comment="MACD histogram / close, 4h"
-        ),
+        sa.Column("macd_hist_1h", sa.Float(), nullable=True, comment="MACD histogram / close, 1h"),
+        sa.Column("macd_hist_4h", sa.Float(), nullable=True, comment="MACD histogram / close, 4h"),
         sa.Column("rsi_14_1h", sa.Float(), nullable=True, comment="RSI(14) 1h, 0-100"),
         sa.Column("rsi_14_4h", sa.Float(), nullable=True, comment="RSI(14) 4h, 0-100"),
         sa.Column("rsi_14_1d", sa.Float(), nullable=True, comment="RSI(14) 1d, 0-100"),
@@ -131,9 +128,7 @@ def upgrade() -> None:
         # Volatility
         sa.Column("atr_ratio_4h", sa.Float(), nullable=True, comment="ATR(14)/close, 4h"),
         sa.Column("atr_ratio_1d", sa.Float(), nullable=True, comment="ATR(14)/close, 1d"),
-        sa.Column(
-            "bb_width_4h", sa.Float(), nullable=True, comment="Bollinger bandwidth, 4h"
-        ),
+        sa.Column("bb_width_4h", sa.Float(), nullable=True, comment="Bollinger bandwidth, 4h"),
         sa.Column(
             "bb_pctb_4h",
             sa.Float(),

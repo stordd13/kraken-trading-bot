@@ -22,8 +22,8 @@ import uuid
 
 import pytest
 
-from krakenbot.core.event_bus import EventBus
 from krakenbot.config.settings import TradingMode
+from krakenbot.core.event_bus import EventBus
 from krakenbot.execution.order_manager import OrderManager
 from krakenbot.models.base import OrderStatus, OrderType, TradeSide
 from krakenbot.strategies.base import BaseStrategy, TradingSignal
@@ -510,8 +510,18 @@ class TestOrderManager:
     @pytest.mark.asyncio
     async def test_on_ohlc_replaces_previous_candle(self, order_manager: OrderManager) -> None:
         """Test that on_ohlc replaces the previously stored candle."""
-        candle_1 = {"pair": "XBT/USDC", "interval": 5, "low": Decimal("40000"), "high": Decimal("41000")}
-        candle_2 = {"pair": "XBT/USDC", "interval": 5, "low": Decimal("42000"), "high": Decimal("44000")}
+        candle_1 = {
+            "pair": "XBT/USDC",
+            "interval": 5,
+            "low": Decimal("40000"),
+            "high": Decimal("41000"),
+        }
+        candle_2 = {
+            "pair": "XBT/USDC",
+            "interval": 5,
+            "low": Decimal("42000"),
+            "high": Decimal("44000"),
+        }
 
         await order_manager.on_ohlc(candle_1)
         await order_manager.on_ohlc(candle_2)

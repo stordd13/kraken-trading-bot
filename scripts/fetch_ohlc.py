@@ -134,13 +134,13 @@ async def save_ohlc_batch(
                 )
                 .on_conflict_do_update(
                     index_elements=["timestamp", "pair", "interval"],
-                    set_=dict(
-                        open=candle_data["open"],
-                        high=candle_data["high"],
-                        low=candle_data["low"],
-                        close=candle_data["close"],
-                        volume=candle_data["volume"],
-                    ),
+                    set_={
+                        "open": candle_data["open"],
+                        "high": candle_data["high"],
+                        "low": candle_data["low"],
+                        "close": candle_data["close"],
+                        "volume": candle_data["volume"],
+                    },
                 )
             )
             await session.execute(stmt)

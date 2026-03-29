@@ -45,26 +45,30 @@ class TestNoLookAhead:
         candles = []
         for i in range(30):
             price = Decimal("50000") + Decimal(str(i * 100 + (i % 3) * 50))
-            candles.append({
-                "timestamp": base_ts + timedelta(hours=4 * i),
-                "open": price - Decimal("50"),
-                "high": price + Decimal("200"),
-                "low": price - Decimal("200"),
-                "close": price,
-                "volume": Decimal("100"),
-            })
+            candles.append(
+                {
+                    "timestamp": base_ts + timedelta(hours=4 * i),
+                    "open": price - Decimal("50"),
+                    "high": price + Decimal("200"),
+                    "low": price - Decimal("200"),
+                    "close": price,
+                    "volume": Decimal("100"),
+                }
+            )
 
         # Replay "short" (20 candles)
         features_at_10_short = None
         for i, c in enumerate(candles[:20]):
             analyzer_short.update(c, 240)
-            store_short._update_close_history(
-                "XBT/USDC", 240, c["timestamp"], float(c["close"])
-            )
+            store_short._update_close_history("XBT/USDC", 240, c["timestamp"], float(c["close"]))
             if i == 10:
                 features_at_10_short = store_short._compute_features(
-                    analyzer_short, c["timestamp"], "XBT/USDC",
-                    float(c["close"]), float(c["high"]), float(c["low"]),
+                    analyzer_short,
+                    c["timestamp"],
+                    "XBT/USDC",
+                    float(c["close"]),
+                    float(c["high"]),
+                    float(c["low"]),
                     float(c["volume"]),
                 )
 
@@ -72,13 +76,15 @@ class TestNoLookAhead:
         features_at_10_long = None
         for i, c in enumerate(candles[:30]):
             analyzer_long.update(c, 240)
-            store_long._update_close_history(
-                "XBT/USDC", 240, c["timestamp"], float(c["close"])
-            )
+            store_long._update_close_history("XBT/USDC", 240, c["timestamp"], float(c["close"]))
             if i == 10:
                 features_at_10_long = store_long._compute_features(
-                    analyzer_long, c["timestamp"], "XBT/USDC",
-                    float(c["close"]), float(c["high"]), float(c["low"]),
+                    analyzer_long,
+                    c["timestamp"],
+                    "XBT/USDC",
+                    float(c["close"]),
+                    float(c["high"]),
+                    float(c["low"]),
                     float(c["volume"]),
                 )
 
@@ -97,9 +103,7 @@ class TestNoLookAhead:
                     f"Feature {key}: short={val_short} != long={val_long}"
                 )
             else:
-                assert val_short == val_long, (
-                    f"Feature {key}: short={val_short} != long={val_long}"
-                )
+                assert val_short == val_long, f"Feature {key}: short={val_short} != long={val_long}"
 
     def test_feature_build_is_deterministic(self) -> None:
         """Two identical replays must produce identical features."""
@@ -127,9 +131,13 @@ class TestNoLookAhead:
                 store._update_close_history("XBT/USDC", 240, ts, float(price))
 
                 features = store._compute_features(
-                    analyzer, ts, "XBT/USDC",
-                    float(price), float(candle["high"]),
-                    float(candle["low"]), float(candle["volume"]),
+                    analyzer,
+                    ts,
+                    "XBT/USDC",
+                    float(price),
+                    float(candle["high"]),
+                    float(candle["low"]),
+                    float(candle["volume"]),
                 )
                 all_features.append(features)
             results.append(all_features)
@@ -169,9 +177,13 @@ class TestNoLookAhead:
             store._update_close_history("XBT/USDC", 240, ts, float(price))
 
         features = store._compute_features(
-            analyzer, ts, "XBT/USDC",
-            float(price), float(candle["high"]),
-            float(candle["low"]), float(candle["volume"]),
+            analyzer,
+            ts,
+            "XBT/USDC",
+            float(price),
+            float(candle["high"]),
+            float(candle["low"]),
+            float(candle["volume"]),
         )
 
         # Indicator-based features should be None (not enough warmup)

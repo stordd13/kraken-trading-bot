@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal
+import importlib
 from pathlib import Path
+import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
-import importlib
-import sys
 import uuid
 
 import pytest
@@ -484,7 +484,9 @@ class TestP0RuntimeLifecycle:
 
         await bot.start()
 
-        subscribed_intervals = [call.args[1] for call in bot.ws_client.subscribe_ohlc.await_args_list]
+        subscribed_intervals = [
+            call.args[1] for call in bot.ws_client.subscribe_ohlc.await_args_list
+        ]
         assert 1 in subscribed_intervals
 
     @pytest.mark.asyncio
@@ -627,7 +629,9 @@ class TestP1IntegrationGaps:
         ):
             bot._setup_strategies()
 
-        registered_bot_ids = {call.args[0] for call in bot.global_risk_manager.register_strategy.call_args_list}
+        registered_bot_ids = {
+            call.args[0] for call in bot.global_risk_manager.register_strategy.call_args_list
+        }
         assert {"supertrend_4h", "ema_cross_4h"}.issubset(registered_bot_ids)
 
     @pytest.mark.asyncio
