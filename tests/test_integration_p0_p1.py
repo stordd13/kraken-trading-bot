@@ -742,3 +742,257 @@ class TestP1IntegrationGaps:
         assert isinstance(published_signal, TradingSignal)
         assert "risk_stop_loss" in published_signal.metadata
         assert "risk_position_size_btc" in published_signal.metadata
+
+    # ------------------------------------------------------------------
+    # Audit 1: Sizing parity — multiplier path (no order_size_usdc)
+    # ------------------------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_sizing_multiplier_path_matches_runtime(
+        self,
+        mock_settings,
+    ) -> None:
+        """Backtest must apply position_size_multiplier when order_size_usdc is absent."""
+
+        settings = mock_settings.model_copy(deep=True)
+        settings.trading.pair = "XBT/USDC"
+        settings.trading.default_order_amount_eur = 100.0
+
+        raw_signal = _make_signal(
+            signal_type=SignalType.BUY,
+            strategy="grok_supertrend_4h",
+            price=Decimal("50000"),
+            metadata={
+                "order_type": "market",
+                "position_size_multiplier": 0.5,
+                # No order_size_usdc — forces both engines into fallback path
+            },
+        )
+        analyzer = MagicMock()
+        analyzer.get_atr.return_value = Decimal("2000")
+
+        risk_manager = GeminiGlobalRiskManager()
+        processed = risk_manager.process_signal(raw_signal, Decimal("1000"), analyzer)
+        assert processed is not None
+
+        # Runtime path
+        runtime_engine = ExecutionEngine(settings, EventBus(), MagicMock(), MagicMock())
+        runtime_notional = runtime_engine._resolve_open_order_notional(processed)
+
+        # Backtest path
+        BacktestEngine = _load_backtest_engine()
+        bt = BacktestEngine(
+            settings,
+            MagicMock(),
+            strategy_name="grok_supertrend_4h",
+            candle_interval=240,
+        )
+        bt.strategy = _BacktestStrategySpy()
+
+        await bt.execute_signal(processed, processed.price, is_limit_fill=False)
+
+        backtest_notional = bt.metrics.trades[-1].amount_usdc
+
+        # Both must use default_order_amount × position_size_multiplier
+        assert abs(runtime_notional - backtest_notional) / runtime_notional < Decimal("0.0001")
+
+    # ------------------------------------------------------------------
+    # Audit 2: Risk overlay value verification
+    # ------------------------------------------------------------------
+
+    def test_risk_overlay_values_supertrend(self) -> None:
+        """SuperTrend BUY signal: risk values must be mathematically correct."""
+
+        entry = Decimal("84000")
+        atr = Decimal("3000")
+        capital = Decimal("1000")
+
+        signal = _make_signal(
+            signal_type=SignalType.BUY,
+            strategy="grok_supertrend_4h",
+            price=entry,
+            metadata={
+                "order_type": "limit",
+                "limit_price": "83900",
+                "order_size_usdc": 100.0,
+                "position_size_multiplier": 1.0,
+            },
+        )
+
+        analyzer = MagicMock()
+        analyzer.get_atr.return_value = atr
+
+        rm = GeminiGlobalRiskManager()
+        processed = rm.process_signal(signal, capital, analyzer)
+
+        assert processed is not None
+        md = processed.metadata
+
+        # SL must be below entry
+        risk_sl = Decimal(str(md["risk_stop_loss"]))
+        assert risk_sl < entry, f"SL {risk_sl} must be < entry {entry}"
+
+        # SL = entry - 3.0 × ATR
+        expected_sl = entry - Decimal("3") * atr
+        assert risk_sl == expected_sl
+
+        # 1% rule: size = (capital × 0.01) / |entry - SL|
+        risk_per_unit = abs(entry - risk_sl)
+        expected_size = (capital * Decimal("0.01")) / risk_per_unit
+        actual_size = Decimal(str(md["risk_position_size_btc"]))
+        assert abs(actual_size - expected_size) < Decimal("1E-10")
+
+    def test_risk_overlay_values_grid(self) -> None:
+        """Grid BUY signal: risk overlay constrains position_size_multiplier."""
+
+        entry = Decimal("84000")
+        atr = Decimal("3000")
+        capital = Decimal("1000")
+
+        signal = _make_signal(
+            signal_type=SignalType.BUY,
+            strategy="grok_grid_atr_v4",
+            price=entry,
+            metadata={
+                "order_type": "limit",
+                "limit_price": "83950",
+                "order_size_usdc": 10.0,
+                "position_size_multiplier": 1.0,
+            },
+        )
+
+        analyzer = MagicMock()
+        analyzer.get_atr.return_value = atr
+
+        rm = GeminiGlobalRiskManager()
+        processed = rm.process_signal(signal, capital, analyzer)
+
+        assert processed is not None
+        md = processed.metadata
+
+        # SL below entry
+        assert Decimal(str(md["risk_stop_loss"])) < entry
+
+        # position_size_multiplier must be ≤ original (risk constrains)
+        assert md["position_size_multiplier"] <= 1.0
+
+        # position value ≤ capital (sanity)
+        pos_value = Decimal(str(md["risk_position_size_btc"])) * entry
+        assert pos_value <= capital
+
+    def test_risk_overlay_atr_overrides_bad_strategy_stop_loss(self) -> None:
+        """Risk manager computes its own SL from ATR, ignoring strategy metadata."""
+
+        entry = Decimal("50000")
+        # Strategy sets a nonsensical SL above entry — risk manager must override
+        signal = _make_signal(
+            signal_type=SignalType.BUY,
+            strategy="grok_supertrend_4h",
+            price=entry,
+            metadata={
+                "order_type": "market",
+                "risk_stop_loss": 55000.0,  # Bad: SL > entry
+                "position_size_multiplier": 1.0,
+            },
+        )
+
+        analyzer = MagicMock()
+        analyzer.get_atr.return_value = Decimal("2000")
+
+        rm = GeminiGlobalRiskManager()
+        processed = rm.process_signal(signal, Decimal("1000"), analyzer)
+
+        assert processed is not None
+        # Risk manager overwrites with ATR-based SL = 50000 - 3×2000 = 44000
+        risk_sl = Decimal(str(processed.metadata["risk_stop_loss"]))
+        assert risk_sl < entry, f"Risk SL {risk_sl} must be < entry {entry}"
+        assert risk_sl == Decimal("44000")
+
+    def test_sell_signal_passes_through_unchanged(self) -> None:
+        """SELL signals must pass through risk overlay without modification."""
+
+        signal = _make_signal(
+            signal_type=SignalType.SELL,
+            strategy="grok_supertrend_4h",
+            price=Decimal("50000"),
+            metadata={
+                "order_type": "market",
+                "amount_btc": 0.001,
+                "position_id": 42,
+            },
+        )
+
+        analyzer = MagicMock()
+        rm = GeminiGlobalRiskManager()
+        processed = rm.process_signal(signal, Decimal("1000"), analyzer)
+
+        assert processed is not None
+        # SELL is returned unchanged — no risk metadata added
+        assert "risk_stop_loss" not in processed.metadata
+        assert "risk_position_size_btc" not in processed.metadata
+        assert processed.metadata["amount_btc"] == 0.001
+
+    # ------------------------------------------------------------------
+    # Option C: 1% rule caps loss when order_size_usdc is absent
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize(
+        "atr_value",
+        [Decimal("1500"), Decimal("3000"), Decimal("5000")],
+        ids=["normal_vol", "elevated_vol", "high_vol"],
+    )
+    @pytest.mark.asyncio
+    async def test_one_percent_rule_caps_loss_across_atr_scenarios(
+        self,
+        mock_settings,
+        atr_value: Decimal,
+    ) -> None:
+        """Without order_size_usdc, the 1% rule must cap loss at SL to 1% of capital."""
+
+        entry = Decimal("84000")
+        capital = Decimal("1000")
+
+        settings = mock_settings.model_copy(deep=True)
+        settings.trading.pair = "XBT/USDC"
+        settings.trading.default_order_amount_eur = 100.0
+
+        # Signal WITHOUT order_size_usdc (Option C)
+        signal = _make_signal(
+            signal_type=SignalType.BUY,
+            strategy="grok_supertrend_4h",
+            price=entry,
+            metadata={
+                "order_type": "limit",
+                "limit_price": "83900",
+                "max_allocation_pct": 10.0,
+                "position_size_multiplier": 1.0,
+            },
+        )
+
+        analyzer = MagicMock()
+        analyzer.get_atr.return_value = atr_value
+
+        rm = GeminiGlobalRiskManager()
+        processed = rm.process_signal(signal, capital, analyzer)
+        assert processed is not None
+
+        # Resolve notional via runtime path (no order_size_usdc → fallback)
+        engine = ExecutionEngine(settings, EventBus(), MagicMock(), MagicMock())
+        notional = engine._resolve_open_order_notional(processed)
+
+        assert notional > Decimal("0"), "Notional must be positive"
+
+        # Max allocation check
+        max_alloc = Decimal(str(processed.metadata["max_allocation_pct"])) / Decimal("100")
+        assert notional <= max_alloc * capital, (
+            f"Notional {notional} exceeds max allocation {max_alloc * capital}"
+        )
+
+        # Loss at SL must be ≤ 1% of capital
+        sl = Decimal(str(processed.metadata["risk_stop_loss"]))
+        loss_pct_of_order = abs(entry - sl) / entry
+        loss_usdc = notional * loss_pct_of_order
+        max_loss = capital * Decimal("0.01")
+        assert loss_usdc <= max_loss + Decimal("0.01"), (
+            f"Loss at SL ${float(loss_usdc):.2f} exceeds 1% of capital ${float(max_loss):.2f}"
+        )

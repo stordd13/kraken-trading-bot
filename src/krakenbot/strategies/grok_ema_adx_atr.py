@@ -436,7 +436,6 @@ class GrokEMA27_125_ADX_ATR(BaseStrategy):
             metadata={
                 "order_type": "limit",
                 "limit_price": float(limit_price),
-                "order_size_usdc": float(self.order_size_usdc),
                 "max_allocation_pct": float(self.max_allocation_pct),
                 "position_size_multiplier": self._position_size_multiplier,
                 "risk_stop_loss": float(stop_loss),

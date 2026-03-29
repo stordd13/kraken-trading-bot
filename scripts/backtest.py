@@ -530,12 +530,14 @@ class BacktestEngine:
             if order_amount_override is not None:
                 order_amount = order_amount_override
             else:
-                order_amount = min(
-                    self.usdc_balance,
-                    Decimal(
-                        str(self.settings.trading.default_order_amount_eur)
-                    ),  # Convert to Decimal
-                )
+                base_amount = Decimal(str(self.settings.trading.default_order_amount_eur))
+                # Apply position_size_multiplier to match runtime sizing
+                # (ExecutionEngine._resolve_open_order_notional)
+                if signal.metadata:
+                    mult = signal.metadata.get("position_size_multiplier")
+                    if mult is not None:
+                        base_amount *= Decimal(str(mult))
+                order_amount = min(self.usdc_balance, base_amount)
 
             self.logger.debug(
                 "backtest_buy_attempt",

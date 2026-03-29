@@ -4,10 +4,21 @@
 
 enabled: true
 
+# Active operating profile for the next deployment wave.
+# Trading remains single-pair; TRADING_PAIR defaults to XBT/USDC in .env/.env.example.
+deployment_profile:
+  name: fast-cash-v1
+  trading_pair: XBT/USDC
+  initial_capital_usdc: 1000
+  paper_days: 7
+  micro_live_days: 14
+  scale_review_day: 21
+  manual_reviews_per_day: 2
+
 # Global limits (across ALL strategies combined)
-global_max_open_positions: 25
-global_daily_loss_limit_eur: 50.0
-global_max_portfolio_exposure_pct: 90.0
+global_max_open_positions: 8
+global_daily_loss_limit_eur: 15.0
+global_max_portfolio_exposure_pct: 25.0
 
 # Common technical indicators - shared data layer across all strategies
 # These defaults are used by the MultiTimeframeAnalyzer generic registry.
@@ -42,9 +53,9 @@ strategies:
     enabled: true
     bot_id: multi_router
     budget:
-      max_open_positions: 25
-      daily_loss_limit_eur: 50.0
-      max_position_pct: 90.0
+      max_open_positions: 8
+      daily_loss_limit_eur: 15.0
+      max_position_pct: 25.0
       position_size_multiplier: 1.0
     dashboard:
       exit_type: mixed
@@ -111,8 +122,8 @@ strategies:
             atr_period: 14
             atr_multiplier: 4.0
             recalc_hours: 6
-            order_size_usdc: 25
-            max_allocation_pct: 20.0
+            order_size_usdc: 10
+            max_allocation_pct: 10.0
             bias_1d: 0.2
             pause_1w_strong_bear: true
 
@@ -123,12 +134,10 @@ strategies:
             st_atr_period: 10
             st_multiplier: 3.0
             sl_atr_mult: 3.5
-            order_size_usdc: 200  # Scaled 4x: MaxDD 6.28% < 10% threshold
-            max_allocation_pct: 15.0
-          pairs: ["XBT/USDC", "ETH/USDC", "SOL/USDC"]  # Universal: all pass validation
+            max_allocation_pct: 10.0
 
         grok_ema_adx_atr:
-          active: true
+          active: false  # Hold until post-J30 review
           bot_id: ema_cross_4h
           params:
             ema_fast: 20
@@ -137,11 +146,10 @@ strategies:
             atr_mult_stop: 3.5
             breakeven_atr: 1.5
             trailing_atr: 3.0
-            order_size_usdc: 40
             max_allocation_pct: 15.0
 
         grok_adaptive_dca_weekly:
-          active: true
+          active: false  # Hold until post-J30 review
           bot_id: dca_weekly
           params:
             base_amount_usdc: 15
@@ -149,7 +157,6 @@ strategies:
             bull_reduction: 0.5
             rsi_oversold: 30
             max_allocation_pct: 25.0
-          pairs: ["XBT/USDC", "ETH/USDC", "SOL/USDC"]  # Pure accumulation, pair-agnostic
 
         grok_ichimoku_cloud_4h:
           active: false  # KILL Phase 1B: Sharpe 0.16 < 0.3 threshold
@@ -169,7 +176,6 @@ strategies:
             period_lower: 10
             sl_atr_mult: 3.5
             adx_threshold: 18
-            order_size_usdc: 50
             max_allocation_pct: 15.0
           pairs: ["SOL/USDC"]  # SOL ok (Sharpe 0.28 PF 1.87), ETH weak (Sharpe 0.12)
 
