@@ -116,6 +116,7 @@ class GrokAdaptiveDCAWeekly(BaseStrategy):
         self._current_timestamp: datetime | None = None
         self._is_daily: bool = False
         self._last_buy_week: int | None = None  # ISO week number of last buy
+        self._pending_week_key: int | None = None  # Set on signal, committed on fill
 
         # Statistics tracking
         self._stats = DCAStats()
@@ -243,8 +244,8 @@ class GrokAdaptiveDCAWeekly(BaseStrategy):
             iso_week=iso_week,
         )
 
-        # Mark this week as bought (set on signal, confirmed on fill)
-        self._last_buy_week = week_key
+        # Remember which week this signal is for (committed on fill)
+        self._pending_week_key = week_key
 
         return TradingSignal(
             signal_type=SignalType.BUY,
@@ -336,6 +337,11 @@ class GrokAdaptiveDCAWeekly(BaseStrategy):
         now = self._current_timestamp or datetime.now(UTC)
 
         if side == "buy":
+            # Confirm the week as bought only when the fill actually arrives
+            if self._pending_week_key is not None:
+                self._last_buy_week = self._pending_week_key
+                self._pending_week_key = None
+
             amount_usdc = amount * price
             buy_id = self._next_buy_id
             self._next_buy_id += 1
@@ -397,4 +403,5 @@ class GrokAdaptiveDCAWeekly(BaseStrategy):
             "total_usdc_invested": float(self._stats.total_usdc_invested),
             "avg_entry_price": float(self._stats.avg_entry_price),
             "last_buy_week": self._last_buy_week,
+            "pending_week_key": self._pending_week_key,
         }
