@@ -2565,9 +2565,14 @@ def execute_query(n_clicks, query):
     if df is None or df.empty:
         return dbc.Alert("No results", color="info"), dbc.Badge("0 rows", color="info")
 
+    # Convert non-JSON-serializable types (UUID, Timestamp) to strings
+    serializable_df = df.head(100).copy()
+    for col in serializable_df.columns:
+        if serializable_df[col].dtype == "object":
+            serializable_df[col] = serializable_df[col].astype(str)
     return dash_table.DataTable(
-        data=df.head(100).to_dict("records"),
-        columns=[{"name": col, "id": col} for col in df.columns],
+        data=serializable_df.to_dict("records"),
+        columns=[{"name": col, "id": col} for col in serializable_df.columns],
         style_table={"overflowX": "auto"},
         style_header={
             "backgroundColor": "rgb(30, 30, 30)",
