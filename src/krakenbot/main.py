@@ -49,6 +49,7 @@ from krakenbot.execution.risk import GlobalRiskManager
 from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
 from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
+from krakenbot.notifications.telegram import TelegramNotifier, get_notifier, set_notifier
 from krakenbot.strategies.adaptive import AdaptiveStrategy
 from krakenbot.strategies.base import BaseStrategy
 from krakenbot.strategies.bear_short import BearShortStrategy
@@ -156,6 +157,7 @@ class KrakenBot:
         self._setup_completed: bool = False
         self._multi_strategy_mode: bool = self.settings.multi_strategy.enabled
         self._order_check_task: asyncio.Task[None] | None = None
+        self._summary_scheduler: Any | None = None
 
     async def setup(self) -> None:
         """Initialize all components in the correct order.
@@ -242,6 +244,9 @@ class KrakenBot:
 
         # 7. Initialize strategies
         self._setup_strategies()
+
+        # 8. Initialize Telegram notifier (optional)
+        self._init_telegram_notifier()
 
         self._setup_completed = True
 
@@ -414,6 +419,22 @@ class KrakenBot:
             crash_threshold
         ) and self._has_positive_numeric_value(crash_window)
 
+    def _init_telegram_notifier(self) -> None:
+        """Initialize Telegram notifier if configured and enabled."""
+        if not self.settings.telegram.enabled:
+            return
+        token = self.settings.telegram.bot_token.get_secret_value()
+        chat_id = self.settings.telegram.chat_id
+        if token and chat_id:
+            notifier = TelegramNotifier(token=token, chat_id=chat_id, enabled=True)
+            set_notifier(notifier)
+            self.logger.info("telegram_notifier_initialized")
+        else:
+            self.logger.warning(
+                "telegram_notifier_disabled",
+                reason="missing bot_token or chat_id",
+            )
+
     def _get_multi_strategy_ohlc_intervals(self) -> list[int]:
         """Collect the OHLC intervals required by the multi-strategy runtime."""
         mtf = self.settings.multi_timeframe
@@ -531,6 +552,23 @@ class KrakenBot:
             strategies=strategy_names,
         )
 
+        # 7. Telegram: subscribe to trade fills + startup notification + daily summary
+        notifier = get_notifier()
+        if notifier:
+            from krakenbot.core.event_bus import EventType
+
+            await self.event_bus.subscribe(
+                EventType.TRADE_ORDER_FILLED,
+                self._on_trade_fill_telegram,
+            )
+            asyncio.create_task(
+                notifier.send_bot_started(
+                    mode=self.settings.trading.mode.value,
+                    strategies=strategy_names,
+                )
+            )
+            self._start_daily_summary_scheduler()
+
     async def stop(self) -> None:
         """Stop all components gracefully in reverse order.
 
@@ -550,6 +588,18 @@ class KrakenBot:
 
         self.logger.info("krakenbot_stopping")
         self._running = False
+
+        # Telegram: send stop notification and cleanup
+        notifier = get_notifier()
+        if notifier:
+            try:
+                await notifier.send_bot_stopped()
+                await notifier.close()
+            except Exception as e:
+                self.logger.warning("telegram_stop_error", error=str(e))
+        if self._summary_scheduler:
+            self._summary_scheduler.shutdown(wait=False)
+            self._summary_scheduler = None
 
         # Mark bot as stopped in database first (while db is still open)
         if self.db_manager and (self.strategy or self.strategies):
@@ -642,6 +692,112 @@ class KrakenBot:
                 )
 
         self.logger.info("krakenbot_stopped")
+
+    # ------------------------------------------------------------------
+    # Telegram helpers
+    # ------------------------------------------------------------------
+
+    async def _on_trade_fill_telegram(self, data: dict[str, Any]) -> None:
+        """EventBus callback: send Telegram notification on trade fill."""
+        notifier = get_notifier()
+        if notifier is None:
+            return
+        side = data.get("side", "")
+        amount = data.get("amount", "0")
+        price = data.get("price", "0")
+        fee = data.get("fee", "0")
+        # Compute cost = amount * price
+        try:
+            cost = str(Decimal(amount) * Decimal(price))
+        except Exception:
+            cost = "N/A"
+        asyncio.create_task(
+            notifier.send_trade_fill(
+                strategy=data.get("strategy", ""),
+                pair=data.get("pair", ""),
+                side=side,
+                amount=amount,
+                price=price,
+                cost=cost,
+                fee=fee,
+            )
+        )
+
+    def _start_daily_summary_scheduler(self) -> None:
+        """Start APScheduler cron job for the daily Telegram summary."""
+        from apscheduler.schedulers.asyncio import AsyncIOScheduler
+        from apscheduler.triggers.cron import CronTrigger
+
+        hour = self.settings.telegram.daily_summary_hour_utc
+        self._summary_scheduler = AsyncIOScheduler()
+        self._summary_scheduler.add_job(
+            self._send_daily_summary,
+            trigger=CronTrigger(hour=hour, minute=0, timezone="UTC"),
+            id="daily_telegram_summary",
+        )
+        self._summary_scheduler.start()
+        self.logger.info("daily_summary_scheduler_started", hour_utc=hour)
+
+    async def _send_daily_summary(self) -> None:
+        """Compute and send the daily Telegram summary."""
+        notifier = get_notifier()
+        if notifier is None:
+            return
+        try:
+            from krakenbot.models.trades import Trade
+
+            today_start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+
+            async with self.db_manager.read_session() as session:
+                # Open positions count
+                open_pos_result = await session.execute(
+                    select(func.count())
+                    .select_from(OpenPosition)
+                    .where(OpenPosition.status == PositionStatus.OPEN)
+                )
+                open_positions = open_pos_result.scalar() or 0
+
+                # Trades today count
+                trades_result = await session.execute(
+                    select(func.count()).select_from(Trade).where(Trade.timestamp >= today_start)
+                )
+                trades_today = trades_result.scalar() or 0
+
+                # P&L today
+                pnl_result = await session.execute(
+                    select(func.coalesce(func.sum(Trade.pnl), 0)).where(
+                        Trade.timestamp >= today_start,
+                        Trade.pnl.isnot(None),
+                    )
+                )
+                pnl_today = pnl_result.scalar() or Decimal("0")
+
+            # Pending orders
+            pending_orders = self.order_manager.pending_count if self.order_manager else 0
+
+            # Total equity
+            equity = "N/A"
+            if self.rest_client:
+                try:
+                    balances = await self.rest_client.get_balance()
+                    usdc = balances.get("USDC", Decimal("0"))
+                    equity = f"{usdc:,.2f} USDC"
+                except Exception:
+                    pass
+
+            await notifier.send_daily_summary(
+                open_positions=open_positions,
+                pending_orders=pending_orders,
+                trades_today=trades_today,
+                pnl_today=f"{pnl_today:+,.2f} USDC",
+                equity=equity,
+            )
+        except Exception as e:
+            self.logger.error(
+                "daily_summary_error",
+                error=str(e),
+                error_type=type(e).__name__,
+            )
 
     async def _reconcile_positions_with_exchange(self) -> None:
         """Reconcile open positions in DB with actual exchange balance.
@@ -1117,6 +1273,14 @@ async def main() -> None:
             error_type=type(e).__name__,
             exc_info=e,
         )
+        # Best-effort Telegram notification for fatal errors
+        notifier = get_notifier()
+        if notifier:
+            try:
+                await notifier.send_error(component="main", error=str(e))
+                await notifier.close()
+            except Exception:
+                pass
         sys.exit(1)
     finally:
         # Ensure cleanup happens

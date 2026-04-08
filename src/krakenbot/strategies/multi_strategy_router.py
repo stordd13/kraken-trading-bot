@@ -425,6 +425,35 @@ class MultiStrategyRouter(BaseStrategy):
                 price=float(current_price),
             )
 
+            # Telegram notification (fire-and-forget)
+            from krakenbot.notifications.telegram import get_notifier
+
+            notifier = get_notifier()
+            if notifier:
+                import asyncio
+                from datetime import UTC, datetime, timedelta
+
+                # Compute drop percentage from price history
+                window_start = datetime.now(UTC) - timedelta(
+                    minutes=self.risk_manager.crash_window_min
+                )
+                window_prices = [
+                    s for s in self.risk_manager._price_history if s.timestamp >= window_start
+                ]
+                if window_prices:
+                    max_price = max(s.price for s in window_prices)
+                    drop_pct = float((max_price - current_price) / max_price * 100)
+                else:
+                    drop_pct = 0.0
+
+                asyncio.create_task(
+                    notifier.send_crash_protector(
+                        drop_pct=f"-{drop_pct:.1f}%",
+                        action=f"Closing {len(crash_sells)} positions",
+                        suspend_hours=self.risk_manager.crash_suspend_hours,
+                    )
+                )
+
     def _collect_open_positions(self) -> list[dict[str, Any]]:
         """Collect open positions from all inner strategies for crash protector.
 
