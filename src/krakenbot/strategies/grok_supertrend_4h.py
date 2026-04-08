@@ -320,10 +320,30 @@ class GrokSuperTrend4hRegime(BaseStrategy):
 
         # Must be in uptrend on SuperTrend
         if st_direction != 1 or price <= st_value:
+            self.logger.info(
+                "supertrend_entry_filtered",
+                bot_id=self.bot_id,
+                close=str(price),
+                signal="FILTERED",
+                reason="st_direction_down" if st_direction != 1 else "price_below_st",
+                st_value=float(st_value),
+                st_direction=st_direction,
+                regime_1d=regime_1d,
+            )
             return None
 
         # Daily regime must be bullish
         if regime_1d not in ("bull", "strong_bull"):
+            self.logger.info(
+                "supertrend_entry_filtered",
+                bot_id=self.bot_id,
+                close=str(price),
+                signal="FILTERED",
+                reason="regime_not_bullish",
+                st_value=float(st_value),
+                st_direction=st_direction,
+                regime_1d=regime_1d,
+            )
             return None
 
         # Prefer fresh crossovers (direction just flipped)
@@ -398,6 +418,33 @@ class GrokSuperTrend4hRegime(BaseStrategy):
                 return
 
             signal = await self.generate_signal()
+
+            # Summary strategy_tick on every 4h candle
+            tick_signal = "HOLD"
+            tick_reason = "no_signal"
+            if signal and signal.should_trade:
+                tick_signal = signal.signal_type.value
+                tick_reason = signal.reason
+            elif self._position is not None:
+                tick_signal = "HOLD"
+                tick_reason = "in_position"
+            self.logger.info(
+                "strategy_tick",
+                strategy=self.get_name(),
+                bot_id=self.bot_id,
+                pair=data.get("pair", self.pair),
+                timeframe="4h",
+                close=str(self._current_price),
+                signal=tick_signal,
+                reason=tick_reason,
+                metadata={
+                    "has_position": self._position is not None,
+                    "position_entry": (
+                        float(self._position.entry_price) if self._position else None
+                    ),
+                },
+            )
+
             if signal and signal.should_trade:
                 self._last_signal_at = signal.timestamp
                 await self.event_bus.publish(
