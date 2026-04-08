@@ -335,6 +335,17 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
                 if not self._paused:
                     self.logger.info("grid_paused_strong_bear_1w", regime_1w=regime_1w)
                     self._paused = True
+                self.logger.info(
+                    "strategy_tick",
+                    strategy=self.get_name(),
+                    bot_id=self.bot_id,
+                    pair=self.pair,
+                    timeframe="4h",
+                    close=str(self._current_price),
+                    signal="PAUSED",
+                    reason="weekly_strong_bear",
+                    metadata={"regime_1w": regime_1w},
+                )
                 return
             if self._paused:
                 self._paused = False
@@ -343,6 +354,16 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             # Get ATR for spacing calculation
             atr = self.analyzer.get_atr(self.atr_period, "4h")
             if atr is None or atr <= _ZERO:
+                self.logger.info(
+                    "strategy_tick",
+                    strategy=self.get_name(),
+                    bot_id=self.bot_id,
+                    pair=self.pair,
+                    timeframe="4h",
+                    close=str(self._current_price),
+                    signal="HOLD",
+                    reason="atr_unavailable",
+                )
                 return
 
             spacing = self._calculate_spacing(atr, self._current_price)
