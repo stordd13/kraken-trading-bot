@@ -119,6 +119,7 @@ strategies:
           params:
             grid_levels: 12
             min_spacing_pct: 0.015
+            max_spacing_pct: 0.05
             atr_period: 14
             atr_multiplier: 4.0
             recalc_hours: 6

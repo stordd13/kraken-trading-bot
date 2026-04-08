@@ -101,6 +101,7 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
         # Grid parameters
         self.grid_levels: int = int(params.get("grid_levels", 12))
         self.min_spacing_pct = Decimal(str(params.get("min_spacing_pct", 0.015)))
+        self.max_spacing_pct = Decimal(str(params.get("max_spacing_pct", 0.05)))
         self.atr_period: int = int(params.get("atr_period", 14))
         self.atr_multiplier = Decimal(str(params.get("atr_multiplier", 4.0)))
         self.recalc_hours: int = int(params.get("recalc_hours", 6))
@@ -144,6 +145,7 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             bot_id=self.bot_id,
             grid_levels=self.grid_levels,
             min_spacing_pct=float(self.min_spacing_pct),
+            max_spacing_pct=float(self.max_spacing_pct),
             atr_multiplier=float(self.atr_multiplier),
             recalc_hours=self.recalc_hours,
             order_size_usdc=float(self.order_size_usdc),
@@ -159,7 +161,7 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
     def _calculate_spacing(self, atr: Decimal, price: Decimal) -> Decimal:
         """Calculate grid spacing from ATR.
 
-        spacing = max(min_spacing_pct, atr × atr_multiplier / price)
+        spacing = clamp(atr × atr_multiplier / price, min_spacing_pct, max_spacing_pct)
 
         Returns:
             Spacing as a fraction of price (e.g. 0.02 = 2%).
@@ -167,7 +169,7 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
         if price <= _ZERO:
             return self.min_spacing_pct
         atr_spacing = atr * self.atr_multiplier / price
-        return max(self.min_spacing_pct, atr_spacing)
+        return max(self.min_spacing_pct, min(self.max_spacing_pct, atr_spacing))
 
     def _get_directional_bias(self, regime_1d: str | None) -> tuple[int, int]:
         """Return (n_buy_levels, n_sell_levels) based on daily regime.
@@ -345,6 +347,32 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
 
             spacing = self._calculate_spacing(atr, self._current_price)
             regime_1d = self.analyzer.get_regime("1d")
+
+            # Diagnostic logging for every 4h candle
+            n_buy, n_sell = self._get_directional_bias(regime_1d)
+            lowest_buy = self._current_price * (_ONE - spacing * Decimal(str(n_buy)))
+            highest_sell = self._current_price * (_ONE + spacing * Decimal(str(n_sell)))
+            self.logger.info(
+                "strategy_tick",
+                strategy=self.get_name(),
+                bot_id=self.bot_id,
+                pair=self.pair,
+                timeframe="4h",
+                close=str(self._current_price),
+                signal="HOLD",
+                reason="grid_evaluation",
+                metadata={
+                    "atr_4h": float(atr),
+                    "spacing_pct": float(spacing * _HUNDRED),
+                    "regime_1d": regime_1d,
+                    "regime_1w": regime_1w,
+                    "n_buy": n_buy,
+                    "n_sell": n_sell,
+                    "lowest_buy_level": float(lowest_buy),
+                    "highest_sell_level": float(highest_sell),
+                    "grid_initialized": self._grid_initialized,
+                },
+            )
 
             # Initialize grid on first 4h candle
             if not self._grid_initialized:
@@ -598,6 +626,7 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             "pair": self.pair,
             "grid_levels": self.grid_levels,
             "min_spacing_pct": float(self.min_spacing_pct),
+            "max_spacing_pct": float(self.max_spacing_pct),
             "atr_period": self.atr_period,
             "atr_multiplier": float(self.atr_multiplier),
             "recalc_hours": self.recalc_hours,
