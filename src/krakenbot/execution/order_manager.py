@@ -263,6 +263,23 @@ class OrderManager:
             strategy=strategy,
         )
 
+        # Telegram notification (fire-and-forget)
+        from krakenbot.notifications.telegram import get_notifier
+
+        notifier = get_notifier()
+        if notifier:
+            import asyncio
+
+            asyncio.create_task(
+                notifier.send_order_placed(
+                    strategy=strategy,
+                    pair=pair,
+                    side=side.value,
+                    amount=str(amount),
+                    price=str(price),
+                )
+            )
+
         return order
 
     async def check_pending_orders(self) -> None:

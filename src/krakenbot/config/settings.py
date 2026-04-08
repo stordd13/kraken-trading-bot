@@ -420,6 +420,31 @@ class PaperSettings(BaseSettings):
     )
 
 
+class TelegramSettings(BaseSettings):
+    """Telegram notification configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="TELEGRAM_")
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable Telegram notifications",
+    )
+    bot_token: SecretStr = Field(
+        default=SecretStr(""),
+        description="Telegram bot token from @BotFather",
+    )
+    chat_id: str = Field(
+        default="",
+        description="Telegram chat ID to send notifications to",
+    )
+    daily_summary_hour_utc: int = Field(
+        default=23,
+        description="Hour (UTC) to send daily summary (0-23)",
+        ge=0,
+        le=23,
+    )
+
+
 class OrderSettings(BaseSettings):
     """Order execution settings (limit vs market)."""
 
@@ -569,6 +594,7 @@ class Settings(BaseSettings):
     capitulation: CapitulationSettings = Field(default_factory=CapitulationSettings)
     order: OrderSettings = Field(default_factory=OrderSettings)
     paper: PaperSettings = Field(default_factory=PaperSettings)
+    telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     common_indicators: CommonIndicatorsSettings = Field(default_factory=CommonIndicatorsSettings)
 
     # ML settings (loaded from strategies.yaml ml: section)
