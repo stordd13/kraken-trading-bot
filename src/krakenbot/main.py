@@ -150,6 +150,7 @@ class KrakenBot:
         self.order_manager: OrderManager | None = None
         self.global_risk_manager: GlobalRiskManager | None = None
         self.analyzer: MultiTimeframeAnalyzer | None = None
+        self.futures_client: Any | None = None  # KrakenFuturesClient if enabled
 
         # State
         self._running: bool = False
@@ -245,7 +246,17 @@ class KrakenBot:
         # 7. Initialize strategies
         self._setup_strategies()
 
-        # 8. Initialize Telegram notifier (optional)
+        # 8. Initialize Kraken Futures client (optional, lazy)
+        if self.settings.kraken_futures.enabled:
+            from krakenbot.connectors.kraken_futures_rest import KrakenFuturesClient
+
+            self.futures_client = KrakenFuturesClient(self.settings)
+            self.logger.info(
+                "kraken_futures_client_initialized",
+                demo=self.settings.kraken_futures.demo,
+            )
+
+        # 9. Initialize Telegram notifier (optional)
         self._init_telegram_notifier()
 
         self._setup_completed = True
@@ -675,6 +686,18 @@ class KrakenBot:
             except Exception as e:
                 self.logger.error(
                     "rest_client_close_error",
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+
+        # 5b. Close Futures client
+        if self.futures_client:
+            try:
+                await self.futures_client.close()
+                self.logger.debug("futures_client_closed")
+            except Exception as e:
+                self.logger.error(
+                    "futures_client_close_error",
                     error=str(e),
                     error_type=type(e).__name__,
                 )
