@@ -502,6 +502,11 @@ class BacktestEngine:
             "trend_following",
         ]
 
+        # Accumulation strategies buy repeatedly without selling (e.g. DCA)
+        is_accumulation = self.strategy_name in [
+            "grok_adaptive_dca_weekly",
+        ]
+
         # Grok strategies use on_trade_filled() instead of set_position_state()
         uses_otf = hasattr(self.strategy, "on_trade_filled") and self.strategy_name in [
             "gemini_scalping_volatilite",
@@ -525,7 +530,9 @@ class BacktestEngine:
         else:
             order_amount_override = None
 
-        if signal.signal_type == SignalType.BUY and (is_multi or not self.in_position):
+        if signal.signal_type == SignalType.BUY and (
+            is_multi or is_accumulation or not self.in_position
+        ):
             # Buy with available USDC
             if order_amount_override is not None:
                 order_amount = order_amount_override
@@ -907,9 +914,16 @@ class BacktestEngine:
 
     def calculate_final_metrics(self) -> None:
         """Calculate final performance metrics after backtest completes."""
-        self.metrics.total_trades = len(
-            [t for t in self.metrics.trades if t.side == TradeSide.SELL]
-        )
+        sell_trades = [t for t in self.metrics.trades if t.side == TradeSide.SELL]
+        self.metrics.total_trades = len(sell_trades)
+
+        # Accumulation strategies (e.g. DCA) have no sells — count buys instead
+        if self.metrics.total_trades == 0 and self.strategy_name in [
+            "grok_adaptive_dca_weekly",
+        ]:
+            self.metrics.total_trades = len(
+                [t for t in self.metrics.trades if t.side == TradeSide.BUY]
+            )
 
         if self.metrics.total_trades > 0:
             self.metrics.win_rate = self.metrics.winning_trades / self.metrics.total_trades
@@ -932,11 +946,13 @@ class BacktestEngine:
         # Net P&L
         self.metrics.net_pnl = self.metrics.total_pnl - self.metrics.total_fees
 
-        # Final balance
-        self.metrics.ending_balance = self.usdc_balance
-        if self.crypto_balance > 0 and self.metrics.trades:
-            # Add unrealized position value at last known price
-            self.metrics.ending_balance += self.crypto_balance * self.metrics.trades[-1].price
+        # Final balance — prefer equity curve (values crypto at last candle close)
+        if self.equity_curve:
+            self.metrics.ending_balance = self.equity_curve[-1][1]
+        else:
+            self.metrics.ending_balance = self.usdc_balance
+            if self.crypto_balance > 0 and self.metrics.trades:
+                self.metrics.ending_balance += self.crypto_balance * self.metrics.trades[-1].price
 
         # Total return
         if self.metrics.starting_balance > 0:
