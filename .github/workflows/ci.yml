@@ -51,4 +51,3 @@ jobs:
 
       - name: Run tests
         run: poetry run pytest tests/ -v --tb=short
-        continue-on-error: true  # Don't fail if no tests yet
