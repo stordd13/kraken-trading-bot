@@ -84,3 +84,12 @@ backtest_results/
 .DS_Store
 .AppleDouble
 .LSOverride
+
+# Agent prompts and working docs (not part of the codebase)
+AGENT_*.md
+ROADMAP_*.md
+AGENTS.md
+CODEX.md
+PROJECT_CONTEXT.md
+.codexignore
+docs/architecture.md

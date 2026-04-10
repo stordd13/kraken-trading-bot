@@ -445,6 +445,39 @@ class TelegramSettings(BaseSettings):
     )
 
 
+class KrakenFuturesSettings(BaseSettings):
+    """Kraken Futures (perpetual swaps) configuration.
+
+    Completely separate from Kraken Spot. Requires dedicated API keys
+    from futures.kraken.com or demo-futures.kraken.com.
+    """
+
+    model_config = SettingsConfigDict(env_prefix="KRAKEN_FUTURES_")
+
+    enabled: bool = Field(
+        default=False,
+        description="Enable Kraken Futures module (opt-in)",
+    )
+    api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Kraken Futures API key (separate from Spot)",
+    )
+    api_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description="Kraken Futures API secret (separate from Spot)",
+    )
+    demo: bool = Field(
+        default=True,
+        description="Use demo environment (demo-futures.kraken.com)",
+    )
+    max_leverage: int = Field(
+        default=3,
+        description="Maximum leverage cap (safety limit, 1-10)",
+        ge=1,
+        le=10,
+    )
+
+
 class OrderSettings(BaseSettings):
     """Order execution settings (limit vs market)."""
 
@@ -595,6 +628,7 @@ class Settings(BaseSettings):
     order: OrderSettings = Field(default_factory=OrderSettings)
     paper: PaperSettings = Field(default_factory=PaperSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
+    kraken_futures: KrakenFuturesSettings = Field(default_factory=KrakenFuturesSettings)
     common_indicators: CommonIndicatorsSettings = Field(default_factory=CommonIndicatorsSettings)
 
     # ML settings (loaded from strategies.yaml ml: section)
@@ -678,6 +712,17 @@ class Settings(BaseSettings):
             settings_logger = logging.getLogger(__name__)
             for warning in router_warnings:
                 settings_logger.warning(warning)
+
+        # Validate Kraken Futures credentials when enabled in live mode
+        if self.kraken_futures.enabled and self.trading.mode == TradingMode.LIVE:
+            if not self.kraken_futures.api_key.get_secret_value():
+                errors.append(
+                    "KRAKEN_FUTURES_API_KEY is required when futures enabled in live mode"
+                )
+            if not self.kraken_futures.api_secret.get_secret_value():
+                errors.append(
+                    "KRAKEN_FUTURES_API_SECRET is required when futures enabled in live mode"
+                )
 
         if errors:
             raise ValueError(

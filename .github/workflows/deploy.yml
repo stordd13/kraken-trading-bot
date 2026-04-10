@@ -10,7 +10,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Only deploy if CI passed (skip on failure or manual trigger)
+    # Only deploy if CI passed (or manual trigger)
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
@@ -20,49 +20,85 @@ jobs:
           KRAKEN_API_KEY: ${{ secrets.KRAKEN_API_KEY }}
           KRAKEN_API_SECRET: ${{ secrets.KRAKEN_API_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          KRAKEN_FUTURES_API_KEY: ${{ secrets.KRAKEN_FUTURES_API_KEY }}
+          KRAKEN_FUTURES_API_SECRET: ${{ secrets.KRAKEN_FUTURES_API_SECRET }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: 41922
-          envs: KRAKEN_API_KEY,KRAKEN_API_SECRET,DATABASE_URL
+          envs: KRAKEN_API_KEY,KRAKEN_API_SECRET,DATABASE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_CHAT_ID,KRAKEN_FUTURES_API_KEY,KRAKEN_FUTURES_API_SECRET
           script: |
+            set -e
+
             cd ~/apps/kraken-trading-bot
+
+            # Capture pre-deploy commit
+            OLD_COMMIT=$(git rev-parse --short HEAD)
+            echo "Pre-deploy commit: $OLD_COMMIT"
 
             # Pull latest changes
             git fetch origin main
             git reset --hard origin/main
 
-            # Install dependencies (if poetry.lock changed)
+            # Capture new commit
+            NEW_COMMIT=$(git rev-parse --short HEAD)
+            echo "New commit: $NEW_COMMIT"
+
+            # Install dependencies
             ~/.local/bin/poetry install --no-interaction
 
-            # Generate .env from GitHub Secrets
+            # Generate .env from GitHub Secrets (all variables)
             echo "Generating .env from GitHub Secrets..."
             cat > .env << EOF
+            # Kraken Spot
             KRAKEN_API_KEY=${KRAKEN_API_KEY}
             KRAKEN_API_SECRET=${KRAKEN_API_SECRET}
+
+            # Database
             DATABASE_URL=${DATABASE_URL}
+
+            # Trading
             TRADING_MODE=paper
             TRADING_CONFIRM_LIVE=no
             TRADING_PAIR=XBT/USDC
             TRADING_DEFAULT_ORDER_AMOUNT_EUR=50
             TRADING_CANDLE_INTERVAL_MIN=5
+
+            # Risk
             RISK_MIN_TRADE_INTERVAL_SEC=60
             RISK_EMERGENCY_STOP_LOSS_PCT=10.0
+
+            # Scheduler
             SCHEDULER_ENABLED=true
+
+            # Environment
             ENVIRONMENT=production
             LOG_LEVEL=INFO
             LOG_JSON=true
+
+            # Telegram notifications
+            TELEGRAM_ENABLED=true
+            TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+            TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+
+            # Kraken Futures (perps) — disabled by default, opt-in for Phase 4A
+            KRAKEN_FUTURES_ENABLED=false
+            KRAKEN_FUTURES_API_KEY=${KRAKEN_FUTURES_API_KEY}
+            KRAKEN_FUTURES_API_SECRET=${KRAKEN_FUTURES_API_SECRET}
+            KRAKEN_FUTURES_DEMO=true
+            KRAKEN_FUTURES_MAX_LEVERAGE=3
             EOF
             chmod 600 .env
 
             # Install/update systemd service files
-            echo "Installing systemd service files..."
             sudo cp deploy/krakenbot.service /etc/systemd/system/
             sudo cp deploy/krakenbot-collector.service /etc/systemd/system/
             sudo systemctl daemon-reload
 
-            # Enable services to start on boot
+            # Enable services
             sudo systemctl enable krakenbot-collector
             sudo systemctl enable krakenbot
 
@@ -73,16 +109,51 @@ jobs:
 
             echo "Restarting krakenbot..."
             sudo systemctl restart krakenbot
+            sleep 10
+
+            # Health check — must succeed or deploy fails
+            echo ""
+            echo "=== Health check ==="
+            if ! sudo systemctl is-active --quiet krakenbot; then
+              echo "FAIL: krakenbot service is not running"
+              sudo journalctl -u krakenbot --since "1 min ago" --no-pager | tail -50
+              exit 1
+            fi
+            echo "krakenbot service is active"
+
+            if ! sudo systemctl is-active --quiet krakenbot-collector; then
+              echo "FAIL: krakenbot-collector service is not running"
+              sudo journalctl -u krakenbot-collector --since "1 min ago" --no-pager | tail -30
+              exit 1
+            fi
+            echo "krakenbot-collector service is active"
+
+            # Check that the bot has actually started (look for the start log)
             sleep 5
-
-            # Check status of both services
-            echo ""
-            echo "=== krakenbot-collector status ==="
-            sudo systemctl status krakenbot-collector --no-pager || true
-
-            echo ""
-            echo "=== krakenbot status ==="
-            sudo systemctl status krakenbot --no-pager || true
+            if sudo journalctl -u krakenbot --since "1 min ago" --no-pager | grep -q "krakenbot_started"; then
+              echo "krakenbot startup log detected"
+            else
+              echo "WARNING: krakenbot_started log not found in last minute"
+              sudo journalctl -u krakenbot --since "1 min ago" --no-pager | tail -30
+            fi
 
             echo ""
-            echo "Deployment complete!"
+            echo "=== Deployment complete ==="
+            echo "Old commit: $OLD_COMMIT"
+            echo "New commit: $NEW_COMMIT"
+
+      - name: Notify Telegram on success
+        if: success()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "parse_mode=HTML" \
+            -d "text=<b>KrakenBot Deploy Success</b>%0ACommit: <code>${{ github.sha }}</code>%0ABranch: <code>${{ github.ref_name }}</code>%0AAuthor: ${{ github.actor }}"
+
+      - name: Notify Telegram on failure
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage" \
+            -d "chat_id=${{ secrets.TELEGRAM_CHAT_ID }}" \
+            -d "parse_mode=HTML" \
+            -d "text=<b>KrakenBot Deploy FAILED</b>%0ACommit: <code>${{ github.sha }}</code>%0ACheck: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
