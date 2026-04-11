@@ -76,6 +76,9 @@ backtest_results/
 *.pkl
 *.pickle
 
+# Raw API data (regenerable)
+results/*_raw.json
+
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
