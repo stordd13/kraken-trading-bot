@@ -25,8 +25,11 @@ import sys
 from typing import TYPE_CHECKING
 
 from krakenbot.config.settings import get_settings
-from krakenbot.connectors.kraken.rest import KrakenRestClient
-from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
+from krakenbot.connectors.exchange import (
+    ExchangeRestClient,
+    build_exchange_rest_client,
+    build_exchange_ws_client,
+)
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
@@ -34,6 +37,7 @@ from krakenbot.scheduler.task_scheduler import TaskScheduler
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
+    from krakenbot.connectors.base_ws import BaseWebSocketClient
     from krakenbot.core.event_bus import EventBus
 
 
@@ -51,8 +55,8 @@ class DataCollector:
         logger: Structured logger instance.
         event_bus: Event bus for internal messaging.
         db_manager: Database connection manager.
-        ws_client: Kraken WebSocket client for real-time data.
-        rest_client: Kraken REST API client for backfill.
+        ws_client: Exchange WebSocket client for real-time data.
+        rest_client: Exchange REST API client for backfill.
         task_scheduler: Scheduler for periodic data collection tasks.
     """
 
@@ -68,8 +72,8 @@ class DataCollector:
         # Components (initialized in setup)
         self.event_bus: EventBus | None = None
         self.db_manager: DatabaseManager | None = None
-        self.ws_client: KrakenWebSocketClient | None = None
-        self.rest_client: KrakenRestClient | None = None
+        self.ws_client: BaseWebSocketClient | None = None
+        self.rest_client: ExchangeRestClient | None = None
         self.task_scheduler: TaskScheduler | None = None
 
         # State
@@ -100,7 +104,7 @@ class DataCollector:
         self.logger.debug("database_initialized")
 
         # 3. Initialize REST client (for scheduled backfill)
-        self.rest_client = KrakenRestClient(
+        self.rest_client = build_exchange_rest_client(
             self.settings,
             self.event_bus,
             self.db_manager,
@@ -108,10 +112,12 @@ class DataCollector:
         self.logger.debug("rest_client_initialized")
 
         # 4. Initialize WebSocket client (for real-time data)
-        self.ws_client = KrakenWebSocketClient(
+        # Collector passes db_manager so the WS client persists candles to DB.
+        self.ws_client = build_exchange_ws_client(
             self.settings,
             self.event_bus,
             self.db_manager,
+            telegram_notifier=None,
         )
         self.logger.debug("websocket_client_initialized")
 
