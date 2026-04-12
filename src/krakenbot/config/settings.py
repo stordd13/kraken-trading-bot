@@ -75,6 +75,39 @@ class KrakenSettings(BaseSettings):
     )
 
 
+class BinanceSettings(BaseSettings):
+    """Binance API configuration."""
+
+    model_config = SettingsConfigDict(env_prefix="BINANCE_")
+
+    api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Binance API key",
+    )
+    api_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description="Binance API secret",
+    )
+    api_url: str = Field(
+        default="https://api.binance.com",
+        description="Binance REST API base URL",
+    )
+    ws_url: str = Field(
+        default="wss://stream.binance.com:9443",
+        description="Binance WebSocket URL",
+    )
+    use_bnb_for_fees: bool = Field(
+        default=True,
+        description="Whether the account uses BNB for fee discount",
+    )
+    recv_window_ms: int = Field(
+        default=5000,
+        description="recvWindow for signed requests (ms)",
+        ge=1000,
+        le=60000,
+    )
+
+
 class DatabaseSettings(BaseSettings):
     """Database configuration."""
 
@@ -420,6 +453,17 @@ class ExchangeFees(BaseModel):
         default=Decimal("0.0001"), description="Estimated slippage for backtest"
     )
 
+    @classmethod
+    def kraken_defaults(cls) -> ExchangeFees:
+        """Return Kraken Spot fee defaults."""
+        return cls(maker=Decimal("0.0016"), taker=Decimal("0.0026"))
+
+    @classmethod
+    def binance_defaults(cls, use_bnb: bool = True) -> ExchangeFees:
+        """Return Binance Spot fee defaults (with optional BNB discount)."""
+        rate = Decimal("0.00075") if use_bnb else Decimal("0.0010")
+        return cls(maker=rate, taker=rate)
+
 
 class PaperSettings(BaseSettings):
     """Paper trading configuration."""
@@ -624,8 +668,15 @@ class Settings(BaseSettings):
         description="Use JSON structured logging",
     )
 
+    # Exchange selection
+    exchange_name: str = Field(
+        default="kraken",
+        description="Active exchange: 'kraken' or 'binance'",
+    )
+
     # Sub-settings
     kraken: KrakenSettings = Field(default_factory=KrakenSettings)
+    binance: BinanceSettings = Field(default_factory=BinanceSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     risk: RiskManagementSettings = Field(default_factory=RiskManagementSettings)
     trading: TradingSettings = Field(default_factory=TradingSettings)
