@@ -38,8 +38,12 @@ from typing import TYPE_CHECKING, Any
 from sqlalchemy import func, select
 
 from krakenbot.config.settings import get_settings
-from krakenbot.connectors.exchange import ExchangeRestClient, build_exchange_rest_client
-from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
+from krakenbot.connectors.base_ws import BaseWebSocketClient
+from krakenbot.connectors.exchange import (
+    ExchangeRestClient,
+    build_exchange_rest_client,
+    build_exchange_ws_client,
+)
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
@@ -142,7 +146,7 @@ class KrakenBot:
         # Components (initialized in setup)
         self.event_bus: EventBus | None = None
         self.db_manager: DatabaseManager | None = None
-        self.ws_client: KrakenWebSocketClient | None = None
+        self.ws_client: BaseWebSocketClient | None = None
         self.rest_client: ExchangeRestClient | None = None
         self.strategy: ThresholdRollingStrategy | None = None  # Legacy single strategy
         self.strategies: list[BaseStrategy] = []  # Multi-strategy list
@@ -208,22 +212,26 @@ class KrakenBot:
         )
         self.logger.debug("rest_client_initialized")
 
-        # 4. Initialize WebSocket client
-        self.ws_client = KrakenWebSocketClient(
+        # 4. Initialize Telegram notifier (before WS so it can receive alerts)
+        self._init_telegram_notifier()
+
+        # 5. Initialize WebSocket client via factory
+        self.ws_client = build_exchange_ws_client(
             self.settings,
             self.event_bus,
             self.db_manager,
+            telegram_notifier=get_notifier(),
         )
         self.logger.debug("websocket_client_initialized")
 
-        # 5. Initialize risk manager (global for multi-strategy)
+        # 6. Initialize risk manager (global for multi-strategy)
         self.global_risk_manager = GlobalRiskManager(
             self.settings,
             self.db_manager,
             self.settings.multi_strategy if self._multi_strategy_mode else None,
         )
 
-        # 6. Initialize order manager for limit order support
+        # 7. Initialize order manager for limit order support
         self.order_manager = OrderManager(
             self.rest_client,
             self.db_manager,
@@ -232,7 +240,7 @@ class KrakenBot:
         )
         self.logger.debug("order_manager_initialized")
 
-        # 7. Initialize execution engine with global risk manager + order manager
+        # 8. Initialize execution engine with global risk manager + order manager
         self.execution_engine = ExecutionEngine(
             self.settings,
             self.event_bus,
@@ -243,10 +251,10 @@ class KrakenBot:
         )
         self.logger.debug("execution_engine_initialized")
 
-        # 7. Initialize strategies
+        # 9. Initialize strategies
         self._setup_strategies()
 
-        # 8. Initialize Kraken Futures client (optional, lazy)
+        # 10. Initialize Kraken Futures client (optional, lazy)
         if self.settings.kraken_futures.enabled:
             from krakenbot.connectors.kraken.futures import KrakenFuturesClient
 
@@ -255,9 +263,6 @@ class KrakenBot:
                 "kraken_futures_client_initialized",
                 demo=self.settings.kraken_futures.demo,
             )
-
-        # 9. Initialize Telegram notifier (optional)
-        self._init_telegram_notifier()
 
         self._setup_completed = True
 
