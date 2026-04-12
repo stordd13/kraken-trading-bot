@@ -11,7 +11,7 @@ from apscheduler.triggers.cron import CronTrigger
 import structlog
 
 from krakenbot.config.settings import Settings
-from krakenbot.connectors.kraken_rest import KrakenRestClient
+from krakenbot.connectors.kraken.rest import KrakenRestClient
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import EventBus, EventType
 from krakenbot.models.scheduled_tasks import TaskExecutionLog

@@ -26,7 +26,7 @@ from krakenbot.config.settings import (
     TradingMode,
     TradingSettings,
 )
-from krakenbot.connectors.kraken_ws import (
+from krakenbot.connectors.kraken.ws import (
     VALID_OHLC_INTERVALS,
     KrakenWebSocketClient,
 )

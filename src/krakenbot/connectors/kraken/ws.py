@@ -23,7 +23,7 @@ Documentation:
     https://docs.kraken.com/websockets/
 
 Example:
-    >>> from krakenbot.connectors.kraken_ws import KrakenWebSocketClient
+    >>> from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
     >>> client = KrakenWebSocketClient(settings, event_bus, db_manager)
     >>> await client.connect()
     >>> await client.subscribe_ohlc("XBT/EUR", interval=15)
@@ -42,6 +42,7 @@ from typing import TYPE_CHECKING, Any
 
 import aiohttp
 
+from krakenbot.connectors.base_ws import BaseWebSocketClient
 from krakenbot.core.event_bus import EventBus, EventType
 from krakenbot.core.exceptions import (
     DataValidationError,
@@ -77,7 +78,7 @@ PAIR_MAPPING = {
 }
 
 
-class KrakenWebSocketClient:
+class KrakenWebSocketClient(BaseWebSocketClient):
     """Async WebSocket client for Kraken public market data.
 
     This client connects to Kraken's public WebSocket API and provides
@@ -111,9 +112,7 @@ class KrakenWebSocketClient:
             event_bus: Event bus for publishing events.
             db_manager: Database manager for data persistence.
         """
-        self._settings = settings
-        self._event_bus = event_bus
-        self._db_manager = db_manager
+        super().__init__(settings, event_bus, db_manager)
 
         # WebSocket state
         self._ws: ClientWebSocketResponse | None = None

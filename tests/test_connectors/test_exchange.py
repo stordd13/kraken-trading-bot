@@ -17,7 +17,7 @@ class TestBuildExchangeRestClient:
         db_manager = MagicMock()
         fake_client = MagicMock(exchange_name="kraken")
 
-        with patch("krakenbot.connectors.kraken_rest.KrakenRestClient", return_value=fake_client):
+        with patch("krakenbot.connectors.kraken.rest.KrakenRestClient", return_value=fake_client):
             client = build_exchange_rest_client(mock_settings, event_bus, db_manager)
 
         assert client is fake_client
@@ -32,7 +32,7 @@ class TestBuildExchangeRestClient:
         fake_client.stats = {"api_calls": 0}
         fake_client.paper_balance = {"USDC": Decimal("0")}
 
-        with patch("krakenbot.connectors.kraken_rest.KrakenRestClient", return_value=fake_client):
+        with patch("krakenbot.connectors.kraken.rest.KrakenRestClient", return_value=fake_client):
             client = build_exchange_rest_client(mock_settings, event_bus, db_manager)
 
         assert client.exchange_name == "kraken"

@@ -20,7 +20,7 @@ Documentation:
     https://docs.kraken.com/rest/
 
 Example:
-    >>> from krakenbot.connectors.kraken_rest import KrakenRestClient
+    >>> from krakenbot.connectors.kraken.rest import KrakenRestClient
     >>> client = KrakenRestClient(settings, event_bus)
     >>> balance = await client.get_balance()
     >>> trade = await client.place_market_order("XBT/EUR", TradeSide.BUY, Decimal("0.001"))

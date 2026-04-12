@@ -22,7 +22,7 @@ from krakenbot.config.settings import (
     TradingMode,
     TradingSettings,
 )
-from krakenbot.connectors.kraken_rest import KrakenRestClient
+from krakenbot.connectors.kraken.rest import KrakenRestClient
 from krakenbot.core.event_bus import EventBus, reset_event_bus
 from krakenbot.core.exceptions import InsufficientBalanceError, OrderExecutionError
 from krakenbot.models.base import TradeSide

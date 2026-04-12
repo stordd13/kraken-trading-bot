@@ -134,6 +134,6 @@ def build_exchange_rest_client(
     a future exchange switch a configuration concern instead of a runtime
     wiring rewrite.
     """
-    from krakenbot.connectors.kraken_rest import KrakenRestClient
+    from krakenbot.connectors.kraken.rest import KrakenRestClient
 
     return KrakenRestClient(settings, event_bus, db_manager)

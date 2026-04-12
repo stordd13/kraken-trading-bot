@@ -32,7 +32,7 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 
-from krakenbot.connectors.kraken_rest import normalize_asset_balances, normalize_asset_symbol
+from krakenbot.connectors.kraken.rest import normalize_asset_balances, normalize_asset_symbol
 from krakenbot.core.logger import get_logger
 from krakenbot.models.base import TradeSide, TradeStatus
 

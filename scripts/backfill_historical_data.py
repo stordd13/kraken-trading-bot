@@ -38,7 +38,7 @@ from datetime import UTC, datetime, timedelta
 import structlog
 
 from krakenbot.config.settings import get_settings
-from krakenbot.connectors.kraken_rest import KrakenRestClient
+from krakenbot.connectors.kraken.rest import KrakenRestClient
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.utils.time_utils import (

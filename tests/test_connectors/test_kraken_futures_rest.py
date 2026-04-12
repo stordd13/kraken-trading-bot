@@ -17,7 +17,7 @@ from krakenbot.config.settings import (
     TradingSettings,
 )
 from krakenbot.connectors.base_perps import BaseExchangePerps
-from krakenbot.connectors.kraken_futures_rest import KrakenFuturesClient
+from krakenbot.connectors.kraken.futures import KrakenFuturesClient
 
 
 def _make_settings(

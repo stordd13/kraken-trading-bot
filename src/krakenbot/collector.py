@@ -25,8 +25,8 @@ import sys
 from typing import TYPE_CHECKING
 
 from krakenbot.config.settings import get_settings
-from krakenbot.connectors.kraken_rest import KrakenRestClient
-from krakenbot.connectors.kraken_ws import KrakenWebSocketClient
+from krakenbot.connectors.kraken.rest import KrakenRestClient
+from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger

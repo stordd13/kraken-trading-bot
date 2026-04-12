@@ -33,7 +33,7 @@ from krakenbot.strategies.base import TradingSignal
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
-    from krakenbot.connectors.kraken_rest import KrakenRestClient
+    from krakenbot.connectors.kraken.rest import KrakenRestClient
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
     from krakenbot.execution.order_manager import OrderManager

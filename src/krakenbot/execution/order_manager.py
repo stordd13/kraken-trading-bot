@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
-from krakenbot.connectors.kraken_rest import normalize_asset_balances, normalize_asset_symbol
+from krakenbot.connectors.kraken.rest import normalize_asset_balances, normalize_asset_symbol
 from krakenbot.core.event_bus import EventType
 from krakenbot.core.logger import get_logger
 from krakenbot.models.base import OrderStatus, TradeSide

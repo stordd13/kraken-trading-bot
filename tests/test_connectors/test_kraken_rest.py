@@ -25,7 +25,7 @@ from krakenbot.config.settings import (
     TradingMode,
     TradingSettings,
 )
-from krakenbot.connectors.kraken_rest import (
+from krakenbot.connectors.kraken.rest import (
     MIN_ORDER_SIZE,
     KrakenRestClient,
 )

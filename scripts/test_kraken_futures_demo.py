@@ -18,7 +18,7 @@ import time
 import structlog
 
 from krakenbot.config.settings import KrakenFuturesSettings, Settings
-from krakenbot.connectors.kraken_futures_rest import KrakenFuturesClient
+from krakenbot.connectors.kraken.futures import KrakenFuturesClient
 
 log = structlog.get_logger()
 

@@ -24,7 +24,7 @@ from krakenbot.config.settings import (
     StrategyInstanceConfig,
     TradingMode,
 )
-from krakenbot.connectors.kraken_rest import KrakenRestClient
+from krakenbot.connectors.kraken.rest import KrakenRestClient
 from krakenbot.core.event_bus import EventBus
 from krakenbot.execution.engine import ExecutionEngine
 from krakenbot.execution.order_manager import OrderManager

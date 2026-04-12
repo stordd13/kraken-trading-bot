@@ -39,7 +39,7 @@ from sqlalchemy import func, select
 
 from krakenbot.config.settings import get_settings
 from krakenbot.connectors.exchange import ExchangeRestClient, build_exchange_rest_client
-from krakenbot.connectors.kraken_ws import KrakenWebSocketClient
+from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import get_event_bus
 from krakenbot.core.logger import configure_logging, get_logger
@@ -248,7 +248,7 @@ class KrakenBot:
 
         # 8. Initialize Kraken Futures client (optional, lazy)
         if self.settings.kraken_futures.enabled:
-            from krakenbot.connectors.kraken_futures_rest import KrakenFuturesClient
+            from krakenbot.connectors.kraken.futures import KrakenFuturesClient
 
             self.futures_client = KrakenFuturesClient(self.settings)
             self.logger.info(
