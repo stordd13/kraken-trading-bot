@@ -71,6 +71,7 @@ async def seed_ohlc_data(
             timestamp=current_time,
             pair=pair,
             interval=interval_minutes,
+            exchange="kraken",
             open=Decimal(str(round(open_price, 2))),
             high=Decimal(str(round(high_price, 2))),
             low=Decimal(str(round(low_price, 2))),

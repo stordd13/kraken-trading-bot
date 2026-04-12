@@ -233,7 +233,12 @@ class MultiTimeframeAnalyzer:
             self._generic_last_close[tf] = None
             self._generic_volumes[tf] = deque(maxlen=20)
 
-    async def initialize(self, db_manager: DatabaseManager, pair: str = "XBT/USDC") -> None:
+    async def initialize(
+        self,
+        db_manager: DatabaseManager,
+        pair: str = "XBT/USDC",
+        exchange: str = "kraken",
+    ) -> None:
         """Load historical candles from database for warmup.
 
         Fetches the most recent candles per timeframe from market_data_ohlc
@@ -242,6 +247,7 @@ class MultiTimeframeAnalyzer:
         Args:
             db_manager: Database manager for queries.
             pair: Trading pair to load data for.
+            exchange: Exchange to filter data by.
         """
         from sqlalchemy import select
 
@@ -261,6 +267,7 @@ class MultiTimeframeAnalyzer:
                         select(OHLCData)
                         .where(OHLCData.pair == pair)
                         .where(OHLCData.interval == interval)
+                        .where(OHLCData.exchange == exchange)
                         .order_by(OHLCData.timestamp.asc())
                         .limit(count)
                     )

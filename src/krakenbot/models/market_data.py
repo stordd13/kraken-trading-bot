@@ -58,6 +58,14 @@ class OHLCData(Base):
         nullable=False,
         comment="Candle interval in minutes",
     )
+    exchange: Mapped[str] = mapped_column(
+        String(20),
+        primary_key=True,
+        nullable=False,
+        default="kraken",
+        server_default="kraken",
+        comment="Exchange source (kraken, binance)",
+    )
 
     # OHLC values
     open: Mapped[Decimal] = mapped_column(
@@ -112,8 +120,9 @@ class OHLCData(Base):
         """Return string representation of OHLC data."""
         return (
             f"OHLCData(timestamp={self.timestamp!r}, pair={self.pair!r}, "
-            f"interval={self.interval}, OHLC=({self.open}, {self.high}, "
-            f"{self.low}, {self.close}), volume={self.volume})"
+            f"interval={self.interval}, exchange={self.exchange!r}, "
+            f"OHLC=({self.open}, {self.high}, {self.low}, {self.close}), "
+            f"volume={self.volume})"
         )
 
     @property

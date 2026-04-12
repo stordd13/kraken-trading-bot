@@ -50,6 +50,7 @@ async def _load_candles_chunked(
     interval: int,
     start_time: datetime,
     end_time: datetime,
+    exchange: str = "kraken",
 ) -> list[OHLCData]:
     """Load OHLC candles in bounded windows to avoid Timescale lock exhaustion."""
     candles: list[OHLCData] = []
@@ -67,6 +68,7 @@ async def _load_candles_chunked(
                 select(OHLCData)
                 .where(OHLCData.pair == pair)
                 .where(OHLCData.interval == interval)
+                .where(OHLCData.exchange == exchange)
                 .where(OHLCData.timestamp >= window_start)
                 .where(
                     OHLCData.timestamp <= window_end
@@ -153,6 +155,7 @@ class BacktestEngine:
         db_manager: DatabaseManager,
         strategy_name: str = "threshold",
         candle_interval: int = 1,
+        exchange: str = "kraken",
     ):
         """Initialize backtest engine.
 
@@ -161,11 +164,13 @@ class BacktestEngine:
             db_manager: Database manager for historical data
             strategy_name: Name of strategy to backtest
             candle_interval: Candle interval in minutes (default: 1)
+            exchange: Exchange data source to filter on
         """
         self.settings = settings
         self.db_manager = db_manager
         self.strategy_name = strategy_name
         self.candle_interval = candle_interval
+        self.exchange = exchange
         self.logger = get_logger().bind(component="backtest")
 
         # Simulation state
@@ -278,6 +283,7 @@ class BacktestEngine:
             interval,
             start_time,
             end_time,
+            exchange=self.exchange,
         )
 
     async def _build_replay_sequence(
@@ -416,6 +422,7 @@ class BacktestEngine:
                 select(OHLCData)
                 .where(OHLCData.pair == pair)
                 .where(OHLCData.interval == self.candle_interval)
+                .where(OHLCData.exchange == self.exchange)
                 .where(OHLCData.timestamp >= start_time)
                 .where(OHLCData.timestamp <= end_time)
                 .order_by(OHLCData.timestamp.asc())
@@ -1698,12 +1705,14 @@ class GridBacktester:
         db_manager: DatabaseManager,
         strategy_name: str = "grid_spot",
         candle_interval: int = 5,
+        exchange: str = "kraken",
     ):
         """Initialize grid backtester."""
         self.settings = settings
         self.db_manager = db_manager
         self.strategy_name = strategy_name
         self.candle_interval = candle_interval
+        self.exchange = exchange
         self.logger = get_logger().bind(component="grid_backtest")
 
         # Simulation state
@@ -2362,6 +2371,7 @@ class GridBacktester:
             self.candle_interval,
             start_time,
             end_time,
+            exchange=self.exchange,
         )
 
     async def _load_candles_for_interval(
@@ -2374,6 +2384,7 @@ class GridBacktester:
             interval,
             start_time,
             end_time,
+            exchange=self.exchange,
         )
 
     def _calculate_final_metrics(self) -> None:
@@ -2596,6 +2607,12 @@ async def main() -> None:
         default=0.7,
         help="Train set ratio for cross-validation (default: 0.7 = 70%%)",
     )
+    parser.add_argument(
+        "--exchange",
+        type=str,
+        default="kraken",
+        help="Exchange data source: kraken or binance (default: kraken)",
+    )
 
     args = parser.parse_args()
 
@@ -2642,6 +2659,7 @@ async def main() -> None:
                 db_manager,
                 strategy_name=args.strategy,
                 candle_interval=args.interval,
+                exchange=args.exchange,
             )
             train_metrics = await train_engine.run(args.pair, start_time, split_time)
             train_engine.print_report()
@@ -2656,6 +2674,7 @@ async def main() -> None:
                 db_manager,
                 strategy_name=args.strategy,
                 candle_interval=args.interval,
+                exchange=args.exchange,
             )
             test_metrics = await test_engine.run(args.pair, split_time, end_time)
             test_engine.print_report()
@@ -2729,6 +2748,7 @@ async def main() -> None:
                     db_manager,
                     strategy_name=args.strategy,
                     candle_interval=args.interval,
+                    exchange=args.exchange,
                 )
             else:
                 engine = BacktestEngine(
@@ -2736,6 +2756,7 @@ async def main() -> None:
                     db_manager,
                     strategy_name=args.strategy,
                     candle_interval=args.interval,
+                    exchange=args.exchange,
                 )
 
             await engine.run(args.pair, start_time, end_time)

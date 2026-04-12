@@ -122,6 +122,7 @@ async def fetch_candles_from_binance(
                     "timestamp": datetime.fromtimestamp(ts_ms / 1000, tz=UTC),
                     "pair": TARGET_PAIR,
                     "interval": interval,
+                    "exchange": "binance",
                     "open": Decimal(str(o)),
                     "high": Decimal(str(h)),
                     "low": Decimal(str(l)),
@@ -181,7 +182,7 @@ async def save_candles_preserve_existing(
                 pg_insert(OHLCData)
                 .values(batch)
                 .on_conflict_do_nothing(
-                    index_elements=["timestamp", "pair", "interval"],
+                    index_elements=["timestamp", "pair", "interval", "exchange"],
                 )
                 .returning(OHLCData.timestamp)
             )

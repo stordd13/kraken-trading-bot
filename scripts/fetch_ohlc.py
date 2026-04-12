@@ -51,6 +51,7 @@ async def get_last_timestamp(
     db_manager: DatabaseManager,
     pair: str,
     interval: int,
+    exchange: str = "kraken",
 ) -> datetime | None:
     """Get last stored timestamp for pair/interval.
 
@@ -58,6 +59,7 @@ async def get_last_timestamp(
         db_manager: Database manager instance.
         pair: Trading pair (e.g., "XBT/USDC").
         interval: Candle interval in minutes.
+        exchange: Exchange to filter on.
 
     Returns:
         Last stored timestamp or None if no data exists.
@@ -67,6 +69,7 @@ async def get_last_timestamp(
             select(func.max(OHLCData.timestamp))
             .where(OHLCData.pair == pair)
             .where(OHLCData.interval == interval)
+            .where(OHLCData.exchange == exchange)
         )
         result = await session.execute(stmt)
         return result.scalar()
@@ -76,6 +79,7 @@ async def get_first_timestamp(
     db_manager: DatabaseManager,
     pair: str,
     interval: int,
+    exchange: str = "kraken",
 ) -> datetime | None:
     """Get first (oldest) stored timestamp for pair/interval.
 
@@ -83,6 +87,7 @@ async def get_first_timestamp(
         db_manager: Database manager instance.
         pair: Trading pair (e.g., "XBT/USDC").
         interval: Candle interval in minutes.
+        exchange: Exchange to filter on.
 
     Returns:
         First stored timestamp or None if no data exists.
@@ -92,6 +97,7 @@ async def get_first_timestamp(
             select(func.min(OHLCData.timestamp))
             .where(OHLCData.pair == pair)
             .where(OHLCData.interval == interval)
+            .where(OHLCData.exchange == exchange)
         )
         result = await session.execute(stmt)
         return result.scalar()
@@ -100,6 +106,7 @@ async def get_first_timestamp(
 async def save_ohlc_batch(
     db_manager: DatabaseManager,
     candles: list[dict],
+    exchange: str = "kraken",
 ) -> int:
     """Save a batch of OHLC candles to database.
 
@@ -108,6 +115,7 @@ async def save_ohlc_batch(
     Args:
         db_manager: Database manager instance.
         candles: List of OHLC dictionaries from fetch_ohlcv().
+        exchange: Exchange source tag.
 
     Returns:
         Number of candles saved.
@@ -126,6 +134,7 @@ async def save_ohlc_batch(
                     timestamp=candle_data["timestamp"],
                     pair=candle_data["pair"],
                     interval=candle_data["interval"],
+                    exchange=exchange,
                     open=candle_data["open"],
                     high=candle_data["high"],
                     low=candle_data["low"],
@@ -133,7 +142,7 @@ async def save_ohlc_batch(
                     volume=candle_data["volume"],
                 )
                 .on_conflict_do_update(
-                    index_elements=["timestamp", "pair", "interval"],
+                    index_elements=["timestamp", "pair", "interval", "exchange"],
                     set_={
                         "open": candle_data["open"],
                         "high": candle_data["high"],

@@ -133,11 +133,13 @@ class ThresholdRollingStrategy(BaseStrategy):
         """
         interval = self.settings.trading.candle_interval_min
 
+        exchange_name = getattr(self.settings, "exchange_name", "kraken")
         stmt = (
             select(OHLCData.close)
             .where(
                 OHLCData.pair == self.pair,
                 OHLCData.interval == interval,
+                OHLCData.exchange == exchange_name,
             )
             .order_by(OHLCData.timestamp.desc())
             .limit(self.lookback_periods)

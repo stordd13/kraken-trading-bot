@@ -71,6 +71,7 @@ def _build_test_candle(
         timestamp=ts,
         pair="XBT/USDC",
         interval=240,
+        exchange="kraken",
         open=value,
         high=value,
         low=value,

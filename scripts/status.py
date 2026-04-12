@@ -94,6 +94,15 @@ async def get_status() -> None:
             total_candles = result.scalar() or 0
             print(f"Total candles: {total_candles:,}")
 
+            # Count by exchange
+            result = await session.execute(
+                select(OHLCData.exchange, func.count())
+                .group_by(OHLCData.exchange)
+                .order_by(OHLCData.exchange)
+            )
+            for exch, cnt in result.all():
+                print(f"  • {exch}: {cnt:,} candles")
+
             # Count by interval
             result = await session.execute(
                 select(OHLCData.interval, func.count())

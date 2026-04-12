@@ -469,6 +469,7 @@ class FeatureStore:
         interval: int,
         start_time: datetime,
         end_time: datetime,
+        exchange: str = "kraken",
     ) -> list[OHLCData]:
         """Load OHLC candles for a specific interval from DB."""
         async with self._db.read_session() as session:
@@ -477,6 +478,7 @@ class FeatureStore:
                 .where(
                     OHLCData.pair == pair,
                     OHLCData.interval == interval,
+                    OHLCData.exchange == exchange,
                     OHLCData.timestamp >= start_time,
                     OHLCData.timestamp <= end_time,
                 )

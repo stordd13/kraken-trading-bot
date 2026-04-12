@@ -91,6 +91,7 @@ async def get_last_timestamp(
     session_factory: async_sessionmaker[AsyncSession],
     pair_db: str,
     interval: int,
+    exchange: str = "binance",
 ) -> datetime | None:
     """Get the most recent timestamp in DB for a pair/interval."""
     async with session_factory() as session:
@@ -98,6 +99,7 @@ async def get_last_timestamp(
             select(func.max(OHLCData.timestamp))
             .where(OHLCData.pair == pair_db)
             .where(OHLCData.interval == interval)
+            .where(OHLCData.exchange == exchange)
         )
         result = await session.execute(stmt)
         return result.scalar()
@@ -107,6 +109,7 @@ async def get_first_timestamp(
     session_factory: async_sessionmaker[AsyncSession],
     pair_db: str,
     interval: int,
+    exchange: str = "binance",
 ) -> datetime | None:
     """Get the oldest timestamp in DB for a pair/interval."""
     async with session_factory() as session:
@@ -114,6 +117,7 @@ async def get_first_timestamp(
             select(func.min(OHLCData.timestamp))
             .where(OHLCData.pair == pair_db)
             .where(OHLCData.interval == interval)
+            .where(OHLCData.exchange == exchange)
         )
         result = await session.execute(stmt)
         return result.scalar()
@@ -132,7 +136,7 @@ async def save_batch(
             pg_insert(OHLCData)
             .values(candles)
             .on_conflict_do_nothing(
-                index_elements=["timestamp", "pair", "interval"],
+                index_elements=["timestamp", "pair", "interval", "exchange"],
             )
             .returning(OHLCData.timestamp)
         )
@@ -219,6 +223,7 @@ def download_pair_interval_sync(
                     "timestamp": ts,
                     "pair": pair_db,
                     "interval": interval_min,
+                    "exchange": "binance",
                     "open": Decimal(str(o)),
                     "high": Decimal(str(h)),
                     "low": Decimal(str(low)),
@@ -265,6 +270,7 @@ async def get_data_summary(
                     .select_from(OHLCData)
                     .where(OHLCData.pair == pair_db)
                     .where(OHLCData.interval == interval_min)
+                    .where(OHLCData.exchange == "binance")
                 )
                 result = await session.execute(stmt)
                 count = result.scalar() or 0
