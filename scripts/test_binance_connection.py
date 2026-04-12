@@ -14,6 +14,9 @@ import sys
 
 import structlog
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from krakenbot.config.settings import Settings
 from krakenbot.connectors.binance.rest import BinanceRestClient
 from krakenbot.core.event_bus import EventBus

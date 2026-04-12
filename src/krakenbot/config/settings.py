@@ -43,7 +43,13 @@ class LogLevel(str, Enum):
 class KrakenSettings(BaseSettings):
     """Kraken API configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="KRAKEN_")
+    model_config = SettingsConfigDict(
+        env_prefix="KRAKEN_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     api_key: SecretStr = Field(
         default=SecretStr(""),
@@ -78,7 +84,13 @@ class KrakenSettings(BaseSettings):
 class BinanceSettings(BaseSettings):
     """Binance API configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="BINANCE_")
+    model_config = SettingsConfigDict(
+        env_prefix="BINANCE_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
 
     api_key: SecretStr = Field(
         default=SecretStr(""),
