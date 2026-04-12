@@ -413,15 +413,9 @@ class CommonIndicatorsSettings(BaseModel):
 class ExchangeFees(BaseModel):
     """Trading fees configuration. Defaults match Kraken Spot (backward compat)."""
 
-    maker: Decimal = Field(
-        default=Decimal("0.0016"), description="Maker fee rate (limit orders)"
-    )
-    taker: Decimal = Field(
-        default=Decimal("0.0026"), description="Taker fee rate (market orders)"
-    )
-    spread: Decimal = Field(
-        default=Decimal("0.0002"), description="Estimated spread for backtest"
-    )
+    maker: Decimal = Field(default=Decimal("0.0016"), description="Maker fee rate (limit orders)")
+    taker: Decimal = Field(default=Decimal("0.0026"), description="Taker fee rate (market orders)")
+    spread: Decimal = Field(default=Decimal("0.0002"), description="Estimated spread for backtest")
     slippage: Decimal = Field(
         default=Decimal("0.0001"), description="Estimated slippage for backtest"
     )

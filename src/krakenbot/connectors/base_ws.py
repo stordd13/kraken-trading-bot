@@ -7,10 +7,10 @@ subscription payloads) lives in the concrete subclass.
 
 from __future__ import annotations
 
-import asyncio
 from abc import ABC, abstractmethod
+import asyncio
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from krakenbot.core.logger import get_logger
 

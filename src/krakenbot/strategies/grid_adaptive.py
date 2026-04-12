@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
 
+
 class GridAdaptiveStrategy(GridSpotStrategy):
     """Grid strategy with ATR-based adaptive range.
 
