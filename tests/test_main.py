@@ -99,7 +99,7 @@ def mock_database_manager():
 
 @pytest.fixture
 def mock_ws_client():
-    """Mock KrakenWebSocketClient."""
+    """Mock WebSocket client (via factory)."""
     mock_ws = MagicMock()
     mock_ws.connect = AsyncMock()
     mock_ws.close = AsyncMock()
@@ -112,7 +112,7 @@ def mock_ws_client():
         "errors": 0,
         "reconnections": 0,
     }
-    with patch("krakenbot.main.KrakenWebSocketClient", return_value=mock_ws):
+    with patch("krakenbot.main.build_exchange_ws_client", return_value=mock_ws):
         yield mock_ws
 
 
