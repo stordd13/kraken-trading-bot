@@ -12,9 +12,9 @@ from __future__ import annotations
 import asyncio
 import sys
 
+from dotenv import load_dotenv
 import structlog
 
-from dotenv import load_dotenv
 load_dotenv()
 
 from krakenbot.config.settings import Settings
