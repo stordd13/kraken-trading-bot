@@ -133,6 +133,8 @@ def build_exchange_rest_client(
     Today this always returns Kraken. Keeping the decision in one place makes
     a future exchange switch a configuration concern instead of a runtime
     wiring rewrite.
+
+    TODO Phase P2: dispatch on settings.exchange_name to support Binance.
     """
     from krakenbot.connectors.kraken.rest import KrakenRestClient
 
