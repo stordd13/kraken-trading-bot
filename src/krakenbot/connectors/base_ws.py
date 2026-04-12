@@ -34,7 +34,7 @@ class BaseWebSocketClient(ABC):
         self,
         settings: Settings,
         event_bus: EventBus,
-        db_manager: DatabaseManager,
+        db_manager: DatabaseManager | None = None,
     ) -> None:
         self._settings = settings
         self._event_bus = event_bus
