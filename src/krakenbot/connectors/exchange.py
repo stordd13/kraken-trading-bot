@@ -130,12 +130,17 @@ def build_exchange_rest_client(
 ) -> ExchangeRestClient:
     """Build the REST client used by runtime execution.
 
-    Today this always returns Kraken. Keeping the decision in one place makes
-    a future exchange switch a configuration concern instead of a runtime
-    wiring rewrite.
-
-    TODO Phase P2: dispatch on settings.exchange_name to support Binance.
+    Dispatches on ``settings.exchange_name`` to return the right client.
+    Defaults to Kraken for backward compatibility.
     """
+    exchange_name = getattr(settings, "exchange_name", "kraken").lower()
+
+    if exchange_name == "binance":
+        from krakenbot.connectors.binance.rest import BinanceRestClient
+
+        return BinanceRestClient(settings, event_bus, db_manager)
+
+    # Default: Kraken (backward compat)
     from krakenbot.connectors.kraken.rest import KrakenRestClient
 
     return KrakenRestClient(settings, event_bus, db_manager)
