@@ -642,6 +642,7 @@ class KrakenWebSocketClient(BaseWebSocketClient):
                 timestamp=candle_end,
                 pair=pair,
                 interval=interval,
+                exchange="kraken",
                 open=Decimal(data[2]),
                 high=Decimal(data[3]),
                 low=Decimal(data[4]),
@@ -665,6 +666,7 @@ class KrakenWebSocketClient(BaseWebSocketClient):
                             timestamp=prev_data["timestamp"],
                             pair=prev_data["pair"],
                             interval=prev_data["interval"],
+                            exchange="kraken",
                             open=Decimal(prev_data["open"]),
                             high=Decimal(prev_data["high"]),
                             low=Decimal(prev_data["low"]),
@@ -873,9 +875,14 @@ class KrakenWebSocketClient(BaseWebSocketClient):
     async def _save_ohlc(self, ohlc: OHLCData) -> None:
         """Save OHLC data to database.
 
+        Skipped when *db_manager* is ``None`` (e.g. when the trader runs
+        without persistence — the collector handles it).
+
         Args:
             ohlc: OHLC data to save.
         """
+        if self._db_manager is None:
+            return
         try:
             async with self._db_manager.session() as session:
                 # Use merge to handle duplicates (same timestamp, pair, interval)
@@ -893,6 +900,8 @@ class KrakenWebSocketClient(BaseWebSocketClient):
         Args:
             tick: Tick data to save.
         """
+        if self._db_manager is None:
+            return
         try:
             async with self._db_manager.session() as session:
                 # Handle sequence for duplicate timestamps

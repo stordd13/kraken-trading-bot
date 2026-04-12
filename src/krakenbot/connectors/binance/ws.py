@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 from datetime import UTC, datetime
+from decimal import Decimal
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -33,11 +34,13 @@ from krakenbot.connectors.base_ws import BaseWebSocketClient
 from krakenbot.core.event_bus import EventType
 from krakenbot.core.exceptions import DataValidationError, WebSocketConnectionError
 from krakenbot.core.logger import get_logger
+from krakenbot.models.market_data import OHLCData
 
 if TYPE_CHECKING:
     from aiohttp import ClientWebSocketResponse
 
     from krakenbot.config.settings import Settings
+    from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
     from krakenbot.notifications.telegram import TelegramNotifier
 
@@ -102,9 +105,10 @@ class BinanceWebSocketClient(BaseWebSocketClient):
         self,
         settings: Settings,
         event_bus: EventBus,
+        db_manager: DatabaseManager | None = None,
         telegram_notifier: TelegramNotifier | None = None,
     ) -> None:
-        super().__init__(settings, event_bus, db_manager=None)
+        super().__init__(settings, event_bus, db_manager=db_manager)
         self._telegram_notifier = telegram_notifier
 
         # WebSocket state
@@ -437,6 +441,23 @@ class BinanceWebSocketClient(BaseWebSocketClient):
 
             if is_closed:
                 self._stats["ohlc_received"] += 1
+
+                # Persist completed candle to DB (no-op if db_manager is None)
+                ohlc = OHLCData(
+                    timestamp=timestamp,
+                    pair=pair,
+                    interval=interval,
+                    exchange="binance",
+                    open=Decimal(k["o"]),
+                    high=Decimal(k["h"]),
+                    low=Decimal(k["l"]),
+                    close=Decimal(k["c"]),
+                    volume=Decimal(k["v"]),
+                    vwap=None,
+                    trades_count=k.get("n"),
+                )
+                await self._save_ohlc(ohlc)
+
                 logger.info(
                     "binance_ws_ohlc_complete",
                     pair=pair,
@@ -479,6 +500,29 @@ class BinanceWebSocketClient(BaseWebSocketClient):
         except (KeyError, ValueError) as e:
             logger.error("binance_ws_ticker_parse_error", error=str(e))
             self._stats["errors"] += 1
+
+    # ------------------------------------------------------------------
+    # OHLC persistence
+    # ------------------------------------------------------------------
+
+    async def _save_ohlc(self, ohlc: OHLCData) -> None:
+        """Save OHLC data to database if db_manager is available.
+
+        When the collector creates this client it passes *db_manager* so
+        completed candles are persisted.  The trader passes ``None`` to
+        avoid double-writes (the collector already handles persistence).
+        """
+        if self._db_manager is None:
+            return
+        try:
+            async with self._db_manager.session() as session:
+                await session.merge(ohlc)
+        except Exception as e:
+            logger.error(
+                "binance_ws_ohlc_save_error",
+                error=str(e),
+                pair=ohlc.pair,
+            )
 
     # ------------------------------------------------------------------
     # Heartbeat monitor

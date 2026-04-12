@@ -216,10 +216,12 @@ class KrakenBot:
         self._init_telegram_notifier()
 
         # 5. Initialize WebSocket client via factory
+        # Trader passes db_manager=None: the collector handles OHLC
+        # persistence, the trader only consumes EventBus events.
         self.ws_client = build_exchange_ws_client(
             self.settings,
             self.event_bus,
-            self.db_manager,
+            db_manager=None,
             telegram_notifier=get_notifier(),
         )
         self.logger.debug("websocket_client_initialized")
@@ -496,7 +498,10 @@ class KrakenBot:
         # 2. Initialize shared analyzer with historical data
         if self._multi_strategy_mode and self.analyzer:
             try:
-                await self.analyzer.initialize(self.db_manager)
+                await self.analyzer.initialize(
+                    self.db_manager,
+                    exchange=self.settings.exchange_name,
+                )
                 self.logger.info("multi_timeframe_analyzer_warmed_up")
             except Exception as e:
                 self.logger.warning(

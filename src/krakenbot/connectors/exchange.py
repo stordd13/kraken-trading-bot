@@ -164,7 +164,12 @@ def build_exchange_ws_client(
     if exchange_name == "binance":
         from krakenbot.connectors.binance.ws import BinanceWebSocketClient
 
-        return BinanceWebSocketClient(settings, event_bus, telegram_notifier=telegram_notifier)
+        return BinanceWebSocketClient(
+            settings,
+            event_bus,
+            db_manager=db_manager,
+            telegram_notifier=telegram_notifier,
+        )
 
     # Default: Kraken (backward compat)
     from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
