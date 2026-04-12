@@ -6,6 +6,7 @@ Settings are loaded from environment variables with validation.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from enum import Enum
 import logging
 from pathlib import Path
@@ -409,6 +410,23 @@ class CommonIndicatorsSettings(BaseModel):
     adx_period: int = Field(default=14, ge=5, le=50)
 
 
+class ExchangeFees(BaseModel):
+    """Trading fees configuration. Defaults match Kraken Spot (backward compat)."""
+
+    maker: Decimal = Field(
+        default=Decimal("0.0016"), description="Maker fee rate (limit orders)"
+    )
+    taker: Decimal = Field(
+        default=Decimal("0.0026"), description="Taker fee rate (market orders)"
+    )
+    spread: Decimal = Field(
+        default=Decimal("0.0002"), description="Estimated spread for backtest"
+    )
+    slippage: Decimal = Field(
+        default=Decimal("0.0001"), description="Estimated slippage for backtest"
+    )
+
+
 class PaperSettings(BaseSettings):
     """Paper trading configuration."""
 
@@ -630,6 +648,7 @@ class Settings(BaseSettings):
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     kraken_futures: KrakenFuturesSettings = Field(default_factory=KrakenFuturesSettings)
     common_indicators: CommonIndicatorsSettings = Field(default_factory=CommonIndicatorsSettings)
+    exchange_fees: ExchangeFees = Field(default_factory=ExchangeFees)
 
     # ML settings (loaded from strategies.yaml ml: section)
     ml: MLSettings = Field(default_factory=lambda: MLSettings())

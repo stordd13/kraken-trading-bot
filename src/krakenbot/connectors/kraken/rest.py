@@ -404,7 +404,7 @@ class KrakenRestClient:
 
         # Calculate order value
         value = amount * price
-        fee = value * Decimal("0.0026")  # Kraken maker/taker fee ~0.26%
+        fee = value * self._settings.exchange_fees.taker
 
         # Get currency symbols
         self._normalize_paper_balance()
@@ -726,7 +726,7 @@ class KrakenRestClient:
             price = ticker.get("last") or Decimal("42000")
 
         value = amount * price
-        fee = value * Decimal("0.0026")  # Same fee as spot
+        fee = value * self._settings.exchange_fees.taker
         quote_currency = pair.split("/")[1]
 
         if side == TradeSide.SELL:
@@ -1218,7 +1218,7 @@ class KrakenRestClient:
         if immediate_fill:
             # Check balance for immediate fill
             value = amount * price
-            fee = value * Decimal("0.0016")  # Maker fee ~0.16%
+            fee = value * self._settings.exchange_fees.maker
             quote_currency = pair.split("/")[1]
             self._normalize_paper_balance()
             base_currency = normalize_asset_symbol(pair.split("/")[0])

@@ -33,10 +33,6 @@ if TYPE_CHECKING:
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
 
-# Minimum spacing that covers 2x round-trip fees (0.16% * 2 sides * 2 margin)
-MIN_PROFITABLE_SPACING = Decimal("0.64")
-
-
 class GridAdaptiveStrategy(GridSpotStrategy):
     """Grid strategy with ATR-based adaptive range.
 
@@ -118,6 +114,13 @@ class GridAdaptiveStrategy(GridSpotStrategy):
             }
         )
         return config
+
+    @property
+    def _min_profitable_spacing(self) -> Decimal:
+        """Minimum spacing (%) that covers 2x round-trip maker fees."""
+        fees = self.settings.exchange_fees
+        # Convert from fraction to pct and apply 2× round-trip safety margin
+        return Decimal("4") * (fees.maker * 100)
 
     # ------------------------------------------------------------------
     # OHLC handling: feed analyzer + check recalculation
@@ -261,7 +264,7 @@ class GridAdaptiveStrategy(GridSpotStrategy):
         spacing_pct = total_range_pct / Decimal(str(self.grid_levels))
 
         # Enforce profitability floor and min_spacing
-        effective_min = max(self.min_spacing_pct, MIN_PROFITABLE_SPACING)
+        effective_min = max(self.min_spacing_pct, self._min_profitable_spacing)
         if spacing_pct < effective_min:
             spacing_pct = effective_min
             total_range_pct = spacing_pct * Decimal(str(self.grid_levels))

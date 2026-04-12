@@ -21,7 +21,7 @@ from sqlalchemy import select, text
 # Load .env from project root
 load_dotenv(Path(__file__).parent.parent / ".env")
 
-from krakenbot.config.settings import Settings, get_settings
+from krakenbot.config.settings import ExchangeFees, Settings, get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import EventBus
 from krakenbot.core.logger import get_logger
@@ -482,15 +482,16 @@ class BacktestEngine:
             await self._execute_short_signal(signal, current_price, is_limit_fill=is_limit_fill)
             return
 
-        # Realistic trading costs
+        # Realistic trading costs (defaults from ExchangeFees config)
+        _fees = ExchangeFees()
         if is_limit_fill:
-            fee_pct = Decimal("0.0016")  # 0.16% maker fee on Kraken
+            fee_pct = _fees.maker
             spread_pct = Decimal("0")  # Limit order: no spread
             slippage_pct = Decimal("0")  # Limit order: no slippage
         else:
-            fee_pct = Decimal("0.0026")  # 0.26% taker fee on Kraken (tier 1)
-            spread_pct = Decimal("0.0002")  # 0.02% typical BTC/USDC spread
-            slippage_pct = Decimal("0.0001")  # 0.01% slippage (small orders)
+            fee_pct = _fees.taker
+            spread_pct = _fees.spread
+            slippage_pct = _fees.slippage
 
         # Handle multi-position strategies differently
         is_multi = self.strategy_name in [
@@ -785,14 +786,15 @@ class BacktestEngine:
 
         Rollover fee: 0.01% per 4h of position value.
         """
+        _fees = ExchangeFees()
         if is_limit_fill:
-            fee_pct = Decimal("0.0016")  # maker fee
+            fee_pct = _fees.maker
             spread_pct = Decimal("0")
             slippage_pct = Decimal("0")
         else:
-            fee_pct = Decimal("0.0026")  # taker fee
-            spread_pct = Decimal("0.0002")
-            slippage_pct = Decimal("0.0001")
+            fee_pct = _fees.taker
+            spread_pct = _fees.spread
+            slippage_pct = _fees.slippage
 
         if signal.metadata.get("is_short_open") and signal.signal_type == SignalType.SELL:
             # Open short: lock margin collateral
@@ -1908,7 +1910,7 @@ class GridBacktester:
         if self.usdc_balance < amount_usdc:
             return
 
-        fee = amount_usdc * Decimal("0.0016")
+        fee = amount_usdc * ExchangeFees().maker
         net_usdc = amount_usdc - fee
         btc_bought = net_usdc / fill_price
 
@@ -1951,7 +1953,7 @@ class GridBacktester:
             return
 
         gross_usdc = amount_btc * fill_price
-        fee = gross_usdc * Decimal("0.0016")
+        fee = gross_usdc * ExchangeFees().maker
         net_usdc = gross_usdc - fee
         self.btc_held -= amount_btc
         self.usdc_balance += net_usdc
@@ -2042,7 +2044,7 @@ class GridBacktester:
         if self.usdc_balance < amount_usdc:
             return  # Insufficient balance
 
-        fee = amount_usdc * Decimal("0.0016")  # 0.16% maker
+        fee = amount_usdc * ExchangeFees().maker
         net_usdc = amount_usdc - fee
         btc_bought = net_usdc / fill_price
 
@@ -2090,7 +2092,7 @@ class GridBacktester:
             return  # Insufficient BTC
 
         gross_usdc = amount_btc * fill_price
-        fee = gross_usdc * Decimal("0.0016")  # 0.16% maker
+        fee = gross_usdc * ExchangeFees().maker
         net_usdc = gross_usdc - fee
 
         self.btc_held -= amount_btc

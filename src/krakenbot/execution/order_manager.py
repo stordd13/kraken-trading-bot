@@ -366,7 +366,7 @@ class OrderManager:
         """
         fill_price = order.price or Decimal("0")
         value = order.amount * fill_price
-        fee = value * Decimal("0.0016")  # Maker fee ~0.16%
+        fee = value * self._settings.exchange_fees.maker
 
         paper_balance = self._rest_client.paper_balance
         normalized_paper_balance = normalize_asset_balances(paper_balance)

@@ -22,7 +22,7 @@ import uuid
 
 import pytest
 
-from krakenbot.config.settings import TradingMode
+from krakenbot.config.settings import ExchangeFees, TradingMode
 from krakenbot.core.event_bus import EventBus
 from krakenbot.execution.order_manager import OrderManager
 from krakenbot.models.base import OrderStatus, OrderType, TradeSide
@@ -238,6 +238,7 @@ class TestOrderManager:
         settings.trading.mode = TradingMode.PAPER
         settings.trading.candle_interval_min = 5
         settings.multi_strategy.enabled = False
+        settings.exchange_fees = ExchangeFees()
         return settings
 
     @pytest.fixture
