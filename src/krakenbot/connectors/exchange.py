@@ -6,6 +6,7 @@ runtime a stable surface that can later be implemented by another exchange.
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -88,6 +89,38 @@ class ExchangeRestClient(Protocol):
     async def persist_paper_balance(self) -> None: ...
 
     def remove_paper_order(self, order_id: str) -> None: ...
+
+    async def fetch_ohlcv(
+        self,
+        pair: str,
+        interval: int,
+        since: datetime | None = None,
+        limit: int = 720,
+    ) -> list[dict[str, Any]]:
+        """Fetch historical OHLC candles."""
+        ...
+
+    async def get_open_orders(self, pair: str | None = None) -> list[dict[str, Any]]:
+        """Get open/pending orders."""
+        ...
+
+    async def get_trade_history(
+        self, pair: str | None = None, limit: int = 50
+    ) -> list[dict[str, Any]]:
+        """Get completed trade history."""
+        ...
+
+    async def get_open_margin_positions(self) -> list[dict[str, Any]]:
+        """Get open margin positions."""
+        ...
+
+    async def set_paper_balance(self, currency: str, amount: Decimal) -> None:
+        """Set paper trading balance for a currency."""
+        ...
+
+    def get_paper_balance(self) -> dict[str, Decimal]:
+        """Get current paper trading balance."""
+        ...
 
 
 def build_exchange_rest_client(
