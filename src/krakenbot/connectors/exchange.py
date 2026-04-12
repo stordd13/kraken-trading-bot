@@ -1,7 +1,8 @@
-"""Minimal REST exchange abstraction for runtime execution.
+"""Exchange abstraction and factory functions for runtime execution.
 
 This module keeps the current Kraken behavior unchanged while giving the
 runtime a stable surface that can later be implemented by another exchange.
+Provides factory functions for both REST and WebSocket clients.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from krakenbot.models.trades import Trade
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
+    from krakenbot.connectors.base_ws import BaseWebSocketClient
     from krakenbot.core.database import DatabaseManager
     from krakenbot.core.event_bus import EventBus
 
@@ -144,3 +146,27 @@ def build_exchange_rest_client(
     from krakenbot.connectors.kraken.rest import KrakenRestClient
 
     return KrakenRestClient(settings, event_bus, db_manager)
+
+
+def build_exchange_ws_client(
+    settings: Settings,
+    event_bus: EventBus,
+    db_manager: DatabaseManager | None = None,
+    telegram_notifier: Any | None = None,
+) -> BaseWebSocketClient:
+    """Build the WebSocket client for the configured exchange.
+
+    Dispatches on ``settings.exchange_name`` to return the right WS client.
+    Defaults to Kraken for backward compatibility.
+    """
+    exchange_name = getattr(settings, "exchange_name", "kraken").lower()
+
+    if exchange_name == "binance":
+        from krakenbot.connectors.binance.ws import BinanceWebSocketClient
+
+        return BinanceWebSocketClient(settings, event_bus, telegram_notifier=telegram_notifier)
+
+    # Default: Kraken (backward compat)
+    from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
+
+    return KrakenWebSocketClient(settings, event_bus, db_manager)
