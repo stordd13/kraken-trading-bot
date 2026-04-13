@@ -19,42 +19,55 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    # 1. Add the column with a server default so existing rows get 'kraken'
-    op.add_column(
-        "market_data_ohlc",
-        sa.Column(
-            "exchange",
-            sa.String(20),
-            nullable=False,
-            server_default="kraken",
-        ),
+    # Disable timeouts — PK rebuild on a 1.13M-row TimescaleDB hypertable is slow.
+    # This migration MUST run on the server directly (not through SSH tunnel).
+    op.execute(sa.text("SET statement_timeout = '0'"))
+    op.execute(sa.text("SET lock_timeout = '0'"))
+
+    # Step 1: Add column (idempotent, fast — metadata-only in PG 11+)
+    op.execute(
+        sa.text(
+            "ALTER TABLE market_data_ohlc "
+            "ADD COLUMN IF NOT EXISTS exchange VARCHAR(20) NOT NULL DEFAULT 'kraken'"
+        )
     )
 
-    # 2. Drop the old primary key (timestamp, pair, interval)
-    op.execute("ALTER TABLE market_data_ohlc DROP CONSTRAINT IF EXISTS market_data_ohlc_pkey")
+    # Step 2: Drop old PK (idempotent via IF EXISTS)
+    op.execute(
+        sa.text("ALTER TABLE market_data_ohlc DROP CONSTRAINT IF EXISTS market_data_ohlc_pkey")
+    )
 
-    # 3. Create the new primary key including exchange
-    #    TimescaleDB requires the time column in the PK — timestamp is still there.
-    op.create_primary_key(
-        "market_data_ohlc_pkey",
-        "market_data_ohlc",
-        ["timestamp", "pair", "interval", "exchange"],
+    # Step 3: Create new PK including exchange (~1-2 min on 1.13M rows).
+    # TimescaleDB requires the time column in the PK and propagates to all chunks.
+    op.execute(
+        sa.text(
+            "ALTER TABLE market_data_ohlc "
+            "ADD CONSTRAINT market_data_ohlc_pkey "
+            'PRIMARY KEY ("timestamp", pair, "interval", exchange)'
+        )
     )
 
 
 def downgrade() -> None:
-    # 1. Drop the new PK
-    op.execute("ALTER TABLE market_data_ohlc DROP CONSTRAINT IF EXISTS market_data_ohlc_pkey")
+    op.execute(sa.text("SET statement_timeout = '0'"))
+    op.execute(sa.text("SET lock_timeout = '0'"))
 
-    # 2. Delete non-kraken rows to avoid PK conflicts on the narrower key
-    op.execute("DELETE FROM market_data_ohlc WHERE exchange != 'kraken'")
-
-    # 3. Restore the old PK
-    op.create_primary_key(
-        "market_data_ohlc_pkey",
-        "market_data_ohlc",
-        ["timestamp", "pair", "interval"],
+    # Step 1: Drop the new PK
+    op.execute(
+        sa.text("ALTER TABLE market_data_ohlc DROP CONSTRAINT IF EXISTS market_data_ohlc_pkey")
     )
 
-    # 4. Drop the column
+    # Step 2: Delete non-kraken rows to avoid PK conflicts on the narrower key
+    op.execute(sa.text("DELETE FROM market_data_ohlc WHERE exchange != 'kraken'"))
+
+    # Step 3: Restore the old PK
+    op.execute(
+        sa.text(
+            "ALTER TABLE market_data_ohlc "
+            "ADD CONSTRAINT market_data_ohlc_pkey "
+            'PRIMARY KEY ("timestamp", pair, "interval")'
+        )
+    )
+
+    # Step 4: Drop the column
     op.drop_column("market_data_ohlc", "exchange")
