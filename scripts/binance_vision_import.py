@@ -117,10 +117,19 @@ def parse_klines_csv(csv_data: bytes, pair: str, interval: int) -> list[dict]:
             continue
 
         try:
-            open_time_ms = int(row[0])
+            raw_ts = int(row[0])
+            # Binance Vision uses milliseconds for older files and microseconds
+            # for newer files (2025+). Auto-detect based on magnitude.
+            # Milliseconds: ~13 digits (e.g. 1704067200000)
+            # Microseconds: ~16 digits (e.g. 1704067200000000)
+            if raw_ts > 10**14:
+                timestamp = datetime.fromtimestamp(raw_ts / 1_000_000, tz=UTC)
+            else:
+                timestamp = datetime.fromtimestamp(raw_ts / 1000, tz=UTC)
+
             rows.append(
                 {
-                    "timestamp": datetime.fromtimestamp(open_time_ms / 1000, tz=UTC),
+                    "timestamp": timestamp,
                     "pair": pair,
                     "interval": interval,
                     "exchange": "binance",
