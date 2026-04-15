@@ -50,6 +50,10 @@ from krakenbot.core.logger import configure_logging, get_logger
 from krakenbot.execution.engine import ExecutionEngine
 from krakenbot.execution.order_manager import OrderManager
 from krakenbot.execution.risk import GlobalRiskManager
+from krakenbot.indicators.multi_pair_registry import (
+    MultiPairAnalyzerRegistry,
+    normalize_pair,
+)
 from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
 from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
@@ -298,9 +302,18 @@ class KrakenBot:
             self.logger.debug("strategy_initialized", mode="legacy")
             return
 
-        # Multi-strategy mode: create shared analyzer
-        self.analyzer = MultiTimeframeAnalyzer()
-        self.logger.debug("multi_timeframe_analyzer_initialized")
+        # Multi-strategy mode: create per-pair analyzer registry
+        self.analyzer_registry = MultiPairAnalyzerRegistry()
+        pairs_needed = self._collect_strategy_pairs()
+        for pair in pairs_needed:
+            self.analyzer_registry.get_or_create(pair)
+        # Backward compat: self.analyzer points to primary pair's analyzer
+        primary_pair = normalize_pair(self.settings.trading.pair)
+        self.analyzer = self.analyzer_registry.get_or_create(primary_pair)
+        self.logger.debug(
+            "multi_pair_analyzer_registry_initialized",
+            pairs=list(pairs_needed),
+        )
 
         for strat_config in self.settings.multi_strategy.strategies:
             if not strat_config.enabled:
@@ -325,7 +338,10 @@ class KrakenBot:
                 event_bus=self.event_bus,
                 db_manager=self.db_manager,
                 bot_id=strat_config.bot_id,
-                strategy_params=strat_config.params,
+                strategy_params={
+                    **strat_config.params,
+                    "_analyzer_registry": self.analyzer_registry,
+                },
                 analyzer=self.analyzer,
             )
             self.strategies.append(strategy)
@@ -347,6 +363,25 @@ class KrakenBot:
                 "no_strategies_enabled",
                 message="Multi-strategy mode enabled but no strategies configured",
             )
+
+    def _collect_strategy_pairs(self) -> set[str]:
+        """Scan strategy configs to determine which pairs need analyzers."""
+        pairs = {normalize_pair(self.settings.trading.pair)}
+        for strat_config in self.settings.multi_strategy.strategies:
+            if not strat_config.enabled:
+                continue
+            # Check top-level pair in params
+            pair = strat_config.params.get("pair")
+            if pair:
+                pairs.add(normalize_pair(pair))
+            # Check inner strategies (for routers like multi_strategy_router)
+            inner_strategies = strat_config.params.get("strategies", {})
+            for _name, inner_cfg in inner_strategies.items():
+                if isinstance(inner_cfg, dict) and inner_cfg.get("active"):
+                    inner_pair = inner_cfg.get("params", {}).get("pair")
+                    if inner_pair:
+                        pairs.add(normalize_pair(inner_pair))
+        return pairs
 
     @staticmethod
     def _has_positive_numeric_value(value: Any) -> bool:
@@ -495,19 +530,22 @@ class KrakenBot:
         await self.execution_engine.start()
         self.logger.debug("execution_engine_started")
 
-        # 2. Initialize shared analyzer with historical data
-        if self._multi_strategy_mode and self.analyzer:
+        # 2. Initialize per-pair analyzers with historical data
+        if self._multi_strategy_mode and hasattr(self, "analyzer_registry"):
             try:
-                await self.analyzer.initialize(
+                await self.analyzer_registry.initialize_all(
                     self.db_manager,
                     exchange=self.settings.exchange_name,
                 )
-                self.logger.info("multi_timeframe_analyzer_warmed_up")
+                self.logger.info(
+                    "multi_pair_analyzers_warmed_up",
+                    pairs=self.analyzer_registry.pairs,
+                )
             except Exception as e:
                 self.logger.warning(
                     "analyzer_initialization_failed",
                     error=str(e),
-                    note="Analyzer will warm up from live data",
+                    note="Analyzers will warm up from live data",
                 )
 
         # 2b. Initialize paper balance from DB or real Kraken balance
