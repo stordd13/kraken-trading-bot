@@ -58,6 +58,10 @@ INTERVAL_TO_BINANCE: dict[int, str] = {
 
 BASE_URL = "https://data.binance.vision/data/spot/monthly/klines"
 
+# Max rows per INSERT statement. PostgreSQL has a ~65,000 parameter limit.
+# Each row has 11 columns → 1000 rows = 11,000 params, well under the limit.
+BATCH_SIZE = 1000
+
 
 def pair_to_binance_symbol(pair: str) -> str:
     """Convert pair notation to Binance symbol.
@@ -176,13 +180,31 @@ async def import_month(
     if not rows:
         return 0
 
-    # Bulk upsert — idempotent via ON CONFLICT DO NOTHING
+    # Batch upsert — idempotent via ON CONFLICT DO NOTHING.
+    # PostgreSQL has a ~65k parameter limit per query; 1m data can have ~43k rows
+    # (43k × 11 cols = 473k params), so we batch to stay well under the limit.
+    total_batches = (len(rows) + BATCH_SIZE - 1) // BATCH_SIZE
     async with db_manager.session() as session:
-        stmt = pg_insert(OHLCData).values(rows)
-        stmt = stmt.on_conflict_do_nothing(
-            index_elements=["timestamp", "pair", "interval", "exchange"]
-        )
-        await session.execute(stmt)
+        for i in range(0, len(rows), BATCH_SIZE):
+            batch = rows[i : i + BATCH_SIZE]
+            stmt = pg_insert(OHLCData).values(batch)
+            stmt = stmt.on_conflict_do_nothing(
+                index_elements=["timestamp", "pair", "interval", "exchange"]
+            )
+            await session.execute(stmt)
+
+            batch_num = i // BATCH_SIZE + 1
+            if batch_num % 10 == 0 or batch_num == total_batches:
+                logger.info(
+                    "imported_batch",
+                    pair=pair,
+                    interval=interval_str,
+                    year=year,
+                    month=month,
+                    batch=f"{batch_num}/{total_batches}",
+                    rows=min(i + BATCH_SIZE, len(rows)),
+                )
+
         await session.commit()
 
     logger.info(
@@ -192,6 +214,7 @@ async def import_month(
         year=year,
         month=month,
         rows=len(rows),
+        batches=total_batches,
     )
     return len(rows)
 
