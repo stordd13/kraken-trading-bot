@@ -380,6 +380,13 @@ class GeminiGlobalRiskManager:
         # Rule 1: Position sizing based on 1% risk
         position_size_btc = self.calculate_position_size(capital, entry_price, stop_loss_price)
 
+        # Confidence modulation: scale size by signal confidence (clamped 0.3–1.0)
+        confidence_factor = max(
+            Decimal("0.3"),
+            min(_ONE, Decimal(str(signal.confidence))),
+        )
+        position_size_btc *= confidence_factor
+
         if position_size_btc <= _ZERO:
             logger.warning(
                 "signal_blocked_zero_size",
@@ -397,6 +404,7 @@ class GeminiGlobalRiskManager:
         metadata["risk_atr_multiplier"] = float(self.atr_sl_multiplier)
         metadata["risk_position_size_btc"] = float(position_size_btc)
         metadata["risk_max_loss_pct"] = float(self.risk_per_trade_pct)
+        metadata["risk_confidence_factor"] = float(confidence_factor)
 
         # Override position_size_multiplier if signal didn't set one,
         # or if the 1% rule gives a smaller size
@@ -427,6 +435,7 @@ class GeminiGlobalRiskManager:
             sl=float(stop_loss_price),
             size_btc=float(position_size_btc),
             atr=float(atr),
+            confidence_factor=float(confidence_factor),
         )
 
         return modified

@@ -836,11 +836,13 @@ class TestP1IntegrationGaps:
         expected_sl = entry - Decimal("3") * atr
         assert risk_sl == expected_sl
 
-        # 1% rule: size = (capital × 0.01) / |entry - SL|
+        # 1% rule: size = (capital × 0.01) / |entry - SL| × confidence
         risk_per_unit = abs(entry - risk_sl)
-        expected_size = (capital * Decimal("0.01")) / risk_per_unit
+        confidence_factor = Decimal(str(signal.confidence))  # 0.9
+        expected_size = (capital * Decimal("0.01")) / risk_per_unit * confidence_factor
         actual_size = Decimal(str(md["risk_position_size_btc"]))
         assert abs(actual_size - expected_size) < Decimal("1E-10")
+        assert md["risk_confidence_factor"] == float(confidence_factor)
 
     def test_risk_overlay_values_grid(self) -> None:
         """Grid BUY signal: risk overlay constrains position_size_multiplier."""
