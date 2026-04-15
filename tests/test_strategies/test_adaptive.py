@@ -119,7 +119,7 @@ def adaptive_settings() -> Settings:
         ),
         trading=TradingSettings(
             mode=TradingMode.PAPER,
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             default_order_amount_eur=15.0,
             candle_interval_min=15,
         ),
@@ -201,7 +201,7 @@ def strategy_no_analyzer(
 
 def _complete_candle(
     price: str,
-    pair: str = "XBT/USDC",
+    pair: str = "BTC/USDC",
     interval: int = 5,
     *,
     ts: datetime | None = None,
@@ -222,7 +222,7 @@ def _complete_candle(
 
 def _incomplete_candle(
     price: str,
-    pair: str = "XBT/USDC",
+    pair: str = "BTC/USDC",
     interval: int = 5,
 ) -> dict:
     """Build an incomplete (in-progress) OHLC candle dict."""
@@ -248,7 +248,7 @@ class TestAdaptiveStrategyInitialization:
 
     def test_initialization_defaults(self, strategy: AdaptiveStrategy) -> None:
         """Test strategy initializes with correct default config."""
-        assert strategy.pair == "XBT/USDC"
+        assert strategy.pair == "BTC/USDC"
         assert strategy.trailing_stop_pct == Decimal("3.0")
         assert strategy.min_volume_ratio == 0.8
         assert strategy.block_overbought_15m is True
@@ -373,7 +373,7 @@ class TestAdaptiveStrategyBuySignal:
 
         assert signal is not None
         assert signal.signal_type == SignalType.BUY
-        assert signal.pair == "XBT/USDC"
+        assert signal.pair == "BTC/USDC"
         assert signal.confidence == 0.85
         assert signal.metadata["reference_price"] == 42000.0
         assert signal.metadata["order_type"] == "limit"
@@ -897,7 +897,7 @@ class TestAdaptiveStrategyOnTick:
     @pytest.mark.asyncio
     async def test_on_tick_updates_price(self, strategy: AdaptiveStrategy) -> None:
         """on_tick updates current price."""
-        await strategy.on_tick({"pair": "XBT/USDC", "price": "42500"})
+        await strategy.on_tick({"pair": "BTC/USDC", "price": "42500"})
         assert strategy.current_price == Decimal("42500")
 
     @pytest.mark.asyncio
@@ -915,7 +915,7 @@ class TestAdaptiveStrategyOnTick:
             reference_price=Decimal("41500"),
         )
 
-        await strategy.on_tick({"pair": "XBT/USDC", "price": "43000"})
+        await strategy.on_tick({"pair": "BTC/USDC", "price": "43000"})
 
         assert strategy._open_positions[0].highest_price == Decimal("43000")
 
@@ -929,7 +929,7 @@ class TestAdaptiveStrategyOnTick:
         )
         strategy._open_positions[0].highest_price = Decimal("44000")
 
-        await strategy.on_tick({"pair": "XBT/USDC", "price": "43000"})
+        await strategy.on_tick({"pair": "BTC/USDC", "price": "43000"})
 
         assert strategy._open_positions[0].highest_price == Decimal("44000")
 
@@ -975,7 +975,7 @@ class TestAdaptiveStrategyOnOhlc:
         )
 
         candle = {
-            "pair": "XBT/USDC",
+            "pair": "BTC/USDC",
             "interval": 5,
             "open": "42000",
             "high": "44500",
@@ -1120,7 +1120,7 @@ class TestAdaptiveStrategyOnTradeFilled:
         """on_trade_filled with side=buy adds position."""
         await strategy.on_trade_filled(
             trade_id="T001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.001"),
             price=Decimal("42000"),
@@ -1139,7 +1139,7 @@ class TestAdaptiveStrategyOnTradeFilled:
         """on_trade_filled buy without reference_price does nothing."""
         await strategy.on_trade_filled(
             trade_id="T002",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.001"),
             price=Decimal("42000"),
@@ -1155,7 +1155,7 @@ class TestAdaptiveStrategyOnTradeFilled:
         # Add a position first
         await strategy.on_trade_filled(
             trade_id="T003",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.001"),
             price=Decimal("42000"),
@@ -1168,7 +1168,7 @@ class TestAdaptiveStrategyOnTradeFilled:
         # Sell it
         await strategy.on_trade_filled(
             trade_id="T004",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="sell",
             amount=Decimal("0.001"),
             price=Decimal("43000"),
@@ -1190,7 +1190,7 @@ class TestAdaptiveStrategyOnTradeFilled:
         )
         await strategy.on_trade_filled(
             trade_id="T005",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="sell",
             amount=Decimal("0.001"),
             price=Decimal("43000"),

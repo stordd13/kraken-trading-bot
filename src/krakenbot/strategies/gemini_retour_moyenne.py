@@ -75,7 +75,7 @@ class GeminiRetourMoyenne(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair: str = params.get("pair", "XBT/USDC")
+        self.pair = self.effective_pair
 
         # Range detection
         self.adx_range_max = Decimal(str(params.get("adx_range_max", 20)))

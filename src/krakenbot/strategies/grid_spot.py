@@ -84,7 +84,7 @@ class GridSpotStrategy(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # Grid parameters
         self.grid_levels: int = int(params.get("grid_levels", 10))

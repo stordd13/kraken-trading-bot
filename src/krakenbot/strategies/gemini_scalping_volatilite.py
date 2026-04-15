@@ -73,7 +73,7 @@ class GeminiScalpingVolatilite(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair: str = params.get("pair", "XBT/USDC")
+        self.pair = self.effective_pair
 
         # Entry conditions
         self.rsi_period: int = params.get("rsi_period", 7)

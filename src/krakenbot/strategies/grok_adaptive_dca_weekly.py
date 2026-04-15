@@ -95,7 +95,7 @@ class GrokAdaptiveDCAWeekly(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # DCA parameters
         self.base_amount_usdc = Decimal(str(params.get("base_amount_usdc", 15)))

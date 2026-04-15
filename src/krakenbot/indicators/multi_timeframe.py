@@ -236,8 +236,8 @@ class MultiTimeframeAnalyzer:
     async def initialize(
         self,
         db_manager: DatabaseManager,
-        pair: str = "XBT/USDC",
-        exchange: str = "kraken",
+        pair: str = "BTC/USDC",
+        exchange: str = "binance",
     ) -> None:
         """Load historical candles from database for warmup.
 

@@ -67,7 +67,7 @@ def settings() -> Settings:
         ),
         trading=TradingSettings(
             mode=TradingMode.PAPER,
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             default_order_amount_eur=15.0,
             candle_interval_min=5,
         ),
@@ -131,7 +131,7 @@ def _ohlc_1h(
 ) -> dict:
     """Build a 1h OHLC candle dict."""
     return {
-        "pair": "XBT/USDC",
+        "pair": "BTC/USDC",
         "interval": 60,
         "open": price,
         "high": price,
@@ -146,7 +146,7 @@ def _ohlc_1h(
 def _ohlc_5m(price: str) -> dict:
     """Build a 5m OHLC candle dict."""
     return {
-        "pair": "XBT/USDC",
+        "pair": "BTC/USDC",
         "interval": 5,
         "open": price,
         "high": price,
@@ -423,7 +423,7 @@ class TestTrendBuySignal:
         signal = await strategy.generate_signal()
         assert signal is not None
         assert signal.signal_type == SignalType.BUY
-        assert signal.pair == "XBT/USDC"
+        assert signal.pair == "BTC/USDC"
         assert signal.confidence == 0.85
 
     @pytest.mark.asyncio
@@ -921,7 +921,7 @@ class TestTrendTradeFilled:
         strategy._current_timestamp = datetime.now(UTC)
         await strategy.on_trade_filled(
             trade_id="T1",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.001"),
             price=Decimal("50000"),
@@ -937,7 +937,7 @@ class TestTrendTradeFilled:
         strategy._current_timestamp = datetime.now(UTC)
         await strategy.on_trade_filled(
             trade_id="T1",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.001"),
             price=Decimal("50000"),
@@ -947,7 +947,7 @@ class TestTrendTradeFilled:
         )
         await strategy.on_trade_filled(
             trade_id="T2",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="sell",
             amount=Decimal("0.001"),
             price=Decimal("52000"),

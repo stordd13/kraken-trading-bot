@@ -83,7 +83,7 @@ class TrendFollowingStrategy(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # Own EMA instances (NOT from analyzer)
         ema_fast = int(params.get("ema_fast_period", 20))

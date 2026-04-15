@@ -88,7 +88,7 @@ class GrokEMA27_125_ADX_ATR(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # EMA periods
         self.ema_fast_period: int = int(params.get("ema_fast", 27))

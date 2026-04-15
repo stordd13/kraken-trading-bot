@@ -82,7 +82,7 @@ class ThresholdRollingStrategy(BaseStrategy):
         self.lookback_periods = settings.strategy.lookback_periods
         self.max_open_positions = settings.risk.max_open_positions
         self.max_holding_minutes = settings.strategy.max_holding_minutes
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # Internal state
         self._reference_prices: list[Decimal] = []  # Rolling window of reference prices

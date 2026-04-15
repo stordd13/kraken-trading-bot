@@ -86,7 +86,7 @@ class AdaptiveStrategy(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
         self.lookback_periods = settings.strategy.lookback_periods
         self.max_holding_minutes = settings.strategy.max_holding_minutes
 

@@ -89,7 +89,7 @@ class CapitulationStrategy(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # Capitulation params (from strategies.yaml, fallback to CapitulationSettings)
         cap = settings.capitulation

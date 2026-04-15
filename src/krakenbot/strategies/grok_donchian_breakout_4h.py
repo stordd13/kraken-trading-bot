@@ -83,7 +83,7 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # Donchian parameters
         self.donchian_upper_period: int = int(params.get("donchian_upper_period", 20))

@@ -75,7 +75,7 @@ def capitulation_settings() -> Settings:
         ),
         trading=TradingSettings(
             mode=TradingMode.PAPER,
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             default_order_amount_eur=100.0,
             candle_interval_min=15,
         ),
@@ -222,7 +222,7 @@ class TestCapitulationStrategyInitialization:
         assert strategy.max_profit_target_pct == Decimal("15.0")
         assert strategy.max_holding_minutes == 2880
         assert strategy.cooldown_hours == 4
-        assert strategy.pair == "XBT/USDC"
+        assert strategy.pair == "BTC/USDC"
 
     def test_initial_state(self, strategy: CapitulationStrategy) -> None:
         """Test strategy starts with empty internal state."""
@@ -278,7 +278,7 @@ class TestCapitulationEntryDetection:
 
         assert signal is not None
         assert signal.signal_type == SignalType.BUY
-        assert signal.pair == "XBT/USDC"
+        assert signal.pair == "BTC/USDC"
         assert signal.confidence == 0.95
         assert "CAPITULATION BUY" in signal.reason
         assert signal.metadata["order_type"] == "limit"
@@ -820,7 +820,7 @@ class TestHourlyChangeTracking:
     ) -> None:
         """Test that 1h complete candles are tracked in _hourly_closes."""
         ohlc_data = {
-            "pair": "XBT/USDC",
+            "pair": "BTC/USDC",
             "close": "50000.00",
             "high": "50500.00",
             "interval": 60,
@@ -839,14 +839,14 @@ class TestHourlyChangeTracking:
     ) -> None:
         """Test that pct changes are calculated between consecutive hourly closes."""
         ohlc_1 = {
-            "pair": "XBT/USDC",
+            "pair": "BTC/USDC",
             "close": "100",
             "high": "101",
             "interval": 60,
             "is_complete": True,
         }
         ohlc_2 = {
-            "pair": "XBT/USDC",
+            "pair": "BTC/USDC",
             "close": "98",
             "high": "100",
             "interval": 60,
@@ -866,7 +866,7 @@ class TestHourlyChangeTracking:
     ) -> None:
         """Test that incomplete 1h candles are not tracked."""
         ohlc_data = {
-            "pair": "XBT/USDC",
+            "pair": "BTC/USDC",
             "close": "50000.00",
             "high": "50500.00",
             "interval": 60,
@@ -884,7 +884,7 @@ class TestHourlyChangeTracking:
     ) -> None:
         """Test that non-hourly candles do not add to hourly tracking."""
         ohlc_data = {
-            "pair": "XBT/USDC",
+            "pair": "BTC/USDC",
             "close": "50000.00",
             "high": "50500.00",
             "interval": 5,
@@ -921,7 +921,7 @@ class TestHourlyChangeTracking:
         """Test that hourly closes deque respects maxlen of 25."""
         for i in range(30):
             ohlc_data = {
-                "pair": "XBT/USDC",
+                "pair": "BTC/USDC",
                 "close": str(100 + i),
                 "high": str(101 + i),
                 "interval": 60,
@@ -975,7 +975,7 @@ class TestCapitulationOnTradeFilled:
         """Test that a buy trade creates a new position."""
         await strategy.on_trade_filled(
             trade_id="test-trade-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.01"),
             price=Decimal("50000"),
@@ -1001,7 +1001,7 @@ class TestCapitulationOnTradeFilled:
 
         await strategy.on_trade_filled(
             trade_id="test-trade-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.01"),
             price=Decimal("50000"),
@@ -1021,7 +1021,7 @@ class TestCapitulationOnTradeFilled:
         for i in range(3):
             await strategy.on_trade_filled(
                 trade_id=f"test-trade-{i}",
-                pair="XBT/USDC",
+                pair="BTC/USDC",
                 side="buy",
                 amount=Decimal("0.01"),
                 price=Decimal("50000"),
@@ -1043,7 +1043,7 @@ class TestCapitulationOnTradeFilled:
         # Open a position first
         await strategy.on_trade_filled(
             trade_id="buy-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.01"),
             price=Decimal("50000"),
@@ -1056,7 +1056,7 @@ class TestCapitulationOnTradeFilled:
         # Close it
         await strategy.on_trade_filled(
             trade_id="sell-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="sell",
             amount=Decimal("0.01"),
             price=Decimal("52000"),
@@ -1077,7 +1077,7 @@ class TestCapitulationOnTradeFilled:
 
         await strategy.on_trade_filled(
             trade_id="sell-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="sell",
             amount=Decimal("0.01"),
             price=Decimal("52000"),
@@ -1099,7 +1099,7 @@ class TestCapitulationOnTradeFilled:
 
         await strategy.on_trade_filled(
             trade_id="sell-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="sell",
             amount=Decimal("0.01"),
             price=Decimal("52000"),
@@ -1228,7 +1228,7 @@ class TestOnTick:
         strategy: CapitulationStrategy,
     ) -> None:
         """Test on_tick updates current price."""
-        tick = {"pair": "XBT/USDC", "price": "55000.00"}
+        tick = {"pair": "BTC/USDC", "price": "55000.00"}
 
         await strategy.on_tick(tick)
 
@@ -1254,7 +1254,7 @@ class TestOnTick:
         """Test on_tick updates highest_price for trailing stop tracking."""
         strategy.add_position(Decimal("50000"), Decimal("100"))
 
-        tick = {"pair": "XBT/USDC", "price": "55000.00"}
+        tick = {"pair": "BTC/USDC", "price": "55000.00"}
         await strategy.on_tick(tick)
 
         pos = strategy.open_positions[0]
@@ -1269,9 +1269,9 @@ class TestOnTick:
         strategy.add_position(Decimal("50000"), Decimal("100"))
 
         # Price goes up
-        await strategy.on_tick({"pair": "XBT/USDC", "price": "55000.00"})
+        await strategy.on_tick({"pair": "BTC/USDC", "price": "55000.00"})
         # Price goes down
-        await strategy.on_tick({"pair": "XBT/USDC", "price": "53000.00"})
+        await strategy.on_tick({"pair": "BTC/USDC", "price": "53000.00"})
 
         pos = strategy.open_positions[0]
         assert pos.highest_price == Decimal("55000.00")

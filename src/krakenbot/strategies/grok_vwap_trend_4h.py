@@ -86,7 +86,7 @@ class GrokVWAPTrendV1(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # VWAP parameters
         self.vwap_period: int = int(params.get("vwap_period", 20))

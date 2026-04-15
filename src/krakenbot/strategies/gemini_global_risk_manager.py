@@ -253,7 +253,7 @@ class GeminiGlobalRiskManager:
         self,
         open_positions: list[dict[str, Any]],
         current_price: Decimal,
-        pair: str = "XBT/USDC",
+        pair: str = "BTC/USDC",
     ) -> list[TradingSignal]:
         """Generate SELL signals to close a fraction of long positions.
 

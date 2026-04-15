@@ -73,7 +73,7 @@ def bear_short_settings() -> Settings:
         ),
         trading=TradingSettings(
             mode=TradingMode.PAPER,
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             default_order_amount_eur=100.0,
             candle_interval_min=15,
         ),
@@ -183,7 +183,7 @@ class TestBearShortStrategyInitialization:
 
     def test_initialization_defaults(self, strategy: BearShortStrategy) -> None:
         """Test strategy initializes with correct default config."""
-        assert strategy.pair == "XBT/USDC"
+        assert strategy.pair == "BTC/USDC"
         assert strategy.profit_target_bear_pct == Decimal("2.0")
         assert strategy.profit_target_strong_bear_pct == Decimal("3.0")
         assert strategy.stop_loss_pct == Decimal("2.0")
@@ -242,7 +242,7 @@ class TestBearShortEntrySignals:
 
         assert signal is not None
         assert signal.signal_type == SignalType.SELL
-        assert signal.pair == "XBT/USDC"
+        assert signal.pair == "BTC/USDC"
         assert signal.confidence == 0.85
         assert signal.metadata["mode"] == "margin"
         assert signal.metadata["is_short_open"] is True
@@ -745,7 +745,7 @@ class TestBearShortOnTradeFilled:
         """Test that a sell trade creates a new short position."""
         await strategy.on_trade_filled(
             trade_id="test-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="sell",
             amount=Decimal("0.01"),
             price=Decimal("42000"),
@@ -766,7 +766,7 @@ class TestBearShortOnTradeFilled:
         # Open first
         await strategy.on_trade_filled(
             trade_id="sell-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="sell",
             amount=Decimal("0.01"),
             price=Decimal("42000"),
@@ -779,7 +779,7 @@ class TestBearShortOnTradeFilled:
         # Close by position_id
         await strategy.on_trade_filled(
             trade_id="buy-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.01"),
             price=Decimal("41000"),
@@ -797,7 +797,7 @@ class TestBearShortOnTradeFilled:
 
         await strategy.on_trade_filled(
             trade_id="buy-001",
-            pair="XBT/USDC",
+            pair="BTC/USDC",
             side="buy",
             amount=Decimal("0.01"),
             price=Decimal("41000"),
@@ -904,7 +904,7 @@ class TestBearShortOnTick:
     @pytest.mark.asyncio
     async def test_on_tick_updates_current_price(self, strategy: BearShortStrategy) -> None:
         """Test on_tick updates current price."""
-        tick = {"pair": "XBT/USDC", "price": "41000.00"}
+        tick = {"pair": "BTC/USDC", "price": "41000.00"}
 
         await strategy.on_tick(tick)
 
@@ -924,7 +924,7 @@ class TestBearShortOnTick:
         """Test on_tick updates lowest_price for trailing stop tracking."""
         strategy.add_position(Decimal("42000"), Decimal("100"))
 
-        tick = {"pair": "XBT/USDC", "price": "41000.00"}
+        tick = {"pair": "BTC/USDC", "price": "41000.00"}
         await strategy.on_tick(tick)
 
         pos = strategy.open_positions[0]
@@ -936,9 +936,9 @@ class TestBearShortOnTick:
         strategy.add_position(Decimal("42000"), Decimal("100"))
 
         # Price drops
-        await strategy.on_tick({"pair": "XBT/USDC", "price": "41000.00"})
+        await strategy.on_tick({"pair": "BTC/USDC", "price": "41000.00"})
         # Price bounces up
-        await strategy.on_tick({"pair": "XBT/USDC", "price": "41500.00"})
+        await strategy.on_tick({"pair": "BTC/USDC", "price": "41500.00"})
 
         pos = strategy.open_positions[0]
         assert pos.lowest_price == Decimal("41000.00")

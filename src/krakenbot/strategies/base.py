@@ -176,6 +176,17 @@ class BaseStrategy(ABC):
         """
         return self._bot_id or self.get_name()
 
+    @property
+    def effective_pair(self) -> str:
+        """Get the trading pair for this strategy instance.
+
+        Reads from strategy_params['pair'] first (multi-pair support),
+        falls back to settings.trading.pair (legacy/default).
+        Normalizes XBT -> BTC for canonical internal format.
+        """
+        pair = self.strategy_params.get("pair") or self.settings.trading.pair
+        return pair.replace("XBT/", "BTC/")
+
     @abstractmethod
     async def on_tick(self, tick_data: dict[str, Any]) -> None:
         """Handle incoming tick data.

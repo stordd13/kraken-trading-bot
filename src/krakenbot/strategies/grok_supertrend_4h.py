@@ -83,7 +83,7 @@ class GrokSuperTrend4hRegime(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # SuperTrend parameters
         self.st_atr_period: int = int(params.get("st_atr_period", 10))

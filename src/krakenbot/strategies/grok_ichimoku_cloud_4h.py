@@ -83,7 +83,7 @@ class GrokIchimokuCloudBreakoutV1(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # Parameters
         self.sl_atr_mult = Decimal(str(params.get("sl_atr_mult", 3.0)))

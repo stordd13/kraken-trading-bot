@@ -89,7 +89,7 @@ class BearShortStrategy(BaseStrategy):
         )
 
         params = strategy_params or {}
-        self.pair = settings.trading.pair
+        self.pair = self.effective_pair
 
         # Strategy params from strategies.yaml
         self.profit_target_bear_pct = Decimal(str(params.get("profit_target_bear_pct", 2.0)))
