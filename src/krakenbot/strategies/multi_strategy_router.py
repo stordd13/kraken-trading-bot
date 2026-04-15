@@ -203,9 +203,7 @@ class MultiStrategyRouter(BaseStrategy):
             strat_params = strat_cfg.get("params", {})
 
             # Resolve pair for this strategy (multi-pair dispatch)
-            strat_pair = normalize_pair(
-                strat_params.get("pair", settings.trading.pair)
-            )
+            strat_pair = normalize_pair(strat_params.get("pair", settings.trading.pair))
 
             # Use pair-specific analyzer if registry available
             strat_analyzer = (
@@ -318,7 +316,17 @@ class MultiStrategyRouter(BaseStrategy):
                         "close": close,
                         "volume": data.get("volume", 0),
                     },
-                    int(tf) if not isinstance(tf, str) else {"1m": 1, "5m": 5, "15m": 15, "1h": 60, "4h": 240, "1d": 1440, "1w": 10080}.get(tf, 0),
+                    int(tf)
+                    if not isinstance(tf, str)
+                    else {
+                        "1m": 1,
+                        "5m": 5,
+                        "15m": 15,
+                        "1h": 60,
+                        "4h": 240,
+                        "1d": 1440,
+                        "1w": 10080,
+                    }.get(tf, 0),
                 )
 
             # Update crash protector price history on 1m candles (primary pair only)
@@ -420,9 +428,7 @@ class MultiStrategyRouter(BaseStrategy):
         """
         # Use pair-specific analyzer if available, fall back to default
         signal_analyzer = (
-            self._analyzer_registry.get(signal.pair)
-            if self._analyzer_registry
-            else None
+            self._analyzer_registry.get(signal.pair) if self._analyzer_registry else None
         ) or self.analyzer
 
         if signal_analyzer is None:

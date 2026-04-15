@@ -68,9 +68,7 @@ class MultiPairAnalyzerRegistry:
         """
         normalized = normalize_pair(pair)
         if normalized not in self._analyzers:
-            self._analyzers[normalized] = MultiTimeframeAnalyzer(
-                **self._analyzer_kwargs
-            )
+            self._analyzers[normalized] = MultiTimeframeAnalyzer(**self._analyzer_kwargs)
             logger.info("analyzer_created_for_pair", pair=normalized)
         return self._analyzers[normalized]
 
@@ -92,7 +90,7 @@ class MultiPairAnalyzerRegistry:
 
     async def initialize_all(
         self,
-        db_manager: "DatabaseManager",
+        db_manager: DatabaseManager,
         exchange: str = "binance",
     ) -> None:
         """Warm up all registered analyzers from historical DB data.
