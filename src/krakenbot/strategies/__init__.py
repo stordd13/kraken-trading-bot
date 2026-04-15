@@ -35,6 +35,7 @@ from krakenbot.strategies.gemini_retour_moyenne import GeminiRetourMoyenne
 from krakenbot.strategies.gemini_scalping_volatilite import GeminiScalpingVolatilite
 from krakenbot.strategies.gemini_suivi_tendance_momentum import GeminiSuiviTendanceMomentum
 from krakenbot.strategies.grok_adaptive_dca_weekly import GrokAdaptiveDCAWeekly
+from krakenbot.strategies.grok_donchian_breakout_4h import GrokDonchianChannelBreakoutV1
 from krakenbot.strategies.grok_ema_adx_atr import GrokEMA27_125_ADX_ATR
 from krakenbot.strategies.grok_grid_atr_adaptive_v4 import GrokGridATRAdaptiveV4
 from krakenbot.strategies.grok_supertrend_4h import GrokSuperTrend4hRegime
@@ -47,6 +48,7 @@ __all__ = [
     "GeminiScalpingVolatilite",
     "GeminiSuiviTendanceMomentum",
     "GrokAdaptiveDCAWeekly",
+    "GrokDonchianChannelBreakoutV1",
     "GrokEMA27_125_ADX_ATR",
     "GrokGridATRAdaptiveV4",
     "GrokSuperTrend4hRegime",

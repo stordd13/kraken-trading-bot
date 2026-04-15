@@ -1,4 +1,4 @@
-"""Regression tests for the active fast-cash deployment profile."""
+"""Regression tests for the active multi-pair deployment profile."""
 
 from __future__ import annotations
 
@@ -18,12 +18,16 @@ def _load_strategies_yaml() -> dict:
     return yaml.safe_load((repo_root / "strategies.yaml").read_text())
 
 
-def test_fast_cash_v1_profile_matches_operational_plan() -> None:
-    """The active router config should stay aligned with the fast-cash v1 plan."""
+def test_multi_pair_profile_matches_operational_plan() -> None:
+    """The active router config should stay aligned with the multi-pair plan."""
     yaml_data = _load_strategies_yaml()
 
-    assert yaml_data["deployment_profile"]["name"] == "fast-cash-v1"
-    assert yaml_data["deployment_profile"]["trading_pair"] == "XBT/USDC"
+    assert yaml_data["deployment_profile"]["name"] == "multi-pair-v1"
+    assert yaml_data["deployment_profile"]["trading_pairs"] == [
+        "BTC/USDC",
+        "ETH/USDC",
+        "SOL/USDC",
+    ]
     assert yaml_data["ml"]["enabled"] is False
     assert yaml_data["global_max_open_positions"] == 8
     assert yaml_data["global_daily_loss_limit_eur"] == 15.0
@@ -43,23 +47,38 @@ def test_fast_cash_v1_profile_matches_operational_plan() -> None:
     inner = router["params"]["strategies"]
     active_inner = {name for name, config in inner.items() if config.get("active")}
 
-    assert active_inner == {"grok_grid_atr_adaptive_v4", "grok_supertrend_4h"}
-    assert inner["grok_ema_adx_atr"]["active"] is False
-    assert inner["grok_adaptive_dca_weekly"]["active"] is False
+    # BTC strategies active: grid, supertrend, donchian
+    assert active_inner == {"grid_atr_btc", "supertrend_btc", "donchian_btc"}
 
-    grid_params = inner["grok_grid_atr_adaptive_v4"]["params"]
+    # BTC inactive strategies still present
+    assert inner["ema_cross_btc"]["active"] is False
+    assert inner["dca_btc"]["active"] is False
+
+    # Multi-pair: ETH/SOL strategies exist but inactive
+    assert inner["supertrend_eth"]["active"] is False
+    assert inner["donchian_sol"]["active"] is False
+
+    # All active BTC strategies have pair: BTC/USDC
+    for name in active_inner:
+        assert inner[name]["params"]["pair"] == "BTC/USDC"
+
+    # ETH strategies have pair: ETH/USDC
+    assert inner["supertrend_eth"]["params"]["pair"] == "ETH/USDC"
+
+    # Class field maps to real strategy class
+    assert inner["grid_atr_btc"]["class"] == "grok_grid_atr_adaptive_v4"
+    assert inner["supertrend_btc"]["class"] == "grok_supertrend_4h"
+    assert inner["donchian_btc"]["class"] == "grok_donchian_breakout_4h"
+
+    grid_params = inner["grid_atr_btc"]["params"]
     assert grid_params["order_size_usdc"] == 10
     assert grid_params["max_allocation_pct"] == 10.0
 
-    supertrend_config = inner["grok_supertrend_4h"]
-    supertrend_params = supertrend_config["params"]
-    # order_size_usdc removed: sizing controlled by 1% rule via position_size_multiplier
-    assert "order_size_usdc" not in supertrend_params
+    supertrend_params = inner["supertrend_btc"]["params"]
     assert supertrend_params["max_allocation_pct"] == 10.0
-    assert "pairs" not in supertrend_config
 
 
-def test_fast_cash_v1_active_router_config_has_no_runtime_alignment_issues() -> None:
+def test_multi_pair_active_router_config_has_no_runtime_alignment_issues() -> None:
     """The active router config should not rely on fields ignored by the runtime."""
     yaml_data = _load_strategies_yaml()
 

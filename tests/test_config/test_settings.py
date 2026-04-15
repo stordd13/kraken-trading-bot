@@ -29,9 +29,9 @@ class TestStrategiesYamlRuntimeValidation:
                     bot_id="multi_router",
                     params={
                         "strategies": {
-                            "grok_donchian_breakout_4h": {
+                            "nonexistent_strategy_xyz": {
                                 "active": True,
-                                "bot_id": "donchian_breakout_4h",
+                                "bot_id": "fake_strategy",
                                 "params": {},
                             }
                         }
@@ -40,7 +40,7 @@ class TestStrategiesYamlRuntimeValidation:
             ],
         )
 
-        with pytest.raises(ValueError, match="grok_donchian_breakout_4h"):
+        with pytest.raises(ValueError, match="nonexistent_strategy_xyz"):
             settings.validate_all()
 
     def test_validate_all_warns_on_router_inner_fields_ignored_by_runtime(

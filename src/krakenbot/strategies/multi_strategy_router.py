@@ -35,6 +35,7 @@ from krakenbot.strategies.gemini_retour_moyenne import GeminiRetourMoyenne
 from krakenbot.strategies.gemini_scalping_volatilite import GeminiScalpingVolatilite
 from krakenbot.strategies.gemini_suivi_tendance_momentum import GeminiSuiviTendanceMomentum
 from krakenbot.strategies.grok_adaptive_dca_weekly import GrokAdaptiveDCAWeekly
+from krakenbot.strategies.grok_donchian_breakout_4h import GrokDonchianChannelBreakoutV1
 from krakenbot.strategies.grok_ema_adx_atr import GrokEMA27_125_ADX_ATR
 from krakenbot.strategies.grok_grid_atr_adaptive_v4 import GrokGridATRAdaptiveV4
 from krakenbot.strategies.grok_supertrend_4h import GrokSuperTrend4hRegime
@@ -57,6 +58,7 @@ _INNER_STRATEGY_CLASSES: dict[str, type[BaseStrategy]] = {
     "grok_supertrend_4h": GrokSuperTrend4hRegime,
     "grok_ema_adx_atr": GrokEMA27_125_ADX_ATR,
     "grok_adaptive_dca_weekly": GrokAdaptiveDCAWeekly,
+    "grok_donchian_breakout_4h": GrokDonchianChannelBreakoutV1,
 }
 
 
@@ -175,11 +177,15 @@ class MultiStrategyRouter(BaseStrategy):
                 self.logger.info("inner_strategy_skipped", name=name, reason="inactive")
                 continue
 
-            cls = _INNER_STRATEGY_CLASSES.get(name)
+            # Support 'class' field for multi-pair: allows unique YAML keys
+            # (e.g., "supertrend_btc") with class: grok_supertrend_4h
+            class_name = strat_cfg.get("class", name)
+            cls = _INNER_STRATEGY_CLASSES.get(class_name)
             if cls is None:
                 self.logger.warning(
                     "inner_strategy_unknown",
                     name=name,
+                    class_name=class_name,
                     available=list(_INNER_STRATEGY_CLASSES.keys()),
                 )
                 continue

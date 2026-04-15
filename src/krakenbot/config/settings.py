@@ -20,7 +20,7 @@ import yaml
 from krakenbot.ml.config import MLSettings
 
 _ROUTER_PARAM_KEYS = frozenset({"capital_usdc", "risk", "strategies"})
-_ROUTER_INNER_STRATEGY_KEYS = frozenset({"active", "bot_id", "params"})
+_ROUTER_INNER_STRATEGY_KEYS = frozenset({"active", "bot_id", "class", "params"})
 
 
 class TradingMode(str, Enum):
@@ -636,10 +636,12 @@ def _validate_router_runtime_alignment(
 
             is_active = bool(inner_cfg.get("active", True))
 
-            if is_active and inner_name not in supported_inner_strategies:
+            # 'class' field overrides YAML key for class lookup (multi-pair)
+            class_name = inner_cfg.get("class", inner_name)
+            if is_active and class_name not in supported_inner_strategies:
                 errors.append(
-                    f"Router inner strategy '{inner_name}' is active in strategies.yaml "
-                    "but not supported by the runtime"
+                    f"Router inner strategy '{inner_name}' (class={class_name}) "
+                    "is active in strategies.yaml but not supported by the runtime"
                 )
 
             ignored_inner_fields = sorted(set(inner_cfg) - _ROUTER_INNER_STRATEGY_KEYS)

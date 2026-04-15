@@ -5,10 +5,9 @@
 enabled: true
 
 # Active operating profile for the next deployment wave.
-# Trading remains single-pair; TRADING_PAIR defaults to XBT/USDC in .env/.env.example.
 deployment_profile:
-  name: fast-cash-v1
-  trading_pair: XBT/USDC
+  name: multi-pair-v1
+  trading_pairs: [BTC/USDC, ETH/USDC, SOL/USDC]
   initial_capital_usdc: 1000
   paper_days: 7
   micro_live_days: 14
@@ -74,12 +73,154 @@ strategies:
         crash_close_pct: 0.5
         crash_suspend_hours: 2
 
-      # Inner strategies (active: false to disable individually)
+      # ---------------------------------------------------------------
+      # Inner strategies — multi-pair capable
+      # Use 'class' field when YAML key differs from strategy class name
+      # (e.g., grid_atr_btc → class: grok_grid_atr_adaptive_v4)
+      # 'pair' inside params sets which pair this instance trades.
+      # ---------------------------------------------------------------
       strategies:
+        # === BTC/USDC strategies (active) ===
+
+        grid_atr_btc:
+          active: true
+          class: grok_grid_atr_adaptive_v4
+          bot_id: grid_atr_v4
+          params:
+            pair: BTC/USDC
+            grid_levels: 12
+            min_spacing_pct: 0.015
+            max_spacing_pct: 0.05
+            atr_period: 14
+            atr_multiplier: 4.0
+            recalc_hours: 6
+            order_size_usdc: 10
+            max_allocation_pct: 10.0
+            bias_1d: 0.2
+            pause_1w_strong_bear: true
+
+        supertrend_btc:
+          active: true
+          class: grok_supertrend_4h
+          bot_id: supertrend_4h
+          params:
+            pair: BTC/USDC
+            st_atr_period: 10
+            st_multiplier: 3.0
+            sl_atr_mult: 3.5
+            max_allocation_pct: 10.0
+
+        ema_cross_btc:
+          active: false  # Hold until post-J30 review
+          class: grok_ema_adx_atr
+          bot_id: ema_cross_4h
+          params:
+            pair: BTC/USDC
+            ema_fast: 20
+            ema_slow: 50
+            adx_threshold: 14
+            atr_mult_stop: 3.5
+            breakeven_atr: 1.5
+            trailing_atr: 3.0
+            max_allocation_pct: 15.0
+
+        dca_btc:
+          active: false  # Hold until post-J30 review
+          class: grok_adaptive_dca_weekly
+          bot_id: dca_weekly
+          params:
+            pair: BTC/USDC
+            base_amount_usdc: 15
+            oversold_multiplier: 2.5
+            bull_reduction: 0.5
+            rsi_oversold: 30
+            max_allocation_pct: 25.0
+
+        donchian_btc:
+          active: true
+          class: grok_donchian_breakout_4h
+          bot_id: donchian_btc
+          params:
+            pair: BTC/USDC
+            period_upper: 20
+            period_lower: 10
+            sl_atr_mult: 3.5
+            adx_threshold: 18
+            order_size_usdc: 30
+            max_allocation_pct: 10.0
+
+        # === ETH/USDC strategies (inactive by default — enable after P6 backtests) ===
+
+        grid_atr_eth:
+          active: false
+          class: grok_grid_atr_adaptive_v4
+          bot_id: grid_atr_v4_eth
+          params:
+            pair: ETH/USDC
+            grid_levels: 12
+            min_spacing_pct: 0.015
+            max_spacing_pct: 0.05
+            atr_period: 14
+            atr_multiplier: 4.0
+            recalc_hours: 6
+            order_size_usdc: 25
+            max_allocation_pct: 10.0
+
+        supertrend_eth:
+          active: false
+          class: grok_supertrend_4h
+          bot_id: supertrend_4h_eth
+          params:
+            pair: ETH/USDC
+            st_atr_period: 10
+            st_multiplier: 3.0
+            sl_atr_mult: 3.5
+            max_allocation_pct: 8.0
+
+        donchian_eth:
+          active: false
+          class: grok_donchian_breakout_4h
+          bot_id: donchian_eth
+          params:
+            pair: ETH/USDC
+            period_upper: 20
+            period_lower: 10
+            sl_atr_mult: 3.5
+            adx_threshold: 18
+            max_allocation_pct: 8.0
+
+        # === SOL/USDC strategies (inactive by default) ===
+
+        supertrend_sol:
+          active: false
+          class: grok_supertrend_4h
+          bot_id: supertrend_4h_sol
+          params:
+            pair: SOL/USDC
+            st_atr_period: 10
+            st_multiplier: 3.0
+            sl_atr_mult: 3.5
+            max_allocation_pct: 8.0
+
+        donchian_sol:
+          active: false
+          class: grok_donchian_breakout_4h
+          bot_id: donchian_sol
+          params:
+            pair: SOL/USDC
+            period_upper: 20
+            period_lower: 10
+            sl_atr_mult: 3.5
+            adx_threshold: 18
+            max_allocation_pct: 8.0
+
+        # === KILLED strategies (kept for reference) ===
+
         gemini_scalping_volatilite:
           active: false  # KILL Phase 1A: -14.8%, PF 0.86
           bot_id: scalping_vol
           params:
+            pair: BTC/USDC
             rsi_period: 7
             rsi_oversold: 30
             sl_atr_mult: 1.5
@@ -95,6 +236,7 @@ strategies:
           active: false  # KILL Phase 1A: -19.3%, pullback bug
           bot_id: tendance_mom
           params:
+            pair: BTC/USDC
             adx_min: 20
             initial_sl_atr_mult: 2.5
             trailing_atr_mult: 2.0
@@ -106,6 +248,7 @@ strategies:
           active: false  # KILL Phase 1A: -8.5%, DCA into falling knife
           bot_id: retour_moy
           params:
+            pair: BTC/USDC
             dca_levels: 3
             dca_spacing_pct: 0.5
             sl_atr_mult: 2.0
@@ -113,77 +256,22 @@ strategies:
             max_allocation_pct: 10.0
             max_open_positions: 2
 
-        grok_grid_atr_adaptive_v4:
-          active: true
-          bot_id: grid_atr_v4
-          params:
-            grid_levels: 12
-            min_spacing_pct: 0.015
-            max_spacing_pct: 0.05
-            atr_period: 14
-            atr_multiplier: 4.0
-            recalc_hours: 6
-            order_size_usdc: 10
-            max_allocation_pct: 10.0
-            bias_1d: 0.2
-            pause_1w_strong_bear: true
-
-        grok_supertrend_4h:
-          active: true
-          bot_id: supertrend_4h
-          params:
-            st_atr_period: 10
-            st_multiplier: 3.0
-            sl_atr_mult: 3.5
-            max_allocation_pct: 10.0
-
-        grok_ema_adx_atr:
-          active: false  # Hold until post-J30 review
-          bot_id: ema_cross_4h
-          params:
-            ema_fast: 20
-            ema_slow: 50
-            adx_threshold: 14
-            atr_mult_stop: 3.5
-            breakeven_atr: 1.5
-            trailing_atr: 3.0
-            max_allocation_pct: 15.0
-
-        grok_adaptive_dca_weekly:
-          active: false  # Hold until post-J30 review
-          bot_id: dca_weekly
-          params:
-            base_amount_usdc: 15
-            oversold_multiplier: 2.5
-            bull_reduction: 0.5
-            rsi_oversold: 30
-            max_allocation_pct: 25.0
-
         grok_ichimoku_cloud_4h:
-          active: false  # KILL Phase 1B: Sharpe 0.16 < 0.3 threshold
+          active: false  # KILL Phase 1B: Sharpe 0.16 < 0.3
           bot_id: ichimoku_cloud_4h
           params:
+            pair: BTC/USDC
             sl_atr_mult: 3.0
             trail_atr_threshold: 1.5
             adx_threshold: 20
             order_size_usdc: 50
             max_allocation_pct: 15.0
 
-        grok_donchian_breakout_4h:
-          active: false  # Disabled until the current router runtime supports it
-          bot_id: donchian_breakout_4h
-          params:
-            period_upper: 20
-            period_lower: 10
-            sl_atr_mult: 3.5
-            adx_threshold: 18
-            max_allocation_pct: 15.0
-          pairs: ["SOL/USDC"]  # SOL ok (Sharpe 0.28 PF 1.87), ETH weak (Sharpe 0.12)
-
         grok_vwap_trend_4h:
           active: false  # KILL Phase 1B: net P&L negative after fees
           bot_id: vwap_trend_4h
           params:
+            pair: BTC/USDC
             vwap_period: 20
             sl_atr_mult: 3.0
             trail_atr_threshold: 2.0
@@ -191,9 +279,10 @@ strategies:
             max_allocation_pct: 15.0
 
         grok_supertrend_short_4h:
-          active: false  # NEW: requires backtest validation + paper trading
+          active: false  # Requires backtest validation + paper trading
           bot_id: supertrend_short_4h
           params:
+            pair: BTC/USDC
             st_atr_period: 10
             st_multiplier: 3.0
             sl_atr_mult: 3.5
