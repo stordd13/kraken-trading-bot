@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING, Any
 
 from krakenbot.core.event_bus import EventType
 from krakenbot.core.logger import get_logger
+from krakenbot.indicators.multi_pair_registry import MultiPairAnalyzerRegistry, normalize_pair
 from krakenbot.strategies.base import BaseStrategy, TradingSignal
 from krakenbot.strategies.gemini_global_risk_manager import GeminiGlobalRiskManager
 from krakenbot.strategies.gemini_retour_moyenne import GeminiRetourMoyenne
@@ -140,9 +141,17 @@ class MultiStrategyRouter(BaseStrategy):
         risk_config = params.get("risk", {})
         self.risk_manager = GeminiGlobalRiskManager(config=risk_config)
 
+        # Multi-pair analyzer registry (passed from main.py via strategy_params)
+        self._analyzer_registry: MultiPairAnalyzerRegistry | None = params.pop(
+            "_analyzer_registry", None
+        )
+        # Primary pair for crash protector (only tracks BTC)
+        self._primary_pair = normalize_pair(settings.trading.pair)
+
         # Initialize inner strategies
         self._inner_strategies: list[BaseStrategy] = []
         self._strategy_by_bot_id: dict[str, BaseStrategy] = {}
+        self._strategy_pair: dict[str, str] = {}  # bot_id -> normalized pair
 
         strategies_config: dict[str, Any] = params.get("strategies", {})
         self._init_inner_strategies(settings, event_bus, db_manager, strategies_config)
@@ -193,6 +202,18 @@ class MultiStrategyRouter(BaseStrategy):
             strat_bot_id = strat_cfg.get("bot_id", name)
             strat_params = strat_cfg.get("params", {})
 
+            # Resolve pair for this strategy (multi-pair dispatch)
+            strat_pair = normalize_pair(
+                strat_params.get("pair", settings.trading.pair)
+            )
+
+            # Use pair-specific analyzer if registry available
+            strat_analyzer = (
+                self._analyzer_registry.get_or_create(strat_pair)
+                if self._analyzer_registry
+                else self.analyzer
+            )
+
             try:
                 strategy = cls(
                     settings=settings,
@@ -200,18 +221,20 @@ class MultiStrategyRouter(BaseStrategy):
                     db_manager=db_manager,
                     bot_id=strat_bot_id,
                     strategy_params=strat_params,
-                    analyzer=self.analyzer,
+                    analyzer=strat_analyzer,
                 )
                 # Mark as running so they process data (but they don't subscribe to EventBus)
                 strategy._running = True  # noqa: SLF001
 
                 self._inner_strategies.append(strategy)
                 self._strategy_by_bot_id[strat_bot_id] = strategy
+                self._strategy_pair[strat_bot_id] = strat_pair
 
                 self.logger.info(
                     "inner_strategy_initialized",
                     name=name,
                     bot_id=strat_bot_id,
+                    pair=strat_pair,
                     config=strategy.get_config(),
                 )
             except Exception as e:
@@ -279,35 +302,56 @@ class MultiStrategyRouter(BaseStrategy):
             return
 
         try:
-            # Update crash protector price history on 1m candles
+            ohlc_pair = normalize_pair(data.get("pair", ""))
             tf = data.get("timeframe", data.get("interval"))
             close = data.get("close")
             ts = data.get("timestamp")
-            if tf in ("1m", 1, "1") and close is not None and ts is not None:
-                from datetime import UTC, datetime
 
-                price = Decimal(str(close))
-                timestamp = (
-                    ts
-                    if isinstance(ts, datetime)
-                    else datetime.fromisoformat(ts)
-                    if isinstance(ts, str)
-                    else datetime.fromtimestamp(ts, tz=UTC)
+            # Update per-pair analyzer from live candles
+            if self._analyzer_registry and tf is not None:
+                self._analyzer_registry.update(
+                    ohlc_pair,
+                    {
+                        "open": data.get("open"),
+                        "high": data.get("high"),
+                        "low": data.get("low"),
+                        "close": close,
+                        "volume": data.get("volume", 0),
+                    },
+                    int(tf) if not isinstance(tf, str) else {"1m": 1, "5m": 5, "15m": 15, "1h": 60, "4h": 240, "1d": 1440, "1w": 10080}.get(tf, 0),
                 )
-                self.risk_manager.update_price(price, timestamp)
 
-                # Check crash protector
-                if self.risk_manager.check_crash_protector(timestamp):
-                    await self._handle_crash(price)
+            # Update crash protector price history on 1m candles (primary pair only)
+            if tf in ("1m", 1, "1") and close is not None and ts is not None:
+                if ohlc_pair == self._primary_pair:
+                    from datetime import UTC, datetime
 
-            # Dispatch to each inner strategy
+                    price = Decimal(str(close))
+                    timestamp = (
+                        ts
+                        if isinstance(ts, datetime)
+                        else datetime.fromisoformat(ts)
+                        if isinstance(ts, str)
+                        else datetime.fromtimestamp(ts, tz=UTC)
+                    )
+                    self.risk_manager.update_price(price, timestamp)
+
+                    # Check crash protector
+                    if self.risk_manager.check_crash_protector(timestamp):
+                        await self._handle_crash(price)
+
+            # Dispatch to each inner strategy — only if pair matches
             for strategy in self._inner_strategies:
+                strategy_pair = self._strategy_pair.get(strategy.bot_id, "")
+                if strategy_pair and ohlc_pair and strategy_pair != ohlc_pair:
+                    continue  # Skip: this candle is not for this strategy's pair
                 try:
                     await self._dispatch_to_strategy(strategy, data)
                 except Exception as e:
                     self.logger.error(
                         "inner_ohlc_dispatch_error",
                         bot_id=strategy.bot_id,
+                        pair=ohlc_pair,
                         error=str(e),
                         error_type=type(e).__name__,
                         exc_info=e,
@@ -366,19 +410,28 @@ class MultiStrategyRouter(BaseStrategy):
     def _apply_risk_overlay(self, signal: TradingSignal) -> TradingSignal | None:
         """Apply GeminiGlobalRiskManager to a signal.
 
+        Uses the pair-specific analyzer for ATR stop-loss calculation.
+
         Args:
             signal: Raw signal from an inner strategy.
 
         Returns:
             Risk-processed signal, or None if rejected.
         """
-        if self.analyzer is None:
+        # Use pair-specific analyzer if available, fall back to default
+        signal_analyzer = (
+            self._analyzer_registry.get(signal.pair)
+            if self._analyzer_registry
+            else None
+        ) or self.analyzer
+
+        if signal_analyzer is None:
             return signal
 
         return self.risk_manager.process_signal(
             signal=signal,
             capital=self.capital_usdc,
-            analyzer=self.analyzer,
+            analyzer=signal_analyzer,
         )
 
     async def _publish_processed_signal(

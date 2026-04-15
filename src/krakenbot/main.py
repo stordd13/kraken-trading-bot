@@ -579,19 +579,21 @@ class KrakenBot:
         await self.ws_client.connect()
 
         if self._multi_strategy_mode:
-            # Multi-strategy: subscribe to all required timeframes
-            pair = self.settings.trading.pair
-            for interval in self._get_multi_strategy_ohlc_intervals():
-                await self.ws_client.subscribe_ohlc(pair, interval)
-                self.logger.debug("ws_subscribed_ohlc", pair=pair, interval=interval)
+            # Multi-strategy: subscribe to all required timeframes for all pairs
+            pairs_needed = self._collect_strategy_pairs()
+            intervals = self._get_multi_strategy_ohlc_intervals()
+            for pair in pairs_needed:
+                for interval in intervals:
+                    await self.ws_client.subscribe_ohlc(pair, interval)
+                await self.ws_client.subscribe_ticker(pair)
+                self.logger.debug("ws_subscribed_pair", pair=pair, intervals=intervals)
         else:
             # Legacy: single pair + single interval
             await self.ws_client.subscribe_ohlc(
                 self.settings.trading.pair,
                 self.settings.trading.candle_interval_min,
             )
-
-        await self.ws_client.subscribe_ticker(self.settings.trading.pair)
+            await self.ws_client.subscribe_ticker(self.settings.trading.pair)
         self.logger.debug("websocket_connected_and_subscribed")
 
         self._running = True
