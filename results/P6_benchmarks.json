@@ -1,0 +1,76 @@
+{
+  "period": {
+    "start": "2023-04-01",
+    "end": "2026-04-01"
+  },
+  "buy_and_hold": {
+    "BTC/USDC": {
+      "sharpe_ratio": 0.8543,
+      "sortino_ratio": 1.2981,
+      "max_drawdown_pct": 49.65,
+      "calmar_ratio": 0.9377,
+      "total_return_pct": 139.67,
+      "starting_balance": 1000.0,
+      "ending_balance": 2396.71,
+      "entry_price": 28472.49,
+      "exit_price": 68240.16
+    },
+    "ETH/USDC": {
+      "sharpe_ratio": 0.3969,
+      "sortino_ratio": 0.5975,
+      "max_drawdown_pct": 63.79,
+      "calmar_ratio": 0.0808,
+      "total_return_pct": 15.46,
+      "starting_balance": 1000.0,
+      "ending_balance": 1154.62,
+      "entry_price": 1822.56,
+      "exit_price": 2104.36
+    },
+    "SOL/USDC": {
+      "sharpe_ratio": 0.3086,
+      "sortino_ratio": 0.4574,
+      "max_drawdown_pct": 70.23,
+      "calmar_ratio": -0.1232,
+      "total_return_pct": -19.53,
+      "starting_balance": 1000.0,
+      "ending_balance": 804.68,
+      "entry_price": 103.32,
+      "exit_price": 83.14
+    }
+  },
+  "dca_fixed_15usd_weekly": {
+    "BTC/USDC": {
+      "sharpe_ratio": 2.3722,
+      "sortino_ratio": 6.9049,
+      "max_drawdown_pct": 100.0,
+      "calmar_ratio": 64.1995,
+      "total_return_pct": 23.31,
+      "total_invested": 2355.0,
+      "ending_balance": 2903.98,
+      "num_buys": 157,
+      "avg_cost_basis": 55339.81
+    },
+    "ETH/USDC": {
+      "sharpe_ratio": 2.0951,
+      "sortino_ratio": 4.8165,
+      "max_drawdown_pct": 100.0,
+      "calmar_ratio": 44.0625,
+      "total_return_pct": -15.17,
+      "total_invested": 2355.0,
+      "ending_balance": 1997.81,
+      "num_buys": 157,
+      "avg_cost_basis": 2480.6
+    },
+    "SOL/USDC": {
+      "sharpe_ratio": 1.9266,
+      "sortino_ratio": 4.7265,
+      "max_drawdown_pct": 100.0,
+      "calmar_ratio": 29.5447,
+      "total_return_pct": -42.63,
+      "total_invested": 1770.0,
+      "ending_balance": 1015.47,
+      "num_buys": 118,
+      "avg_cost_basis": 144.92
+    }
+  }
+}
