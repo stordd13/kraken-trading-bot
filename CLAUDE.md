@@ -1,185 +1,236 @@
-# CLAUDE.md - Guide de Travail
+# CLAUDE.md — Guide pour Agents
 
-> Ce fichier définit COMMENT travailler sur ce projet, pas QUOI existe. Pour l'état du projet, lis le code. Pour les tâches, voir TODO.md.
+> Ce fichier définit COMMENT travailler sur ce projet. Pour l'état complet du projet, lire `PROJECT_CONTEXT.md`.
 
-## Projet en une phrase
+## Le projet en une phrase
 
-Bot de trading automatisé BTC/USDC sur Kraken : collecte données 24/7, multi-stratégies en parallèle, analyse multi-timeframe, limit orders, déployé sur Hetzner.
-
----
-
-## Principes d'Architecture
-
-### 2 services séparés
-- **Collector** (`python -m krakenbot.collector`) : tourne 24/7, ne jamais le couper. Collecte WebSocket + backfill REST.
-- **Trading Bot** (`python -m krakenbot`) : start/stop flexible. Orchestre les stratégies.
-
-Ils communiquent uniquement via la DB (PostgreSQL + TimescaleDB).
-
-### Single process, multi-stratégie
-Toutes les stratégies tournent dans un seul processus. Pas de multi-process. Raisons : pas de race condition sur la balance, un seul WebSocket, risk global centralisé. La config vit dans `strategies.yaml` à la racine.
-
-### Risk à 2 niveaux
-Toujours vérifier les limites **globales** (toutes stratégies) ET **par stratégie** (via StrategyBudget). Ne jamais bypasser le GlobalRiskManager.
-
-### Limit orders par défaut
-- BUY → limit (maker fee 0.16%)
-- SELL profit target → limit
-- SELL stop-loss, trailing stop, timeout → market (exécution garantie)
-
-Quand un stop-loss se déclenche, **toujours annuler le limit sell** profit target existant d'abord.
-
-### Multi-timeframe
-Le MultiTimeframeAnalyzer est une **instance partagée** entre toutes les stratégies. Ne pas en créer plusieurs. Il analyse **6 timeframes** (5m, 15m, 1h, 4h, 1d, 1w) et fournit : EMA (période arbitraire, lazy), RSI, ATR, MACD, Bollinger, ADX, SuperTrend, et un MarketRegime (strong_bear → strong_bull) par timeframe.
-
-### MultiStrategyRouter
-En mode multi-stratégie, le `MultiStrategyRouter` est la **seule** BaseStrategy enregistrée dans l'EventBus. Il dispatch les candles vers 7 stratégies internes et applique le `GeminiGlobalRiskManager` (1% rule, ATR SL, crash protector) sur chaque signal BUY avant émission.
-
-### Mode legacy
-Si `strategies.yaml` absent ou `enabled: false`, le bot fonctionne exactement comme avant (single strategy depuis .env). Ne jamais casser ce mode.
+Bot de trading automatisé multi-pair (BTC/ETH/SOL sur USDC) sur **Binance**, avec 8 stratégies, risk management centralisé, déployé sur Hetzner.
 
 ---
 
-## Conventions de Code
+## Commandes essentielles
+
+```bash
+# Tests (toujours lancer avant de commit)
+poetry run pytest -q
+
+# Lint + format (toujours lancer avant de commit)
+poetry run ruff check . --fix && poetry run ruff format .
+
+# Lancer le bot en local (paper mode)
+poetry run python -m krakenbot
+
+# Lancer le collector en local
+poetry run python -m krakenbot.collector
+
+# Backtest une stratégie
+poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/USDC --exchange binance --days 1095 --capital 1000
+
+# Dashboard
+poetry run python scripts/dashboard.py
+```
+
+---
+
+## Accès à la base de données
+
+**La DB de production est sur le serveur Hetzner**, pas en local. L'accès se fait via un tunnel SSH.
+
+**Depuis le local (Mac)** :
+- Le tunnel bind `localhost:5433` → serveur `localhost:5432`
+- Le `.env` contient `DATABASE_URL=postgresql+asyncpg://krakenbot:<pwd>@localhost:5433/krakenbot`
+- Vérifier que le tunnel est actif : `nc -zv 127.0.0.1 5433`
+- Si le tunnel est mort : lancer `tunnel_ssh_hetzner` (alias zsh) ou relancer autossh manuellement
+
+**Depuis le serveur** :
+- `.env` serveur utilise `localhost:5432` (connexion directe au container Docker)
+- Pour les queries one-shot : `sudo docker exec krakenbot-db psql -U krakenbot krakenbot`
+
+**IMPORTANT** : ne JAMAIS réimporter les données si elles sont déjà en DB. Vérifier d'abord :
+```python
+poetry run python -c "
+import asyncio
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy import text
+from dotenv import load_dotenv
+load_dotenv()
+import os
+
+async def check():
+    engine = create_async_engine(os.getenv('DATABASE_URL'))
+    async with engine.connect() as conn:
+        r = await conn.execute(text('SELECT exchange, COUNT(*) FROM market_data_ohlc GROUP BY exchange'))
+        for row in r:
+            print(f'{row[0]}: {row[1]:,}')
+    await engine.dispose()
+
+asyncio.run(check())
+"
+```
+
+Tu dois voir `binance: ~8,700,000` et `kraken: ~1,130,000`.
+
+---
+
+## Architecture clé
+
+### Flux d'un trade
+```
+Candle WebSocket → EventBus (MARKET_OHLC)
+  → MultiStrategyRouter (filtre par pair)
+    → Stratégie interne (on_ohlc + generate_signal)
+    → GeminiGlobalRiskManager (1% rule, ATR SL, crash protector)
+    → EventBus (TRADE_SIGNAL)
+  → ExecutionEngine → Binance REST
+  → EventBus (TRADE_ORDER_FILLED)
+    → route vers stratégie source via bot_id
+```
+
+### Multi-pair
+- `MultiPairAnalyzerRegistry` : un analyzer par pair, création lazy
+- Le router filtre les candles : une candle ETH ne va qu'aux stratégies ETH
+- Chaque stratégie a son `self.pair`, son `bot_id` unique, ses positions séparées
+
+### Types d'ordres
+- BUY → toujours LIMIT (maker 0.075%)
+- SELL profit target → LIMIT
+- SELL stop-loss / trailing / timeout → MARKET (exécution garantie)
+
+---
+
+## Conventions de code obligatoires
 
 ### Absolues
-- **Python 3.11+**, async/await partout, jamais de code bloquant
-- **Type hints** obligatoires sur toutes les fonctions
-- **Decimal** pour tous les montants et prix (jamais float)
+- **Python 3.12+**, async/await partout
+- **Decimal** pour tous les montants et prix (`Decimal("65000.50")`, jamais float)
 - **UTC** pour tous les timestamps
-- **structlog** pour le logging (pas print, pas logging stdlib)
+- **structlog** pour le logging (jamais print, jamais logging stdlib)
 - **Imports absolus** : `from krakenbot.core import ...`
 
-### Style
+### Patterns
 ```python
-# ✅
-async def place_order(pair: str, amount: Decimal, price: Decimal) -> Order:
-    """Place un limit order."""
+# Logger
+logger = structlog.get_logger(__name__)
+logger.info("event_name", pair=self.pair, strategy=self.bot_id, key=value)
 
-# ❌
-def place_order(pair, amount, price):
+# Decimal
+price = Decimal("65000.50")  # Via string, jamais Decimal(65000.50)
+
+# Normalize pair (XBT → BTC)
+from krakenbot.utils.pair import normalize_pair
+pair = normalize_pair(raw_pair)
+
+# Accès analyzer multi-pair
+analyzer = self._analyzer_registry.get(self.pair)
+rsi = analyzer.get_rsi(14, "4h")
 ```
 
 ### Naming
 - Classes : `PascalCase`
 - Fonctions/variables : `snake_case`
 - Constantes : `UPPER_SNAKE_CASE`
-- Enums : `PascalCase` pour la classe, `UPPER_SNAKE_CASE` pour les valeurs
 
-### Lint (lancer avant chaque commit)
-```bash
-ruff check . --fix && ruff format .
+---
+
+## Patterns pour les stratégies
+
+Toute nouvelle stratégie DOIT :
+1. Hériter de `BaseStrategy`
+2. Accepter `pair: str` dans le constructeur
+3. Implémenter `on_ohlc()`, `generate_signal()`, `get_name()`, `get_config()`
+4. Utiliser `self.pair` partout (jamais hardcoder une paire)
+5. Persister ses positions dans `open_positions` (pas en mémoire seule)
+6. Logger chaque signal avec metadata (régime, seuils, raison, pair)
+7. Mettre `order_type` ("limit"/"market") et `position_size_multiplier` dans `signal.metadata`
+8. Être ajoutée dans `strategies.yaml` avec son `class`, `pair`, `bot_id`
+
+---
+
+## Ce qu'il ne faut JAMAIS faire
+
+1. **Ne pas utiliser float** pour les prix/montants
+2. **Ne pas hardcoder** `XBT/USDC` ou `BTC/USDC` dans les stratégies
+3. **Ne pas créer** de MultiTimeframeAnalyzer manuellement — utiliser le registry
+4. **Ne pas insérer** > 5000 rows en un seul SQL execute (limite PostgreSQL ~65k paramètres)
+5. **Ne pas commit** `.env`, credentials, ou API keys
+6. **Ne pas modifier** MultiStrategyRouter, GeminiGlobalRiskManager, ExecutionEngine sans raison explicite et review humain
+7. **Ne pas bypasser** le GlobalRiskManager
+8. **Ne pas merger** sur `main` sans passer par `dev`
+9. **Ne pas réimporter** des données déjà en DB — vérifier d'abord
+10. **Ne pas lancer** de migrations Alembic lourdes (ALTER PK) via un tunnel SSH — exécuter directement sur le serveur avec `maintenance_work_mem` augmenté
+
+---
+
+## Leçons opérationnelles (apprises dans la douleur)
+
+### DB et migrations
+- Les ALTER TABLE sur les hypertables TimescaleDB peuvent prendre 10-30 min et nécessitent beaucoup de RAM. Toujours vérifier `free -h` sur le serveur et s'assurer que le swap est actif.
+- Si une migration hang, vérifier `pg_stat_activity` pour voir ce que Postgres fait réellement.
+- Si le serveur a < 500 MB de RAM libre, augmenter le swap ou le server tier AVANT de lancer la migration.
+- Pour les DDL manuelles sur le serveur : `sudo docker exec krakenbot-db psql -U krakenbot krakenbot -c "SET maintenance_work_mem='256MB'; ..."`.
+
+### Tunnel SSH
+- Le tunnel SSH peut lâcher silencieusement pendant des opérations longues. Alembic attend alors une réponse qui ne viendra jamais.
+- Pour les opérations DB longues, préférer l'exécution directe sur le serveur (SSH + `poetry run alembic upgrade head`) plutôt que via tunnel.
+
+### Binance Vision import
+- Les fichiers CSV récents (2025+) utilisent des timestamps en microsecondes (16 chiffres) au lieu de millisecondes (13 chiffres). Le script gère les deux automatiquement.
+- Toujours batcher les inserts (1000 rows par batch). Un mois de 1m = 43200 candles × 11 colonnes = 475k paramètres SQL, bien au-dessus de la limite PostgreSQL de 65k.
+
+### Services serveur
+- `krakenbot.service` et `krakenbot-collector.service` gérés par systemd
+- Pour les tâches de longue durée (imports, backtests), utiliser `tmux` sur le serveur pour survivre aux déconnexions SSH
+- Toujours stopper les services avant une migration DB : `sudo systemctl stop krakenbot && sudo systemctl stop krakenbot-collector`
+
+---
+
+## Structure des fichiers clés
+
+```
+src/krakenbot/
+├── strategies/
+│   ├── base.py                              # BaseStrategy ABC + TradingSignal
+│   ├── multi_strategy_router.py             # Router (dispatch par pair)
+│   ├── gemini_global_risk_manager.py        # Risk overlay
+│   ├── grok_grid_atr_adaptive_v4.py         # Grid ATR
+│   ├── grok_supertrend_4h.py                # SuperTrend
+│   ├── grok_donchian_breakout_4h.py         # Donchian breakout
+│   ├── grok_ema_adx_atr.py                  # EMA cross
+│   ├── grok_adaptive_dca_weekly.py          # DCA weekly
+│   ├── gemini_scalping_volatilite.py        # Scalping 5m
+│   ├── gemini_suivi_tendance_momentum.py    # Trend momentum
+│   └── gemini_retour_moyenne.py             # Mean reversion
+├── indicators/
+│   ├── multi_timeframe.py                   # MultiTimeframeAnalyzer
+│   └── multi_pair_registry.py               # Per-pair analyzer registry
+├── execution/
+│   ├── engine.py                            # ExecutionEngine
+│   ├── risk.py                              # GlobalRiskManager
+│   └── order_manager.py                     # Limit order lifecycle
+├── connectors/
+│   ├── binance/rest.py, ws.py               # Binance REST + WebSocket
+│   └── kraken/rest.py, ws.py, futures.py    # Legacy Kraken
+├── config/settings.py                       # Pydantic settings + ExchangeFees
+└── main.py                                  # Orchestrateur
+
+scripts/
+├── backtest.py                              # BacktestEngine (signal + grid)
+├── binance_vision_import.py                 # Import données historiques
+├── dashboard.py                             # Dashboard Dash
+└── backtest_grid.py                         # Grid search paramètres
+
+strategies.yaml                              # Config multi-stratégie
 ```
 
 ---
 
-## Patterns à Suivre
+## Serveur SSH
 
-### Stratégies
-Toute nouvelle stratégie **doit** :
-- Hériter de `BaseStrategy`
-- Implémenter `on_ohlc()`, `generate_signal()`, `get_name()`, `get_config()`
-- Accepter `bot_id` et `strategy_params` dans son constructeur
-- Persister ses positions dans la table `open_positions` (pas juste en mémoire)
-- Avoir son propre `bot_id` unique dans `bot_state`
-- Logger chaque signal avec metadata complètes (régime, seuils, raison)
-- Mettre `order_type` ("limit" ou "market") dans `signal.metadata`
-- Mettre `position_size_multiplier` dans `signal.metadata`
-
-### Indicateurs
-- Réutiliser les indicateurs existants dans `indicators/` (RSI, MACD, BB, EMA, ATR, ADX, SuperTrend)
-- Accéder via `MultiTimeframeAnalyzer` : `get_ema(period, tf)`, `get_rsi(period, tf)`, `get_atr(period, tf)`, `get_adx(tf)`, `get_supertrend(tf, period, mult)`, etc.
-- Ne pas les réimplémenter
-- Nouveaux indicateurs : même interface (méthode `update()` incrémentale)
-
-### EventBus
-Le flux est : `WebSocket → MARKET_OHLC → Strategy → TRADE_SIGNAL → ExecutionEngine → TRADE_ORDER_FILLED → Strategy.on_trade_filled()`
-
-Chaque stratégie filtre par `bot_id` dans `on_trade_filled`, pas par nom de stratégie.
-
-### DB
-- Déduplication OHLC via clé composite `(timestamp, pair, interval)` + `session.merge()`
-- Migrations via Alembic : `alembic revision --autogenerate -m "description"`
-- Tables principales : `market_data_ohlc` (hypertable), `trades_history`, `bot_state`, `open_positions`, `orders`
-
----
-
-## Règles
-
-### Sécurité
-- JAMAIS de secrets dans le code ou les commits
-- JAMAIS de commit de `.env`
-- Config stratégies dans `strategies.yaml` (pas de secrets dedans)
-- Mode live requiert `TRADING_CONFIRM_LIVE=yes` explicite
-
-### Fiabilité
-- Toujours gérer la réconciliation au démarrage (positions DB vs balance Kraken)
-- Le collector ne doit JAMAIS être interrompu — c'est la source de données
-- Les limit orders expirent — le OrderManager nettoie les ordres stale
-- Stop-loss en market order, jamais en limit (exécution garantie critique)
-
-### Développement
-- Committer après chaque composant fonctionnel
-- Tester en mode paper avant live
-- Ne pas casser les stratégies existantes quand on en ajoute une nouvelle
-- Le backtest doit supporter toutes les stratégies (`--strategy adaptive|capitulation|multi_strategy_router|...`)
-
----
-
-## Workflow de Sélection Darwinienne
-
-Le principe : lancer large, garder les gagnantes, tuer les perdantes.
-
-1. **Implémenter** une nouvelle stratégie (hériter de `BaseStrategy`, ajouter au router)
-2. **Backtester** individuellement (`--strategy <nom> --days 1095`)
-3. **Activer** dans `strategies.yaml` : `active: true` (aucun autre fichier à toucher)
-4. **Paper trading** minimum 2 semaines via le router
-5. **Évaluer** : garder si profitable → augmenter `max_allocation_pct` / désactiver si perdante → `active: false`
-6. **Scaler** le capital sur les survivantes (1k → 10k → 20k USDC)
-
-### Backtesting Policy
-- **Développement rapide** : walk-forward 18-24 mois ou 1 an
-- **Validation finale obligatoire** : full 3 ans (2023-02 → 2026-02)
-- **Critères de validation** : battre buy-and-hold BTC, Sharpe > 0.3, max drawdown < -25%
-- **Fees réalistes toujours** : maker 0.16%, taker 0.26%, spread 0.02%, slippage 0.01%
-
----
-
-## Commandes
-
-```bash
-# Dev
-poetry install
-poetry run python -m krakenbot.collector    # Collector 24/7
-poetry run python -m krakenbot              # Trading bot
-
-# Tests & Lint
-poetry run pytest
-poetry run ruff check . --fix && ruff format .
-poetry run mypy src/
-
-# Dashboard (tunnel SSH depuis Mac)
-ssh -p 41922 -L 5432:localhost:5432 bruno@<IP> -N &
-poetry run python scripts/dashboard.py      # http://localhost:8050
-
-# Backtest
-poetry run python scripts/backtest.py --strategy adaptive --days 30 --interval 5
-poetry run python scripts/backtest_grid.py --quick --days 7
-
-# Déploiement
-sudo systemctl status krakenbot
-sudo journalctl -u krakenbot -f
 ```
-
----
-
-## Vision Long Terme
-
-1. ✅ Bot live multi-stratégie avec limit orders
-2. 🚧 Backtester les 7 stratégies → sélection Darwinienne → garder 2-4 gagnantes
-3. 🚧 Alertes Telegram/Discord, monitoring avancé
-4. 📋 Scaler le capital progressivement (1k → 10k → 20k USDC) sur les survivantes
-5. 📋 Multi-pair (ETH/USDC, SOL/USDC)
-6. 🔮 ML : XGBoost/Random Forest sur features techniques (3 ans de données disponibles)
-7. 🔮 DL : LSTM / Transformer pour séries temporelles
-8. 🔮 RL : PPO/DQN avec reward = Sharpe ratio, même modularité BaseStrategy
+Host: 77.42.90.102
+Port: 41922
+User: bruno
+Sudo: NOPASSWD configuré pour docker, systemctl, ufw, journalctl
+Container DB: krakenbot-db
+Repo serveur: ~/apps/kraken-trading-bot
+```
