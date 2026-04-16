@@ -131,6 +131,7 @@ class BacktestMetrics:
     total_pnl: Decimal = Decimal("0")
     total_fees: Decimal = Decimal("0")
     net_pnl: Decimal = Decimal("0")  # total_pnl - total_fees
+    unrealized_pnl: Decimal = Decimal("0")  # Force-close P&L from positions open at backtest end
 
     # Performance ratios
     win_rate: float = 0.0  # winning_trades / total_trades
@@ -175,6 +176,7 @@ class BacktestMetrics:
             "net_pnl": float(self.net_pnl),
             "total_fees": float(self.total_fees),
             "total_pnl": float(self.total_pnl),
+            "unrealized_pnl": float(self.unrealized_pnl),
             "starting_balance": float(self.starting_balance),
             "ending_balance": float(self.ending_balance),
             "duration_days": self.duration_days,
@@ -2324,6 +2326,8 @@ class GridBacktester:
             replay_sequence.sort(key=lambda x: (x[0].timestamp, -x[1]))
         elif self.strategy_name == "grok_grid_atr_adaptive_v4":
             strategy, analyzer = await self._create_grok_grid_strategy()
+            # Expose inner strategy for force-close of unrealized positions at end.
+            self._strategy_obj = strategy
             replay_sequence = await self._build_grok_grid_replay_sequence(
                 pair, start_time, end_time, candles
             )
@@ -2446,6 +2450,8 @@ class GridBacktester:
             # Track equity
             equity = self.usdc_balance + self.btc_held * current_price
             self.equity_curve.append((candle.timestamp, equity))
+            self._last_close = current_price
+            self._last_timestamp = candle.timestamp
 
         # Calculate final metrics
         self._calculate_final_metrics()
@@ -2478,8 +2484,90 @@ class GridBacktester:
             exchange=self.exchange,
         )
 
+    def _force_close_open_positions(self) -> None:
+        """Book unrealized P&L on positions still open at backtest end.
+
+        Without this, grid metrics suffer survivorship bias: only completed
+        buy→sell pairs are recorded as trades (always profitable by design),
+        producing win_rate=1.0 regardless of actual performance. Open longs
+        that went underwater are ignored unless we mark them to the final
+        close.
+        """
+        final_price = getattr(self, "_last_close", Decimal("0"))
+        final_ts = getattr(self, "_last_timestamp", self.metrics.end_time)
+        if final_price <= 0 or final_ts is None:
+            return
+
+        unrealized_total = Decimal("0")
+        for sell in list(self.active_sell_orders):
+            amount_btc = sell["amount_btc"]
+            entry_price = sell["entry_price"]
+            gross_usdc = amount_btc * final_price
+            fee = gross_usdc * self.fees.maker
+            net_usdc = gross_usdc - fee
+            pnl = net_usdc - amount_btc * entry_price
+            unrealized_total += pnl
+
+            self.metrics.trades.append(
+                BacktestTrade(
+                    timestamp=final_ts,
+                    side=TradeSide.SELL,
+                    price=final_price,
+                    amount_usdc=gross_usdc,
+                    amount_crypto=amount_btc,
+                    fee=fee,
+                    pnl=pnl,
+                )
+            )
+            self.metrics.total_pnl += pnl
+            self.total_fees += fee
+            self.pairs_completed += 1
+            if pnl > 0:
+                self.metrics.winning_trades += 1
+            else:
+                self.metrics.losing_trades += 1
+        self.active_sell_orders.clear()
+
+        # Also close Grok-grid positions held by the inner strategy (if present).
+        inner_strategy = getattr(self, "_strategy_obj", None)
+        if inner_strategy is not None and hasattr(inner_strategy, "open_positions"):
+            for position in list(inner_strategy.open_positions):
+                amount_btc = getattr(position, "amount_btc", None)
+                entry_price = getattr(position, "entry_price", None)
+                if amount_btc is None or entry_price is None:
+                    continue
+                gross_usdc = amount_btc * final_price
+                fee = gross_usdc * self.fees.maker
+                net_usdc = gross_usdc - fee
+                pnl = net_usdc - amount_btc * entry_price
+                unrealized_total += pnl
+
+                self.metrics.trades.append(
+                    BacktestTrade(
+                        timestamp=final_ts,
+                        side=TradeSide.SELL,
+                        price=final_price,
+                        amount_usdc=gross_usdc,
+                        amount_crypto=amount_btc,
+                        fee=fee,
+                        pnl=pnl,
+                    )
+                )
+                self.metrics.total_pnl += pnl
+                self.total_fees += fee
+                self.pairs_completed += 1
+                if pnl > 0:
+                    self.metrics.winning_trades += 1
+                else:
+                    self.metrics.losing_trades += 1
+
+        self.metrics.unrealized_pnl = unrealized_total
+
     def _calculate_final_metrics(self) -> None:
         """Calculate final performance metrics."""
+        # Force-close any still-open positions so losing trades are counted.
+        self._force_close_open_positions()
+
         self.metrics.total_trades = self.pairs_completed
         self.metrics.total_fees = self.total_fees
         self.metrics.net_pnl = self.metrics.total_pnl - self.total_fees
@@ -2501,6 +2589,26 @@ class GridBacktester:
         total_losses = abs(sum(losing_pnls, Decimal("0")))
         if total_losses > 0:
             self.metrics.profit_factor = float(total_wins / total_losses)
+        elif total_wins > 0:
+            self.metrics.profit_factor = float("inf")
+        # else: keep default 0.0 (no trades)
+
+        # Average holding time — match each sell to the most recent prior buy
+        buy_trades_by_ts = {
+            t.timestamp: t for t in self.metrics.trades if t.side == TradeSide.BUY
+        }
+        sell_trades = [t for t in self.metrics.trades if t.side == TradeSide.SELL]
+        holding_times: list[float] = []
+        for sell_trade in sell_trades:
+            matching_buys = [
+                t for t in buy_trades_by_ts.values() if t.timestamp < sell_trade.timestamp
+            ]
+            if matching_buys:
+                buy_trade = max(matching_buys, key=lambda x: x.timestamp)
+                delta_min = (sell_trade.timestamp - buy_trade.timestamp).total_seconds() / 60
+                holding_times.append(delta_min)
+        if holding_times:
+            self.metrics.average_holding_time_minutes = sum(holding_times) / len(holding_times)
 
         # Ending balance (include unrealized BTC value)
         if self.equity_curve:
