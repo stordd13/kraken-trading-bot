@@ -5,10 +5,12 @@ human-readable report.
 
 Usage:
     poetry run python scripts/generate_p6_report.py
+    poetry run python scripts/generate_p6_report.py --output P6_backtest_report_v2.md
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 
@@ -18,7 +20,6 @@ PHASE_D_PATH = RESULTS_DIR / "P6_phase_d_results.json"
 SURVIVORS_PATH = RESULTS_DIR / "P6_phase_e_survivors.json"
 WALKFORWARD_PATH = RESULTS_DIR / "P6_phase_f_walkforward.json"
 COVERAGE_PATH = RESULTS_DIR / "P6_data_coverage.md"
-REPORT_PATH = RESULTS_DIR / "P6_backtest_report.md"
 
 
 def load_json(path: Path) -> dict:
@@ -28,8 +29,23 @@ def load_json(path: Path) -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--output",
+        default="P6_backtest_report.md",
+        help="Output filename (relative to results/ directory)",
+    )
+    parser.add_argument(
+        "--phase-d",
+        default="P6_phase_d_results.json",
+        help="Phase D results filename (relative to results/ directory)",
+    )
+    args = parser.parse_args()
+    report_path = RESULTS_DIR / args.output
+    phase_d_path = RESULTS_DIR / args.phase_d
+
     benchmarks = load_json(BENCHMARKS_PATH)
-    phase_d = load_json(PHASE_D_PATH)
+    phase_d = load_json(phase_d_path)
     survivors = load_json(SURVIVORS_PATH)
     walkforward = load_json(WALKFORWARD_PATH)
 
@@ -293,8 +309,8 @@ def main() -> None:
     lines.append("")
 
     # Write report
-    REPORT_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"Report generated: {REPORT_PATH}")
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"Report generated: {report_path}")
     print(f"  Combinations: {total}")
     print(f"  Survivors: {n_survivors}")
     print(
