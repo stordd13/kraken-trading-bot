@@ -87,6 +87,23 @@ async def _load_candles_chunked(
     return candles
 
 
+def _override_pair_in_params(
+    params: dict[str, Any] | None,
+    pair: str,
+) -> dict[str, Any]:
+    """Return a shallow-copied params dict with 'pair' forced to `pair`.
+
+    Why: strategies.yaml may hardcode `pair: BTC/USDC` in router inner params.
+    `BaseStrategy.effective_pair` reads strategy_params["pair"] before
+    settings.trading.pair, so the YAML value shadows the backtest pair unless
+    we override here. Always inject the pair (even when params is None or empty)
+    so the strategy sees a single, consistent source of truth.
+    """
+    merged = dict(params or {})
+    merged["pair"] = pair
+    return merged
+
+
 @dataclass
 class BacktestTrade:
     """Record of a simulated trade during backtesting."""
@@ -1142,7 +1159,9 @@ class BacktestEngine:
             from krakenbot.strategies.adaptive import AdaptiveStrategy
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_strategy_params("adaptive")
+            strategy_params = _override_pair_in_params(
+                self._load_strategy_params("adaptive"), pair
+            )
             self.strategy = AdaptiveStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1155,7 +1174,9 @@ class BacktestEngine:
             from krakenbot.strategies.capitulation import CapitulationStrategy
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_strategy_params("capitulation")
+            strategy_params = _override_pair_in_params(
+                self._load_strategy_params("capitulation"), pair
+            )
             self.strategy = CapitulationStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1168,7 +1189,9 @@ class BacktestEngine:
             from krakenbot.strategies.bear_short import BearShortStrategy
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_strategy_params("bear_short")
+            strategy_params = _override_pair_in_params(
+                self._load_strategy_params("bear_short"), pair
+            )
             self.strategy = BearShortStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1179,7 +1202,9 @@ class BacktestEngine:
         elif self.strategy_name == "trend_following":
             from krakenbot.strategies.trend_following import TrendFollowingStrategy
 
-            strategy_params = self._load_strategy_params("trend_following")
+            strategy_params = _override_pair_in_params(
+                self._load_strategy_params("trend_following"), pair
+            )
             self.strategy = TrendFollowingStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1196,7 +1221,9 @@ class BacktestEngine:
             )
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("gemini_scalping_volatilite")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("gemini_scalping_volatilite"), pair
+            )
             self.strategy = GeminiScalpingVolatilite(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1210,7 +1237,9 @@ class BacktestEngine:
             from krakenbot.strategies.gemini_retour_moyenne import GeminiRetourMoyenne
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("gemini_retour_moyenne")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("gemini_retour_moyenne"), pair
+            )
             self.strategy = GeminiRetourMoyenne(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1226,7 +1255,9 @@ class BacktestEngine:
             )
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("gemini_suivi_tendance_momentum")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("gemini_suivi_tendance_momentum"), pair
+            )
             self.strategy = GeminiSuiviTendanceMomentum(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1245,7 +1276,9 @@ class BacktestEngine:
             )
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("grok_supertrend_4h")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("grok_supertrend_4h"), pair
+            )
             self.strategy = GrokSuperTrend4hRegime(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1259,7 +1292,9 @@ class BacktestEngine:
             from krakenbot.strategies.grok_ema_adx_atr import GrokEMA27_125_ADX_ATR
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("grok_ema_adx_atr")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("grok_ema_adx_atr"), pair
+            )
             self.strategy = GrokEMA27_125_ADX_ATR(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1275,7 +1310,9 @@ class BacktestEngine:
             )
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("grok_supertrend_short_4h")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("grok_supertrend_short_4h"), pair
+            )
             self.strategy = GrokSuperTrendShort4hRegime(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1291,7 +1328,9 @@ class BacktestEngine:
             )
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("grok_adaptive_dca_weekly")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("grok_adaptive_dca_weekly"), pair
+            )
             self.strategy = GrokAdaptiveDCAWeekly(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1310,7 +1349,9 @@ class BacktestEngine:
             )
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("grok_ichimoku_cloud_4h")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("grok_ichimoku_cloud_4h"), pair
+            )
             self.strategy = GrokIchimokuCloudBreakoutV1(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1326,7 +1367,9 @@ class BacktestEngine:
             )
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("grok_donchian_breakout_4h")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("grok_donchian_breakout_4h"), pair
+            )
             self.strategy = GrokDonchianChannelBreakoutV1(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1340,7 +1383,9 @@ class BacktestEngine:
             from krakenbot.strategies.grok_vwap_trend_4h import GrokVWAPTrendV1
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = self._load_inner_strategy_params("grok_vwap_trend_4h")
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("grok_vwap_trend_4h"), pair
+            )
             self.strategy = GrokVWAPTrendV1(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -2235,6 +2280,11 @@ class GridBacktester:
         self.metrics.duration_days = (end_time - start_time).total_seconds() / 86400
 
         self.settings.trading.pair = pair
+
+        # Override hardcoded pair in YAML strategy_params so the inner strategy
+        # (e.g. grok_grid_atr_adaptive_v4) binds to the backtest pair, not the
+        # default BTC/USDC shipped in strategies.yaml.
+        self._strategy_params = _override_pair_in_params(self._strategy_params, pair)
 
         # Load candles
         candles = await self._load_candles(pair, start_time, end_time)
