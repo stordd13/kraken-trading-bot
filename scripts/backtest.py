@@ -126,6 +126,7 @@ class BacktestMetrics:
     max_drawdown_pct: float = 0.0
     sharpe_ratio: float = 0.0  # Risk-adjusted return
     sortino_ratio: float = 0.0  # Risk-adjusted return (downside volatility only)
+    calmar_ratio: float = 0.0  # Annualized return / max drawdown
 
     # Position tracking
     starting_balance: Decimal = Decimal("1000")
@@ -140,6 +141,28 @@ class BacktestMetrics:
 
     # Trade history
     trades: list[BacktestTrade] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, float | int]:
+        """Return metrics as a JSON-serializable dict for programmatic use."""
+        return {
+            "total_trades": self.total_trades,
+            "winning_trades": self.winning_trades,
+            "losing_trades": self.losing_trades,
+            "win_rate": self.win_rate,
+            "total_return_pct": self.total_return_pct,
+            "sharpe_ratio": self.sharpe_ratio,
+            "sortino_ratio": self.sortino_ratio,
+            "max_drawdown_pct": self.max_drawdown_pct,
+            "profit_factor": self.profit_factor,
+            "calmar_ratio": self.calmar_ratio,
+            "net_pnl": float(self.net_pnl),
+            "total_fees": float(self.total_fees),
+            "total_pnl": float(self.total_pnl),
+            "starting_balance": float(self.starting_balance),
+            "ending_balance": float(self.ending_balance),
+            "duration_days": self.duration_days,
+            "average_holding_time_minutes": self.average_holding_time_minutes,
+        }
 
 
 class BacktestEngine:
@@ -156,6 +179,7 @@ class BacktestEngine:
         strategy_name: str = "threshold",
         candle_interval: int = 1,
         exchange: str = "kraken",
+        starting_capital: float = 1000.0,
     ):
         """Initialize backtest engine.
 
@@ -165,6 +189,7 @@ class BacktestEngine:
             strategy_name: Name of strategy to backtest
             candle_interval: Candle interval in minutes (default: 1)
             exchange: Exchange data source to filter on
+            starting_capital: Starting balance in USDC
         """
         self.settings = settings
         self.db_manager = db_manager
@@ -173,8 +198,14 @@ class BacktestEngine:
         self.exchange = exchange
         self.logger = get_logger().bind(component="backtest")
 
+        # Exchange-aware fees
+        if exchange == "binance":
+            self.fees = ExchangeFees.binance_defaults(use_bnb=True)
+        else:
+            self.fees = ExchangeFees()
+
         # Simulation state
-        self.usdc_balance = Decimal("1000")  # Starting balance
+        self.usdc_balance = Decimal(str(starting_capital))
         self.crypto_balance = Decimal("0")
         self.entry_price: Decimal | None = None
         self.in_position = False
@@ -489,16 +520,15 @@ class BacktestEngine:
             await self._execute_short_signal(signal, current_price, is_limit_fill=is_limit_fill)
             return
 
-        # Realistic trading costs (defaults from ExchangeFees config)
-        _fees = ExchangeFees()
+        # Realistic trading costs (exchange-aware)
         if is_limit_fill:
-            fee_pct = _fees.maker
+            fee_pct = self.fees.maker
             spread_pct = Decimal("0")  # Limit order: no spread
             slippage_pct = Decimal("0")  # Limit order: no slippage
         else:
-            fee_pct = _fees.taker
-            spread_pct = _fees.spread
-            slippage_pct = _fees.slippage
+            fee_pct = self.fees.taker
+            spread_pct = self.fees.spread
+            slippage_pct = self.fees.slippage
 
         # Handle multi-position strategies differently
         is_multi = self.strategy_name in [
@@ -793,15 +823,14 @@ class BacktestEngine:
 
         Rollover fee: 0.01% per 4h of position value.
         """
-        _fees = ExchangeFees()
         if is_limit_fill:
-            fee_pct = _fees.maker
+            fee_pct = self.fees.maker
             spread_pct = Decimal("0")
             slippage_pct = Decimal("0")
         else:
-            fee_pct = _fees.taker
-            spread_pct = _fees.spread
-            slippage_pct = _fees.slippage
+            fee_pct = self.fees.taker
+            spread_pct = self.fees.spread
+            slippage_pct = self.fees.slippage
 
         if signal.metadata.get("is_short_open") and signal.signal_type == SignalType.SELL:
             # Open short: lock margin collateral
@@ -1031,6 +1060,11 @@ class BacktestEngine:
                     if downside_std > 0:
                         # Annualized Sortino (assuming 365 days)
                         self.metrics.sortino_ratio = (avg_return / downside_std) * (365**0.5)
+
+        # Calmar ratio: annualized return / max drawdown %
+        if self.metrics.max_drawdown_pct > 0 and self.metrics.duration_days > 0:
+            annualized_return = self.metrics.total_return_pct * (365 / self.metrics.duration_days)
+            self.metrics.calmar_ratio = annualized_return / self.metrics.max_drawdown_pct
 
         # Regime breakdown: aggregate P&L per market regime
         regime_stats: dict[str, dict] = {}
@@ -1706,6 +1740,7 @@ class GridBacktester:
         strategy_name: str = "grid_spot",
         candle_interval: int = 5,
         exchange: str = "kraken",
+        starting_capital: float = 1000.0,
     ):
         """Initialize grid backtester."""
         self.settings = settings
@@ -1715,8 +1750,14 @@ class GridBacktester:
         self.exchange = exchange
         self.logger = get_logger().bind(component="grid_backtest")
 
+        # Exchange-aware fees
+        if exchange == "binance":
+            self.fees = ExchangeFees.binance_defaults(use_bnb=True)
+        else:
+            self.fees = ExchangeFees()
+
         # Simulation state
-        self.usdc_balance = Decimal("1000")
+        self.usdc_balance = Decimal(str(starting_capital))
         self.btc_held = Decimal("0")
 
         # Grid state
@@ -1919,7 +1960,7 @@ class GridBacktester:
         if self.usdc_balance < amount_usdc:
             return
 
-        fee = amount_usdc * ExchangeFees().maker
+        fee = amount_usdc * self.fees.maker
         net_usdc = amount_usdc - fee
         btc_bought = net_usdc / fill_price
 
@@ -1962,7 +2003,7 @@ class GridBacktester:
             return
 
         gross_usdc = amount_btc * fill_price
-        fee = gross_usdc * ExchangeFees().maker
+        fee = gross_usdc * self.fees.maker
         net_usdc = gross_usdc - fee
         self.btc_held -= amount_btc
         self.usdc_balance += net_usdc
@@ -2053,7 +2094,7 @@ class GridBacktester:
         if self.usdc_balance < amount_usdc:
             return  # Insufficient balance
 
-        fee = amount_usdc * ExchangeFees().maker
+        fee = amount_usdc * self.fees.maker
         net_usdc = amount_usdc - fee
         btc_bought = net_usdc / fill_price
 
@@ -2101,7 +2142,7 @@ class GridBacktester:
             return  # Insufficient BTC
 
         gross_usdc = amount_btc * fill_price
-        fee = gross_usdc * ExchangeFees().maker
+        fee = gross_usdc * self.fees.maker
         net_usdc = gross_usdc - fee
 
         self.btc_held -= amount_btc
@@ -2461,6 +2502,11 @@ class GridBacktester:
                     if ds_std > 0:
                         self.metrics.sortino_ratio = (avg_ret / ds_std) * (365**0.5)
 
+        # Calmar ratio: annualized return / max drawdown %
+        if self.metrics.max_drawdown_pct > 0 and self.metrics.duration_days > 0:
+            annualized_return = self.metrics.total_return_pct * (365 / self.metrics.duration_days)
+            self.metrics.calmar_ratio = annualized_return / self.metrics.max_drawdown_pct
+
     def print_report(self) -> None:
         """Print grid-specific backtest report."""
         print("\n" + "=" * 80)
@@ -2613,6 +2659,18 @@ async def main() -> None:
         default="kraken",
         help="Exchange data source: kraken or binance (default: kraken)",
     )
+    parser.add_argument(
+        "--start-date",
+        type=str,
+        default=None,
+        help="Start date (YYYY-MM-DD). Overrides --days when set.",
+    )
+    parser.add_argument(
+        "--capital",
+        type=float,
+        default=1000.0,
+        help="Starting capital in USDC (default: 1000)",
+    )
 
     args = parser.parse_args()
 
@@ -2622,7 +2680,10 @@ async def main() -> None:
     else:
         end_time = datetime.now(UTC)
 
-    start_time = end_time - timedelta(days=args.days)
+    if args.start_date:
+        start_time = datetime.fromisoformat(args.start_date).replace(tzinfo=UTC)
+    else:
+        start_time = end_time - timedelta(days=args.days)
 
     # Initialize components
     settings = get_settings()
@@ -2639,14 +2700,15 @@ async def main() -> None:
             print("\n" + "=" * 80)
             print("TEMPORAL CROSS-VALIDATION".center(80))
             print("=" * 80)
-            print(f"\nTotal period: {start_time.date()} to {end_time.date()} ({args.days} days)")
+            total_days = int(total_duration.total_seconds() / 86400)
+            print(f"\nTotal period: {start_time.date()} to {end_time.date()} ({total_days} days)")
             print(f"Train ratio: {args.train_ratio:.0%}")
             print(f"Split point: {split_time.date()}")
             print(
                 f"Train: {start_time.date()} to {split_time.date()} ({int(train_duration.days)} days)"
             )
             print(
-                f"Test:  {split_time.date()} to {end_time.date()} ({args.days - int(train_duration.days)} days)"
+                f"Test:  {split_time.date()} to {end_time.date()} ({total_days - int(train_duration.days)} days)"
             )
 
             # Run TRAIN backtest
@@ -2660,6 +2722,7 @@ async def main() -> None:
                 strategy_name=args.strategy,
                 candle_interval=args.interval,
                 exchange=args.exchange,
+                starting_capital=args.capital,
             )
             train_metrics = await train_engine.run(args.pair, start_time, split_time)
             train_engine.print_report()
@@ -2675,6 +2738,7 @@ async def main() -> None:
                 strategy_name=args.strategy,
                 candle_interval=args.interval,
                 exchange=args.exchange,
+                starting_capital=args.capital,
             )
             test_metrics = await test_engine.run(args.pair, split_time, end_time)
             test_engine.print_report()
@@ -2749,6 +2813,7 @@ async def main() -> None:
                     strategy_name=args.strategy,
                     candle_interval=args.interval,
                     exchange=args.exchange,
+                    starting_capital=args.capital,
                 )
             else:
                 engine = BacktestEngine(
@@ -2757,6 +2822,7 @@ async def main() -> None:
                     strategy_name=args.strategy,
                     candle_interval=args.interval,
                     exchange=args.exchange,
+                    starting_capital=args.capital,
                 )
 
             await engine.run(args.pair, start_time, end_time)
