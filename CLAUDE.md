@@ -8,6 +8,19 @@ Bot de trading automatisé multi-pair (BTC/ETH/SOL sur USDC) sur **Binance**, av
 
 ---
 
+## Skills de référence 
+
+Avant de commencer une tâche, consulte le skill pertinent dans `skills/` :
+- Tâche DB (migration, import, query) → `skills/database.md`
+- Backtest → `skills/backtest.md`
+- Nouvelle stratégie → `skills/new_strategy.md`
+- Déploiement serveur → `skills/deployment.md`
+- Import données historiques → `skills/binance_import.md`
+- Risk management → `skills/risk_management.md`
+- Bug ou problème → `skills/troubleshooting.md`
+
+---
+
 ## Commandes essentielles
 
 ```bash

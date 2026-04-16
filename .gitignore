@@ -78,7 +78,6 @@ backtest_results/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
 
 # macOS
 .DS_Store
@@ -90,6 +89,7 @@ AGENT_*.md
 ROADMAP_*.md
 AGENTS.md
 CODEX.md
-PROJECT_CONTEXT.md
 .codexignore
-docs/architecture.md
+
+# Raw data dumps (too large, not useful)
+results/funding_history_*.json
