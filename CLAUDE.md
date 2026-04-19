@@ -39,6 +39,13 @@ poetry run python -m krakenbot.collector
 # Backtest une stratégie
 poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/USDC --exchange binance --days 1095 --capital 1000
 
+# Lancer les 24 backtests P6 en parallèle (multiprocessing)
+poetry run python scripts/run_p6_backtests.py              # auto workers
+poetry run python scripts/run_p6_backtests.py --workers 8  # override
+poetry run python scripts/run_p6_backtests.py --serial     # debug / gate déterminisme
+# Reprise automatique : relancer sans --force ignore les combos déjà complétés
+# Monitoring temps réel : watch -n 2 cat logs/p6_status.json
+
 # Dashboard
 poetry run python scripts/dashboard.py
 ```

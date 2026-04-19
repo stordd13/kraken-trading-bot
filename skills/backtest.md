@@ -2,7 +2,71 @@
 
 > Comment lancer des backtests, interpréter les métriques, et éviter les pièges.
 
-## Lancer un backtest
+## Lancer les 24 backtests P6 en parallèle
+
+Pour (re)lancer toute la campagne P6 (8 stratégies × 3 paires), utiliser le runner
+parallélisé. Il partage les 24 jobs sur un `multiprocessing.Pool` (spawn context), chaque
+worker ouvre sa propre connexion DB et exécute train + test + all séquentiellement.
+
+```bash
+# Parallèle (par défaut), worker count auto-détecté
+poetry run python scripts/run_p6_backtests.py
+
+# Explicite
+poetry run python scripts/run_p6_backtests.py --workers 8
+
+# Resume automatique : relancer sans --force → combos déjà faits sont skippés
+poetry run python scripts/run_p6_backtests.py
+
+# Force re-run
+poetry run python scripts/run_p6_backtests.py --force
+
+# Série (debug / gate déterminisme)
+poetry run python scripts/run_p6_backtests.py --serial
+
+# Sous-set pour tests rapides (après tri par durée estimée)
+poetry run python scripts/run_p6_backtests.py --limit 3
+
+# Timeout par job (défaut 1800s)
+poetry run python scripts/run_p6_backtests.py --timeout 600
+```
+
+### Monitoring temps réel
+
+```bash
+watch -n 2 cat logs/p6_status.json
+```
+
+Affiche : `total_jobs`, `completed_jobs`, `running_jobs`, `failed_jobs`, `estimated_remaining_seconds`.
+
+### Détection auto du worker count
+
+Si `--workers` n'est pas fourni : `min(cpu_count - 2, 8, ram_gb // 2 si RAM < 16 GB)`.
+La cap à 8 respecte la contrainte RAM (~1 GB par worker pandas) ; la cap RAM protège le
+serveur Hetzner 8 GB si jamais on lance en prod.
+
+### Resume et atomic save
+
+Les résultats sont écrits dans `results/P6_phase_d_results.json` après CHAQUE job terminé
+via `tempfile + os.replace` atomique POSIX — crash/Ctrl+C ne corrompt pas le fichier. La
+sauvegarde est partagée par le main thread et le handler SIGINT via un `threading.Lock`.
+
+### Déterminisme
+
+Deux niveaux de tests dans [tests/test_scripts/test_run_p6_determinism.py](../tests/test_scripts/test_run_p6_determinism.py) :
+
+- **Quick** (3 combos, fenêtre 3 mois) : `pytest tests/test_scripts/test_run_p6_determinism.py -q -m "not slow"`.
+  Inclut un gate `test_determinism_serial_vs_serial` qui valide que le backtester LUI-MÊME
+  est déterministe (si ce gate échoue, ce n'est pas un bug de P6.7 mais du backtester).
+- **Full** (24 combos, fenêtre 3 ans, `@pytest.mark.slow`) : `pytest -m slow` avant de merger
+  P6.7 → dev.
+
+Les deux nécessitent le tunnel SSH actif (`nc -zv 127.0.0.1 5433`) — ils se skippent
+automatiquement si la DB n'est pas joignable.
+
+---
+
+## Lancer un backtest unitaire
 
 ```bash
 poetry run python scripts/backtest.py \
@@ -15,6 +79,7 @@ poetry run python scripts/backtest.py \
     --cross-validate \
     --save
 ```
+
 
 ### Paramètres clés
 
