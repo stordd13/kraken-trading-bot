@@ -11,7 +11,26 @@ Mesure du speedup apporté par la parallélisation de
   (`gemini_retour_moyenne` SOL/USDC, fenêtre 1 semaine). SHA256 identiques.
 - ✅ **Worker réel** testé : 1 combo en mode parallèle (2 workers, spawn) termine en 29.5s
   vs ~30s en serial → parallélisation n'introduit pas d'overhead significatif pour ce cas.
+- ✅ **Mini-benchmark partiel mesuré** (6 combos signal-based, fenêtre 3 mois, serial) :
+  **13.1 min** (787-792s sur 4 exécutions consécutives). Détails ci-dessous.
+- ⏳ **Benchmark parallèle sur ce même sous-ensemble** : à relancer (le harnais de test
+  `/tmp/p6_mini_bench.py` manquait du guard `if __name__ == "__main__"`, ce qui provoquait
+  une récursion spawn → crash du parallel run. Ce n'est PAS un bug du runner
+  `scripts/run_p6_backtests.py` qui a bien le guard line 665).
 - ⏳ **Benchmark 24 combos full range 3 ans** : à lancer pre-merge (voir procédure ci-dessous).
+
+## Mini-benchmark mesuré
+
+Sous-ensemble : 6 combos = `grok_supertrend_4h` + `grok_ema_adx_atr` × (BTC, ETH, SOL) USDC.
+Fenêtre : 2025-01-01 → 2025-04-01 (3 mois).
+
+| Mode | Wall-clock | Speedup |
+|---|---|---|
+| Serial | **787-792s** (13.1-13.2 min, 4 runs consécutifs) | baseline |
+| Parallel (6 workers) | _à mesurer proprement_ | _attendu ~3-5×_ |
+
+Le serial consistent à ~790s sur 4 runs démontre indirectement le déterminisme de la phase
+de chargement + exécution (variance < 1%).
 
 ## Pourquoi le benchmark full n'est pas dans ce commit
 
