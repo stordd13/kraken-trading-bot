@@ -93,3 +93,6 @@ CODEX.md
 
 # Raw data dumps (too large, not useful)
 results/funding_history_*.json
+
+# Claude Code local config
+.claude/
