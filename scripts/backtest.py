@@ -199,6 +199,7 @@ class BacktestEngine:
         candle_interval: int = 1,
         exchange: str = "kraken",
         starting_capital: float = 1000.0,
+        strategy_params_override: dict[str, Any] | None = None,
     ):
         """Initialize backtest engine.
 
@@ -209,12 +210,17 @@ class BacktestEngine:
             candle_interval: Candle interval in minutes (default: 1)
             exchange: Exchange data source to filter on
             starting_capital: Starting balance in USDC
+            strategy_params_override: Optional dict of params merged on top of
+                the strategies.yaml entry for this strategy. Used by the P7
+                grid search to inject sweep params without editing the YAML.
+                None (default) preserves the existing YAML-only behavior.
         """
         self.settings = settings
         self.db_manager = db_manager
         self.strategy_name = strategy_name
         self.candle_interval = candle_interval
         self.exchange = exchange
+        self._params_override = strategy_params_override
         self.logger = get_logger().bind(component="backtest")
 
         # Exchange-aware fees
@@ -241,23 +247,48 @@ class BacktestEngine:
         self.event_bus = EventBus()
         self.strategy = None  # Will be created during run
 
+    def _apply_params_override(self, params: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Merge the engine-level ``strategy_params_override`` onto YAML params.
+
+        When ``self._params_override`` is None (default), the YAML params are
+        returned unchanged — strictly backward compatible.
+
+        When an override is provided AND the YAML params are None, the override
+        becomes the params dict on its own (so a sweep can run even if the
+        YAML entry is missing — useful for new strategies under P7).
+        """
+        if self._params_override is None:
+            return params
+        if params is None:
+            return dict(self._params_override)
+        return {**params, **self._params_override}
+
     def _load_strategy_params(self, strategy_name: str) -> dict[str, Any] | None:
         """Load strategy params from strategies.yaml via settings."""
         if not self.settings.multi_strategy.enabled:
-            return None
+            return self._apply_params_override(None)
         for s in self.settings.multi_strategy.strategies:
             if s.name == strategy_name:
-                return s.params
-        return None
+                return self._apply_params_override(s.params)
+        return self._apply_params_override(None)
 
     def _load_inner_strategy_params(self, inner_name: str) -> dict[str, Any] | None:
         """Load params for an inner strategy nested under multi_strategy_router."""
-        router_params = self._load_strategy_params("multi_strategy_router")
+        # We bypass the engine-level override on the router lookup itself,
+        # since the router has its own param shape (strategies dict). The
+        # override is then applied to the resolved inner params.
+        if not self.settings.multi_strategy.enabled:
+            return self._apply_params_override(None)
+        router_params: dict[str, Any] | None = None
+        for s in self.settings.multi_strategy.strategies:
+            if s.name == "multi_strategy_router":
+                router_params = s.params
+                break
         if router_params is None:
-            return None
+            return self._apply_params_override(None)
         strategies = router_params.get("strategies", {})
         inner = strategies.get(inner_name, {})
-        return inner.get("params")
+        return self._apply_params_override(inner.get("params"))
 
     # Strategies that need specific higher timeframes loaded
     _NEEDS_4H = {
@@ -1161,9 +1192,7 @@ class BacktestEngine:
             from krakenbot.strategies.adaptive import AdaptiveStrategy
 
             analyzer = MultiTimeframeAnalyzer()
-            strategy_params = _override_pair_in_params(
-                self._load_strategy_params("adaptive"), pair
-            )
+            strategy_params = _override_pair_in_params(self._load_strategy_params("adaptive"), pair)
             self.strategy = AdaptiveStrategy(
                 settings=self.settings,
                 event_bus=self.event_bus,
@@ -1788,13 +1817,20 @@ class GridBacktester:
         candle_interval: int = 5,
         exchange: str = "kraken",
         starting_capital: float = 1000.0,
+        strategy_params_override: dict[str, Any] | None = None,
     ):
-        """Initialize grid backtester."""
+        """Initialize grid backtester.
+
+        ``strategy_params_override`` merges on top of the strategies.yaml
+        entry for this grid strategy. None preserves YAML-only behavior.
+        Used by the P7 grid search.
+        """
         self.settings = settings
         self.db_manager = db_manager
         self.strategy_name = strategy_name
         self.candle_interval = candle_interval
         self.exchange = exchange
+        self._params_override = strategy_params_override
         self.logger = get_logger().bind(component="grid_backtest")
 
         # Exchange-aware fees
@@ -1854,18 +1890,26 @@ class GridBacktester:
         self._hourly_prices: list[Decimal] = []
         self._grid_paused: bool = False
 
+    def _apply_params_override(self, params: dict[str, Any] | None) -> dict[str, Any] | None:
+        """Merge engine-level override (if any) onto YAML params."""
+        if self._params_override is None:
+            return params
+        if params is None:
+            return dict(self._params_override)
+        return {**params, **self._params_override}
+
     def _load_strategy_params(self, strategy_name: str) -> dict[str, Any] | None:
         """Load top-level strategy params from settings."""
         if not self.settings.multi_strategy.enabled:
-            return None
+            return self._apply_params_override(None)
         for strategy in self.settings.multi_strategy.strategies:
             if strategy.name == strategy_name:
                 self._strategy_bot_id = getattr(strategy, "bot_id", strategy_name)
-                return strategy.params or {}
-        return None
+                return self._apply_params_override(strategy.params or {})
+        return self._apply_params_override(None)
 
     def _load_inner_strategy_entry(self, inner_name: str) -> dict[str, Any] | None:
-        """Load an inner router strategy entry from settings."""
+        """Load an inner router strategy entry from settings (no override applied here)."""
         if not self.settings.multi_strategy.enabled:
             return None
         for strategy in self.settings.multi_strategy.strategies:
@@ -1882,7 +1926,7 @@ class GridBacktester:
         if strategy_name == "grok_grid_atr_adaptive_v4":
             entry = self._load_inner_strategy_entry(strategy_name) or {}
             self._strategy_bot_id = entry.get("bot_id", "grid_atr_v4")
-            return entry.get("params") or {}
+            return self._apply_params_override(entry.get("params") or {}) or {}
         return self._load_strategy_params(strategy_name) or {}
 
     def _make_ohlc_payload(self, candle: OHLCData, interval: int) -> dict[str, Any]:
@@ -2594,9 +2638,7 @@ class GridBacktester:
         # else: keep default 0.0 (no trades)
 
         # Average holding time — match each sell to the most recent prior buy
-        buy_trades_by_ts = {
-            t.timestamp: t for t in self.metrics.trades if t.side == TradeSide.BUY
-        }
+        buy_trades_by_ts = {t.timestamp: t for t in self.metrics.trades if t.side == TradeSide.BUY}
         sell_trades = [t for t in self.metrics.trades if t.side == TradeSide.SELL]
         holding_times: list[float] = []
         for sell_trade in sell_trades:
