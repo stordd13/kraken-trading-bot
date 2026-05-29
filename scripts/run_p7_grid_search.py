@@ -748,9 +748,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="P7 parameter grid search runner.")
     parser.add_argument(
         "--phase",
-        choices=("1", "2"),
+        choices=("1", "2", "report"),
         required=True,
-        help="Which phase to run: 1 = cross-validate grid search, 2 = walk-forward top-5.",
+        help=(
+            "Which phase to run: 1 = cross-validate grid search, "
+            "2 = walk-forward top-5, report = aggregate + select + write report markdown."
+        ),
     )
     parser.add_argument("--workers", type=int, default=None, help="Worker count. Default: auto.")
     parser.add_argument(
@@ -783,8 +786,46 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+REPORT_MD_PATH = ROOT / "results" / "P7_optimization_report.md"
+FINAL_SELECTION_PATH = ROOT / "results" / "P7_final_selection.json"
+
+
+def _run_report_phase(phase1_path: Path, phase2_path: Path) -> int:
+    """Run the report-only phase: aggregate + selection + markdown."""
+    try:
+        from scripts import p7_report
+    except ModuleNotFoundError:
+        import p7_report  # type: ignore[no-redef]
+
+    if not phase1_path.exists():
+        print(f"Phase-1 results not found at {phase1_path}.", file=sys.stderr)
+        return 2
+    if not phase2_path.exists():
+        print(f"Phase-2 results not found at {phase2_path}.", file=sys.stderr)
+        return 2
+
+    selection = p7_report.generate_report(
+        phase1_path=phase1_path,
+        phase2_path=phase2_path,
+        output_md_path=REPORT_MD_PATH,
+        selection_json_path=FINAL_SELECTION_PATH,
+    )
+    n_selected = len(selection["selected_for_paper"])
+    n_abandoned = len(selection["abandoned"])
+    print(f"P7 report written to {REPORT_MD_PATH}")
+    print(f"  Selected for paper: {n_selected}")
+    print(f"  Abandoned combos:   {n_abandoned}")
+    print(f"  Machine selection:  {FINAL_SELECTION_PATH}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+
+    if args.phase == "report":
+        phase1_path = args.phase1_input
+        phase2_path = args.output or PHASE2_OUTPUT
+        return _run_report_phase(phase1_path, phase2_path)
 
     if args.phase == "1":
         output_path = args.output or PHASE1_OUTPUT
