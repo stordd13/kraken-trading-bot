@@ -20,6 +20,14 @@ Params (from strategies.yaml):
     max_allocation_pct: Max % of total capital (default 20.0)
     bias_1d: Directional bias strength (default 0.2)
     pause_1w_strong_bear: Pause in weekly strong bear (default true)
+    bear_protection_mode: Optional top-level switch over bear-protection flags.
+        When None (default) the internal flags are left to their YAML values
+        (backward compatible). When set, it controls both flags coherently:
+        - "none"    → no protection (pause_1w_strong_bear=False, 1d=False)
+        - "1w_only" → weekly strong-bear pause only (existing behavior)
+        - "1d_only" → daily strong-bear pause only (new in P7)
+        The 1w/1d modes are mutually exclusive by design — combining them
+        would be dominated by 1w with no statistical signal added.
 """
 
 from __future__ import annotations
@@ -109,6 +117,27 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
         # Directional bias
         self.bias_1d = Decimal(str(params.get("bias_1d", 0.2)))
         self.pause_1w_strong_bear: bool = params.get("pause_1w_strong_bear", True)
+        self.bear_protection_1d_enabled: bool = False
+
+        # Top-level bear_protection_mode (optional) — when set, overrides the
+        # two internal flags coherently. When None, flags keep their YAML values
+        # so existing configs are strictly backward compatible.
+        bear_protection_mode = params.get("bear_protection_mode")
+        if bear_protection_mode is not None:
+            if bear_protection_mode == "none":
+                self.pause_1w_strong_bear = False
+                self.bear_protection_1d_enabled = False
+            elif bear_protection_mode == "1w_only":
+                self.pause_1w_strong_bear = True
+                self.bear_protection_1d_enabled = False
+            elif bear_protection_mode == "1d_only":
+                self.pause_1w_strong_bear = False
+                self.bear_protection_1d_enabled = True
+            else:
+                raise ValueError(
+                    f"Invalid bear_protection_mode: {bear_protection_mode!r}. "
+                    "Expected one of: 'none', '1w_only', '1d_only', or None."
+                )
 
         # Budget & position sizing (independent per strategy)
         self.order_size_usdc = Decimal(str(params.get("order_size_usdc", 25)))
@@ -152,6 +181,7 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             max_allocation_pct=float(self.max_allocation_pct),
             bias_1d=float(self.bias_1d),
             pause_1w_strong_bear=self.pause_1w_strong_bear,
+            bear_protection_1d_enabled=self.bear_protection_1d_enabled,
         )
 
     # ------------------------------------------------------------------
@@ -347,6 +377,29 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
                     metadata={"regime_1w": regime_1w},
                 )
                 return
+
+            # Rule: Pause in daily STRONG_BEAR (P7 — opt-in via bear_protection_mode)
+            # Strictly no-op when bear_protection_1d_enabled is False (default),
+            # so pre-P7 YAML configs hit zero new code paths here.
+            if self.bear_protection_1d_enabled:
+                regime_1d_pause = self.analyzer.get_regime("1d")
+                if regime_1d_pause == "strong_bear":
+                    if not self._paused:
+                        self.logger.info("grid_paused_strong_bear_1d", regime_1d=regime_1d_pause)
+                        self._paused = True
+                    self.logger.info(
+                        "strategy_tick",
+                        strategy=self.get_name(),
+                        bot_id=self.bot_id,
+                        pair=self.pair,
+                        timeframe="4h",
+                        close=str(self._current_price),
+                        signal="PAUSED",
+                        reason="daily_strong_bear",
+                        metadata={"regime_1d": regime_1d_pause},
+                    )
+                    return
+
             if self._paused:
                 self._paused = False
                 self.logger.info("grid_resumed", regime_1w=regime_1w)
