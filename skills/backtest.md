@@ -66,6 +66,71 @@ automatiquement si la DB n'est pas joignable.
 
 ---
 
+## Lancer le grid search P7 (optimisation paramétrique)
+
+P7 cible 4 stratégies × paires retenues de P6 et fait un grid search ciblé en
+deux phases, puis applique des critères stricts pour décider quelles
+configurations méritent un paper trading.
+
+```bash
+# Phase 1 — cross-validate 70/30 sur 212 configurations
+poetry run python scripts/run_p7_grid_search.py --phase 1 --workers 8 --timeout 3600
+
+# Phase 2 — walk-forward 8 fenêtres × top-5 par combo (≈ 280 backtests)
+poetry run python scripts/run_p7_grid_search.py --phase 2 --workers 8 --timeout 3600
+
+# Phase rapport — agrège phase 2, applique 7 critères, écrit le markdown
+poetry run python scripts/run_p7_grid_search.py --phase report
+
+# Filtres utiles (smoke tests)
+poetry run python scripts/run_p7_grid_search.py --phase 1 \
+    --strategy grok_supertrend_4h --pair BTC/USDC --limit 1 --serial
+```
+
+### Architecture P7
+
+- [scripts/p7_grids.py](../scripts/p7_grids.py) — définit les 4 grilles
+  (SuperTrend, Grid ATR V4, DCA Weekly, Donchian) avec les **noms réels** des
+  kwargs du `__init__` des stratégies (pas les aliases de spec).
+- [scripts/run_p7_grid_search.py](../scripts/run_p7_grid_search.py) —
+  orchestrateur : job builder, multiprocessing pool, atomic save, resume,
+  walk-forward windows, top-K, CLI `--phase`.
+- [scripts/p7_report.py](../scripts/p7_report.py) — agrégation walk-forward,
+  application des 7 critères de sélection, génération du rapport markdown.
+
+### Injection des paramètres custom
+
+Les `BacktestEngine` et `GridBacktester` acceptent un kwarg
+`strategy_params_override: dict[str, Any] | None`. Quand fourni, il est mergé
+**par-dessus** la config `strategies.yaml` résolue pour la stratégie testée
+(le YAML reste la source pour les params non sweepés). Quand `None`, le
+comportement est strictement inchangé — gardé par le test
+[tests/test_strategies/test_grid_atr_v4_backward_compat.py](../tests/test_strategies/test_grid_atr_v4_backward_compat.py)
+qui figé un SHA256 bit-à-bit de la baseline pré-P7.
+
+### Critères de sélection (les 7, tous doivent passer)
+
+1. `mean_sharpe_oos > 0.4`
+2. `mean_profit_factor_oos > 1.3`
+3. `max_drawdown_global < 30%`
+4. `mean_trades_test >= 20` (relaxé à `>= 5` pour DCA)
+5. `consistency >= 5/8` fenêtres avec Sharpe positif
+6. `mean_sharpe_oos / mean_sharpe_train > 0.5` (anti-overfit)
+7. Bat soit Buy & Hold soit DCA fixe en Sharpe (OU permissif)
+
+Benchmarks Sharpe extraits du rapport P6 v2 (1k USDC, fees Binance) :
+
+| Pair | Buy & Hold | DCA fixed |
+|---|---|---|
+| BTC/USDC | 0.85 | 2.37 |
+| ETH/USDC | 0.40 | 2.10 |
+| SOL/USDC | 0.31 | 1.93 |
+
+Si une stratégie n'a aucune config qui passe → on l'abandonne, documenté
+dans `results/P7_optimization_report.md`.
+
+---
+
 ## Lancer un backtest unitaire
 
 ```bash

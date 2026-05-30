@@ -46,6 +46,16 @@ poetry run python scripts/run_p6_backtests.py --serial     # debug / gate déter
 # Reprise automatique : relancer sans --force ignore les combos déjà complétés
 # Monitoring temps réel : watch -n 2 cat logs/p6_status.json
 
+# Lancer le grid search P7 (4 stratégies P6 survivantes, grilles ciblées)
+# Phase 1 : cross-validate 70/30 sur 212 configurations (≈ 1.5h en parallèle)
+poetry run python scripts/run_p7_grid_search.py --phase 1 --workers 8 --timeout 3600
+# Phase 2 : walk-forward 8 fenêtres × top-5 par combo (≈ 1.5h)
+poetry run python scripts/run_p7_grid_search.py --phase 2 --workers 8 --timeout 3600
+# Phase rapport : agrégation + critères + Markdown
+poetry run python scripts/run_p7_grid_search.py --phase report
+# Monitoring : watch -n 2 cat logs/p7_status.json
+# Filtres phase 1 : --strategy grok_supertrend_4h --pair BTC/USDC
+
 # Dashboard
 poetry run python scripts/dashboard.py
 ```
