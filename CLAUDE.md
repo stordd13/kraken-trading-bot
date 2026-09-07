@@ -18,6 +18,7 @@ Avant de commencer une tâche, consulte le skill pertinent dans `skills/` :
 - Import données historiques → `skills/binance_import.md`
 - Risk management → `skills/risk_management.md`
 - Bug ou problème → `skills/troubleshooting.md`
+- Pour localiser un module ou une fonction → `docs/CODE_MAP.md` (à régénérer à chaque merge sur dev)
 
 ---
 
