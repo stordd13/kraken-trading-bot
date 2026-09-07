@@ -19,6 +19,12 @@ Params (from strategies.yaml):
     adx_threshold: Min ADX(14, 1d) for entry (default 18)
     order_size_usdc: USDC per trade (default 50)
     max_allocation_pct: Max % of total capital (default 15.0)
+    breakout_confirmation: Trigger source for the breakout (default "close").
+        - "close"    → fire when current close crosses above the previous upper
+          band AND the previous close was at or below it (existing behavior).
+        - "high_low" → fire when current candle high crosses above the previous
+          upper band AND the previous candle high was at or below it. Intra-
+          candle trigger, more sensitive, can take earlier entries. Added in P7.
 """
 
 from __future__ import annotations
@@ -89,6 +95,14 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
         self.donchian_upper_period: int = int(params.get("donchian_upper_period", 20))
         self.donchian_lower_period: int = int(params.get("donchian_lower_period", 10))
 
+        # Breakout trigger mode (P7 — opt-in)
+        self.breakout_confirmation: str = params.get("breakout_confirmation", "close")
+        if self.breakout_confirmation not in ("close", "high_low"):
+            raise ValueError(
+                f"Invalid breakout_confirmation: {self.breakout_confirmation!r}. "
+                "Expected one of: 'close', 'high_low'."
+            )
+
         # Risk parameters
         self.sl_atr_mult = Decimal(str(params.get("sl_atr_mult", 3.5)))
         self.adx_threshold = Decimal(str(params.get("adx_threshold", 18)))
@@ -105,6 +119,7 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
 
         # Internal state
         self._current_price: Decimal | None = None
+        self._current_high: Decimal | None = None
         self._current_timestamp: datetime | None = None
         self._position: DonchianPosition | None = None
         self._next_position_id: int = 1
@@ -112,6 +127,7 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
 
         # Track previous values for crossover detection
         self._prev_close: Decimal | None = None
+        self._prev_high: Decimal | None = None
         self._prev_donchian_upper: Decimal | None = None
 
         self.logger.info(
@@ -122,6 +138,7 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
             sl_atr_mult=float(self.sl_atr_mult),
             adx_threshold=float(self.adx_threshold),
             order_size_usdc=float(self.order_size_usdc),
+            breakout_confirmation=self.breakout_confirmation,
         )
 
     # ------------------------------------------------------------------
@@ -139,6 +156,9 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
         close = ohlc_data.get("close")
         if close is not None:
             self._current_price = Decimal(str(close))
+        high = ohlc_data.get("high")
+        if high is not None:
+            self._current_high = Decimal(str(high))
         ts = ohlc_data.get("timestamp")
         if ts:
             self._current_timestamp = (
@@ -179,6 +199,7 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
             signal = self._check_exit(price, dc_lower, regime_1d, now)
             if signal:
                 self._prev_close = price
+                self._prev_high = self._current_high
                 self._prev_donchian_upper = dc_upper
                 return signal
 
@@ -196,6 +217,7 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
                 self._position.highest_price = price
 
             self._prev_close = price
+            self._prev_high = self._current_high
             self._prev_donchian_upper = dc_upper
             return None
 
@@ -206,6 +228,7 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
 
         # Update previous values
         self._prev_close = price
+        self._prev_high = self._current_high
         self._prev_donchian_upper = dc_upper
 
         return signal
@@ -320,16 +343,30 @@ class GrokDonchianChannelBreakoutV1(BaseStrategy):
         if self._position is not None:
             return None
 
-        # Must break above previous upper band (current dc_upper includes
-        # the current candle's high, so close > dc_upper is impossible)
-        if self._prev_donchian_upper is None or self._prev_close is None:
-            return None
-        if price <= self._prev_donchian_upper:
+        # Must break above previous upper band. The trigger source depends on
+        # ``breakout_confirmation``:
+        # - "close": current close > prev upper AND prev close <= prev upper.
+        # - "high_low": current high > prev upper AND prev high <= prev upper.
+        # In both cases we compare against the PREVIOUS upper band — the
+        # current dc_upper includes the current candle's high so it is not
+        # usable for a fresh-breakout check.
+        if self._prev_donchian_upper is None:
             return None
 
-        # Fresh breakout: previous close was at or below previous upper
-        if self._prev_close > self._prev_donchian_upper:
-            return None  # Already above — not a fresh breakout
+        if self.breakout_confirmation == "close":
+            if self._prev_close is None:
+                return None
+            if price <= self._prev_donchian_upper:
+                return None
+            if self._prev_close > self._prev_donchian_upper:
+                return None  # Already above — not a fresh breakout
+        else:  # "high_low"
+            if self._current_high is None or self._prev_high is None:
+                return None
+            if self._current_high <= self._prev_donchian_upper:
+                return None
+            if self._prev_high > self._prev_donchian_upper:
+                return None  # Already above — not a fresh breakout
 
         # Daily regime must be bullish
         if regime_1d not in ("bull", "strong_bull"):
