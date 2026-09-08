@@ -58,30 +58,17 @@ from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
 from krakenbot.models.base import BotStatus, PositionStatus
 from krakenbot.models.trades import BotState, OpenPosition
 from krakenbot.notifications.telegram import TelegramNotifier, get_notifier, set_notifier
-from krakenbot.strategies.adaptive import AdaptiveStrategy
 from krakenbot.strategies.base import BaseStrategy
-from krakenbot.strategies.bear_short import BearShortStrategy
-from krakenbot.strategies.capitulation import CapitulationStrategy
-from krakenbot.strategies.grid_adaptive import GridAdaptiveStrategy
-from krakenbot.strategies.grid_spot import GridSpotStrategy
 from krakenbot.strategies.multi_strategy_router import MultiStrategyRouter
-from krakenbot.strategies.threshold_rolling import ThresholdRollingStrategy
-from krakenbot.strategies.trend_following import TrendFollowingStrategy
 
 if TYPE_CHECKING:
     from krakenbot.config.settings import Settings
     from krakenbot.core.event_bus import EventBus
 
-# Strategy registry: maps strategy name to class
+# Strategy registry: maps strategy name to class.
+# Since B0.5 (Sept 2026) the router is the only top-level strategy; the legacy
+# Kraken-era single strategies were removed (see docs/archive/PIVOT_BYBIT_PLAN.md).
 STRATEGY_REGISTRY: dict[str, type[BaseStrategy]] = {
-    "threshold_rolling": ThresholdRollingStrategy,
-    "adaptive": AdaptiveStrategy,
-    "capitulation": CapitulationStrategy,
-    "bear_short": BearShortStrategy,
-    "grid_spot": GridSpotStrategy,
-    "grid_adaptive": GridAdaptiveStrategy,
-    "trend_following": TrendFollowingStrategy,
-    # New: router orchestrating 7 strategies + risk manager
     "multi_strategy_router": MultiStrategyRouter,
 }
 
@@ -152,13 +139,11 @@ class KrakenBot:
         self.db_manager: DatabaseManager | None = None
         self.ws_client: BaseWebSocketClient | None = None
         self.rest_client: ExchangeRestClient | None = None
-        self.strategy: ThresholdRollingStrategy | None = None  # Legacy single strategy
         self.strategies: list[BaseStrategy] = []  # Multi-strategy list
         self.execution_engine: ExecutionEngine | None = None
         self.order_manager: OrderManager | None = None
         self.global_risk_manager: GlobalRiskManager | None = None
         self.analyzer: MultiTimeframeAnalyzer | None = None
-        self.futures_client: Any | None = None  # KrakenFuturesClient if enabled
 
         # State
         self._running: bool = False
@@ -260,23 +245,9 @@ class KrakenBot:
         # 9. Initialize strategies
         self._setup_strategies()
 
-        # 10. Initialize Kraken Futures client (optional, lazy)
-        if self.settings.kraken_futures.enabled:
-            from krakenbot.connectors.kraken.futures import KrakenFuturesClient
-
-            self.futures_client = KrakenFuturesClient(self.settings)
-            self.logger.info(
-                "kraken_futures_client_initialized",
-                demo=self.settings.kraken_futures.demo,
-            )
-
         self._setup_completed = True
 
-        strategy_names = (
-            [s.get_name() for s in self.strategies]
-            if self._multi_strategy_mode
-            else [self.strategy.get_name() if self.strategy else "none"]
-        )
+        strategy_names = [s.get_name() for s in self.strategies]
 
         self.logger.info(
             "krakenbot_initialized",
@@ -286,21 +257,18 @@ class KrakenBot:
         )
 
     def _setup_strategies(self) -> None:
-        """Initialize strategies based on mode (legacy or multi-strategy).
+        """Initialize strategies from strategies.yaml (multi-strategy mode only).
 
-        In legacy mode: creates a single ThresholdRollingStrategy.
-        In multi-strategy mode: iterates strategies.yaml, instantiates each
-        enabled strategy via the registry, and registers budgets.
+        Iterates strategies.yaml, instantiates each enabled strategy via the
+        registry, and registers budgets. The legacy single-strategy mode
+        (ThresholdRollingStrategy) was removed in B0.5.
         """
         if not self._multi_strategy_mode:
-            # Legacy mode: single strategy
-            self.strategy = ThresholdRollingStrategy(
-                self.settings,
-                self.event_bus,
-                self.db_manager,
+            raise ValueError(
+                "multi_strategy.enabled=false is no longer supported: the legacy "
+                "single-strategy mode was removed in B0.5. Enable strategies.yaml "
+                "(enabled: true) with a multi_strategy_router entry."
             )
-            self.logger.debug("strategy_initialized", mode="legacy")
-            return
 
         # Multi-strategy mode: create per-pair analyzer registry
         self.analyzer_registry = MultiPairAnalyzerRegistry()
@@ -558,13 +526,9 @@ class KrakenBot:
         await self._reconcile_positions_with_exchange()
 
         # 4. Start strategies
-        if self._multi_strategy_mode:
-            for strategy in self.strategies:
-                await strategy.start()
-                self.logger.debug("strategy_started", name=strategy.get_name())
-        else:
-            await self.strategy.start()
-            self.logger.debug("strategy_started")
+        for strategy in self.strategies:
+            await strategy.start()
+            self.logger.debug("strategy_started", name=strategy.get_name())
 
         # 4. Load pending orders from DB and subscribe OrderManager to OHLC
         if self.order_manager:
@@ -578,31 +542,19 @@ class KrakenBot:
         # 6. Connect WebSocket and subscribe to market data
         await self.ws_client.connect()
 
-        if self._multi_strategy_mode:
-            # Multi-strategy: subscribe to all required timeframes for all pairs
-            pairs_needed = self._collect_strategy_pairs()
-            intervals = self._get_multi_strategy_ohlc_intervals()
-            for pair in pairs_needed:
-                for interval in intervals:
-                    await self.ws_client.subscribe_ohlc(pair, interval)
-                await self.ws_client.subscribe_ticker(pair)
-                self.logger.debug("ws_subscribed_pair", pair=pair, intervals=intervals)
-        else:
-            # Legacy: single pair + single interval
-            await self.ws_client.subscribe_ohlc(
-                self.settings.trading.pair,
-                self.settings.trading.candle_interval_min,
-            )
-            await self.ws_client.subscribe_ticker(self.settings.trading.pair)
+        # Subscribe to all required timeframes for all pairs
+        pairs_needed = self._collect_strategy_pairs()
+        intervals = self._get_multi_strategy_ohlc_intervals()
+        for pair in pairs_needed:
+            for interval in intervals:
+                await self.ws_client.subscribe_ohlc(pair, interval)
+            await self.ws_client.subscribe_ticker(pair)
+            self.logger.debug("ws_subscribed_pair", pair=pair, intervals=intervals)
         self.logger.debug("websocket_connected_and_subscribed")
 
         self._running = True
 
-        strategy_names = (
-            [s.get_name() for s in self.strategies]
-            if self._multi_strategy_mode
-            else [self.strategy.get_name() if self.strategy else "unknown"]
-        )
+        strategy_names = [s.get_name() for s in self.strategies]
 
         self.logger.info(
             "krakenbot_started",
@@ -663,33 +615,22 @@ class KrakenBot:
             self._summary_scheduler = None
 
         # Mark bot as stopped in database first (while db is still open)
-        if self.db_manager and (self.strategy or self.strategies):
+        if self.db_manager and self.strategies:
             await self._mark_bot_stopped()
 
         # Stop in reverse order
 
         # 1. Stop strategies
-        if self._multi_strategy_mode:
-            for strategy in self.strategies:
-                try:
-                    await strategy.stop()
-                    self.logger.debug("strategy_stopped", name=strategy.get_name())
-                except Exception as e:
-                    self.logger.error(
-                        "strategy_stop_error",
-                        error=str(e),
-                        error_type=type(e).__name__,
-                        strategy=strategy.get_name(),
-                    )
-        elif self.strategy:
+        for strategy in self.strategies:
             try:
-                await self.strategy.stop()
-                self.logger.debug("strategy_stopped")
+                await strategy.stop()
+                self.logger.debug("strategy_stopped", name=strategy.get_name())
             except Exception as e:
                 self.logger.error(
                     "strategy_stop_error",
                     error=str(e),
                     error_type=type(e).__name__,
+                    strategy=strategy.get_name(),
                 )
 
         # 2. Cancel pending orders (before closing REST client)
@@ -736,18 +677,6 @@ class KrakenBot:
             except Exception as e:
                 self.logger.error(
                     "rest_client_close_error",
-                    error=str(e),
-                    error_type=type(e).__name__,
-                )
-
-        # 5b. Close Futures client
-        if self.futures_client:
-            try:
-                await self.futures_client.close()
-                self.logger.debug("futures_client_closed")
-            except Exception as e:
-                self.logger.error(
-                    "futures_client_close_error",
                     error=str(e),
                     error_type=type(e).__name__,
                 )
@@ -1103,7 +1032,7 @@ class KrakenBot:
                     "bot_id": strat.bot_id,
                     "running": strat.is_running,
                 }
-                # ThresholdRolling-compatible properties
+                # Optional per-strategy properties (duck-typed)
                 if hasattr(strat, "current_price"):
                     s_info["current_price"] = (
                         float(strat.current_price) if strat.current_price else None
@@ -1112,22 +1041,6 @@ class KrakenBot:
                     s_info["open_positions"] = strat.open_positions_count
                 strategy_stats.append(s_info)
             stats["strategies"] = strategy_stats
-        elif self.strategy:
-            stats["strategy"] = {
-                "name": self.strategy.get_name(),
-                "running": self.strategy.is_running,
-                "current_price": (
-                    float(self.strategy.current_price) if self.strategy.current_price else None
-                ),
-                "reference_price": (
-                    float(self.strategy.reference_price) if self.strategy.reference_price else None
-                ),
-                "has_position": self.strategy.has_position,
-                "entry_price": (
-                    float(self.strategy.entry_price) if self.strategy.entry_price else None
-                ),
-                "price_history_len": self.strategy.price_history_len,
-            }
 
         self.logger.info(
             "periodic_stats",
@@ -1254,31 +1167,13 @@ class KrakenBot:
         """
         return self._running and not self._shutdown_requested
 
-    def get_bot_id(self) -> str:
-        """Generate unique bot_id for the legacy single strategy.
-
-        Returns:
-            Unique bot identifier (e.g., "threshold_rolling" or "threshold_rolling_xbt_prod").
-        """
-        if self.strategy is None:
-            return "unknown"
-        base = self.strategy.get_name()
-        instance_id = self.settings.trading.bot_instance_id
-        if instance_id:
-            return f"{base}_{instance_id}"
-        return base
-
     def _get_all_bot_ids(self) -> list[tuple[str, str]]:
         """Get all bot_ids for all active strategies.
 
         Returns:
             List of (bot_id, strategy_name) tuples.
         """
-        if self._multi_strategy_mode and self.strategies:
-            return [(s.bot_id, s.get_name()) for s in self.strategies]
-        if self.strategy:
-            return [(self.get_bot_id(), self.strategy.get_name())]
-        return []
+        return [(s.bot_id, s.get_name()) for s in self.strategies]
 
 
 async def main() -> None:

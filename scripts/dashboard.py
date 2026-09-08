@@ -106,12 +106,7 @@ STRATEGY_EXIT_CONFIG = _build_strategy_exit_config()
 
 def _build_backtest_strategy_options() -> list[dict[str, str]]:
     """Build backtest strategy dropdown options dynamically from strategies.yaml."""
-    options = {
-        "threshold_rolling": "Threshold Rolling",
-        "adaptive": "Adaptive",
-        "capitulation": "Capitulation",
-        "bear_short": "Bear Short",
-    }
+    options: dict[str, str] = {}
     # Add strategies from strategies.yaml not already listed
     if _settings.multi_strategy.enabled:
         for strat_cfg in _settings.multi_strategy.strategies:
@@ -274,10 +269,10 @@ def compute_target_for_position(strategy: str, entry_price: float) -> dict:
     """Compute target price and label for a position based on its strategy.
 
     Looks up exit config by exact name/bot_id, then tries base name fallback
-    (e.g., "adaptive_prod" -> "adaptive"), then falls back to __default__.
+    (e.g., "supertrend_4h_prod" -> "supertrend_4h"), then falls back to __default__.
 
     Args:
-        strategy: Strategy name or bot_id (e.g., "adaptive_prod", "capitulation_prod").
+        strategy: Strategy name or bot_id (e.g., "grid_atr_v4", "supertrend_4h").
         entry_price: Position entry price.
 
     Returns:
@@ -1087,7 +1082,7 @@ def create_candlestick_chart(
     if positions_df is not None and not positions_df.empty:
         for _, pos in positions_df.iterrows():
             entry_price = float(pos["entry_price"])
-            strategy = pos.get("strategy", "threshold_rolling")
+            strategy = pos.get("strategy", "")
             pos_id = pos.get("position_id", "?")
 
             target_info = compute_target_for_position(strategy, entry_price)
@@ -1643,7 +1638,7 @@ app.layout = dbc.Container(
                                                         dbc.Select(
                                                             id="backtest-strategy-select",
                                                             options=_BACKTEST_STRATEGY_OPTIONS,
-                                                            value="threshold_rolling",
+                                                            value="grok_grid_atr_adaptive_v4",
                                                         ),
                                                     ],
                                                     width=3,
@@ -2182,7 +2177,7 @@ def update_trades_table(n_intervals, n_clicks, strategy_filter):
 
         # Determine entry vs exit price based on side
         # For margin shorts: SELL = open (entry), BUY = close (exit)
-        is_short = "bear_short" in (strategy or "")
+        is_short = row.get("trading_mode", "spot") == "margin"
         if is_short:
             if side == "sell":
                 entry_price = price
@@ -2296,7 +2291,7 @@ def update_positions_table(n_intervals, n_clicks, strategy_filter):
         entry_price = float(row["entry_price"])
         amount = float(row["amount"])
         entry_time = pd.to_datetime(row["entry_time"])
-        strategy = row.get("strategy", "threshold_rolling")
+        strategy = row.get("strategy", "")
         trading_mode = row.get("trading_mode", "spot")
         is_short = trading_mode == "margin"
 
@@ -2774,7 +2769,7 @@ def update_backtest_runs(n_clicks, active_tab, delete_status):
                 html.H5("No backtest runs found"),
                 html.P("Run a backtest with --save to see results here:"),
                 html.Code(
-                    "poetry run python scripts/backtest.py --strategy threshold_rolling --days 7 --save"
+                    "poetry run python scripts/backtest.py --strategy grok_grid_atr_adaptive_v4 --days 7 --save"
                 ),
             ],
             color="info",

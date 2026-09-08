@@ -421,20 +421,6 @@ class MultiTimeframeSettings(BaseSettings):
     warmup_candles_1h: int = Field(default=50, ge=10, le=200)
 
 
-class CapitulationSettings(BaseSettings):
-    """Capitulation strategy specific settings."""
-
-    model_config = SettingsConfigDict(env_prefix="CAPITULATION_")
-
-    rsi_1h_threshold: float = Field(default=20.0, ge=5.0, le=40.0)
-    rsi_5m_threshold: float = Field(default=15.0, ge=5.0, le=40.0)
-    volume_spike_multiplier: float = Field(default=3.0, ge=1.5, le=10.0)
-    trailing_stop_pct: float = Field(default=5.0, ge=0.5, le=10.0)
-    max_profit_target_pct: float = Field(default=10.0, ge=2.0, le=50.0)
-    max_holding_minutes: int = Field(default=2880, ge=60, le=20160)
-    cooldown_hours: int = Field(default=4, ge=1, le=48)
-
-
 class CommonIndicatorsSettings(BaseModel):
     """Common indicators configuration for the shared data layer.
 
@@ -510,39 +496,6 @@ class TelegramSettings(BaseSettings):
         description="Hour (UTC) to send daily summary (0-23)",
         ge=0,
         le=23,
-    )
-
-
-class KrakenFuturesSettings(BaseSettings):
-    """Kraken Futures (perpetual swaps) configuration.
-
-    Completely separate from Kraken Spot. Requires dedicated API keys
-    from futures.kraken.com or demo-futures.kraken.com.
-    """
-
-    model_config = SettingsConfigDict(env_prefix="KRAKEN_FUTURES_")
-
-    enabled: bool = Field(
-        default=False,
-        description="Enable Kraken Futures module (opt-in)",
-    )
-    api_key: SecretStr = Field(
-        default=SecretStr(""),
-        description="Kraken Futures API key (separate from Spot)",
-    )
-    api_secret: SecretStr = Field(
-        default=SecretStr(""),
-        description="Kraken Futures API secret (separate from Spot)",
-    )
-    demo: bool = Field(
-        default=True,
-        description="Use demo environment (demo-futures.kraken.com)",
-    )
-    max_leverage: int = Field(
-        default=3,
-        description="Maximum leverage cap (safety limit, 1-10)",
-        ge=1,
-        le=10,
     )
 
 
@@ -701,11 +654,9 @@ class Settings(BaseSettings):
     )
     multi_strategy: MultiStrategySettings = Field(default_factory=MultiStrategySettings)
     multi_timeframe: MultiTimeframeSettings = Field(default_factory=MultiTimeframeSettings)
-    capitulation: CapitulationSettings = Field(default_factory=CapitulationSettings)
     order: OrderSettings = Field(default_factory=OrderSettings)
     paper: PaperSettings = Field(default_factory=PaperSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
-    kraken_futures: KrakenFuturesSettings = Field(default_factory=KrakenFuturesSettings)
     common_indicators: CommonIndicatorsSettings = Field(default_factory=CommonIndicatorsSettings)
     exchange_fees: ExchangeFees = Field(default_factory=ExchangeFees)
 
@@ -790,17 +741,6 @@ class Settings(BaseSettings):
             settings_logger = logging.getLogger(__name__)
             for warning in router_warnings:
                 settings_logger.warning(warning)
-
-        # Validate Kraken Futures credentials when enabled in live mode
-        if self.kraken_futures.enabled and self.trading.mode == TradingMode.LIVE:
-            if not self.kraken_futures.api_key.get_secret_value():
-                errors.append(
-                    "KRAKEN_FUTURES_API_KEY is required when futures enabled in live mode"
-                )
-            if not self.kraken_futures.api_secret.get_secret_value():
-                errors.append(
-                    "KRAKEN_FUTURES_API_SECRET is required when futures enabled in live mode"
-                )
 
         if errors:
             raise ValueError(

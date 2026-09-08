@@ -22,14 +22,12 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          KRAKEN_FUTURES_API_KEY: ${{ secrets.KRAKEN_FUTURES_API_KEY }}
-          KRAKEN_FUTURES_API_SECRET: ${{ secrets.KRAKEN_FUTURES_API_SECRET }}
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: 41922
-          envs: KRAKEN_API_KEY,KRAKEN_API_SECRET,DATABASE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_CHAT_ID,KRAKEN_FUTURES_API_KEY,KRAKEN_FUTURES_API_SECRET
+          envs: KRAKEN_API_KEY,KRAKEN_API_SECRET,DATABASE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_CHAT_ID
           script: |
             set -e
 
@@ -83,13 +81,6 @@ jobs:
             TELEGRAM_ENABLED=true
             TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
             TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-
-            # Kraken Futures (perps) — disabled by default, opt-in for Phase 4A
-            KRAKEN_FUTURES_ENABLED=false
-            KRAKEN_FUTURES_API_KEY=${KRAKEN_FUTURES_API_KEY}
-            KRAKEN_FUTURES_API_SECRET=${KRAKEN_FUTURES_API_SECRET}
-            KRAKEN_FUTURES_DEMO=true
-            KRAKEN_FUTURES_MAX_LEVERAGE=3
             EOF
             chmod 600 .env
 

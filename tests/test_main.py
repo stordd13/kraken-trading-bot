@@ -155,19 +155,46 @@ def mock_execution_engine():
 
 
 @pytest.fixture
-def mock_strategy():
-    """Mock ThresholdRollingStrategy."""
+def mock_strategy(mock_settings: Settings):
+    """Mock MultiStrategyRouter instance registered in STRATEGY_REGISTRY.
+
+    Enables multi-strategy mode on the shared settings (the legacy single-strategy
+    mode was removed in B0.5) and patches the heavy collaborators created in
+    ``_setup_strategies``.
+    """
+    mock_settings.multi_strategy = MultiStrategySettings(
+        enabled=True,
+        strategies=[
+            StrategyInstanceConfig(
+                name="multi_strategy_router",
+                bot_id="multi_router",
+                params={"strategies": {}},
+            )
+        ],
+    )
+
     mock_strat = MagicMock()
     mock_strat.start = AsyncMock()
     mock_strat.stop = AsyncMock()
-    mock_strat.get_name.return_value = "threshold_rolling"
+    mock_strat.get_name.return_value = "multi_strategy_router"
+    mock_strat.bot_id = "multi_router"
     mock_strat.is_running = True
     mock_strat.current_price = Decimal("42000.00")
-    mock_strat.reference_price = Decimal("41800.00")
-    mock_strat.has_position = False
-    mock_strat.entry_price = None
-    mock_strat.price_history_len = 10
-    with patch("krakenbot.main.ThresholdRollingStrategy", return_value=mock_strat):
+
+    mock_analyzer = MagicMock()
+    mock_analyzer.initialize = AsyncMock()
+
+    mock_global_risk_manager = MagicMock()
+    mock_global_risk_manager.register_strategy = MagicMock()
+
+    with (
+        patch("krakenbot.main.MultiTimeframeAnalyzer", return_value=mock_analyzer),
+        patch("krakenbot.main.GlobalRiskManager", return_value=mock_global_risk_manager),
+        patch.dict(
+            "krakenbot.main.STRATEGY_REGISTRY",
+            {"multi_strategy_router": MagicMock(return_value=mock_strat)},
+        ),
+    ):
         yield mock_strat
 
 
@@ -202,7 +229,7 @@ class TestKrakenBotInitialization:
         assert bot.db_manager is None
         assert bot.ws_client is None
         assert bot.rest_client is None
-        assert bot.strategy is None
+        assert bot.strategies == []
         assert bot.execution_engine is None
 
 
@@ -231,8 +258,28 @@ class TestKrakenBotSetup:
         assert bot.ws_client is not None
         assert bot.rest_client is not None
         assert bot.execution_engine is not None
-        assert bot.strategy is not None
+        assert bot.strategies == [mock_strategy]
         assert bot._setup_completed is True
+
+    @pytest.mark.asyncio
+    async def test_setup_raises_when_multi_strategy_disabled(
+        self,
+        mock_get_settings: Settings,
+        mock_configure_logging: MagicMock,
+        mock_get_logger: MagicMock,
+        mock_event_bus: AsyncMock,
+        mock_database_manager: MagicMock,
+        mock_ws_client: MagicMock,
+        mock_rest_client: MagicMock,
+        mock_execution_engine: MagicMock,
+    ) -> None:
+        """The legacy single-strategy mode was removed in B0.5: setup must fail loudly."""
+        mock_get_settings.multi_strategy = MultiStrategySettings(enabled=False)
+
+        bot = KrakenBot()
+
+        with pytest.raises(ValueError, match="no longer supported"):
+            await bot.setup()
 
     @pytest.mark.asyncio
     async def test_setup_initializes_database(
@@ -393,13 +440,13 @@ class TestKrakenBotStart:
         # Verify strategy started
         mock_strategy.start.assert_called_once()
 
-        # Verify WebSocket connected and subscribed
+        # Verify WebSocket connected and subscribed to every pair x interval
         mock_ws_client.connect.assert_called_once()
-        mock_ws_client.subscribe_ohlc.assert_called_once_with(
-            mock_get_settings.trading.pair,
-            mock_get_settings.trading.candle_interval_min,
-        )
-        mock_ws_client.subscribe_ticker.assert_called_once_with(mock_get_settings.trading.pair)
+        pairs = bot._collect_strategy_pairs()
+        intervals = bot._get_multi_strategy_ohlc_intervals()
+        assert pairs and intervals
+        assert mock_ws_client.subscribe_ohlc.await_count == len(pairs) * len(intervals)
+        assert mock_ws_client.subscribe_ticker.await_count == len(pairs)
 
         assert bot._running is True
 
@@ -479,8 +526,8 @@ class TestKrakenBotStart:
             enabled=True,
             strategies=[
                 StrategyInstanceConfig(
-                    name="grid_spot",
-                    bot_id="grid_spot_test",
+                    name="fake_strategy",
+                    bot_id="fake_strategy_test",
                     params={},
                 )
             ],
@@ -489,7 +536,7 @@ class TestKrakenBotStart:
         mock_strategy = MagicMock()
         mock_strategy.start = AsyncMock()
         mock_strategy.stop = AsyncMock()
-        mock_strategy.get_name.return_value = "grid_spot"
+        mock_strategy.get_name.return_value = "fake_strategy"
 
         mock_analyzer = MagicMock()
         mock_analyzer.initialize = AsyncMock()
@@ -502,7 +549,7 @@ class TestKrakenBotStart:
             patch("krakenbot.main.GlobalRiskManager", return_value=mock_global_risk_manager),
             patch.dict(
                 "krakenbot.main.STRATEGY_REGISTRY",
-                {"grid_spot": MagicMock(return_value=mock_strategy)},
+                {"fake_strategy": MagicMock(return_value=mock_strategy)},
             ),
         ):
             bot = KrakenBot()

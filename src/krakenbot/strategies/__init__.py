@@ -8,23 +8,19 @@ a common data layer with indicators (MACD, RSI, ATR, ADX, Bollinger, SuperTrend,
 EMA) across all timeframes (5m to 1w). Use analyzer.get_*() methods to query
 any indicator on any timeframe.
 
-Available strategies:
-- ThresholdRollingStrategy: Rolling mean reversion with multi-position support
-- AdaptiveStrategy: Adaptive thresholds based on market regime
-- CapitulationStrategy: Crash bounce detection with high conviction
-- BearShortStrategy: Margin shorts in bear markets
-- GridSpotStrategy: Grid trading with limit orders
-- GridAdaptiveStrategy: ATR-based adaptive grid trading
-- TrendFollowingStrategy: EMA cross trend riding
+All strategies are pair-aware and run inside the MultiStrategyRouter (the only
+BaseStrategy registered on the EventBus). The legacy Kraken-era top-level
+strategies were removed in B0.5 (September 2026).
 
-New strategies (via MultiStrategyRouter):
+Available strategies (via MultiStrategyRouter):
+- GrokGridATRAdaptiveV4: ATR-based adaptive grid with directional bias
+- GrokSuperTrend4hRegime: SuperTrend on 4h with daily regime filter
+- GrokDonchianChannelBreakoutV1: Donchian channel breakout on 4h
+- GrokEMA27_125_ADX_ATR: EMA 27/125 crossover with ADX filter
+- GrokAdaptiveDCAWeekly: Weekly adaptive DCA accumulation
 - GeminiScalpingVolatilite: RSI+MACD scalping on 5m
 - GeminiSuiviTendanceMomentum: EMA50/200 trend following on 1d/4h
 - GeminiRetourMoyenne: Bollinger mean reversion with DCA on 15m
-- GrokGridATRAdaptiveV4: ATR-based adaptive grid with directional bias
-- GrokSuperTrend4hRegime: SuperTrend on 4h with daily regime filter
-- GrokEMA27_125_ADX_ATR: EMA 27/125 crossover with ADX filter
-- GrokAdaptiveDCAWeekly: Weekly adaptive DCA accumulation
 - MultiStrategyRouter: Orchestrator for all inner strategies + risk manager
 - GeminiGlobalRiskManager: Risk overlay (1% rule, ATR SL, crash protector)
 """

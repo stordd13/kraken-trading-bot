@@ -2,9 +2,8 @@
 
 This package contains the connectors for communicating with supported exchanges:
 - binance/: Binance spot REST connector
-- kraken/: Kraken spot, futures, and websocket connectors
+- kraken/: Kraken spot REST and websocket connectors (legacy)
 - exchange: minimal runtime REST abstraction and factory
-- base_perps: abstract base class for perpetual futures exchanges
 - base_ws: abstract base class for exchange WebSocket clients
 
 Example:
@@ -17,7 +16,6 @@ Example:
     >>> rest_client = build_exchange_rest_client(settings, event_bus, db_manager)
 """
 
-from krakenbot.connectors.base_perps import BaseExchangePerps
 from krakenbot.connectors.base_ws import BaseWebSocketClient
 from krakenbot.connectors.binance.rest import BinanceRestClient
 from krakenbot.connectors.binance.ws import BinanceWebSocketClient
@@ -30,7 +28,6 @@ from krakenbot.connectors.kraken.rest import KrakenRestClient
 from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
 
 __all__ = [
-    "BaseExchangePerps",
     "BaseWebSocketClient",
     "BinanceRestClient",
     "BinanceWebSocketClient",

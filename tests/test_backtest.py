@@ -49,8 +49,8 @@ def _build_grid_settings() -> SimpleNamespace:
                     },
                 ),
                 SimpleNamespace(
-                    name="grid_adaptive",
-                    bot_id="grid_adaptive_prod",
+                    name="other_strategy",
+                    bot_id="other_strategy_prod",
                     params={"order_amount_usdc": 999},
                 ),
             ],
@@ -194,28 +194,6 @@ async def test_build_replay_sequence_skips_unused_1h_and_15m_for_4h_strategy():
     assert 15 not in loaded_intervals
     assert 240 in loaded_intervals
     assert 1440 in loaded_intervals
-
-
-@pytest.mark.asyncio
-async def test_build_replay_sequence_keeps_1h_and_15m_for_adaptive_strategy():
-    """Adaptive strategy still needs 1h/15m analyzer feeds."""
-    engine = BacktestEngine(None, None, strategy_name="adaptive", candle_interval=5)  # type: ignore[arg-type]
-    start_time = datetime.now(UTC) - timedelta(days=7)
-    end_time = datetime.now(UTC)
-    loaded_intervals: list[int] = []
-
-    async def fake_load(pair: str, interval: int, start: datetime, end: datetime):  # noqa: ARG001
-        loaded_intervals.append(interval)
-        return []
-
-    engine._load_candles_for_interval = fake_load  # type: ignore[method-assign]
-
-    sequence = await engine._build_replay_sequence("XBT/USDC", start_time, end_time, [])
-
-    assert sequence == []
-    assert 60 in loaded_intervals
-    assert 15 in loaded_intervals
-    assert 5 in loaded_intervals
 
 
 def test_grid_backtester_routes_grok_grid_atr_adaptive_v4_to_grid_path():

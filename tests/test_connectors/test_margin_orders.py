@@ -98,7 +98,7 @@ class TestPaperMarginSell:
             pair="XBT/USDC",
             side=TradeSide.SELL,
             amount=Decimal("0.01"),
-            strategy="bear_short",
+            strategy="margin_test",
             leverage=2,
         )
 
@@ -119,7 +119,7 @@ class TestPaperMarginSell:
             pair="XBT/USDC",
             side=TradeSide.SELL,
             amount=Decimal("0.005"),
-            strategy="bear_short",
+            strategy="margin_test",
             leverage=2,
         )
 
@@ -137,7 +137,7 @@ class TestPaperMarginSell:
                 pair="XBT/USDC",
                 side=TradeSide.SELL,
                 amount=Decimal("0.1"),
-                strategy="bear_short",
+                strategy="margin_test",
                 leverage=2,
             )
 
@@ -153,7 +153,7 @@ class TestPaperMarginBuy:
             pair="XBT/USDC",
             side=TradeSide.SELL,
             amount=Decimal("0.01"),
-            strategy="bear_short",
+            strategy="margin_test",
             leverage=2,
         )
         assert len(paper_client._paper_margin_positions) == 1
@@ -164,7 +164,7 @@ class TestPaperMarginBuy:
             pair="XBT/USDC",
             side=TradeSide.BUY,
             amount=Decimal("0.01"),
-            strategy="bear_short",
+            strategy="margin_test",
             leverage=2,
         )
 
@@ -184,7 +184,7 @@ class TestPaperMarginBuy:
             pair="XBT/USDC",
             side=TradeSide.SELL,
             amount=Decimal("0.01"),
-            strategy="bear_short",
+            strategy="margin_test",
             leverage=2,
         )
 
@@ -194,7 +194,7 @@ class TestPaperMarginBuy:
             pair="XBT/USDC",
             side=TradeSide.BUY,
             amount=Decimal("0.01"),
-            strategy="bear_short",
+            strategy="margin_test",
             leverage=2,
         )
 
@@ -213,7 +213,7 @@ class TestPaperMarginBuy:
                 pair="XBT/USDC",
                 side=TradeSide.BUY,
                 amount=Decimal("0.01"),
-                strategy="bear_short",
+                strategy="margin_test",
                 leverage=2,
             )
 
@@ -237,7 +237,7 @@ class TestMarginBalanceHelpers:
             pair="XBT/USDC",
             side=TradeSide.SELL,
             amount=Decimal("0.01"),
-            strategy="bear_short",
+            strategy="margin_test",
             leverage=2,
         )
 
@@ -263,7 +263,7 @@ class TestMarginBalanceHelpers:
             pair="XBT/USDC",
             side=TradeSide.SELL,
             amount=Decimal("0.01"),
-            strategy="bear_short",
+            strategy="margin_test",
             leverage=2,
         )
 
@@ -272,4 +272,4 @@ class TestMarginBalanceHelpers:
         assert len(positions) == 1
         assert positions[0]["pair"] == "XBT/USDC"
         assert positions[0]["amount"] == Decimal("0.01")
-        assert positions[0]["strategy"] == "bear_short"
+        assert positions[0]["strategy"] == "margin_test"

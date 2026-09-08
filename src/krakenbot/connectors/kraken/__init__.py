@@ -1,6 +1,5 @@
-"""Kraken exchange connectors (spot, futures, websocket)."""
+"""Kraken exchange connectors (spot REST + websocket, legacy / paper-mode reference)."""
 
-from krakenbot.connectors.kraken.futures import KrakenFuturesClient
 from krakenbot.connectors.kraken.rest import (
     KrakenRestClient,
     normalize_asset_balances,
@@ -9,7 +8,6 @@ from krakenbot.connectors.kraken.rest import (
 from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
 
 __all__ = [
-    "KrakenFuturesClient",
     "KrakenRestClient",
     "KrakenWebSocketClient",
     "normalize_asset_balances",
