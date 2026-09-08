@@ -826,7 +826,8 @@ def get_settings() -> Settings:
         # (DatabaseSettings, KrakenSettings, etc.) can read their env vars.
         # Without this, only the root Settings reads .env via Pydantic's env_file.
         load_dotenv()
-        _settings = Settings()
+        # exchange_name has no default: it comes from EXCHANGE_NAME (env / .env)
+        _settings = Settings()  # type: ignore[call-arg]
         _settings.validate_all()
     return _settings
 
@@ -839,6 +840,6 @@ def reload_settings() -> Settings:
     """
     global _settings
     load_dotenv(override=True)
-    _settings = Settings()
+    _settings = Settings()  # type: ignore[call-arg]
     _settings.validate_all()
     return _settings
