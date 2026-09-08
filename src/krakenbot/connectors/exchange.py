@@ -132,17 +132,21 @@ def build_exchange_rest_client(
 ) -> ExchangeRestClient:
     """Build the REST client used by runtime execution.
 
-    Dispatches on ``settings.exchange_name`` to return the right client.
-    Defaults to Kraken for backward compatibility.
+    Dispatches on ``settings.exchange_name`` (required, validated by Settings).
     """
-    exchange_name = getattr(settings, "exchange_name", "kraken").lower()
+    exchange_name = settings.exchange_name.lower()
 
     if exchange_name == "binance":
         from krakenbot.connectors.binance.rest import BinanceRestClient
 
         return BinanceRestClient(settings, event_bus, db_manager)
 
-    # Default: Kraken (backward compat)
+    if exchange_name == "bybit":
+        from krakenbot.connectors.bybit.rest import BybitRestClient
+
+        return BybitRestClient(settings, event_bus, db_manager)
+
+    # Kraken (legacy)
     from krakenbot.connectors.kraken.rest import KrakenRestClient
 
     return KrakenRestClient(settings, event_bus, db_manager)
@@ -156,10 +160,15 @@ def build_exchange_ws_client(
 ) -> BaseWebSocketClient:
     """Build the WebSocket client for the configured exchange.
 
-    Dispatches on ``settings.exchange_name`` to return the right WS client.
-    Defaults to Kraken for backward compatibility.
+    Dispatches on ``settings.exchange_name`` (required, validated by Settings).
+    Bybit WS arrives in B2 (explicit NotImplementedError until then).
     """
-    exchange_name = getattr(settings, "exchange_name", "kraken").lower()
+    exchange_name = settings.exchange_name.lower()
+
+    if exchange_name == "bybit":
+        raise NotImplementedError(
+            "Bybit WebSocket client is not implemented yet (phase B2, see skills/bybit.md)"
+        )
 
     if exchange_name == "binance":
         from krakenbot.connectors.binance.ws import BinanceWebSocketClient
@@ -171,7 +180,7 @@ def build_exchange_ws_client(
             telegram_notifier=telegram_notifier,
         )
 
-    # Default: Kraken (backward compat)
+    # Kraken (legacy)
     from krakenbot.connectors.kraken.ws import KrakenWebSocketClient
 
     return KrakenWebSocketClient(settings, event_bus, db_manager)
