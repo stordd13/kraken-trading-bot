@@ -34,15 +34,16 @@ ENV/
 *~
 .DS_Store
 
-# Environment variables - CRITICAL!
-.env
-.env.local
-.env.*.local
+# Environment variables - CRITICAL! (every .env* variant, except the template)
+.env*
+!.env.example
 
-# Database
+# Database files and dumps (backups live outside the repo, e.g. ~/Backups/krakenbot/)
 *.db
 *.sqlite
 *.sqlite3
+*.dump
+*.sql.gz
 
 # Testing
 .coverage
@@ -85,7 +86,6 @@ backtest_results/
 .LSOverride
 
 # Agent prompts and working docs (not part of the codebase)
-AGENT_*.md
 ROADMAP_*.md
 AGENTS.md
 CODEX.md
@@ -93,6 +93,8 @@ CODEX.md
 
 # Raw data dumps (too large, not useful)
 results/funding_history_*.json
+# P6.7 determinism benchmark outputs (regenerated, see results/P6_7_multiprocessing_benchmark.md)
+results/bench_*.json
 
 # Claude Code local config
 .claude/
