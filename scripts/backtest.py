@@ -1237,6 +1237,26 @@ class BacktestEngine:
         # ---------------------------------------------------------------
         # New trend-following strategies (Phase-1B)
         # ---------------------------------------------------------------
+        elif self.strategy_name == "grok_adaptive_dca_weekly":
+            from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
+            from krakenbot.strategies.grok_adaptive_dca_weekly import (
+                GrokAdaptiveDCAWeekly,
+           )
+
+            analyzer = MultiTimeframeAnalyzer()
+            strategy_params = _override_pair_in_params(
+                self._load_inner_strategy_params("grok_adaptive_dca_weekly"), pair
+            )
+            self.strategy = GrokAdaptiveDCAWeekly(
+                settings=self.settings,
+                event_bus=self.event_bus,
+                db_manager=self.db_manager,
+                bot_id="dca_weekly",
+                strategy_params=strategy_params,
+                analyzer=analyzer,
+            )
+
+
         elif self.strategy_name == "grok_donchian_breakout_4h":
             from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
             from krakenbot.strategies.grok_donchian_breakout_4h import (
