@@ -1,6 +1,15 @@
-# Skill: Import Binance Vision
+# Skill: Données historiques Binance (base de backtest)
 
-> Comment importer des données historiques OHLC depuis Binance Vision.
+> Les 8.7M rows `exchange='binance'` (BTC/ETH/SOL-USDC × 7 TF, 2021-01 → 2026-06) sont la **base de
+> backtest** du projet (décision B0 : prix quasi identiques à Bybit, zéro biais). Elles sont figées :
+> Binance a suspendu ses services UE le 1er juillet 2026, aucune mise à jour n'est prévue. Ce skill
+> documente comment elles ont été importées, pour référence et pour le futur import Bybit (B3,
+> `scripts/bybit_kline_import.py`, même modèle mais REST paginé — voir `skills/bybit.md`).
+
+## Avant tout : vérifier ce qui est en DB
+
+Les données sont déjà là. **Ne pas relancer l'import.** Script de vérification dans
+`skills/database.md` (attendu `binance: ~8,700,000`).
 
 ## Le script
 
@@ -27,7 +36,7 @@ poetry run python scripts/binance_vision_import.py \
 
 ## Volumes et timing attendus
 
-| TF | Rows/mois/paire | Total 5 ans × 3 paires |
+| TF | Rows/mois/paire | Total 5 ans × 3 paires (estimation) |
 |---|---|---|
 | 1m | ~43,200 | ~7.8M |
 | 5m | ~8,640 | ~1.5M |
@@ -37,13 +46,14 @@ poetry run python scripts/binance_vision_import.py \
 | 1d | ~30 | ~5.4k |
 | 1w | ~4 | ~720 |
 
-**Total estimé : ~10M rows, durée 1-3 heures selon la bande passante.**
+**Réalisé : ~8.7M rows (SOL démarre en sept. 2021), 1-3 heures selon la bande passante.**
 
 ## Précautions
 
 ### Toujours lancer sur le serveur via tmux
 
-L'import prend des heures. Si la connexion SSH coupe, le process meurt.
+L'import prend des heures. Si la connexion SSH coupe, le process meurt. (Historique — l'accès à
+`data.binance.vision` depuis l'UE n'est plus garanti.)
 
 ```bash
 ssh bruno@77.42.90.102 -p 41922
@@ -66,15 +76,23 @@ FROM market_data_ohlc WHERE exchange = 'binance'
 GROUP BY pair, interval ORDER BY pair, interval;
 ```
 
-Si tu vois ~8.7M rows avec couverture 2021-2026, l'import est déjà fait. Le script est idempotent mais re-télécharger 1260 fichiers ZIP prend inutilement 1-3h.
+Si tu vois ~8.7M rows avec couverture 2021-01 → 2026-06, l'import est déjà fait. Le script est idempotent
+mais re-télécharger 1260 fichiers ZIP prend inutilement 1-3h — et n'est plus possible depuis l'UE.
 
-### Timestamps : millisecondes vs microsecondes
+### Timestamps : millisecondes vs microsecondes (leçon apprise dans la douleur)
 
 Les fichiers Binance Vision utilisent :
 - **Millisecondes** (13 chiffres, ex: `1704067200000`) pour les anciens fichiers
 - **Microsecondes** (16 chiffres, ex: `1704067200000000`) pour les fichiers 2025+
 
 Le script gère les deux automatiquement via auto-détection (`if raw_ts > 10**14: raw_ts / 1_000_000`).
+Le `timestamp` stocké en DB est la **fin de période** (`open_time + interval`) ; Bybit (`end + 1 ms`)
+s'aligne sans conversion.
+
+### Inserts par batch de 1000
+
+Un mois de 1m = 43,200 candles × 11 colonnes = 475k paramètres SQL, bien au-dessus de la limite
+PostgreSQL de ~65k. Le script batch à 1000 rows. Tout nouveau script d'import doit faire pareil.
 
 ### SOL/USDC commence en septembre 2021
 
@@ -118,5 +136,11 @@ Vérifier :
 - 21 lignes (3 paires × 7 intervals)
 - BTC et ETH commencent le 2021-01-01
 - SOL commence le 2021-09-24
-- Toutes finissent le dernier mois complet disponible
-- Total ~8-10M rows
+- Toutes finissent en juin 2026 (dernier mois avant la suspension UE)
+- Total ~8.7M rows
+
+## Trous récents (backfill)
+
+`scripts/backfill_binance_gap.py` (P7) comble un gap Binance via l'API REST publique
+(`api.binance.com`), tant qu'elle reste accessible depuis l'UE — sans garantie. Pas d'usage prévu
+après B3 : la source live devient Bybit.

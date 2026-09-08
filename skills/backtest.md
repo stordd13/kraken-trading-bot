@@ -2,6 +2,20 @@
 
 > Comment lancer des backtests, interpréter les métriques, et éviter les pièges.
 
+## Contexte post-pivot (septembre 2026)
+
+- **Données** : les 8.7M rows `exchange='binance'` (2021-01 → 2026-06) restent la base de backtest
+  (décision B0 : corrélation close 0.999999 Binance vs Bybit, zéro biais). `--exchange binance` désigne
+  la **source de données**, pas l'exchange cible. Aucune donnée Bybit en DB avant B3.
+- **Fees** : tout ce qui a été produit jusqu'ici (P6, P7 phase 1) l'a été avec les fees Binance
+  **0.075 % flat**. Ces résultats ne sont **pas transposables** à Bybit (maker 0.10 / taker 0.25,
+  asymétriques) : la machinerie est réutilisable, les classements sont à rejouer en **B4**.
+- **Dette bloquante pour B4** : `scripts/backtest.py` applique un taux flat (`ExchangeFees.binance_defaults`
+  aux deux endroits `BacktestEngine.__init__` / `GridBacktester.__init__`, et `ExchangeFees()` nu = Kraken
+  pour tout autre `--exchange`). B4 exige maker et taker **distincts** (sorties SL/trailing/timeout =
+  MARKET = taker). À faire en ouverture de B4.
+- Résultats existants et verdicts : `results/INDEX.md`.
+
 ## Lancer les 24 backtests P6 en parallèle
 
 Pour (re)lancer toute la campagne P6 (8 stratégies × 3 paires), utiliser le runner
@@ -118,7 +132,7 @@ qui figé un SHA256 bit-à-bit de la baseline pré-P7.
 6. `mean_sharpe_oos / mean_sharpe_train > 0.5` (anti-overfit)
 7. Bat soit Buy & Hold soit DCA fixe en Sharpe (OU permissif)
 
-Benchmarks Sharpe extraits du rapport P6 v2 (1k USDC, fees Binance) :
+Benchmarks Sharpe extraits du rapport P6 v2 (1k USDC, fees Binance 0.075 % flat — à recalculer en B4) :
 
 | Pair | Buy & Hold | DCA fixed |
 |---|---|---|
@@ -127,7 +141,12 @@ Benchmarks Sharpe extraits du rapport P6 v2 (1k USDC, fees Binance) :
 | SOL/USDC | 0.31 | 1.93 |
 
 Si une stratégie n'a aucune config qui passe → on l'abandonne, documenté
-dans `results/P7_optimization_report.md`.
+dans `results/P7_optimization_report.md` (produit par `--phase report`, pas encore généré).
+
+### État P7 (30 mai 2026)
+
+Phase 1 terminée : `results/P7_phase1_cross_validate.json` (212 jobs, fees Binance). Phase 2 et
+rapport non lancés. Le tout est rejoué en B4 avec `ExchangeFees.bybit_defaults()`.
 
 ---
 
@@ -150,7 +169,8 @@ poetry run python scripts/backtest.py \
 
 - `--strategy` : nom de la classe (snake_case)
 - `--pair` : `BTC/USDC`, `ETH/USDC`, ou `SOL/USDC`
-- `--exchange` : `binance` (obligatoire pour utiliser les bonnes données et fees)
+- `--exchange` : `binance` (source de données ; les fees appliquées suivent aussi ce flag tant que la
+  dette B4 n'est pas réglée)
 - `--cross-validate` : split 70% train / 30% test temporel
 - `--save` : sauvegarde les résultats dans `backtest_runs` en DB
 
@@ -161,20 +181,23 @@ poetry run python scripts/backtest.py \
 
 Le script détecte automatiquement le mode selon la stratégie.
 
-## Fees Binance (CRITIQUE)
+## Fees Bybit EU (CRITIQUE)
 
-Le compte de production a le BNB discount activé.
+Cible de production (vérifié sur le compte, VIP0) :
 
 | Type | Fee |
 |---|---|
-| Maker (limit) | 0.075% |
-| Taker (market) | 0.075% |
-| Spread simulé | 0.02% |
-| Slippage simulé | 0.01% |
+| Maker (limit, PostOnly) | **0.10 %** |
+| Taker (market) | **0.25 %** |
+| Spread simulé | 0.02 % |
+| Slippage simulé | 0.02 % |
 
-Round-trip réaliste : ~0.18%.
+Round-trip limit/limit : **0.20 %** ; limit/market (stop-loss, trailing, timeout) : **0.35 %**.
+Le taker à 2.5× le maker change la doctrine des sorties MARKET (voir `skills/risk_management.md`).
 
-**Vérifier que le backtest utilise les fees Binance**, pas Kraken. Si tu vois 0.16%/0.26% dans les logs, c'est les fees Kraken legacy.
+Marqueurs de fees legacy dans les logs/rapports : `0.075 %` flat = Binance BNB (P6/P7 historiques) ;
+`0.16 % / 0.26 %` = Kraken spot (défaut de `ExchangeFees()` nu). Ni l'un ni l'autre n'est valable pour
+une décision de mise en paper Bybit.
 
 ## Modèle d'exécution
 
@@ -248,7 +271,7 @@ Si une stratégie ne bat ni l'un ni l'autre, elle ne sert à rien.
 
 ## Pièges courants
 
-1. **Oublier les fees** → résultats trop optimistes
+1. **Oublier les fees, ou utiliser les mauvaises** → résultats trop optimistes (P6/P7 = 0.075 % flat)
 2. **Look-ahead bias** → le backtest "voit" le futur. Toujours next-bar execution.
 3. **Survivorship bias** → ne tester que les paires qui ont survécu
 4. **Overfitting** → toujours cross-validate, jamais optimiser sur le test set

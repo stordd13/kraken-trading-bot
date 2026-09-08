@@ -73,24 +73,38 @@ C'est fonctionnel mais les returns absolus seront très bas. Un Sharpe de 0.3 av
 
 **Conséquence pour les backtests** : ne pas rejeter une stratégie uniquement sur son Sharpe ou son return. Regarder le **Profit Factor** et le **ratio avg_win/avg_loss** qui sont indépendants du sizing.
 
-## Binance MIN_NOTIONAL
+## Minimum d'ordre Bybit EU
 
-Binance rejette les ordres en dessous de 10 USDC (MIN_NOTIONAL). Avec la règle 1% à 1000 USDC et un SL large, la position peut tomber en dessous.
+Bybit EU rejette les ordres sous `minOrderAmt` : 5 USDC (ETH, SOL), 1 USDC (BTC) → **plancher 5 USDC
+partout** (constante `MIN_NOTIONAL` du connecteur B1) ; en pratique viser ≥ 10 USDC pour que les fees
+ne mangent pas le trade. Avec la règle 1 % à 1000 USDC et un SL large, la position peut tomber sous
+ce seuil : plancher à ajouter dans le sizing (item P7/B4). Détail des filtres : `skills/bybit.md`.
 
-**Solution prévue P7** : ajouter un plancher de 10 USDC sur la position size.
-
-## Types d'ordres et fees
+## Types d'ordres et fees (Bybit EU : maker 0.10 % / taker 0.25 %)
 
 | Signal | Type d'ordre | Fee | Raison |
 |---|---|---|---|
-| BUY | LIMIT | 0.075% maker | Économie fees |
-| SELL profit target | LIMIT | 0.075% maker | Pas pressé |
-| SELL stop-loss | MARKET | 0.075% taker | Exécution garantie |
-| SELL trailing stop | MARKET | 0.075% taker | Exécution garantie |
+| BUY | LIMIT (PostOnly) | 0.10 % maker | Économie fees ; rejet si le prix croise → re-coter |
+| SELL profit target | LIMIT | 0.10 % maker | Pas pressé |
+| SELL stop-loss | MARKET | **0.25 % taker** | Exécution garantie |
+| SELL trailing stop | MARKET | **0.25 % taker** | Exécution garantie |
+| SELL timeout | MARKET | **0.25 % taker** | Exécution garantie |
 
-**Règle critique** : quand un stop-loss se déclenche, **toujours annuler le limit sell profit target existant** avant d'émettre le market sell. Sinon double vente.
+Round-trip limit/limit 0.20 %, limit/market **0.35 %** (vs 0.15 % à l'époque Binance). **La doctrine
+« MARKET = exécution garantie à coût identique » ne tient plus** : les sorties MARKET sont le premier
+poste de coût. Conséquences :
+- Stratégies à rotation rapide (grid ATR à petits pas, scalping) : edge à re-valider en B4 avec
+  `ExchangeFees.bybit_defaults()`, spacing minimal des grilles à remonter (≥ 1.5 % couvrait Binance,
+  à recalculer).
+- Stops ATR larges plutôt que stops serrés fixes : le carnet EU a des mèches nocturnes jusqu'à 40 bps
+  absentes de Binance (audit B0 Q8) ; le crash protector doit tolérer ce bruit.
+- `priceLimitRatioX = 0.5 %` : un LIMIT trop loin du dernier prix est rejeté par Bybit — les niveaux
+  de grille éloignés et les profit targets lointains doivent être re-cotés au fil de l'eau.
 
-## Paramètres actuels (à revoir en P7)
+**Règle critique** : quand un stop-loss se déclenche, **toujours annuler le limit sell profit target
+existant** avant d'émettre le market sell. Sinon double vente.
+
+## Paramètres actuels (à revoir en P7/B4)
 
 ```yaml
 risk:
@@ -109,7 +123,7 @@ risk:
 ## Ce qu'il ne faut JAMAIS faire
 
 1. Bypasser le GlobalRiskManager pour placer un ordre directement
-2. Émettre un stop-loss en limit order (toujours market pour l'exécution garantie)
+2. Émettre un stop-loss en limit order (toujours market pour l'exécution garantie, même à 0.25 %)
 3. Augmenter `risk_per_trade_pct` au-dessus de 3% (ruine rapide)
 4. Oublier d'annuler le profit target limit quand le stop-loss se déclenche
 5. Ignorer le crash protector (il est là pour une raison)
