@@ -4,7 +4,7 @@
 
 ## Overview
 
-KrakenBot is an automated multi-pair trading system for **Binance** (BTC/USDC, ETH/USDC, SOL/USDC) with:
+KrakenBot is an automated multi-pair spot trading system for **Bybit EU** (BTC/USDC, ETH/USDC, SOL/USDC) with:
 - **Two independent services**: Data collector (24/7) + Trading bot
 - **8 strategies** running in parallel via MultiStrategyRouter
 - **Multi-timeframe analysis** (5m, 15m, 1h, 4h, 1d, 1w)
@@ -12,7 +12,7 @@ KrakenBot is an automated multi-pair trading system for **Binance** (BTC/USDC, E
 - **Paper trading mode** for safe testing
 - **Real-time dashboard** (Dash)
 
-> Note: Despite its name, the bot has been fully migrated from Kraken to Binance for lower fees (0.075% vs 0.16-0.26%) and better API support.
+> Note: Despite its name, the bot no longer trades on Kraken. History: Kraken (2025) → Binance (April 2026) → **Bybit EU** (September 2026, after Binance suspended EU services on 1 July 2026). The Bybit connector is being built (phases B1–B3); backtests run on the existing Binance data set with the Bybit fee model (maker 0.10 % / taker 0.25 %). See [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md).
 
 ## Architecture
 
@@ -21,10 +21,10 @@ KrakenBot is an automated multi-pair trading system for **Binance** (BTC/USDC, E
 │   krakenbot-collector          │    │      krakenbot (trader)               │
 │   (Always running 24/7)        │    │   (Start/Stop as needed)             │
 │                                │    │                                      │
-│  - Binance WebSocket           │    │  - MultiStrategyRouter               │
+│  - Exchange WebSocket          │    │  - MultiStrategyRouter               │
 │    (3 pairs × 7 TF = 21 streams│    │    (8 strategies, pair-aware)        │
 │  - REST backfill               │    │  - GeminiGlobalRiskManager           │
-│                                │    │  - ExecutionEngine → Binance REST    │
+│                                │    │  - ExecutionEngine → exchange REST   │
 └──────────────┬─────────────────┘    └──────────────┬───────────────────────┘
                └────────────┬──────────────────────────┘
                             ▼
@@ -40,7 +40,7 @@ KrakenBot is an automated multi-pair trading system for **Binance** (BTC/USDC, E
 - Python 3.12+
 - PostgreSQL 16+ with TimescaleDB
 - Poetry
-- Binance account with API keys
+- Bybit EU account with API keys (connector in progress — B1–B3; services are currently stopped)
 
 ### Installation
 
@@ -77,19 +77,21 @@ Base config via `.env`, strategy config via `strategies.yaml`:
 
 ```bash
 # .env
-EXCHANGE_NAME=binance
-BINANCE_API_KEY=xxx
-BINANCE_API_SECRET=xxx
+EXCHANGE_NAME=bybit            # always set it: the default is still "kraken" (fix planned in B1)
+BYBIT_API_KEY=xxx              # keys created on bybit.eu (separate instance from bybit.com)
+BYBIT_API_SECRET=xxx
 DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/krakenbot
 TRADING_MODE=paper
 ```
+
+`.env.example` is still the Kraken-era template; it will be updated with the Bybit variables in B1.
 
 Strategy configuration in `strategies.yaml` — multi-strategy router with per-pair strategy instances. See [CLAUDE.md](./CLAUDE.md) for conventions and [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) for full project state.
 
 ## Development
 
 ```bash
-poetry run pytest                              # Tests (~1091)
+poetry run pytest                              # Tests (~970)
 poetry run ruff check . --fix && ruff format . # Lint
 poetry run mypy src/                           # Type check
 
@@ -109,15 +111,18 @@ src/krakenbot/
 ├── indicators/           # MultiTimeframeAnalyzer + per-pair registry
 ├── execution/            # ExecutionEngine, RiskManager, OrderManager
 ├── connectors/
-│   ├── binance/          # REST + WebSocket (active)
-│   └── kraken/           # REST + WebSocket + Futures (legacy)
+│   ├── bybit/            # REST + WebSocket (target exchange — B1/B2, to be written)
+│   ├── binance/          # REST + WebSocket (historical data source, EU access suspended)
+│   └── kraken/           # REST + WebSocket (legacy / paper-mode reference)
 ├── config/               # Pydantic settings, ExchangeFees
 ├── core/                 # Database, EventBus, Logger
 └── models/               # SQLAlchemy ORM
 
 scripts/
 ├── backtest.py           # BacktestEngine (signal + grid)
-├── binance_vision_import.py  # Historical data import
+├── binance_vision_import.py  # Historical data import (Binance, frozen 2021-01 → 2026-06)
+├── run_p6_backtests.py   # 24-combo backtest campaign (multiprocessing)
+├── run_p7_grid_search.py # Parameter grid search
 └── dashboard.py          # Dash dashboard
 ```
 
@@ -135,7 +140,9 @@ scripts/
 
 - [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) — Full project state and architecture
 - [CLAUDE.md](./CLAUDE.md) — Guide for AI agents working on the project
-- [ROADMAP.md](./ROADMAP.md) — Development roadmap (P0–P14)
+- [ROADMAP.md](./ROADMAP.md) — Development roadmap (P0–P7 archived, B0–B5 Bybit pivot, P10–P14)
+- [skills/](./skills/) — Task-oriented guides (database, backtest, deployment, Bybit EU, …)
+- [results/INDEX.md](./results/INDEX.md) — Index of backtest reports and audits
 
 ## License
 
