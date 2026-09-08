@@ -458,9 +458,71 @@ Total estimé B1-B3 : **~8 jours** hors re-backtests.
 
 ---
 
+## Levées post-B0 (B1, 2026-09-08)
+
+Clés `BYBIT_API_KEY` / `BYBIT_API_SECRET` ajoutées au `.env` local le 8 sept (clé « krakenbot_readonly »,
+`readOnly=1`, `ips: ["*"]`, expire le 2026-12-08). Scripts Q1/Q6/Q7 relancés (`BYBIT_AUDIT_OUT=/tmp/bybit_audit_b1`,
+JSON non versionnés car ils contiennent `userID`/`apiKey`).
+
+| Question B0 | Réponse (api.bybit.eu, 2026-09-08) |
+|---|---|
+| Type de compte | **UTA** : `query-api` → `uta: "1"`, `unified: "0"` ; `wallet-balance?accountType=UNIFIED` → `retCode 0`, `accountType: "UNIFIED"` |
+| Permissions | `Spot: ["SpotTrade"]`, `Wallet: [AccountTransfer, SubMemberTransfer]`, `Derivatives: [DerivativesTrade]`, `Exchange: [ExchangeHistory]` — mais **`readOnly: "1"`** (la clé ne peut pas écrire malgré `SpotTrade`) |
+| IP whitelist | `ips: ["*"]` (aucune restriction) |
+| Clé EU sur le global | **Refusée** : `api.bybit.com` → `retCode 10003` "API key is invalid" |
+| Solde | `totalWalletBalance: "0"`, `coin: []` → **wallet vide** |
+| Horloge | offset +93 ms, RTT 189 ms (EU) ; `adjustForTimeDifference=True` dans le client |
+| Headers rate limit privés | `wallet-balance` → `X-Bapi-Limit: 50`, `X-Bapi-Limit-Status: 49`, `X-Bapi-Limit-Reset-Timestamp: <ms>` ; publics : aucun header, burst 60 klines / 1.45 s sans `10006` |
+| Q6 lecture | `fetch_open_orders` / `fetch_my_trades` BTC/USDC → `[]` (compte neuf) ; bodies `create_order_request` identiques à B0 |
+| `order/create` avec clé read-only | `retCode 10005` "Invalid API-key, IP, or permissions for action." → mappé `KrakenAPIError(reason=permission_denied)` |
+
+**Non levé (bloqué par la clé read-only + wallet vide)** : rejet PostOnly réel (retCode vs statut
+`Rejected`), `priceLimitRatioX` sur un LIMIT à −2 %, round-trip live PostOnly → status → cancel.
+Procédure dans `skills/bybit.md` § « Levé en B1 » (`scripts/audit/bybit_b1_roundtrip.py --trade`).
+
+### Round-trip B1 (`scripts/audit/bybit_b1_roundtrip.py --trade`, 2026-09-08 22:37 CEST)
+
+```
+1. Read-only (LIVE client)
+markets loaded on bybit.eu: 133
+BTC/USDC precision={'amount': 1e-06, 'price': 0.1} limits amount.min=1e-06 cost.min=1.0
+balance (free): {} (wallet empty)
+ticker: bid=78503.0 ask=78525.5 last=78525.5
+  4h 2026-09-08T12:00:00+00:00 O=78436.4 C=78896.4 V=25.625817
+  4h 2026-09-08T16:00:00+00:00 O=78896.4 C=78364.7 V=21.175206
+  4h 2026-09-08T20:00:00+00:00 O=78364.7 C=78525.5 V=3.918441
+open orders: []
+stats: {'orders_placed': 0, 'orders_filled': 0, 'orders_failed': 0, 'api_calls': 5}
+
+2. Paper round-trip (simulated fills, real ticker)
+market BUY  0.000076 @ 78525.5 fee=0.01491984500 USDC
+  balance: {'USDC': Decimal('994.01714215500'), 'BTC': Decimal('0.000076')}
+limit SELL PostOnly(paper) -> pending id=paper-limit-7e3b3d82
+  status: {'order_id': 'paper-limit-7e3b3d82', 'status': 'pending', 'filled': 0, 'amount': 0.000076, 'price': 82451.8}
+  cancel: True
+market SELL 0.000076 @ 78525.5 fee=0.01491984500 USDC
+  balance: {'USDC': Decimal('999.97016031000'), 'BTC': Decimal('0.000000')}
+  check: USDC == 1000 - fees -> True (expected 999.97016031000)
+
+3. LIVE limit orders (real, cancelled/rejected — NEVER market)
+3a. PostOnly BUY 0.000080 @ 74599.2 (-5 %)
+    -> KrakenAPIError: Bybit refused the action (retCode 10005): the API key is read-only ...
+3b. GTC BUY 0.000077 @ 76954.9 (-2 %, priceLimitRatioX probe)
+    -> KrakenAPIError: ... retCode 10005 ...
+3c. PostOnly BUY 0.000076 @ 78604.1 (above ask 78525.5)
+    -> KrakenAPIError: ... retCode 10005 ...
+open orders after run: []
+stats: {'orders_placed': 3, 'orders_filled': 0, 'orders_failed': 3, 'api_calls': 6}
+```
+
+`BYBIT_INTEGRATION=1 pytest tests/test_connectors/test_bybit_rest_integration.py` : 4 passed
+(filtres EU = skill, balance réelle, OHLCV 4h, paper round-trip), 1 skipped (`trade`).
+
+---
+
 ## Risques identifiés
 
-1. **Clés API non vérifiées** (bloquant pour B1) : type de compte (UTA vs Classic — `wallet-balance` exige `accountType=UNIFIED` sur UTA), permissions Spot Trade, whitelist IP, et confirmation que les clés bybit.eu sont refusées sur api.bybit.com. Action : ajouter `BYBIT_API_KEY`/`BYBIT_API_SECRET` au `.env` et relancer `bybit_q1_endpoints.py`, `bybit_q6_orders.py`, `bybit_q7_ratelimits.py`.
+1. ~~**Clés API non vérifiées**~~ **Levé en B1 (2026-09-08, voir section ci-dessus)** — reste : clé read-only et wallet vide. Texte B0 : type de compte (UTA vs Classic — `wallet-balance` exige `accountType=UNIFIED` sur UTA), permissions Spot Trade, whitelist IP, et confirmation que les clés bybit.eu sont refusées sur api.bybit.com. Action : ajouter `BYBIT_API_KEY`/`BYBIT_API_SECRET` au `.env` et relancer `bybit_q1_endpoints.py`, `bybit_q6_orders.py`, `bybit_q7_ratelimits.py`.
 2. **Fees ×3 en taker** (0.25 % vs 0.075 %) : les stratégies dont l'edge est < 0.5 %/trade (grid ATR à petits pas, scalping 5m déjà KILL) deviennent perdantes. Re-backtester P6/P7 avec `bybit_defaults()` avant tout déploiement ; privilégier PostOnly.
 3. **Liquidité EU mince en volume traité** (BTC 3 M USDC/24 h) malgré un carnet profond : risque de fills partiels sur LIMIT (les murs MM peuvent disparaître), et mèches locales jusqu'à 40 bps la nuit qui déclenchent des stops absents sur Binance. Le risk manager doit utiliser des stops ATR, pas des stops serrés fixes.
 4. **Historique EU de 15 mois seulement** : impossible de backtester sur Bybit EU natif ; dépendance durable aux données Binance (dont l'API publique reste accessible depuis l'UE aujourd'hui, mais sans garantie). Prévoir de continuer le collector Binance en parallèle (données only) tant que l'API publique répond.
