@@ -30,9 +30,9 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - ✅ B0 audit Bybit EU (7 sept, verdict GO avec réserves) · ✅ B0.5 docs + cleanup (cette version)
 - ⏸️ **Serveur Hetzner : services `krakenbot` et `krakenbot-collector` stoppés et désactivés** depuis le
   7 sept. DB intacte, backupée (203 Mo, rapatriée). Redémarrage prévu en B2/B3 avec le connecteur Bybit.
-- ✅ B1 `BybitRestClient` (8 sept, branche `feat/b1-bybit-rest`) : settings, factory, 67 tests, round-trip
-  read-only + paper validé sur `api.bybit.eu`. Clé API locale **read-only** et wallet **vide** → round-trip
-  live (PostOnly → cancel, `priceLimitRatioX`) reporté ; procédure dans `skills/bybit.md`.
+- ✅ B1 `BybitRestClient` (8-9 sept, branche `feat/b1-bybit-rest`) : settings (clés read-only + trade),
+  factory, 72 tests unitaires, round-trip read-only + paper + **live** validé sur `api.bybit.eu`
+  (PostOnly → cancel, rejet PostOnly normalisé, `priceLimitRatioX` sans impact sur les ordres passifs).
 - 🚧 Prochaine phase : B2 (WS Bybit). `EXCHANGE_NAME` est désormais **obligatoire** dans tout `.env`.
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.

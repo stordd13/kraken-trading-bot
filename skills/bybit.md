@@ -74,8 +74,11 @@ Implémenté en B1 : `ExchangeFees.bybit_defaults()` (maker 0.0010, taker 0.0025
 - `MIN_NOTIONAL = 5 USDC` partout (BTC accepte 1, garder 5 par sécurité).
 - Arrondir `qty` à `basePrecision` et `price` à `tickSize` (`amount_to_precision` / `price_to_precision`
   après `load_markets()`).
-- **`riskParameters.priceLimitRatioX = 0.5 %`** : un LIMIT trop loin du dernier prix est rejeté.
-  Impacte les grilles ATR larges et les profit targets éloignés — à lever/valider en B1 et en paper.
+- **`riskParameters.priceLimitRatioX = 0.5 %` — levé le 2026-09-09** : un LIMIT BUY **passif** à −2 % du
+  dernier prix est **accepté** (ordre réel, annulé ensuite). Le ratio plafonne uniquement les prix
+  **agressifs** (BUY au-dessus de last × (1 + X) → `170193`, SELL en dessous → `170194`). Aucun impact sur
+  les niveaux passifs des grilles ATR ni sur les profit targets. Le client mappe `170193`/`170194` →
+  `OrderExecutionError(details.reason="price_limit_ratio")` par précaution.
 - Compte **UTA confirmé** le 2026-09-08 (`query-api` → `uta: "1"`, `wallet-balance?accountType=UNIFIED`
   répond). `options.enableUnifiedAccount=True` force la branche UTA de ccxt (market BUY en `qty` base
   avec `marketUnit=baseCoin`, pas d'appel privé de détection).
@@ -84,7 +87,13 @@ Implémenté en B1 : `ExchangeFees.bybit_defaults()` (maker 0.0010, taker 0.0025
 
 - `orderType` Limit / Market ; `timeInForce` GTC (défaut) / IOC / FOK / **PostOnly** (c'est un
   `timeInForce`, pas un flag). PostOnly recommandé en entrée pour garantir le maker ; si le prix croise,
-  l'ordre est rejeté → re-coter plutôt que devenir taker.
+  l'ordre est rejeté → re-coter plutôt que devenir taker. **Forme réelle du rejet (2026-09-09)** :
+  `order/create` répond `retCode 0` avec un `orderId`, puis l'ordre passe `orderStatus=Rejected`,
+  `rejectReason=EC_PostOnlyWillTakeLiquidity`, `cumExecQty=0` — pas d'exception ccxt. D'où le
+  `fetch_order` post-création du client (voir API ci-dessous).
+- **ccxt `fetch_order` sur Bybit exige `params={"acknowledged": True}`** (limitation « 500 derniers
+  ordres »), sinon ccxt lève un avertissement en exception *après* que l'ordre a été créé. Le client
+  le passe partout (`_FETCH_ORDER_PARAMS`).
 - **Piège market BUY** : ccxt envoie `marketUnit=baseCoin` + `qty` en base si on appelle
   `create_order(sym, "market", "buy", amount)` **sans `price`**. Avec un `price`, ccxt convertit en coût
   quote **sans `marketUnit`** → `qty` interprété en USDC (ordre 79 000× faux). Ne jamais passer `price`
@@ -109,7 +118,7 @@ Implémenté en B1 : `ExchangeFees.bybit_defaults()` (maker 0.0010, taker 0.0025
 - `place_limit_order(pair, side, amount, price, strategy, expires_in_seconds, *, post_only=True)` :
   prix arrondi au `tickSize` **à l'écart du marché** (BUY vers le bas, SELL vers le haut) ;
   `timeInForce=PostOnly` par défaut (`post_only=False` → GTC). La réponse `order/create` n'a pas de
-  statut → un `fetch_order` suit (coût 5). **Rejet PostOnly** (ccxt `OrderImmediatelyFillable`, message
+  statut → un `fetch_order(..., params={"acknowledged": True})` suit (coût 5). **Rejet PostOnly** (ccxt `OrderImmediatelyFillable`, message
   "post only", ou ordre `rejected`/`canceled` avec `filled=0`) → retour **normalisé** : `Order(status=
   CANCELLED, filled_amount=0, signal_metadata={"reject_reason": "post_only_would_cross", ...})`, pas
   d'exception, `orders_failed` non incrémenté → le caller re-cote.
@@ -166,19 +175,20 @@ Clés `BYBIT_API_KEY` / `BYBIT_API_SECRET` dans le `.env` local (note « krakenb
 § « Levées post-B0 ») : compte **UTA**, permissions `Spot: [SpotTrade]`, clé refusée sur le global,
 headers de rate limit capturés, `adjustForTimeDifference` nécessaire (offset +93 ms, `recvWindow` 5000).
 
-**Reste ouvert (nécessite une clé `readOnly=0` + Spot Trade et ≥ 10 USDC sur le wallet, vide au 8 sept) :**
-- comportement réel du rejet **PostOnly** (retCode ou statut `Rejected` ?) — le client gère les deux ;
-- `priceLimitRatioX = 0.5 %` : un LIMIT à −2 % est-il rejeté (`170193` attendu) ? impact grilles ATR ;
-- round-trip live PostOnly → status → cancel (critère 4 de B1).
-Procédure : passer la clé en Trade (jamais withdraw), créditer ≥ 10 USDC, puis
-`poetry run python scripts/audit/bybit_b1_roundtrip.py --trade` (3 LIMIT réels annulés/rejetés,
-jamais de MARKET) et `BYBIT_INTEGRATION=trade poetry run pytest tests/test_connectors/test_bybit_rest_integration.py`.
-Avec une clé `readOnly=1`, `order/create` renvoie `retCode 10005` — **c'est le cas des deux clés au
-2026-09-09** (`krakenbot_readonly` et `krakenbot_trade` sont toutes deux `readOnly: "1"`) : le protocole
-trade a été exécuté et refusé sur les trois ordres, `priceLimitRatioX` reste **non levé**. En outre les
-28.43 USDC sont dans le wallet **Funding**, invisibles de `wallet-balance?accountType=UNIFIED` : les ordres
-spot puisent dans l'UTA, il faut transférer Funding → Unified Trading. Diagnostic :
-`poetry run python scripts/audit/bybit_key_diag.py` (read-only, montre `readOnly`, permissions, FUND vs UNIFIED).
+**Levé le 2026-09-09 (clé `krakenbot_trade` recréée en Read-Write, 28.43 USDC transférés Funding →
+Unified Trading Account)** — protocole `scripts/audit/bybit_b1_roundtrip.py --trade --notional 6` :
+- (a) PostOnly BUY −5 % → créé, `get_order_status` = `open`, `cancel_order` = True ;
+- (b) GTC BUY −2 % → **accepté** (verdict `priceLimitRatioX` ci-dessus), annulé ;
+- (c) PostOnly BUY au-dessus de l'ask → `Rejected` / `EC_PostOnlyWillTakeLiquidity`, 0 fill, normalisé
+  `reject_reason="post_only_would_cross"` ;
+- `fetch_open_orders` vide en fin de run, balance inchangée, aucun MARKET.
+`BYBIT_INTEGRATION=trade pytest tests/test_connectors/test_bybit_rest_integration.py` → 5 passed.
+Sortie brute : `results/bybit_integration_audit.md` § « Levées post-B0 ».
+
+Pièges rencontrés en chemin : une clé créée en « Read-Only » sur bybit.eu garde `readOnly=1` même avec
+la case Spot Trade → `order/create` = `10005` ; des USDC déposés dans le wallet **Funding** sont
+invisibles de `wallet-balance?accountType=UNIFIED` et inutilisables en spot → transfert interne requis.
+Diagnostic : `poetry run python scripts/audit/bybit_key_diag.py` (read-only).
 
 ## Ce qui change dans le code (estimation B0 : ~8 j hors re-backtests)
 
