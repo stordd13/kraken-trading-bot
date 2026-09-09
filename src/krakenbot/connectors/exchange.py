@@ -161,13 +161,17 @@ def build_exchange_ws_client(
     """Build the WebSocket client for the configured exchange.
 
     Dispatches on ``settings.exchange_name`` (required, validated by Settings).
-    Bybit WS arrives in B2 (explicit NotImplementedError until then).
     """
     exchange_name = settings.exchange_name.lower()
 
     if exchange_name == "bybit":
-        raise NotImplementedError(
-            "Bybit WebSocket client is not implemented yet (phase B2, see skills/bybit.md)"
+        from krakenbot.connectors.bybit.ws import BybitWebSocketClient
+
+        return BybitWebSocketClient(
+            settings,
+            event_bus,
+            db_manager=db_manager,
+            telegram_notifier=telegram_notifier,
         )
 
     if exchange_name == "binance":

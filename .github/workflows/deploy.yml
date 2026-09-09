@@ -17,6 +17,10 @@ jobs:
       - name: Deploy to Hetzner VPS
         uses: appleboy/ssh-action@029f5b4aeeeb58fdfe1410a5d17f967dacf36262 # v1.0.3
         env:
+          BYBIT_API_KEY: ${{ secrets.BYBIT_API_KEY }}
+          BYBIT_API_SECRET: ${{ secrets.BYBIT_API_SECRET }}
+          BYBIT_TRADE_API_KEY: ${{ secrets.BYBIT_TRADE_API_KEY }}
+          BYBIT_TRADE_API_SECRET: ${{ secrets.BYBIT_TRADE_API_SECRET }}
           KRAKEN_API_KEY: ${{ secrets.KRAKEN_API_KEY }}
           KRAKEN_API_SECRET: ${{ secrets.KRAKEN_API_SECRET }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -27,7 +31,7 @@ jobs:
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           port: 41922
-          envs: KRAKEN_API_KEY,KRAKEN_API_SECRET,DATABASE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_CHAT_ID
+          envs: BYBIT_API_KEY,BYBIT_API_SECRET,BYBIT_TRADE_API_KEY,BYBIT_TRADE_API_SECRET,KRAKEN_API_KEY,KRAKEN_API_SECRET,DATABASE_URL,TELEGRAM_BOT_TOKEN,TELEGRAM_CHAT_ID
           script: |
             set -e
 
@@ -51,7 +55,25 @@ jobs:
             # Generate .env from GitHub Secrets (all variables)
             echo "Generating .env from GitHub Secrets..."
             cat > .env << EOF
-            # Kraken Spot
+            # Exchange (REQUIRED since B1: Settings refuses to start without it)
+            EXCHANGE_NAME=bybit
+
+            # Bybit EU (keys created on bybit.eu — read-only pair + Spot-Trade pair, no withdraw)
+            BYBIT_API_KEY=${BYBIT_API_KEY}
+            BYBIT_API_SECRET=${BYBIT_API_SECRET}
+            BYBIT_TRADE_API_KEY=${BYBIT_TRADE_API_KEY}
+            BYBIT_TRADE_API_SECRET=${BYBIT_TRADE_API_SECRET}
+            BYBIT_HOSTNAME=bybit.eu
+            BYBIT_RECV_WINDOW=5000
+            BYBIT_ACCOUNT_TYPE=UNIFIED
+            BYBIT_WS_URL=wss://stream.bybit.eu/v5/public/spot
+            BYBIT_WS_PING_INTERVAL_SECONDS=20
+            BYBIT_WS_PONG_TIMEOUT_SECONDS=10
+            BYBIT_WS_WATCHDOG_WARN_SECONDS=600
+            BYBIT_WS_WATCHDOG_ZOMBIE_SECONDS=1800
+            BYBIT_WS_WATCHDOG_RESUBSCRIBE_ALERT_COUNT=3
+
+            # Kraken Spot (legacy)
             KRAKEN_API_KEY=${KRAKEN_API_KEY}
             KRAKEN_API_SECRET=${KRAKEN_API_SECRET}
 
@@ -61,7 +83,7 @@ jobs:
             # Trading
             TRADING_MODE=paper
             TRADING_CONFIRM_LIVE=no
-            TRADING_PAIR=XBT/USDC
+            TRADING_PAIR=BTC/USDC
             TRADING_DEFAULT_ORDER_AMOUNT_EUR=50
             TRADING_CANDLE_INTERVAL_MIN=5
 
@@ -69,8 +91,10 @@ jobs:
             RISK_MIN_TRADE_INTERVAL_SEC=60
             RISK_EMERGENCY_STOP_LOSS_PCT=10.0
 
-            # Scheduler
+            # Scheduler / collector (3 pairs x 7 TF = 24 WS topics)
             SCHEDULER_ENABLED=true
+            SCHEDULER_PAIRS=["BTC/USDC","ETH/USDC","SOL/USDC"]
+            SCHEDULER_INTERVALS=[1,5,15,60,240,1440,10080]
 
             # Environment
             ENVIRONMENT=production

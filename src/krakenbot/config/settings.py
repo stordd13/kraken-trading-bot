@@ -168,6 +168,63 @@ class BybitSettings(BaseSettings):
         default="UNIFIED",
         description="Bybit account type for wallet-balance (UTA => 'UNIFIED')",
     )
+    ws_url: str = Field(
+        default="wss://stream.bybit.eu/v5/public/spot",
+        description="Bybit EU public spot WebSocket v5 URL (B2)",
+    )
+    ws_ping_interval_seconds: int = Field(
+        default=20,
+        description='Application-level {"op":"ping"} interval (Bybit recommends 20 s)',
+        ge=5,
+        le=60,
+    )
+    ws_pong_timeout_seconds: int = Field(
+        default=10,
+        description="Seconds to wait for the pong before treating the connection as dead (reconnect)",
+        ge=2,
+        le=60,
+    )
+    ws_watchdog_warn_seconds: int = Field(
+        default=600,
+        description=(
+            "Seconds without ANY topic message (kline/ticker, pongs excluded) before the WS "
+            "client logs a warning and re-sends its subscriptions (no reconnect, no Telegram). "
+            "Bybit only pushes klines on trades: keep this >= 10 min to survive quiet nights."
+        ),
+        ge=60,
+    )
+    ws_watchdog_zombie_seconds: int = Field(
+        default=1800,
+        description=(
+            "Seconds without ANY topic message before the WS client treats the connection as a "
+            "zombie: Telegram alert + forced reconnect. Must be > ws_watchdog_warn_seconds."
+        ),
+        ge=120,
+    )
+    ws_watchdog_resubscribe_alert_count: int = Field(
+        default=3,
+        description=(
+            "Number of watchdog re-subscribes within 24 h that triggers a Telegram alert "
+            "(recurring subscription loss is a symptom worth surfacing)."
+        ),
+        ge=1,
+    )
+
+    @model_validator(mode="after")
+    def _validate_watchdog_thresholds(self) -> BybitSettings:
+        if self.ws_pong_timeout_seconds >= self.ws_ping_interval_seconds:
+            raise ValueError(
+                "BYBIT_WS_PONG_TIMEOUT_SECONDS must be smaller than BYBIT_WS_PING_INTERVAL_SECONDS "
+                f"(got pong={self.ws_pong_timeout_seconds}, ping={self.ws_ping_interval_seconds})"
+            )
+        if self.ws_watchdog_zombie_seconds <= self.ws_watchdog_warn_seconds:
+            raise ValueError(
+                "BYBIT_WS_WATCHDOG_ZOMBIE_SECONDS must be greater than "
+                "BYBIT_WS_WATCHDOG_WARN_SECONDS "
+                f"(got zombie={self.ws_watchdog_zombie_seconds}, "
+                f"warn={self.ws_watchdog_warn_seconds})"
+            )
+        return self
 
     def credentials(self, role: BybitKeyRole) -> tuple[str, str]:
         """Return (key, secret) for the requested role.
@@ -424,8 +481,8 @@ class ScheduledTasksSettings(BaseSettings):
 
     # Data collection settings
     pairs: list[str] = Field(
-        default=["XBT/USDC", "XBT/EUR"],
-        description="Trading pairs to collect data for",
+        default=["BTC/USDC", "ETH/USDC", "SOL/USDC"],
+        description="Trading pairs to collect data for (exchange-agnostic BASE/QUOTE form)",
     )
     intervals: list[int] = Field(
         default=[1, 5, 15, 60, 240, 1440, 10080],
