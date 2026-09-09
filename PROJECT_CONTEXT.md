@@ -1,7 +1,7 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 8 septembre 2026, post-B1 (BybitRestClient), avant B2 (WebSocket Bybit).
+> Dernière mise à jour : 9 septembre 2026, post-B2 code (BybitWebSocketClient), avant observation serveur 24 h.
 
 ---
 
@@ -33,7 +33,13 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - ✅ B1 `BybitRestClient` (8-9 sept, branche `feat/b1-bybit-rest`) : settings (clés read-only + trade),
   factory, 72 tests unitaires, round-trip read-only + paper + **live** validé sur `api.bybit.eu`
   (PostOnly → cancel, rejet PostOnly normalisé, `priceLimitRatioX` sans impact sur les ordres passifs).
-- 🚧 Prochaine phase : B2 (WS Bybit). `EXCHANGE_NAME` est désormais **obligatoire** dans tout `.env`.
+- ✅ B2 code `BybitWebSocketClient` (9 sept, branche `feat/b2-bybit-ws`) : WS public spot v5 (24 topics en
+  3 requêtes, ping 20 s, watchdog flux agrégé 2 paliers configurables `BYBIT_WS_WATCHDOG_*`, escalade
+  Telegram), factory, collector `EXCHANGE_NAME=bybit` (7 TF, `TaskScheduler` Kraken neutralisé), 46 tests +
+  intégration réelle, collecte locale 1 h validée (225 candles, grille alignée, 3 décrochages réseau détectés par le pong et récupérés ; les candles clôturant pendant une coupure manquent → backfill B3). `deploy.yml` régénère un `.env` Bybit (secrets
+  `BYBIT_*` à créer). **Reste (humain)** : merge dev, `.env` serveur, `systemctl enable --now
+  krakenbot-collector`, observation 24 h, tag `v2.4.0-b2-bybit-ws`.
+- 🚧 Prochaine phase : B3 (import historique Bybit, `TaskScheduler` via factory).
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
 
@@ -76,8 +82,11 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - Swap 2 GB permanent
 - Container Docker `krakenbot-db` (timescale/timescaledb:latest-pg16) bind sur `127.0.0.1:5432`
 - 2 services systemd : `krakenbot-collector.service` et `krakenbot.service` — **stoppés et désactivés**
-  (état B0.5). Le workflow `deploy.yml` régénère le `.env` serveur depuis les GitHub Secrets avec un
-  template encore Kraken-era (sans `EXCHANGE_NAME`, désormais obligatoire) : à corriger en B2 avant réactivation.
+  (état B0.5). Le workflow `deploy.yml` régénère le `.env` serveur depuis les GitHub Secrets : template
+  Bybit depuis B2 (`EXCHANGE_NAME=bybit`, `BYBIT_*`, `SCHEDULER_PAIRS/INTERVALS`) — les secrets
+  `BYBIT_API_KEY/SECRET` et `BYBIT_TRADE_API_KEY/SECRET` doivent exister côté GitHub. ⚠️ Le workflow
+  redémarre **les deux** services et exige `krakenbot` actif : ne pas pousser sur `main` tant que le trader
+  ne doit pas tourner (B4/B5).
 
 ### Backup
 - Dump complet du 7 sept 2026 : `~/Backups/krakenbot/krakenbot_20260907.dump` (203 Mo, `pg_dump -Fc`).
@@ -104,7 +113,9 @@ Flux d'un trade, multi-pair et conventions : `docs/architecture.md`. Où est quo
 ### Deux services indépendants
 
 **Collector** (`python -m krakenbot.collector`) : 24/7, candles OHLC par WebSocket (3 paires × 7 TF = 21
-streams), écrit dans `market_data_ohlc` avec `exchange = settings.exchange_name`.
+klines + 3 tickers = 24 topics, `SCHEDULER_PAIRS` / `SCHEDULER_INTERVALS`), écrit dans `market_data_ohlc`
+avec `exchange='bybit'` (hardcodé dans le connecteur, comme `binance`/`kraken`). Le backfill REST
+(`TaskScheduler`) n'est actif que pour Kraken jusqu'à B3.
 
 **Trader** (`python -m krakenbot`) : start/stop, lit les candles via son propre WebSocket, orchestre les
 stratégies via le `MultiStrategyRouter` (seule stratégie top-level depuis B0.5), émet les ordres via

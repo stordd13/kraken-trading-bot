@@ -30,7 +30,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | Phase | Quoi | Durée | Livrable / critère de done | Statut |
 |---|---|---|---|---|
 | **B1** | `BybitRestClient` (ccxt `hostname=bybit.eu`) + `BybitSettings` + `ExchangeFees.bybit_defaults()` + branche factory + tests ; fix `exchange_name` default ; fees maker/taker distincts dans `backtest.py` | 2-3 j | Round-trip d'ordre paper validé avec les vraies clés ; `scripts/audit/bybit_q1/q6/q7` relancés avec clés | ✅ 9 sept (round-trip live validé, `priceLimitRatioX` levé ; fees backtest → B4) |
-| **B2** | `BybitWebSocketClient` (v5 public kline, 10 args/subscribe, ping 20 s) + tests ; réactivation du collector | 3-4 j | Candles `exchange='bybit'` en DB en continu 24 h sans zombie | 📋 |
+| **B2** | `BybitWebSocketClient` (v5 public kline, 10 args/subscribe, ping 20 s) + tests ; réactivation du collector | 3-4 j | Candles `exchange='bybit'` en DB en continu 24 h sans zombie | 🚧 code livré 9 sept (`feat/b2-bybit-ws`), observation serveur 24 h à faire |
 | **B3** | Import historique Bybit EU (REST paginé, batch 1000) ; collector/scheduler génériques (`TaskScheduler` via factory, backfill gap) | 2 j | Data Bybit en DB (≈ 2.5M candles depuis 2025-06-11), backfill fonctionnel | 📋 |
 | **B4** | Re-run P6 (24 combos) et P7 (grid search phases 1-2 + rapport) sur données Binance avec fees Bybit maker/taker + spread/slippage mesurés | 1 j run + 1 j analyse | `results/B4_bybit_backtest_report.md`, sélection paper | 📋 — **prérequis absolu avant B5** |
 | **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 |
@@ -170,4 +170,4 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 - [ ] Nettoyer le chemin `is_multi` mort de `BacktestEngine` avec la refonte des fees (B4)
 - [ ] P6.8 — Optimisation backtest speedup (priorité basse) : DB locale ou cache OHLC Parquet pour éliminer
       la contention tunnel SSH ; cible 5-6× (vs 3× actuel) ; à faire avant P11 (ML)
-- [x] `.env.example` : template Bybit (B1) · [ ] `deploy.yml` : `EXCHANGE_NAME` + `BYBIT_*` (B2)
+- [x] `.env.example` : template Bybit (B1) · [x] `deploy.yml` : `EXCHANGE_NAME` + `BYBIT_*` (B2 ; secrets GitHub à créer) · [ ] `deploy.yml` ne doit pas redémarrer `krakenbot` avant B5

@@ -32,7 +32,9 @@ paresseusement (une fois, avant le premier appel exchange) ; échec → `KrakenA
 
 `EXCHANGE_NAME=bybit` est **obligatoire** dans le `.env` (local et serveur) : `Settings.exchange_name`
 n'a plus de default depuis B1 (incident du 7 sept). La factory `build_exchange_rest_client` renvoie
-`BybitRestClient` ; `build_exchange_ws_client` lève `NotImplementedError` jusqu'à B2.
+`BybitRestClient` ; `build_exchange_ws_client` renvoie `BybitWebSocketClient` (B2). Le template `.env` de
+`deploy.yml` fixe `EXCHANGE_NAME=bybit` et attend les secrets GitHub `BYBIT_API_KEY/SECRET` et
+`BYBIT_TRADE_API_KEY/SECRET` (B2).
 
 ## Clés API — schéma à 4 variables
 
@@ -146,6 +148,71 @@ Implémenté en B1 : `ExchangeFees.bybit_defaults()` (maker 0.0010, taker 0.0025
   `subscribe` (pas de `topic`) et les pongs dans le parseur. Garder le reconnect préventif à 23 h.
 - Ticker spot : `type=snapshot` à chaque message, champ `lastPrice`, `usdIndexPrice` vide sur EU.
 
+### Implémenté en B2 — `connectors/bybit/ws.py` (`BybitWebSocketClient`)
+
+- Clone structurel de `binance/ws.py` (aiohttp, `heartbeat=None` : le ping applicatif est le seul
+  mécanisme de vie, `receive_timeout=60`). Sélection via `build_exchange_ws_client` (`EXCHANGE_NAME=bybit`).
+- Settings (`BybitSettings`, env `BYBIT_*`) : `ws_url` (`wss://stream.bybit.eu/v5/public/spot`),
+  `ws_ping_interval_seconds` (20), `ws_pong_timeout_seconds` (10, validé < ping), `ws_watchdog_warn_seconds` (600), `ws_watchdog_zombie_seconds` (1800, validé > warn),
+  `ws_watchdog_resubscribe_alert_count` (3). **Seuils en `.env`, pas en code** : à ajuster après
+  l'observation 24 h / le paper sans commit.
+- Souscription : `subscribe_ohlc` / `subscribe_ticker` envoient 1 topic ; `_resubscribe_all()` renvoie tous
+  les topics par lots de 10 (`MAX_ARGS_PER_REQUEST`), utilisé après chaque reconnect et par le watchdog.
+  Un subscribe dupliqué est idempotent côté Bybit (pas d'ack, pas de doublon).
+- **Deux détecteurs distincts** :
+  1. `_ping_loop` = vie de la CONNEXION : ping 20 s, pas de pong sous 10 s → `bybit_ws_pong_timeout`,
+     Telegram (1 fois par épisode) + `_reconnect` (backoff 5 s × 2ⁿ, max 300 s, 10 essais).
+  2. `_data_flow_watchdog` = vie des SOUSCRIPTIONS, sur le flux **agrégé** (klines + tickers, pongs et
+     acks exclus), check toutes les 60 s après 60 s de grâce :
+     - ≥ `warn` (10 min) sans aucun message topic → `bybit_ws_data_flow_stale`
+       (`reason=quiet_market_or_lost_subscriptions`, `pong_alive`), re-subscribe silencieux, 1 fois par
+       épisode (flag remis par le premier message topic). Pas de Telegram… sauf **escalade** : ≥ 3
+       re-subscribes en 24 h glissantes → `bybit_ws_resubscribe_storm_telegram_sent`.
+     - ≥ `zombie` (30 min) → `bybit_ws_data_flow_zombie` (connexion vivante, flux mort), Telegram +
+       `_reconnect`.
+     - `bybit_ws_data_flow_ok` toutes les 5 min : `topic_messages_delta`, `pongs_delta` — c'est la métrique
+       pour recalibrer les seuils.
+  Justification : ~10 msgs/min observés sur UNE paire l'après-midi ; avec 24 topics, 10 min de silence =
+  zéro trade sur BTC+ETH+SOL/USDC. Le seuil Binance (5 min → reconnect) bouclerait la nuit.
+- Kline → `MARKET_OHLC` (même dict que Binance/Kraken) + `OHLCData(exchange="bybit", vwap=turnover/volume
+  quantisé 1e-8 ou None si volume 0, trades_count=None)` via `session.merge` (collector seulement :
+  `db_manager` injecté). Candles `volume=0` écrites.
+- Ticker → `MARKET_TICK` `{pair, timestamp, price, last, bid: None, ask: None, volume}` : le ticker spot v5
+  n'a pas de best bid/ask. Vérifié le 2026-09-09 : seul `BaseStrategy._handle_tick` consomme l'événement
+  et les 8 stratégies ne lisent que `price` ; les lecteurs de bid/ask passent par le REST `get_ticker`
+  (`bid1Price`/`ask1Price` mappés par ccxt). Si B5 veut le best bid/ask en push : topic `orderbook.1.{SYMBOL}`.
+- Stats supplémentaires : `topic_messages`, `pongs_received`, `resubscribes` (loggées par le collector
+  toutes les 5 min dans `collector_periodic_stats`).
+- Tests : `tests/test_connectors/test_bybit_ws.py` (46, WS mocké) ;
+  `BYBIT_INTEGRATION=1 poetry run pytest tests/test_connectors/test_bybit_ws_integration.py` (connexion
+  réelle, ≥ 1 pong + ≥ 1 kline/ticker en ≤ 90 s, sans DB ni clé).
+- Collector (`EXCHANGE_NAME=bybit`) : 3 paires × 7 TF (`SCHEDULER_INTERVALS`, 1m inclus) + 3 tickers = 24
+  topics en 3 requêtes. `TaskScheduler` (hardcode Kraken) n'est instancié que si `EXCHANGE_NAME=kraken`
+  (`task_scheduler_skipped` sinon) — pas de backfill REST Bybit avant B3.
+
+**Observé — collecte locale 1 h du 2026-09-09 (13:07 → 14:07 UTC, Wi-Fi local, tunnel SSH saturé en
+parallèle par les tests P6) :**
+- Flux agrégé 24 topics : **272 à 573 messages topic / 5 min** (≈ 1–2 msg/s), 15 pongs / 5 min,
+  4 550 frames reçues, 225 candles clôturées écrites (58 × 1m, 12 × 5m, 4 × 15m, 1 × 1h par paire),
+  59 candles plates (`volume=0`, `vwap NULL`), 0 erreur de parsing / d'écriture, 0 `data_flow_stale`.
+  Un silence de 10 min en journée représenterait donc ~600 messages manquants : le palier warn est large.
+- **3 décrochages réseau** (13:27, 13:38, 13:57) : silence total du socket (klines, tickers ET pong) pendant
+  28–47 s, détecté par `pong_timeout` (10 s) → reconnect en 16 s (5 s backoff + ~11 s de connexion, signe de
+  dégradation réseau) → 24 topics resouscrits, flux repris. Un timeout de pong plus long n'aurait rien changé.
+- **Conséquence data** : la candle dont la clôture tombe pendant la coupure n'est jamais confirmée
+  (Bybit ne rejoue pas) → 2 trous de 1 candle 1m par paire (13:39, 13:57), aucun sur 5m/15m/1h. À couvrir
+  par le backfill REST de gaps (B3), pas par le WS.
+- Contrôles SQL utilisés (à réutiliser pour l'observation 24 h) :
+  ```sql
+  SELECT pair, interval, COUNT(*), MIN(timestamp), MAX(timestamp) FROM market_data_ohlc
+   WHERE exchange='bybit' GROUP BY pair, interval ORDER BY pair, interval;
+  SELECT interval, COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM timestamp)::bigint % (interval*60) <> 0) AS misaligned
+    FROM market_data_ohlc WHERE exchange='bybit' GROUP BY interval;            -- 0 attendu partout
+  WITH t AS (SELECT pair, timestamp, LAG(timestamp) OVER (PARTITION BY pair ORDER BY timestamp) prev
+             FROM market_data_ohlc WHERE exchange='bybit' AND interval=1)
+  SELECT pair, prev, timestamp FROM t WHERE timestamp - prev > interval '1 minute';  -- = reconnexions
+  ```
+
 ## Données historiques (B3)
 
 - Pas de dumps kline spot sur `public.bybit.com` (trades tick uniquement, et du global). Import REST
@@ -195,11 +262,11 @@ Diagnostic : `poetry run python scripts/audit/bybit_key_diag.py` (read-only).
 | Composant | Changement |
 |---|---|
 | `config/settings.py` | ✅ B1 : `BybitSettings` (hostname, recv_window, account_type), `ExchangeFees.bybit_defaults()`, `exchange_name` **obligatoire** (`kraken\|binance\|bybit`), `.env.example` |
-| `connectors/exchange.py` | ✅ B1 : branche `bybit` dans `build_exchange_rest_client` ; WS → `NotImplementedError` jusqu'à B2 |
+| `connectors/exchange.py` | ✅ B1 : branche `bybit` dans `build_exchange_rest_client` · ✅ B2 : branche `bybit` dans `build_exchange_ws_client` |
 | `connectors/bybit/rest.py` | ✅ B1 : clone de `binance/rest.py` (ccxt hostname, market BUY sans price, PostOnly normalisé, `orderLinkId`, mapping `retCode`, UTA) — 67 tests unitaires + intégration opt-in |
-| `connectors/bybit/ws.py` | clone de `binance/ws.py` (subscribe par lots de 10, parse `kline.*`/`tickers.*`, ping 20 s) |
+| `connectors/bybit/ws.py` | ✅ B2 : clone de `binance/ws.py` (subscribe par lots de 10, parse `kline.*`/`tickers.*`, ping 20 s, watchdog 2 paliers configurable) — 46 tests + intégration opt-in |
 | `execution/order_manager.py` | statuts via ccxt (`open/closed/canceled/rejected`), `PartiallyFilledCanceled` |
 | `scripts/bybit_kline_import.py` | nouveau, import REST paginé |
 | `scripts/backtest.py`, `run_p6/p7` | fees maker/taker distincts (dette B4), `--fees bybit` sur données Binance |
-| `scheduler/task_scheduler.py` | passer par la factory (hardcode `KrakenRestClient` aujourd'hui) |
-| `strategies.yaml`, `main.py`, `dashboard.py`, `collector` | `exchange: bybit`, filtre `settings.exchange_name` |
+| `scheduler/task_scheduler.py` | passer par la factory (hardcode `KrakenRestClient` aujourd'hui) — B2 : le collector ne l'instancie plus hors Kraken (B3) |
+| `strategies.yaml`, `main.py`, `dashboard.py`, `collector` | `exchange: bybit`, filtre `settings.exchange_name` — ✅ B2 pour le collector (intervals depuis settings, garde scheduler, `SCHEDULER_PAIRS` default BTC/ETH/SOL) |
