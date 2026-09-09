@@ -103,6 +103,31 @@ class TestExchangeNameRequired:
         assert settings.bybit.hostname == "bybit.eu"
         assert settings.bybit.recv_window == 5000
         assert settings.bybit.account_type == "UNIFIED"
+        assert settings.bybit.ws_url == "wss://stream.bybit.eu/v5/public/spot"
+        assert settings.bybit.ws_ping_interval_seconds == 20
+        assert settings.bybit.ws_pong_timeout_seconds == 10
+        assert settings.bybit.ws_watchdog_warn_seconds == 600
+        assert settings.bybit.ws_watchdog_zombie_seconds == 1800
+        assert settings.bybit.ws_watchdog_resubscribe_alert_count == 3
+
+    def test_bybit_watchdog_zombie_must_exceed_warn(self) -> None:
+        with pytest.raises(ValidationError, match="ZOMBIE_SECONDS must be greater"):
+            BybitSettings(
+                ws_watchdog_warn_seconds=900, ws_watchdog_zombie_seconds=900, _env_file=None
+            )
+        bybit = BybitSettings(
+            ws_watchdog_warn_seconds=300, ws_watchdog_zombie_seconds=600, _env_file=None
+        )
+        assert (bybit.ws_watchdog_warn_seconds, bybit.ws_watchdog_zombie_seconds) == (300, 600)
+
+    def test_bybit_pong_timeout_must_be_below_ping_interval(self) -> None:
+        with pytest.raises(ValidationError, match="PONG_TIMEOUT_SECONDS must be smaller"):
+            BybitSettings(ws_ping_interval_seconds=10, ws_pong_timeout_seconds=10, _env_file=None)
+
+    def test_scheduler_pairs_default_is_exchange_agnostic(self) -> None:
+        settings = Settings(environment="testing", exchange_name="bybit", _env_file=None)
+        assert settings.scheduler.pairs == ["BTC/USDC", "ETH/USDC", "SOL/USDC"]
+        assert "XBT" not in "".join(settings.scheduler.pairs)
 
     def test_env_var_selects_exchange(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("EXCHANGE_NAME", "bybit")
