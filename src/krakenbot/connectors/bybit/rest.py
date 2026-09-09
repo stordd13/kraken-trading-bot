@@ -95,6 +95,9 @@ RET_BUY_PRICE_TOO_HIGH = 170193
 RET_SELL_PRICE_TOO_LOW = 170194
 PRICE_LIMIT_CODES = frozenset({RET_BUY_PRICE_TOO_HIGH, RET_SELL_PRICE_TOO_LOW})
 
+# ccxt bybit fetchOrder() raises unless the 500-orders lookback limitation is acknowledged
+_FETCH_ORDER_PARAMS: dict[str, Any] = {"acknowledged": True}
+
 _RET_CODE_RE = re.compile(r'"retCode"\s*:\s*"?(\d+)"?')
 _POST_ONLY_MSG_RE = re.compile(r"post[\s_-]?only", re.IGNORECASE)
 
@@ -1187,7 +1190,9 @@ class BybitRestClient:
             ccxt_status = ccxt_order.get("status")
             if ccxt_status is None and exchange_order_id:
                 self._stats["api_calls"] += 1
-                ccxt_order = await self._exchange.fetch_order(exchange_order_id, pair)
+                ccxt_order = await self._exchange.fetch_order(
+                    exchange_order_id, pair, params=_FETCH_ORDER_PARAMS
+                )
                 ccxt_status = ccxt_order.get("status")
 
             filled_amount = Decimal(str(ccxt_order.get("filled") or 0))
@@ -1307,7 +1312,7 @@ class BybitRestClient:
         try:
             await self._ensure_markets()
             self._stats["api_calls"] += 1
-            order = await self._exchange.fetch_order(order_id, pair)
+            order = await self._exchange.fetch_order(order_id, pair, params=_FETCH_ORDER_PARAMS)
             fee_info = order.get("fee") or {}
             return {
                 "order_id": order_id,

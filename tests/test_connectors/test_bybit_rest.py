@@ -507,7 +507,9 @@ class TestLiveLimitOrders:
         order = await live_client.place_limit_order(
             "BTC/USDC", TradeSide.BUY, Decimal("0.001"), Decimal("45000")
         )
-        live_client._exchange.fetch_order.assert_awaited_once_with("557", "BTC/USDC")
+        live_client._exchange.fetch_order.assert_awaited_once_with(
+            "557", "BTC/USDC", params={"acknowledged": True}
+        )
         assert order.status == OrderStatus.FILLED
         assert order.filled_price == Decimal("45000.0")
 
@@ -605,6 +607,19 @@ class TestLiveReadMethods:
         assert orders[0]["price"] == Decimal("45000")
         trades = await live_client.get_trade_history("BTC/USDC")
         assert trades[0]["fee_currency"] == "BTC"
+
+    async def test_get_order_status_acknowledges_lookback(
+        self, live_client: BybitRestClient
+    ) -> None:
+        # Observed 2026-09-09: ccxt bybit fetchOrder() raises unless acknowledged=True
+        live_client._exchange.fetch_order = AsyncMock(
+            return_value={"id": "9", "status": "open", "filled": 0, "amount": 0.001, "price": 1}
+        )
+        status = await live_client.get_order_status("9", "BTC/USDC")
+        assert status["status"] == "open"
+        live_client._exchange.fetch_order.assert_awaited_once_with(
+            "9", "BTC/USDC", params={"acknowledged": True}
+        )
 
     async def test_get_order_status_not_found(self, live_client: BybitRestClient) -> None:
         live_client._exchange.fetch_order = AsyncMock(
