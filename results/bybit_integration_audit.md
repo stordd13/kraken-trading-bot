@@ -518,6 +518,104 @@ stats: {'orders_placed': 3, 'orders_filled': 0, 'orders_failed': 3, 'api_calls':
 `BYBIT_INTEGRATION=1 pytest tests/test_connectors/test_bybit_rest_integration.py` : 4 passed
 (filtres EU = skill, balance réelle, OHLCV 4h, paper round-trip), 1 skipped (`trade`).
 
+### Protocole trade (`bybit_b1_roundtrip.py --trade --notional 6`, 2026-09-09 08:58 CEST) — BLOQUÉ côté compte
+
+Schéma à 4 clés en place (`BYBIT_*` read-only, `BYBIT_TRADE_*` trade, commit `feat(bybit): dedicated
+read-only vs trade API key pairs`). Sortie brute complète (identifiants masqués) :
+
+```
+==============================================================================
+1. Read-only: load_markets / balance / ticker / OHLCV (LIVE client, read-only key)
+==============================================================================
+2026-09-09 08:58:11 [info     ] bybit_rest_initialized         account_type=UNIFIED has_api_key=<masked> hostname=bybit.eu key_role=readonly maker_fee=0.0010 mode=live taker_fee=0.0025
+2026-09-09 08:58:14 [info     ] bybit_rest_markets_loaded      hostname=bybit.eu symbols=133
+markets loaded on bybit.eu: 133
+BTC/USDC precision={'amount': 1e-06, 'price': 0.1, 'cost': None, 'base': None, 'quote': None} limits={'leverage': {'min': 1.0, 'max': None}, 'amount': {'min': 1e-06, 'max': 273.92085}, 'price': {'min': None, 'max': None}, 'cost': {'min': 1.0, 'max': 1200000.0}}
+2026-09-09 08:58:15 [info     ] [LIVE] get_balance             currencies=[]
+balance (free): {} (wallet empty)
+ticker: bid=79159.1 ask=79168.6 last=79161.8
+2026-09-09 08:58:15 [debug    ] fetching_ohlcv                 limit=3 pair=BTC/USDC since=None timeframe=4h
+2026-09-09 08:58:15 [info     ] ohlcv_fetched                  candles=3 first_timestamp='2026-09-08 20:00:00+00:00' interval=240 last_timestamp='2026-09-09 04:00:00+00:00' pair=BTC/USDC
+  4h 2026-09-08T20:00:00+00:00 O=78364.7 C=78466.1 V=5.495427
+  4h 2026-09-09T00:00:00+00:00 O=78466.1 C=78673.2 V=0.883565
+  4h 2026-09-09T04:00:00+00:00 O=78673.2 C=79161.8 V=12.873742
+2026-09-09 08:58:16 [info     ] [LIVE] get_open_orders         count=0
+open orders: []
+stats: {'orders_placed': 0, 'orders_filled': 0, 'orders_failed': 0, 'api_calls': 5}
+2026-09-09 08:58:16 [info     ] bybit_rest_closed
+
+==============================================================================
+2. Paper round-trip (simulated fills, real ticker)
+==============================================================================
+2026-09-09 08:58:16 [info     ] bybit_rest_initialized         account_type=UNIFIED has_api_key=<masked> hostname=bybit.eu key_role=readonly maker_fee=0.0010 mode=paper taker_fee=0.0025
+2026-09-09 08:58:16 [info     ] [PAPER] set_balance            amount=1000 currency=USDC
+2026-09-09 08:58:16 [info     ] [PAPER] set_balance            amount=0 currency=BTC
+2026-09-09 08:58:16 [debug    ] event_bus_no_subscribers       event_type=trade.order_filled
+2026-09-09 08:58:16 [info     ] [PAPER] market_order_filled    amount=0.000075 fee=0.01484283750 pair=BTC/USDC price=79161.8 side=buy
+market BUY  0.000075 @ 79161.8 fee=0.01484283750 USDC
+  balance: {'USDC': Decimal('994.04802216250'), 'BTC': Decimal('0.000075')}
+2026-09-09 08:58:16 [info     ] [PAPER] limit_order_pending    amount=0.000075 expires_at=2026-09-09T07:13:16.446054+00:00 order_id=paper-limit-ac8cee33 pair=BTC/USDC price=83119.9 side=sell
+limit SELL PostOnly(paper) -> pending id=paper-limit-ac8cee33
+  status: {'order_id': 'paper-limit-ac8cee33', 'status': 'pending', 'filled': Decimal('0'), 'amount': Decimal('0.000075'), 'price': Decimal('83119.9')}
+2026-09-09 08:58:16 [info     ] [PAPER] order_cancelled        order_id=paper-limit-ac8cee33
+2026-09-09 08:58:16 [debug    ] event_bus_no_subscribers       event_type=trade.order_cancelled
+  cancel: True
+2026-09-09 08:58:16 [debug    ] event_bus_no_subscribers       event_type=trade.order_filled
+2026-09-09 08:58:16 [info     ] [PAPER] market_order_filled    amount=0.000075 fee=0.01484283750 pair=BTC/USDC price=79161.8 side=sell
+market SELL 0.000075 @ 79161.8 fee=0.01484283750 USDC
+  balance: {'USDC': Decimal('999.97031432500'), 'BTC': Decimal('0.000000')}
+  check: USDC == 1000 - fees -> True (expected 999.97031432500)
+2026-09-09 08:58:16 [info     ] bybit_rest_closed
+
+==============================================================================
+3. LIVE limit orders (real, cancelled/rejected — NEVER market, TRADE key)
+==============================================================================
+2026-09-09 08:58:16 [info     ] bybit_rest_initialized         account_type=UNIFIED has_api_key=<masked> hostname=bybit.eu key_role=trade maker_fee=0.0010 mode=live taker_fee=0.0025
+2026-09-09 08:58:19 [info     ] bybit_rest_markets_loaded      hostname=bybit.eu symbols=133
+2026-09-09 08:58:19 [info     ] [LIVE] get_balance             currencies=[]
+key_role=trade  balance (free): {}
+3a. PostOnly BUY 0.000079 @ 75203.7 (-5 %)
+2026-09-09 08:58:20 [error    ] bybit_rest_limit_order_error   error='bybit {"retCode":10005,"retMsg":"Invalid API-key, IP, or permissions for action.","result":{},"retExtInfo":{},"time":1788937100116}' error_type=KrakenAPIError pair=BTC/USDC side=buy
+    -> KrakenAPIError: Bybit refused the action (retCode 10005): the API key is read-only, lacks the Spot Trade permission, or the caller IP is not whitelisted. Create a key with readOnly=0 + Spot Trade on bybit.eu. Raw: bybit {"retCode":10005,"retMsg":"Invalid API-key, IP, or permissions for action.","result":{},"retExtInfo":{},"time":1788937100116} | Details: {'ret_code': 10005, 'reason': 'permission_denied'}
+3b. GTC BUY 0.000077 @ 77578.5 (-2 %, priceLimitRatioX probe)
+2026-09-09 08:58:20 [error    ] bybit_rest_limit_order_error   error='bybit {"retCode":10005,"retMsg":"Invalid API-key, IP, or permissions for action.","result":{},"retExtInfo":{},"time":1788937100683}' error_type=KrakenAPIError pair=BTC/USDC side=buy
+    -> KrakenAPIError: Bybit refused the action (retCode 10005): the API key is read-only, lacks the Spot Trade permission, or the caller IP is not whitelisted. Create a key with readOnly=0 + Spot Trade on bybit.eu. Raw: bybit {"retCode":10005,"retMsg":"Invalid API-key, IP, or permissions for action.","result":{},"retExtInfo":{},"time":1788937100683} | Details: {'ret_code': 10005, 'reason': 'permission_denied'}
+3c. PostOnly BUY 0.000075 @ 79247.8 (above ask 79168.6)
+2026-09-09 08:58:21 [error    ] bybit_rest_limit_order_error   error='bybit {"retCode":10005,"retMsg":"Invalid API-key, IP, or permissions for action.","result":{},"retExtInfo":{},"time":1788937101458}' error_type=KrakenAPIError pair=BTC/USDC side=buy
+    -> KrakenAPIError: Bybit refused the action (retCode 10005): the API key is read-only, lacks the Spot Trade permission, or the caller IP is not whitelisted. Create a key with readOnly=0 + Spot Trade on bybit.eu. Raw: bybit {"retCode":10005,"retMsg":"Invalid API-key, IP, or permissions for action.","result":{},"retExtInfo":{},"time":1788937101458} | Details: {'ret_code': 10005, 'reason': 'permission_denied'}
+2026-09-09 08:58:21 [info     ] [LIVE] get_open_orders         count=0
+2026-09-09 08:58:21 [info     ] [LIVE] get_open_orders         count=0
+open orders after run: []  -> OK (empty)
+2026-09-09 08:58:22 [info     ] [LIVE] get_balance             currencies=[]
+balance (free) after run: {}
+stats: {'orders_placed': 3, 'orders_filled': 0, 'orders_failed': 3, 'api_calls': 9}
+2026-09-09 08:58:22 [info     ] bybit_rest_closed
+```
+
+**Verdict : les trois ordres (a) PostOnly −5 %, (b) LIMIT −2 %, (c) PostOnly au-dessus de l'ask sont
+refusés avant d'atteindre le matching engine (`retCode 10005`), aucun ordre n'a été créé, `fetch_open_orders`
+vide en fin de run.** `priceLimitRatioX` et la forme du rejet PostOnly restent donc **non levés**.
+
+Diagnostic read-only (`scripts/audit/bybit_key_diag.py`, 2026-09-09 08:59 CEST) :
+
+```
+[readonly] query-api -> note=krakenbot_readonly readOnly="1" Spot=[SpotTrade] Wallet=[AccountTransfer, SubMemberTransfer] ips=["*"] uta="1" expiredAt=2026-12-08T20:13:39Z
+[readonly] wallet-balance UNIFIED -> totalEquity=0 coins=[]
+[readonly] coins-balance FUND -> [('USDC', '28.433268', '28.433268')]
+[trade]    query-api -> note=krakenbot_trade    readOnly="1" Spot=[SpotTrade] Wallet=[] ips=["*"] uta="1" expiredAt=2026-12-08T20:24:12Z
+[trade]    wallet-balance UNIFIED -> totalEquity=0 coins=[]
+[trade]    coins-balance FUND -> PermissionDenied (pas de permission Account Transfer — normal pour une clé trade)
+same key id? False
+```
+
+Deux causes, toutes deux côté compte Bybit :
+1. **La clé `krakenbot_trade` est `readOnly=1`** (créée en « Read-Only » malgré la case Spot Trade) →
+   `order/create` refusé (`10005`). À recréer/éditer en **Read-Write**, Spot Trade uniquement, sans withdraw.
+2. **Les 28.43 USDC sont dans le wallet Funding**, pas dans l'Unified Trading Account (`totalEquity=0`).
+   Les ordres spot puisent dans l'UTA → transfert interne Funding → Unified Trading requis (UI Bybit).
+Une fois les deux corrigés : `poetry run python scripts/audit/bybit_key_diag.py` (attendu `readOnly="0"`
+sur la clé trade et USDC dans `wallet-balance UNIFIED`), puis relancer le protocole `--trade`.
+
 ---
 
 ## Risques identifiés

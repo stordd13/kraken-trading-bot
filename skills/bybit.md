@@ -173,7 +173,12 @@ headers de rate limit capturés, `adjustForTimeDifference` nécessaire (offset +
 Procédure : passer la clé en Trade (jamais withdraw), créditer ≥ 10 USDC, puis
 `poetry run python scripts/audit/bybit_b1_roundtrip.py --trade` (3 LIMIT réels annulés/rejetés,
 jamais de MARKET) et `BYBIT_INTEGRATION=trade poetry run pytest tests/test_connectors/test_bybit_rest_integration.py`.
-Avec la clé read-only actuelle, `order/create` renvoie `retCode 10005`.
+Avec une clé `readOnly=1`, `order/create` renvoie `retCode 10005` — **c'est le cas des deux clés au
+2026-09-09** (`krakenbot_readonly` et `krakenbot_trade` sont toutes deux `readOnly: "1"`) : le protocole
+trade a été exécuté et refusé sur les trois ordres, `priceLimitRatioX` reste **non levé**. En outre les
+28.43 USDC sont dans le wallet **Funding**, invisibles de `wallet-balance?accountType=UNIFIED` : les ordres
+spot puisent dans l'UTA, il faut transférer Funding → Unified Trading. Diagnostic :
+`poetry run python scripts/audit/bybit_key_diag.py` (read-only, montre `readOnly`, permissions, FUND vs UNIFIED).
 
 ## Ce qui change dans le code (estimation B0 : ~8 j hors re-backtests)
 
