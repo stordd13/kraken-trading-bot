@@ -28,8 +28,8 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - ✅ P0 à P6 terminées (audit, abstraction layer, REST/WS Binance, multi-pair, backtests 24 combos)
 - ✅ P7 phase 1 terminée (30 mai 2026 : 212 jobs de grid search cross-validés, fees Binance)
 - ✅ B0 audit Bybit EU (7 sept, verdict GO avec réserves) · ✅ B0.5 docs + cleanup (cette version)
-- ⏸️ **Serveur Hetzner : services `krakenbot` et `krakenbot-collector` stoppés et désactivés** depuis le
-  7 sept. DB intacte, backupée (203 Mo, rapatriée). Redémarrage prévu en B2/B3 avec le connecteur Bybit.
+- ▶️ **Serveur Hetzner : `krakenbot-collector` réactivé le 9 sept 18:12 UTC (B2, WS Bybit)** ; `krakenbot`
+  (trader) reste stoppé et désactivé jusqu'à B4/B5. DB intacte, backupée le 7 sept (203 Mo, rapatriée).
 - ✅ B1 `BybitRestClient` (8-9 sept, branche `feat/b1-bybit-rest`) : settings (clés read-only + trade),
   factory, 72 tests unitaires, round-trip read-only + paper + **live** validé sur `api.bybit.eu`
   (PostOnly → cancel, rejet PostOnly normalisé, `priceLimitRatioX` sans impact sur les ordres passifs).
@@ -37,8 +37,8 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   3 requêtes, ping 20 s, watchdog flux agrégé 2 paliers configurables `BYBIT_WS_WATCHDOG_*`, escalade
   Telegram), factory, collector `EXCHANGE_NAME=bybit` (7 TF, `TaskScheduler` Kraken neutralisé), 46 tests +
   intégration réelle, collecte locale 1 h validée (225 candles, grille alignée, 3 décrochages réseau détectés par le pong et récupérés ; les candles clôturant pendant une coupure manquent → backfill B3). `deploy.yml` régénère un `.env` Bybit (secrets
-  `BYBIT_*` à créer). **Reste (humain)** : merge dev, `.env` serveur, `systemctl enable --now
-  krakenbot-collector`, observation 24 h, tag `v2.4.0-b2-bybit-ws`.
+  `BYBIT_*` à créer). **Fait le 9 sept** : merge dans `dev` (`ad296c8`), `.env` serveur, collector
+  `enable --now`. **Reste** : observation 24 h (commandes dans `skills/deployment.md`) puis tag `v2.4.0-b2-bybit-ws`.
 - 🚧 Prochaine phase : B3 (import historique Bybit, `TaskScheduler` via factory).
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
