@@ -3,15 +3,42 @@
 > Comment accéder au serveur, gérer les services, exécuter des tâches longues, et réactiver le bot
 > quand le connecteur Bybit sera prêt.
 
-## État actuel (7 septembre 2026)
+## État actuel (9 septembre 2026, 18:12 UTC — B2 déployé)
 
-- **`krakenbot` et `krakenbot-collector` sont stoppés ET désactivés** (`systemctl disable`) : le bot
-  tournait dans le vide depuis la suspension de Binance UE (1er juillet 2026), et au reboot du serveur
-  les services étaient repartis sur **Kraken** (le `.env` serveur ne fixait pas `EXCHANGE_NAME`).
-- La DB tourne toujours (container `krakenbot-db`), backupée le 7 sept (voir `skills/database.md`).
-- Aucune clé Bybit sur le serveur. Réactivation prévue en B2 (collector) puis B5 (trader, paper).
+- **`krakenbot-collector` est `enabled` + `active`** depuis le 9 sept 18:12 UTC (B2, `dev@ad296c8`) :
+  WS Bybit EU, 3 paires × 7 TF, écrit `exchange='bybit'` dans la DB locale du serveur. Observation 24 h en
+  cours (voir ci-dessous).
+- **`krakenbot` (trader) reste stoppé ET désactivé** jusqu'à B4/B5. Historique : le bot tournait dans le
+  vide depuis la suspension de Binance UE (1er juillet 2026), et au reboot du serveur les services étaient
+  repartis sur **Kraken** (le `.env` serveur ne fixait pas `EXCHANGE_NAME`) — réglé : `.env` serveur =
+  `EXCHANGE_NAME=bybit`, 4 clés `BYBIT_*`, `SCHEDULER_PAIRS`/`SCHEDULER_INTERVALS` (backup `.env.bak-pre-b2`).
+- La DB tourne (container `krakenbot-db`), backupée le 7 sept (voir `skills/database.md`).
+- Le serveur suit **`dev`** (`git pull --ff-only origin dev`), pas `main`. ⚠️ Un push sur `main` déclenche
+  `deploy.yml`, qui redémarre **les deux** services et exige `krakenbot` actif : pas avant B5.
 
-Ne pas `systemctl start` ces services tant que le connecteur Bybit (B1–B3) n'est pas déployé.
+### Observation 24 h du collector (B2, à faire le 10 sept ~18:15 UTC)
+
+```bash
+# Événements watchdog / reconnexions depuis le démarrage (attendu : 0, ou très peu et justifiés)
+sudo journalctl -u krakenbot-collector --since "2026-09-09 18:12" --no-pager -o cat \
+  | grep -c -E '"event": "bybit_ws_(data_flow_stale|data_flow_zombie|pong_timeout|reconnecting|resubscribed)"'
+sudo journalctl -u krakenbot-collector --since "2026-09-09 18:12" --no-pager -o cat \
+  | grep -E '"event": "bybit_ws_(data_flow_stale|data_flow_zombie|pong_timeout|reconnecting|preventive_reconnect)"' | cut -c1-200
+# Débit du flux agrégé (toutes les 5 min) et stats du collector
+sudo journalctl -u krakenbot-collector --since "24 hours ago" --no-pager -o cat | grep -c bybit_ws_data_flow_ok
+sudo journalctl -u krakenbot-collector --no-pager -o cat | grep collector_periodic_stats | tail -1
+# DB : cohérence par TF, alignement grille, trous 1m (= reconnexions), candles plates
+sudo docker exec krakenbot-db psql -U krakenbot -d krakenbot -c \
+  "SELECT interval, COUNT(*), MIN(timestamp), MAX(timestamp) FROM market_data_ohlc WHERE exchange='bybit' GROUP BY interval ORDER BY interval;"
+sudo docker exec krakenbot-db psql -U krakenbot -d krakenbot -c \
+  "SELECT interval, COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM timestamp)::bigint % (interval*60) <> 0) AS misaligned FROM market_data_ohlc WHERE exchange='bybit' GROUP BY interval;"
+sudo docker exec krakenbot-db psql -U krakenbot -d krakenbot -c \
+  "WITH t AS (SELECT pair, timestamp, LAG(timestamp) OVER (PARTITION BY pair ORDER BY timestamp) prev FROM market_data_ohlc WHERE exchange='bybit' AND interval=1 AND timestamp > '2026-09-09 18:12') SELECT pair, prev, timestamp FROM t WHERE timestamp - prev > interval '1 minute';"
+```
+Sur le serveur la DB est locale (pas de tunnel) : les 3 décrochages vus en collecte locale ne devraient pas se
+reproduire ; s'il y a des reconnexions, c'est un signal réseau réel. Si 24 h propres → tag `v2.4.0-b2-bybit-ws`.
+Note : le champ `timestamp` des logs `bybit_ws_ohlc_complete` est l'heure du log (collision avec structlog),
+pas la clôture de la candle — lire la DB pour les timestamps de candles (à renommer en B3).
 
 ## Accès serveur
 
@@ -20,7 +47,8 @@ Host: 77.42.90.102
 Port SSH: 41922 (port 22 bloqué par UFW)
 User: bruno
 Auth: clé ed25519 uniquement
-Sudo: NOPASSWD pour docker, systemctl, ufw, journalctl (si le prompt bloque : voir troubleshooting)
+Sudo: NOPASSWD pour docker, systemctl, ufw, journalctl, cp, tail, cat — utiliser `sudo -n <cmd>` ;
+      tout autre binaire demande le mot de passe (si le prompt bloque : voir troubleshooting)
 Repo: ~/apps/kraken-trading-bot
 Container DB: krakenbot-db (timescale/timescaledb, bind 127.0.0.1:5432)
 Serveur: Hetzner CX33, 4 vCPU, 8 GB RAM, 2 GB swap, 80 GB disque
@@ -82,8 +110,8 @@ sudo systemctl stop krakenbot krakenbot-collector
    bybit.eu, IP whitelist = IP du serveur Hetzner), `TRADING_MODE=paper`. Mettre à jour `deploy.yml`
    et les GitHub Secrets en même temps.
 2. Vérifier `poetry run python -c "from krakenbot.config.settings import get_settings; print(get_settings().exchange_name)"` → `bybit`.
-3. B2/B3 : `sudo systemctl enable --now krakenbot-collector`, contrôler `journalctl -f` 24 h
-   (candles `exchange='bybit'` en DB, zéro reconnexion zombie).
+3. ✅ B2 (9 sept 18:12 UTC) : `sudo systemctl enable --now krakenbot-collector`, observation 24 h
+   (commandes ci-dessus).
 4. B5 : `sudo systemctl enable --now krakenbot` en paper, seulement après B4 (re-backtests fees Bybit).
 5. Vérifier le premier log `krakenbot_initializing` : `exchange=bybit`, `pair=BTC/USDC`, pas `XBT`.
 
