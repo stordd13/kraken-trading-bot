@@ -3,10 +3,11 @@
 This module provides a standalone service that runs independently of the trading bot
 to collect OHLC data continuously. It uses both:
 - WebSocket for real-time data (latest candles)
-- REST API scheduler for historical backfill (multi-interval)
+- REST API scheduler for historical backfill (multi-interval, Kraken only until B3)
 
 The collector writes to the same database as the trading bot, using merge()
-for deduplication via the composite primary key (timestamp, pair, interval).
+for deduplication via the composite primary key (timestamp, pair, interval, exchange).
+The exchange is selected by ``EXCHANGE_NAME`` (kraken | binance | bybit).
 
 Usage:
     # Run the collector service
@@ -122,13 +123,22 @@ class DataCollector:
         self.logger.debug("websocket_client_initialized")
 
         # 5. Initialize task scheduler (for historical backfill)
-        if self.settings.scheduler.enabled:
+        # TaskScheduler still instantiates KrakenRestClient directly (B3 debt):
+        # only start it for Kraken, never for another exchange.
+        if self.settings.scheduler.enabled and self.settings.exchange_name.lower() == "kraken":
             self.task_scheduler = TaskScheduler(
                 self.settings,
                 self.event_bus,
                 self.db_manager,
             )
             self.logger.debug("task_scheduler_initialized")
+        elif self.settings.scheduler.enabled:
+            self.logger.warning(
+                "task_scheduler_skipped",
+                exchange=self.settings.exchange_name,
+                reason="TaskScheduler hardcodes KrakenRestClient (REST backfill disabled)",
+                todo="B3: route TaskScheduler through build_exchange_rest_client",
+            )
 
         self._setup_completed = True
 
@@ -158,9 +168,9 @@ class DataCollector:
         # 1. Connect WebSocket and subscribe to market data
         await self.ws_client.connect()
 
-        # Subscribe to OHLC for all configured pairs × all analysis timeframes
-        # All 6 timeframes needed by MultiTimeframeAnalyzer per pair
-        all_intervals = [5, 15, 60, 240, 1440, 10080]
+        # Subscribe to OHLC for all configured pairs × all configured timeframes
+        # (SCHEDULER_INTERVALS, default 1/5/15/60/240/1440/10080 = the 7 TF in DB)
+        all_intervals = list(self.settings.scheduler.intervals)
         subscription_count = 0
         for pair in self.settings.scheduler.pairs:
             for interval in all_intervals:
