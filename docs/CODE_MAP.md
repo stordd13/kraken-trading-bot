@@ -1,10 +1,11 @@
 # CODE_MAP — où est quoi dans KrakenBot
 
-> Généré le 2026-09-09 sur `v2.2.0-b05-cleanup-10-g52fb247` (branche `feat/b1-bybit-rest`, base `dev`), post-B1 ;
-> lignes `config/`, `connectors/`, `collector.py` mises à jour à la main en B2 (branche `feat/b2-bybit-ws`) — régénérer intégralement au merge.
+> Généré le 2026-09-09 sur `v2.3.0-b1-bybit-rest-6-g1ca0df9` (branche `feat/b2-bybit-ws`, base `dev`), post-B2.
+> Seuls `config/settings.py`, `connectors/exchange.py`, `connectors/bybit/ws.py` et `collector.py` ont changé depuis la génération post-B1
+> (`git diff --stat d84feb1..HEAD -- src scripts`) : leurs lignes sont à jour, les autres modules sont inchangés.
 > Commande : `wc -l` + `grep -n -E "^(class |def |async def )|^    (async )?def [a-z]"` + `grep -n "^from krakenbot"` sur `src/krakenbot/**/*.py` et `scripts/*.py`.
 > À régénérer à chaque merge sur `dev`. Numéros de ligne = `symbole:ligne`. Hors tests, hors `scripts/audit/`.
-> Total : src 27 164 lignes (ml inclus ; 25 496 post-B0.5, +`connectors/bybit/rest.py`), scripts 13 747 lignes (P7 inclus).
+> Total : src 28 249 lignes (ml inclus ; 27 164 post-B1, +`connectors/bybit/ws.py`), scripts 13 747 lignes (P7 inclus).
 
 ## Flux runtime en 5 lignes
 
