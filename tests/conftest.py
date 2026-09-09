@@ -31,6 +31,18 @@ from krakenbot.config.settings import (
 from krakenbot.models.base import BotStatus, TradeSide, TradeStatus
 
 
+@pytest.fixture(autouse=True)
+def _default_exchange_env(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin EXCHANGE_NAME for every test.
+
+    ``Settings.exchange_name`` is required (no default) since B1. Tests that build
+    ``Settings(...)`` without it inherit Kraken here; tests targeting another
+    exchange pass ``exchange_name=`` explicitly (kwargs beat env vars). Setting it
+    unconditionally also shields the suite from the developer's local ``.env``.
+    """
+    monkeypatch.setenv("EXCHANGE_NAME", "kraken")
+
+
 @pytest.fixture
 def mock_settings() -> Settings:
     """Create mock settings for testing.

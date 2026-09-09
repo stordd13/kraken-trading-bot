@@ -120,6 +120,78 @@ class BinanceSettings(BaseSettings):
     )
 
 
+BybitKeyRole = Literal["readonly", "trade"]
+
+
+class BybitSettings(BaseSettings):
+    """Bybit EU API configuration (spot, UTA account).
+
+    The EU instance (api.bybit.eu) is a separate exchange: keys created on
+    bybit.eu are rejected on api.bybit.com. See skills/bybit.md.
+    """
+
+    model_config = SettingsConfigDict(
+        env_prefix="BYBIT_",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Bybit EU READ-ONLY API key (paper mode, balance/OHLCV reads)",
+    )
+    api_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description="Bybit EU READ-ONLY API secret",
+    )
+    trade_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Bybit EU TRADE API key (Spot Trade only, no withdraw) — live mode",
+    )
+    trade_api_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description="Bybit EU TRADE API secret",
+    )
+    hostname: str = Field(
+        default="bybit.eu",
+        description="ccxt hostname (api.{hostname}) — 'bybit.eu' for the EU instance",
+    )
+    recv_window: int = Field(
+        default=5000,
+        description="recvWindow for signed requests (ms) — retCode 10002 if clock drift exceeds it",
+        ge=1000,
+        le=60000,
+    )
+    account_type: str = Field(
+        default="UNIFIED",
+        description="Bybit account type for wallet-balance (UTA => 'UNIFIED')",
+    )
+
+    def credentials(self, role: BybitKeyRole) -> tuple[str, str]:
+        """Return (key, secret) for the requested role.
+
+        ``"readonly"`` → ``BYBIT_API_KEY`` / ``BYBIT_API_SECRET`` (may be empty: public
+        endpoints still work). ``"trade"`` → ``BYBIT_TRADE_API_KEY`` /
+        ``BYBIT_TRADE_API_SECRET`` and both MUST be set.
+
+        Raises:
+            ValueError: If the trade credentials are requested but missing.
+        """
+        if role == "trade":
+            key = self.trade_api_key.get_secret_value()
+            secret = self.trade_api_secret.get_secret_value()
+            if not key or not secret:
+                raise ValueError(
+                    "BYBIT_TRADE_API_KEY / BYBIT_TRADE_API_SECRET are required to place real "
+                    "orders (create a Spot Trade key without withdraw on bybit.eu). "
+                    "BYBIT_API_KEY / BYBIT_API_SECRET stay read-only (paper mode)."
+                )
+            return key, secret
+        return self.api_key.get_secret_value(), self.api_secret.get_secret_value()
+
+
 class DatabaseSettings(BaseSettings):
     """Database configuration."""
 
@@ -462,6 +534,16 @@ class ExchangeFees(BaseModel):
         rate = Decimal("0.00075") if use_bnb else Decimal("0.0010")
         return cls(maker=rate, taker=rate)
 
+    @classmethod
+    def bybit_defaults(cls) -> ExchangeFees:
+        """Return Bybit EU Spot fee defaults (VIP0, verified on account — skills/bybit.md)."""
+        return cls(
+            maker=Decimal("0.0010"),
+            taker=Decimal("0.0025"),
+            spread=Decimal("0.0002"),
+            slippage=Decimal("0.0002"),
+        )
+
 
 class PaperSettings(BaseSettings):
     """Paper trading configuration."""
@@ -635,15 +717,16 @@ class Settings(BaseSettings):
         description="Use JSON structured logging",
     )
 
-    # Exchange selection
-    exchange_name: str = Field(
-        default="kraken",
-        description="Active exchange: 'kraken' or 'binance'",
+    # Exchange selection — REQUIRED (no silent default: on 2026-09-07 the server
+    # restarted on Kraken because EXCHANGE_NAME was missing from its .env).
+    exchange_name: Literal["kraken", "binance", "bybit"] = Field(
+        description="Active exchange: 'kraken', 'binance' or 'bybit' (env EXCHANGE_NAME, required)",
     )
 
     # Sub-settings
     kraken: KrakenSettings = Field(default_factory=KrakenSettings)
     binance: BinanceSettings = Field(default_factory=BinanceSettings)
+    bybit: BybitSettings = Field(default_factory=BybitSettings)
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     risk: RiskManagementSettings = Field(default_factory=RiskManagementSettings)
     trading: TradingSettings = Field(default_factory=TradingSettings)
@@ -701,12 +784,21 @@ class Settings(BaseSettings):
         """Validate all settings and secrets at startup."""
         errors = []
 
-        # Validate Kraken credentials in live mode
+        # Validate credentials of the selected exchange in live mode
         if self.trading.mode == TradingMode.LIVE:
-            if not self.kraken.api_key.get_secret_value():
-                errors.append("KRAKEN_API_KEY is required for live trading")
-            if not self.kraken.api_secret.get_secret_value():
-                errors.append("KRAKEN_API_SECRET is required for live trading")
+            if self.exchange_name == "bybit":
+                # Live Bybit uses the dedicated TRADE key (Spot Trade, no withdraw)
+                if not self.bybit.trade_api_key.get_secret_value():
+                    errors.append("BYBIT_TRADE_API_KEY is required for live trading")
+                if not self.bybit.trade_api_secret.get_secret_value():
+                    errors.append("BYBIT_TRADE_API_SECRET is required for live trading")
+            else:
+                exchange_settings = getattr(self, self.exchange_name)
+                prefix = self.exchange_name.upper()
+                if not exchange_settings.api_key.get_secret_value():
+                    errors.append(f"{prefix}_API_KEY is required for live trading")
+                if not exchange_settings.api_secret.get_secret_value():
+                    errors.append(f"{prefix}_API_SECRET is required for live trading")
 
         # Validate database connection
         if not self.database.url:
@@ -774,7 +866,8 @@ def get_settings() -> Settings:
         # (DatabaseSettings, KrakenSettings, etc.) can read their env vars.
         # Without this, only the root Settings reads .env via Pydantic's env_file.
         load_dotenv()
-        _settings = Settings()
+        # exchange_name has no default: it comes from EXCHANGE_NAME (env / .env)
+        _settings = Settings()  # type: ignore[call-arg]
         _settings.validate_all()
     return _settings
 
@@ -787,6 +880,6 @@ def reload_settings() -> Settings:
     """
     global _settings
     load_dotenv(override=True)
-    _settings = Settings()
+    _settings = Settings()  # type: ignore[call-arg]
     _settings.validate_all()
     return _settings

@@ -1,7 +1,7 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 8 septembre 2026, post-B0.5 (refonte docs + cleanup legacy), avant B1 (connecteur Bybit).
+> Dernière mise à jour : 8 septembre 2026, post-B1 (BybitRestClient), avant B2 (WebSocket Bybit).
 
 ---
 
@@ -30,7 +30,10 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - ✅ B0 audit Bybit EU (7 sept, verdict GO avec réserves) · ✅ B0.5 docs + cleanup (cette version)
 - ⏸️ **Serveur Hetzner : services `krakenbot` et `krakenbot-collector` stoppés et désactivés** depuis le
   7 sept. DB intacte, backupée (203 Mo, rapatriée). Redémarrage prévu en B2/B3 avec le connecteur Bybit.
-- 🚧 Prochaine phase : B1 (REST Bybit). Aucune clé API Bybit dans le `.env` à ce jour.
+- ✅ B1 `BybitRestClient` (8-9 sept, branche `feat/b1-bybit-rest`) : settings (clés read-only + trade),
+  factory, 72 tests unitaires, round-trip read-only + paper + **live** validé sur `api.bybit.eu`
+  (PostOnly → cancel, rejet PostOnly normalisé, `priceLimitRatioX` sans impact sur les ordres passifs).
+- 🚧 Prochaine phase : B2 (WS Bybit). `EXCHANGE_NAME` est désormais **obligatoire** dans tout `.env`.
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
 
@@ -74,7 +77,7 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - Container Docker `krakenbot-db` (timescale/timescaledb:latest-pg16) bind sur `127.0.0.1:5432`
 - 2 services systemd : `krakenbot-collector.service` et `krakenbot.service` — **stoppés et désactivés**
   (état B0.5). Le workflow `deploy.yml` régénère le `.env` serveur depuis les GitHub Secrets avec un
-  template encore Kraken-era (sans `EXCHANGE_NAME`) : à corriger en B1/B2 avant réactivation.
+  template encore Kraken-era (sans `EXCHANGE_NAME`, désormais obligatoire) : à corriger en B2 avant réactivation.
 
 ### Backup
 - Dump complet du 7 sept 2026 : `~/Backups/krakenbot/krakenbot_20260907.dump` (203 Mo, `pg_dump -Fc`).
@@ -229,8 +232,9 @@ Détail : `ROADMAP.md`.
 1. **`settings.exchange_name` default `"kraken"`** (`src/krakenbot/config/settings.py`, champ
    `exchange_name`) et `trading.pair` default `"XBT/USDC"`. Incident du 7 sept 2026 : au reboot, les
    services ont redémarré sur Kraken car le `.env` serveur (généré par `deploy.yml`) ne fixait pas
-   `EXCHANGE_NAME` ; le `.env` local non plus. **B1** : default → erreur explicite si non défini, ou
-   default `bybit` ; mettre à jour `deploy.yml` et `.env.example` (encore Kraken-era).
+   `EXCHANGE_NAME` ; le `.env` local non plus. **Résolu en B1** : `exchange_name` est `Literal[kraken|binance|bybit]`
+   **sans default** (erreur explicite au démarrage), `.env.example` à jour, `.env` local = `bybit`.
+   Reste : `deploy.yml` / `.env` serveur (B2).
 2. **`scripts/backtest.py` : fees flat.** `BacktestEngine.__init__` et `GridBacktester.__init__`
    choisissent `ExchangeFees.binance_defaults(use_bnb=True)` (maker = taker = 0.075 %) ou `ExchangeFees()`
    nu (= Kraken) ; `settings.exchange_fees` est ignoré ; rollover `0.0001`/4h en dur. **B4 exige maker

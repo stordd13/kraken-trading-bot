@@ -29,7 +29,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 
 | Phase | Quoi | Durée | Livrable / critère de done | Statut |
 |---|---|---|---|---|
-| **B1** | `BybitRestClient` (ccxt `hostname=bybit.eu`) + `BybitSettings` + `ExchangeFees.bybit_defaults()` + branche factory + tests ; fix `exchange_name` default ; fees maker/taker distincts dans `backtest.py` | 2-3 j | Round-trip d'ordre paper validé avec les vraies clés ; `scripts/audit/bybit_q1/q6/q7` relancés avec clés | 📋 |
+| **B1** | `BybitRestClient` (ccxt `hostname=bybit.eu`) + `BybitSettings` + `ExchangeFees.bybit_defaults()` + branche factory + tests ; fix `exchange_name` default ; fees maker/taker distincts dans `backtest.py` | 2-3 j | Round-trip d'ordre paper validé avec les vraies clés ; `scripts/audit/bybit_q1/q6/q7` relancés avec clés | ✅ 9 sept (round-trip live validé, `priceLimitRatioX` levé ; fees backtest → B4) |
 | **B2** | `BybitWebSocketClient` (v5 public kline, 10 args/subscribe, ping 20 s) + tests ; réactivation du collector | 3-4 j | Candles `exchange='bybit'` en DB en continu 24 h sans zombie | 📋 |
 | **B3** | Import historique Bybit EU (REST paginé, batch 1000) ; collector/scheduler génériques (`TaskScheduler` via factory, backfill gap) | 2 j | Data Bybit en DB (≈ 2.5M candles depuis 2025-06-11), backfill fonctionnel | 📋 |
 | **B4** | Re-run P6 (24 combos) et P7 (grid search phases 1-2 + rapport) sur données Binance avec fees Bybit maker/taker + spread/slippage mesurés | 1 j run + 1 j analyse | `results/B4_bybit_backtest_report.md`, sélection paper | 📋 — **prérequis absolu avant B5** |
@@ -55,6 +55,10 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
   serveur avec `EXCHANGE_NAME`, fees maker/taker distincts dans `scripts/backtest.py` (ou en ouverture de B4).
 - Point non tranché de B0 à lever en premier : type de compte (UTA), permissions, IP whitelist, headers
   de rate limit, `priceLimitRatioX` 0.5 % sur les LIMIT éloignés.
+- **Fait les 8-9 sept 2026** (`feat/b1-bybit-rest`) : tout, round-trip live inclus (protocole a/b/c,
+  `priceLimitRatioX` sans effet sur les ordres passifs) — voir `skills/bybit.md` § « Levé en B1 ».
+  `exchange_name` est obligatoire (erreur explicite). Fees maker/taker distincts dans `backtest.py` →
+  ouverture de B4.
 
 ### B2 — WebSocket Bybit EU (3-4 jours)
 
@@ -166,4 +170,4 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 - [ ] Nettoyer le chemin `is_multi` mort de `BacktestEngine` avec la refonte des fees (B4)
 - [ ] P6.8 — Optimisation backtest speedup (priorité basse) : DB locale ou cache OHLC Parquet pour éliminer
       la contention tunnel SSH ; cible 5-6× (vs 3× actuel) ; à faire avant P11 (ML)
-- [ ] `.env.example` et `deploy.yml` : template Bybit (B1)
+- [x] `.env.example` : template Bybit (B1) · [ ] `deploy.yml` : `EXCHANGE_NAME` + `BYBIT_*` (B2)

@@ -1,14 +1,14 @@
 # CODE_MAP — où est quoi dans KrakenBot
 
-> Généré le 2026-09-08 sur `v2.1.0-p6-7-multiprocessing-19-gcb0e3d8` (branche `feat/b05-docs-cleanup`, base `dev`), post-B0.5.
+> Généré le 2026-09-09 sur `v2.2.0-b05-cleanup-10-g52fb247` (branche `feat/b1-bybit-rest`, base `dev`), post-B1.
 > Commande : `wc -l` + `grep -n -E "^(class |def |async def )|^    (async )?def [a-z]"` + `grep -n "^from krakenbot"` sur `src/krakenbot/**/*.py` et `scripts/*.py`.
 > À régénérer à chaque merge sur `dev`. Numéros de ligne = `symbole:ligne`. Hors tests, hors `scripts/audit/`.
-> Total : src 25 496 lignes (ml inclus ; 31 649 avant B0.5), scripts 13 727 lignes (P7 inclus, `backtest_grid.py` / `backfill_historical_data.py` / `test_kraken_futures_demo.py` supprimés).
+> Total : src 27 164 lignes (ml inclus ; 25 496 post-B0.5, +`connectors/bybit/rest.py`), scripts 13 747 lignes (P7 inclus).
 
 ## Flux runtime en 5 lignes
 
 `__main__.py` → `main.KrakenBot` (setup:156, start:480, run:914) instancie settings, DB, EventBus, REST/WS via `connectors/exchange.py`
-(dispatch sur `settings.exchange_name` : `binance` / Kraken aujourd'hui, `bybit` en B1), `MultiStrategyRouter` (seule stratégie top-level
+(dispatch sur `settings.exchange_name`, **obligatoire** depuis B1 : `bybit` / `binance` / Kraken ; WS Bybit en B2), `MultiStrategyRouter` (seule stratégie top-level
 depuis B0.5), `ExecutionEngine`, `OrderManager`, `GlobalRiskManager`, `MultiPairAnalyzerRegistry`.
 WS publie `MARKET_OHLC` → router `_handle_ohlc:275` → stratégie interne `on_ohlc`/`generate_signal` → `GeminiGlobalRiskManager.process_signal:321`
 → `TRADE_SIGNAL` → `ExecutionEngine._handle_signal:155` → REST (`place_limit_order`/`place_market_order`) → `TRADE_ORDER_FILLED`
@@ -18,7 +18,7 @@ WS publie `MARKET_OHLC` → router `_handle_ohlc:275` → stratégie interne `on
 
 | Module | Lignes | Rôle | Symboles clés | Attention |
 |---|---|---|---|---|
-| `settings.py` | 792 | Pydantic settings (env + `strategies.yaml`) | `KrakenSettings:43`, `BinanceSettings:84`, `DatabaseSettings:123`, `RiskManagementSettings:150`, `TradingSettings:186`, `MultiStrategySettings:390` (`enabled` default False, forcé True par `strategies.yaml`), `ExchangeFees:444` (`kraken_defaults:455`, `binance_defaults:460` ; `bybit_defaults` à écrire en B1), `OrderSettings:502`, `_validate_router_runtime_alignment:561`, `Settings:610`, `get_settings:765`, `reload_settings:782` | **`exchange_name` default `"kraken"` (:639)** — dette B1 (incident 7 sept) ; `trading.pair` default `"XBT/USDC"` (:196) ; `ScheduledTasksSettings` pairs default `["XBT/USDC","XBT/EUR"]` (:355) ; `CapitulationSettings` / `KrakenFuturesSettings` supprimées en B0.5 ; importe `strategies.multi_strategy_router` (couplage config→stratégies) |
+| `settings.py` | 885 | Pydantic settings (env + `strategies.yaml`) | `KrakenSettings:43`, `BinanceSettings:84`, `BybitSettings:126` (`credentials:172` — `readonly` = `BYBIT_*`, `trade` = `BYBIT_TRADE_*`), `DatabaseSettings:195`, `RiskManagementSettings:222`, `TradingSettings:258`, `MultiStrategySettings:462` (`enabled` default False, forcé True par `strategies.yaml`), `ExchangeFees:516` (`kraken_defaults`, `binance_defaults`, `bybit_defaults`), `OrderSettings:584`, `_validate_router_runtime_alignment:643`, `Settings:692`, `get_settings:857`, `reload_settings:875` | **`exchange_name` obligatoire** (`Literal[kraken\|binance\|bybit]`, sans default — dette B1 réglée) ; `validate_all` exige `BYBIT_TRADE_*` en live Bybit ; `trading.pair` default `"XBT/USDC"` (:268) ; `ScheduledTasksSettings` pairs default `["XBT/USDC","XBT/EUR"]` (:427) ; importe `strategies.multi_strategy_router` (couplage config→stratégies) |
 
 ## core/
 
@@ -43,13 +43,14 @@ WS publie `MARKET_OHLC` → router `_handle_ohlc:275` → stratégie interne `on
 
 | Module | Lignes | Rôle | Symboles clés | Dépendances / attention |
 |---|---|---|---|---|
-| `exchange.py` | 177 | Protocol + factories | `ExchangeRestClient:26` (Protocol), `build_exchange_rest_client:128`, `build_exchange_ws_client:151` | dispatch sur `settings.exchange_name` (`binance` sinon Kraken) ; appelé par `main.py`, `collector.py`, `order_manager.py` |
+| `exchange.py` | 186 | Protocol + factories | `ExchangeRestClient:26` (Protocol), `build_exchange_rest_client:128`, `build_exchange_ws_client:155` | dispatch sur `settings.exchange_name` (`binance`, `bybit`:144, sinon Kraken) ; WS `bybit` → `NotImplementedError` (:168) jusqu'à B2 ; appelé par `main.py`, `collector.py`, `order_manager.py` ; le Protocol ne reflète pas les signatures réelles (`signal_price` vs `reference_price`) — dette n°7 |
 | `base_ws.py` | 107 | ABC WebSocket | `BaseWebSocketClient:25` (`connect:90`, `subscribe_ohlc:98`, `subscribe_ticker:102`) | |
 | `binance/rest.py` | 1486 | REST Binance via ccxt + paper | `MIN_ORDER_SIZE:58`, `MIN_NOTIONAL:65`, `BinanceRestClient:68` (`get_balance:182`, `fetch_ohlcv:269`, `place_market_order:521`, `place_limit_order:824`, `get_order_status:1096`, `cancel_order:1166`, `initialize_paper_balance:1265`) | LOT_SIZE hardcodés BTC/ETH/SOL ; `place_margin_order:1237` = stub |
 | `binance/ws.py` | 844 | WS Binance (kline/ticker) | `INTERVAL_MAP`/`BINANCE_INTERVAL_MAP:63`, `_pair_to_symbol:73`, `BinanceWebSocketClient:93` (`connect:148`, `subscribe_ohlc:217`, `_handle_kline:399`, `_data_flow_watchdog:560`, `_preventive_reconnect_timer:606`) | timestamp DB = `T + 1 ms` (:423) ; `exchange="binance"` hardcodé (:450) ; reconnect 23 h |
 | `kraken/rest.py` | 1930 | REST Kraken (legacy, référence paper) | `normalize_asset_symbol:86`, `normalize_asset_balances:91`, `KrakenRestClient:100` (`place_market_order:327`, `place_margin_order:654`, `place_limit_order:1130`, `get_order_status:1433`, `fetch_ohlcv:1605`) | `normalize_asset_*` importés par `execution/order_manager.py:28` et `execution/risk.py:35` |
 | `kraken/ws.py` | 1131 | WS Kraken v1 | `KrakenWebSocketClient:81` (`subscribe_ohlc:931`, `subscribe_trades:1011`, `ping:1124`) | map `BTC/USDC→XBT/USDC` (:74-75) ; `exchange="kraken"` (:645,669) |
-| `bybit/` | — | **À créer en B1/B2** (`rest.py`, `ws.py`, clones des modules Binance) | voir `skills/bybit.md` | `hostname="bybit.eu"`, `load_markets()` obligatoire, market BUY sans `price` |
+| `bybit/rest.py` | 1561 | REST Bybit EU via ccxt + paper (B1) | `MIN_ORDER_SIZE:67`, `TICK_SIZE:73`, `MIN_NOTIONAL:82`, `BybitRestClient:105` (`load_markets:257`, `_round_amount:308`, `_round_price:313`, `_translate_error:341`, `get_balance:446`, `fetch_ohlcv:499`, `place_market_order:674`, `_live_market_order:828`, `place_limit_order:944`, `_rejected_post_only_order:1108`, `_live_limit_order:1154`, `get_order_status:1293`, `cancel_order:1342`) | `hostname="bybit.eu"`, `key_role` readonly/trade, `load_markets()` lazy, market BUY sans `price` (`quote_amount` → `cost`), PostOnly par défaut + rejet normalisé (`signal_metadata.reject_reason`), `fetch_order(params.acknowledged=True)`, mapping `retCode` ; validé en live le 9 sept (`skills/bybit.md`) |
+| `bybit/ws.py` | — | **À créer en B2** (clone de `binance/ws.py`) | voir `skills/bybit.md` | subscribe par lots de 10, ping 20 s |
 
 `kraken/futures.py` et `base_perps.py` (Kraken Futures) ont été supprimés en B0.5.
 
@@ -132,15 +133,15 @@ Supprimées en B0.5 (plus aucun fichier ni entrée `strategies.yaml`) : les 7 st
 | `status.py` | 232 | État bot/DB en CLI | `get_status:59` | |
 | `build_ml_features.py` 196 · `fetch_external_data.py` 82 | | Pipeline ML (off) | | |
 | `seed_test_data.py` 143 · `test_all.py` 233 · `test_binance_connection.py` 105 · `test_binance_ws.py` 106 | | Smoke tests manuels | | `seed_test_data` insère `exchange="kraken"` (:74) |
-| `audit/bybit_common.py` · `audit/bybit_q1_endpoints.py` … `bybit_q8_price_diff.py` | | Audit B0 Bybit EU (lecture seule, hors comptage) | | `bybit_q1/q6/q7` à relancer avec les clés API (B1) |
+| `audit/bybit_common.py` · `audit/bybit_q1_endpoints.py` … `bybit_q8_price_diff.py` · `audit/bybit_key_diag.py` · `audit/bybit_b1_roundtrip.py` | | Audit B0/B1 Bybit EU (hors comptage) | | `bybit_b1_roundtrip.py --trade` place 3 LIMIT réels annulés/rejetés (jamais MARKET) ; `bybit_key_diag.py` : clés + wallet UNIFIED/FUND (read-only) |
 | `backup_db.sh` · `restore_db.sh` | | Dump/restore Postgres (serveur) | | |
 
 ## Points d'attention transverses
 
-1. **Defaults `"kraken"`** encore présents : `settings.exchange_name:639`, `OHLCData.exchange:65`, `backtest.py` (4×), `fetch_ohlc.py`, `feature_store.py:472`. Sans `EXCHANGE_NAME` dans le `.env`, le runtime part sur Kraken (incident du 7 sept 2026) — dette B1. Cible : `bybit`.
+1. **Defaults `"kraken"`** encore présents : `OHLCData.exchange:65`, `backtest.py` (4×), `fetch_ohlc.py`, `feature_store.py:472`. `settings.exchange_name` est **obligatoire** depuis B1 (`EXCHANGE_NAME` absent → erreur explicite au démarrage) ; reste `deploy.yml` / `.env` serveur (B2).
 2. **Kraken en dur hors connecteur** : `scheduler/task_scheduler.py:84` (instancie `KrakenRestClient`) + import de `scripts.fetch_ohlc` (:174), `execution/order_manager.py:28` et `execution/risk.py:35` (`normalize_asset_*`), `engine.py:82` (type hint), script `fetch_ohlc.py`.
 3. **`XBT/USDC`** : `settings.trading.pair:196`, `ScheduledTasksSettings:355`, `dashboard.py` (7), `fetch_ohlc.py` (5), `kraken/ws.py:74-75` ; les stratégies utilisent `self.pair`.
 4. **Registres statiques** : `main.STRATEGY_REGISTRY:71` (router seul) et `multi_strategy_router._INNER_STRATEGY_CLASSES:54` — une stratégie non listée est ignorée même si présente dans `strategies.yaml`.
 5. **Fees de backtest flat** (`backtest.py` :228/:1646) : maker = taker ; B4 exige maker 0.10 % / taker 0.25 % distincts (`skills/backtest.md`).
 6. **Defaults `exchange="binance"`** dans `multi_timeframe.py:240` et `multi_pair_registry.py:94` (warmup) → `settings.exchange_name` en B3.
-7. **Fichiers > 1 000 lignes** à ne pas toucher sans review : `kraken/rest.py`, `binance/rest.py`, `kraken/ws.py`, `main.py`, `multi_timeframe.py`, `backtest.py`, `dashboard.py`.
+7. **Fichiers > 1 000 lignes** à ne pas toucher sans review : `kraken/rest.py`, `binance/rest.py`, `bybit/rest.py`, `kraken/ws.py`, `main.py`, `multi_timeframe.py`, `backtest.py`, `dashboard.py`.
