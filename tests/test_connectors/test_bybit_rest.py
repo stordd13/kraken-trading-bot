@@ -755,8 +755,10 @@ class TestMarginAndFactory:
         assert isinstance(client, BybitRestClient)
         assert client.exchange_name == "bybit"
 
-    def test_ws_factory_not_implemented(
+    def test_ws_factory_builds_bybit_ws_client(
         self, bybit_paper_settings: Settings, bybit_event_bus: EventBus
     ) -> None:
-        with pytest.raises(NotImplementedError, match="B2"):
-            build_exchange_ws_client(bybit_paper_settings, bybit_event_bus)
+        from krakenbot.connectors.bybit.ws import BybitWebSocketClient
+
+        client = build_exchange_ws_client(bybit_paper_settings, bybit_event_bus)
+        assert isinstance(client, BybitWebSocketClient)
