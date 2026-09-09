@@ -1,10 +1,10 @@
 """Opt-in integration tests against the real Bybit EU API (api.bybit.eu).
 
 Skipped unless ``BYBIT_INTEGRATION`` is set:
-    BYBIT_INTEGRATION=1      read-only calls + paper round-trip (needs BYBIT_API_KEY/SECRET in .env)
+    BYBIT_INTEGRATION=1      read-only calls + paper round-trip (BYBIT_API_KEY/SECRET, read-only key)
     BYBIT_INTEGRATION=trade  additionally places ONE real PostOnly limit order far from the
-                             market (~6 USDC notional) and cancels it — requires a key with
-                             readOnly=0 + Spot Trade and >= 6 USDC available.
+                             market (~6 USDC notional) and cancels it — uses the dedicated
+                             BYBIT_TRADE_API_KEY/SECRET (Spot Trade, no withdraw), >= 6 USDC.
 
 Never places a real MARKET order.
 """
@@ -47,7 +47,6 @@ PAIR = "BTC/USDC"
 
 def _settings(mode: TradingMode) -> Settings:
     load_dotenv()
-    key, secret = os.getenv("BYBIT_API_KEY", ""), os.getenv("BYBIT_API_SECRET", "")
     if mode == TradingMode.LIVE:
         trading = TradingSettings.model_construct(
             mode=TradingMode.LIVE,
@@ -61,7 +60,7 @@ def _settings(mode: TradingMode) -> Settings:
     return Settings(
         environment="testing",
         exchange_name="bybit",
-        bybit=BybitSettings(api_key=key, api_secret=secret),
+        bybit=BybitSettings(),  # reads BYBIT_* and BYBIT_TRADE_* from the environment
         database=DatabaseSettings(url="postgresql+asyncpg://x:x@localhost:5432/unused"),
         trading=trading,
         _env_file=None,
@@ -70,8 +69,21 @@ def _settings(mode: TradingMode) -> Settings:
 
 @pytest.fixture
 async def live_client() -> BybitRestClient:
+    """LIVE-mode client signing with the READ-ONLY key (real reads, no orders)."""
     reset_event_bus()
-    client = BybitRestClient(_settings(TradingMode.LIVE), EventBus(), None)
+    client = BybitRestClient(_settings(TradingMode.LIVE), EventBus(), None, key_role="readonly")
+    yield client
+    await client.close()
+
+
+@pytest.fixture
+async def trade_client() -> BybitRestClient:
+    """LIVE-mode client signing with the TRADE key (BYBIT_TRADE_*)."""
+    reset_event_bus()
+    try:
+        client = BybitRestClient(_settings(TradingMode.LIVE), EventBus(), None)
+    except ValueError as e:
+        pytest.fail(str(e))
     yield client
     await client.close()
 
@@ -126,7 +138,9 @@ async def test_paper_round_trip_with_real_ticker(paper_client: BybitRestClient) 
 
 
 @pytest.mark.skipif(_MODE != "trade", reason="BYBIT_INTEGRATION=trade required (real order)")
-async def test_live_post_only_limit_round_trip(live_client: BybitRestClient) -> None:
+async def test_live_post_only_limit_round_trip(trade_client: BybitRestClient) -> None:
+    assert trade_client.key_role == "trade"
+    live_client = trade_client
     ticker = await live_client.get_ticker(PAIR)
     price = (ticker["last"] * Decimal("0.95")).quantize(Decimal("0.1"))
     amount = (Decimal("6") / price).quantize(Decimal("0.000001"))

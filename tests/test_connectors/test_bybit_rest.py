@@ -61,7 +61,12 @@ def _settings(mode: TradingMode, **overrides: object) -> Settings:
         app_name="KrakenBot-Test",
         environment="testing",
         exchange_name="bybit",
-        bybit=BybitSettings(api_key="test_bybit_key", api_secret="test_bybit_secret"),
+        bybit=BybitSettings(
+            api_key="test_bybit_key",
+            api_secret="test_bybit_secret",
+            trade_api_key="test_bybit_trade_key",
+            trade_api_secret="test_bybit_trade_secret",
+        ),
         database=DatabaseSettings(
             url="postgresql+asyncpg://test:test@localhost:5432/krakenbot_test",
         ),
@@ -136,10 +141,11 @@ def _ccxt_error(cls: type[Exception], ret_code: int, msg: str = "error") -> Exce
 class TestInit:
     def test_ccxt_options(self, bybit_paper_settings: Settings, bybit_event_bus: EventBus) -> None:
         with patch("ccxt.async_support.bybit") as mock_cls:
-            BybitRestClient(bybit_paper_settings, bybit_event_bus, None)
+            client = BybitRestClient(bybit_paper_settings, bybit_event_bus, None)
         config = mock_cls.call_args.args[0]
         assert config["hostname"] == "bybit.eu"
-        assert config["apiKey"] == "test_bybit_key"
+        assert config["apiKey"] == "test_bybit_key"  # paper -> read-only key
+        assert client.key_role == "readonly"
         assert config["enableRateLimit"] is True
         assert config["options"]["defaultType"] == "spot"
         assert config["options"]["adjustForTimeDifference"] is True
@@ -161,6 +167,42 @@ class TestInit:
     def test_live_flag(self, live_client: BybitRestClient) -> None:
         assert live_client.is_paper_mode is False
 
+    def test_live_uses_trade_key(
+        self, bybit_live_settings: Settings, bybit_event_bus: EventBus
+    ) -> None:
+        with patch("ccxt.async_support.bybit") as mock_cls:
+            client = BybitRestClient(bybit_live_settings, bybit_event_bus, None)
+        config = mock_cls.call_args.args[0]
+        assert config["apiKey"] == "test_bybit_trade_key"
+        assert config["secret"] == "test_bybit_trade_secret"
+        assert client.key_role == "trade"
+
+    def test_live_readonly_override(
+        self, bybit_live_settings: Settings, bybit_event_bus: EventBus
+    ) -> None:
+        with patch("ccxt.async_support.bybit") as mock_cls:
+            client = BybitRestClient(
+                bybit_live_settings, bybit_event_bus, None, key_role="readonly"
+            )
+        assert mock_cls.call_args.args[0]["apiKey"] == "test_bybit_key"
+        assert client.key_role == "readonly"
+
+    def test_live_without_trade_key_raises(self, bybit_event_bus: EventBus) -> None:
+        settings = _settings(TradingMode.LIVE)
+        settings.bybit = BybitSettings(api_key="ro", api_secret="ro", _env_file=None)
+        with (
+            patch("ccxt.async_support.bybit"),
+            pytest.raises(ValueError, match="BYBIT_TRADE_API_KEY"),
+        ):
+            BybitRestClient(settings, bybit_event_bus, None)
+
+    def test_paper_without_any_key_is_allowed(self, bybit_event_bus: EventBus) -> None:
+        settings = _settings(TradingMode.PAPER)
+        settings.bybit = BybitSettings(_env_file=None)
+        with patch("ccxt.async_support.bybit"):
+            client = BybitRestClient(settings, bybit_event_bus, None)
+        assert client.key_role == "readonly"
+
     def test_fees_default_to_bybit_when_not_set(self, paper_client: BybitRestClient) -> None:
         assert paper_client.fees.maker == Decimal("0.0010")
         assert paper_client.fees.taker == Decimal("0.0025")
@@ -178,7 +220,9 @@ class TestInit:
 
     def test_non_unified_account_disables_uta_option(self, bybit_event_bus: EventBus) -> None:
         settings = _settings(TradingMode.PAPER)
-        settings.bybit = BybitSettings(api_key="k", api_secret="s", account_type="CLASSIC")
+        settings.bybit = BybitSettings(
+            api_key="k", api_secret="s", account_type="CLASSIC", _env_file=None
+        )
         with patch("ccxt.async_support.bybit") as mock_cls:
             BybitRestClient(settings, bybit_event_bus, None)
         assert mock_cls.call_args.args[0]["options"]["enableUnifiedAccount"] is False

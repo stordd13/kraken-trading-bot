@@ -115,9 +115,26 @@ class TestExchangeNameRequired:
             trading=TradingSettings.model_construct(mode=TradingMode.LIVE, confirm_live="yes"),
             _env_file=None,
         )
-        settings.bybit = BybitSettings(api_key=SecretStr(""), api_secret=SecretStr(""))
-        with pytest.raises(ValueError, match="BYBIT_API_KEY"):
+        # read-only key present, trade key missing -> live must fail on the TRADE key
+        settings.bybit = BybitSettings(
+            api_key=SecretStr("ro"), api_secret=SecretStr("ro"), _env_file=None
+        )
+        with pytest.raises(ValueError, match="BYBIT_TRADE_API_KEY"):
             settings.validate_all()
+
+    def test_bybit_credentials_by_role(self) -> None:
+        bybit = BybitSettings(
+            api_key=SecretStr("ro-k"),
+            api_secret=SecretStr("ro-s"),
+            trade_api_key=SecretStr("tr-k"),
+            trade_api_secret=SecretStr("tr-s"),
+            _env_file=None,
+        )
+        assert bybit.credentials("readonly") == ("ro-k", "ro-s")
+        assert bybit.credentials("trade") == ("tr-k", "tr-s")
+        assert BybitSettings(_env_file=None).credentials("readonly") == ("", "")
+        with pytest.raises(ValueError, match="BYBIT_TRADE_API_KEY"):
+            BybitSettings(api_key=SecretStr("ro-k"), _env_file=None).credentials("trade")
 
 
 class TestBybitFees:

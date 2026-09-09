@@ -39,7 +39,7 @@ import uuid
 
 import ccxt.async_support as ccxt
 
-from krakenbot.config.settings import ExchangeFees, TradingMode
+from krakenbot.config.settings import BybitKeyRole, ExchangeFees, TradingMode
 from krakenbot.core.event_bus import EventBus, EventType
 from krakenbot.core.exceptions import (
     InsufficientBalanceError,
@@ -116,18 +116,37 @@ class BybitRestClient:
         settings: Settings,
         event_bus: EventBus,
         db_manager: DatabaseManager | None = None,
+        *,
+        key_role: BybitKeyRole | None = None,
     ) -> None:
+        """Build the client.
+
+        Args:
+            settings: Application settings (``settings.bybit`` holds both key pairs).
+            event_bus: Event bus for trade events.
+            db_manager: Optional DB manager for persistence.
+            key_role: Which API key pair to sign with. Defaults to ``"trade"``
+                (``BYBIT_TRADE_*``) in LIVE mode and ``"readonly"`` (``BYBIT_*``) in
+                PAPER mode. Pass ``"readonly"`` explicitly for read-only checks in
+                LIVE mode (audits).
+
+        Raises:
+            ValueError: If the trade key pair is required but missing.
+        """
         self._settings = settings
         self._event_bus = event_bus
         self._db_manager = db_manager
 
-        self._mode_prefix = "[PAPER]" if settings.trading.mode == TradingMode.PAPER else "[LIVE]"
+        is_live = settings.trading.mode == TradingMode.LIVE
+        self._mode_prefix = "[LIVE]" if is_live else "[PAPER]"
+        self._key_role: BybitKeyRole = key_role or ("trade" if is_live else "readonly")
 
         bybit_settings = settings.bybit
+        api_key, api_secret = bybit_settings.credentials(self._key_role)
         self._exchange = ccxt.bybit(
             {
-                "apiKey": bybit_settings.api_key.get_secret_value(),
-                "secret": bybit_settings.api_secret.get_secret_value(),
+                "apiKey": api_key,
+                "secret": api_secret,
                 "hostname": bybit_settings.hostname,
                 "enableRateLimit": True,
                 "options": {
@@ -174,7 +193,8 @@ class BybitRestClient:
             mode=settings.trading.mode.value,
             hostname=bybit_settings.hostname,
             account_type=bybit_settings.account_type,
-            has_api_key=bool(bybit_settings.api_key.get_secret_value()),
+            key_role=self._key_role,
+            has_api_key=bool(api_key),
             maker_fee=str(self._fees.maker),
             taker_fee=str(self._fees.taker),
         )
@@ -207,6 +227,11 @@ class BybitRestClient:
     def fees(self) -> ExchangeFees:
         """Fee schedule used by this client (paper fills and notional checks)."""
         return self._fees
+
+    @property
+    def key_role(self) -> BybitKeyRole:
+        """Which API key pair signs requests (``readonly`` or ``trade``)."""
+        return self._key_role
 
     @property
     def markets_loaded(self) -> bool:
@@ -1441,8 +1466,8 @@ class BybitRestClient:
 
     async def _fetch_real_balance(self) -> dict[str, Decimal]:
         """Fetch the real Bybit balance (even in paper mode); empty dict on failure."""
-        if not self._settings.bybit.api_key.get_secret_value():
-            logger.info("no_bybit_api_key_for_real_balance")
+        if not self._settings.bybit.credentials(self._key_role)[0]:
+            logger.info("no_bybit_api_key_for_real_balance", key_role=self._key_role)
             return {}
         try:
             await self._ensure_markets()

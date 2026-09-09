@@ -34,6 +34,18 @@ paresseusement (une fois, avant le premier appel exchange) ; échec → `KrakenA
 n'a plus de default depuis B1 (incident du 7 sept). La factory `build_exchange_rest_client` renvoie
 `BybitRestClient` ; `build_exchange_ws_client` lève `NotImplementedError` jusqu'à B2.
 
+## Clés API — schéma à 4 variables
+
+| Variable | Rôle | Utilisée par |
+|---|---|---|
+| `BYBIT_API_KEY` / `BYBIT_API_SECRET` | clé **read-only** | paper mode (balance réelle au premier démarrage), audits, tests d'intégration en lecture |
+| `BYBIT_TRADE_API_KEY` / `BYBIT_TRADE_API_SECRET` | clé **Trade** (Spot Trade uniquement, **jamais withdraw**) | `TRADING_MODE=live`, `bybit_b1_roundtrip.py --trade`, `BYBIT_INTEGRATION=trade` |
+
+`BybitSettings.credentials(role)` renvoie la paire selon `role ∈ {"readonly", "trade"}` et lève
+`ValueError` si la clé Trade est demandée mais absente. `BybitRestClient` choisit `trade` en LIVE
+et `readonly` en PAPER ; `BybitRestClient(..., key_role="readonly")` force la clé read-only sur un
+client LIVE (lectures réelles sans droit d'écriture). `validate_all()` exige `BYBIT_TRADE_*` en live.
+
 ## Fees (ne PAS lire depuis ccxt)
 
 | | Valeur | Note |

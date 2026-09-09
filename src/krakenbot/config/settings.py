@@ -120,6 +120,9 @@ class BinanceSettings(BaseSettings):
     )
 
 
+BybitKeyRole = Literal["readonly", "trade"]
+
+
 class BybitSettings(BaseSettings):
     """Bybit EU API configuration (spot, UTA account).
 
@@ -137,11 +140,19 @@ class BybitSettings(BaseSettings):
 
     api_key: SecretStr = Field(
         default=SecretStr(""),
-        description="Bybit EU API key",
+        description="Bybit EU READ-ONLY API key (paper mode, balance/OHLCV reads)",
     )
     api_secret: SecretStr = Field(
         default=SecretStr(""),
-        description="Bybit EU API secret",
+        description="Bybit EU READ-ONLY API secret",
+    )
+    trade_api_key: SecretStr = Field(
+        default=SecretStr(""),
+        description="Bybit EU TRADE API key (Spot Trade only, no withdraw) — live mode",
+    )
+    trade_api_secret: SecretStr = Field(
+        default=SecretStr(""),
+        description="Bybit EU TRADE API secret",
     )
     hostname: str = Field(
         default="bybit.eu",
@@ -157,6 +168,28 @@ class BybitSettings(BaseSettings):
         default="UNIFIED",
         description="Bybit account type for wallet-balance (UTA => 'UNIFIED')",
     )
+
+    def credentials(self, role: BybitKeyRole) -> tuple[str, str]:
+        """Return (key, secret) for the requested role.
+
+        ``"readonly"`` → ``BYBIT_API_KEY`` / ``BYBIT_API_SECRET`` (may be empty: public
+        endpoints still work). ``"trade"`` → ``BYBIT_TRADE_API_KEY`` /
+        ``BYBIT_TRADE_API_SECRET`` and both MUST be set.
+
+        Raises:
+            ValueError: If the trade credentials are requested but missing.
+        """
+        if role == "trade":
+            key = self.trade_api_key.get_secret_value()
+            secret = self.trade_api_secret.get_secret_value()
+            if not key or not secret:
+                raise ValueError(
+                    "BYBIT_TRADE_API_KEY / BYBIT_TRADE_API_SECRET are required to place real "
+                    "orders (create a Spot Trade key without withdraw on bybit.eu). "
+                    "BYBIT_API_KEY / BYBIT_API_SECRET stay read-only (paper mode)."
+                )
+            return key, secret
+        return self.api_key.get_secret_value(), self.api_secret.get_secret_value()
 
 
 class DatabaseSettings(BaseSettings):
@@ -753,12 +786,19 @@ class Settings(BaseSettings):
 
         # Validate credentials of the selected exchange in live mode
         if self.trading.mode == TradingMode.LIVE:
-            exchange_settings = getattr(self, self.exchange_name)
-            prefix = self.exchange_name.upper()
-            if not exchange_settings.api_key.get_secret_value():
-                errors.append(f"{prefix}_API_KEY is required for live trading")
-            if not exchange_settings.api_secret.get_secret_value():
-                errors.append(f"{prefix}_API_SECRET is required for live trading")
+            if self.exchange_name == "bybit":
+                # Live Bybit uses the dedicated TRADE key (Spot Trade, no withdraw)
+                if not self.bybit.trade_api_key.get_secret_value():
+                    errors.append("BYBIT_TRADE_API_KEY is required for live trading")
+                if not self.bybit.trade_api_secret.get_secret_value():
+                    errors.append("BYBIT_TRADE_API_SECRET is required for live trading")
+            else:
+                exchange_settings = getattr(self, self.exchange_name)
+                prefix = self.exchange_name.upper()
+                if not exchange_settings.api_key.get_secret_value():
+                    errors.append(f"{prefix}_API_KEY is required for live trading")
+                if not exchange_settings.api_secret.get_secret_value():
+                    errors.append(f"{prefix}_API_SECRET is required for live trading")
 
         # Validate database connection
         if not self.database.url:
