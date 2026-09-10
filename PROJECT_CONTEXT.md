@@ -1,7 +1,7 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 9 septembre 2026, post-B2 code (BybitWebSocketClient), avant observation serveur 24 h.
+> Dernière mise à jour : 10 septembre 2026, B2 clôturée (tag `v2.4.0-b2-bybit-ws`, collector Bybit en production).
 
 ---
 
@@ -38,7 +38,7 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   Telegram), factory, collector `EXCHANGE_NAME=bybit` (7 TF, `TaskScheduler` Kraken neutralisé), 46 tests +
   intégration réelle, collecte locale 1 h validée (225 candles, grille alignée, 3 décrochages réseau détectés par le pong et récupérés ; les candles clôturant pendant une coupure manquent → backfill B3). `deploy.yml` régénère un `.env` Bybit (secrets
   `BYBIT_*` à créer). **Fait le 9 sept** : merge dans `dev` (`ad296c8`), `.env` serveur, collector
-  `enable --now`. **Reste** : observation 24 h (commandes dans `skills/deployment.md`) puis tag `v2.4.0-b2-bybit-ws`.
+  `enable --now`. Observation 24 h **propre** (10 sept : 0 zombie, 0 trou 1m, 2 fermetures 1006 récupérées) → tag `v2.4.0-b2-bybit-ws`.
 - 🚧 Prochaine phase : B3 (import historique Bybit, `TaskScheduler` via factory).
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
