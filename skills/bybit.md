@@ -202,6 +202,15 @@ parallèle par les tests P6) :**
 - **Conséquence data** : la candle dont la clôture tombe pendant la coupure n'est jamais confirmée
   (Bybit ne rejoue pas) → 2 trous de 1 candle 1m par paire (13:39, 13:57), aucun sur 5m/15m/1h. À couvrir
   par le backfill REST de gaps (B3), pas par le WS.
+**Observation serveur 24 h (2026-09-09 18:12 → 2026-09-10 18:41 UTC, DB locale, `dev@ad296c8`) — PROPRE :**
+- 101 349 frames, 96 918 messages topic, 4 401 pongs, 5 667 candles clôturées, 0 erreur, 0 `data_flow_stale`,
+  0 zombie, 0 `pong_timeout`, 0 Telegram. Flux agrégé par 5 min : **min 164 (nuit), max 1 290, moy. 330**
+  → un silence de 10 min reste ≥ 3× hors norme même la nuit ; seuils 600/1800 s conservés.
+- 1m : 1 469 candles par paire = **complet** (0 trou), 35 % de candles plates la nuit (`volume=0`), 0 désalignement,
+  5m/15m/1h/4h/1d cohérents.
+- 2 fermetures côté serveur Bybit (`close_code 1006` à 01:37 et 02:31 UTC) → reconnect en 5 s + 24 topics
+  resouscrits, **aucune candle perdue** (aucune clôture dans la fenêtre). À surveiller sur la durée ; le
+  reconnect préventif 23 h n'a pas encore eu lieu car chaque reconnexion réarme le timer (prochain ≈ 01:31 UTC).
 - Contrôles SQL utilisés (à réutiliser pour l'observation 24 h) :
   ```sql
   SELECT pair, interval, COUNT(*), MIN(timestamp), MAX(timestamp) FROM market_data_ohlc
