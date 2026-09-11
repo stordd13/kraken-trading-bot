@@ -4,7 +4,7 @@ Validates that:
 - All configured timeframes (settings.scheduler.intervals) are subscribed per pair
 - Each pair also gets a ticker subscription
 - Total subscription count is correct for N pairs
-- TaskScheduler (Kraken-only until B3) is skipped for other exchanges
+- TaskScheduler is built for every exchange with the read-only factory client (B3)
 """
 
 from __future__ import annotations
@@ -122,8 +122,8 @@ class TestMultiPairSubscription:
         assert ws.subscribe_ticker.await_count == 1
 
 
-class TestTaskSchedulerGuard:
-    """TaskScheduler hardcodes KrakenRestClient: only instantiated for Kraken (B3 debt)."""
+class TestTaskSchedulerViaFactory:
+    """TaskScheduler is built for any exchange with the collector's read-only REST client (B3)."""
 
     @staticmethod
     def _collector(settings: MagicMock) -> DataCollector:
@@ -137,17 +137,42 @@ class TestTaskSchedulerGuard:
         return collector
 
     @staticmethod
-    def _settings(exchange_name: str) -> MagicMock:
+    def _settings(exchange_name: str, enabled: bool = True) -> MagicMock:
         settings = MagicMock()
         settings.scheduler.pairs = ["BTC/USDC"]
         settings.scheduler.intervals = [60]
-        settings.scheduler.enabled = True
+        settings.scheduler.enabled = enabled
         settings.exchange_name = exchange_name
         return settings
 
-    @pytest.mark.parametrize("exchange_name", ["bybit", "binance"])
-    async def test_scheduler_skipped_for_non_kraken(self, exchange_name: str) -> None:
+    @pytest.mark.parametrize("exchange_name", ["kraken", "binance", "bybit"])
+    async def test_scheduler_built_with_factory_client(self, exchange_name: str) -> None:
         collector = self._collector(self._settings(exchange_name))
+        db = MagicMock()
+        db.init_db = AsyncMock()
+        bus = MagicMock()
+        rest_client = MagicMock()
+        with (
+            patch("krakenbot.collector.get_event_bus", return_value=bus),
+            patch("krakenbot.collector.DatabaseManager", return_value=db),
+            patch(
+                "krakenbot.collector.build_exchange_rest_client", return_value=rest_client
+            ) as factory,
+            patch("krakenbot.collector.build_exchange_ws_client", return_value=MagicMock()),
+            patch("krakenbot.collector.TaskScheduler") as scheduler_cls,
+        ):
+            await collector.setup()
+
+        factory.assert_called_once_with(collector.settings, bus, db, read_only=True)
+        scheduler_cls.assert_called_once_with(collector.settings, bus, db, rest_client)
+        assert collector.task_scheduler is scheduler_cls.return_value
+        assert not any(
+            call.args and call.args[0] == "task_scheduler_skipped"
+            for call in collector.logger.warning.call_args_list
+        )
+
+    async def test_scheduler_disabled_by_settings(self) -> None:
+        collector = self._collector(self._settings("bybit", enabled=False))
         db = MagicMock()
         db.init_db = AsyncMock()
         with (
@@ -161,25 +186,3 @@ class TestTaskSchedulerGuard:
 
         scheduler_cls.assert_not_called()
         assert collector.task_scheduler is None
-        collector.logger.warning.assert_any_call(
-            "task_scheduler_skipped",
-            exchange=exchange_name,
-            reason="TaskScheduler hardcodes KrakenRestClient (REST backfill disabled)",
-            todo="B3: route TaskScheduler through build_exchange_rest_client",
-        )
-
-    async def test_scheduler_kept_for_kraken(self) -> None:
-        collector = self._collector(self._settings("kraken"))
-        db = MagicMock()
-        db.init_db = AsyncMock()
-        with (
-            patch("krakenbot.collector.get_event_bus", return_value=MagicMock()),
-            patch("krakenbot.collector.DatabaseManager", return_value=db),
-            patch("krakenbot.collector.build_exchange_rest_client", return_value=MagicMock()),
-            patch("krakenbot.collector.build_exchange_ws_client", return_value=MagicMock()),
-            patch("krakenbot.collector.TaskScheduler") as scheduler_cls,
-        ):
-            await collector.setup()
-
-        scheduler_cls.assert_called_once()
-        assert collector.task_scheduler is scheduler_cls.return_value

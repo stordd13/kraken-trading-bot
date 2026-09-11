@@ -3,7 +3,7 @@
 This module provides a standalone service that runs independently of the trading bot
 to collect OHLC data continuously. It uses both:
 - WebSocket for real-time data (latest candles)
-- REST API scheduler for historical backfill (multi-interval, Kraken only until B3)
+- REST API scheduler for the nightly gap backfill (any exchange, ``SCHEDULER_ENABLED``)
 
 The collector writes to the same database as the trading bot, using merge()
 for deduplication via the composite primary key (timestamp, pair, interval, exchange).
@@ -104,13 +104,15 @@ class DataCollector:
         await self.db_manager.init_db(self.settings)
         self.logger.debug("database_initialized")
 
-        # 3. Initialize REST client (for scheduled backfill)
+        # 3. Initialize REST client (for the scheduled gap backfill — reads only,
+        # so always the read-only key even once the shared .env is in live mode)
         self.rest_client = build_exchange_rest_client(
             self.settings,
             self.event_bus,
             self.db_manager,
+            read_only=True,
         )
-        self.logger.debug("rest_client_initialized")
+        self.logger.debug("rest_client_initialized", read_only=True)
 
         # 4. Initialize WebSocket client (for real-time data)
         # Collector passes db_manager so the WS client persists candles to DB.
@@ -122,23 +124,18 @@ class DataCollector:
         )
         self.logger.debug("websocket_client_initialized")
 
-        # 5. Initialize task scheduler (for historical backfill)
-        # TaskScheduler still instantiates KrakenRestClient directly (B3 debt):
-        # only start it for Kraken, never for another exchange.
-        if self.settings.scheduler.enabled and self.settings.exchange_name.lower() == "kraken":
+        # 5. Initialize task scheduler (periodic gap backfill, any exchange).
+        # The scheduler borrows self.rest_client; this collector owns and closes it.
+        if self.settings.scheduler.enabled:
             self.task_scheduler = TaskScheduler(
                 self.settings,
                 self.event_bus,
                 self.db_manager,
+                self.rest_client,
             )
-            self.logger.debug("task_scheduler_initialized")
-        elif self.settings.scheduler.enabled:
-            self.logger.warning(
-                "task_scheduler_skipped",
-                exchange=self.settings.exchange_name,
-                reason="TaskScheduler hardcodes KrakenRestClient (REST backfill disabled)",
-                todo="B3: route TaskScheduler through build_exchange_rest_client",
-            )
+            self.logger.debug("task_scheduler_initialized", exchange=self.settings.exchange_name)
+        else:
+            self.logger.info("task_scheduler_disabled", reason="SCHEDULER_ENABLED=false")
 
         self._setup_completed = True
 
