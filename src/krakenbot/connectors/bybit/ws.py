@@ -535,7 +535,7 @@ class BybitWebSocketClient(BaseWebSocketClient):
                     interval=interval,
                     close=str(k["close"]),
                     volume=str(volume),
-                    timestamp=timestamp.isoformat(),
+                    candle_timestamp=timestamp.isoformat(),
                 )
             else:
                 logger.debug(
