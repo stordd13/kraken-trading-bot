@@ -8,7 +8,7 @@ Usage:
     registry = MultiPairAnalyzerRegistry()
     registry.get_or_create("BTC/USDC")
     registry.get_or_create("ETH/USDC")
-    await registry.initialize_all(db_manager, exchange="binance")
+    await registry.initialize_all(db_manager, exchange=settings.exchange_name)
 
     # Route candles
     registry.update("BTC/USDC", candle_data, interval=240)
@@ -91,13 +91,14 @@ class MultiPairAnalyzerRegistry:
     async def initialize_all(
         self,
         db_manager: DatabaseManager,
-        exchange: str = "binance",
+        exchange: str,
     ) -> None:
         """Warm up all registered analyzers from historical DB data.
 
         Args:
             db_manager: Database manager for queries.
-            exchange: Exchange to filter data by.
+            exchange: Exchange to filter data by — pass ``settings.exchange_name``
+                (no default on purpose).
         """
         for pair, analyzer in self._analyzers.items():
             logger.info("analyzer_warmup_starting", pair=pair, exchange=exchange)

@@ -236,8 +236,8 @@ class MultiTimeframeAnalyzer:
     async def initialize(
         self,
         db_manager: DatabaseManager,
-        pair: str = "BTC/USDC",
-        exchange: str = "binance",
+        pair: str,
+        exchange: str,
     ) -> None:
         """Load historical candles from database for warmup.
 
@@ -247,7 +247,9 @@ class MultiTimeframeAnalyzer:
         Args:
             db_manager: Database manager for queries.
             pair: Trading pair to load data for.
-            exchange: Exchange to filter data by.
+            exchange: Exchange to filter data by — always ``settings.exchange_name``
+                in production (no default: mixing exchanges would mix timestamp
+                conventions, see ``krakenbot.data.backfill``).
         """
         from sqlalchemy import select
 
