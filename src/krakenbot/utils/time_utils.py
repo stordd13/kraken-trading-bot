@@ -4,7 +4,7 @@ This module provides helpers for converting between different time representatio
 used by Kraken API, CCXT library, and the internal database format.
 """
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 
 def minutes_to_ccxt_timeframe(interval_minutes: int) -> str:
@@ -194,3 +194,8 @@ def calculate_total_candles(
     total_duration = end_time - start_time
     total_minutes = total_duration.total_seconds() / 60
     return int(total_minutes / interval_minutes)
+
+
+def ms_to_datetime(ms: int) -> datetime:
+    """Exact epoch-milliseconds → aware UTC datetime (no float rounding)."""
+    return datetime.fromtimestamp(ms // 1000, tz=UTC) + timedelta(milliseconds=ms % 1000)
