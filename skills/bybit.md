@@ -211,6 +211,12 @@ parallèle par les tests P6) :**
 - 2 fermetures côté serveur Bybit (`close_code 1006` à 01:37 et 02:31 UTC) → reconnect en 5 s + 24 topics
   resouscrits, **aucune candle perdue** (aucune clôture dans la fenêtre). À surveiller sur la durée ; le
   reconnect préventif 23 h n'a pas encore eu lieu car chaque reconnexion réarme le timer (prochain ≈ 01:31 UTC).
+- **Nuit 2 (10→11 sept)** : Bybit EU ferme la connexion avec `close_code 1006` chaque nuit entre ~01:00 et
+  02:40 UTC (4 fermetures en 2 nuits : 01:37, 02:31, 01:04, 01:58), reconnect en ~6 s + 24 topics à chaque
+  fois. Le reconnect préventif 23 h ne s'est **jamais déclenché** : chaque fermeture réarme le timer (il est
+  de fait remplacé par les coupures Bybit). **Première perte réelle** : la fermeture de 01:04:54 a chevauché la
+  clôture 01:05:00 → candle 1m 01:05 absente pour BTC et SOL (ETH l'a reçue). Confirme le besoin du backfill
+  de gaps REST en **B3** (~1 candle 1m perdue par nuit et par paire au pire, jamais sur les TF ≥ 5m à ce jour).
 - Contrôles SQL utilisés (à réutiliser pour l'observation 24 h) :
   ```sql
   SELECT pair, interval, COUNT(*), MIN(timestamp), MAX(timestamp) FROM market_data_ohlc
