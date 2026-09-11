@@ -31,7 +31,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 |---|---|---|---|---|
 | **B1** | `BybitRestClient` (ccxt `hostname=bybit.eu`) + `BybitSettings` + `ExchangeFees.bybit_defaults()` + branche factory + tests ; fix `exchange_name` default ; fees maker/taker distincts dans `backtest.py` | 2-3 j | Round-trip d'ordre paper validé avec les vraies clés ; `scripts/audit/bybit_q1/q6/q7` relancés avec clés | ✅ 9 sept (round-trip live validé, `priceLimitRatioX` levé ; fees backtest → B4) |
 | **B2** | `BybitWebSocketClient` (v5 public kline, 10 args/subscribe, ping 20 s) + tests ; réactivation du collector | 3-4 j | Candles `exchange='bybit'` en DB en continu 24 h sans zombie | ✅ 10 sept — `v2.4.0-b2-bybit-ws`, collector Bybit en production, 24 h propres |
-| **B3** | Import historique Bybit EU (REST paginé, batch 1000) ; collector/scheduler génériques (`TaskScheduler` via factory, backfill gap) | 2 j | Data Bybit en DB (≈ 2.5M candles depuis 2025-06-11), backfill fonctionnel | 📋 |
+| **B3** | Import historique Bybit EU (REST paginé, batch 1000) ; collector/scheduler génériques (`TaskScheduler` via factory, backfill gap) | 2 j | Data Bybit en DB (≈ 2.5M candles depuis 2025-06-11), backfill fonctionnel | ✅ 11 sept — `v2.5.0-b3-bybit-data` (à taguer) : historique EU importé, backfill démontré sur gaps réels, scheduler actif ; constat convention timestamp → dette B4 |
 | **B4** | Re-run P6 (24 combos) et P7 (grid search phases 1-2 + rapport) sur données Binance avec fees Bybit maker/taker + spread/slippage mesurés | 1 j run + 1 j analyse | `results/B4_bybit_backtest_report.md`, sélection paper | 📋 — **prérequis absolu avant B5** |
 | **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
@@ -76,6 +76,13 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
   de gaps fonctionnel pour l'exchange courant ; defaults `exchange="binance"` des indicateurs →
   `settings.exchange_name`.
 - Dashboard / collector filtrent sur `settings.exchange_name`.
+- **Fait le 11 sept 2026** (`feat/b3-bybit-data`) : module `krakenbot.data.backfill` (LAG + tail, `ON CONFLICT
+  DO NOTHING`) + `scripts/backfill_gap.py` ; `BybitRestClient.fetch_ohlcv` sur l'endpoint brut v5 (end-stamped,
+  `vwap`) ; `scripts/bybit_kline_import.py` (reprise, trou de tête détecté) ; `TaskScheduler` avec client
+  read-only injecté, job unique 03:30 UTC, `SCHEDULER_BACKFILL_DAYS=3` ; `exchange` obligatoire au warmup ;
+  `fetch_ohlc.py` / `backfill_binance_gap.py` supprimés ; `candle_timestamp` dans les logs WS. **Constat** :
+  rows Binance open-stamped vs moteur end-stamped → dette 11 (`PROJECT_CONTEXT.md`), à trancher en ouverture
+  de B4. Rapport : `results/B3_bybit_data_report.md`. Dashboard : hors B3 (filtre déjà via settings côté collector).
 
 ### B4 — Re-run P6 + P7 avec fees Bybit (1 jour run + 1 jour analyse)
 
@@ -146,7 +153,7 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 5. **PostOnly en entrée** pour garantir le maker ; sorties SL/trailing/timeout en MARKET.
 6. **B4 est un prérequis absolu avant tout paper** : aucun classement P6/P7 (fees Binance flat) n'est repris tel quel.
 7. **Filtre exchange via `settings.exchange_name`**, plus de littéral en production.
-8. **`TaskScheduler` via la factory** (B3) — le backfill auto n'a jamais marché pour Binance.
+8. ✅ **`TaskScheduler` via la factory** (B3) — backfill de gaps actif pour l'exchange courant (Bybit).
 9. **Legacy Kraken** : stratégies et connecteur futures supprimés en B0.5 (supersède la décision « conserver
    tant que ça ne coûte rien » du plan de pivot) ; `connectors/kraken/rest.py` + `ws.py` restent (référence
    paper mode, `normalize_asset_*`) jusqu'à la généralisation B1 ; données `exchange='kraken'` supprimées

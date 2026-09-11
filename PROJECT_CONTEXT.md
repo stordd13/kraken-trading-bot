@@ -1,7 +1,7 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 10 septembre 2026, B2 clôturée (tag `v2.4.0-b2-bybit-ws`, collector Bybit en production).
+> Dernière mise à jour : 11 septembre 2026, B3 clôturée côté agent (branche `feat/b3-bybit-data`, PR vers `dev` ; tag `v2.5.0-b3-bybit-data` à poser par Bruno) : historique Bybit EU en DB, backfill de gaps, scheduler actif.
 
 ---
 
@@ -39,7 +39,12 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   intégration réelle, collecte locale 1 h validée (225 candles, grille alignée, 3 décrochages réseau détectés par le pong et récupérés ; les candles clôturant pendant une coupure manquent → backfill B3). `deploy.yml` régénère un `.env` Bybit (secrets
   `BYBIT_*` à créer). **Fait le 9 sept** : merge dans `dev` (`ad296c8`), `.env` serveur, collector
   `enable --now`. Observation 24 h **propre** (10 sept : 0 zombie, 0 trou 1m, 2 fermetures 1006 récupérées) → tag `v2.4.0-b2-bybit-ws`.
-- 🚧 Prochaine phase : B3 (import historique Bybit, `TaskScheduler` via factory).
+- ✅ **B3 (11 sept)** : historique Bybit EU importé (**2 543 347 rows**, 3 paires × 7 TF depuis 2025-06-11, 34 min,
+  0 trou, 0 désalignement), backfill de gaps démontré **avant** l'import (22 gaps / 952 candles, dont les 1m et 5m
+  `01:05` du 11/09), `TaskScheduler` générique (client read-only, job `gap_backfill` 03:30 UTC) actif après restart
+  du collector, cohérences 1d/1w (décalage d'un intervalle attendu), prix 1h (corr ≥ 0,99998) et WS/REST (identiques)
+  passées. Rapport : `results/B3_bybit_data_report.md`. **Constat** : dette 11 (convention timestamp, B4).
+- 🚧 Prochaine phase : B4 — ouvrir par la dette 11 (convention timestamp) puis fees maker/taker.
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
 
@@ -114,8 +119,10 @@ Flux d'un trade, multi-pair et conventions : `docs/architecture.md`. Où est quo
 
 **Collector** (`python -m krakenbot.collector`) : 24/7, candles OHLC par WebSocket (3 paires × 7 TF = 21
 klines + 3 tickers = 24 topics, `SCHEDULER_PAIRS` / `SCHEDULER_INTERVALS`), écrit dans `market_data_ohlc`
-avec `exchange='bybit'` (hardcodé dans le connecteur, comme `binance`/`kraken`). Le backfill REST
-(`TaskScheduler`) n'est actif que pour Kraken jusqu'à B3.
+avec `exchange='bybit'` (hardcodé dans le connecteur, comme `binance`/`kraken`). Le backfill REST de gaps
+(`TaskScheduler`, module `krakenbot.data.backfill`, B3) tourne pour tout exchange : job unique `gap_backfill`
+à 03:30 UTC (après les fermetures 1006 nocturnes), client REST **read-only** injecté par le collector,
+trous internes des 3 derniers jours + gap de fin, `ON CONFLICT DO NOTHING` (les rows WS font foi).
 
 **Trader** (`python -m krakenbot`) : start/stop, lit les candles via son propre WebSocket, orchestre les
 stratégies via le `MultiStrategyRouter` (seule stratégie top-level depuis B0.5), émet les ordres via
@@ -185,9 +192,9 @@ Contexte historique : les backtests P6 et P7 phase 1 ont été faits avec les fe
 - Chunks mensuels ; `timestamp` = fin de période (`open + interval`, Bybit `end + 1 ms`)
 
 **Volumes (septembre 2026)** :
-- `exchange='binance'` : ~8.7M rows (BTC/ETH/SOL × 7 TF, 2021-01 → 2026-06) — **base de backtest, figée**
-- `exchange='kraken'` : ~1.13M rows (legacy, à supprimer quand Bybit est validé en live)
-- `exchange='bybit'` : **valeur cible**, 0 row avant B3 (historique EU depuis 2025-06-11, ~2.5M candles)
+- `exchange='binance'` : 8 712 718 rows (BTC/ETH/SOL × 7 TF, 2021-01 → 2026-03-31) — **base de backtest, figée**, open-stamped (dette 11)
+- `exchange='kraken'` : 1 181 469 rows (legacy, à supprimer quand Bybit est validé en live)
+- `exchange='bybit'` : **2 543 347 rows** (B3, 2026-09-11 : 3 paires × 7 TF depuis 2025-06-11 09:21 UTC, + WS en continu, + backfill nocturne)
 
 **Filtre obligatoire** : le code de production filtre sur `settings.exchange_name` (cible `bybit`) ; les
 backtests lisent explicitement `exchange='binance'`.
@@ -195,7 +202,8 @@ backtests lisent explicitement `exchange='binance'`.
 ### Import de données
 
 - Binance Vision (historique, figé) : `scripts/binance_vision_import.py` — `skills/binance_import.md`.
-- Bybit (B3) : `scripts/bybit_kline_import.py` à écrire, REST paginé — `skills/bybit.md`.
+- Bybit (B3) : `scripts/bybit_kline_import.py` (REST brut v5 paginé, reprise `MAX(timestamp)`, batch 1000)
+  et `scripts/backfill_gap.py` (gaps, `--dry-run`) — runbooks dans `skills/bybit.md`.
 
 ### Migrations
 
@@ -251,9 +259,9 @@ Détail : `ROADMAP.md`.
    nu (= Kraken) ; `settings.exchange_fees` est ignoré ; rollover `0.0001`/4h en dur. **B4 exige maker
    et taker distincts** (sorties SL/trailing/timeout = MARKET = taker 0.25 %). À faire en B1 ou en
    ouverture de B4.
-3. **`TaskScheduler` hardcode `KrakenRestClient`** (`src/krakenbot/scheduler/task_scheduler.py`,
-   import + instanciation) au lieu de la factory, et importe `scripts.fetch_ohlc` depuis `src/`. Le
-   backfill automatique n'a jamais marché pour Binance. À généraliser via factory en **B3**.
+3. ✅ **B3** — `TaskScheduler` généralisé : client REST injecté par le collector (factory, `read_only=True`),
+   backfill de gaps `krakenbot.data.backfill`, plus d'import de `scripts/` depuis `src/` ;
+   `scripts/fetch_ohlc.py` et `backfill_binance_gap.py` supprimés.
 4. **Restore TimescaleDB non trivial** — procédure documentée dans `skills/database.md`.
 5. **Backup DB récurrent absent** — cron + rotation + storage box, requis avant **B5**.
 6. **mypy `union-attr`** : 10 erreurs dans `main.py` (13 avant B0.5), 15 sur `src/` (21 avant). Le
@@ -261,12 +269,26 @@ Détail : `ROADMAP.md`.
 7. **`execution/` dépend de `connectors/kraken/rest.py`** : `order_manager.py` et `risk.py` importent
    `normalize_asset_balances` / `normalize_asset_symbol` (normaliseurs Kraken appliqués à tous les
    exchanges) ; `engine.py` type-hint `KrakenRestClient`. À généraliser en B1.
-8. **Defaults `exchange="binance"`** dans `indicators/multi_timeframe.py` et `multi_pair_registry.py`
-   (warmup) : à passer par `settings.exchange_name` en B3.
+8. ✅ **B3** — `exchange` est **obligatoire** (plus de default `"binance"`) dans
+   `MultiTimeframeAnalyzer.initialize` et `MultiPairAnalyzerRegistry.initialize_all` ; `main.py` passe
+   `settings.exchange_name`.
 9. **`BacktestEngine` garde un chemin `is_multi` mort** (multi-position legacy, toujours `False`
    depuis B0.5) et `GridBacktester` un `_check_directional_pause` inutilisé — à nettoyer avec la dette 2.
 10. **`scripts/p6_5_diagnose_*.py`** ne passent pas `ruff format` (pré-existant, hors CI qui ne vérifie
     que `src/`).
+11. **Convention de timestamp Binance vs moteur de backtest (constat B3, 2026-09-11, à trancher en ouverture
+    de B4 — prérequis de validité, pas seulement de coûts).** Vérifié en DB : les rows `binance` (Vision)
+    sont stampées à l'**open time** (BTC 1d `2024-01-01` open 42274 / close 44185 = candle du 1er janvier ;
+    1m se termine à `2026-03-31 23:59`), alors que les rows WS (Binance et Bybit) sont stampées en **fin de
+    période** (`start + interval`). Moteur de backtest conçu pour end-stamps + données Binance open-stamped
+    = **look-ahead multi-TF dans P6/P7** (une candle 4h/1d est vue un intervalle trop tôt par rapport aux
+    candles 1h). Fenêtre avril–juin 2026 à auditer (collisions PK WS/Vision). Remédiation — re-stamp Binance
+    ou adaptation du moteur, plus assainissement de la fenêtre — à trancher en ouverture de B4, **avant tout
+    re-run**. Rien de plus en B3 (pas de fix, pas de re-stamp) ; les docs `skills/database.md` et
+    `skills/binance_import.md` disent désormais la vérité. Source : `results/B3_bybit_data_report.md`.
+12. **`fetch_ohlcv` end-stamped pour Bybit seulement** : le backfill générique (`krakenbot.data.backfill`)
+    n'est garanti correct que pour `EXCHANGE_NAME=bybit` ; sur binance/kraken il insérerait des candles
+    décalées d'un intervalle sans erreur (docstring du Protocol `connectors/exchange.py`).
 
 ---
 

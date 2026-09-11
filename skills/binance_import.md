@@ -86,8 +86,10 @@ Les fichiers Binance Vision utilisent :
 - **Microsecondes** (16 chiffres, ex: `1704067200000000`) pour les fichiers 2025+
 
 Le script gère les deux automatiquement via auto-détection (`if raw_ts > 10**14: raw_ts / 1_000_000`).
-Le `timestamp` stocké en DB est la **fin de période** (`open_time + interval`) ; Bybit (`end + 1 ms`)
-s'aligne sans conversion.
+Le `timestamp` stocké en DB par ce script est l'**open time** (`row[0]`, aucun décalage — vérifié en DB
+le 2026-09-11 : BTC 1d `2024-01-01` = candle du 1er janvier). Les rows Bybit (WS + import B3) sont en
+**fin de période** (`start + interval`) : décalage d'un intervalle entre les deux exchanges pour la même
+candle. Voir `skills/database.md` (conventions) et la dette B4 dans `PROJECT_CONTEXT.md`.
 
 ### Inserts par batch de 1000
 
@@ -141,6 +143,8 @@ Vérifier :
 
 ## Trous récents (backfill)
 
-`scripts/backfill_binance_gap.py` (P7) comble un gap Binance via l'API REST publique
-(`api.binance.com`), tant qu'elle reste accessible depuis l'UE — sans garantie. Pas d'usage prévu
-après B3 : la source live devient Bybit.
+`scripts/backfill_binance_gap.py` (P7) a été supprimé en B3, remplacé par le générique
+`scripts/backfill_gap.py` (module `krakenbot.data.backfill`, exchange = `settings.exchange_name`).
+Il n'est **pas** garanti correct pour Binance (le REST ccxt renvoie l'open time alors que les rows Vision
+sont open-stamped et les rows WS end-stamped) — la source live est Bybit depuis B2, les données Binance
+sont figées.

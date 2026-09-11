@@ -37,8 +37,8 @@ sudo docker exec krakenbot-db psql -U krakenbot -d krakenbot -c \
 ```
 Sur le serveur la DB est locale (pas de tunnel) : les 3 décrochages vus en collecte locale ne devraient pas se
 reproduire ; s'il y a des reconnexions, c'est un signal réseau réel. Si 24 h propres → tag `v2.4.0-b2-bybit-ws`.
-Note : le champ `timestamp` des logs `bybit_ws_ohlc_complete` est l'heure du log (collision avec structlog),
-pas la clôture de la candle — lire la DB pour les timestamps de candles (à renommer en B3).
+Note : depuis B3 la clôture de la candle est loggée sous `candle_timestamp` dans `bybit_ws_ohlc_complete` /
+`binance_ws_ohlc_complete` ; `timestamp` reste l'heure du log (clé réservée de structlog).
 
 ## Accès serveur
 

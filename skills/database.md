@@ -98,8 +98,13 @@ GROUP BY exchange, pair, interval
 ORDER BY exchange, pair, interval;
 ```
 
-Notes : SOL/USDC commence le 2021-09-24 sur Binance. `timestamp` = fin de période (`open_time + interval`),
-convention conservée pour Bybit (`end + 1 ms`).
+Notes : SOL/USDC commence le 2021-09-24 sur Binance. **Conventions de `timestamp` divergentes, vérifiées
+en DB (B3, 2026-09-11)** : les rows `binance` (import Vision) sont stampées à l'**open time** (BTC 1d
+`2024-01-01` = candle du 1er janvier, 1m se termine à `23:59`) ; les rows `bybit` (WS B2 + import B3) sont
+stampées en **fin de période** (`start + interval` = `end + 1 ms`). Même candle 1d/1w ⇒ timestamps décalés
+d'exactement un intervalle entre les deux exchanges. Ne jamais mélanger les deux exchanges dans une même
+série (filtre `settings.exchange_name`) ; remédiation côté Binance/moteur de backtest tranchée en B4
+(`PROJECT_CONTEXT.md` § Dettes).
 
 ## Inserts — TOUJOURS BATCHER
 
