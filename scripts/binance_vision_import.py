@@ -3,6 +3,13 @@
 Downloads monthly ZIP files from data.binance.vision and imports them
 into market_data_ohlc with exchange='binance'.
 
+Timestamp convention: the DB ``timestamp`` is the candle **period end**
+(``open_time + interval``), the project standard shared by the WebSocket
+collectors and the Bybit import (see ``krakenbot.data.backfill``).  Before
+B4.1 this script stored the Vision ``open_time`` as is; the rows already in
+DB were re-stamped by ``scripts/audit/b4_restamp_binance.py``
+(``results/B4_1_timestamp_restamp_report.md``).
+
 Usage:
     poetry run python scripts/binance_vision_import.py \\
         --pairs BTC/USDC,ETH/USDC,SOL/USDC \\
@@ -108,6 +115,8 @@ def parse_klines_csv(csv_data: bytes, pair: str, interval: int) -> list[dict]:
     open_time, open, high, low, close, volume,
     close_time, quote_volume, trades_count,
     taker_buy_volume, taker_buy_quote_volume, ignore
+
+    The returned ``timestamp`` is ``open_time + interval`` (period end).
     """
     rows: list[dict] = []
     text = csv_data.decode("utf-8")
@@ -127,9 +136,11 @@ def parse_klines_csv(csv_data: bytes, pair: str, interval: int) -> list[dict]:
             # Milliseconds: ~13 digits (e.g. 1704067200000)
             # Microseconds: ~16 digits (e.g. 1704067200000000)
             if raw_ts > 10**14:
-                timestamp = datetime.fromtimestamp(raw_ts / 1_000_000, tz=UTC)
+                open_time = datetime.fromtimestamp(raw_ts / 1_000_000, tz=UTC)
             else:
-                timestamp = datetime.fromtimestamp(raw_ts / 1000, tz=UTC)
+                open_time = datetime.fromtimestamp(raw_ts / 1000, tz=UTC)
+            # row[0] is the open time; the DB stores the period end (B4.1).
+            timestamp = open_time + timedelta(minutes=interval)
 
             rows.append(
                 {

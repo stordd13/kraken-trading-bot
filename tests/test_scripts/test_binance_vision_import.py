@@ -3,7 +3,7 @@
 # ruff: noqa: E402
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import io
 from pathlib import Path
@@ -83,13 +83,28 @@ class TestParseKlinesCsv:
         rows = parse_klines_csv(SAMPLE_CSV_WITH_HEADER, "BTC/USDC", 60)
         assert len(rows) == 2
 
-    def test_timestamp_is_utc(self) -> None:
+    def test_timestamp_is_utc_period_end(self) -> None:
         rows = parse_klines_csv(SAMPLE_CSV_NO_HEADER, "BTC/USDC", 60)
         ts = rows[0]["timestamp"]
         assert isinstance(ts, datetime)
         assert ts.tzinfo is not None
-        # 1704067200000 ms = 2024-01-01 00:00:00 UTC
-        assert ts == datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
+        # 1704067200000 ms = open time 2024-01-01 00:00:00 UTC → stored at the period end (+1h)
+        assert ts == datetime(2024, 1, 1, 1, 0, 0, tzinfo=UTC)
+
+    def test_timestamp_period_end_per_interval(self) -> None:
+        """B4.1: DB timestamp = open_time + interval for every TF, ms and µs inputs alike."""
+        open_time = datetime(2024, 1, 1, 0, 0, 0, tzinfo=UTC)
+        for interval in (1, 5, 15, 60, 240, 1440, 10080):
+            for raw in ("1704067200000", "1704067200000000"):  # ms, µs
+                csv_data = (raw + ",1,2,0.5,1.5,10,1704070799999,0,3,0,0,0\n").encode()
+                rows = parse_klines_csv(csv_data, "BTC/USDC", interval)
+                assert rows[0]["timestamp"] == open_time + timedelta(minutes=interval), (
+                    interval,
+                    raw,
+                )
+        # 1w candle opening Monday 2024-01-01 closes Monday 2024-01-08 00:00 (Monday-anchored grid)
+        weekly = parse_klines_csv(b"1704067200000,1,2,0.5,1.5,10,0,0,3,0,0,0\n", "BTC/USDC", 10080)
+        assert weekly[0]["timestamp"] == datetime(2024, 1, 8, tzinfo=UTC)
 
     def test_empty_csv_returns_empty(self) -> None:
         rows = parse_klines_csv(b"", "BTC/USDC", 60)
