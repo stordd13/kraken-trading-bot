@@ -78,6 +78,10 @@ class EventType(str, Enum):
     BOT_STOPPED = "bot.stopped"
     BOT_PAUSED = "bot.paused"
 
+    # Scheduler events (TaskScheduler gap backfill, one per run)
+    SCHEDULER_TASK_SUCCESS = "scheduler.task_success"
+    SCHEDULER_TASK_FAILED = "scheduler.task_failed"
+
 
 @dataclass
 class Event:

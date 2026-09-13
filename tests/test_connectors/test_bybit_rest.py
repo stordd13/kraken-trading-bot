@@ -10,6 +10,7 @@ IMPORTANT: ccxt is mocked — no real API request is ever made.
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -573,16 +574,93 @@ class TestLiveReadMethods:
         assert ticker["high"] is None
         assert live_client._last_prices["BTC/USDC"] == Decimal("50000.0")
 
-    async def test_fetch_ohlcv(self, live_client: BybitRestClient) -> None:
-        live_client._exchange.fetch_ohlcv = AsyncMock(
-            return_value=[[1700000000000, 1.0, 2.0, 0.5, 1.5, 10.0, 15.0]]
+    async def test_fetch_ohlcv_raw_kline_contract(self, live_client: BybitRestClient) -> None:
+        """Raw v5 kline: end-stamped, vwap = turnover/volume, ascending, limit capped, EU symbol."""
+        # Bybit returns the list DESCENDING: [start(ms), o, h, l, c, volume, turnover]
+        live_client._exchange.publicGetV5MarketKline = AsyncMock(
+            return_value={
+                "retCode": 0,
+                "retMsg": "OK",
+                "result": {
+                    "list": [
+                        ["1700014400000", "2", "3", "1", "2.5", "0", "0"],  # flat candle
+                        ["1700000000000", "1", "2", "0.5", "1.5", "10", "15"],
+                    ]
+                },
+            }
         )
-        candles = await live_client.fetch_ohlcv("BTC/USDC", 240, limit=5000)
-        kwargs = live_client._exchange.fetch_ohlcv.call_args.kwargs
-        assert kwargs["timeframe"] == "4h"
-        assert kwargs["limit"] == 1000
+        since = datetime(2023, 11, 14, 22, 13, 20, tzinfo=UTC)  # 1700000000
+        calls_before = live_client.stats["api_calls"]
+        candles = await live_client.fetch_ohlcv("BTC/USDC", 240, since=since, limit=5000)
+
+        params = live_client._exchange.publicGetV5MarketKline.call_args.args[0]
+        assert params == {
+            "category": "spot",
+            "symbol": "BTCUSDC",
+            "interval": "240",
+            "limit": 1000,
+            "start": 1700000000000,
+        }
+        assert [c["timestamp"] for c in candles] == [
+            datetime.fromtimestamp(1700000000 + 4 * 3600, tz=UTC),  # start + interval
+            datetime.fromtimestamp(1700014400 + 4 * 3600, tz=UTC),
+        ]
         assert candles[0]["close"] == Decimal("1.5")
-        assert candles[0]["timestamp"].tzinfo is not None
+        assert candles[0]["vwap"] == Decimal("1.5")  # 15 / 10
+        assert candles[1]["volume"] == Decimal("0") and candles[1]["vwap"] is None
+        assert all(c["timestamp"].tzinfo is not None for c in candles)
+        assert live_client.stats["api_calls"] >= calls_before + 1
+
+    async def test_fetch_ohlcv_excludes_in_progress_candle(
+        self, live_client: BybitRestClient
+    ) -> None:
+        now = datetime.now(UTC)
+        current_start_ms = int(now.timestamp()) // 60 * 60 * 1000
+        prev_start_ms = current_start_ms - 60_000
+        live_client._exchange.publicGetV5MarketKline = AsyncMock(
+            return_value={
+                "retCode": 0,
+                "result": {
+                    "list": [
+                        [str(current_start_ms), "1", "1", "1", "1", "1", "1"],
+                        [str(prev_start_ms), "1", "1", "1", "1", "1", "1"],
+                    ]
+                },
+            }
+        )
+        candles = await live_client.fetch_ohlcv("ETH/USDC", 1)
+        assert len(candles) == 1
+        assert candles[0]["timestamp"] == datetime.fromtimestamp(prev_start_ms / 1000 + 60, tz=UTC)
+        assert "start" not in live_client._exchange.publicGetV5MarketKline.call_args.args[0]
+
+    async def test_fetch_ohlcv_weekly_and_daily_intervals(
+        self, live_client: BybitRestClient
+    ) -> None:
+        live_client._exchange.publicGetV5MarketKline = AsyncMock(
+            return_value={"retCode": 0, "result": {"list": []}}
+        )
+        await live_client.fetch_ohlcv("SOL/USDC", 1440)
+        assert live_client._exchange.publicGetV5MarketKline.call_args.args[0]["interval"] == "D"
+        await live_client.fetch_ohlcv("SOL/USDC", 10080)
+        assert live_client._exchange.publicGetV5MarketKline.call_args.args[0]["interval"] == "W"
+
+    async def test_fetch_ohlcv_unsupported_interval(self, live_client: BybitRestClient) -> None:
+        with pytest.raises(ValueError, match="Unsupported interval"):
+            await live_client.fetch_ohlcv("BTC/USDC", 7)
+
+    async def test_fetch_ohlcv_non_zero_ret_code(self, live_client: BybitRestClient) -> None:
+        live_client._exchange.publicGetV5MarketKline = AsyncMock(
+            return_value={"retCode": 10001, "retMsg": "params error", "result": {}}
+        )
+        with pytest.raises(KrakenAPIError, match="retCode=10001"):
+            await live_client.fetch_ohlcv("BTC/USDC", 60)
+
+    async def test_fetch_ohlcv_ccxt_error_is_translated(self, live_client: BybitRestClient) -> None:
+        live_client._exchange.publicGetV5MarketKline = AsyncMock(
+            side_effect=_ccxt_error(ccxt.RateLimitExceeded, 10006, "too many visits")
+        )
+        with pytest.raises(RateLimitError):
+            await live_client.fetch_ohlcv("BTC/USDC", 60)
 
     async def test_get_open_orders_and_history(self, live_client: BybitRestClient) -> None:
         live_client._exchange.fetch_open_orders = AsyncMock(

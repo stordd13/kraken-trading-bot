@@ -99,7 +99,24 @@ class ExchangeRestClient(Protocol):
         since: datetime | None = None,
         limit: int = 720,
     ) -> list[dict[str, Any]]:
-        """Fetch historical OHLC candles."""
+        """Fetch historical OHLC candles, oldest first.
+
+        Each candle is a dict ``{timestamp, pair, interval, open, high, low,
+        close, volume}`` (Decimals, aware UTC datetime) with an optional
+        ``vwap`` key.
+
+        Timestamp convention — honest statement of the invariant:
+
+        * **Bybit** (B3): ``timestamp = open_time + interval`` (period end),
+          exactly as the WebSocket collector stores ``exchange='bybit'`` rows;
+          ``vwap = turnover / volume``; the in-progress candle is excluded.
+          This is the only client on which ``krakenbot.data.backfill`` is
+          guaranteed correct.
+        * **Binance / Kraken**: ccxt *open* time, no ``vwap``.  Binance rows in
+          DB are a mix of Vision (open-stamped) and WS (end-stamped) data, so
+          no single invariant holds there.  A gap backfill on these exchanges
+          would insert candles shifted by one interval without any error.
+        """
         ...
 
     async def get_open_orders(self, pair: str | None = None) -> list[dict[str, Any]]:
@@ -129,10 +146,19 @@ def build_exchange_rest_client(
     settings: Settings,
     event_bus: EventBus,
     db_manager: DatabaseManager | None = None,
+    *,
+    read_only: bool = False,
 ) -> ExchangeRestClient:
     """Build the REST client used by runtime execution.
 
     Dispatches on ``settings.exchange_name`` (required, validated by Settings).
+
+    Args:
+        read_only: Sign with the read-only API key even in LIVE mode.  Used by
+            the collector / gap backfill, which never place orders, so the
+            trade key is never loaded there once the shared ``.env`` switches
+            to ``TRADING_MODE=live`` (B5).  Only Bybit distinguishes key roles
+            (``BYBIT_*`` vs ``BYBIT_TRADE_*``); Binance and Kraken ignore the flag.
     """
     exchange_name = settings.exchange_name.lower()
 
@@ -144,7 +170,9 @@ def build_exchange_rest_client(
     if exchange_name == "bybit":
         from krakenbot.connectors.bybit.rest import BybitRestClient
 
-        return BybitRestClient(settings, event_bus, db_manager)
+        return BybitRestClient(
+            settings, event_bus, db_manager, key_role="readonly" if read_only else None
+        )
 
     # Kraken (legacy)
     from krakenbot.connectors.kraken.rest import KrakenRestClient

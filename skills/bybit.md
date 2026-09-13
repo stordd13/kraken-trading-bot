@@ -187,8 +187,9 @@ Implémenté en B1 : `ExchangeFees.bybit_defaults()` (maker 0.0010, taker 0.0025
   `BYBIT_INTEGRATION=1 poetry run pytest tests/test_connectors/test_bybit_ws_integration.py` (connexion
   réelle, ≥ 1 pong + ≥ 1 kline/ticker en ≤ 90 s, sans DB ni clé).
 - Collector (`EXCHANGE_NAME=bybit`) : 3 paires × 7 TF (`SCHEDULER_INTERVALS`, 1m inclus) + 3 tickers = 24
-  topics en 3 requêtes. `TaskScheduler` (hardcode Kraken) n'est instancié que si `EXCHANGE_NAME=kraken`
-  (`task_scheduler_skipped` sinon) — pas de backfill REST Bybit avant B3.
+  topics en 3 requêtes. Depuis B3 le `TaskScheduler` (backfill de gaps REST, § « Données historiques »)
+  est instancié pour tout exchange, contrôlé par `SCHEDULER_ENABLED`, avec le client REST **read-only**
+  du collector (`build_exchange_rest_client(..., read_only=True)`).
 
 **Observé — collecte locale 1 h du 2026-09-09 (13:07 → 14:07 UTC, Wi-Fi local, tunnel SSH saturé en
 parallèle par les tests P6) :**
@@ -221,21 +222,59 @@ parallèle par les tests P6) :**
   ```sql
   SELECT pair, interval, COUNT(*), MIN(timestamp), MAX(timestamp) FROM market_data_ohlc
    WHERE exchange='bybit' GROUP BY pair, interval ORDER BY pair, interval;
-  SELECT interval, COUNT(*) FILTER (WHERE EXTRACT(EPOCH FROM timestamp)::bigint % (interval*60) <> 0) AS misaligned
+  -- 1w : la grille est ancrée le LUNDI 00:00 UTC (epoch 0 = jeudi) → offset 4 jours
+  SELECT interval, COUNT(*) FILTER (WHERE (EXTRACT(EPOCH FROM timestamp)::bigint
+           - CASE WHEN interval = 10080 THEN 4*86400 ELSE 0 END) % (interval*60) <> 0) AS misaligned
     FROM market_data_ohlc WHERE exchange='bybit' GROUP BY interval;            -- 0 attendu partout
   WITH t AS (SELECT pair, timestamp, LAG(timestamp) OVER (PARTITION BY pair ORDER BY timestamp) prev
              FROM market_data_ohlc WHERE exchange='bybit' AND interval=1)
   SELECT pair, prev, timestamp FROM t WHERE timestamp - prev > interval '1 minute';  -- = reconnexions
   ```
 
-## Données historiques (B3)
+## Données historiques (B3) — ✅ fait le 2026-09-11 (`results/B3_bybit_data_report.md`)
 
 - Pas de dumps kline spot sur `public.bybit.com` (trades tick uniquement, et du global). Import REST
   paginé : `GET /v5/market/kline?category=spot&symbol=…&interval=…&start=…&limit=1000`, liste
-  **descendante**, avancer de `last_start + interval`. ~2 532 appels pour tout l'historique EU (≈ 15 min).
-- Format ligne : `[startTime(ms), open, high, low, close, volume(base), turnover(quote)]`.
-- Les premières candles EU (2025-06-11) ont `volume=0` : candles plates, pas des trous — l'import doit
-  les accepter. Insertion `exchange='bybit'`, batch 1000, `ON CONFLICT DO NOTHING`.
+  **descendante**, avancer de `last_start + interval`. Format ligne :
+  `[startTime(ms), open, high, low, close, volume(base), turnover(quote)]`.
+- **`BybitRestClient.fetch_ohlcv` (B3)** passe par l'endpoint brut via l'API implicite ccxt
+  (`publicGetV5MarketKline`, même hostname EU, même token-bucket, coût 5) et **non** par `fetch_ohlcv`
+  ccxt (qui perd `turnover`). Contrat : `timestamp = start + interval` (fin de période, = rows WS),
+  `vwap = turnover / volume` quantisé 1e-8 (`None` si volume 0), candle en cours exclue, liste
+  ascendante, `since` = open time de la première candle voulue (= `MAX(timestamp)` DB pour reprendre).
+  **Ce contrat n'existe que pour Bybit** : Binance/Kraken renvoient l'open time ccxt → le backfill générique
+  n'est correct que pour `EXCHANGE_NAME=bybit` (docstring du Protocol `connectors/exchange.py`).
+- Première candle EU : **2025-06-11 09:00 UTC** (1h, DB ts `10:00`) ; 1w : première clôture `2025-06-16`
+  (lundi). Les premières candles sont plates (`volume=0`, `vwap NULL`) : ce sont des candles, pas des trous.
+- Convention 1d/1w vs Binance : décalage d'**exactement un intervalle** (Binance Vision = open time),
+  documenté dans `skills/database.md`, remédiation B4.
+
+### Runbook import historique — `scripts/bybit_kline_import.py`
+
+```bash
+tmux new -s b3-import && cd ~/apps/kraken-trading-bot        # serveur, DB locale, collector actif
+poetry run python scripts/bybit_kline_import.py --dry-run     # curseurs + nb d'appels estimés
+poetry run python scripts/bybit_kline_import.py               # 3 paires × 7 TF, ~2 550 appels, ~15 min
+poetry run python scripts/bybit_kline_import.py --pairs BTC/USDC --intervals 60 --force-full
+```
+Reprise par `MAX(timestamp)` par (pair, interval) **sauf** trou de tête (`MIN(timestamp)` trop récent :
+rows WS présentes mais historique jamais importé → scan complet depuis `--since`, défaut `2025-06-01`).
+Insert `ON CONFLICT DO NOTHING` batch 1000 : les candles du collector font foi. Condition d'arrêt loggée
+(`last_responses` : page courte puis réponse vide = fin d'historique, ou `reached_now`).
+
+### Runbook backfill de gaps — `scripts/backfill_gap.py` / `TaskScheduler`
+
+```bash
+poetry run python scripts/backfill_gap.py --dry-run                 # table des gaps, aucune écriture
+poetry run python scripts/backfill_gap.py                           # comble tout (trous internes + fin)
+poetry run python scripts/backfill_gap.py --lookback-days 3 --intervals 1 5
+```
+Module `krakenbot.data.backfill` : trous internes (query LAG) + gap de fin (`MAX(timestamp)` → dernière
+candle clôturée, marge 15 s), `fetch_ohlcv` + `ON CONFLICT DO NOTHING`. Le même code tourne dans le collector
+via `TaskScheduler` : job unique `gap_backfill`, cron `SCHEDULER_DAILY_BACKFILL_CRON` (défaut **`30 3 * * *`**,
+après la fenêtre des fermetures 1006 de 01:00–02:40 UTC), fenêtre de scan `SCHEDULER_BACKFILL_DAYS`
+(défaut 3). Chaque run écrit `task_execution_logs` (1 row par gap + 1 row de run `pair='*'`, `interval=0`)
+et logge `scheduled_backfill_completed` (gaps_found / gaps_filled / candles_inserted).
 - Décision B0 confirmée : **les backtests restent sur les données Binance** (corrélation close 1h BTC
   Bybit global vs Binance 0.999999, EU vs Binance 0.99999, écart moyen ≈ 0, pas de biais). L'historique
   EU sert de contrôle out-of-sample et de warmup live.
@@ -281,7 +320,8 @@ Diagnostic : `poetry run python scripts/audit/bybit_key_diag.py` (read-only).
 | `connectors/bybit/rest.py` | ✅ B1 : clone de `binance/rest.py` (ccxt hostname, market BUY sans price, PostOnly normalisé, `orderLinkId`, mapping `retCode`, UTA) — 67 tests unitaires + intégration opt-in |
 | `connectors/bybit/ws.py` | ✅ B2 : clone de `binance/ws.py` (subscribe par lots de 10, parse `kline.*`/`tickers.*`, ping 20 s, watchdog 2 paliers configurable) — 46 tests + intégration opt-in |
 | `execution/order_manager.py` | statuts via ccxt (`open/closed/canceled/rejected`), `PartiallyFilledCanceled` |
-| `scripts/bybit_kline_import.py` | nouveau, import REST paginé |
+| `scripts/bybit_kline_import.py` | ✅ B3 : import REST paginé brut v5, reprise `MAX(timestamp)`, batch 1000, `ON CONFLICT DO NOTHING` |
+| `data/backfill.py`, `scripts/backfill_gap.py` | ✅ B3 : backfill de gaps exchange-agnostic (LAG + tail), CLI `--dry-run` |
 | `scripts/backtest.py`, `run_p6/p7` | fees maker/taker distincts (dette B4), `--fees bybit` sur données Binance |
-| `scheduler/task_scheduler.py` | passer par la factory (hardcode `KrakenRestClient` aujourd'hui) — B2 : le collector ne l'instancie plus hors Kraken (B3) |
+| `scheduler/task_scheduler.py` | ✅ B3 : client REST read-only injecté par le collector, job unique `gap_backfill` 03:30 UTC, plus d'import `scripts/` |
 | `strategies.yaml`, `main.py`, `dashboard.py`, `collector` | `exchange: bybit`, filtre `settings.exchange_name` — ✅ B2 pour le collector (intervals depuis settings, garde scheduler, `SCHEDULER_PAIRS` default BTC/ETH/SOL) |

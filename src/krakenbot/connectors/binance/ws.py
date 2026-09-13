@@ -463,7 +463,7 @@ class BinanceWebSocketClient(BaseWebSocketClient):
                     pair=pair,
                     interval=interval,
                     close=k["c"],
-                    timestamp=timestamp.isoformat(),
+                    candle_timestamp=timestamp.isoformat(),
                 )
             else:
                 logger.debug(

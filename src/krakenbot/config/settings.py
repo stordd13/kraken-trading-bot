@@ -469,12 +469,18 @@ class ScheduledTasksSettings(BaseSettings):
 
     # Cron expression for daily OHLC backfill (all intervals)
     daily_backfill_cron: str = Field(
-        default="0 2 * * *",  # 02:00 UTC daily
-        description="Cron expression for daily OHLC backfill (all intervals)",
+        # 03:30 UTC: after the nightly Bybit EU 1006 closes (observed 01:00-02:40 UTC),
+        # so the gap backfill runs once the WS has settled, not during the breakage.
+        default="30 3 * * *",
+        description="Cron expression for the daily gap backfill (all pairs x intervals)",
     )
     backfill_days: int = Field(
-        default=1,
-        description="Number of days to backfill each run",
+        default=3,
+        description=(
+            "Lookback window (days) scanned for internal gaps on each run; the tail gap "
+            "(last stored candle -> now) is always checked. 3 covers a Friday-night outage "
+            "found on Monday."
+        ),
         ge=1,
         le=30,
     )

@@ -2,12 +2,13 @@
 
 > Une ligne par fichier conservé : date, phase, verdict, pourquoi il est encore là.
 > Tout ce qui n'est plus une référence courante est dans `results/archive/` (rien n'est supprimé).
-> Dernière mise à jour : 2026-09-08 (B0.5).
+> Dernière mise à jour : 2026-09-11 (B3).
 
 ## Fichiers de référence (à la racine de `results/`)
 
 | Fichier | Date | Phase | Verdict / contenu | Pourquoi il reste |
 |---|---|---|---|---|
+| `B3_bybit_data_report.md` | 2026-09-11 | B3 | **Historique Bybit EU en DB** (3 paires × 7 TF depuis 2025-06-11), backfill de gaps démontré avant l'import, scheduler actif ; cohérences 1d/1w (décalage d'un intervalle attendu), prix 1h, WS/REST ; **constat** convention Binance open-stamped → dette B4 | Preuve des données live Bybit, sorties SQL brutes, décisions de convention (source de la dette 11) |
 | `bybit_integration_audit.md` | 2026-09-07 | B0 | **GO avec réserves** : instance EU séparée (`api.bybit.eu`), fees 0.10/0.25, historique EU depuis 2025-06-11, corrélation prix Binance/Bybit 0.999999, clés API non vérifiées | Source des constantes B1–B3 (`skills/bybit.md`) et de la décision « données Binance + fees Bybit » |
 | `P7_phase1_cross_validate.json` | 2026-05-30 | P7 phase 1 | 212 jobs de grid search cross-validés 70/30 (grid ATR v4, SuperTrend, DCA, Donchian), **fees Binance 0.075 % flat** | Machinerie et grilles réutilisées en B4 ; classements non transposables aux fees Bybit |
 | `P6_backtest_report_v2.md` | 2026-04-19 | P6 | 24 combos (8 stratégies × 3 paires, 2023-04 → 2026-04, cross-validate) : **0/24 passent les 5 critères stricts** ; recommandations par stratégie | Rapport P6 de référence (v1 archivée) |

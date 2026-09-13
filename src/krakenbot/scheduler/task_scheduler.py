@@ -1,37 +1,55 @@
-"""Task scheduler for scheduled OHLC data collection.
+"""Periodic OHLC gap backfill for the collector (APScheduler).
 
-This module implements scheduled tasks using APScheduler for continuous
-data collection from Kraken API.
+One cron job (``SCHEDULER_DAILY_BACKFILL_CRON``, default 03:30 UTC — after the
+nightly Bybit EU WebSocket closes observed between 01:00 and 02:40 UTC) runs
+:func:`krakenbot.data.backfill.backfill_gaps` for the current exchange: internal
+gaps of the last ``SCHEDULER_BACKFILL_DAYS`` days plus the tail gap, for every
+configured pair × interval.  Exchange-agnostic: the REST client is injected by
+the collector (built through ``build_exchange_rest_client``), this module holds
+no exchange literal and never imports from ``scripts/``.
+
+Every run writes ``TaskExecutionLog`` rows (one per gap, plus one run row with
+``pair="*"`` / ``interval=0`` so zero-gap runs stay observable) and publishes
+one ``SCHEDULER_TASK_SUCCESS`` or ``SCHEDULER_TASK_FAILED`` event.
 """
 
-from datetime import UTC, datetime
+from __future__ import annotations
+
+from datetime import UTC, datetime, timedelta
+import time
+from typing import TYPE_CHECKING
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 import structlog
 
-from krakenbot.config.settings import Settings
-from krakenbot.connectors.kraken.rest import KrakenRestClient
-from krakenbot.core.database import DatabaseManager
-from krakenbot.core.event_bus import EventBus, EventType
+from krakenbot.core.event_bus import EventType
+from krakenbot.data.backfill import BackfillSummary, backfill_gaps
 from krakenbot.models.scheduled_tasks import TaskExecutionLog
+
+if TYPE_CHECKING:
+    from krakenbot.config.settings import Settings
+    from krakenbot.connectors.exchange import ExchangeRestClient
+    from krakenbot.core.database import DatabaseManager
+    from krakenbot.core.event_bus import EventBus
 
 logger = structlog.get_logger()
 
+JOB_ID = "gap_backfill"
+RUN_ROW_PAIR = "*"
+RUN_ROW_INTERVAL = 0
+
 
 class TaskScheduler:
-    """Task scheduler for automated OHLC data collection.
-
-    This class manages scheduled tasks for fetching OHLC data at different
-    intervals (1min, 5min, 15min, 1h) to maintain a continuous historical
-    database and work around Kraken API retention limits.
+    """Schedules the periodic gap backfill inside the collector.
 
     Attributes:
         settings: Application settings.
-        event_bus: Event bus for publishing task events.
-        db_manager: Database manager for storing data.
+        event_bus: Event bus for ``SCHEDULER_TASK_*`` events.
+        db_manager: Database manager (gap detection, inserts, execution log).
+        rest_client: Exchange REST client **owned by the caller** (the collector
+            builds it with ``read_only=True`` and closes it on shutdown).
         scheduler: APScheduler instance.
-        rest_client: Kraken REST API client.
     """
 
     def __init__(
@@ -39,262 +57,194 @@ class TaskScheduler:
         settings: Settings,
         event_bus: EventBus,
         db_manager: DatabaseManager,
-    ):
-        """Initialize task scheduler.
-
-        Args:
-            settings: Application settings.
-            event_bus: Event bus for publishing events.
-            db_manager: Database manager.
-        """
+        rest_client: ExchangeRestClient,
+    ) -> None:
         self.settings = settings
         self.event_bus = event_bus
         self.db_manager = db_manager
+        self.rest_client = rest_client
 
-        # Initialize APScheduler
         self.scheduler = AsyncIOScheduler(
             timezone=settings.scheduler.timezone,
             job_defaults={
-                "coalesce": True,  # If job missed, run once (not multiple times)
-                "max_instances": 1,  # Only one instance of each job at a time
-                "misfire_grace_time": 300,  # 5 minutes grace period for misfires
+                "coalesce": True,  # a missed run is executed once, not N times
+                "max_instances": 1,
+                "misfire_grace_time": 300,
             },
         )
 
-        # Initialize Kraken REST client (will be set in start())
-        self.rest_client: KrakenRestClient | None = None
-
         logger.info(
             "task_scheduler_initialized",
+            exchange=settings.exchange_name,
             timezone=settings.scheduler.timezone,
             enabled=settings.scheduler.enabled,
+            cron=settings.scheduler.daily_backfill_cron,
+            lookback_days=settings.scheduler.backfill_days,
         )
 
     async def start(self) -> None:
-        """Start the task scheduler.
-
-        Initializes REST client, registers all scheduled tasks, and starts
-        the scheduler.
-        """
+        """Register the gap-backfill job and start the scheduler (no-op if disabled)."""
         if not self.settings.scheduler.enabled:
             logger.info("task_scheduler_disabled")
             return
 
-        # Initialize REST client
-        self.rest_client = KrakenRestClient(
-            settings=self.settings,
-            event_bus=self.event_bus,
-            db_manager=self.db_manager,
+        self.scheduler.add_job(
+            self.run_backfill,
+            trigger=CronTrigger.from_crontab(
+                self.settings.scheduler.daily_backfill_cron,
+                timezone=self.settings.scheduler.timezone,
+            ),
+            id=JOB_ID,
+            name=f"Gap backfill ({self.settings.exchange_name})",
+            replace_existing=True,
         )
-
-        # Register all scheduled tasks
-        await self._register_tasks()
-
-        # Start scheduler
         self.scheduler.start()
 
         logger.info(
             "task_scheduler_started",
             num_jobs=len(self.scheduler.get_jobs()),
+            job_id=JOB_ID,
+            cron=self.settings.scheduler.daily_backfill_cron,
+            exchange=self.settings.exchange_name,
+            pairs=self.settings.scheduler.pairs,
+            intervals=self.settings.scheduler.intervals,
         )
 
     async def stop(self) -> None:
-        """Stop the task scheduler gracefully.
-
-        Waits for running jobs to complete before shutting down.
-        """
+        """Stop the scheduler, waiting for a running job. The REST client is not closed here."""
         if self.scheduler.running:
             logger.info("task_scheduler_stopping")
             self.scheduler.shutdown(wait=True)
             logger.info("task_scheduler_stopped")
 
-        # Close REST client
-        if self.rest_client:
-            await self.rest_client.close()
-
-    async def _register_tasks(self) -> None:
-        """Register daily OHLC backfill task for all intervals.
-
-        A single daily job fetches the last N days of data for ALL configured
-        intervals (1min, 5min, 15min, 1h). This ensures uniform data coverage
-        across all intervals.
-        """
-        days = self.settings.scheduler.backfill_days
-
-        for interval in self.settings.scheduler.intervals:
-            self.scheduler.add_job(
-                self._fetch_ohlc_task,
-                trigger=CronTrigger.from_crontab(
-                    self.settings.scheduler.daily_backfill_cron,
-                    timezone=self.settings.scheduler.timezone,
-                ),
-                args=[interval, days],
-                id=f"daily_ohlc_{interval}min",
-                name=f"Daily {interval}min OHLC Backfill ({days}d)",
-            )
-            logger.info(
-                "registered_scheduled_task",
-                task_id=f"daily_ohlc_{interval}min",
-                interval=interval,
-                days=days,
-                cron=self.settings.scheduler.daily_backfill_cron,
-            )
-
-    async def _fetch_ohlc_task(
-        self,
-        interval: int,
-        days: int,
-    ) -> None:
-        """Wrapper task for OHLC data fetching with error handling.
-
-        This method is called by APScheduler for each scheduled job.
-        It fetches OHLC data for all configured pairs at the specified
-        interval, logs execution details, and publishes events.
-
-        Args:
-            interval: Candle interval in minutes (1, 5, 15, 60).
-            days: Number of days to fetch.
-        """
-        task_id = f"ohlc_{interval}min"
+    async def run_backfill(self) -> BackfillSummary | None:
+        """One scheduled run: detect + fill gaps, log rows, publish one event. Never raises."""
+        sched = self.settings.scheduler
+        exchange = self.settings.exchange_name
+        started_at = datetime.now(UTC)
+        t0 = time.monotonic()
 
         logger.info(
-            "scheduled_task_starting",
-            task_id=task_id,
-            interval=interval,
-            days=days,
-            pairs=self.settings.scheduler.pairs,
+            "scheduled_backfill_starting",
+            task_id=JOB_ID,
+            exchange=exchange,
+            pairs=sched.pairs,
+            intervals=sched.intervals,
+            lookback_days=sched.backfill_days,
         )
 
-        # Fetch data for each configured pair
-        for pair in self.settings.scheduler.pairs:
-            log_entry = await self._create_task_log(task_id, pair, interval)
+        try:
+            summary = await backfill_gaps(
+                self.rest_client,
+                self.db_manager,
+                exchange,
+                sched.pairs,
+                sched.intervals,
+                lookback=timedelta(days=sched.backfill_days),
+                batch_size=sched.batch_size,
+            )
+        except Exception as e:
+            error_msg = f"{type(e).__name__}: {e}"
+            logger.error(
+                "scheduled_backfill_failed",
+                task_id=JOB_ID,
+                exchange=exchange,
+                error=error_msg,
+                duration_s=round(time.monotonic() - t0, 1),
+            )
+            await self._write_logs(started_at, None, error_msg)
+            await self.event_bus.publish(
+                EventType.SCHEDULER_TASK_FAILED,
+                {"task_id": JOB_ID, "exchange": exchange, "error": error_msg},
+            )
+            return None
 
-            try:
-                # Import here to avoid circular dependency
-                from scripts.fetch_ohlc import fetch_ohlc_with_resume
-
-                # Fetch OHLC data with resume capability
-                total_candles = await fetch_ohlc_with_resume(
-                    rest_client=self.rest_client,
-                    db_manager=self.db_manager,
-                    pair=pair,
-                    interval=interval,
-                    days=days,
-                    resume=True,  # Always resume from last timestamp
-                    batch_size=self.settings.scheduler.batch_size,
-                )
-
-                # Update log entry with success
-                await self._complete_task_log(
-                    log_entry=log_entry,
-                    status="success",
-                    candles_fetched=total_candles,
-                )
-
-                # Publish success event
-                await self.event_bus.publish(
-                    EventType.SCHEDULER_TASK_SUCCESS,
+        duration_s = round(time.monotonic() - t0, 1)
+        await self._write_logs(started_at, summary, None)
+        await self.event_bus.publish(
+            EventType.SCHEDULER_TASK_SUCCESS,
+            {
+                "task_id": JOB_ID,
+                "exchange": exchange,
+                "gaps_found": summary.gaps_found,
+                "gaps_filled": summary.gaps_filled,
+                "candles_inserted": summary.candles_inserted,
+                "failures": [
                     {
-                        "task_id": task_id,
-                        "pair": pair,
-                        "interval": interval,
-                        "candles_fetched": total_candles,
-                    },
-                )
-
-                logger.info(
-                    "scheduled_task_completed",
-                    task_id=task_id,
-                    pair=pair,
-                    interval=interval,
-                    candles_fetched=total_candles,
-                )
-
-            except Exception as e:
-                error_msg = str(e)
-
-                # Update log entry with failure
-                await self._complete_task_log(
-                    log_entry=log_entry,
-                    status="failed",
-                    error_message=error_msg,
-                )
-
-                # Publish failure event
-                await self.event_bus.publish(
-                    EventType.SCHEDULER_TASK_FAILED,
-                    {
-                        "task_id": task_id,
-                        "pair": pair,
-                        "interval": interval,
-                        "error": error_msg,
-                    },
-                )
-
-                logger.error(
-                    "scheduled_task_failed",
-                    task_id=task_id,
-                    pair=pair,
-                    interval=interval,
-                    error=error_msg,
-                )
-
-                # Don't re-raise - let scheduler continue with other tasks
-
-    async def _create_task_log(
-        self,
-        task_id: str,
-        pair: str,
-        interval: int,
-    ) -> TaskExecutionLog:
-        """Create task execution log entry.
-
-        Args:
-            task_id: Unique task identifier.
-            pair: Trading pair.
-            interval: OHLC interval in minutes.
-
-        Returns:
-            Created TaskExecutionLog instance.
-        """
-        log_entry = TaskExecutionLog(
-            task_id=task_id,
-            pair=pair,
-            interval=interval,
-            started_at=datetime.now(UTC),
-            status="running",
+                        "pair": r.gap.pair,
+                        "interval": r.gap.interval,
+                        "start": r.gap.start.isoformat(),
+                        "error": r.error,
+                    }
+                    for r in summary.failures
+                ],
+            },
         )
+        logger.info(
+            "scheduled_backfill_completed",
+            task_id=JOB_ID,
+            exchange=exchange,
+            gaps_found=summary.gaps_found,
+            gaps_filled=summary.gaps_filled,
+            candles_inserted=summary.candles_inserted,
+            failures=len(summary.failures),
+            duration_s=duration_s,
+        )
+        return summary
 
-        async with self.db_manager.session() as session:
-            session.add(log_entry)
-            await session.commit()
-            await session.refresh(log_entry)
-
-        return log_entry
-
-    async def _complete_task_log(
+    async def _write_logs(
         self,
-        log_entry: TaskExecutionLog,
-        status: str,
-        candles_fetched: int = 0,
-        error_message: str | None = None,
+        started_at: datetime,
+        summary: BackfillSummary | None,
+        run_error: str | None,
     ) -> None:
-        """Update task execution log with completion status.
+        """Persist one ``TaskExecutionLog`` row per gap plus the run row. Never raises."""
+        completed_at = datetime.now(UTC)
+        rows: list[TaskExecutionLog] = []
+        if summary is not None:
+            for r in summary.results:
+                rows.append(
+                    TaskExecutionLog(
+                        task_id=JOB_ID,
+                        pair=r.gap.pair,
+                        interval=r.gap.interval,
+                        started_at=started_at,
+                        completed_at=completed_at,
+                        status="failed" if r.error else "success",
+                        candles_fetched=r.inserted,
+                        error_message=r.error,
+                    )
+                )
+            if summary.failures:
+                run_status = "partial" if summary.gaps_filled else "failed"
+            else:
+                run_status = "success"
+            run_candles = summary.candles_inserted
+            run_message: str | None = (
+                f"{len(summary.failures)} gap(s) failed" if summary.failures else None
+            )
+        else:
+            run_status, run_candles, run_message = "failed", 0, run_error
 
-        Args:
-            log_entry: Task execution log entry to update.
-            status: Final status ('success' or 'failed').
-            candles_fetched: Number of candles fetched.
-            error_message: Error message if failed.
-        """
-        async with self.db_manager.session() as session:
-            # Re-attach to session
-            await session.merge(log_entry)
-
-            log_entry.completed_at = datetime.now(UTC)
-            log_entry.status = status
-            log_entry.candles_fetched = candles_fetched
-            if error_message:
-                log_entry.error_message = error_message
-
-            await session.commit()
+        rows.append(
+            TaskExecutionLog(
+                task_id=JOB_ID,
+                pair=RUN_ROW_PAIR,
+                interval=RUN_ROW_INTERVAL,
+                started_at=started_at,
+                completed_at=completed_at,
+                status=run_status,
+                candles_fetched=run_candles,
+                error_message=run_message,
+            )
+        )
+        try:
+            async with self.db_manager.session() as session:
+                session.add_all(rows)
+        except Exception as e:
+            logger.error(
+                "scheduled_backfill_log_write_error",
+                task_id=JOB_ID,
+                error=str(e),
+                error_type=type(e).__name__,
+            )

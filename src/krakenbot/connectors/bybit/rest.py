@@ -99,6 +99,24 @@ PRICE_LIMIT_CODES = frozenset({RET_BUY_PRICE_TOO_HIGH, RET_SELL_PRICE_TOO_LOW})
 _FETCH_ORDER_PARAMS: dict[str, Any] = {"acknowledged": True}
 
 _RET_CODE_RE = re.compile(r'"retCode"\s*:\s*"?(\d+)"?')
+
+# Project interval (minutes) → Bybit v5 kline `interval` (same mapping as the WS client).
+_BYBIT_KLINE_INTERVALS: dict[int, str] = {
+    1: "1",
+    3: "3",
+    5: "5",
+    15: "15",
+    30: "30",
+    60: "60",
+    120: "120",
+    240: "240",
+    360: "360",
+    720: "720",
+    1440: "D",
+    10080: "W",
+    43200: "M",
+}
+_VWAP_QUANT = Decimal("0.00000001")
 _POST_ONLY_MSG_RE = re.compile(r"post[\s_-]?only", re.IGNORECASE)
 
 
@@ -503,64 +521,113 @@ class BybitRestClient:
         since: datetime | None = None,
         limit: int = 1000,
     ) -> list[dict[str, Any]]:
-        """Fetch historical OHLC candles (max 1000 per call on Bybit v5).
+        """Fetch closed OHLC candles from the raw v5 kline endpoint (max 1000 per call).
+
+        Uses ``GET /v5/market/kline?category=spot`` through the ccxt implicit
+        API (same EU hostname and rate limiter as the rest of the client)
+        instead of ccxt ``fetch_ohlcv``, because the raw rows carry
+        ``turnover`` (quote volume) and ccxt drops it.
+
+        Contract (B3, shared by the historical import and the gap backfill):
+
+        * ``timestamp = start + interval`` — the **period end**, exactly as the
+          WebSocket collector stores ``exchange='bybit'`` rows (Bybit ``end``
+          is inclusive → ``end + 1 ms``).  Grid-aligned by construction.
+        * ``vwap = turnover / volume`` quantised to 1e-8, ``None`` when
+          ``volume == 0`` (flat candles are returned, they are not holes).
+        * The in-progress candle (``start + interval > now``) is excluded.
+        * Oldest first (Bybit returns the list descending).  ``since`` is the
+          open time of the first candle wanted (Bybit ``start`` is inclusive),
+          so pass the DB timestamp of the last stored candle to continue.
 
         Raises:
             KrakenAPIError: On API errors.
             RateLimitError: If rate limit exceeded.
             ValueError: If interval is not supported.
         """
-        from krakenbot.utils.time_utils import minutes_to_ccxt_timeframe
+        from krakenbot.utils.time_utils import ms_to_datetime
 
-        timeframe = minutes_to_ccxt_timeframe(interval)
-        since_ms = int(since.timestamp() * 1000) if since else None
+        try:
+            bybit_interval = _BYBIT_KLINE_INTERVALS[interval]
+        except KeyError:
+            raise ValueError(
+                f"Unsupported interval: {interval} minutes. "
+                f"Supported: {sorted(_BYBIT_KLINE_INTERVALS)}"
+            ) from None
+
+        params: dict[str, Any] = {
+            "category": "spot",
+            "symbol": pair.replace("/", "").upper(),
+            "interval": bybit_interval,
+            "limit": min(limit, 1000),
+        }
+        if since is not None:
+            since_utc = since if since.tzinfo is not None else since.replace(tzinfo=UTC)
+            params["start"] = int(since_utc.timestamp() * 1000)
 
         try:
             await self._ensure_markets()
             logger.debug(
                 "fetching_ohlcv",
                 pair=pair,
-                timeframe=timeframe,
+                interval=interval,
                 since=since.isoformat() if since else None,
-                limit=limit,
+                limit=params["limit"],
             )
             self._stats["api_calls"] += 1
-            ohlcv_data = await self._exchange.fetch_ohlcv(
-                symbol=pair,
-                timeframe=timeframe,
-                since=since_ms,
-                limit=min(limit, 1000),
-            )
-
-            result: list[dict[str, Any]] = []
-            for candle in ohlcv_data:
-                timestamp_ms, open_price, high, low, close, volume = candle[:6]
-                result.append(
-                    {
-                        "timestamp": datetime.fromtimestamp(timestamp_ms / 1000, tz=UTC),
-                        "pair": pair,
-                        "interval": interval,
-                        "open": Decimal(str(open_price)),
-                        "high": Decimal(str(high)),
-                        "low": Decimal(str(low)),
-                        "close": Decimal(str(close)),
-                        "volume": Decimal(str(volume)),
-                    }
-                )
-
-            logger.info(
-                "ohlcv_fetched",
-                pair=pair,
-                interval=interval,
-                candles=len(result),
-                first_timestamp=str(result[0]["timestamp"]) if result else None,
-                last_timestamp=str(result[-1]["timestamp"]) if result else None,
-            )
-            return result
-
+            response = await self._exchange.publicGetV5MarketKline(params)
         except ccxt.BaseError as e:
             logger.error("bybit_rest_ohlcv_error", pair=pair, interval=interval, error=str(e))
             raise self._translate_error(e, pair=pair, context="ohlcv") from e
+
+        ret_code = str(response.get("retCode", "0"))
+        if ret_code not in ("0", ""):
+            raise KrakenAPIError(
+                message=f"Bybit kline error retCode={ret_code}: {response.get('retMsg')}",
+                details={"ret_code": ret_code, "pair": pair, "interval": interval},
+            )
+
+        rows = (response.get("result") or {}).get("list") or []
+        step_ms = interval * 60_000
+        now_ms = int(datetime.now(UTC).timestamp() * 1000)
+        result: list[dict[str, Any]] = []
+        skipped_open = 0
+        for row in rows:
+            start_ms = int(row[0])
+            end_ms = start_ms + step_ms
+            if end_ms > now_ms:
+                skipped_open += 1
+                continue
+            volume = Decimal(str(row[5]))
+            turnover = Decimal(str(row[6])) if len(row) > 6 and row[6] not in (None, "") else None
+            vwap: Decimal | None = None
+            if volume > 0 and turnover is not None:
+                vwap = (turnover / volume).quantize(_VWAP_QUANT)
+            result.append(
+                {
+                    "timestamp": ms_to_datetime(end_ms),
+                    "pair": pair,
+                    "interval": interval,
+                    "open": Decimal(str(row[1])),
+                    "high": Decimal(str(row[2])),
+                    "low": Decimal(str(row[3])),
+                    "close": Decimal(str(row[4])),
+                    "volume": volume,
+                    "vwap": vwap,
+                }
+            )
+        result.sort(key=lambda c: c["timestamp"])
+
+        logger.info(
+            "ohlcv_fetched",
+            pair=pair,
+            interval=interval,
+            candles=len(result),
+            skipped_in_progress=skipped_open,
+            first_timestamp=str(result[0]["timestamp"]) if result else None,
+            last_timestamp=str(result[-1]["timestamp"]) if result else None,
+        )
+        return result
 
     async def get_open_orders(self, pair: str | None = None) -> list[dict[str, Any]]:
         """Get open orders (paper: in-memory pending limits)."""

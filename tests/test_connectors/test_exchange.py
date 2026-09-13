@@ -37,3 +37,34 @@ class TestBuildExchangeRestClient:
 
         assert client.exchange_name == "kraken"
         assert client.is_paper_mode is True
+
+
+class TestReadOnlyFlag:
+    """``read_only=True`` maps to the Bybit read-only key role; other exchanges ignore it (B3)."""
+
+    def test_bybit_read_only_forces_readonly_key_role(self, mock_settings) -> None:
+        mock_settings.exchange_name = "bybit"
+        fake_client = MagicMock(exchange_name="bybit")
+        with patch(
+            "krakenbot.connectors.bybit.rest.BybitRestClient", return_value=fake_client
+        ) as cls:
+            client = build_exchange_rest_client(
+                mock_settings, MagicMock(), MagicMock(), read_only=True
+            )
+        assert client is fake_client
+        assert cls.call_args.kwargs == {"key_role": "readonly"}
+
+    def test_bybit_default_keeps_mode_based_role(self, mock_settings) -> None:
+        mock_settings.exchange_name = "bybit"
+        with patch(
+            "krakenbot.connectors.bybit.rest.BybitRestClient", return_value=MagicMock()
+        ) as cls:
+            build_exchange_rest_client(mock_settings, MagicMock(), MagicMock())
+        assert cls.call_args.kwargs == {"key_role": None}
+
+    def test_kraken_ignores_read_only(self, mock_settings) -> None:
+        with patch(
+            "krakenbot.connectors.kraken.rest.KrakenRestClient", return_value=MagicMock()
+        ) as cls:
+            build_exchange_rest_client(mock_settings, MagicMock(), MagicMock(), read_only=True)
+        assert cls.call_args.kwargs == {}
