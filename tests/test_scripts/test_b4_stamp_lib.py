@@ -80,6 +80,16 @@ class TestVotes:
         assert assess_votes([], "end") == ["no window to classify"]
         assert assess_votes(_votes("eee"), "end") == []
 
+    def test_assess_votes_strict_post_migration(self) -> None:
+        # GATE 1 decision a: after the migration a single residual window (even 1 row) is a STOP
+        noisy = _votes("eee") + [WindowVote(T0 + WEEK * 3, 1, 0, 0)]
+        assert assess_votes(noisy, "end") == []
+        problems = assess_votes(noisy, "end", strict=True)
+        assert len(problems) == 1 and "residual" in problems[0]
+        tie = _votes("eee") + [WindowVote(T0 + WEEK * 3, 0, 0, 1)]
+        assert any("residual" in p for p in assess_votes(tie, "end", strict=True))
+        assert assess_votes(_votes("eeee"), "end", strict=True) == []
+
     def test_find_switch_no_open(self) -> None:
         last_open, first_end = find_switch(_votes("ee"))
         assert last_open is None and first_end is not None
@@ -149,6 +159,7 @@ def _series() -> SeriesBoundary:
         gaps=[(datetime(2021, 1, 2, tzinfo=UTC), datetime(2021, 1, 2, 5, tzinfo=UTC))],
         dup_signature_volume_gt0=2,
         window_verdicts={"open": 1, "end": 0, "tie": 0},
+        recheck_rows=[datetime(2021, 1, 3, 5, tzinfo=UTC)],
     )
 
 
@@ -190,7 +201,7 @@ class TestLedger:
         append_ledger(p, self._entry(T0 + WEEK, dry_run=True))
         entries = read_ledger(p)
         assert len(entries) == 2 and entries[0] == self._entry(T0)
-        assert done_windows(entries) == {("BTC/USDC", 60, T0.isoformat())}
+        assert done_windows(entries) == {("BTC/USDC", 60, T0.isoformat(), (T0 + WEEK).isoformat())}
 
     def test_tally_and_compare(self) -> None:
         t = SeriesTally("BTC/USDC", 60)
@@ -204,3 +215,57 @@ class TestLedger:
         assert any("collisions 1 != audit 0" in p for p in problems)
         t.staged = 99
         assert any("restamps 99 != audit 100" in p for p in compare_tally(t, _series()))
+
+
+class TestResumePlan:
+    def _plan(self):
+        from b4_stamp_lib import restamp_windows
+
+        return restamp_windows(T0, T0 + timedelta(hours=99), 60, 30)  # 4 windows, newest first
+
+    def _done(self, *idx: int, max_rows: int = 30, boundary=None, gen=T0) -> list[LedgerEntry]:
+        from b4_stamp_lib import check_resume_plan  # noqa: F401 (import smoke)
+
+        plan = self._plan()
+        b = boundary or T0 + timedelta(hours=99)
+        return [
+            LedgerEntry("BTC/USDC", 60, *plan[i], 30, 30, 30, 0, 1.0, False, max_rows, b, gen)
+            for i in idx
+        ]
+
+    def test_prefix_ok(self) -> None:
+        from b4_stamp_lib import check_resume_plan, remaining_region_end
+
+        plan = self._plan()
+        b = T0 + timedelta(hours=99)
+        assert check_resume_plan(plan, [], 30, b, T0) == []
+        assert check_resume_plan(plan, self._done(0), 30, b, T0) == []
+        assert check_resume_plan(plan, self._done(0, 1), 30, b, T0) == []
+        assert remaining_region_end(plan, 0) == b + timedelta(hours=1)
+        assert remaining_region_end(plan, 2) == plan[1][0]
+        assert remaining_region_end(plan, 4) is None
+
+    def test_plan_identity_mismatch(self) -> None:
+        from b4_stamp_lib import check_resume_plan
+
+        plan = self._plan()
+        b = T0 + timedelta(hours=99)
+        assert any(
+            "max_rows" in p for p in check_resume_plan(plan, self._done(0, max_rows=20), 30, b, T0)
+        )
+        assert any(
+            "boundary" in p for p in check_resume_plan(plan, self._done(0, boundary=T0), 30, b, T0)
+        )
+        assert any(
+            "manifest" in p
+            for p in check_resume_plan(plan, self._done(0, gen=T0 + WEEK), 30, b, T0)
+        )
+
+    def test_non_prefix_and_duplicates(self) -> None:
+        from b4_stamp_lib import check_resume_plan
+
+        plan = self._plan()
+        b = T0 + timedelta(hours=99)
+        assert any("prefix" in p for p in check_resume_plan(plan, self._done(1), 30, b, T0))
+        assert any("prefix" in p for p in check_resume_plan(plan, self._done(0, 2), 30, b, T0))
+        assert any("duplicate" in p for p in check_resume_plan(plan, self._done(0, 0), 30, b, T0))

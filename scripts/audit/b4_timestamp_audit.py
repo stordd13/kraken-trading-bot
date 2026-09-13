@@ -13,8 +13,11 @@ migration.  Sections follow the brief (``agent/AGENT_B4_1_...md`` § 4):
   e) upstream edge around the boundary + spot checks
 
 ``--post-migration`` replays the same checks after the re-stamp and expects the
-*end* hypothesis to win everywhere, counts equal to the manifest, gaps shifted by
-one interval and the spot checks moved by one interval (brief § 6 invariants 1-5).
+*end* hypothesis to win **every** window (strict, GATE 1 decision a — the rows
+that were ambiguous before the migration must vote end at ``T + interval``),
+counts equal to the manifest, gaps shifted by one interval, the spot checks
+moved by one interval, and the last 1w candle of each pair to be a complete
+week cross-checked against the 1d closes (brief § 6 invariants 1-5 + decision c).
 
 Usage (via the SSH tunnel is fine — reads only)::
 
@@ -67,9 +70,32 @@ from b4_stamp_lib import (
 from krakenbot.data.backfill import internal_gaps_from_rows, is_grid_aligned
 
 METHOD = (
-    "per-row vote on the reference-exchange overlap: Binance close at T compared with the "
-    "reference close at T (end hypothesis) and at T+interval (open hypothesis), the closer "
-    "wins; votes aggregated per ISO week; boundary = last open-stamped row"
+    "per-row vote on the reference-exchange overlap: the Binance candle at T is compared with the "
+    "reference candle at T (end hypothesis) and at T+interval (open hypothesis); the closer close "
+    "wins, and when the two candidate closes are within 0.1 % of each other (ambiguous, e.g. two "
+    "near-equal weekly closes) the full OHLC distance (|open|+|high|+|low|+|close|) decides; votes "
+    "aggregated per ISO week; boundary = last open-stamped row"
+)
+
+
+def _dist(alias: str) -> str:
+    """OHLC distance between the Binance row ``bi`` and a reference row alias."""
+    return (
+        f"(ABS(bi.open - {alias}.open) + ABS(bi.high - {alias}.high) + "
+        f"ABS(bi.low - {alias}.low) + ABS(bi.close - {alias}.close))"
+    )
+
+
+D_SAME, D_NEXT = _dist("e"), _dist("o")
+#: The two candidate reference closes are too close for the close alone to decide.
+AMBIGUOUS = "ABS(e.close - o.close) <= 0.001 * bi.close"
+OPEN_WINS = (
+    f"(CASE WHEN {AMBIGUOUS} THEN {D_NEXT} < {D_SAME} "
+    "ELSE ABS(bi.close - o.close) < ABS(bi.close - e.close) END)"
+)
+END_WINS = (
+    f"(CASE WHEN {AMBIGUOUS} THEN {D_SAME} < {D_NEXT} "
+    "ELSE ABS(bi.close - e.close) < ABS(bi.close - o.close) END)"
 )
 
 #: (pair, interval, open-stamped timestamp of the candle, expected open, expected close)
@@ -192,15 +218,15 @@ async def q_window_votes(
     since: datetime,
 ) -> list[WindowVote]:
     rows = await conn.fetch(
-        """
-        WITH bi AS (SELECT timestamp, close FROM market_data_ohlc
+        f"""
+        WITH bi AS (SELECT timestamp, open, high, low, close FROM market_data_ohlc
                     WHERE exchange=$1 AND pair=$3 AND interval=$4 AND timestamp >= $5),
-             rf AS (SELECT timestamp, close FROM market_data_ohlc
+             rf AS (SELECT timestamp, open, high, low, close FROM market_data_ohlc
                     WHERE exchange=$2 AND pair=$3 AND interval=$4 AND volume > 0)
         SELECT date_trunc('week', bi.timestamp) AS wk,
-               COUNT(*) FILTER (WHERE ABS(bi.close - o.close) < ABS(bi.close - e.close)) AS n_open,
-               COUNT(*) FILTER (WHERE ABS(bi.close - e.close) < ABS(bi.close - o.close)) AS n_end,
-               COUNT(*) FILTER (WHERE ABS(bi.close - e.close) = ABS(bi.close - o.close)) AS n_tie
+               COUNT(*) FILTER (WHERE {OPEN_WINS}) AS n_open,
+               COUNT(*) FILTER (WHERE {END_WINS}) AS n_end,
+               COUNT(*) FILTER (WHERE NOT {OPEN_WINS} AND NOT {END_WINS}) AS n_tie
         FROM bi
         JOIN rf e ON e.timestamp = bi.timestamp
         JOIN rf o ON o.timestamp = bi.timestamp + make_interval(mins => $4)
@@ -225,10 +251,10 @@ async def q_row_votes(
     end: datetime,
 ) -> list[tuple[datetime, str]]:
     rows = await conn.fetch(
-        """
+        f"""
         SELECT bi.timestamp,
-               CASE WHEN ABS(bi.close - o.close) < ABS(bi.close - e.close) THEN 'open'
-                    WHEN ABS(bi.close - e.close) < ABS(bi.close - o.close) THEN 'end'
+               CASE WHEN {OPEN_WINS} THEN 'open'
+                    WHEN {END_WINS} THEN 'end'
                     ELSE 'tie' END AS vote
         FROM market_data_ohlc bi
         JOIN market_data_ohlc e ON e.exchange=$2 AND e.pair=$3 AND e.interval=$4
@@ -259,10 +285,11 @@ async def q_window_detail(
     expect: str,
 ) -> list[Any]:
     """Rows of one window that voted against ``expect`` (closes side by side, for the report)."""
-    cmp = "<=" if expect == "open" else ">="  # rows where the unexpected hypothesis is closer
+    not_expected = f"NOT {OPEN_WINS}" if expect == "open" else f"NOT {END_WINS}"
     return await conn.fetch(
         f"""
-        SELECT bi.timestamp, bi.close AS bi_close, e.close AS ref_same, o.close AS ref_next
+        SELECT bi.timestamp, bi.close AS bi_close, e.close AS ref_same, o.close AS ref_next,
+               {D_SAME} AS d_same, {D_NEXT} AS d_next
         FROM market_data_ohlc bi
         JOIN market_data_ohlc e ON e.exchange=$2 AND e.pair=$3 AND e.interval=$4
              AND e.timestamp = bi.timestamp AND e.volume > 0
@@ -270,7 +297,7 @@ async def q_window_detail(
              AND o.timestamp = bi.timestamp + make_interval(mins => $4) AND o.volume > 0
         WHERE bi.exchange=$1 AND bi.pair=$3 AND bi.interval=$4
           AND bi.timestamp >= $5 AND bi.timestamp < $5 + interval '7 days'
-          AND ABS(bi.close - e.close) {cmp} ABS(bi.close - o.close)
+          AND {not_expected}
         ORDER BY bi.timestamp LIMIT 20
         """,
         exchange,
@@ -278,6 +305,151 @@ async def q_window_detail(
         pair,
         interval,
         window_start,
+    )
+
+
+async def q_row_detail(
+    conn: asyncpg.Connection, exchange: str, reference: str, pair: str, interval: int, ts: datetime
+) -> Any:
+    return await conn.fetchrow(
+        f"""
+        SELECT bi.timestamp, bi.close AS bi_close, e.close AS ref_same, o.close AS ref_next,
+               {D_SAME} AS d_same, {D_NEXT} AS d_next
+        FROM market_data_ohlc bi
+        LEFT JOIN market_data_ohlc e ON e.exchange=$2 AND e.pair=$3 AND e.interval=$4
+             AND e.timestamp = bi.timestamp
+        LEFT JOIN market_data_ohlc o ON o.exchange=$2 AND o.pair=$3 AND o.interval=$4
+             AND o.timestamp = bi.timestamp + make_interval(mins => $4)
+        WHERE bi.exchange=$1 AND bi.pair=$3 AND bi.interval=$4 AND bi.timestamp = $5
+        """,
+        exchange,
+        reference,
+        pair,
+        interval,
+        ts,
+    )
+
+
+async def q_daily_between(
+    conn: asyncpg.Connection, exchange: str, pair: str, lo: datetime, hi: datetime
+) -> list[Any]:
+    """1d rows with ``lo <= timestamp <= hi`` ordered by timestamp."""
+    return await conn.fetch(
+        "SELECT timestamp, open, high, low, close FROM market_data_ohlc "
+        "WHERE exchange=$1 AND pair=$2 AND interval=1440 AND timestamp >= $3 AND timestamp <= $4 "
+        "ORDER BY timestamp",
+        exchange,
+        pair,
+        lo,
+        hi,
+    )
+
+
+def _bps(a: Decimal, b: Decimal) -> Decimal:
+    return abs(a - b) / b * 10_000
+
+
+async def check_last_week(
+    conn: asyncpg.Connection, rep: Report, exchange: str, reference: str, pair: str, expect: str
+) -> None:
+    """GATE 1 decision c: the last 1w candle of *pair* must be a complete week.
+
+    Cross-checked against the 1d candles: same-source (Binance) 1d rows give exact
+    open/close equality, the reference exchange (end-stamped 1d) covers the days
+    past the Binance 1d range with a spread tolerance.  A candle truncated at the
+    end of the Vision range would close exactly on the last Binance 1d close and
+    span fewer than 7 days.
+    """
+    week = timedelta(days=7)
+    day = timedelta(days=1)
+    tol_bps = Decimal(50)
+    row = await conn.fetchrow(
+        "SELECT timestamp, open, high, low, close FROM market_data_ohlc "
+        "WHERE exchange=$1 AND pair=$2 AND interval=10080 ORDER BY timestamp DESC LIMIT 1",
+        exchange,
+        pair,
+    )
+    if row is None:
+        rep.problem(f"{pair} 1w: no row")
+        return
+    w_open = row["timestamp"] if expect == "open" else row["timestamp"] - week
+    w_end = w_open + week
+    # same-source 1d rows: open-stamped [w_open, w_end) before, end-stamped (w_open, w_end] after
+    if expect == "open":
+        bi_days = await q_daily_between(conn, exchange, pair, w_open, w_end - day)
+    else:
+        bi_days = await q_daily_between(conn, exchange, pair, w_open + day, w_end)
+    ref_days = await q_daily_between(conn, reference, pair, w_open + day, w_end)
+    rep.add(
+        f"{pair} 1w last candle {row['timestamp'].isoformat()} covers "
+        f"[{w_open.date()}, {w_end.date()}) o={row['open']} h={row['high']} l={row['low']} "
+        f"c={row['close']} | {exchange} 1d days={len(bi_days)} {reference} 1d days={len(ref_days)}"
+    )
+    problems: list[str] = []
+    if not bi_days or bi_days[0]["open"] != row["open"]:
+        problems.append("1w open != first 1d open (same source)")
+    if len(bi_days) == 7:
+        if bi_days[-1]["close"] != row["close"]:
+            problems.append("1w close != 7th 1d close (same source)")
+        hi = max(d["high"] for d in bi_days)
+        lo = min(d["low"] for d in bi_days)
+        if row["high"] != hi or row["low"] != lo:
+            problems.append("1w high/low != 1d range (same source)")
+        verdict = "COMPLETE (7 same-source days)" if not problems else "INCONSISTENT"
+    else:
+        if bi_days and bi_days[-1]["close"] == row["close"]:
+            problems.append(
+                f"1w close equals the last {exchange} 1d close ({bi_days[-1]['timestamp'].date()}): "
+                f"candle truncated after {len(bi_days)} day(s)"
+            )
+        if len(ref_days) < 7:
+            problems.append(f"only {len(ref_days)} {reference} 1d days to cross-check")
+        else:
+            d_close = _bps(row["close"], ref_days[-1]["close"])
+            d_high = _bps(row["high"], max(d["high"] for d in ref_days))
+            d_low = _bps(row["low"], min(d["low"] for d in ref_days))
+            rep.add(
+                f"    vs {reference} 1d [{ref_days[0]['timestamp'].date()} → "
+                f"{ref_days[-1]['timestamp'].date()}]: close diff={d_close:.1f} bps "
+                f"high diff={d_high:.1f} bps low diff={d_low:.1f} bps (tolerance {tol_bps} bps)"
+            )
+            if max(d_close, d_high, d_low) > tol_bps:
+                problems.append("1w close/high/low do not match the 7 reference days")
+        verdict = "COMPLETE (7 reference days)" if not problems else "TRUNCATED/INCONSISTENT"
+    rep.add(f"    → {verdict}")
+    for prob in problems:
+        rep.problem(f"{pair} 1w last candle: {prob}")
+
+
+async def q_ambiguous_rows(
+    conn: asyncpg.Connection,
+    exchange: str,
+    reference: str,
+    pair: str,
+    interval: int,
+    since: datetime,
+    limit: int = 50,
+) -> list[Any]:
+    """Rows where the two candidate reference closes are within 0.1 % (close alone undecided)."""
+    return await conn.fetch(
+        f"""
+        SELECT bi.timestamp, bi.close AS bi_close, e.close AS ref_same, o.close AS ref_next,
+               {D_SAME} AS d_same, {D_NEXT} AS d_next
+        FROM market_data_ohlc bi
+        JOIN market_data_ohlc e ON e.exchange=$2 AND e.pair=$3 AND e.interval=$4
+             AND e.timestamp = bi.timestamp AND e.volume > 0
+        JOIN market_data_ohlc o ON o.exchange=$2 AND o.pair=$3 AND o.interval=$4
+             AND o.timestamp = bi.timestamp + make_interval(mins => $4) AND o.volume > 0
+        WHERE bi.exchange=$1 AND bi.pair=$3 AND bi.interval=$4 AND bi.timestamp >= $5
+          AND {AMBIGUOUS}
+        ORDER BY bi.timestamp LIMIT $6
+        """,
+        exchange,
+        reference,
+        pair,
+        interval,
+        since,
+        limit,
     )
 
 
@@ -452,25 +624,62 @@ async def audit_series(
         f"    windows: open={summary['open']} end={summary['end']} tie={summary['tie']} "
         f"(rows voted={n_rows_voted}, weeks={len(votes)})"
     )
+    recheck_rows: list[datetime] = []
+    if expect == "open" and interval >= 1440:
+        # GATE 1 (a): rows the close alone cannot classify (small windows) are re-checked one by
+        # one after the migration; on ≥ 42-row windows the strict window verdict is enough.
+        for d in await q_ambiguous_rows(conn, exchange, reference, pair, interval, since):
+            recheck_rows.append(d["timestamp"])
+            rep.add(
+                f"      close-ambiguous row {d['timestamp'].isoformat()}: {exchange} close="
+                f"{d['bi_close']} | {reference} close at T={d['ref_same']} at T+{lab}="
+                f"{d['ref_next']} | OHLC dist same={d['d_same']} next={d['d_next']} → re-check post"
+            )
     for v in votes:
         if v.verdict != expect:
+            note = ""
+            if expect == "end":
+                note = " — RESIDUAL (strict post-migration check)"
+            elif v.total < 3:
+                note = " — not decisive (< 3 rows)"
             rep.add(
                 f"      window {v.window_start.date()} → {v.verdict} "
-                f"(open={v.n_open} end={v.n_end} tie={v.n_tie})"
-                + (" — not decisive (< 3 rows)" if v.total < 3 else "")
+                f"(open={v.n_open} end={v.n_end} tie={v.n_tie}){note}"
             )
             for d in await q_window_detail(
                 conn, exchange, reference, pair, interval, v.window_start, expect
             ):
+                if d["timestamp"] not in recheck_rows:
+                    recheck_rows.append(d["timestamp"])
                 rep.add(
                     f"        {d['timestamp'].isoformat()} {exchange} close={d['bi_close']} | "
-                    f"{reference} close at T={d['ref_same']} at T+{lab}={d['ref_next']}"
+                    f"{reference} close at T={d['ref_same']} at T+{lab}={d['ref_next']} | "
+                    f"OHLC dist same={d['d_same']} next={d['d_next']}"
                 )
     if not votes:
         rep.problem(f"{name}: no overlap with {reference} — cannot classify by content")
         return None
-    for prob in assess_votes(votes, expect):  # type: ignore[arg-type]
+    for prob in assess_votes(votes, expect, strict=(expect == "end")):  # type: ignore[arg-type]
         rep.problem(f"{name}: {prob}")
+    if expect == "end" and manifest_entry is not None and manifest_entry.recheck_rows:
+        rep.add(f"    rows ambiguous before the migration, now expected at T+{lab} voting end:")
+        for t in manifest_entry.recheck_rows:
+            shifted = t + step
+            rv = await q_row_votes(
+                conn, exchange, reference, pair, interval, shifted, shifted + timedelta(seconds=1)
+            )
+            vote = rv[0][1] if rv else "missing"
+            detail = await q_row_detail(conn, exchange, reference, pair, interval, shifted)
+            extra = (
+                f" ({exchange} close={detail['bi_close']} | {reference} close at T="
+                f"{detail['ref_same']} at T+{lab}={detail['ref_next']} | OHLC dist same="
+                f"{detail['d_same']} next={detail['d_next']})"
+                if detail
+                else ""
+            )
+            rep.add(f"      {t.isoformat()} → {shifted.isoformat()}: vote={vote}{extra}")
+            if vote != "end":
+                rep.problem(f"{name}: formerly ambiguous row {shifted.isoformat()} votes '{vote}'")
 
     dup_vol, dup_flat, dup_first, dup_last = await q_dup_signature(conn, exchange, pair, interval)
     rep.add(
@@ -591,6 +800,7 @@ async def audit_series(
         gaps=gaps,
         dup_signature_volume_gt0=dup_vol,
         window_verdicts=summary,
+        recheck_rows=recheck_rows,
     )
 
 
@@ -670,6 +880,11 @@ async def _async_main(args: argparse.Namespace) -> int:
 
         rep.section("Spot checks")
         await spot_checks(conn, rep, exchange, expect)
+
+        if 10080 in args.intervals:
+            rep.section("Last 1w candle completeness (GATE 1 decision c)")
+            for pair in args.pairs:
+                await check_last_week(conn, rep, exchange, args.reference_exchange, pair, expect)
 
         rep.section("Summary")
         rep.add(

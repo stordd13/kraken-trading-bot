@@ -4,7 +4,8 @@
 > `v2.5.0-b3-bybit-data`). Spec : `agent/AGENT_B4_1_TIMESTAMP_AUDIT_RESTAMP.md`. Plan validé par Bruno le
 > 2026-09-13 (plan mode). Collector Bybit **actif** pendant l'audit (lecture seule, via tunnel).
 >
-> État : **étape 1 (audit) terminée → ⛔ GATE 1 en attente du GO.** Aucune écriture DB n'a eu lieu.
+> État : **GATE 1 donné (GO, 2026-09-13) → étape 2 en cours, ⛔ GATE 2 en attente.** Aucune écriture DB
+> n'a eu lieu à ce stade (lectures seules via tunnel, EXPLAIN et tables temporaires de session).
 
 ## Résumé exécutif
 
@@ -41,6 +42,13 @@
 | 6 | Signature de doublon `(T, T+i)` OHLCV identiques **avec `volume > 0`**, datée | les candles plates (`volume = 0`, 2021–2022) donnent des dizaines de milliers de faux positifs au 1m |
 | 7 | Commentaire de colonne `timestamp` : modèle + **mini-révision Alembic** `b4c0ffee0001` (`COMMENT ON COLUMN` seul) | validé par Bruno ; aucun commentaire de colonne n'existe en DB aujourd'hui (`col_description` NULL) |
 | 8 | Refus d'`--execute` via le tunnel (port 5433) et sans `--i-have-a-fresh-backup` | brief § 5, § 11 |
+| 9 | **GATE 1 (Bruno, 2026-09-13)** : re-stamp GO ; policy « WS fait foi » confirmée, le chemin `ON CONFLICT` reste mais **toute collision non prévue par l'audit = mismatch → STOP** (fenêtre annulée) ; périmètre 100 % des rows binance validé | décisions 1–3 du GATE 1 |
+| 10 | Invariant § 6.1 durci (GATE 1 a) : post-migration, **chaque** fenêtre vote *end* (mode strict, une seule fenêtre *open* résiduelle = STOP) et les rows ambiguës pré-migration sont revérifiées une à une à `T + interval` | `assess_votes(strict=True)`, `unexpected_rows` du manifeste |
+| 11 | Scope ajouté (GATE 1 b) : `scripts/binance_vision_import.py` écrit désormais `open_time + interval` (+ tests dédiés), commit `fix(scripts)` séparé | un ré-import ne réintroduira plus d'open-stamps |
+| 12 | Invariant ajouté (GATE 1 c) : la dernière candle 1w de chaque paire est une **semaine complète** (open = 1ᵉʳ 1d open même source ; close/high/low vs les 7 jours 1d Bybit, tolérance 50 bps ; signature de troncature = close égal au dernier 1d Binance) | § 2.g |
+| 13 | **Vote hybride** : le close tranche, sauf si les deux closes Bybit candidats sont à < 0,1 % l'un de l'autre (ambigu) → distance OHLC complète. Remplace le vote « close seul » | la distance OHLC seule bascule sur les premières semaines Bybit EU (marché illiquide, SOL 2025-06-30) ; le close seul bascule sur deux closes hebdo quasi égaux (3 cas) ; l'hybride donne 0 fenêtre ambiguë sur les 21 séries |
+| 14 | **Reprise atomique** (revue adversariale, § 2.h) : progression enregistrée **dans la transaction de chaque fenêtre** (table `b4_restamp_progress`, PK fenêtre + identité du plan : `max_rows`, frontière, stamp du manifeste), ledger JSONL = miroir. Pré-vol par série avant toute écriture : fenêtres faites = préfixe du plan, même identité, et `COUNT` des originales restantes = `expected_restamps − déjà stagées`. Garde in-transaction : slot `w_end` libre, `deleted == staged`, collisions ≤ autorisées | sans cela, une reprise après crash entre COMMIT et écriture du ledger (ou avec un autre `--max-rows-per-tx`) redécalait des rows déjà décalées |
+| 15 | Table `b4_restamp_progress` = **seule écriture hors `exchange='binance'`** (table auxiliaire, 2 511 rows, à supprimer à la clôture) — dérogation à soumettre au GATE 2 | brief § 11 |
 
 Faits DB (lecture seule, 2026-09-13) : TimescaleDB 2.24.0 / PostgreSQL 16.11, hypertable 3 002 MB,
 `chunk_time_interval = 30 days`, compression désactivée, `max_locks_per_transaction = 512`,
@@ -94,12 +102,15 @@ poetry run python scripts/audit/b4_timestamp_audit.py \
   le trou de 2022–2023. Ces trous sont conservés tels quels ; l'invariant post-migration est « même liste,
   décalée de +interval ».
 
-### 2.b Classification open/end par contenu
+### 2.b Classification open/end par contenu (vote hybride, décision 13)
 
 - Recouvrement Bybit : BTC dès `2025-06-11 09:21`, ETH/SOL dès `2025-06-27` ; 40 semaines votées par série
   (1m : ~437 k rows votées par paire).
-- **Open gagne 100 % des fenêtres décisives des 21 séries ; majorité par row *open* partout.** Trois fenêtres 1w
-  d'une seule row votent *end* (non décisives) — closes hebdo consécutifs quasi égaux, l'écart inter-exchange tranche :
+- **Open gagne 100 % des fenêtres des 21 séries ; majorité par row *open* partout ; 0 fenêtre ambiguë.**
+  Avec le vote « close seul » (première version de l'audit, run 16:26 UTC), trois fenêtres 1w d'une seule row
+  votaient *end* — closes hebdo consécutifs quasi égaux, l'écart inter-exchange tranchait ; le vote hybride les
+  classe *open* franchement (distance OHLC) et elles restent listées dans le manifeste (`unexpected_rows`) pour
+  la revérification post-migration exigée au GATE 1 (a) :
 
 ```
 BTC/USDC 1w 2025-09-15 binance close=115314.26 | bybit close at T=115329.60 at T+1w=115337.20
@@ -139,18 +150,52 @@ pour l'invariant 3. Le script de migration et le mode `--post-migration` de l'au
 
 ### 2.f Dry-run de la migration via tunnel (lecture seule, hors protocole serveur)
 
-`poetry run python scripts/audit/b4_restamp_binance.py --dry-run --allow-tunnel` (16:27 → 16:35 UTC) :
-2 511 fenêtres (690 par série 1m, 138 au 5m, 46 au 15m, 12 au 1h, 3 au 4h, 1 au 1d/1w), `staged = audit`
-sur les 21 séries, `collisions = 0 = audit` → **MATCH** (`results/b4_restamp_dryrun_tunnel.txt`).
+Premier dry-run (16:27 → 16:35 UTC, manifeste 16:25) : 2 511 fenêtres (690 par série 1m, 138 au 5m, 46 au
+15m, 12 au 1h, 3 au 4h, 1 au 1d/1w), `staged = audit` sur les 21 séries, `collisions = 0 = audit` → MATCH.
+Rejoué après la revue adversariale contre le manifeste **versionné** (`--dry-run --allow-tunnel --explain`,
+plans `EXPLAIN` des trois statements du chemin `--execute` validés sur le schéma réel, table temporaire de
+session vide, aucune écriture) : voir `results/b4_restamp_dryrun_tunnel.txt` (stamp du manifeste en en-tête).
 
-## ⛔ GATE 1 — décision Bruno
+### 2.g Complétude de la dernière 1w (GATE 1 c)
 
-À trancher : re-stamp **GO / NO-GO** ; policy collisions « WS fait foi » confirmée (sans objet : 0 collision) ;
-périmètre = 100 % des rows binance (21 séries, `last_open_stamped_ts = MAX(timestamp)`) validé.
+La dernière candle 1w Binance (`2026-03-30`, semaine 30/03 → 05/04) est **COMPLETE** sur les 3 paires : les
+1d Binance s'arrêtant au 31/03, la vérification croise les 7 jours 1d **Bybit** (end-stamped 31/03 → 06/04) :
 
-Après le GO : sur le serveur, `git fetch && git checkout feat/b4-1-binance-restamp`, backup frais `pg_dump -Fc`
-(taille + horodatage ci-dessous), `sudo -n systemctl stop krakenbot-collector`, tmux `b4-restamp`,
-`--dry-run` serveur (doit reproduire § 2.f) → **GATE 2**.
+```
+BTC/USDC 1w o=65977.66 h=69297.69 l=65705.71 c=69019.18 | close diff=2.4 bps high diff=4.6 bps low diff=1.6 bps
+ETH/USDC 1w o=1983.56  h=2167.77  l=1979.08  c=2109.66  | close diff=3.9 bps high diff=1.9 bps low diff=15.5 bps
+SOL/USDC 1w o=81.40    h=86.65    l=76.68    c=81.86    | close diff=21.9 bps high diff=6.9 bps low diff=2.6 bps
+```
+(open = open 1d Binance du 30/03, exact ; tolérance 50 bps ; signature de troncature absente : le close 1w ≠
+close 1d Binance du 31/03.) Post-migration cette 1w sera stampée `2026-04-06 00:00`, cohérente avec sa fin réelle.
+
+### 2.h Revue adversariale avant contact serveur (workflow multi-agents, 2026-09-13)
+
+4 lentilles (SQL/TimescaleDB, fenêtres/reprise, invariants d'audit + importer, sécurité opérationnelle) →
+24 findings uniques → 3 réfutateurs indépendants chacun (majorité) → **11 confirmés, 13 réfutés**. Corrigés :
+
+| Finding confirmé | Correction |
+|---|---|
+| **Critique** — COMMIT et écriture du ledger non atomiques ; clé de fenêtre sans taille de batch : une reprise (crash entre COMMIT et append, autre `--max-rows-per-tx`, autre `--ledger`/HOME) redécalait des rows déjà décalées et en perdait une par fenêtre | décision 14 : table de progression transactionnelle + identité du plan + pré-vol (préfixe, `COUNT` des originales restantes) + garde slot `w_end` + verrou advisory ; tests de reprise après crash simulé, batch différent, progression non-préfixe, état DB ≠ manifeste |
+| `--pairs`/`--intervals` inconnus → 0 série et `MATCH` rc 0 | refus rc 2 (valeurs validées contre le manifeste, sélection vide refusée), `MATCH` exige ≥ 1 série |
+| Vote « close seul » strict post-migration : ~2–3 fenêtres 1w basculeraient par bruit → faux STOP | décision 13 (vote hybride), 0 fenêtre ambiguë pré-migration |
+| `bybit_b3_crosscheck.py` code en dur l'ancien décalage : inutilisable comme invariant 4 | invariant 4 = vote au **même** timestamp du script d'audit (`--post-migration`) ; le script B3 reste un artefact historique non modifié (annexe § 5) |
+| Docstrings `src/krakenbot/data/backfill.py`, `connectors/exchange.py`, `skills/bybit.md`, `README.md`, `CODE_MAP.md` disent encore « Binance mixte/open-stamped » | ajoutés à la liste § 7 (commit docs après GATE 3) |
+| Traçabilité : le dry-run cité pointait un manifeste non versionné ; § 5.1 contredisait le diff (importer) | dry-run rejoué contre le manifeste versionné (2.f) ; § 5.1 mis à jour |
+| Collisions imprévues absorbées silencieusement (réfuté 0/3 mais aligné sur la décision GATE 1-2) | toute collision > `expected_collisions` → `RestampStop`, fenêtre annulée, rc 3 |
+
+Réfutés (non corrigés, consignés) : pré-vol contre `db_totals` (le pré-vol par série le remplace), garde tunnel
+« heuristique » (protocole serveur), VACUUM avant le tableau final (désormais chronométré, tableau imprimé même
+en cas d'erreur), bloat/WAL (59 GB libres), SQL du chemin execute jamais exécuté sur PG (couvert par `--explain`
+et le dry-run serveur), `refine_boundary` sur run initial (sans objet : aucune bascule).
+
+## ⛔ GATE 1 — décision Bruno (2026-09-13) : **GO**
+
+1. Re-stamp : GO. 2. Policy « WS fait foi » confirmée ; le chemin `ON CONFLICT` reste ; toute collision au
+dry-run serveur = mismatch → STOP. 3. Périmètre 100 % des rows `exchange='binance'` validé. Ajouts a/b/c →
+décisions 10–12. Séquence GATE 2 rappelée : checkout serveur, backup frais (le dump du 7 sept ne compte pas),
+`stop krakenbot-collector` (heure notée), dry-run serveur en tmux = **exactement 2 511 fenêtres / 8 712 718
+rows / 0 collision**, estimation de durée du `--execute` à fournir, **STOP au GATE 2**.
 
 ## 3. Migration (étape 2, serveur) — à compléter après GATE 2
 
@@ -161,22 +206,25 @@ Après le GO : sur le serveur, `git fetch && git checkout feat/b4-1-binance-rest
 
 ## 4. Invariants post-migration (étape 3) — à compléter
 
-1. `b4_timestamp_audit.py --post-migration` : end gagne 100 % des fenêtres décisives, 21 séries — _résultat_.
+1. `b4_timestamp_audit.py --post-migration` : end gagne **100 % des fenêtres** (strict), majorité par row *end*,
+   les 3 rows ambiguës pré-migration votent *end* à `T + 1w` — _résultat_.
 2. Comptabilité `rows_after == rows_before − collisions` (8 712 718 − 0) — _résultat_.
 3. Trous = liste de l'audit décalée de +interval, signature de doublon inchangée — _résultat_.
-4. Spot-checks : BTC 1d à `2024-01-02 00:00` open 42274.27 / close 44185.08 ; 1w lundi 00:00 ; contrôle
-   1d/1w de `bybit_b3_crosscheck` matchant au **même** timestamp — _résultat_.
+4. Spot-checks : BTC 1d à `2024-01-02 00:00` open 42274.27 / close 44185.08 ; 1w lundi 00:00 ; 1d/1w Bybit
+   matchant au **même** timestamp (vote *end* du script d'audit, `bybit_b3_crosscheck` non utilisé) — _résultat_.
 5. `MAX(timestamp)` 1m = `2026-04-01 00:00` (et `boundary + i` par série) — _résultat_.
 6. Backtest de référence `grok_supertrend_4h BTC/USDC --exchange binance --days 1095 --capital 1000` vs
    baseline P6 (`results/P6_phase_d_results.json`, clé `grok_supertrend_4h_BTC_USDC.all` : return +3.29 %,
    Sharpe 0.336, PF 1.82, MaxDD 1.76 %, 46 trades) — _delta brut, sans analyse_.
-7. Lendemain (Bruno) : `gap_backfill` 03:30 UTC vert, trou Bybit de la fenêtre de migration comblé.
+7. Dernière 1w de chaque paire = semaine complète, stampée `2026-04-06 00:00` (GATE 1 c) — _résultat_.
+8. Lendemain (Bruno) : `gap_backfill` 03:30 UTC vert, trou Bybit de la fenêtre de migration comblé.
 
 ## 5. Tâches annexes consignées (non faites, hors scope B4.1)
 
-1. **`scripts/binance_vision_import.py` écrit toujours l'open time** (`row[0]`, aucun décalage) et
-   `tests/test_scripts/test_binance_vision_import.py::test_timestamp_is_utc` verrouille ce comportement :
-   tout ré-import Vision réintroduirait des rows open-stamped. À corriger (+ test) avant tout nouvel import.
+1. ~~`scripts/binance_vision_import.py` écrit toujours l'open time~~ → **corrigé dans cette branche** (GATE 1 b) :
+   `parse_klines_csv` renvoie `open_time + interval`, tests `test_timestamp_is_utc_period_end` et
+   `test_timestamp_period_end_per_interval` (7 TF, ms et µs). Le fichier était « lecture seule » dans le brief ;
+   dérogation explicite de Bruno au GATE 1.
 2. Rows `exchange='kraken'` `XBT/USDC` de 2025-02 → 2026-05 = données WS de l'ancien connecteur ; à traiter avec
    la suppression prévue du legacy kraken (PROJECT_CONTEXT § 6).
 3. Dette 11 / `PROJECT_CONTEXT.md` § 9 et `skills/binance_import.md` (« toutes finissent en juin 2026 ») :
@@ -184,11 +232,21 @@ Après le GO : sur le serveur, `git fetch && git checkout feat/b4-1-binance-rest
 4. Trous Vision 1w d'une semaine (2022-05-30, 06-27, 08-29, 2025-01-27, 02-24) et micro-trous 2021 : données
    absentes de Binance Vision, pas comblables sans source ; à documenter dans `P6_data_coverage.md` si besoin.
 5. `ruff format --check` : `scripts/backtest.py`, `scripts/p6_5_diagnose_*.py` non formatés (pré-existant, dette 10).
+6. `scripts/audit/bybit_b3_crosscheck.py` (B3) code en dur le décalage d'un intervalle Binance/Bybit : après B4.1 son
+   contrôle (a) affichera « STOP » à tort. Artefact historique, non modifié ; à paramétrer ou archiver si réutilisé.
+7. Docstrings à réaligner au commit docs (§ 7, revue 2.h) : `src/krakenbot/data/backfill.py` (module),
+   `src/krakenbot/connectors/exchange.py` (`fetch_ohlcv`), `skills/bybit.md`, `README.md` (« 2026-06 »),
+   `docs/CODE_MAP.md` — la garantie « Bybit seulement » reste vraie (les clients REST Binance/Kraken renvoient
+   l'open time ccxt), mais plus « parce que la DB Binance est mixte ».
+8. Table auxiliaire `b4_restamp_progress` à supprimer après GATE 3 (`DROP TABLE b4_restamp_progress`).
 
 ## 6. Tests et qualité
 
-- Nouveaux : `tests/test_scripts/test_b4_stamp_lib.py` (19 : votes, bascule, raffinement de frontière,
-  fenêtres décroissantes ancrées lundi, manifeste JSON aller-retour, ledger, comptabilité) et
-  `tests/test_scripts/test_b4_restamp_binance.py` (11 : refus tunnel / backup / batch > 5000, sélection de
-  séries, dry-run = manifeste, écart → rc 1, reprise via ledger, collisions comptées, VACUUM en fin d'exécution).
+- Nouveaux : `tests/test_scripts/test_b4_stamp_lib.py` (23 : votes, mode strict, bascule, raffinement de
+  frontière, fenêtres décroissantes ancrées lundi, manifeste JSON aller-retour, ledger, comptabilité, plan de
+  reprise) et `tests/test_scripts/test_b4_restamp_binance.py` (20 : refus tunnel / backup / batch > 5000 /
+  identifiant de table / filtres inconnus, dry-run = manifeste ou rc 1/2, `--explain`, exécution complète,
+  reprise depuis la table DB sans double décalage après crash simulé post-COMMIT, refus batch différent /
+  progression non-préfixe / état DB ≠ manifeste, collision imprévue → rollback rc 3, collision autorisée
+  comptée, garde slot occupé, VACUUM en fin d'exécution) ; `test_binance_vision_import.py` (+2, end-stamps).
 - Aucun test ne touche la DB en local ; les tests DB (`--post-migration`, dry-run serveur) se jouent sur le serveur.

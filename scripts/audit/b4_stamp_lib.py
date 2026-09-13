@@ -102,13 +102,18 @@ def summarize_votes(votes: Iterable[WindowVote]) -> dict[str, int]:
     return out
 
 
-def assess_votes(votes: Sequence[WindowVote], expect: Verdict, min_rows: int = 3) -> list[str]:
+def assess_votes(
+    votes: Sequence[WindowVote], expect: Verdict, min_rows: int = 3, strict: bool = False
+) -> list[str]:
     """Problems that make the series inconsistent with the ``expect`` convention.
 
-    A window whose verdict differs from ``expect`` is only *decisive* when it
-    holds at least ``min_rows`` voting rows: single-row windows (1w) flip on the
-    exchange spread whenever two consecutive closes are nearly equal.  The
-    row-level majority over the whole overlap must also agree with ``expect``.
+    Pre-migration (``strict=False``): a window whose verdict differs from
+    ``expect`` is only *decisive* when it holds at least ``min_rows`` voting
+    rows — single-row windows (1w) flip on the exchange spread whenever two
+    consecutive closes are nearly equal.  Post-migration (``strict=True``,
+    GATE 1 decision a): **every** window must vote ``expect``, whatever its
+    size; a single residual window is a STOP.  In both modes the row-level
+    majority over the whole overlap must agree with ``expect``.
     """
     problems: list[str] = []
     if not votes:
@@ -118,11 +123,14 @@ def assess_votes(votes: Sequence[WindowVote], expect: Verdict, min_rows: int = 3
     majority: Verdict = "open" if rows_open > rows_end else "end" if rows_end > rows_open else "tie"
     if majority != expect:
         problems.append(f"row majority is '{majority}' (open={rows_open} end={rows_end})")
-    decisive = [v for v in votes if v.verdict != expect and v.total >= min_rows]
-    if decisive:
+    offending = [v for v in votes if v.verdict != expect and (strict or v.total >= min_rows)]
+    if offending:
         problems.append(
-            f"{len(decisive)} decisive window(s) vote against '{expect}': "
-            + ", ".join(f"{v.window_start.date()}({v.n_open}/{v.n_end})" for v in decisive)
+            f"{len(offending)} {'residual' if strict else 'decisive'} window(s) vote against "
+            f"'{expect}': "
+            + ", ".join(
+                f"{v.window_start.date()}({v.n_open}/{v.n_end}/{v.n_tie})" for v in offending
+            )
         )
     return problems
 
@@ -195,6 +203,10 @@ class SeriesBoundary:
     #: Consecutive ``(T, T+interval)`` rows with identical OHLCV and volume > 0.
     dup_signature_volume_gt0: int = 0
     window_verdicts: dict[str, int] = field(default_factory=dict)
+    #: Rows the close alone cannot classify before the migration (two candidate reference
+    #: closes within 0.1 %, e.g. near-equal weekly closes) plus any row that voted against the
+    #: expectation; the post-migration replay must find each of them voting *end* at ``T + interval``.
+    recheck_rows: list[datetime] = field(default_factory=list)
 
     @property
     def key(self) -> str:
@@ -224,6 +236,7 @@ class SeriesBoundary:
             "gaps": [[_iso(p), _iso(n)] for p, n in self.gaps],
             "dup_signature_volume_gt0": self.dup_signature_volume_gt0,
             "window_verdicts": dict(self.window_verdicts),
+            "recheck_rows": [_iso(t) for t in self.recheck_rows],
         }
 
     @classmethod
@@ -241,6 +254,7 @@ class SeriesBoundary:
             gaps=[(_parse_ts(p), _parse_ts(n)) for p, n in d.get("gaps", [])],  # type: ignore[misc]
             dup_signature_volume_gt0=int(d.get("dup_signature_volume_gt0", 0)),
             window_verdicts={k: int(v) for k, v in d.get("window_verdicts", {}).items()},
+            recheck_rows=[_parse_ts(t) for t in d.get("recheck_rows", [])],  # type: ignore[misc]
         )
 
 
@@ -337,6 +351,8 @@ def restamp_windows(
 
 @dataclass(frozen=True, slots=True)
 class LedgerEntry:
+    """One processed window (DB progress row and JSONL mirror line)."""
+
     pair: str
     interval: int
     window_start: datetime
@@ -347,10 +363,23 @@ class LedgerEntry:
     collisions: int
     seconds: float
     dry_run: bool
+    #: Plan identity — a resume must run with the very same values (window grid).
+    max_rows: int = 0
+    boundary: datetime | None = None
+    manifest_generated_at: datetime | None = None
 
     @property
-    def window_key(self) -> tuple[str, int, str]:
-        return (self.pair, self.interval, _iso(self.window_start) or "")
+    def window(self) -> tuple[datetime, datetime]:
+        return (self.window_start, self.window_end)
+
+    @property
+    def window_key(self) -> tuple[str, int, str, str]:
+        return (
+            self.pair,
+            self.interval,
+            _iso(self.window_start) or "",
+            _iso(self.window_end) or "",
+        )
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -364,6 +393,9 @@ class LedgerEntry:
             "collisions": self.collisions,
             "seconds": round(self.seconds, 3),
             "dry_run": self.dry_run,
+            "max_rows": self.max_rows,
+            "boundary": _iso(self.boundary),
+            "manifest_generated_at": _iso(self.manifest_generated_at),
         }
 
     @classmethod
@@ -379,7 +411,66 @@ class LedgerEntry:
             collisions=int(d["collisions"]),
             seconds=float(d["seconds"]),
             dry_run=bool(d["dry_run"]),
+            max_rows=int(d.get("max_rows", 0)),
+            boundary=_parse_ts(d.get("boundary")),
+            manifest_generated_at=_parse_ts(d.get("manifest_generated_at")),
         )
+
+
+def check_resume_plan(
+    plan: Sequence[tuple[datetime, datetime]],
+    done: Sequence[LedgerEntry],
+    max_rows: int,
+    boundary: datetime,
+    manifest_generated_at: datetime,
+) -> list[str]:
+    """Refuse a resume whose committed windows do not match the current plan.
+
+    ``done`` are the windows already committed for one series (DB progress rows).
+    They must carry the same plan identity (``max_rows``, ``boundary``, manifest)
+    and form the newest-first **prefix** of ``plan`` — any other shape means the
+    remaining original rows are not exactly ``[min_ts, w_start_of_last_done)``
+    and re-running a window would shift already shifted rows.
+    """
+    problems: list[str] = []
+    for e in done:
+        if e.max_rows != max_rows:
+            problems.append(
+                f"window {e.window_start.isoformat()} was run with max_rows={e.max_rows}, now {max_rows}"
+            )
+        if e.boundary != boundary:
+            problems.append(
+                f"window {e.window_start.isoformat()} was run with boundary={e.boundary}, now {boundary}"
+            )
+        if e.manifest_generated_at != manifest_generated_at:
+            problems.append(
+                f"window {e.window_start.isoformat()} was run with manifest {e.manifest_generated_at}, "
+                f"now {manifest_generated_at}"
+            )
+    done_windows_set = {e.window for e in done}
+    if len(done_windows_set) != len(done):
+        problems.append("duplicate progress rows for the same window")
+    prefix = list(plan[: len(done_windows_set)])
+    if set(prefix) != done_windows_set:
+        unknown = sorted(done_windows_set - set(plan))
+        problems.append(
+            f"{len(done_windows_set)} committed window(s) are not the newest-first prefix of the plan"
+            + (f" (unknown windows: {[w[0].isoformat() for w in unknown][:3]})" if unknown else "")
+        )
+    return problems
+
+
+def remaining_region_end(plan: Sequence[tuple[datetime, datetime]], n_done: int) -> datetime | None:
+    """Exclusive upper bound of the still-unprocessed original rows, ``None`` when all done.
+
+    Before any window is processed every original row is ``< plan[0][1]``
+    (= boundary + interval); after the newest ``n_done`` windows have been
+    committed their rows sit at ``> plan[n_done-1][0]`` and the untouched
+    originals are exactly those ``< plan[n_done-1][0]``.
+    """
+    if not plan or n_done >= len(plan):
+        return None
+    return plan[0][1] if n_done == 0 else plan[n_done - 1][0]
 
 
 def read_ledger(path: Path) -> list[LedgerEntry]:
@@ -398,7 +489,7 @@ def append_ledger(path: Path, entry: LedgerEntry) -> None:
         fh.write(json.dumps(entry.to_json()) + "\n")
 
 
-def done_windows(entries: Iterable[LedgerEntry]) -> set[tuple[str, int, str]]:
+def done_windows(entries: Iterable[LedgerEntry]) -> set[tuple[str, int, str, str]]:
     """Keys of windows already executed for real (dry-run entries are ignored)."""
     return {e.window_key for e in entries if not e.dry_run}
 
