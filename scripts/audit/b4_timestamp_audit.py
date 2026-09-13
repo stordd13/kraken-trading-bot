@@ -15,10 +15,10 @@ Reference-window inclusion (v2, general rules — no window is ever named):
      (first reference row with ``volume > 0``) is the listing ramp-up — and a
      partial candle by construction on 1w — so it and anything earlier is excluded;
   B. windows whose reference **1m coverage** (share of the week's minutes with
-     traded volume) is below ``--coverage-floor`` are excluded — for intraday
-     timeframes (< 1d) per the GATE 3 spec (``--coverage-scope intraday``), or
-     for every timeframe (``--coverage-scope all``: the pair-week liquidity
-     qualifies the reference candles whatever the aggregation).  A sensitivity
+     traded volume) are below ``--coverage-floor`` are excluded — for every
+     timeframe (``--coverage-scope all``, GATE 3 decision: the pair-week liquidity
+     qualifies the reference candles whatever the aggregation; the initial
+     intraday-only scope is kept as ``--coverage-scope intraday``).  A sensitivity
      table over floors 0–95 % is printed; the verdict must be stable on a plateau
      of at least 30 points reaching 95 % that contains the chosen floor.
 Excluded windows are still listed with their votes — nothing is dropped silently.
@@ -154,8 +154,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument(
         "--coverage-scope",
         choices=["intraday", "all"],
-        default="intraday",
-        help="Rule B applies to intraday timeframes only (spec) or to every timeframe.",
+        default="all",
+        help="Rule B scope: every timeframe (GATE 3 decision, default) or intraday only "
+        "(the initial spec, kept for the evidence runs).",
     )
     ap.add_argument("--out-json", type=Path, default=None, help="Write the boundary manifest.")
     ap.add_argument("--out-md", type=Path, default=None, help="Also write the report text.")
