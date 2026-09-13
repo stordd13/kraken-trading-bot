@@ -4,8 +4,11 @@
 > `v2.5.0-b3-bybit-data`). Spec : `agent/AGENT_B4_1_TIMESTAMP_AUDIT_RESTAMP.md`. Plan validé par Bruno le
 > 2026-09-13 (plan mode). Collector Bybit **actif** pendant l'audit (lecture seule, via tunnel).
 >
-> État : **GATE 1 donné (GO, 2026-09-13) → étape 2 en cours, ⛔ GATE 2 en attente.** Aucune écriture DB
-> n'a eu lieu à ce stade (lectures seules via tunnel, EXPLAIN et tables temporaires de session).
+> État : **GATE 1 donné (GO, 2026-09-13) → backup frais, collector arrêté, dry-run serveur MATCH →
+> ⛔ GATE 2 en attente du GO `--execute`.** Aucune écriture DB n'a eu lieu à ce stade (lectures seules,
+> `EXPLAIN`, tables temporaires de session). **Le collector `krakenbot-collector` est arrêté depuis
+> 2026-09-13 17:46:59 UTC** (séquence GATE 2 de Bruno) ; le trou Bybit grandit jusqu'à la reprise
+> (backfill nocturne : fenêtre de 3 jours).
 
 ## Résumé exécutif
 
@@ -23,7 +26,7 @@
   ≤ 4 000 rows en ordre **décroissant**, une transaction par fenêtre (`CREATE TEMP TABLE … / DELETE / INSERT …
   ON CONFLICT DO NOTHING`), ledger JSONL pour la reprise. Un `UPDATE timestamp = timestamp + interval` direct
   est impossible : la PK `(timestamp, pair, interval, exchange)` n'est pas déferrable (violation transitoire).
-- **Dry-run via tunnel (lecture seule, 2026-09-13 16:27–16:35 UTC)** : 2 511 fenêtres, `staged=8 712 718`,
+- **Dry-run via tunnel (lecture seule, 2026-09-13 16:27–16:35 UTC)** : 2 550 fenêtres, `staged=8 712 718`,
   `collisions=0`, **MATCH exact** avec le manifeste sur les 21 séries (`results/b4_restamp_dryrun_tunnel.txt`).
   Le dry-run **serveur** exigé par le brief (§ 5.4) sera rejoué après GATE 1, avant GATE 2.
 - Tests : `pytest -q --ignore=tests/test_scripts/test_run_p6_determinism.py` → **1170 passés, 6 skipped,
@@ -48,7 +51,7 @@
 | 12 | Invariant ajouté (GATE 1 c) : la dernière candle 1w de chaque paire est une **semaine complète** (open = 1ᵉʳ 1d open même source ; close/high/low vs les 7 jours 1d Bybit, tolérance 50 bps ; signature de troncature = close égal au dernier 1d Binance) | § 2.g |
 | 13 | **Vote hybride** : le close tranche, sauf si les deux closes Bybit candidats sont à < 0,1 % l'un de l'autre (ambigu) → distance OHLC complète. Remplace le vote « close seul » | la distance OHLC seule bascule sur les premières semaines Bybit EU (marché illiquide, SOL 2025-06-30) ; le close seul bascule sur deux closes hebdo quasi égaux (3 cas) ; l'hybride donne 0 fenêtre ambiguë sur les 21 séries |
 | 14 | **Reprise atomique** (revue adversariale, § 2.h) : progression enregistrée **dans la transaction de chaque fenêtre** (table `b4_restamp_progress`, PK fenêtre + identité du plan : `max_rows`, frontière, stamp du manifeste), ledger JSONL = miroir. Pré-vol par série avant toute écriture : fenêtres faites = préfixe du plan, même identité, et `COUNT` des originales restantes = `expected_restamps − déjà stagées`. Garde in-transaction : slot `w_end` libre, `deleted == staged`, collisions ≤ autorisées | sans cela, une reprise après crash entre COMMIT et écriture du ledger (ou avec un autre `--max-rows-per-tx`) redécalait des rows déjà décalées |
-| 15 | Table `b4_restamp_progress` = **seule écriture hors `exchange='binance'`** (table auxiliaire, 2 511 rows, à supprimer à la clôture) — dérogation à soumettre au GATE 2 | brief § 11 |
+| 15 | Table `b4_restamp_progress` = **seule écriture hors `exchange='binance'`** (table auxiliaire, 2 550 rows, à supprimer à la clôture) — dérogation à soumettre au GATE 2 | brief § 11 |
 
 Faits DB (lecture seule, 2026-09-13) : TimescaleDB 2.24.0 / PostgreSQL 16.11, hypertable 3 002 MB,
 `chunk_time_interval = 30 days`, compression désactivée, `max_locks_per_transaction = 512`,
@@ -150,8 +153,10 @@ pour l'invariant 3. Le script de migration et le mode `--post-migration` de l'au
 
 ### 2.f Dry-run de la migration via tunnel (lecture seule, hors protocole serveur)
 
-Premier dry-run (16:27 → 16:35 UTC, manifeste 16:25) : 2 511 fenêtres (690 par série 1m, 138 au 5m, 46 au
-15m, 12 au 1h, 3 au 4h, 1 au 1d/1w), `staged = audit` sur les 21 séries, `collisions = 0 = audit` → MATCH.
+Premier dry-run (16:27 → 16:35 UTC, manifeste 16:25) : **2 550 fenêtres** (BTC et ETH : 690 au 1m, 138 au
+5m, 46 au 15m, 12 au 1h, 3 au 4h, 1 au 1d et 1w = 891 chacune ; SOL : 594 + 119 + 40 + 10 + 3 + 1 + 1 = 768),
+`staged = audit` sur les 21 séries, `collisions = 0 = audit` → MATCH. (Une version antérieure de ce rapport
+écrivait « 2 511 » : erreur d'addition, les tallies par série n'ont jamais changé.)
 Rejoué après la revue adversariale contre le manifeste **versionné** (`--dry-run --allow-tunnel --explain`,
 plans `EXPLAIN` des trois statements du chemin `--execute` validés sur le schéma réel, table temporaire de
 session vide, aucune écriture) : voir `results/b4_restamp_dryrun_tunnel.txt` (stamp du manifeste en en-tête).
@@ -194,7 +199,7 @@ et le dry-run serveur), `refine_boundary` sur run initial (sans objet : aucune b
 1. Re-stamp : GO. 2. Policy « WS fait foi » confirmée ; le chemin `ON CONFLICT` reste ; toute collision au
 dry-run serveur = mismatch → STOP. 3. Périmètre 100 % des rows `exchange='binance'` validé. Ajouts a/b/c →
 décisions 10–12. Séquence GATE 2 rappelée : checkout serveur, backup frais (le dump du 7 sept ne compte pas),
-`stop krakenbot-collector` (heure notée), dry-run serveur en tmux = **exactement 2 511 fenêtres / 8 712 718
+`stop krakenbot-collector` (heure notée), dry-run serveur en tmux = **exactement 2 550 fenêtres / 8 712 718
 rows / 0 collision**, estimation de durée du `--execute` à fournir, **STOP au GATE 2**.
 
 ## 3. Migration (étape 2, serveur) — à compléter après GATE 2
@@ -204,7 +209,23 @@ rows / 0 collision**, estimation de durée du `--execute` à fournir, **STOP au 
   terminé `17:35:29 UTC`, exit 0, sha256 `89639d98172c64fcd46c654d63bcea6ead313045dcb5129984096fbc9f7166b3`,
   `pg_restore -l` : 1 172 entrées TOC (144 TABLE DATA, `market_data_ohlc` + chunks `_hyper_2_*`). Le dump du
   7 sept (211 MB, antérieur à l'import Bybit) est ignoré. Disque serveur : 59 GB libres.
-- Arrêt collector : _heure UTC_. Dry-run serveur : _sortie_. GO GATE 2 : _heure_.
+- Serveur : `git checkout feat/b4-1-binance-restamp` @ `f71cf6a`, manifeste identique au dépôt (sha256
+  `eb62eab6…`). Arrêt collector : **2026-09-13 17:46:59 UTC** (`systemctl stop`, `inactive`, journal propre :
+  « Deactivated successfully »).
+- Dry-run serveur (tmux `b4-dryrun`, `--dry-run --explain`, DB locale port 5432) : **17:47:05 → 17:49:07 UTC**,
+  **2 550 fenêtres, staged = 8 712 718 = audit, collisions = 0 = audit, 21/21 séries → MATCH**, exit 0 ;
+  plans `EXPLAIN` du chemin `--execute` OK sur chaque première fenêtre (Bitmap/Index Scan sur le chunk,
+  `ModifyHypertable` pour DELETE et INSERT `ON CONFLICT DO NOTHING`). Sortie : `results/b4_restamp_dryrun_server.txt`.
+  Cadence des requêtes de comptage : ~42 fenêtres/s (2 min pour 8,7 M rows).
+- **Estimation `--execute`** (à confirmer par les lignes ETA imprimées toutes les 50 fenêtres) : par fenêtre,
+  staging 4 000 rows + DELETE + INSERT avec 4 index btree + COMMIT ≈ 0,3–0,6 s sur le CX33 → **2 550 fenêtres ≈
+  13–25 min**, + `VACUUM ANALYZE` 2–5 min, + audit `--post-migration` sur le serveur ≈ 3 min, + relance collector
+  → **fenêtre d'arrêt du collector ≈ 45 min après le GO** (arrêt déjà effectif depuis 17:46:59 UTC ; backfill
+  nocturne 03:30 UTC avec fenêtre de 3 jours pour le trou Bybit).
+- Écriture hors `exchange='binance'` à autoriser au GO : table auxiliaire `b4_restamp_progress` (≈ 2 550 rows,
+  progression transactionnelle, supprimée à la clôture) — décision 15.
+- GO GATE 2 : _heure_. `--execute --i-have-a-fresh-backup --ledger ~/b4_restamp_ledger.jsonl` : _durée, tableau
+  final, VACUUM ANALYZE_.
 - `--execute --i-have-a-fresh-backup --ledger ~/b4_restamp_ledger.jsonl` : _durée, tableau final, VACUUM ANALYZE_.
 - Reprise collector : _heure UTC, `active (running)`, logs WS propres_.
 
