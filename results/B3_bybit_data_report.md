@@ -13,8 +13,16 @@
 - **`TaskScheduler`** : client REST read-only injecté par le collector, job unique `gap_backfill` à 03:30 UTC,
   fenêtre de scan 3 jours, events `SCHEDULER_TASK_*` (qui n'existaient pas dans `EventType` : AttributeError latent).
 - **Constat convention timestamp** (§ 6) : rows Binance **open-stamped**, rows Bybit **end-stamped** → dette B4.
-- Tests : 1140 passés (+ 35 nouveaux), 4 échecs préexistants dépendants de l'ordre (documentés dans la mémoire
-  projet), ruff propre, mypy 35 erreurs (48 avant B3, aucune dans le nouveau code).
+- Tests (`pytest -m "not slow" --ignore=tests/test_scripts/test_run_p6_determinism.py`, re-run le 2026-09-13) :
+  **1140 passés, 6 skipped, 4 échecs** — exactement les 4 ordre-dépendants connus depuis la passation B2
+  (pollution de `os.environ` par le `load_dotenv()` de `scripts/backtest.py` importé plus tôt dans la session ;
+  chacun passe en isolation), aucune régression :
+  - `tests/test_config/test_settings.py::TestExchangeNameRequired::test_live_mode_requires_keys_of_selected_exchange`
+  - `tests/test_config/test_settings.py::TestExchangeNameRequired::test_bybit_credentials_by_role`
+  - `tests/test_connectors/test_bybit_rest.py::TestInit::test_live_without_trade_key_raises`
+  - `tests/test_strategies/test_grid_atr_v4_backward_compat.py::test_grid_atr_v4_backward_compat_hash`
+
+  ruff propre, mypy 35 erreurs (48 avant B3, aucune dans le nouveau code).
 
 ## 1. Décisions
 
@@ -341,8 +349,10 @@ un décalage d'**exactement un intervalle** entre Bybit et Binance pour la même
   l'insertion ; cadence constante, pas d'anomalie.
 - Illiquidité EU : 24–36 % de candles 1m plates sur 15 mois ; maxima d'écart 1h vs Binance de 2–3 % sur des heures
   isolées (juillet 2025 ETH/SOL, 2026-02-06 BTC) — argument pour le slippage simulé de B4.
-- `skills/deployment.md:72-75` décrit encore le template `.env` de `deploy.yml` comme « Kraken-era » : périmé
-  (le template est Bybit depuis B2), non corrigé ici (hors scope).
+- `skills/deployment.md` : seule la note sur le kwarg de log (§ « Observation 24 h », lignes 40-41 :
+  `timestamp` → `candle_timestamp`) a été mise à jour, parce que B3 fait ce renommage. Le paragraphe
+  « Accès serveur » (lignes 72-75) décrit encore le template `.env` de `deploy.yml` comme « Kraken-era » : périmé
+  (le template est Bybit depuis B2), **non corrigé** (hors scope B3, `deploy.yml` = prérequis B5).
 
 ## 8. Critères de fin (spec §4)
 
@@ -355,8 +365,9 @@ un décalage d'**exactement un intervalle** entre Bybit et Binance pour la même
       (12/09 03:30 UTC) reste à observer** (commandes ci-dessus).
 - [x] `pytest` + `ruff` verts (1140 passés ; 4 échecs préexistants dépendants de l'ordre), mypy 35 erreurs (48 avant).
 - [x] Logs WS sans kwarg `timestamp=` (bybit + binance), vérifié après restart.
-- [x] Docs à jour : `skills/bybit.md`, `skills/database.md`, `skills/binance_import.md`, `skills/deployment.md`,
-      `PROJECT_CONTEXT.md`, `ROADMAP.md`, `docs/CODE_MAP.md`, `results/INDEX.md`.
+- [x] Docs à jour : `skills/bybit.md`, `skills/database.md`, `skills/binance_import.md`, `PROJECT_CONTEXT.md`,
+      `ROADMAP.md`, `docs/CODE_MAP.md`, `results/INDEX.md` ; `skills/deployment.md` touché **uniquement** pour la
+      note `candle_timestamp` (lignes 40-41), son paragraphe `deploy.yml` reste périmé (§ 7).
 
 ## 9. Clôture — à faire par Bruno (spec §6)
 
