@@ -4,11 +4,9 @@
 > `v2.5.0-b3-bybit-data`). Spec : `agent/AGENT_B4_1_TIMESTAMP_AUDIT_RESTAMP.md`. Plan validé par Bruno le
 > 2026-09-13 (plan mode). Collector Bybit **actif** pendant l'audit (lecture seule, via tunnel).
 >
-> État : **GATE 1 donné (GO, 2026-09-13) → backup frais, collector arrêté, dry-run serveur MATCH →
-> ⛔ GATE 2 en attente du GO `--execute`.** Aucune écriture DB n'a eu lieu à ce stade (lectures seules,
-> `EXPLAIN`, tables temporaires de session). **Le collector `krakenbot-collector` est arrêté depuis
-> 2026-09-13 17:46:59 UTC** (séquence GATE 2 de Bruno) ; le trou Bybit grandit jusqu'à la reprise
-> (backfill nocturne : fenêtre de 3 jours).
+> État : **GATE 1 GO → GATE 2 GO → `--execute` fait (18:07 UTC) → invariants 1–7 verts (audit v2, portée
+> `all`, décision GATE 3 de Bruno) → clôture (§ 7) → ⛔ GATE 3 : validation humaine avant PR vers `dev`.**
+> Collector arrêté 17:46:59 → 18:13:23 UTC, actif depuis.
 
 ## Résumé exécutif
 
@@ -356,14 +354,62 @@ naturelle : aucune fenêtre nommée, aucun paramètre ajouté. Sous cette porté
 Plateau de stabilité [20 %, 95 %] dans les deux sens, plancher retenu 90 % (mode de la distribution) loin du
 bord ; les 7 fenêtres en défaut à 0 % sont toutes ≤ 19,1 % de couverture (semaines de listing/ramp-up).
 
-**Décision demandée à Bruno** : (1) adopter `--coverage-scope all` comme portée de la règle B (invariant 1
-vert dans les deux sens), ou (2) garder la portée intraday et statuer sur les deux résidus 1d/1w de la semaine
-06-30 comme limites documentées de la référence, ou (3) autre. Aucun commit docs / Alembic / DROP n'a été fait
-en attendant (drafts prêts dans l'arbre de travail).
+#### 4.1.c Décision GATE 3 (Bruno, 2026-09-13) : portée `all` adoptée — invariant 1 **vert**
 
-1. **Invariant 1 — état** : v1 strict = STOP (6 résidus, § 4.1) ; v2 portée spec = STOP (2 éléments de la
-   semaine 06-30 hors portée de la règle B) ; v2 portée `all` = **vert dans les deux sens** (proposition
-   § 4.1.b, décision Bruno en attente). Détail du run v1 strict ci-dessous :
+Justification, dans l'ordre :
+
+1. **La couverture minute est une propriété de la paire-semaine sur la référence** ; l'agrégation par TF ne
+   blanchit pas l'illiquidité. Pièce : BTC 1d Bybit du 2025-07-05 (2,59 BTC échangés), **même candle
+   physique aux deux stamps**, échec dans les deux sens (direct : distance 5 623 à la même candle contre
+   2 280 à la suivante ; inverse : 4 469 à la précédente contre 5 623 à la même).
+2. **L'extension de la règle B à tous les TF est imposée par la règle du contrôle inverse** (« une fenêtre
+   incluse qui échoue doit tomber sous la règle de couverture »), pas choisie pour le verdict. Le scoping
+   intraday initial était l'élément arbitraire de la spec ; il est levé (`--coverage-scope all`, désormais
+   le défaut du script).
+3. **Plancher 90 % = bord conservateur de la cassure** de la distribution (saut 9 → 55 paire-semaines entre
+   les déciles 80 et 90) ; plateau de stabilité **20 → 95 % direct, 0 → 95 % inverse** ; les échecs
+   historiques sont tous à ≤ 9,9 % de couverture (semaine de listing).
+4. **Sorties v1 strict et v2-intraday conservées en evidence** (`results/b4_timestamp_audit_post_migration.txt`,
+   `*_v2.txt`, `*_v21_intraday.txt`) ; dans chaque sortie les fenêtres exclues sont listées avec leurs votes.
+
+Ventilation des fenêtres incluses par série sous portée `all` (contrôle direct = état courant, attendu *end* ;
+contrôle inverse = vue `timestamp − intervalle`, attendu *open* ; « rows » = rows votantes des fenêtres
+incluses ; rows de revérification = celles du manifeste, assessées hors semaines exclues) — **aucune série à
+zéro évidence directe** (minimum 16 fenêtres, 681 120 rows votantes au total) :
+
+| Série | Fenêtres total / incluses | Direct open/end/tie (rows) | Inverse open/end/tie (rows) | Rows revérif. (assessées) |
+|---|---|---|---|---|
+| BTC/USDC 1m | 40 / **22** | 0/22/0 (206 069) | 22/0/0 (206 069) | 0 |
+| BTC/USDC 5m | 40 / **22** | 0/22/0 (42 882) | 22/0/0 (42 881) | 0 |
+| BTC/USDC 15m | 40 / **22** | 0/22/0 (14 305) | 22/0/0 (14 304) | 0 |
+| BTC/USDC 1h | 40 / **22** | 0/22/0 (3 577) | 22/0/0 (3 576) | 0 |
+| BTC/USDC 4h | 40 / **22** | 0/22/0 (895) | 22/0/0 (894) | 0 |
+| BTC/USDC 1d | 40 / **22** | 0/22/0 (150) | 22/0/0 (149) | 16 (6 assessées, 6 *end* / 6 *open*) |
+| BTC/USDC 1w | 40 / **23** | 0/23/0 (23) | 22/0/0 (22) | 2 (1 assessée) |
+| ETH/USDC 1m | 40 / **16** | 0/16/0 (154 428) | 16/0/0 (154 428) | 0 |
+| ETH/USDC 5m | 40 / **16** | 0/16/0 (32 084) | 16/0/0 (32 084) | 0 |
+| ETH/USDC 15m | 40 / **16** | 0/16/0 (10 752) | 16/0/0 (10 752) | 0 |
+| ETH/USDC 1h | 40 / **16** | 0/16/0 (2 688) | 16/0/0 (2 688) | 0 |
+| ETH/USDC 4h | 40 / **16** | 0/16/0 (672) | 16/0/0 (672) | 0 |
+| ETH/USDC 1d | 40 / **16** | 0/16/0 (112) | 16/0/0 (112) | 11 (7 assessées) |
+| ETH/USDC 1w | 41 / **16** | 0/16/0 (16) | 16/0/0 (16) | 1 (1 assessée) |
+| SOL/USDC 1m | 40 / **17** | 0/17/0 (163 227) | 17/0/0 (163 227) | 0 |
+| SOL/USDC 5m | 40 / **17** | 0/17/0 (34 112) | 17/0/0 (34 112) | 0 |
+| SOL/USDC 15m | 40 / **17** | 0/17/0 (11 422) | 17/0/0 (11 422) | 0 |
+| SOL/USDC 1h | 40 / **17** | 0/17/0 (2 856) | 17/0/0 (2 856) | 0 |
+| SOL/USDC 4h | 40 / **17** | 0/17/0 (714) | 17/0/0 (714) | 0 |
+| SOL/USDC 1d | 40 / **17** | 0/17/0 (119) | 17/0/0 (119) | 6 (5 assessées) |
+| SOL/USDC 1w | 41 / **17** | 0/17/0 (17) | 17/0/0 (17) | 0 |
+| **Total** | 842 / **386** | 0/386/0 (681 120) | 385/0/0 (681 114) | 36 (20 assessées, 20/20 conformes dans chaque sens) |
+
+(BTC 1w : 23 fenêtres directes contre 22 inverses — la dernière 1w, stampée `2026-04-06` après migration,
+n'a de voisine Bybit `+1w` qu'à l'état courant. Les fenêtres incluses sont celles des semaines ≥ 90 % de
+couverture : BTC dès fin octobre 2025, ETH et SOL dès mi-novembre 2025, jusqu'à fin mars 2026.)
+
+1. **Invariant 1 — ✅ vert** (décision GATE 3, § 4.1.c) : v1 strict = STOP (6 résidus, § 4.1) ; v2 portée
+   intraday = STOP (2 éléments de la semaine 06-30 hors portée de la règle B) ; v2 portée `all` = **end sur
+   les 386 fenêtres incluses directes, open sur les 385 inverses, 20/20 rows de revérification dans chaque
+   sens**. Détail du run v1 strict ci-dessous :
    **15/21 séries à 100 % *end*** (40/40 fenêtres) ; majorité par row *end* sur les 21 séries ; **les 36 rows
    ambiguës revérifiées une à une votent toutes *end*** (dont BTC 1w 2025-09-15 et 2025-12-01, ETH 1w
    2025-12-08). **⛔ 6 fenêtres résiduelles → exit 1 → STOP** (règle GATE 1 a) :

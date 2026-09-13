@@ -246,8 +246,9 @@ parallèle par les tests P6) :**
   n'est correct que pour `EXCHANGE_NAME=bybit` (docstring du Protocol `connectors/exchange.py`).
 - Première candle EU : **2025-06-11 09:00 UTC** (1h, DB ts `10:00`) ; 1w : première clôture `2025-06-16`
   (lundi). Les premières candles sont plates (`volume=0`, `vwap NULL`) : ce sont des candles, pas des trous.
-- Convention 1d/1w vs Binance : décalage d'**exactement un intervalle** (Binance Vision = open time),
-  documenté dans `skills/database.md`, remédiation B4.
+- Convention 1d/1w vs Binance : **même timestamp** depuis le re-stamp B4.1 (2026-09-13) ; avant, décalage
+  d'exactement un intervalle (Binance Vision = open time, constat B3) — `skills/database.md`,
+  `results/B4_1_timestamp_restamp_report.md`.
 
 ### Runbook import historique — `scripts/bybit_kline_import.py`
 

@@ -18,13 +18,12 @@ Correctness guarantee — READ BEFORE RUNNING ON ANOTHER EXCHANGE
 The backfill is only correct when the REST client returns candles stamped the
 way that exchange's rows are stored.  Today this holds for **Bybit only**
 (``BybitRestClient.fetch_ohlcv`` returns ``start + interval`` from the raw v5
-kline endpoint).  Binance and Kraken clients still return the ccxt *open* time,
-and the Binance rows in DB are a mix of Vision (open-stamped) and WS
-(end-stamped) data, so the invariant cannot even be defined there.  Running
-this backfill with ``EXCHANGE_NAME=binance`` or ``kraken`` would insert candles
-shifted by one interval **without any error**.  See
-:class:`krakenbot.connectors.exchange.ExchangeRestClient` and
-``results/B3_bybit_data_report.md``.
+kline endpoint).  Binance and Kraken clients still return the ccxt *open* time
+while every row in DB is end-stamped (the Binance rows since the B4.1 re-stamp,
+``results/B4_1_timestamp_restamp_report.md``).  Running this backfill with
+``EXCHANGE_NAME=binance`` or ``kraken`` would therefore insert candles shifted
+by one interval **without any error**.  See
+:class:`krakenbot.connectors.exchange.ExchangeRestClient`.
 """
 
 from __future__ import annotations

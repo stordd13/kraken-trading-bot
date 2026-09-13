@@ -112,10 +112,10 @@ class ExchangeRestClient(Protocol):
           ``vwap = turnover / volume``; the in-progress candle is excluded.
           This is the only client on which ``krakenbot.data.backfill`` is
           guaranteed correct.
-        * **Binance / Kraken**: ccxt *open* time, no ``vwap``.  Binance rows in
-          DB are a mix of Vision (open-stamped) and WS (end-stamped) data, so
-          no single invariant holds there.  A gap backfill on these exchanges
-          would insert candles shifted by one interval without any error.
+        * **Binance / Kraken**: ccxt *open* time, no ``vwap``, while the DB
+          rows are end-stamped (Binance since the B4.1 re-stamp).  A gap
+          backfill on these exchanges would insert candles shifted by one
+          interval without any error.
         """
         ...
 

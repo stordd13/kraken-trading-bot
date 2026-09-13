@@ -2,12 +2,17 @@
 
 > Une ligne par fichier conservé : date, phase, verdict, pourquoi il est encore là.
 > Tout ce qui n'est plus une référence courante est dans `results/archive/` (rien n'est supprimé).
-> Dernière mise à jour : 2026-09-11 (B3).
+> Dernière mise à jour : 2026-09-13 (B4.1).
 
 ## Fichiers de référence (à la racine de `results/`)
 
 | Fichier | Date | Phase | Verdict / contenu | Pourquoi il reste |
 |---|---|---|---|---|
+| `B4_1_timestamp_restamp_report.md` | 2026-09-13 | B4.1 | **Re-stamp des 8 712 718 rows Binance en fin de période** (open time → `open + interval`) : audit, 3 gates, exécution serveur (2 550 fenêtres, 0 collision), invariants, audit v2 (vote OHLC, règles A/B, vue virtuelle), backtest de référence différent du baseline P6 | Source de la résolution de la dette 11 ; prérequis de validité de B4.2/B4.3 |
+| `b4_binance_stamp_boundaries.json` | 2026-09-13 | B4.1 | Manifeste des frontières (21 séries, `last_open_stamped_ts`, counts, trous, rows à revérifier), sha256 `eb62eab6…` | Source de vérité du périmètre migré ; entrée des rejeux d'audit |
+| `b4_timestamp_audit_pre_migration.txt` · `b4_restamp_dryrun_tunnel.txt` · `b4_restamp_dryrun_server.txt` · `b4_restamp_execute_server.txt` · `b4_restamp_ledger_server.jsonl` | 2026-09-13 | B4.1 | Sorties brutes : audit pré-migration, dry-runs (tunnel + serveur), exécution, ledger des 2 550 fenêtres | Preuves GATE 1/2 |
+| `b4_timestamp_audit_post_migration.txt` (v1 strict, exit 1) · `b4_timestamp_audit_post_migration_v2.txt` · `b4_timestamp_audit_premigration_view_v2.txt` (+ `_v21` portée spec/all) | 2026-09-13 | B4.1 | Rejeux post-migration : v1 strict (6 résidus, evidence conservée), v2 (règles A/B, sensibilité) dans les deux sens | Invariant 1 et décision GATE 3 |
+| `b4_reference_backtest_A_p6period.txt` · `b4_reference_backtest_B_brief.txt` | 2026-09-13 | B4.1 | Backtest de référence `grok_supertrend_4h` BTC après re-stamp (A : période/pas P6 ; B : commande littérale du brief) | Invariant 6 ; delta brut pour B4.3 |
 | `B3_bybit_data_report.md` | 2026-09-11 | B3 | **Historique Bybit EU en DB** (3 paires × 7 TF depuis 2025-06-11), backfill de gaps démontré avant l'import, scheduler actif ; cohérences 1d/1w (décalage d'un intervalle attendu), prix 1h, WS/REST ; **constat** convention Binance open-stamped → dette B4 | Preuve des données live Bybit, sorties SQL brutes, décisions de convention (source de la dette 11) |
 | `bybit_integration_audit.md` | 2026-09-07 | B0 | **GO avec réserves** : instance EU séparée (`api.bybit.eu`), fees 0.10/0.25, historique EU depuis 2025-06-11, corrélation prix Binance/Bybit 0.999999, clés API non vérifiées | Source des constantes B1–B3 (`skills/bybit.md`) et de la décision « données Binance + fees Bybit » |
 | `P7_phase1_cross_validate.json` | 2026-05-30 | P7 phase 1 | 212 jobs de grid search cross-validés 70/30 (grid ATR v4, SuperTrend, DCA, Donchian), **fees Binance 0.075 % flat** | Machinerie et grilles réutilisées en B4 ; classements non transposables aux fees Bybit |

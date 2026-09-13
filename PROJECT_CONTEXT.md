@@ -189,10 +189,13 @@ Contexte historique : les backtests P6 et P7 phase 1 ont été faits avec les fe
 **market_data_ohlc** (hypertable TimescaleDB) :
 - PK : `(timestamp, pair, interval, exchange)`
 - Colonnes : open, high, low, close, volume, vwap, trades_count (nullable — Bybit n'en fournit pas)
-- Chunks mensuels ; `timestamp` = fin de période (`open + interval`, Bybit `end + 1 ms`)
+- Chunks de 30 jours ; `timestamp` = **fin de période** (`open + interval`, Bybit `end + 1 ms`) pour
+  **tous** les exchanges — les rows `binance` le sont depuis le re-stamp B4.1 du 2026-09-13
+  (`results/B4_1_timestamp_restamp_report.md`)
 
 **Volumes (septembre 2026)** :
-- `exchange='binance'` : 8 712 718 rows (BTC/ETH/SOL × 7 TF, 2021-01 → 2026-03-31) — **base de backtest, figée**, open-stamped (dette 11)
+- `exchange='binance'` : 8 712 718 rows (BTC/ETH/SOL × 7 TF, 2021-01-01 → 2026-04-01 00:00, 1w → 2026-04-06) —
+  **base de backtest, figée**, **end-stamped depuis B4.1** (dette 11 résolue ; counts inchangés par le re-stamp)
 - `exchange='kraken'` : 1 181 469 rows (legacy, à supprimer quand Bybit est validé en live)
 - `exchange='bybit'` : **2 543 347 rows** (B3, 2026-09-11 : 3 paires × 7 TF depuis 2025-06-11 09:21 UTC, + WS en continu, + backfill nocturne)
 
@@ -276,19 +279,22 @@ Détail : `ROADMAP.md`.
    depuis B0.5) et `GridBacktester` un `_check_directional_pause` inutilisé — à nettoyer avec la dette 2.
 10. **`scripts/p6_5_diagnose_*.py`** ne passent pas `ruff format` (pré-existant, hors CI qui ne vérifie
     que `src/`).
-11. **Convention de timestamp Binance vs moteur de backtest (constat B3, 2026-09-11, à trancher en ouverture
-    de B4 — prérequis de validité, pas seulement de coûts).** Vérifié en DB : les rows `binance` (Vision)
-    sont stampées à l'**open time** (BTC 1d `2024-01-01` open 42274 / close 44185 = candle du 1er janvier ;
-    1m se termine à `2026-03-31 23:59`), alors que les rows WS (Binance et Bybit) sont stampées en **fin de
-    période** (`start + interval`). Moteur de backtest conçu pour end-stamps + données Binance open-stamped
-    = **look-ahead multi-TF dans P6/P7** (une candle 4h/1d est vue un intervalle trop tôt par rapport aux
-    candles 1h). Fenêtre avril–juin 2026 à auditer (collisions PK WS/Vision). Remédiation — re-stamp Binance
-    ou adaptation du moteur, plus assainissement de la fenêtre — à trancher en ouverture de B4, **avant tout
-    re-run**. Rien de plus en B3 (pas de fix, pas de re-stamp) ; les docs `skills/database.md` et
-    `skills/binance_import.md` disent désormais la vérité. Source : `results/B3_bybit_data_report.md`.
+11. ✅ **B4.1 (2026-09-13) — Convention de timestamp Binance** : les 8 712 718 rows `binance` (import Vision,
+    open-stamped) ont été **re-stampées en fin de période** (`timestamp := timestamp + interval`) sur le serveur
+    — 2 550 fenêtres transactionnelles (une version intermédiaire du rapport écrivait « 2 511 » : erreur
+    d'addition, corrigée), 0 collision, comptabilité exacte par série, collector arrêté de 17:46:59 à 18:13:23
+    UTC, backup frais `krakenbot_20260913_b4pre.dump` avant écriture. **Prémisse corrigée** : la « fenêtre
+    avril–juin 2026 de rows WS Binance end-stamped à assainir » n'a jamais existé en DB (`MAX(timestamp)`
+    des 21 séries = 2026-03-31 avant re-stamp) ; les rows WS de cette époque sont sous `exchange='kraken'`
+    (`XBT/USDC` jusqu'au 2026-05-30, collector alors sur Kraken — cf. dette 1). Invariants post-migration
+    verts (audit v2 : vote OHLC, première semaine tradée Bybit et fenêtres sous le plancher de couverture
+    exclues, contrôle inverse sur la vue virtuelle `timestamp − interval`) ; backtest de référence différent
+    du baseline P6 (look-ahead multi-TF supprimé). `scripts/binance_vision_import.py` écrit désormais la fin de
+    période. Source : `results/B4_1_timestamp_restamp_report.md`.
 12. **`fetch_ohlcv` end-stamped pour Bybit seulement** : le backfill générique (`krakenbot.data.backfill`)
-    n'est garanti correct que pour `EXCHANGE_NAME=bybit` ; sur binance/kraken il insérerait des candles
-    décalées d'un intervalle sans erreur (docstring du Protocol `connectors/exchange.py`).
+    n'est garanti correct que pour `EXCHANGE_NAME=bybit` ; les clients REST Binance/Kraken renvoient l'open
+    time ccxt alors que la DB est end-stamped (B4.1) : un backfill y insérerait des candles décalées d'un
+    intervalle sans erreur (docstring du Protocol `connectors/exchange.py`). Inchangé en B4.1.
 
 ---
 
