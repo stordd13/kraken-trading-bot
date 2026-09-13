@@ -269,3 +269,54 @@ class TestResumePlan:
         assert any("prefix" in p for p in check_resume_plan(plan, self._done(1), 30, b, T0))
         assert any("prefix" in p for p in check_resume_plan(plan, self._done(0, 2), 30, b, T0))
         assert any("duplicate" in p for p in check_resume_plan(plan, self._done(0, 0), 30, b, T0))
+
+
+class TestAuditV2Rules:
+    def _statuses(self):
+        from b4_stamp_lib import classify_windows
+
+        votes = _votes("eeeeee")  # 6 weeks from T0, all end
+        votes[1] = WindowVote(T0 + WEEK, 5, 3, 0)  # week 1 votes open (listing ramp-up)
+        coverage = {
+            T0: 0.0,
+            T0 + WEEK: 0.08,
+            T0 + WEEK * 2: 0.25,
+            T0 + WEEK * 3: 0.6,
+            T0 + WEEK * 4: 0.95,
+        }
+        # week 5 has no coverage figure → treated as 0
+        return classify_windows(votes, T0 + WEEK, coverage, 0.5, intraday=True)
+
+    def test_rule_a_and_b(self) -> None:
+        st = self._statuses()
+        reasons = [s.excluded_reason for s in st]
+        assert (
+            reasons[0] is not None and "rule A" in reasons[0]
+        )  # earlier than the first traded week
+        assert reasons[1] is not None and "rule A" in reasons[1]  # the first traded week itself
+        assert reasons[2] is not None and "rule B" in reasons[2] and "25.0 %" in reasons[2]
+        assert reasons[3] is None and reasons[4] is None
+        assert reasons[5] is not None and "rule B" in reasons[5]  # missing coverage = 0
+        assert [s.included for s in st] == [False, False, False, True, True, False]
+
+    def test_non_intraday_ignores_coverage(self) -> None:
+        from b4_stamp_lib import classify_windows
+
+        st = classify_windows(_votes("eee"), None, {}, 0.9, intraday=False)
+        assert all(s.included for s in st)
+        st = classify_windows(_votes("eee"), T0, {}, 0.9, intraday=False)
+        assert [s.included for s in st] == [False, True, True]
+
+    def test_sensitivity_table(self) -> None:
+        from b4_stamp_lib import sensitivity_table
+
+        st = self._statuses()
+        rows = sensitivity_table(st, "end", [0.0, 0.3, 0.7], intraday=True)
+        # rule A removes weeks 0-1 whatever the floor; week 5 (no coverage) is excluded at any floor > 0
+        assert rows[0] == (0.0, 4, 0, 0)
+        assert rows[1] == (0.3, 2, 2, 0)
+        assert rows[2] == (0.7, 1, 3, 0)
+        # an offending included window shows up
+        bad = list(st)
+        bad[3] = type(st[3])(WindowVote(T0 + WEEK * 3, 9, 1, 0), 0.6, None)
+        assert sensitivity_table(bad, "end", [0.0], intraday=True) == [(0.0, 4, 0, 1)]

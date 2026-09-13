@@ -528,3 +528,83 @@ def compare_tally(tally: SeriesTally, expected: SeriesBoundary) -> list[str]:
             f"inserted {tally.inserted} + collisions {tally.collisions} != staged {tally.staged}"
         )
     return problems
+
+
+# ---------------------------------------------------------------------------
+# Audit v2: reference-window inclusion rules and coverage sensitivity
+# ---------------------------------------------------------------------------
+
+
+def is_intraday(interval: int) -> bool:
+    return interval < 1440
+
+
+@dataclass(frozen=True, slots=True)
+class WindowStatus:
+    """A weekly window vote with its inclusion decision (audit v2)."""
+
+    vote: WindowVote
+    coverage: float | None
+    excluded_reason: str | None = None
+
+    @property
+    def included(self) -> bool:
+        return self.excluded_reason is None
+
+
+def classify_windows(
+    votes: Sequence[WindowVote],
+    first_traded_week: datetime | None,
+    coverage_by_week: dict[datetime, float],
+    floor: float,
+    intraday: bool,
+) -> list[WindowStatus]:
+    """Apply the two general inclusion rules of the v2 audit to weekly windows.
+
+    Rule A — the first week in which the reference exchange traded the pair on
+    this timeframe (first reference row with ``volume > 0``) is the listing
+    ramp-up (and, for 1w, a partial candle by construction): excluded, together
+    with any earlier window.
+    Rule B — intraday timeframes only: windows whose reference 1m coverage
+    (share of minutes with traded volume) is below ``floor`` are excluded.
+    Windows without a coverage figure are treated as 0 coverage.
+    """
+    out: list[WindowStatus] = []
+    for v in sorted(votes, key=lambda x: x.window_start):
+        cov = coverage_by_week.get(v.window_start)
+        reason = None
+        if first_traded_week is not None and v.window_start <= first_traded_week:
+            reason = "listing week (rule A)"
+        elif intraday and (cov or 0.0) < floor:
+            reason = f"coverage {100 * (cov or 0.0):.1f} % < floor {100 * floor:.0f} % (rule B)"
+        out.append(WindowStatus(v, cov, reason))
+    return out
+
+
+def sensitivity_table(
+    statuses: Sequence[WindowStatus],
+    expect: Verdict,
+    floors: Sequence[float],
+    intraday: bool,
+) -> list[tuple[float, int, int, int]]:
+    """``(floor, included, excluded_by_coverage, included_offending)`` per candidate floor.
+
+    Rule A exclusions are kept fixed; only the coverage floor varies.  The
+    verdict is *stable* when ``included_offending`` is 0 for every floor.
+    """
+    rows: list[tuple[float, int, int, int]] = []
+    for floor in floors:
+        included = 0
+        excluded_cov = 0
+        offending = 0
+        for s in statuses:
+            if s.excluded_reason and "rule A" in s.excluded_reason:
+                continue
+            if intraday and (s.coverage or 0.0) < floor:
+                excluded_cov += 1
+                continue
+            included += 1
+            if s.vote.verdict != expect:
+                offending += 1
+        rows.append((floor, included, excluded_cov, offending))
+    return rows
