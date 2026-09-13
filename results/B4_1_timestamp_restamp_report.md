@@ -481,7 +481,9 @@ couverture : BTC dès fin octobre 2025, ETH et SOL dès mi-novembre 2025, jusqu'
    `src/krakenbot/connectors/exchange.py` (`fetch_ohlcv`), `skills/bybit.md`, `README.md` (« 2026-06 »),
    `docs/CODE_MAP.md` — la garantie « Bybit seulement » reste vraie (les clients REST Binance/Kraken renvoient
    l'open time ccxt), mais plus « parce que la DB Binance est mixte ».
-8. Table auxiliaire `b4_restamp_progress` à supprimer après GATE 3 (`DROP TABLE b4_restamp_progress`).
+8. ~~Table auxiliaire `b4_restamp_progress` à supprimer après GATE 3~~ → supprimée le 2026-09-13 19:27:35 UTC (§ 7).
+9. Suite pytest : `ERROR at teardown` (`ResourceWarning`) sur `test_grid_atr_v4_backward_compat_hash`, présent
+   avec et sans les tests B4 ; à traiter avec les 4 échecs ordre-dépendants (scope B4.2).
 
 ## 6. Tests et qualité
 
@@ -493,3 +495,23 @@ couverture : BTC dès fin octobre 2025, ETH et SOL dès mi-novembre 2025, jusqu'
   progression non-préfixe / état DB ≠ manifeste, collision imprévue → rollback rc 3, collision autorisée
   comptée, garde slot occupé, VACUUM en fin d'exécution) ; `test_binance_vision_import.py` (+2, end-stamps).
 - Aucun test ne touche la DB en local ; les tests DB (`--post-migration`, dry-run serveur) se jouent sur le serveur.
+- Suite complète (`pytest -q --ignore=tests/test_scripts/test_run_p6_determinism.py`, 19:30 UTC) : **1 189 passés,
+  6 skipped, 4 échecs** = les 4 ordre-dépendants connus (B3), plus un `ERROR at teardown` sur l'un d'eux
+  (`test_grid_atr_v4_backward_compat_hash` : `ResourceWarning` socket / event loop non fermés, collecté au
+  teardown de ce test qui ouvre lui-même une connexion DB). Reproduit à l'identique **sans** les fichiers
+  `test_b4_*` (4 échecs + 1 error, 1 141 passés) : indépendant de B4.1, à ranger avec les 4 échecs connus (B4.2). `ruff check` propre ; `ruff format --check` : 3 fichiers pré-existants (dette 10).
+  65 tests B4 (`test_b4_stamp_lib.py` 29, `test_b4_restamp_binance.py` 20, `test_binance_vision_import.py` 16).
+
+## 7. Clôture (GATE 3 — étapes exécutées après la décision de Bruno, 2026-09-13)
+
+| Étape | Résultat |
+|---|---|
+| Commit docs `5f78319` (`docs(project): resolve debt 11, unify end-stamp convention`) | `PROJECT_CONTEXT.md` (§ 6 volumes et convention, dette 11 ✅ avec prémisse corrigée : fenêtre avril–juin inexistante en DB, rows WS de l'époque = `kraken` `XBT/USDC` jusqu'au 2026-05-30, renvoi dette 1 ; correction 2 511 → 2 550 explicite ; fenêtre d'arrêt collector 17:46:59 → 18:13:23 ; dette 12 reformulée), `skills/database.md`, `skills/binance_import.md`, `skills/bybit.md`, `README.md`, `docs/CODE_MAP.md`, `results/INDEX.md`, docstrings `src/krakenbot/data/backfill.py` et `connectors/exchange.py` |
+| Commit `867c6d1` | `--coverage-scope` par défaut `all` (décision GATE 3), `intraday` conservé pour les runs d'evidence |
+| `alembic upgrade head` sur le serveur (`f7a8b9c0d1e2 → b4c0ffee0001`) | 19:27:27 → 19:27:34 UTC, DDL transactionnel, `alembic_version = b4c0ffee0001`, `col_description(timestamp)` : `NULL` → **« Candle period-end timestamp (UTC): open_time + interval »** |
+| `DROP TABLE b4_restamp_progress` | 19:27:35 UTC, après relevé final : 2 550 rows, `SUM(staged) = 8 712 718`, `SUM(collisions) = 0`, `done_at` 17:56:59 → 18:07:16 UTC (contenu conservé dans `results/b4_restamp_ledger_server.jsonl`) ; `to_regclass` → NULL ; counts inchangés (`binance` 8 712 718, `kraken` 1 181 469, `bybit` 2 556 630 en croissance WS) |
+| Collector | `active` depuis 18:13:23 UTC, 0 redémarrage, stats WS `errors: 0, reconnections: 0`, 1m BTC écrit jusqu'à 19:27 UTC ; `gap_backfill` planifié 2026-09-14 03:30 UTC (vérification Bruno, invariant 8) |
+| Manifeste | `results/b4_binance_stamp_boundaries.json` sha256 `eb62eab641babd7b12cb44209fac27096d452a9139fc7c86b94610b2f7f01e5a` (inchangé depuis le dry-run serveur ; les rejeux ne l'écrivent pas) |
+
+Reste hors de ce brief (workflow de clôture de phase) : review humaine → PR `feat/b4-1-binance-restamp` → `dev` →
+push vérifié → serveur → observation → tag.
