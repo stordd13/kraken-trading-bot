@@ -294,12 +294,29 @@ OHLC pour les 1d/1w — et le rejouer (lecture seule) ; (c) NO-GO → restaurati
    1w 40/40 (BTC), 38/40 (ETH), 39/40 (SOL) — résidus expliqués au point 1. ✅ (sous réserve du point 1)
 5. `MAX(timestamp)` : 1m `2026-04-01 00:00`, 5m/15m/1h/4h/1d `2026-04-01 00:00`, 1w `2026-04-06 00:00` = frontière
    + intervalle sur les 21 séries ; `MIN` décalé de +intervalle sur les 21 séries. ✅
-6. Backtest de référence `grok_supertrend_4h BTC/USDC --exchange binance --days 1095 --capital 1000` vs
-   baseline P6 (`results/P6_phase_d_results.json`, clé `grok_supertrend_4h_BTC_USDC.all` : return +3.29 %,
-   Sharpe 0.336, PF 1.82, MaxDD 1.76 %, 46 trades) — _delta brut, sans analyse_.
+6. Backtest de référence (serveur, tmux `b4-backtest`, 18:15:35 UTC, lecture seule). La commande littérale du
+   brief (`--days 1095`, depuis « maintenant ») couvre 2023-09-14 → 2026-09-13 au pas 1m, période **différente** du
+   baseline P6 (2023-04-01 → 2026-04-01, pas 5m) : la comparaison qui fait foi est le **run A** aligné sur la période
+   et le pas du baseline ; le run B (commande littérale) est consigné pour mémoire. Delta brut, sans analyse (B4.3) :
+
+   | Métrique | Baseline P6 (`P6_phase_d_results.json`, `all`) | **Run A** (période P6, 5m, données re-stampées) | Run B (brief littéral, 1m, 2023-09-14 → 2026-09-13) |
+   |---|---|---|---|
+   | Total return | +3.29 % | **+2.42 %** | +3.34 % |
+   | Net P&L | +31.16 USDC | **+22.45 USDC** | +31.92 USDC |
+   | Trades | 46 | **46** | 39 |
+   | Win rate | 45.65 % | **36.96 %** | 41.03 % |
+   | Profit factor | 1.82 | **1.56** | 1.99 |
+   | Max drawdown | 1.76 % | **2.17 %** | 2.15 % |
+   | Sharpe | 0.336 | **0.25** | 0.39 |
+   | Sortino | 0.48 | **0.36** | 0.57 |
+
+   **Les métriques diffèrent du baseline** (même nombre de trades, issues différentes) → pas de red flag, le
+   re-stamp a bien changé ce que voient les stratégies multi-TF. ✅ Sorties : `results/b4_reference_backtest_A_p6period.txt`,
+   `results/b4_reference_backtest_B_brief.txt`.
 7. Dernière 1w de chaque paire = semaine complète, stampée `2026-04-06 00:00`, close/high/low à 2–22 bps des
    7 jours 1d Bybit (BTC 2.4/4.6/1.6, ETH 3.9/1.9/15.5, SOL 21.9/6.9/2.6 bps). ✅
-8. Lendemain (Bruno) : `gap_backfill` 03:30 UTC vert, trou Bybit de la fenêtre de migration comblé.
+8. Lendemain (Bruno) : `gap_backfill` 03:30 UTC vert, trou Bybit **17:46:59 → 18:13:23 UTC** comblé
+   (`task_execution_logs`). Collector vérifié à 18:20 UTC : `active`, 0 erreur dans le journal.
 
 ## 5. Tâches annexes consignées (non faites, hors scope B4.1)
 
