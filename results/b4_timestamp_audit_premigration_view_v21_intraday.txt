@@ -1,0 +1,841 @@
+
+====================================================================================================
+B4.1 timestamp audit v2 — exchange='binance' reference='bybit' — PRE-MIGRATION VIRTUAL VIEW timestamp - interval (expects open-stamped, strict)
+====================================================================================================
+generated_at=2026-09-13T19:05:40.925029+00:00 overlap_since=2025-06-01 coverage_floor=0.90 coverage_scope=intraday vote=OHLC L1
+db totals: binance=8712718, bybit=2556549, kraken=1181469
+manifest totals: binance=8712718, bybit=2556297, kraken=1181469 (generated 2026-09-13T17:38:35.614359+00:00)
+
+====================================================================================================
+Rule B input — reference 1m coverage per pair × ISO week (share of minutes with volume)
+====================================================================================================
+  BTC/USDC: 2025-06-09=0% 2025-06-16=0% 2025-06-23=0% 2025-06-30=10% 2025-07-07=26% 2025-07-14=21% 2025-07-21=16% 2025-07-28=18% 2025-08-04=19% 2025-08-11=26% 2025-08-18=34% 2025-08-25=43% 2025-09-01=50% 2025-09-08=66% 2025-09-15=52% 2025-09-22=65% 2025-09-29=83% 2025-10-06=84% 2025-10-13=88% 2025-10-20=93% 2025-10-27=98% 2025-11-03=96% 2025-11-10=99% 2025-11-17=97% 2025-11-24=97% 2025-12-01=100% 2025-12-08=99% 2025-12-15=100% 2025-12-22=98% 2025-12-29=98% 2026-01-05=99% 2026-01-12=99% 2026-01-19=99% 2026-01-26=99% 2026-02-02=99% 2026-02-09=82% 2026-02-16=68% 2026-02-23=98% 2026-03-02=99% 2026-03-09=99% 2026-03-16=95% 2026-03-23=93% 2026-03-30=92% 2026-04-06=93% 2026-04-13=91% 2026-04-20=89% 2026-04-27=93% 2026-05-04=94% 2026-05-11=94% 2026-05-18=92% 2026-05-25=93% 2026-06-01=98% 2026-06-08=99% 2026-06-15=100% 2026-06-22=87% 2026-06-29=90% 2026-07-06=97% 2026-07-13=91% 2026-07-20=80% 2026-07-27=78% 2026-08-03=74% 2026-08-10=70% 2026-08-17=79% 2026-08-24=79% 2026-08-31=77% 2026-09-07=73%
+  ETH/USDC: 2025-06-09=0% 2025-06-16=0% 2025-06-23=0% 2025-06-30=6% 2025-07-07=19% 2025-07-14=33% 2025-07-21=28% 2025-07-28=26% 2025-08-04=32% 2025-08-11=42% 2025-08-18=48% 2025-08-25=49% 2025-09-01=43% 2025-09-08=51% 2025-09-15=37% 2025-09-22=43% 2025-09-29=47% 2025-10-06=58% 2025-10-13=54% 2025-10-20=59% 2025-10-27=94% 2025-11-03=86% 2025-11-10=95% 2025-11-17=87% 2025-11-24=93% 2025-12-01=100% 2025-12-08=99% 2025-12-15=100% 2025-12-22=98% 2025-12-29=97% 2026-01-05=98% 2026-01-12=99% 2026-01-19=98% 2026-01-26=99% 2026-02-02=98% 2026-02-09=59% 2026-02-16=36% 2026-02-23=95% 2026-03-02=98% 2026-03-09=98% 2026-03-16=85% 2026-03-23=66% 2026-03-30=70% 2026-04-06=74% 2026-04-13=71% 2026-04-20=67% 2026-04-27=73% 2026-05-04=73% 2026-05-11=78% 2026-05-18=71% 2026-05-25=72% 2026-06-01=90% 2026-06-08=99% 2026-06-15=98% 2026-06-22=57% 2026-06-29=54% 2026-07-06=87% 2026-07-13=79% 2026-07-20=49% 2026-07-27=46% 2026-08-03=38% 2026-08-10=32% 2026-08-17=50% 2026-08-24=45% 2026-08-31=41% 2026-09-07=40%
+  SOL/USDC: 2025-06-09=0% 2025-06-16=0% 2025-06-23=0% 2025-06-30=4% 2025-07-07=12% 2025-07-14=17% 2025-07-21=21% 2025-07-28=19% 2025-08-04=24% 2025-08-11=40% 2025-08-18=40% 2025-08-25=59% 2025-09-01=47% 2025-09-08=63% 2025-09-15=50% 2025-09-22=55% 2025-09-29=60% 2025-10-06=66% 2025-10-13=72% 2025-10-20=76% 2025-10-27=96% 2025-11-03=87% 2025-11-10=96% 2025-11-17=87% 2025-11-24=92% 2025-12-01=100% 2025-12-08=99% 2025-12-15=100% 2025-12-22=98% 2025-12-29=97% 2026-01-05=98% 2026-01-12=99% 2026-01-19=99% 2026-01-26=99% 2026-02-02=97% 2026-02-09=61% 2026-02-16=38% 2026-02-23=96% 2026-03-02=98% 2026-03-09=98% 2026-03-16=90% 2026-03-23=71% 2026-03-30=74% 2026-04-06=81% 2026-04-13=78% 2026-04-20=81% 2026-04-27=84% 2026-05-04=85% 2026-05-11=88% 2026-05-18=85% 2026-05-25=88% 2026-06-01=96% 2026-06-08=99% 2026-06-15=99% 2026-06-22=62% 2026-06-29=46% 2026-07-06=38% 2026-07-13=46% 2026-07-20=41% 2026-07-27=37% 2026-08-03=36% 2026-08-10=33% 2026-08-17=47% 2026-08-24=53% 2026-08-31=49% 2026-09-07=39%
+
+====================================================================================================
+BTC/USDC 1m
+====================================================================================================
+BTC/USDC 1m: rows=2521597 [2021-01-01T00:00:00+00:00 → 2026-03-31T23:59:00+00:00] gaps=8 missing_candles=237443 misaligned=0
+    gap: after 2021-02-11T03:40:00+00:00 until 2021-02-11T05:00:00+00:00 (79 candles)
+    gap: after 2021-03-06T01:59:00+00:00 until 2021-03-06T03:30:00+00:00 (90 candles)
+    gap: after 2021-04-20T01:59:00+00:00 until 2021-04-20T04:30:00+00:00 (150 candles)
+    gap: after 2021-04-25T04:00:00+00:00 until 2021-04-25T08:45:00+00:00 (284 candles)
+    gap: after 2021-08-13T01:59:00+00:00 until 2021-08-13T06:30:00+00:00 (270 candles)
+    gap: after 2021-09-29T06:59:00+00:00 until 2021-09-29T09:00:00+00:00 (120 candles)
+    gap: after 2022-09-29T02:59:00+00:00 until 2023-03-12T06:30:00+00:00 (236370 candles)
+    gap: after 2023-03-24T12:39:00+00:00 until 2023-03-24T14:00:00+00:00 (80 candles)
+    reference first traded week: 2025-06-09 | windows: 40 total, 22 included, 18 excluded
+    included windows: open=22 end=0 tie=0 (rows voted=206069)
+      excluded 2025-06-30 [coverage 9.9 % < floor 90 % (rule B)] voted open (open=242 end=52 tie=6)
+      excluded 2025-07-07 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=1040 end=151 tie=17)
+      excluded 2025-07-14 [coverage 20.6 % < floor 90 % (rule B)] voted open (open=679 end=98 tie=11)
+      excluded 2025-07-21 [coverage 15.5 % < floor 90 % (rule B)] voted open (open=433 end=48 tie=7)
+      excluded 2025-07-28 [coverage 17.8 % < floor 90 % (rule B)] voted open (open=578 end=60 tie=5)
+      excluded 2025-08-04 [coverage 19.1 % < floor 90 % (rule B)] voted open (open=553 end=72 tie=7)
+      excluded 2025-08-11 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=940 end=106 tie=20)
+      excluded 2025-08-18 [coverage 34.4 % < floor 90 % (rule B)] voted open (open=1500 end=168 tie=26)
+      excluded 2025-08-25 [coverage 42.9 % < floor 90 % (rule B)] voted open (open=2196 end=301 tie=32)
+      excluded 2025-09-01 [coverage 50.3 % < floor 90 % (rule B)] voted open (open=3109 end=375 tie=28)
+      excluded 2025-09-08 [coverage 66.5 % < floor 90 % (rule B)] voted open (open=4764 end=640 tie=25)
+      excluded 2025-09-15 [coverage 52.3 % < floor 90 % (rule B)] voted open (open=3342 end=414 tie=24)
+      excluded 2025-09-22 [coverage 65.4 % < floor 90 % (rule B)] voted open (open=4450 end=595 tie=27)
+      excluded 2025-09-29 [coverage 82.8 % < floor 90 % (rule B)] voted open (open=6617 end=691 tie=23)
+      excluded 2025-10-06 [coverage 84.5 % < floor 90 % (rule B)] voted open (open=6678 end=734 tie=68)
+      excluded 2025-10-13 [coverage 88.2 % < floor 90 % (rule B)] voted open (open=7206 end=1002 tie=31)
+      excluded 2026-02-09 [coverage 82.0 % < floor 90 % (rule B)] voted open (open=5918 end=1098 tie=59)
+      excluded 2026-02-16 [coverage 67.9 % < floor 90 % (rule B)] voted open (open=4078 end=662 tie=79)
+    dup signature (T,T+1m) identical OHLCV: volume>0=38 [2023-04-29 12:44:00+00:00 → 2024-06-09 10:20:00+00:00] flat(volume=0)=11537
+    accounting: rows=2521597 expected=2521597 | max=2026-03-31T23:59:00+00:00 expected=2026-03-31T23:59:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (8)
+    edge rows around boundary 2026-03-31T23:59:00+00:00:
+      2026-03-31T23:58:00+00:00 o=68212.23000000 h=68278.83000000 l=68212.23000000 c=68254.77000000 v=2.22523000
+      2026-03-31T23:59:00+00:00 o=68256.48000000 h=68272.82000000 l=68229.94000000 c=68240.16000000 v=1.71516000
+    other exchanges: bybit n=661519 [2025-06-11T09:21:00+00:00 → 2026-09-13T19:06:00+00:00]
+
+====================================================================================================
+BTC/USDC 5m
+====================================================================================================
+BTC/USDC 5m: rows=504321 [2021-01-01T00:00:00+00:00 → 2026-03-31T23:55:00+00:00] gaps=8 missing_candles=47487 misaligned=0
+    gap: after 2021-02-11T03:40:00+00:00 until 2021-02-11T05:00:00+00:00 (15 candles)
+    gap: after 2021-03-06T01:55:00+00:00 until 2021-03-06T03:30:00+00:00 (18 candles)
+    gap: after 2021-04-20T01:55:00+00:00 until 2021-04-20T04:30:00+00:00 (30 candles)
+    gap: after 2021-04-25T04:00:00+00:00 until 2021-04-25T08:45:00+00:00 (56 candles)
+    gap: after 2021-08-13T01:55:00+00:00 until 2021-08-13T06:30:00+00:00 (54 candles)
+    gap: after 2021-09-29T06:55:00+00:00 until 2021-09-29T09:00:00+00:00 (24 candles)
+    gap: after 2022-09-29T02:55:00+00:00 until 2023-03-12T06:30:00+00:00 (47274 candles)
+    gap: after 2023-03-24T12:35:00+00:00 until 2023-03-24T14:00:00+00:00 (16 candles)
+    reference first traded week: 2025-06-09 | windows: 40 total, 22 included, 18 excluded
+    included windows: open=22 end=0 tie=0 (rows voted=42881)
+      excluded 2025-06-30 [coverage 9.9 % < floor 90 % (rule B)] voted open (open=294 end=42 tie=3)
+      excluded 2025-07-07 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=829 end=87 tie=5)
+      excluded 2025-07-14 [coverage 20.6 % < floor 90 % (rule B)] voted open (open=716 end=86 tie=13)
+      excluded 2025-07-21 [coverage 15.5 % < floor 90 % (rule B)] voted open (open=469 end=67 tie=10)
+      excluded 2025-07-28 [coverage 17.8 % < floor 90 % (rule B)] voted open (open=610 end=64 tie=11)
+      excluded 2025-08-04 [coverage 19.1 % < floor 90 % (rule B)] voted open (open=652 end=77 tie=9)
+      excluded 2025-08-11 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=910 end=90 tie=8)
+      excluded 2025-08-18 [coverage 34.4 % < floor 90 % (rule B)] voted open (open=1156 end=96 tie=11)
+      excluded 2025-08-25 [coverage 42.9 % < floor 90 % (rule B)] voted open (open=1339 end=118 tie=7)
+      excluded 2025-09-01 [coverage 50.3 % < floor 90 % (rule B)] voted open (open=1394 end=100 tie=2)
+      excluded 2025-09-08 [coverage 66.5 % < floor 90 % (rule B)] voted open (open=1622 end=125 tie=2)
+      excluded 2025-09-15 [coverage 52.3 % < floor 90 % (rule B)] voted open (open=1446 end=93 tie=3)
+      excluded 2025-09-22 [coverage 65.4 % < floor 90 % (rule B)] voted open (open=1702 end=114 tie=3)
+      excluded 2025-09-29 [coverage 82.8 % < floor 90 % (rule B)] voted open (open=1901 end=106 tie=1)
+      excluded 2025-10-06 [coverage 84.5 % < floor 90 % (rule B)] voted open (open=1888 end=123 tie=1)
+      excluded 2025-10-13 [coverage 88.2 % < floor 90 % (rule B)] voted open (open=1898 end=108 tie=2)
+      excluded 2026-02-09 [coverage 82.0 % < floor 90 % (rule B)] voted open (open=1854 end=148 tie=0)
+      excluded 2026-02-16 [coverage 67.9 % < floor 90 % (rule B)] voted open (open=1836 end=139 tie=3)
+    dup signature (T,T+5m) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=33
+    accounting: rows=504321 expected=504321 | max=2026-03-31T23:55:00+00:00 expected=2026-03-31T23:55:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (8)
+    edge rows around boundary 2026-03-31T23:55:00+00:00:
+      2026-03-31T23:50:00+00:00 o=68191.56000000 h=68302.24000000 l=68183.50000000 c=68240.91000000 v=9.25643000
+      2026-03-31T23:55:00+00:00 o=68246.07000000 h=68278.83000000 l=68208.46000000 c=68240.16000000 v=6.23374000
+    other exchanges: bybit n=132304 [2025-06-11T09:25:00+00:00 → 2026-09-13T19:05:00+00:00]
+
+====================================================================================================
+BTC/USDC 15m
+====================================================================================================
+BTC/USDC 15m: rows=168108 [2021-01-01T00:00:00+00:00 → 2026-03-31T23:45:00+00:00] gaps=8 missing_candles=15828 misaligned=0
+    gap: after 2021-02-11T03:30:00+00:00 until 2021-02-11T05:00:00+00:00 (5 candles)
+    gap: after 2021-03-06T01:45:00+00:00 until 2021-03-06T03:30:00+00:00 (6 candles)
+    gap: after 2021-04-20T01:45:00+00:00 until 2021-04-20T04:30:00+00:00 (10 candles)
+    gap: after 2021-04-25T04:00:00+00:00 until 2021-04-25T08:45:00+00:00 (18 candles)
+    gap: after 2021-08-13T01:45:00+00:00 until 2021-08-13T06:30:00+00:00 (18 candles)
+    gap: after 2021-09-29T06:45:00+00:00 until 2021-09-29T09:00:00+00:00 (8 candles)
+    gap: after 2022-09-29T02:45:00+00:00 until 2023-03-12T06:30:00+00:00 (15758 candles)
+    gap: after 2023-03-24T12:30:00+00:00 until 2023-03-24T14:00:00+00:00 (5 candles)
+    reference first traded week: 2025-06-09 | windows: 40 total, 22 included, 18 excluded
+    included windows: open=22 end=0 tie=0 (rows voted=14304)
+      excluded 2025-06-30 [coverage 9.9 % < floor 90 % (rule B)] voted open (open=248 end=30 tie=1)
+      excluded 2025-07-07 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=479 end=36 tie=0)
+      excluded 2025-07-14 [coverage 20.6 % < floor 90 % (rule B)] voted open (open=431 end=61 tie=1)
+      excluded 2025-07-21 [coverage 15.5 % < floor 90 % (rule B)] voted open (open=381 end=56 tie=5)
+      excluded 2025-07-28 [coverage 17.8 % < floor 90 % (rule B)] voted open (open=417 end=26 tie=2)
+      excluded 2025-08-04 [coverage 19.1 % < floor 90 % (rule B)] voted open (open=467 end=36 tie=0)
+      excluded 2025-08-11 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=514 end=36 tie=0)
+      excluded 2025-08-18 [coverage 34.4 % < floor 90 % (rule B)] voted open (open=588 end=18 tie=0)
+      excluded 2025-08-25 [coverage 42.9 % < floor 90 % (rule B)] voted open (open=604 end=40 tie=0)
+      excluded 2025-09-01 [coverage 50.3 % < floor 90 % (rule B)] voted open (open=592 end=31 tie=2)
+      excluded 2025-09-08 [coverage 66.5 % < floor 90 % (rule B)] voted open (open=627 end=32 tie=0)
+      excluded 2025-09-15 [coverage 52.3 % < floor 90 % (rule B)] voted open (open=614 end=19 tie=0)
+      excluded 2025-09-22 [coverage 65.4 % < floor 90 % (rule B)] voted open (open=652 end=16 tie=0)
+      excluded 2025-09-29 [coverage 82.8 % < floor 90 % (rule B)] voted open (open=663 end=9 tie=0)
+      excluded 2025-10-06 [coverage 84.5 % < floor 90 % (rule B)] voted open (open=658 end=14 tie=0)
+      excluded 2025-10-13 [coverage 88.2 % < floor 90 % (rule B)] voted open (open=662 end=10 tie=0)
+      excluded 2026-02-09 [coverage 82.0 % < floor 90 % (rule B)] voted open (open=648 end=24 tie=0)
+      excluded 2026-02-16 [coverage 67.9 % < floor 90 % (rule B)] voted open (open=658 end=14 tie=0)
+    dup signature (T,T+15m) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=8
+    accounting: rows=168108 expected=168108 | max=2026-03-31T23:45:00+00:00 expected=2026-03-31T23:45:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (8)
+    edge rows around boundary 2026-03-31T23:45:00+00:00:
+      2026-03-31T23:30:00+00:00 o=68224.65000000 h=68324.59000000 l=68202.40000000 c=68272.89000000 v=18.97809000
+      2026-03-31T23:45:00+00:00 o=68272.81000000 h=68302.24000000 l=68172.11000000 c=68240.16000000 v=22.46181000
+    other exchanges: bybit n=44102 [2025-06-11T09:30:00+00:00 → 2026-09-13T19:00:00+00:00]
+
+====================================================================================================
+BTC/USDC 1h
+====================================================================================================
+BTC/USDC 1h: rows=42031 [2021-01-01T00:00:00+00:00 → 2026-03-31T23:00:00+00:00] gaps=8 missing_candles=3953 misaligned=0
+    gap: after 2021-02-11T03:00:00+00:00 until 2021-02-11T05:00:00+00:00 (1 candles)
+    gap: after 2021-03-06T01:00:00+00:00 until 2021-03-06T03:00:00+00:00 (1 candles)
+    gap: after 2021-04-20T01:00:00+00:00 until 2021-04-20T04:00:00+00:00 (2 candles)
+    gap: after 2021-04-25T04:00:00+00:00 until 2021-04-25T08:00:00+00:00 (3 candles)
+    gap: after 2021-08-13T01:00:00+00:00 until 2021-08-13T06:00:00+00:00 (4 candles)
+    gap: after 2021-09-29T06:00:00+00:00 until 2021-09-29T09:00:00+00:00 (2 candles)
+    gap: after 2022-09-29T02:00:00+00:00 until 2023-03-12T06:00:00+00:00 (3939 candles)
+    gap: after 2023-03-24T12:00:00+00:00 until 2023-03-24T14:00:00+00:00 (1 candles)
+    reference first traded week: 2025-06-09 | windows: 40 total, 22 included, 18 excluded
+    included windows: open=22 end=0 tie=0 (rows voted=3576)
+      excluded 2025-06-30 [coverage 9.9 % < floor 90 % (rule B)] voted open (open=100 end=13 tie=0)
+      excluded 2025-07-07 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=151 end=5 tie=0)
+      excluded 2025-07-14 [coverage 20.6 % < floor 90 % (rule B)] voted open (open=155 end=4 tie=0)
+      excluded 2025-07-21 [coverage 15.5 % < floor 90 % (rule B)] voted open (open=154 end=5 tie=0)
+      excluded 2025-07-28 [coverage 17.8 % < floor 90 % (rule B)] voted open (open=152 end=7 tie=0)
+      excluded 2025-08-04 [coverage 19.1 % < floor 90 % (rule B)] voted open (open=159 end=4 tie=0)
+      excluded 2025-08-11 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=158 end=6 tie=1)
+      excluded 2025-08-18 [coverage 34.4 % < floor 90 % (rule B)] voted open (open=163 end=5 tie=0)
+      excluded 2025-08-25 [coverage 42.9 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-09-01 [coverage 50.3 % < floor 90 % (rule B)] voted open (open=164 end=2 tie=0)
+      excluded 2025-09-08 [coverage 66.5 % < floor 90 % (rule B)] voted open (open=164 end=4 tie=0)
+      excluded 2025-09-15 [coverage 52.3 % < floor 90 % (rule B)] voted open (open=165 end=3 tie=0)
+      excluded 2025-09-22 [coverage 65.4 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-09-29 [coverage 82.8 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2025-10-06 [coverage 84.5 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-10-13 [coverage 88.2 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2026-02-09 [coverage 82.0 % < floor 90 % (rule B)] voted open (open=166 end=2 tie=0)
+      excluded 2026-02-16 [coverage 67.9 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+    dup signature (T,T+1h) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=42031 expected=42031 | max=2026-03-31T23:00:00+00:00 expected=2026-03-31T23:00:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (8)
+    edge rows around boundary 2026-03-31T23:00:00+00:00:
+      2026-03-31T22:00:00+00:00 o=68233.66000000 h=68305.86000000 l=67920.31000000 c=68140.38000000 v=120.60315000
+      2026-03-31T23:00:00+00:00 o=68140.38000000 h=68335.66000000 l=68056.09000000 c=68240.16000000 v=100.58253000
+    other exchanges: bybit n=11025 [2025-06-11T10:00:00+00:00 → 2026-09-13T19:00:00+00:00]
+
+====================================================================================================
+BTC/USDC 4h
+====================================================================================================
+BTC/USDC 4h: rows=10512 [2021-01-01T00:00:00+00:00 → 2026-03-31T20:00:00+00:00] gaps=1 missing_candles=984 misaligned=0
+    gap: after 2022-09-29T00:00:00+00:00 until 2023-03-12T04:00:00+00:00 (984 candles)
+    reference first traded week: 2025-06-09 | windows: 40 total, 22 included, 18 excluded
+    included windows: open=22 end=0 tie=0 (rows voted=894)
+      excluded 2025-06-30 [coverage 9.9 % < floor 90 % (rule B)] voted open (open=31 end=2 tie=0)
+      excluded 2025-07-07 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-07-14 [coverage 20.6 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-07-21 [coverage 15.5 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2025-07-28 [coverage 17.8 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-08-04 [coverage 19.1 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-08-11 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=40 end=2 tie=0)
+      excluded 2025-08-18 [coverage 34.4 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2025-08-25 [coverage 42.9 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-01 [coverage 50.3 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-08 [coverage 66.5 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2025-09-15 [coverage 52.3 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-22 [coverage 65.4 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-29 [coverage 82.8 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-10-06 [coverage 84.5 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-10-13 [coverage 88.2 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-02-09 [coverage 82.0 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-02-16 [coverage 67.9 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+    dup signature (T,T+4h) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=10512 expected=10512 | max=2026-03-31T20:00:00+00:00 expected=2026-03-31T20:00:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (1)
+    edge rows around boundary 2026-03-31T20:00:00+00:00:
+      2026-03-31T16:00:00+00:00 o=66699.54000000 h=68559.40000000 l=66699.08000000 c=67793.37000000 v=1449.50160000
+      2026-03-31T20:00:00+00:00 o=67800.91000000 h=68376.00000000 l=67790.05000000 c=68240.16000000 v=730.32565000
+    other exchanges: bybit n=2756 [2025-06-11T12:00:00+00:00 → 2026-09-13T16:00:00+00:00]
+
+====================================================================================================
+BTC/USDC 1d
+====================================================================================================
+BTC/USDC 1d: rows=1753 [2021-01-01T00:00:00+00:00 → 2026-03-31T00:00:00+00:00] gaps=1 missing_candles=163 misaligned=0
+    gap: after 2022-09-29T00:00:00+00:00 until 2023-03-12T00:00:00+00:00 (163 candles)
+    reference first traded week: 2025-06-09 | windows: 40 total, 40 included, 0 excluded
+    included windows: open=40 end=0 tie=0 (rows voted=274)
+    manifest re-check rows (16), expected 'open' at T:
+      2025-07-05T00:00:00+00:00 → 2025-07-05T00:00:00+00:00: vote=end (binance close=108235.00000000 | bybit close at T=108239.00000000 at T+1d=108213.30000000 | OHLC dist same=4468.63000000 next=5623.63000000)
+    → STOP: BTC/USDC 1d: re-check row 2025-07-05T00:00:00+00:00 votes 'end'
+      2025-07-19T00:00:00+00:00 → 2025-07-19T00:00:00+00:00: vote=open (binance close=117917.40000000 | bybit close at T=117947.80000000 at T+1d=117875.70000000 | OHLC dist same=4320.02000000 next=208.88000000)
+      2025-08-17T00:00:00+00:00 → 2025-08-17T00:00:00+00:00: vote=open (binance close=117490.00000000 | bybit close at T=117450.20000000 at T+1d=117503.10000000 | OHLC dist same=1015.40000000 next=71.70000000)
+      2025-09-05T00:00:00+00:00 → 2025-09-05T00:00:00+00:00: vote=open (binance close=110678.60000000 | bybit close at T=110707.00000000 at T+1d=110684.00000000 | OHLC dist same=3197.86000000 next=70.84000000)
+      2025-09-15T00:00:00+00:00 → 2025-09-15T00:00:00+00:00: vote=open (binance close=115399.99000000 | bybit close at T=115329.60000000 at T+1d=115406.30000000 | OHLC dist same=2102.12000000 next=491.74000000)
+      2025-09-20T00:00:00+00:00 → 2025-09-20T00:00:00+00:00: vote=open (binance close=115753.89000000 | bybit close at T=115663.10000000 at T+1d=115759.60000000 | OHLC dist same=3144.24000000 next=59.50000000)
+      2025-09-27T00:00:00+00:00 → 2025-09-27T00:00:00+00:00: vote=open (binance close=109703.99000000 | bybit close at T=109748.40000000 at T+1d=109716.30000000 | OHLC dist same=1786.06000000 next=97.56000000)
+      2025-10-04T00:00:00+00:00 → 2025-10-04T00:00:00+00:00: vote=open (binance close=122480.58000000 | bybit close at T=122348.80000000 at T+1d=122453.40000000 | OHLC dist same=5090.05000000 next=63.61000000)
+      2025-11-29T00:00:00+00:00 → 2025-11-29T00:00:00+00:00: vote=open (binance close=90838.81000000 | bybit close at T=90920.00000000 at T+1d=90849.60000000 | OHLC dist same=2435.96000000 next=85.12000000)
+      2025-12-13T00:00:00+00:00 → 2025-12-13T00:00:00+00:00: vote=open (binance close=90252.91000000 | bybit close at T=90291.70000000 at T+1d=90277.60000000 | OHLC dist same=4639.80000000 next=41.40000000)
+      2025-12-28T00:00:00+00:00 → 2025-12-28T00:00:00+00:00: vote=open (binance close=87903.82000000 | bybit close at T=87822.50000000 at T+1d=87873.20000000 | OHLC dist same=849.74000000 next=55.40000000)
+      2026-01-16T00:00:00+00:00 → 2026-01-16T00:00:00+00:00: vote=open (binance close=95535.01000000 | bybit close at T=95485.10000000 at T+1d=95562.50000000 | OHLC dist same=3838.00000000 next=183.68000000)
+      2026-01-23T00:00:00+00:00 → 2026-01-23T00:00:00+00:00: vote=open (binance close=89507.10000000 | bybit close at T=89561.30000000 at T+1d=89526.80000000 | OHLC dist same=1123.03000000 next=433.17000000)
+      2026-02-16T00:00:00+00:00 → 2026-02-16T00:00:00+00:00: vote=open (binance close=68865.31000000 | bybit close at T=68756.00000000 at T+1d=68817.80000000 | OHLC dist same=2942.67000000 next=118.21000000)
+      2026-02-21T00:00:00+00:00 → 2026-02-21T00:00:00+00:00: vote=open (binance close=67961.00000000 | bybit close at T=68000.00000000 at T+1d=67970.00000000 | OHLC dist same=2631.24000000 next=36.44000000)
+      2026-03-28T00:00:00+00:00 → 2026-03-28T00:00:00+00:00: vote=open (binance close=66343.01000000 | bybit close at T=66382.50000000 at T+1d=66343.00000000 | OHLC dist same=4719.59000000 next=34.07000000)
+    dup signature (T,T+1d) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=1753 expected=1753 | max=2026-03-31T00:00:00+00:00 expected=2026-03-31T00:00:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (1)
+    edge rows around boundary 2026-03-31T00:00:00+00:00:
+      2026-03-30T00:00:00+00:00 o=65977.66000000 h=68152.47000000 l=65760.40000000 c=66761.95000000 v=5395.02215000
+      2026-03-31T00:00:00+00:00 o=66761.96000000 h=68559.40000000 l=65950.00000000 c=68240.16000000 v=7148.64745000
+    other exchanges: bybit n=459 [2025-06-12T00:00:00+00:00 → 2026-09-13T00:00:00+00:00]
+
+====================================================================================================
+BTC/USDC 1w
+====================================================================================================
+BTC/USDC 1w: rows=246 [2021-01-04T00:00:00+00:00 → 2026-03-30T00:00:00+00:00] gaps=6 missing_candles=28 misaligned=0
+    gap: after 2022-05-23T00:00:00+00:00 until 2022-06-06T00:00:00+00:00 (1 candles)
+    gap: after 2022-06-20T00:00:00+00:00 until 2022-07-04T00:00:00+00:00 (1 candles)
+    gap: after 2022-08-22T00:00:00+00:00 until 2022-09-05T00:00:00+00:00 (1 candles)
+    gap: after 2022-09-19T00:00:00+00:00 until 2023-03-06T00:00:00+00:00 (23 candles)
+    gap: after 2025-01-20T00:00:00+00:00 until 2025-02-03T00:00:00+00:00 (1 candles)
+    gap: after 2025-02-17T00:00:00+00:00 until 2025-03-03T00:00:00+00:00 (1 candles)
+    reference first traded week: 2025-06-16 | windows: 39 total, 39 included, 0 excluded
+    included windows: open=39 end=0 tie=0 (rows voted=39)
+    manifest re-check rows (2), expected 'open' at T:
+      2025-09-15T00:00:00+00:00 → 2025-09-15T00:00:00+00:00: vote=open (binance close=115314.26000000 | bybit close at T=115329.60000000 at T+1w=115337.20000000 | OHLC dist same=8809.26000000 next=457.76000000)
+      2025-12-01T00:00:00+00:00 → 2025-12-01T00:00:00+00:00: vote=open (binance close=90412.00000000 | bybit close at T=90400.80000000 at T+1w=90466.50000000 | OHLC dist same=6111.89000000 next=103.91000000)
+    dup signature (T,T+1w) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=246 expected=246 | max=2026-03-30T00:00:00+00:00 expected=2026-03-30T00:00:00+00:00 | min=2021-01-04T00:00:00+00:00 expected=2021-01-04T00:00:00+00:00
+    gaps: identical to the audit (6)
+    edge rows around boundary 2026-03-30T00:00:00+00:00:
+      2026-03-23T00:00:00+00:00 o=67853.36000000 h=72020.81000000 l=64948.55000000 c=65974.55000000 v=38957.56776000
+      2026-03-30T00:00:00+00:00 o=65977.66000000 h=69297.69000000 l=65705.71000000 c=69019.18000000 v=29580.21610000
+    other exchanges: bybit n=65 [2025-06-16T00:00:00+00:00 → 2026-09-07T00:00:00+00:00]
+
+====================================================================================================
+ETH/USDC 1m
+====================================================================================================
+ETH/USDC 1m: rows=2521597 [2021-01-01T00:00:00+00:00 → 2026-03-31T23:59:00+00:00] gaps=8 missing_candles=237443 misaligned=0
+    gap: after 2021-02-11T03:40:00+00:00 until 2021-02-11T05:00:00+00:00 (79 candles)
+    gap: after 2021-03-06T01:59:00+00:00 until 2021-03-06T03:30:00+00:00 (90 candles)
+    gap: after 2021-04-20T01:59:00+00:00 until 2021-04-20T04:30:00+00:00 (150 candles)
+    gap: after 2021-04-25T04:00:00+00:00 until 2021-04-25T08:45:00+00:00 (284 candles)
+    gap: after 2021-08-13T01:59:00+00:00 until 2021-08-13T06:30:00+00:00 (270 candles)
+    gap: after 2021-09-29T06:59:00+00:00 until 2021-09-29T09:00:00+00:00 (120 candles)
+    gap: after 2022-09-29T02:59:00+00:00 until 2023-03-12T06:30:00+00:00 (236370 candles)
+    gap: after 2023-03-24T12:39:00+00:00 until 2023-03-24T14:00:00+00:00 (80 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 16 included, 24 excluded
+    included windows: open=16 end=0 tie=0 (rows voted=154428)
+      excluded 2025-06-30 [coverage 6.2 % < floor 90 % (rule B)] voted open (open=118 end=23 tie=9)
+      excluded 2025-07-07 [coverage 18.6 % < floor 90 % (rule B)] voted open (open=586 end=69 tie=16)
+      excluded 2025-07-14 [coverage 33.5 % < floor 90 % (rule B)] voted open (open=1428 end=296 tie=45)
+      excluded 2025-07-21 [coverage 27.8 % < floor 90 % (rule B)] voted open (open=1009 end=246 tie=41)
+      excluded 2025-07-28 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=929 end=143 tie=15)
+      excluded 2025-08-04 [coverage 31.7 % < floor 90 % (rule B)] voted open (open=1214 end=165 tie=30)
+      excluded 2025-08-11 [coverage 42.0 % < floor 90 % (rule B)] voted open (open=1999 end=242 tie=35)
+      excluded 2025-08-18 [coverage 48.0 % < floor 90 % (rule B)] voted open (open=2506 end=337 tie=41)
+      excluded 2025-08-25 [coverage 49.3 % < floor 90 % (rule B)] voted open (open=2548 end=338 tie=38)
+      excluded 2025-09-01 [coverage 42.7 % < floor 90 % (rule B)] voted open (open=2152 end=247 tie=31)
+      excluded 2025-09-08 [coverage 51.4 % < floor 90 % (rule B)] voted open (open=3016 end=289 tie=41)
+      excluded 2025-09-15 [coverage 37.1 % < floor 90 % (rule B)] voted open (open=1739 end=179 tie=23)
+      excluded 2025-09-22 [coverage 43.0 % < floor 90 % (rule B)] voted open (open=2256 end=251 tie=27)
+      excluded 2025-09-29 [coverage 46.8 % < floor 90 % (rule B)] voted open (open=2450 end=263 tie=38)
+      excluded 2025-10-06 [coverage 58.2 % < floor 90 % (rule B)] voted open (open=3479 end=441 tie=46)
+      excluded 2025-10-13 [coverage 54.3 % < floor 90 % (rule B)] voted open (open=3219 end=385 tie=48)
+      excluded 2025-10-20 [coverage 59.4 % < floor 90 % (rule B)] voted open (open=3911 end=397 tie=51)
+      excluded 2025-11-03 [coverage 86.2 % < floor 90 % (rule B)] voted open (open=6788 end=1134 tie=84)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=6979 end=1117 tie=84)
+      excluded 2026-02-09 [coverage 59.1 % < floor 90 % (rule B)] voted open (open=3202 end=1184 tie=34)
+      excluded 2026-02-16 [coverage 36.2 % < floor 90 % (rule B)] voted open (open=1438 end=304 tie=26)
+      excluded 2026-03-16 [coverage 85.1 % < floor 90 % (rule B)] voted open (open=4484 end=2911 tie=158)
+      excluded 2026-03-23 [coverage 65.8 % < floor 90 % (rule B)] voted open (open=2809 end=1638 tie=180)
+      excluded 2026-03-30 [coverage 70.4 % < floor 90 % (rule B)] voted open (open=854 end=553 tie=40)
+    dup signature (T,T+1m) identical OHLCV: volume>0=50 [2021-03-15 03:48:00+00:00 → 2024-06-09 09:54:00+00:00] flat(volume=0)=29339
+    accounting: rows=2521597 expected=2521597 | max=2026-03-31T23:59:00+00:00 expected=2026-03-31T23:59:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (8)
+    edge rows around boundary 2026-03-31T23:59:00+00:00:
+      2026-03-31T23:58:00+00:00 o=2103.92000000 h=2106.55000000 l=2103.86000000 c=2105.51000000 v=49.76210000
+      2026-03-31T23:59:00+00:00 o=2105.66000000 h=2106.97000000 l=2104.03000000 c=2104.36000000 v=75.64960000
+    other exchanges: bybit n=661484 [2025-06-11T09:56:00+00:00 → 2026-09-13T19:07:00+00:00]
+
+====================================================================================================
+ETH/USDC 5m
+====================================================================================================
+ETH/USDC 5m: rows=504321 [2021-01-01T00:00:00+00:00 → 2026-03-31T23:55:00+00:00] gaps=8 missing_candles=47487 misaligned=0
+    gap: after 2021-02-11T03:40:00+00:00 until 2021-02-11T05:00:00+00:00 (15 candles)
+    gap: after 2021-03-06T01:55:00+00:00 until 2021-03-06T03:30:00+00:00 (18 candles)
+    gap: after 2021-04-20T01:55:00+00:00 until 2021-04-20T04:30:00+00:00 (30 candles)
+    gap: after 2021-04-25T04:00:00+00:00 until 2021-04-25T08:45:00+00:00 (56 candles)
+    gap: after 2021-08-13T01:55:00+00:00 until 2021-08-13T06:30:00+00:00 (54 candles)
+    gap: after 2021-09-29T06:55:00+00:00 until 2021-09-29T09:00:00+00:00 (24 candles)
+    gap: after 2022-09-29T02:55:00+00:00 until 2023-03-12T06:30:00+00:00 (47274 candles)
+    gap: after 2023-03-24T12:35:00+00:00 until 2023-03-24T14:00:00+00:00 (16 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 16 included, 24 excluded
+    included windows: open=16 end=0 tie=0 (rows voted=32084)
+      excluded 2025-06-30 [coverage 6.2 % < floor 90 % (rule B)] voted open (open=144 end=35 tie=5)
+      excluded 2025-07-07 [coverage 18.6 % < floor 90 % (rule B)] voted open (open=610 end=86 tie=5)
+      excluded 2025-07-14 [coverage 33.5 % < floor 90 % (rule B)] voted open (open=1030 end=148 tie=4)
+      excluded 2025-07-21 [coverage 27.8 % < floor 90 % (rule B)] voted open (open=797 end=206 tie=14)
+      excluded 2025-07-28 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=843 end=134 tie=13)
+      excluded 2025-08-04 [coverage 31.7 % < floor 90 % (rule B)] voted open (open=1057 end=153 tie=9)
+      excluded 2025-08-11 [coverage 42.0 % < floor 90 % (rule B)] voted open (open=1383 end=129 tie=6)
+      excluded 2025-08-18 [coverage 48.0 % < floor 90 % (rule B)] voted open (open=1466 end=143 tie=6)
+      excluded 2025-08-25 [coverage 49.3 % < floor 90 % (rule B)] voted open (open=1505 end=150 tie=6)
+      excluded 2025-09-01 [coverage 42.7 % < floor 90 % (rule B)] voted open (open=1341 end=123 tie=12)
+      excluded 2025-09-08 [coverage 51.4 % < floor 90 % (rule B)] voted open (open=1476 end=143 tie=9)
+      excluded 2025-09-15 [coverage 37.1 % < floor 90 % (rule B)] voted open (open=1191 end=124 tie=7)
+      excluded 2025-09-22 [coverage 43.0 % < floor 90 % (rule B)] voted open (open=1314 end=127 tie=7)
+      excluded 2025-09-29 [coverage 46.8 % < floor 90 % (rule B)] voted open (open=1466 end=118 tie=10)
+      excluded 2025-10-06 [coverage 58.2 % < floor 90 % (rule B)] voted open (open=1652 end=142 tie=4)
+      excluded 2025-10-13 [coverage 54.3 % < floor 90 % (rule B)] voted open (open=1573 end=133 tie=7)
+      excluded 2025-10-20 [coverage 59.4 % < floor 90 % (rule B)] voted open (open=1634 end=116 tie=5)
+      excluded 2025-11-03 [coverage 86.2 % < floor 90 % (rule B)] voted open (open=1877 end=93 tie=2)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=1883 end=81 tie=1)
+      excluded 2026-02-09 [coverage 59.1 % < floor 90 % (rule B)] voted open (open=1458 end=229 tie=3)
+      excluded 2026-02-16 [coverage 36.2 % < floor 90 % (rule B)] voted open (open=1101 end=227 tie=8)
+      excluded 2026-03-16 [coverage 85.1 % < floor 90 % (rule B)] voted open (open=1428 end=584 tie=2)
+      excluded 2026-03-23 [coverage 65.8 % < floor 90 % (rule B)] voted open (open=1303 end=623 tie=21)
+      excluded 2026-03-30 [coverage 70.4 % < floor 90 % (rule B)] voted open (open=398 end=165 tie=1)
+    dup signature (T,T+5m) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=52
+    accounting: rows=504321 expected=504321 | max=2026-03-31T23:55:00+00:00 expected=2026-03-31T23:55:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (8)
+    edge rows around boundary 2026-03-31T23:55:00+00:00:
+      2026-03-31T23:50:00+00:00 o=2101.13000000 h=2107.54000000 l=2101.05000000 c=2104.03000000 v=639.69530000
+      2026-03-31T23:55:00+00:00 o=2104.15000000 h=2106.97000000 l=2103.44000000 c=2104.36000000 v=183.92760000
+    other exchanges: bybit n=132296 [2025-06-11T10:00:00+00:00 → 2026-09-13T19:05:00+00:00]
+
+====================================================================================================
+ETH/USDC 15m
+====================================================================================================
+ETH/USDC 15m: rows=168108 [2021-01-01T00:00:00+00:00 → 2026-03-31T23:45:00+00:00] gaps=8 missing_candles=15828 misaligned=0
+    gap: after 2021-02-11T03:30:00+00:00 until 2021-02-11T05:00:00+00:00 (5 candles)
+    gap: after 2021-03-06T01:45:00+00:00 until 2021-03-06T03:30:00+00:00 (6 candles)
+    gap: after 2021-04-20T01:45:00+00:00 until 2021-04-20T04:30:00+00:00 (10 candles)
+    gap: after 2021-04-25T04:00:00+00:00 until 2021-04-25T08:45:00+00:00 (18 candles)
+    gap: after 2021-08-13T01:45:00+00:00 until 2021-08-13T06:30:00+00:00 (18 candles)
+    gap: after 2021-09-29T06:45:00+00:00 until 2021-09-29T09:00:00+00:00 (8 candles)
+    gap: after 2022-09-29T02:45:00+00:00 until 2023-03-12T06:30:00+00:00 (15758 candles)
+    gap: after 2023-03-24T12:30:00+00:00 until 2023-03-24T14:00:00+00:00 (5 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 16 included, 24 excluded
+    included windows: open=16 end=0 tie=0 (rows voted=10752)
+      excluded 2025-06-30 [coverage 6.2 % < floor 90 % (rule B)] voted open (open=164 end=29 tie=2)
+      excluded 2025-07-07 [coverage 18.6 % < floor 90 % (rule B)] voted open (open=401 end=34 tie=2)
+      excluded 2025-07-14 [coverage 33.5 % < floor 90 % (rule B)] voted open (open=525 end=62 tie=2)
+      excluded 2025-07-21 [coverage 27.8 % < floor 90 % (rule B)] voted open (open=437 end=97 tie=2)
+      excluded 2025-07-28 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=498 end=65 tie=3)
+      excluded 2025-08-04 [coverage 31.7 % < floor 90 % (rule B)] voted open (open=556 end=48 tie=0)
+      excluded 2025-08-11 [coverage 42.0 % < floor 90 % (rule B)] voted open (open=619 end=31 tie=0)
+      excluded 2025-08-18 [coverage 48.0 % < floor 90 % (rule B)] voted open (open=633 end=20 tie=0)
+      excluded 2025-08-25 [coverage 49.3 % < floor 90 % (rule B)] voted open (open=642 end=18 tie=0)
+      excluded 2025-09-01 [coverage 42.7 % < floor 90 % (rule B)] voted open (open=614 end=38 tie=2)
+      excluded 2025-09-08 [coverage 51.4 % < floor 90 % (rule B)] voted open (open=616 end=37 tie=1)
+      excluded 2025-09-15 [coverage 37.1 % < floor 90 % (rule B)] voted open (open=585 end=30 tie=1)
+      excluded 2025-09-22 [coverage 43.0 % < floor 90 % (rule B)] voted open (open=614 end=27 tie=0)
+      excluded 2025-09-29 [coverage 46.8 % < floor 90 % (rule B)] voted open (open=642 end=18 tie=0)
+      excluded 2025-10-06 [coverage 58.2 % < floor 90 % (rule B)] voted open (open=648 end=16 tie=0)
+      excluded 2025-10-13 [coverage 54.3 % < floor 90 % (rule B)] voted open (open=638 end=21 tie=0)
+      excluded 2025-10-20 [coverage 59.4 % < floor 90 % (rule B)] voted open (open=639 end=30 tie=1)
+      excluded 2025-11-03 [coverage 86.2 % < floor 90 % (rule B)] voted open (open=662 end=10 tie=0)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=667 end=5 tie=0)
+      excluded 2026-02-09 [coverage 59.1 % < floor 90 % (rule B)] voted open (open=615 end=47 tie=2)
+      excluded 2026-02-16 [coverage 36.2 % < floor 90 % (rule B)] voted open (open=566 end=69 tie=1)
+      excluded 2026-03-16 [coverage 85.1 % < floor 90 % (rule B)] voted open (open=562 end=107 tie=3)
+      excluded 2026-03-23 [coverage 65.8 % < floor 90 % (rule B)] voted open (open=532 end=140 tie=0)
+      excluded 2026-03-30 [coverage 70.4 % < floor 90 % (rule B)] voted open (open=159 end=33 tie=0)
+    dup signature (T,T+15m) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=8
+    accounting: rows=168108 expected=168108 | max=2026-03-31T23:45:00+00:00 expected=2026-03-31T23:45:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (8)
+    edge rows around boundary 2026-03-31T23:45:00+00:00:
+      2026-03-31T23:30:00+00:00 o=2099.35000000 h=2104.66000000 l=2098.88000000 c=2103.82000000 v=576.39390000
+      2026-03-31T23:45:00+00:00 o=2103.82000000 h=2107.54000000 l=2100.02000000 c=2104.36000000 v=1102.97040000
+    other exchanges: bybit n=44100 [2025-06-11T10:00:00+00:00 → 2026-09-13T19:00:00+00:00]
+
+====================================================================================================
+ETH/USDC 1h
+====================================================================================================
+ETH/USDC 1h: rows=42031 [2021-01-01T00:00:00+00:00 → 2026-03-31T23:00:00+00:00] gaps=8 missing_candles=3953 misaligned=0
+    gap: after 2021-02-11T03:00:00+00:00 until 2021-02-11T05:00:00+00:00 (1 candles)
+    gap: after 2021-03-06T01:00:00+00:00 until 2021-03-06T03:00:00+00:00 (1 candles)
+    gap: after 2021-04-20T01:00:00+00:00 until 2021-04-20T04:00:00+00:00 (2 candles)
+    gap: after 2021-04-25T04:00:00+00:00 until 2021-04-25T08:00:00+00:00 (3 candles)
+    gap: after 2021-08-13T01:00:00+00:00 until 2021-08-13T06:00:00+00:00 (4 candles)
+    gap: after 2021-09-29T06:00:00+00:00 until 2021-09-29T09:00:00+00:00 (2 candles)
+    gap: after 2022-09-29T02:00:00+00:00 until 2023-03-12T06:00:00+00:00 (3939 candles)
+    gap: after 2023-03-24T12:00:00+00:00 until 2023-03-24T14:00:00+00:00 (1 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 16 included, 24 excluded
+    included windows: open=16 end=0 tie=0 (rows voted=2688)
+      excluded 2025-06-30 [coverage 6.2 % < floor 90 % (rule B)] voted open (open=79 end=18 tie=2)
+      excluded 2025-07-07 [coverage 18.6 % < floor 90 % (rule B)] voted open (open=149 end=8 tie=2)
+      excluded 2025-07-14 [coverage 33.5 % < floor 90 % (rule B)] voted open (open=153 end=13 tie=0)
+      excluded 2025-07-21 [coverage 27.8 % < floor 90 % (rule B)] voted open (open=145 end=23 tie=0)
+      excluded 2025-07-28 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=158 end=10 tie=0)
+      excluded 2025-08-04 [coverage 31.7 % < floor 90 % (rule B)] voted open (open=161 end=7 tie=0)
+      excluded 2025-08-11 [coverage 42.0 % < floor 90 % (rule B)] voted open (open=162 end=6 tie=0)
+      excluded 2025-08-18 [coverage 48.0 % < floor 90 % (rule B)] voted open (open=166 end=2 tie=0)
+      excluded 2025-08-25 [coverage 49.3 % < floor 90 % (rule B)] voted open (open=166 end=2 tie=0)
+      excluded 2025-09-01 [coverage 42.7 % < floor 90 % (rule B)] voted open (open=164 end=4 tie=0)
+      excluded 2025-09-08 [coverage 51.4 % < floor 90 % (rule B)] voted open (open=165 end=3 tie=0)
+      excluded 2025-09-15 [coverage 37.1 % < floor 90 % (rule B)] voted open (open=163 end=5 tie=0)
+      excluded 2025-09-22 [coverage 43.0 % < floor 90 % (rule B)] voted open (open=165 end=3 tie=0)
+      excluded 2025-09-29 [coverage 46.8 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2025-10-06 [coverage 58.2 % < floor 90 % (rule B)] voted open (open=166 end=2 tie=0)
+      excluded 2025-10-13 [coverage 54.3 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-10-20 [coverage 59.4 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2025-11-03 [coverage 86.2 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2026-02-09 [coverage 59.1 % < floor 90 % (rule B)] voted open (open=162 end=6 tie=0)
+      excluded 2026-02-16 [coverage 36.2 % < floor 90 % (rule B)] voted open (open=163 end=5 tie=0)
+      excluded 2026-03-16 [coverage 85.1 % < floor 90 % (rule B)] voted open (open=160 end=8 tie=0)
+      excluded 2026-03-23 [coverage 65.8 % < floor 90 % (rule B)] voted open (open=156 end=12 tie=0)
+      excluded 2026-03-30 [coverage 70.4 % < floor 90 % (rule B)] voted open (open=48 end=0 tie=0)
+    dup signature (T,T+1h) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=42031 expected=42031 | max=2026-03-31T23:00:00+00:00 expected=2026-03-31T23:00:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (8)
+    edge rows around boundary 2026-03-31T23:00:00+00:00:
+      2026-03-31T22:00:00+00:00 o=2101.35000000 h=2103.34000000 l=2087.27000000 c=2095.44000000 v=4035.26950000
+      2026-03-31T23:00:00+00:00 o=2095.45000000 h=2107.54000000 l=2091.75000000 c=2104.36000000 v=3493.71630000
+    other exchanges: bybit n=11025 [2025-06-11T10:00:00+00:00 → 2026-09-13T19:00:00+00:00]
+
+====================================================================================================
+ETH/USDC 4h
+====================================================================================================
+ETH/USDC 4h: rows=10512 [2021-01-01T00:00:00+00:00 → 2026-03-31T20:00:00+00:00] gaps=1 missing_candles=984 misaligned=0
+    gap: after 2022-09-29T00:00:00+00:00 until 2023-03-12T04:00:00+00:00 (984 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 16 included, 24 excluded
+    included windows: open=16 end=0 tie=0 (rows voted=672)
+      excluded 2025-06-30 [coverage 6.2 % < floor 90 % (rule B)] voted open (open=29 end=3 tie=0)
+      excluded 2025-07-07 [coverage 18.6 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2025-07-14 [coverage 33.5 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2025-07-21 [coverage 27.8 % < floor 90 % (rule B)] voted open (open=37 end=5 tie=0)
+      excluded 2025-07-28 [coverage 25.9 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-08-04 [coverage 31.7 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-08-11 [coverage 42.0 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2025-08-18 [coverage 48.0 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-08-25 [coverage 49.3 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-01 [coverage 42.7 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-08 [coverage 51.4 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2025-09-15 [coverage 37.1 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-22 [coverage 43.0 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-29 [coverage 46.8 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-10-06 [coverage 58.2 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-10-13 [coverage 54.3 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-10-20 [coverage 59.4 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-11-03 [coverage 86.2 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-02-09 [coverage 59.1 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-02-16 [coverage 36.2 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-03-16 [coverage 85.1 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2026-03-23 [coverage 65.8 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2026-03-30 [coverage 70.4 % < floor 90 % (rule B)] voted open (open=12 end=0 tie=0)
+    dup signature (T,T+4h) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=10512 expected=10512 | max=2026-03-31T20:00:00+00:00 expected=2026-03-31T20:00:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (1)
+    edge rows around boundary 2026-03-31T20:00:00+00:00:
+      2026-03-31T16:00:00+00:00 o=2053.57000000 h=2122.48000000 l=2053.22000000 c=2095.35000000 v=55450.35220000
+      2026-03-31T20:00:00+00:00 o=2095.43000000 h=2109.82000000 l=2087.27000000 c=2104.36000000 v=18675.07810000
+    other exchanges: bybit n=2756 [2025-06-11T12:00:00+00:00 → 2026-09-13T16:00:00+00:00]
+
+====================================================================================================
+ETH/USDC 1d
+====================================================================================================
+ETH/USDC 1d: rows=1753 [2021-01-01T00:00:00+00:00 → 2026-03-31T00:00:00+00:00] gaps=1 missing_candles=163 misaligned=0
+    gap: after 2022-09-29T00:00:00+00:00 until 2023-03-12T00:00:00+00:00 (163 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 40 included, 0 excluded
+    included windows: open=40 end=0 tie=0 (rows voted=273)
+    manifest re-check rows (11), expected 'open' at T:
+      2025-07-12T00:00:00+00:00 → 2025-07-12T00:00:00+00:00: vote=open (binance close=2944.12000000 | bybit close at T=2955.20000000 at T+1d=2956.50000000 | OHLC dist same=89.77000000 next=18.37000000)
+      2025-07-21T00:00:00+00:00 → 2025-07-21T00:00:00+00:00: vote=open (binance close=3764.02000000 | bybit close at T=3765.24000000 at T+1d=3768.63000000 | OHLC dist same=317.10000000 next=36.30000000)
+      2025-11-12T00:00:00+00:00 → 2025-11-12T00:00:00+00:00: vote=open (binance close=3414.98000000 | bybit close at T=3416.78000000 at T+1d=3413.41000000 | OHLC dist same=242.74000000 next=4.25000000)
+      2025-11-22T00:00:00+00:00 → 2025-11-22T00:00:00+00:00: vote=open (binance close=2769.07000000 | bybit close at T=2769.04000000 at T+1d=2769.80000000 | OHLC dist same=231.85000000 next=5.63000000)
+      2025-11-30T00:00:00+00:00 → 2025-11-30T00:00:00+00:00: vote=open (binance close=2992.25000000 | bybit close at T=2989.94000000 at T+1d=2992.59000000 | OHLC dist same=56.57000000 next=2.46000000)
+      2025-12-20T00:00:00+00:00 → 2025-12-20T00:00:00+00:00: vote=open (binance close=2977.14000000 | bybit close at T=2978.48000000 at T+1d=2977.34000000 | OHLC dist same=313.98000000 next=19.57000000)
+      2025-12-28T00:00:00+00:00 → 2025-12-28T00:00:00+00:00: vote=open (binance close=2949.75000000 | bybit close at T=2946.98000000 at T+1d=2948.79000000 | OHLC dist same=30.93000000 next=3.59000000)
+      2026-01-03T00:00:00+00:00 → 2026-01-03T00:00:00+00:00: vote=open (binance close=3126.29000000 | bybit close at T=3124.89000000 at T+1d=3126.42000000 | OHLC dist same=223.98000000 next=1.50000000)
+      2026-01-10T00:00:00+00:00 → 2026-01-10T00:00:00+00:00: vote=open (binance close=3083.35000000 | bybit close at T=3085.00000000 at T+1d=3083.31000000 | OHLC dist same=83.86000000 next=0.93000000)
+      2026-01-24T00:00:00+00:00 → 2026-01-24T00:00:00+00:00: vote=open (binance close=2949.56000000 | bybit close at T=2953.90000000 at T+1d=2952.66000000 | OHLC dist same=107.76000000 next=6.23000000)
+      2026-02-17T00:00:00+00:00 → 2026-02-17T00:00:00+00:00: vote=open (binance close=1991.01000000 | bybit close at T=1993.16000000 at T+1d=1992.08000000 | OHLC dist same=44.02000000 next=6.61000000)
+    dup signature (T,T+1d) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=1753 expected=1753 | max=2026-03-31T00:00:00+00:00 expected=2026-03-31T00:00:00+00:00 | min=2021-01-01T00:00:00+00:00 expected=2021-01-01T00:00:00+00:00
+    gaps: identical to the audit (1)
+    edge rows around boundary 2026-03-31T00:00:00+00:00:
+      2026-03-30T00:00:00+00:00 o=1983.56000000 h=2084.22000000 l=1979.08000000 c=2025.57000000 v=120106.62120000
+      2026-03-31T00:00:00+00:00 o=2025.58000000 h=2122.48000000 l=2011.30000000 c=2104.36000000 v=178915.48900000
+    other exchanges: bybit n=459 [2025-06-12T00:00:00+00:00 → 2026-09-13T00:00:00+00:00]
+
+====================================================================================================
+ETH/USDC 1w
+====================================================================================================
+ETH/USDC 1w: rows=246 [2021-01-04T00:00:00+00:00 → 2026-03-30T00:00:00+00:00] gaps=6 missing_candles=28 misaligned=0
+    gap: after 2022-05-23T00:00:00+00:00 until 2022-06-06T00:00:00+00:00 (1 candles)
+    gap: after 2022-06-20T00:00:00+00:00 until 2022-07-04T00:00:00+00:00 (1 candles)
+    gap: after 2022-08-22T00:00:00+00:00 until 2022-09-05T00:00:00+00:00 (1 candles)
+    gap: after 2022-09-19T00:00:00+00:00 until 2023-03-06T00:00:00+00:00 (23 candles)
+    gap: after 2025-01-20T00:00:00+00:00 until 2025-02-03T00:00:00+00:00 (1 candles)
+    gap: after 2025-02-17T00:00:00+00:00 until 2025-03-03T00:00:00+00:00 (1 candles)
+    reference first traded week: 2025-06-30 | windows: 40 total, 39 included, 1 excluded
+    included windows: open=39 end=0 tie=0 (rows voted=39)
+      excluded 2025-06-30 [listing week (rule A)] voted open (open=1 end=0 tie=0)
+    manifest re-check rows (1), expected 'open' at T:
+      2025-12-08T00:00:00+00:00 → 2025-12-08T00:00:00+00:00: vote=open (binance close=3064.38000000 | bybit close at T=3062.83000000 at T+1w=3060.53000000 | OHLC dist same=588.24000000 next=9.69000000)
+    dup signature (T,T+1w) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=246 expected=246 | max=2026-03-30T00:00:00+00:00 expected=2026-03-30T00:00:00+00:00 | min=2021-01-04T00:00:00+00:00 expected=2021-01-04T00:00:00+00:00
+    gaps: identical to the audit (6)
+    edge rows around boundary 2026-03-30T00:00:00+00:00:
+      2026-03-23T00:00:00+00:00 o=2053.74000000 h=2199.12000000 l=1937.62000000 c=1983.52000000 v=916495.32730000
+      2026-03-30T00:00:00+00:00 o=1983.56000000 h=2167.77000000 l=1979.08000000 c=2109.66000000 v=767913.50170000
+    other exchanges: bybit n=65 [2025-06-16T00:00:00+00:00 → 2026-09-07T00:00:00+00:00]
+
+====================================================================================================
+SOL/USDC 1m
+====================================================================================================
+SOL/USDC 1m: rows=1719780 [2021-09-24T10:00:00+00:00 → 2026-03-31T23:59:00+00:00] gaps=2 missing_candles=655620 misaligned=0
+    gap: after 2021-09-29T06:59:00+00:00 until 2021-09-29T09:00:00+00:00 (120 candles)
+    gap: after 2022-09-29T02:59:00+00:00 until 2023-12-28T08:00:00+00:00 (655500 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 17 included, 23 excluded
+    included windows: open=17 end=0 tie=0 (rows voted=163227)
+      excluded 2025-06-30 [coverage 3.7 % < floor 90 % (rule B)] voted open (open=48 end=9 tie=7)
+      excluded 2025-07-07 [coverage 11.9 % < floor 90 % (rule B)] voted open (open=274 end=30 tie=12)
+      excluded 2025-07-14 [coverage 17.0 % < floor 90 % (rule B)] voted open (open=497 end=89 tie=12)
+      excluded 2025-07-21 [coverage 21.1 % < floor 90 % (rule B)] voted open (open=746 end=122 tie=15)
+      excluded 2025-07-28 [coverage 18.7 % < floor 90 % (rule B)] voted open (open=727 end=73 tie=8)
+      excluded 2025-08-04 [coverage 24.1 % < floor 90 % (rule B)] voted open (open=876 end=83 tie=27)
+      excluded 2025-08-11 [coverage 39.6 % < floor 90 % (rule B)] voted open (open=1946 end=165 tie=48)
+      excluded 2025-08-18 [coverage 40.3 % < floor 90 % (rule B)] voted open (open=1934 end=158 tie=52)
+      excluded 2025-08-25 [coverage 58.8 % < floor 90 % (rule B)] voted open (open=3581 end=334 tie=78)
+      excluded 2025-09-01 [coverage 46.6 % < floor 90 % (rule B)] voted open (open=2450 end=235 tie=70)
+      excluded 2025-09-08 [coverage 63.1 % < floor 90 % (rule B)] voted open (open=4016 end=437 tie=100)
+      excluded 2025-09-15 [coverage 50.0 % < floor 90 % (rule B)] voted open (open=2787 end=268 tie=59)
+      excluded 2025-09-22 [coverage 55.2 % < floor 90 % (rule B)] voted open (open=3375 end=284 tie=83)
+      excluded 2025-09-29 [coverage 60.1 % < floor 90 % (rule B)] voted open (open=3813 end=358 tie=105)
+      excluded 2025-10-06 [coverage 65.9 % < floor 90 % (rule B)] voted open (open=4432 end=455 tie=83)
+      excluded 2025-10-13 [coverage 71.6 % < floor 90 % (rule B)] voted open (open=5430 end=345 tie=81)
+      excluded 2025-10-20 [coverage 75.9 % < floor 90 % (rule B)] voted open (open=6096 end=328 tie=143)
+      excluded 2025-11-03 [coverage 87.4 % < floor 90 % (rule B)] voted open (open=7193 end=784 tie=215)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=7058 end=779 tie=296)
+      excluded 2026-02-09 [coverage 61.4 % < floor 90 % (rule B)] voted open (open=3764 end=621 tie=263)
+      excluded 2026-02-16 [coverage 37.9 % < floor 90 % (rule B)] voted open (open=1622 end=204 tie=95)
+      excluded 2026-03-23 [coverage 71.0 % < floor 90 % (rule B)] voted open (open=3097 end=1848 tie=450)
+      excluded 2026-03-30 [coverage 74.4 % < floor 90 % (rule B)] voted open (open=891 end=545 tie=97)
+    dup signature (T,T+1m) identical OHLCV: volume>0=347 [2021-10-11 18:19:00+00:00 → 2024-09-14 20:12:00+00:00] flat(volume=0)=78576
+    accounting: rows=1719780 expected=1719780 | max=2026-03-31T23:59:00+00:00 expected=2026-03-31T23:59:00+00:00 | min=2021-09-24T10:00:00+00:00 expected=2021-09-24T10:00:00+00:00
+    gaps: identical to the audit (2)
+    edge rows around boundary 2026-03-31T23:59:00+00:00:
+      2026-03-31T23:58:00+00:00 o=83.08000000 h=83.19000000 l=83.08000000 c=83.14000000 v=55.34100000
+      2026-03-31T23:59:00+00:00 o=83.13000000 h=83.18000000 l=83.13000000 c=83.14000000 v=24.62300000
+    other exchanges: bybit n=661451 [2025-06-11T10:31:00+00:00 → 2026-09-13T19:09:00+00:00]
+
+====================================================================================================
+SOL/USDC 5m
+====================================================================================================
+SOL/USDC 5m: rows=343956 [2021-09-24T10:00:00+00:00 → 2026-03-31T23:55:00+00:00] gaps=2 missing_candles=131124 misaligned=0
+    gap: after 2021-09-29T06:55:00+00:00 until 2021-09-29T09:00:00+00:00 (24 candles)
+    gap: after 2022-09-29T02:55:00+00:00 until 2023-12-28T08:00:00+00:00 (131100 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 17 included, 23 excluded
+    included windows: open=17 end=0 tie=0 (rows voted=34112)
+      excluded 2025-06-30 [coverage 3.7 % < floor 90 % (rule B)] voted open (open=73 end=12 tie=4)
+      excluded 2025-07-07 [coverage 11.9 % < floor 90 % (rule B)] voted open (open=365 end=44 tie=9)
+      excluded 2025-07-14 [coverage 17.0 % < floor 90 % (rule B)] voted open (open=557 end=73 tie=14)
+      excluded 2025-07-21 [coverage 21.1 % < floor 90 % (rule B)] voted open (open=676 end=102 tie=9)
+      excluded 2025-07-28 [coverage 18.7 % < floor 90 % (rule B)] voted open (open=537 end=83 tie=13)
+      excluded 2025-08-04 [coverage 24.1 % < floor 90 % (rule B)] voted open (open=813 end=89 tie=18)
+      excluded 2025-08-11 [coverage 39.6 % < floor 90 % (rule B)] voted open (open=1278 end=123 tie=13)
+      excluded 2025-08-18 [coverage 40.3 % < floor 90 % (rule B)] voted open (open=1336 end=100 tie=11)
+      excluded 2025-08-25 [coverage 58.8 % < floor 90 % (rule B)] voted open (open=1705 end=118 tie=9)
+      excluded 2025-09-01 [coverage 46.6 % < floor 90 % (rule B)] voted open (open=1456 end=150 tie=10)
+      excluded 2025-09-08 [coverage 63.1 % < floor 90 % (rule B)] voted open (open=1732 end=115 tie=7)
+      excluded 2025-09-15 [coverage 50.0 % < floor 90 % (rule B)] voted open (open=1514 end=121 tie=11)
+      excluded 2025-09-22 [coverage 55.2 % < floor 90 % (rule B)] voted open (open=1585 end=120 tie=11)
+      excluded 2025-09-29 [coverage 60.1 % < floor 90 % (rule B)] voted open (open=1692 end=107 tie=8)
+      excluded 2025-10-06 [coverage 65.9 % < floor 90 % (rule B)] voted open (open=1750 end=110 tie=8)
+      excluded 2025-10-13 [coverage 71.6 % < floor 90 % (rule B)] voted open (open=1775 end=98 tie=13)
+      excluded 2025-10-20 [coverage 75.9 % < floor 90 % (rule B)] voted open (open=1797 end=76 tie=7)
+      excluded 2025-11-03 [coverage 87.4 % < floor 90 % (rule B)] voted open (open=1895 end=54 tie=9)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=1912 end=59 tie=5)
+      excluded 2026-02-09 [coverage 61.4 % < floor 90 % (rule B)] voted open (open=1569 end=145 tie=24)
+      excluded 2026-02-16 [coverage 37.9 % < floor 90 % (rule B)] voted open (open=1207 end=145 tie=29)
+      excluded 2026-03-23 [coverage 71.0 % < floor 90 % (rule B)] voted open (open=1333 end=557 tie=76)
+      excluded 2026-03-30 [coverage 74.4 % < floor 90 % (rule B)] voted open (open=384 end=160 tie=14)
+    dup signature (T,T+5m) identical OHLCV: volume>0=2 [2022-09-04 05:10:00+00:00 → 2022-09-04 06:00:00+00:00] flat(volume=0)=676
+    accounting: rows=343956 expected=343956 | max=2026-03-31T23:55:00+00:00 expected=2026-03-31T23:55:00+00:00 | min=2021-09-24T10:00:00+00:00 expected=2021-09-24T10:00:00+00:00
+    gaps: identical to the audit (2)
+    edge rows around boundary 2026-03-31T23:55:00+00:00:
+      2026-03-31T23:50:00+00:00 o=83.08000000 h=83.19000000 l=83.07000000 c=83.09000000 v=567.40800000
+      2026-03-31T23:55:00+00:00 o=83.09000000 h=83.19000000 l=83.07000000 c=83.14000000 v=376.26300000
+    other exchanges: bybit n=132289 [2025-06-11T10:35:00+00:00 → 2026-09-13T19:05:00+00:00]
+
+====================================================================================================
+SOL/USDC 15m
+====================================================================================================
+SOL/USDC 15m: rows=114652 [2021-09-24T10:00:00+00:00 → 2026-03-31T23:45:00+00:00] gaps=2 missing_candles=43708 misaligned=0
+    gap: after 2021-09-29T06:45:00+00:00 until 2021-09-29T09:00:00+00:00 (8 candles)
+    gap: after 2022-09-29T02:45:00+00:00 until 2023-12-28T08:00:00+00:00 (43700 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 17 included, 23 excluded
+    included windows: open=17 end=0 tie=0 (rows voted=11422)
+      excluded 2025-06-30 [coverage 3.7 % < floor 90 % (rule B)] voted open (open=96 end=12 tie=3)
+      excluded 2025-07-07 [coverage 11.9 % < floor 90 % (rule B)] voted open (open=319 end=34 tie=5)
+      excluded 2025-07-14 [coverage 17.0 % < floor 90 % (rule B)] voted open (open=393 end=51 tie=3)
+      excluded 2025-07-21 [coverage 21.1 % < floor 90 % (rule B)] voted open (open=412 end=46 tie=4)
+      excluded 2025-07-28 [coverage 18.7 % < floor 90 % (rule B)] voted open (open=379 end=52 tie=3)
+      excluded 2025-08-04 [coverage 24.1 % < floor 90 % (rule B)] voted open (open=495 end=36 tie=1)
+      excluded 2025-08-11 [coverage 39.6 % < floor 90 % (rule B)] voted open (open=603 end=31 tie=3)
+      excluded 2025-08-18 [coverage 40.3 % < floor 90 % (rule B)] voted open (open=639 end=25 tie=0)
+      excluded 2025-08-25 [coverage 58.8 % < floor 90 % (rule B)] voted open (open=657 end=13 tie=0)
+      excluded 2025-09-01 [coverage 46.6 % < floor 90 % (rule B)] voted open (open=627 end=30 tie=3)
+      excluded 2025-09-08 [coverage 63.1 % < floor 90 % (rule B)] voted open (open=658 end=12 tie=0)
+      excluded 2025-09-15 [coverage 50.0 % < floor 90 % (rule B)] voted open (open=637 end=18 tie=1)
+      excluded 2025-09-22 [coverage 55.2 % < floor 90 % (rule B)] voted open (open=637 end=22 tie=2)
+      excluded 2025-09-29 [coverage 60.1 % < floor 90 % (rule B)] voted open (open=659 end=11 tie=2)
+      excluded 2025-10-06 [coverage 65.9 % < floor 90 % (rule B)] voted open (open=659 end=9 tie=2)
+      excluded 2025-10-13 [coverage 71.6 % < floor 90 % (rule B)] voted open (open=662 end=8 tie=0)
+      excluded 2025-10-20 [coverage 75.9 % < floor 90 % (rule B)] voted open (open=665 end=5 tie=0)
+      excluded 2025-11-03 [coverage 87.4 % < floor 90 % (rule B)] voted open (open=669 end=3 tie=0)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=668 end=4 tie=0)
+      excluded 2026-02-09 [coverage 61.4 % < floor 90 % (rule B)] voted open (open=631 end=25 tie=1)
+      excluded 2026-02-16 [coverage 37.9 % < floor 90 % (rule B)] voted open (open=588 end=46 tie=3)
+      excluded 2026-03-23 [coverage 71.0 % < floor 90 % (rule B)] voted open (open=561 end=100 tie=11)
+      excluded 2026-03-30 [coverage 74.4 % < floor 90 % (rule B)] voted open (open=166 end=25 tie=1)
+    dup signature (T,T+15m) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=7
+    accounting: rows=114652 expected=114652 | max=2026-03-31T23:45:00+00:00 expected=2026-03-31T23:45:00+00:00 | min=2021-09-24T10:00:00+00:00 expected=2021-09-24T10:00:00+00:00
+    gaps: identical to the audit (2)
+    edge rows around boundary 2026-03-31T23:45:00+00:00:
+      2026-03-31T23:30:00+00:00 o=82.94000000 h=83.21000000 l=82.93000000 c=83.09000000 v=2146.04800000
+      2026-03-31T23:45:00+00:00 o=83.07000000 h=83.19000000 l=82.96000000 c=83.14000000 v=2765.86500000
+    other exchanges: bybit n=44097 [2025-06-11T10:45:00+00:00 → 2026-09-13T19:00:00+00:00]
+
+====================================================================================================
+SOL/USDC 1h
+====================================================================================================
+SOL/USDC 1h: rows=28663 [2021-09-24T10:00:00+00:00 → 2026-03-31T23:00:00+00:00] gaps=2 missing_candles=10927 misaligned=0
+    gap: after 2021-09-29T06:00:00+00:00 until 2021-09-29T09:00:00+00:00 (2 candles)
+    gap: after 2022-09-29T02:00:00+00:00 until 2023-12-28T08:00:00+00:00 (10925 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 17 included, 23 excluded
+    included windows: open=17 end=0 tie=0 (rows voted=2856)
+      excluded 2025-06-30 [coverage 3.7 % < floor 90 % (rule B)] voted open (open=73 end=7 tie=1)
+      excluded 2025-07-07 [coverage 11.9 % < floor 90 % (rule B)] voted open (open=138 end=9 tie=0)
+      excluded 2025-07-14 [coverage 17.0 % < floor 90 % (rule B)] voted open (open=149 end=7 tie=0)
+      excluded 2025-07-21 [coverage 21.1 % < floor 90 % (rule B)] voted open (open=150 end=9 tie=0)
+      excluded 2025-07-28 [coverage 18.7 % < floor 90 % (rule B)] voted open (open=150 end=10 tie=0)
+      excluded 2025-08-04 [coverage 24.1 % < floor 90 % (rule B)] voted open (open=159 end=9 tie=0)
+      excluded 2025-08-11 [coverage 39.6 % < floor 90 % (rule B)] voted open (open=166 end=2 tie=0)
+      excluded 2025-08-18 [coverage 40.3 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2025-08-25 [coverage 58.8 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2025-09-01 [coverage 46.6 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2025-09-08 [coverage 63.1 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-09-15 [coverage 50.0 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2025-09-22 [coverage 55.2 % < floor 90 % (rule B)] voted open (open=166 end=2 tie=0)
+      excluded 2025-09-29 [coverage 60.1 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-10-06 [coverage 65.9 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-10-13 [coverage 71.6 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-10-20 [coverage 75.9 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2025-11-03 [coverage 87.4 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=167 end=1 tie=0)
+      excluded 2026-02-09 [coverage 61.4 % < floor 90 % (rule B)] voted open (open=168 end=0 tie=0)
+      excluded 2026-02-16 [coverage 37.9 % < floor 90 % (rule B)] voted open (open=165 end=3 tie=0)
+      excluded 2026-03-23 [coverage 71.0 % < floor 90 % (rule B)] voted open (open=162 end=6 tie=0)
+      excluded 2026-03-30 [coverage 74.4 % < floor 90 % (rule B)] voted open (open=47 end=1 tie=0)
+    dup signature (T,T+1h) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=28663 expected=28663 | max=2026-03-31T23:00:00+00:00 expected=2026-03-31T23:00:00+00:00 | min=2021-09-24T10:00:00+00:00 expected=2021-09-24T10:00:00+00:00
+    gaps: identical to the audit (2)
+    edge rows around boundary 2026-03-31T23:00:00+00:00:
+      2026-03-31T22:00:00+00:00 o=82.81000000 h=82.86000000 l=82.30000000 c=82.71000000 v=12340.75800000
+      2026-03-31T23:00:00+00:00 o=82.73000000 h=83.21000000 l=82.64000000 c=83.14000000 v=16596.79500000
+    other exchanges: bybit n=11024 [2025-06-11T11:00:00+00:00 → 2026-09-13T19:00:00+00:00]
+
+====================================================================================================
+SOL/USDC 4h
+====================================================================================================
+SOL/USDC 4h: rows=7167 [2021-09-24T08:00:00+00:00 → 2026-03-31T20:00:00+00:00] gaps=1 missing_candles=2731 misaligned=0
+    gap: after 2022-09-29T00:00:00+00:00 until 2023-12-28T08:00:00+00:00 (2731 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 17 included, 23 excluded
+    included windows: open=17 end=0 tie=0 (rows voted=714)
+      excluded 2025-06-30 [coverage 3.7 % < floor 90 % (rule B)] voted open (open=24 end=3 tie=0)
+      excluded 2025-07-07 [coverage 11.9 % < floor 90 % (rule B)] voted open (open=40 end=2 tie=0)
+      excluded 2025-07-14 [coverage 17.0 % < floor 90 % (rule B)] voted open (open=40 end=2 tie=0)
+      excluded 2025-07-21 [coverage 21.1 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-07-28 [coverage 18.7 % < floor 90 % (rule B)] voted open (open=39 end=3 tie=0)
+      excluded 2025-08-04 [coverage 24.1 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-08-11 [coverage 39.6 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-08-18 [coverage 40.3 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-08-25 [coverage 58.8 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-01 [coverage 46.6 % < floor 90 % (rule B)] voted open (open=41 end=1 tie=0)
+      excluded 2025-09-08 [coverage 63.1 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-15 [coverage 50.0 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-22 [coverage 55.2 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-09-29 [coverage 60.1 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-10-06 [coverage 65.9 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-10-13 [coverage 71.6 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-10-20 [coverage 75.9 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-11-03 [coverage 87.4 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2025-11-17 [coverage 87.3 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-02-09 [coverage 61.4 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-02-16 [coverage 37.9 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-03-23 [coverage 71.0 % < floor 90 % (rule B)] voted open (open=42 end=0 tie=0)
+      excluded 2026-03-30 [coverage 74.4 % < floor 90 % (rule B)] voted open (open=11 end=1 tie=0)
+    dup signature (T,T+4h) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=7167 expected=7167 | max=2026-03-31T20:00:00+00:00 expected=2026-03-31T20:00:00+00:00 | min=2021-09-24T08:00:00+00:00 expected=2021-09-24T08:00:00+00:00
+    gaps: identical to the audit (1)
+    edge rows around boundary 2026-03-31T20:00:00+00:00:
+      2026-03-31T16:00:00+00:00 o=80.83000000 h=84.30000000 l=80.83000000 c=82.65000000 v=254059.42500000
+      2026-03-31T20:00:00+00:00 o=82.65000000 h=83.35000000 l=82.30000000 c=83.14000000 v=62302.41300000
+    other exchanges: bybit n=2756 [2025-06-11T12:00:00+00:00 → 2026-09-13T16:00:00+00:00]
+
+====================================================================================================
+SOL/USDC 1d
+====================================================================================================
+SOL/USDC 1d: rows=1196 [2021-09-24T00:00:00+00:00 → 2026-03-31T00:00:00+00:00] gaps=1 missing_candles=454 misaligned=0
+    gap: after 2022-09-29T00:00:00+00:00 until 2023-12-28T00:00:00+00:00 (454 candles)
+    reference first traded week: 2025-06-23 | windows: 40 total, 40 included, 0 excluded
+    included windows: open=40 end=0 tie=0 (rows voted=274)
+    manifest re-check rows (6), expected 'open' at T:
+      2025-10-19T00:00:00+00:00 → 2025-10-19T00:00:00+00:00: vote=open (binance close=187.96000000 | bybit close at T=187.70000000 at T+1d=187.74000000 | OHLC dist same=11.23000000 next=0.57000000)
+      2025-10-29T00:00:00+00:00 → 2025-10-29T00:00:00+00:00: vote=open (binance close=193.92000000 | bybit close at T=194.20000000 at T+1d=194.30000000 | OHLC dist same=8.11000000 next=0.69000000)
+      2025-12-07T00:00:00+00:00 → 2025-12-07T00:00:00+00:00: vote=open (binance close=132.29000000 | bybit close at T=132.26000000 at T+1d=132.29000000 | OHLC dist same=7.03000000 next=0.04000000)
+      2025-12-11T00:00:00+00:00 → 2025-12-11T00:00:00+00:00: vote=open (binance close=136.45000000 | bybit close at T=136.33000000 at T+1d=136.36000000 | OHLC dist same=13.04000000 next=0.22000000)
+      2026-01-10T00:00:00+00:00 → 2026-01-10T00:00:00+00:00: vote=open (binance close=135.71000000 | bybit close at T=135.83000000 at T+1d=135.71000000 | OHLC dist same=7.04000000 next=0.04000000)
+      2026-03-14T00:00:00+00:00 → 2026-03-14T00:00:00+00:00: vote=open (binance close=88.07000000 | bybit close at T=88.22000000 at T+1d=88.16000000 | OHLC dist same=5.91000000 next=0.15000000)
+    dup signature (T,T+1d) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=1196 expected=1196 | max=2026-03-31T00:00:00+00:00 expected=2026-03-31T00:00:00+00:00 | min=2021-09-24T00:00:00+00:00 expected=2021-09-24T00:00:00+00:00
+    gaps: identical to the audit (1)
+    edge rows around boundary 2026-03-31T00:00:00+00:00:
+      2026-03-30T00:00:00+00:00 o=81.40000000 h=84.94000000 l=81.12000000 c=82.52000000 v=485442.95500000
+      2026-03-31T00:00:00+00:00 o=82.52000000 h=84.57000000 l=80.00000000 c=83.14000000 v=784289.11500000
+    other exchanges: bybit n=459 [2025-06-12T00:00:00+00:00 → 2026-09-13T00:00:00+00:00]
+
+====================================================================================================
+SOL/USDC 1w
+====================================================================================================
+SOL/USDC 1w: rows=168 [2021-09-20T00:00:00+00:00 → 2026-03-30T00:00:00+00:00] gaps=6 missing_candles=69 misaligned=0
+    gap: after 2022-05-23T00:00:00+00:00 until 2022-06-06T00:00:00+00:00 (1 candles)
+    gap: after 2022-06-20T00:00:00+00:00 until 2022-07-04T00:00:00+00:00 (1 candles)
+    gap: after 2022-08-22T00:00:00+00:00 until 2022-09-05T00:00:00+00:00 (1 candles)
+    gap: after 2022-09-26T00:00:00+00:00 until 2023-12-25T00:00:00+00:00 (64 candles)
+    gap: after 2025-01-20T00:00:00+00:00 until 2025-02-03T00:00:00+00:00 (1 candles)
+    gap: after 2025-02-17T00:00:00+00:00 until 2025-03-03T00:00:00+00:00 (1 candles)
+    reference first traded week: 2025-06-30 | windows: 40 total, 39 included, 1 excluded
+    included windows: open=39 end=0 tie=0 (rows voted=39)
+      excluded 2025-06-30 [listing week (rule A)] voted end (open=0 end=1 tie=0)
+    dup signature (T,T+1w) identical OHLCV: volume>0=0 [None → None] flat(volume=0)=0
+    accounting: rows=168 expected=168 | max=2026-03-30T00:00:00+00:00 expected=2026-03-30T00:00:00+00:00 | min=2021-09-20T00:00:00+00:00 expected=2021-09-20T00:00:00+00:00
+    gaps: identical to the audit (6)
+    edge rows around boundary 2026-03-30T00:00:00+00:00:
+      2026-03-23T00:00:00+00:00 o=86.20000000 h=93.47000000 l=78.88000000 c=81.39000000 v=4347041.26800000
+      2026-03-30T00:00:00+00:00 o=81.40000000 h=86.65000000 l=76.68000000 c=81.86000000 v=4265300.36400000
+    other exchanges: bybit n=65 [2025-06-16T00:00:00+00:00 → 2026-09-07T00:00:00+00:00]
+
+====================================================================================================
+Spot checks
+====================================================================================================
+  BTC/USDC 1d 2024-01-01T00:00:00+00:00 o=42274.27000000 h=44199.99000000 l=42181.24000000 c=44185.08000000 v=831.25289000
+  BTC/USDC 1d 2024-01-02T00:00:00+00:00 o=44185.10000000 h=45917.99000000 l=44152.17000000 c=44966.40000000 v=2075.57807000
+  → candle open=42274.27 close=44185.08 expected at 2024-01-01T00:00:00+00:00: OK
+
+====================================================================================================
+Last 1w candle completeness (GATE 1 decision c)
+====================================================================================================
+BTC/USDC 1w last candle 2026-03-30T00:00:00+00:00 covers [2026-03-30, 2026-04-06) o=65977.66000000 h=69297.69000000 l=65705.71000000 c=69019.18000000 | binance 1d days=2 bybit 1d days=7
+    vs bybit 1d [2026-03-31 → 2026-04-06]: close diff=2.4 bps high diff=4.6 bps low diff=1.6 bps (tolerance 50 bps)
+    → COMPLETE (7 reference days)
+ETH/USDC 1w last candle 2026-03-30T00:00:00+00:00 covers [2026-03-30, 2026-04-06) o=1983.56000000 h=2167.77000000 l=1979.08000000 c=2109.66000000 | binance 1d days=2 bybit 1d days=7
+    vs bybit 1d [2026-03-31 → 2026-04-06]: close diff=3.9 bps high diff=1.9 bps low diff=15.5 bps (tolerance 50 bps)
+    → COMPLETE (7 reference days)
+SOL/USDC 1w last candle 2026-03-30T00:00:00+00:00 covers [2026-03-30, 2026-04-06) o=81.40000000 h=86.65000000 l=76.68000000 c=81.86000000 | binance 1d days=2 bybit 1d days=7
+    vs bybit 1d [2026-03-31 → 2026-04-06]: close diff=21.9 bps high diff=6.9 bps low diff=2.6 bps (tolerance 50 bps)
+    → COMPLETE (7 reference days)
+
+====================================================================================================
+Rule B sensitivity
+====================================================================================================
+  Rule B sensitivity (intraday windows, rule A fixed) — floor in use: 90 %; the verdict is stable when a plateau of ≥ 30 points reaching 95 % has no offending included window and contains the chosen floor:
+   floor  included excl. by cov.  offending
+      0%       600             0          0
+     10%       585            15          0
+     20%       550            50          0
+     30%       515            85          0
+     40%       480           120          0
+     50%       435           165          0
+     60%       385           215          0
+     70%       345           255          0
+     80%       320           280          0
+     90%       275           325          0
+     95%       235           365          0
+  → verdict STABLE for every floor ≥ 0 % (plateau to 95 %)
+
+====================================================================================================
+Summary
+====================================================================================================
+  Series              rows min                        boundary (last open ts)     restamps collisions  incl open/end/tie
+  BTC/USDC 1m      2521597 2021-01-01T00:00:00+00:00  2026-03-31T23:59:00+00:00    2521597          0     22/0/0
+  BTC/USDC 5m       504321 2021-01-01T00:00:00+00:00  2026-03-31T23:55:00+00:00     504321          0     22/0/0
+  BTC/USDC 15m      168108 2021-01-01T00:00:00+00:00  2026-03-31T23:45:00+00:00     168108          0     22/0/0
+  BTC/USDC 1h        42031 2021-01-01T00:00:00+00:00  2026-03-31T23:00:00+00:00      42031          0     22/0/0
+  BTC/USDC 4h        10512 2021-01-01T00:00:00+00:00  2026-03-31T20:00:00+00:00      10512          0     22/0/0
+  BTC/USDC 1d         1753 2021-01-01T00:00:00+00:00  2026-03-31T00:00:00+00:00       1753          0     40/0/0
+  BTC/USDC 1w          246 2021-01-04T00:00:00+00:00  2026-03-30T00:00:00+00:00        246          0     39/0/0
+  ETH/USDC 1m      2521597 2021-01-01T00:00:00+00:00  2026-03-31T23:59:00+00:00    2521597          0     16/0/0
+  ETH/USDC 5m       504321 2021-01-01T00:00:00+00:00  2026-03-31T23:55:00+00:00     504321          0     16/0/0
+  ETH/USDC 15m      168108 2021-01-01T00:00:00+00:00  2026-03-31T23:45:00+00:00     168108          0     16/0/0
+  ETH/USDC 1h        42031 2021-01-01T00:00:00+00:00  2026-03-31T23:00:00+00:00      42031          0     16/0/0
+  ETH/USDC 4h        10512 2021-01-01T00:00:00+00:00  2026-03-31T20:00:00+00:00      10512          0     16/0/0
+  ETH/USDC 1d         1753 2021-01-01T00:00:00+00:00  2026-03-31T00:00:00+00:00       1753          0     40/0/0
+  ETH/USDC 1w          246 2021-01-04T00:00:00+00:00  2026-03-30T00:00:00+00:00        246          0     39/0/0
+  SOL/USDC 1m      1719780 2021-09-24T10:00:00+00:00  2026-03-31T23:59:00+00:00    1719780          0     17/0/0
+  SOL/USDC 5m       343956 2021-09-24T10:00:00+00:00  2026-03-31T23:55:00+00:00     343956          0     17/0/0
+  SOL/USDC 15m      114652 2021-09-24T10:00:00+00:00  2026-03-31T23:45:00+00:00     114652          0     17/0/0
+  SOL/USDC 1h        28663 2021-09-24T10:00:00+00:00  2026-03-31T23:00:00+00:00      28663          0     17/0/0
+  SOL/USDC 4h         7167 2021-09-24T08:00:00+00:00  2026-03-31T20:00:00+00:00       7167          0     17/0/0
+  SOL/USDC 1d         1196 2021-09-24T00:00:00+00:00  2026-03-31T00:00:00+00:00       1196          0     40/0/0
+  SOL/USDC 1w          168 2021-09-20T00:00:00+00:00  2026-03-30T00:00:00+00:00        168          0     39/0/0
+  total rows=8712718 restamps=8712718 collisions=0 series=21
+
+  1 PROBLEM(S):
+    - BTC/USDC 1d: re-check row 2025-07-05T00:00:00+00:00 votes 'end'

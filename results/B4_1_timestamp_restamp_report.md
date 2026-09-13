@@ -252,23 +252,121 @@ rows / 0 collision**, estimation de durée du `--execute` à fournir, **STOP au 
 
 ## 4. Invariants post-migration (étape 3)
 
-### 4.1 ⛔ STOP audit strict — état des lieux pour décision Bruno
+### 4.1 Invariant 1 — du STOP v1 à l'audit v2 (décision Bruno : option 2 encadrée)
 
-Le script d'audit en mode strict sort en exit 1 (6 fenêtres résiduelles, tableau au point 1 ci-dessous). Aucune
-intervention n'a été faite en DB après ce STOP. Diagnostic (lecture seule, `results/b4_timestamp_audit_post_migration.txt`
-et requête de couverture Bybit par semaine) : couverture Bybit 1m par semaine (minutes avec volume / votantes /
-end / open) — BTC 06-23 : 0 ; **06-30 : 1 000 / 300 / 120 / 170** ; 07-07 : 2 610 / 1 208 / 719 / 483 ;
-07-14 : 2 073 / 788 / 448 / 327 ; ETH 06-30 : 626 / 150 / 46 / 97 ; 07-07 : 1 873 / 671 / 401 / 263 ; SOL
-06-30 : 368 / 64 / 18 / 38 ; 07-07 : 1 197 / 316 / 167 / 142. Options soumises (aucune n'a été appliquée) :
-(a) accepter le résultat en documentant les 6 résidus comme limites de la référence (première semaine Bybit EU,
-première 1w partielle, seuil d'ambiguïté) ; (b) durcir l'audit — exclure les fenêtres dont la couverture de
-référence est < N % ou la première semaine du recouvrement, passer le seuil d'ambiguïté 1w à ≥ 0,5 % ou au vote
-OHLC pour les 1d/1w — et le rejouer (lecture seule) ; (c) NO-GO → restauration du dump 17:34 UTC.
+**Run strict v1 (evidence conservée : `results/b4_timestamp_audit_post_migration.txt`, exit 1).** Vote « close
+puis OHLC si les deux closes candidats sont à < 0,1 % », toutes fenêtres incluses. 15/21 séries à 100 % *end*,
+majorité par row *end* partout, 36/36 rows ambiguës *end*, **6 fenêtres résiduelles** :
 
-1. `b4_timestamp_audit.py --post-migration` (strict) : **15/21 séries à 100 % *end*** (40/40 fenêtres) ;
-   majorité par row *end* sur les 21 séries ; **les 36 rows ambiguës revérifiées une à une votent toutes *end***
-   (dont BTC 1w 2025-09-15 et 2025-12-01, ETH 1w 2025-12-08). **⛔ 6 fenêtres résiduelles → exit 1 → STOP**
-   (règle GATE 1 a) :
+| Série | Fenêtre | open/end/tie | Mécanisme (lecture seule) |
+|---|---|---|---|
+| BTC 1m | 2025-06-30 | 170/120/10 | 1ʳᵉ semaine tradée sur Bybit EU : 1 000 minutes avec volume sur 10 080, 300 rows votantes, 0,014 BTC/min. Candles Bybit à un trade → prix en retard d'≈ 1 min sur Binance : pré-migration ce retard éloignait le mauvais candidat (candle précédente), post-migration il rapproche la candle suivante |
+| BTC 5m | 2025-06-30 | 168/166/5 | idem, retard ≪ 5 min → pile ou face |
+| ETH 1m | 2025-06-30 | 97/46/7 | idem (626 minutes avec volume, 150 votantes) |
+| SOL 1m | 2025-06-30 | 38/18/8 | idem (368 minutes avec volume, 64 votantes) |
+| ETH 1w, SOL 1w | 2025-06-30 | 1/0/0 | 1ʳᵉ candle 1w Bybit **partielle** (3 jours 27→29/06, spikes de lancement, ETH high 2785.93) comparée à la semaine Binance complète |
+| ETH 1w | 2026-03-02 | 1/0/0 | closes Bybit candidats à 0,21 % (> seuil 0,1 %) et écart Binance/Bybit 0,32 % au close : le close seul tranchait à tort ; distance OHLC : same 9.84 vs next 188.68 |
+
+Aucune n'est un défaut de migration (comptabilité exacte, invariant 2) : ce sont des limites de la
+**référence** (première semaine de liquidité Bybit EU, première 1w partielle, seuil d'ambiguïté du vote).
+
+**Spec v2 (validée par Bruno, `scripts/audit/b4_timestamp_audit.py` commit `17e2925` + `8c1ab70`) :**
+
+1. **Vote unifié** : distance OHLC L1 (|open|+|high|+|low|+|close|) entre la candle Binance à `T` et la candle
+   de référence à `T` (hypothèse *end*) vs `T + intervalle` (hypothèse *open*) ; agrège 4 points, dégénère
+   proprement en *tie* sur candles plates, plus de seuil hybride. Pas de raison de conserver le close seul.
+2. **Règle A — première semaine de recouvrement** par paire × TF : la semaine ISO de la **première row de
+   référence avec `volume > 0`** sur cette série (ramp-up de listing ; 1w partielle par construction) et
+   tout ce qui précède sont exclus. Définie par le premier trade, pas par la première row : les candles
+   Bybit antérieures au listing effectif sont plates (`volume = 0`) et ne votent jamais.
+3. **Règle B — plancher de couverture** : couverture d'une paire-semaine = part des minutes de la semaine
+   avec volume Bybit sur la série 1m. Distribution sur les 129 paire-semaines du recouvrement (histogramme par
+   décile : 0–9 % : 12 · 10–19 : 7 · 20–29 : 7 · 30–39 : 7 · 40–49 : 9 · 50–59 : 10 · 60–69 : 8 · 70–79 : 5 ·
+   80–89 : 9 · **≥ 90 : 55**) : une rampe continue de juillet à octobre 2025 (BTC 9,9 → 25,9 → 20,6 → 15,5 → …
+   → 98 %) puis le régime mature. **Cassure naturelle = le saut 9 → 55 entre les déciles 80 et 90 : plancher
+   à 90 %** (le mode de la distribution), sans aucun rapport avec les fenêtres en échec (≤ 9,9 %). Table de
+   sensibilité 0 → 95 % imprimée à chaque run ; verdict « stable » = plateau sans fenêtre incluse en défaut,
+   ≥ 30 points de large, atteignant 95 % et contenant le plancher choisi (la première version du script
+   exigeait la stabilité dès 0 % — plus strict que la spec « stable sur une plage », corrigé en `8c1ab70`).
+   Portée : TF intraday (spec) ; option `--coverage-scope all` = proposition § 4.1.b.
+4. Aucune fenêtre n'est nommée dans les règles ; les fenêtres exclues restent listées avec leurs votes.
+5. **Contrôles de puissance** : (i) rejeu sur l'état courant → *end* sur toutes les fenêtres incluses ;
+   (ii) rejeu sur la **vue virtuelle `timestamp − intervalle`** (`--pre-migration-view`, reconstruction
+   bit-exacte de l'état pré-migration : rows, bornes, trous, signature de doublon comparés **égaux** au
+   manifeste) → *open* sur toutes les fenêtres incluses. Les 36 rows de revérification sont revotées dans
+   les deux sens.
+
+#### 4.1.a Résultats v2, portée spec (règle B sur les TF intraday) — `results/b4_timestamp_audit_{post_migration,premigration_view}_v21_intraday.txt`
+
+Serveur, 19:01–19:10 UTC (premiers runs v2 à 18:46/18:50 : `*_v2.txt`, mêmes votes, verdict de sensibilité
+encore « dès 0 % » ; conservés). 842 fenêtres hebdomadaires (21 séries) ; 2 exclues par la règle A (1w ETH/SOL,
+semaine 06-30), 325 intraday exclues par la règle B à 90 %, **515 incluses**.
+
+| | Contrôle direct (état courant, attendu *end*) | Contrôle inverse (vue `timestamp − intervalle`, attendu *open*) |
+|---|---|---|
+| Fenêtres incluses en défaut | **1** : SOL 1w `2025-07-07` (1/0/0, semaine à 3,7 % de couverture) | 0 |
+| Rows de revérification (36) | **1 en défaut** : BTC 1d `2025-07-05 → 07-06` vote *open* | **1 en défaut** : BTC 1d `2025-07-05` vote *end* |
+| Sensibilité (600 fenêtres intraday) | stable **de 20 % à 95 %** (0 % : 6 en défaut, 10 % : 1 — BTC 1m `2025-08-04` 317/313 à 19,1 %) | stable de 0 % à 95 % |
+| Comptabilité / trous / bornes / queue 1w | 21/21 exacts, 21/21 identiques (+intervalle), 3/3 complètes | 21/21 exacts, 21/21 identiques **(égalité bit-exacte)**, 3/3 complètes |
+| Exit code | 1 | 1 |
+
+Table de sensibilité intraday (règle A fixée), contrôle direct / inverse :
+
+```
+floor  included  excl.cov  offending(direct)  offending(inverse)
+  0%      600        0            6                 0
+ 10%      585       15            1                 0
+ 20%      550       50            0                 0
+ 30%      515       85            0                 0
+ 50%      435      165            0                 0
+ 70%      345      255            0                 0
+ 90%      275      325            0                 0
+ 95%      235      365            0                 0
+```
+
+**Ce qui reste et pourquoi (STOP par la règle « une fenêtre incluse qui échoue au contrôle inverse doit être
+exclue par la règle de couverture »)** : les deux éléments en défaut sont **la même semaine `2025-06-30`**
+(BTC 9,9 %, SOL 3,7 % de couverture) sur des TF non intraday, hors portée de la règle B telle que spécifiée :
+- BTC 1d, candle Bybit du **5 juillet 2025** (2,59 BTC échangés sur la journée) : high 110 740,8 vs 109 812,1
+  Binance, low 107 326,9 vs 107 279,5 → distance OHLC à la même candle 5 623 contre 2 280 à la suivante
+  (direct) et 4 469 à la précédente (inverse). Une candle de référence agrégée sur une journée quasi vide
+  échoue **dans les deux sens** : ce n'est pas une question de convention mais de fiabilité de la référence.
+- SOL 1w `2025-07-07` (candle Bybit 30/06 → 06/07 à 3,7 % de couverture minute) : même mécanisme.
+
+La règle A ne les couvre pas : pour BTC, quelques minutes ont été tradées sur Bybit EU dès la semaine du
+09/06 (couverture 0,0x %), donc « première semaine tradée » = 06-09, alors que le vrai ramp-up est 06-30.
+La règle B (intraday) ne les couvre pas par périmètre.
+
+#### 4.1.b Proposition : règle B étendue à tous les TF (`--coverage-scope all`) — `results/b4_timestamp_audit_{post_migration,premigration_view}_v21_all.txt`
+
+La couverture minute d'une paire-semaine mesure la liquidité de la **référence** ; une candle 1d ou 1w Bybit
+agrégée sur une semaine à 4–10 % de minutes tradées est aussi peu fiable que ses candles 1m. Appliquer le même
+plancher (même valeur, même dérivation, même table de sensibilité) à tous les TF est la généralisation
+naturelle : aucune fenêtre nommée, aucun paramètre ajouté. Sous cette portée (serveur, 19:10–19:19 UTC) :
+
+| | Contrôle direct (attendu *end*) | Contrôle inverse (attendu *open*) |
+|---|---|---|
+| Fenêtres | 842 ; 2 règle A, 454 règle B, **386 incluses** | 839 ; 2 règle A, 452 règle B, **385 incluses** |
+| Fenêtres incluses en défaut | **0** | **0** |
+| Rows de revérification | 36 : **20 assessées, toutes *end*** ; 16 dans des semaines exclues (listées, non assessées, dont BTC 1d 2025-07-06) | 36 : **20 assessées, toutes *open*** ; 16 non assessées |
+| Sensibilité (840 fenêtres) | stable **de 20 % à 95 %** (0 % : 7, 10 % : 2) | stable de 0 % à 95 % |
+| Comptabilité / trous / bornes / queue 1w | 21/21, 21/21, 3/3 | 21/21, 21/21 (bit-exact), 3/3 |
+| Exit code | **0** | **0** |
+
+Plateau de stabilité [20 %, 95 %] dans les deux sens, plancher retenu 90 % (mode de la distribution) loin du
+bord ; les 7 fenêtres en défaut à 0 % sont toutes ≤ 19,1 % de couverture (semaines de listing/ramp-up).
+
+**Décision demandée à Bruno** : (1) adopter `--coverage-scope all` comme portée de la règle B (invariant 1
+vert dans les deux sens), ou (2) garder la portée intraday et statuer sur les deux résidus 1d/1w de la semaine
+06-30 comme limites documentées de la référence, ou (3) autre. Aucun commit docs / Alembic / DROP n'a été fait
+en attendant (drafts prêts dans l'arbre de travail).
+
+1. **Invariant 1 — état** : v1 strict = STOP (6 résidus, § 4.1) ; v2 portée spec = STOP (2 éléments de la
+   semaine 06-30 hors portée de la règle B) ; v2 portée `all` = **vert dans les deux sens** (proposition
+   § 4.1.b, décision Bruno en attente). Détail du run v1 strict ci-dessous :
+   **15/21 séries à 100 % *end*** (40/40 fenêtres) ; majorité par row *end* sur les 21 séries ; **les 36 rows
+   ambiguës revérifiées une à une votent toutes *end*** (dont BTC 1w 2025-09-15 et 2025-12-01, ETH 1w
+   2025-12-08). **⛔ 6 fenêtres résiduelles → exit 1 → STOP** (règle GATE 1 a) :
 
    | Série | Fenêtre | open/end/tie | Cause identifiée (lecture seule, § 4.1) |
    |---|---|---|---|
