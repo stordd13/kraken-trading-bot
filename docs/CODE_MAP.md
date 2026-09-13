@@ -1,12 +1,12 @@
 # CODE_MAP — où est quoi dans KrakenBot
 
-> Généré le 2026-09-11, valable pour `v2.5.0-b3-bybit-data` (`dev` @ `3ea32d9`, post-B3 ; aucun changement de code entre la génération et le tag).
-> **B4.1 (2026-09-13, branche `feat/b4-1-binance-restamp`)** : `src/` ne change que par des docstrings (`models/market_data.py` commentaire `timestamp` = fin de période, `data/backfill.py`, `connectors/exchange.py`) ; révision Alembic `b4c0ffee0001` (`COMMENT ON COLUMN` seul) ; `scripts/binance_vision_import.py:parse_klines_csv` écrit `open_time + interval` ; nouveaux `scripts/audit/b4_stamp_lib.py`, `b4_timestamp_audit.py`, `b4_restamp_binance.py` (hors comptage, voir `results/B4_1_timestamp_restamp_report.md`). Lignes ci-dessous inchangées sinon.
+> Régénéré le 2026-09-13 après le merge B4.1 (`dev` @ `c67daeb`, post-B4.1 ; tag en attente de la vérification du `gap_backfill` du 2026-09-14 03:30 UTC). Génération précédente : 2026-09-11 (`v2.5.0-b3-bybit-data`, `dev` @ `3ea32d9`).
+> **B4.1 (mergé le 2026-09-13, `c67daeb`)** : `src/` ne change que par des docstrings (`models/market_data.py` commentaire `timestamp` = fin de période, `data/backfill.py`, `connectors/exchange.py`) ; révision Alembic `b4c0ffee0001` (`COMMENT ON COLUMN` seul, appliquée sur le serveur) ; `scripts/binance_vision_import.py:parse_klines_csv` écrit `open_time + interval` ; nouveaux `scripts/audit/b4_stamp_lib.py`, `b4_timestamp_audit.py`, `b4_restamp_binance.py` (hors comptage, voir `results/B4_1_timestamp_restamp_report.md`). Lignes des 4 fichiers touchés régénérées ci-dessous, les autres modules sont inchangés.
 > Depuis la génération post-B2 ont changé : `data/backfill.py` (nouveau), `scheduler/task_scheduler.py`, `collector.py`, `connectors/exchange.py`, `connectors/bybit/rest.py`, `core/event_bus.py`, `config/settings.py`, `indicators/multi_timeframe.py`, `multi_pair_registry.py`, `utils/time_utils.py`, `connectors/{bybit,binance}/ws.py` (1 kwarg de log), scripts `bybit_kline_import.py` + `backfill_gap.py` (nouveaux), `fetch_ohlc.py` + `backfill_binance_gap.py` (supprimés)
 > (`git diff --stat v2.4.0-b2-bybit-ws..HEAD -- src scripts`) : leurs lignes sont à jour, les autres modules sont inchangés.
 > Commande : `wc -l` + `grep -n -E "^(class |def |async def )|^    (async )?def [a-z]"` + `grep -n "^from krakenbot"` sur `src/krakenbot/**/*.py` et `scripts/*.py`.
 > À régénérer à chaque merge sur `dev`. Numéros de ligne = `symbole:ligne`. Hors tests, hors `scripts/audit/`.
-> Total : src 28 852 lignes (ml inclus ; 28 249 post-B2, +`data/backfill.py`), scripts 13 347 lignes (P7 inclus ; −894 lignes Kraken legacy).
+> Total : src 28 853 lignes (ml inclus ; 28 852 post-B3, docstrings B4.1), scripts 13 358 lignes (P7 inclus ; `binance_vision_import.py` +11 en B4.1).
 
 ## Flux runtime en 5 lignes
 
@@ -37,7 +37,7 @@ WS publie `MARKET_OHLC` → router `_handle_ohlc:275` → stratégie interne `on
 | Module | Lignes | Rôle | Symboles clés | Attention |
 |---|---|---|---|---|
 | `base.py` | 172 | Enums partagés | `TradeSide:55`, `TradeStatus:67`, `BotStatus:87`, `SignalType:105`, `PositionStatus:119`, `OrderType:133`, `OrderStatus:145`, `TradingMode:163` | `TradingMode` dupliqué dans `config/settings.py:26` |
-| `market_data.py` | 253 | Hypertables OHLC/ticks | `OHLCData:20`, `TickData:167` | colonne `exchange` default/server_default `"kraken"` (:65-66) ; PK (timestamp, pair, interval, exchange) |
+| `market_data.py` | 255 | Hypertables OHLC/ticks | `OHLCData:20`, `TickData:169` | colonne `exchange` default/server_default `"kraken"` (:67-68) ; PK (timestamp, pair, interval, exchange) ; `timestamp` = **fin de période** (`open_time + interval`, commentaire B4.1) |
 | `trades.py` | 819 | Tables trading | `Trade:31`, `BotState:208`, `OpenPosition:387`, `BacktestRun:567`, `PaperBalance:764`, `utc_now:22` | |
 | `orders.py` | 216 | Ordres LIMIT suivis | `Order:26` | |
 | `scheduled_tasks.py` | 107 | Log du scheduler | `TaskExecutionLog:17` | |
@@ -105,7 +105,7 @@ Supprimées en B0.5 (plus aucun fichier ni entrée `strategies.yaml`) : les 7 st
 
 | Module | Lignes | Rôle | Symboles clés | Attention |
 |---|---|---|---|---|
-| `data/backfill.py` | 506 | Détection + comblement de gaps OHLC, exchange-agnostic (B3) | `Gap:99`, `GapResult:118`, `BackfillSummary`, `floor_to_grid:173` (1w ancré lundi), `is_grid_aligned:184`, `last_closed_timestamp:190`, `internal_gaps_from_rows:195`, `tail_gap:207`, `candle_to_row:232`, `fetch_timestamp_bounds:254`, `fetch_max_timestamps:276`, `detect_gaps:287`, `insert_candles:334`, `fill_gap:361`, `backfill_gaps:446` | convention DB = fin de période ; query LAG + `MAX(timestamp)` ; `ON CONFLICT DO NOTHING` batch 1000 ; **garanti pour Bybit seulement** (voir docstring) ; aucun littéral exchange |
+| `data/backfill.py` | 505 | Détection + comblement de gaps OHLC, exchange-agnostic (B3) | `Gap:98`, `GapResult:117`, `BackfillSummary`, `floor_to_grid:172` (1w ancré lundi), `is_grid_aligned:183`, `last_closed_timestamp:189`, `internal_gaps_from_rows:194`, `tail_gap:206`, `candle_to_row:231`, `fetch_timestamp_bounds:253`, `fetch_max_timestamps:275`, `detect_gaps:286`, `insert_candles:333`, `fill_gap:360`, `backfill_gaps:445` | convention DB = fin de période ; query LAG + `MAX(timestamp)` ; `ON CONFLICT DO NOTHING` batch 1000 ; **garanti pour Bybit seulement** (voir docstring) ; aucun littéral exchange |
 | `scheduler/task_scheduler.py` | 250 | APScheduler : backfill de gaps périodique (B3) | `JOB_ID`, `TaskScheduler:43` (`start:85`, `stop:113`, `run_backfill:120`, `_write_logs`) | client REST **injecté** par le collector (read-only), job unique `gap_backfill` (`SCHEDULER_DAILY_BACKFILL_CRON`, défaut 03:30 UTC), `backfill_gaps` sur `settings.exchange_name` avec `lookback=backfill_days` ; 1 row `TaskExecutionLog` par gap + 1 row de run (`pair='*'`) ; events `SCHEDULER_TASK_*` ; aucun import de `scripts/` |
 | `notifications/telegram.py` | 204 | Alertes Telegram | `get_notifier:27`, `TelegramNotifier:38` (`send_trade_fill:93`, `send_crash_protector:160`, `send_daily_summary:141`) | singleton module |
 | `utils/time_utils.py` | 201 | Pagination ccxt | `minutes_to_ccxt_timeframe:10`, `calculate_pagination_steps:64`, `get_max_days_for_interval:134`, `ms_to_datetime:199` (B3) | |
