@@ -1,7 +1,7 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 11 septembre 2026, B3 clôturée côté agent (branche `feat/b3-bybit-data`, PR vers `dev` ; tag `v2.5.0-b3-bybit-data` à poser par Bruno) : historique Bybit EU en DB, backfill de gaps, scheduler actif.
+> Dernière mise à jour : 13 septembre 2026, B3 clôturée (merge `3ea32d9` dans `dev`, tag `v2.5.0-b3-bybit-data`) : historique Bybit EU en DB, backfill de gaps, scheduler actif. Prochaine phase : B4.
 
 ---
 

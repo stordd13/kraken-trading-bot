@@ -1,6 +1,6 @@
 # CODE_MAP — où est quoi dans KrakenBot
 
-> Généré le 2026-09-11 sur `v2.4.0-b2-bybit-ws` + branche `feat/b3-bybit-data` (base `dev`), post-B3.
+> Généré le 2026-09-11, valable pour `v2.5.0-b3-bybit-data` (`dev` @ `3ea32d9`, post-B3 ; aucun changement de code entre la génération et le tag).
 > Depuis la génération post-B2 ont changé : `data/backfill.py` (nouveau), `scheduler/task_scheduler.py`, `collector.py`, `connectors/exchange.py`, `connectors/bybit/rest.py`, `core/event_bus.py`, `config/settings.py`, `indicators/multi_timeframe.py`, `multi_pair_registry.py`, `utils/time_utils.py`, `connectors/{bybit,binance}/ws.py` (1 kwarg de log), scripts `bybit_kline_import.py` + `backfill_gap.py` (nouveaux), `fetch_ohlc.py` + `backfill_binance_gap.py` (supprimés)
 > (`git diff --stat v2.4.0-b2-bybit-ws..HEAD -- src scripts`) : leurs lignes sont à jour, les autres modules sont inchangés.
 > Commande : `wc -l` + `grep -n -E "^(class |def |async def )|^    (async )?def [a-z]"` + `grep -n "^from krakenbot"` sur `src/krakenbot/**/*.py` et `scripts/*.py`.
