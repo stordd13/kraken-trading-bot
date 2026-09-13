@@ -285,7 +285,7 @@ class TestAuditV2Rules:
             T0 + WEEK * 4: 0.95,
         }
         # week 5 has no coverage figure → treated as 0
-        return classify_windows(votes, T0 + WEEK, coverage, 0.5, intraday=True)
+        return classify_windows(votes, T0 + WEEK, coverage, 0.5, apply_coverage=True)
 
     def test_rule_a_and_b(self) -> None:
         st = self._statuses()
@@ -302,16 +302,16 @@ class TestAuditV2Rules:
     def test_non_intraday_ignores_coverage(self) -> None:
         from b4_stamp_lib import classify_windows
 
-        st = classify_windows(_votes("eee"), None, {}, 0.9, intraday=False)
+        st = classify_windows(_votes("eee"), None, {}, 0.9, apply_coverage=False)
         assert all(s.included for s in st)
-        st = classify_windows(_votes("eee"), T0, {}, 0.9, intraday=False)
+        st = classify_windows(_votes("eee"), T0, {}, 0.9, apply_coverage=False)
         assert [s.included for s in st] == [False, True, True]
 
     def test_sensitivity_table(self) -> None:
         from b4_stamp_lib import sensitivity_table
 
         st = self._statuses()
-        rows = sensitivity_table(st, "end", [0.0, 0.3, 0.7], intraday=True)
+        rows = sensitivity_table(st, "end", [0.0, 0.3, 0.7])
         # rule A removes weeks 0-1 whatever the floor; week 5 (no coverage) is excluded at any floor > 0
         assert rows[0] == (0.0, 4, 0, 0)
         assert rows[1] == (0.3, 2, 2, 0)
@@ -319,4 +319,23 @@ class TestAuditV2Rules:
         # an offending included window shows up
         bad = list(st)
         bad[3] = type(st[3])(WindowVote(T0 + WEEK * 3, 9, 1, 0), 0.6, None)
-        assert sensitivity_table(bad, "end", [0.0], intraday=True) == [(0.0, 4, 0, 1)]
+        assert sensitivity_table(bad, "end", [0.0]) == [(0.0, 4, 0, 1)]
+
+    def test_stability_plateau_and_week_excluded(self) -> None:
+        from b4_stamp_lib import stability_plateau, week_excluded
+
+        floors = [0.0, 0.1, 0.2, 0.3, 0.5, 0.7, 0.9, 0.95]
+        table = [(f, 10, 0, (2 if f < 0.2 else 0)) for f in floors]
+        assert stability_plateau(table, 0.9) == (0.2, [])
+        assert stability_plateau(table, 0.1)[1]  # chosen floor below the plateau
+        narrow = [(f, 10, 0, (1 if f < 0.9 else 0)) for f in floors]
+        assert any("narrower" in p for p in stability_plateau(narrow, 0.9)[1])
+        assert stability_plateau([(f, 10, 0, 1) for f in floors], 0.9) == (
+            None,
+            ["no floor gives a clean verdict (even the highest tested floor offends)"],
+        )
+        cov = {T0: 0.05, T0 + WEEK: 0.95}
+        assert week_excluded(T0, None, cov, 0.9, True) is not None
+        assert week_excluded(T0, None, cov, 0.9, False) is None
+        assert week_excluded(T0 + WEEK, None, cov, 0.9, True) is None
+        assert week_excluded(T0 + WEEK, T0 + WEEK, cov, 0.9, True) == "listing week (rule A)"

@@ -14,10 +14,13 @@ Reference-window inclusion (v2, general rules — no window is ever named):
   A. the first week in which the reference traded the pair on that timeframe
      (first reference row with ``volume > 0``) is the listing ramp-up — and a
      partial candle by construction on 1w — so it and anything earlier is excluded;
-  B. intraday timeframes (< 1d): windows whose reference **1m coverage** (share
-     of the week's minutes with traded volume) is below ``--coverage-floor`` are
-     excluded.  A sensitivity table over a range of floors is printed: the
-     verdict must not depend on the floor.
+  B. windows whose reference **1m coverage** (share of the week's minutes with
+     traded volume) is below ``--coverage-floor`` are excluded — for intraday
+     timeframes (< 1d) per the GATE 3 spec (``--coverage-scope intraday``), or
+     for every timeframe (``--coverage-scope all``: the pair-week liquidity
+     qualifies the reference candles whatever the aggregation).  A sensitivity
+     table over floors 0–95 % is printed; the verdict must be stable on a plateau
+     of at least 30 points reaching 95 % that contains the chosen floor.
 Excluded windows are still listed with their votes — nothing is dropped silently.
 
 Modes
@@ -79,7 +82,9 @@ from b4_stamp_lib import (
     refine_boundary,
     sensitivity_table,
     shifted_gaps,
+    stability_plateau,
     summarize_votes,
+    week_excluded,
 )
 
 from krakenbot.data.backfill import internal_gaps_from_rows, is_grid_aligned
@@ -145,6 +150,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=0.90,
         help="Rule B: minimum share of the week's minutes with reference volume for intraday "
         "windows (default 0.90 = the mature-liquidity regime, the mode of the distribution).",
+    )
+    ap.add_argument(
+        "--coverage-scope",
+        choices=["intraday", "all"],
+        default="intraday",
+        help="Rule B applies to intraday timeframes only (spec) or to every timeframe.",
     )
     ap.add_argument("--out-json", type=Path, default=None, help="Write the boundary manifest.")
     ap.add_argument("--out-md", type=Path, default=None, help="Also write the report text.")
@@ -633,6 +644,7 @@ async def audit_series(
     manifest_entry: SeriesBoundary | None,
     coverage: dict[datetime, float],
     floor: float,
+    apply_coverage: bool,
     all_statuses: list[WindowStatus],
 ) -> SeriesBoundary | None:
     """Sections a–e for one series (``mode`` in {'pre', 'post', 'preview'})."""
@@ -669,8 +681,9 @@ async def audit_series(
         rep.problem(f"{name}: no overlap with {reference} — cannot classify by content")
         return None
     first_week = await q_first_traded_week(conn, reference, pair, interval)
-    statuses = classify_windows(votes, first_week, coverage, floor, is_intraday(interval))
-    all_statuses.extend(statuses)
+    statuses = classify_windows(votes, first_week, coverage, floor, apply_coverage)
+    if apply_coverage:
+        all_statuses.extend(statuses)
     included = [s.vote for s in statuses if s.included]
     excluded = [s for s in statuses if not s.included]
     summary = summarize_votes(included)
@@ -693,11 +706,7 @@ async def audit_series(
             rep.add(
                 f"      window {v.window_start.date()} → {v.verdict} "
                 f"(open={v.n_open} end={v.n_end} tie={v.n_tie}) — RESIDUAL"
-                + (
-                    f" (coverage {100 * coverage.get(v.window_start, 0.0):.1f} %)"
-                    if is_intraday(interval)
-                    else ""
-                )
+                f" (coverage {100 * coverage.get(v.window_start, 0.0):.1f} %)"
             )
             for d in await q_window_detail(
                 conn, exchange, reference, pair, interval, v.window_start, expect
@@ -739,8 +748,15 @@ async def audit_series(
                 if detail
                 else ""
             )
-            rep.add(f"      {t.isoformat()} → {target.isoformat()}: vote={vote}{extra}")
-            if vote != expect:
+            week_start = target - timedelta(
+                days=target.weekday(), hours=target.hour, minutes=target.minute
+            )
+            excl = week_excluded(week_start, first_week, coverage, floor, apply_coverage)
+            rep.add(
+                f"      {t.isoformat()} → {target.isoformat()}: vote={vote}{extra}"
+                + (f" — week excluded [{excl}], not assessed" if excl else "")
+            )
+            if vote != expect and not excl:
                 rep.problem(f"{name}: re-check row {target.isoformat()} votes '{vote}'")
 
     dup_vol, dup_flat, dup_first, dup_last = await q_dup_signature(conn, exchange, pair, interval)
@@ -890,19 +906,25 @@ async def spot_checks(conn: asyncpg.Connection, rep: Report, exchange: str, expe
             rep.problem(f"spot check {pair} {label(interval)} {want_ts.isoformat()} failed")
 
 
-def print_sensitivity(rep: Report, statuses: list[WindowStatus], expect: str, floor: float) -> None:
+def print_sensitivity(
+    rep: Report, statuses: list[WindowStatus], expect: str, floor: float, scope: str
+) -> None:
     rep.add(
-        f"  Rule B sensitivity (intraday windows, rule A fixed) — floor in use: {100 * floor:.0f} %; "
-        f"the verdict is stable when no included window offends at any floor:"
+        f"  Rule B sensitivity ({scope} windows, rule A fixed) — floor in use: {100 * floor:.0f} %; "
+        "the verdict is stable when a plateau of ≥ 30 points reaching 95 % has no offending "
+        "included window and contains the chosen floor:"
     )
     rep.add(f"  {'floor':>6} {'included':>9} {'excl. by cov.':>13} {'offending':>10}")
-    stable = True
-    for f, inc, exc, off in sensitivity_table(statuses, expect, SENSITIVITY_FLOORS, True):  # type: ignore[arg-type]
+    table = sensitivity_table(statuses, expect, SENSITIVITY_FLOORS)  # type: ignore[arg-type]
+    for f, inc, exc, off in table:
         rep.add(f"  {100 * f:>5.0f}% {inc:>9} {exc:>13} {off:>10}")
-        stable &= off == 0
-    rep.add(f"  → verdict {'STABLE over all floors' if stable else 'DEPENDS on the floor'}")
-    if not stable:
-        rep.problem("rule B sensitivity: the verdict depends on the coverage floor")
+    stable_from, problems = stability_plateau(table, floor)
+    if stable_from is not None and not problems:
+        rep.add(f"  → verdict STABLE for every floor ≥ {100 * stable_from:.0f} % (plateau to 95 %)")
+    else:
+        rep.add(f"  → verdict NOT stable: {'; '.join(problems)}")
+    for prob in problems:
+        rep.problem(f"rule B sensitivity: {prob}")
 
 
 async def _async_main(args: argparse.Namespace) -> int:
@@ -935,7 +957,8 @@ async def _async_main(args: argparse.Namespace) -> int:
         )
         rep.add(
             f"generated_at={datetime.now(UTC).isoformat()} overlap_since={since.date()} "
-            f"coverage_floor={args.coverage_floor:.2f} vote=OHLC L1"
+            f"coverage_floor={args.coverage_floor:.2f} coverage_scope={args.coverage_scope} "
+            "vote=OHLC L1"
         )
         totals = await q_totals(conn)
         rep.add("db totals: " + ", ".join(f"{k}={v}" for k, v in sorted(totals.items())))
@@ -982,7 +1005,8 @@ async def _async_main(args: argparse.Namespace) -> int:
                     entry,
                     coverage_by_pair[pair],
                     args.coverage_floor,
-                    all_statuses if is_intraday(interval) else [],
+                    args.coverage_scope == "all" or is_intraday(interval),
+                    all_statuses,
                 )
                 if sb is not None:
                     series.append(sb)
@@ -996,7 +1020,7 @@ async def _async_main(args: argparse.Namespace) -> int:
                 await check_last_week(conn, rep, exchange, args.reference_exchange, pair, expect)
 
         rep.section("Rule B sensitivity")
-        print_sensitivity(rep, all_statuses, expect, args.coverage_floor)
+        print_sensitivity(rep, all_statuses, expect, args.coverage_floor, args.coverage_scope)
 
         rep.section("Summary")
         rep.add(

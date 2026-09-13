@@ -557,7 +557,7 @@ def classify_windows(
     first_traded_week: datetime | None,
     coverage_by_week: dict[datetime, float],
     floor: float,
-    intraday: bool,
+    apply_coverage: bool,
 ) -> list[WindowStatus]:
     """Apply the two general inclusion rules of the v2 audit to weekly windows.
 
@@ -565,9 +565,10 @@ def classify_windows(
     this timeframe (first reference row with ``volume > 0``) is the listing
     ramp-up (and, for 1w, a partial candle by construction): excluded, together
     with any earlier window.
-    Rule B — intraday timeframes only: windows whose reference 1m coverage
-    (share of minutes with traded volume) is below ``floor`` are excluded.
-    Windows without a coverage figure are treated as 0 coverage.
+    Rule B — when ``apply_coverage`` (intraday timeframes per the GATE 3 spec,
+    every timeframe with ``--coverage-scope all``): windows whose reference 1m
+    coverage (share of the week's minutes with traded volume) is below
+    ``floor`` are excluded.  Windows without a coverage figure count as 0.
     """
     out: list[WindowStatus] = []
     for v in sorted(votes, key=lambda x: x.window_start):
@@ -575,22 +576,37 @@ def classify_windows(
         reason = None
         if first_traded_week is not None and v.window_start <= first_traded_week:
             reason = "listing week (rule A)"
-        elif intraday and (cov or 0.0) < floor:
+        elif apply_coverage and (cov or 0.0) < floor:
             reason = f"coverage {100 * (cov or 0.0):.1f} % < floor {100 * floor:.0f} % (rule B)"
         out.append(WindowStatus(v, cov, reason))
     return out
+
+
+def week_excluded(
+    week_start: datetime,
+    first_traded_week: datetime | None,
+    coverage_by_week: dict[datetime, float],
+    floor: float,
+    apply_coverage: bool,
+) -> str | None:
+    """Same rules as :func:`classify_windows` for a single week (row-level re-checks)."""
+    if first_traded_week is not None and week_start <= first_traded_week:
+        return "listing week (rule A)"
+    cov = coverage_by_week.get(week_start, 0.0)
+    if apply_coverage and cov < floor:
+        return f"coverage {100 * cov:.1f} % < floor {100 * floor:.0f} % (rule B)"
+    return None
 
 
 def sensitivity_table(
     statuses: Sequence[WindowStatus],
     expect: Verdict,
     floors: Sequence[float],
-    intraday: bool,
 ) -> list[tuple[float, int, int, int]]:
     """``(floor, included, excluded_by_coverage, included_offending)`` per candidate floor.
 
-    Rule A exclusions are kept fixed; only the coverage floor varies.  The
-    verdict is *stable* when ``included_offending`` is 0 for every floor.
+    Rule A exclusions are kept fixed; only the coverage floor varies over the
+    windows the coverage rule applies to.
     """
     rows: list[tuple[float, int, int, int]] = []
     for floor in floors:
@@ -600,7 +616,7 @@ def sensitivity_table(
         for s in statuses:
             if s.excluded_reason and "rule A" in s.excluded_reason:
                 continue
-            if intraday and (s.coverage or 0.0) < floor:
+            if (s.coverage or 0.0) < floor:
                 excluded_cov += 1
                 continue
             included += 1
@@ -608,3 +624,39 @@ def sensitivity_table(
                 offending += 1
         rows.append((floor, included, excluded_cov, offending))
     return rows
+
+
+def stability_plateau(
+    table: Sequence[tuple[float, int, int, int]], chosen_floor: float, min_width: float = 0.30
+) -> tuple[float | None, list[str]]:
+    """Lowest floor from which no included window offends, and the problems if any.
+
+    The verdict is *stable* when the offending count is 0 for every floor of a
+    contiguous plateau reaching the highest tested floor, the plateau is at
+    least ``min_width`` wide and the chosen floor lies inside it.
+    """
+    if not table:
+        return None, ["no sensitivity data"]
+    ordered = sorted(table)
+    stable_from: float | None = None
+    for floor, _inc, _exc, off in reversed(ordered):
+        if off == 0:
+            stable_from = floor
+        else:
+            break
+    problems: list[str] = []
+    if stable_from is None:
+        problems.append("no floor gives a clean verdict (even the highest tested floor offends)")
+        return None, problems
+    width = ordered[-1][0] - stable_from
+    if width < min_width:
+        problems.append(
+            f"stability plateau [{100 * stable_from:.0f} %, {100 * ordered[-1][0]:.0f} %] narrower "
+            f"than {100 * min_width:.0f} points"
+        )
+    if chosen_floor < stable_from:
+        problems.append(
+            f"chosen floor {100 * chosen_floor:.0f} % is below the stability plateau "
+            f"(from {100 * stable_from:.0f} %)"
+        )
+    return stable_from, problems
