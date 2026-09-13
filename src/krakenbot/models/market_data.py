@@ -25,7 +25,9 @@ class OHLCData(Base):
     for efficient time-series storage and queries.
 
     Attributes:
-        timestamp: Candle open timestamp (UTC, primary key).
+        timestamp: Candle period-end timestamp (UTC, primary key):
+            ``open_time + interval``. WebSocket collectors, the Bybit import and,
+            since B4.1, the Binance rows all follow this convention.
         pair: Trading pair (e.g., "XBT/EUR").
         interval: Candle interval in minutes.
         open: Opening price.
@@ -44,7 +46,7 @@ class OHLCData(Base):
         TIMESTAMP(timezone=True),
         primary_key=True,
         nullable=False,
-        comment="Candle open timestamp (UTC)",
+        comment="Candle period-end timestamp (UTC): open_time + interval",
     )
     pair: Mapped[str] = mapped_column(
         String(20),

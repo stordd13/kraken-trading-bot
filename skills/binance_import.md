@@ -1,6 +1,6 @@
 # Skill: Données historiques Binance (base de backtest)
 
-> Les 8.7M rows `exchange='binance'` (BTC/ETH/SOL-USDC × 7 TF, 2021-01 → 2026-06) sont la **base de
+> Les 8.7M rows `exchange='binance'` (BTC/ETH/SOL-USDC × 7 TF, 2021-01 → 2026-03-31) sont la **base de
 > backtest** du projet (décision B0 : prix quasi identiques à Bybit, zéro biais). Elles sont figées :
 > Binance a suspendu ses services UE le 1er juillet 2026, aucune mise à jour n'est prévue. Ce skill
 > documente comment elles ont été importées, pour référence et pour le futur import Bybit (B3,
@@ -86,10 +86,11 @@ Les fichiers Binance Vision utilisent :
 - **Microsecondes** (16 chiffres, ex: `1704067200000000`) pour les fichiers 2025+
 
 Le script gère les deux automatiquement via auto-détection (`if raw_ts > 10**14: raw_ts / 1_000_000`).
-Le `timestamp` stocké en DB par ce script est l'**open time** (`row[0]`, aucun décalage — vérifié en DB
-le 2026-09-11 : BTC 1d `2024-01-01` = candle du 1er janvier). Les rows Bybit (WS + import B3) sont en
-**fin de période** (`start + interval`) : décalage d'un intervalle entre les deux exchanges pour la même
-candle. Voir `skills/database.md` (conventions) et la dette B4 dans `PROJECT_CONTEXT.md`.
+Le `timestamp` stocké en DB est la **fin de période** (`open_time + interval`, convention du projet) :
+`parse_klines_csv` ajoute l'intervalle depuis B4.1 (2026-09-13). Historique : jusqu'à B4.1 le script stockait
+`row[0]` (open time) tel quel, et les 8.7 M rows importées étaient open-stamped (constat B3) ; elles ont été
+re-stampées en DB par `scripts/audit/b4_restamp_binance.py` (`results/B4_1_timestamp_restamp_report.md`).
+Ne jamais ré-importer avec une version antérieure du script.
 
 ### Inserts par batch de 1000
 
@@ -138,13 +139,12 @@ Vérifier :
 - 21 lignes (3 paires × 7 intervals)
 - BTC et ETH commencent le 2021-01-01
 - SOL commence le 2021-09-24
-- Toutes finissent en juin 2026 (dernier mois avant la suspension UE)
+- Toutes finissent le 2026-04-01 00:00 (fin de période de la dernière candle de mars 2026 ; 1w : 2026-04-06)
 - Total ~8.7M rows
 
 ## Trous récents (backfill)
 
 `scripts/backfill_binance_gap.py` (P7) a été supprimé en B3, remplacé par le générique
 `scripts/backfill_gap.py` (module `krakenbot.data.backfill`, exchange = `settings.exchange_name`).
-Il n'est **pas** garanti correct pour Binance (le REST ccxt renvoie l'open time alors que les rows Vision
-sont open-stamped et les rows WS end-stamped) — la source live est Bybit depuis B2, les données Binance
-sont figées.
+Il n'est **pas** garanti correct pour Binance (le REST ccxt renvoie l'open time alors que la DB est
+end-stamped depuis B4.1) — la source live est Bybit depuis B2, les données Binance sont figées.

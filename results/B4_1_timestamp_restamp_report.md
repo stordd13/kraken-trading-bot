@@ -1,0 +1,517 @@
+# B4.1 — Audit des conventions de timestamp et re-stamp des données Binance
+
+> Généré le 2026-09-13, branche `feat/b4-1-binance-restamp` (base `dev` @ `08e8e1f`, tag de départ
+> `v2.5.0-b3-bybit-data`). Spec : `agent/AGENT_B4_1_TIMESTAMP_AUDIT_RESTAMP.md`. Plan validé par Bruno le
+> 2026-09-13 (plan mode). Collector Bybit **actif** pendant l'audit (lecture seule, via tunnel).
+>
+> État : **GATE 1 GO → GATE 2 GO → `--execute` fait (18:07 UTC) → invariants 1–7 verts (audit v2, portée
+> `all`, décision GATE 3 de Bruno) → clôture (§ 7) → ⛔ GATE 3 : validation humaine avant PR vers `dev`.**
+> Collector arrêté 17:46:59 → 18:13:23 UTC, actif depuis.
+
+## Résumé exécutif
+
+- **Les 8 712 718 rows `exchange='binance'` sont open-stamped, sans exception** : sur les 21 séries
+  (3 paires × 7 TF), l'hypothèse *open* gagne 100 % des fenêtres hebdomadaires décisives du recouvrement
+  Bybit (juin 2025 → mars 2026), la majorité par row est *open* partout, aucune bascule open→end.
+- **La fenêtre avril–juin 2026 n'existe pas en DB** : `MAX(timestamp)` des 21 séries = `2026-03-31`
+  (fin de l'import Vision, `--end-date 2026-04-01`). Les rows WS Binance de l'époque ont été écrites sous
+  `exchange='kraken'` (`XBT/USDC`, jusqu'au `2026-05-30`, cf. § 2.e) — hors périmètre, non touchées.
+  La prémisse « rows WS end-stamped mélangées » du brief et de la dette 11 est donc **fausse en DB** ; le
+  périmètre de migration est **100 % des rows binance** et le nombre de **collisions PK attendu est 0**.
+- **Frontières** exportées dans `results/b4_binance_stamp_boundaries.json` (source de vérité du périmètre :
+  `last_open_stamped_ts` = `MAX(timestamp)` de chaque série, `expected_restamps` = `rows`, `expected_collisions` = 0).
+- **Mécanique de migration** (script prêt, `scripts/audit/b4_restamp_binance.py`) : staging par fenêtre
+  ≤ 4 000 rows en ordre **décroissant**, une transaction par fenêtre (`CREATE TEMP TABLE … / DELETE / INSERT …
+  ON CONFLICT DO NOTHING`), ledger JSONL pour la reprise. Un `UPDATE timestamp = timestamp + interval` direct
+  est impossible : la PK `(timestamp, pair, interval, exchange)` n'est pas déferrable (violation transitoire).
+- **Dry-run via tunnel (lecture seule, 2026-09-13 16:27–16:35 UTC)** : 2 550 fenêtres, `staged=8 712 718`,
+  `collisions=0`, **MATCH exact** avec le manifeste sur les 21 séries (`results/b4_restamp_dryrun_tunnel.txt`).
+  Le dry-run **serveur** exigé par le brief (§ 5.4) sera rejoué après GATE 1, avant GATE 2.
+- Tests : `pytest -q --ignore=tests/test_scripts/test_run_p6_determinism.py` → **1170 passés, 6 skipped,
+  4 échecs** = exactement les 4 ordre-dépendants connus (B3, § résumé), 30 nouveaux tests verts ;
+  `ruff check` propre (`ruff format --check` : 3 fichiers pré-existants hors scope, dette 10).
+
+## 1. Décisions (plan validé) et faits DB qui les fondent
+
+| # | Décision | Pourquoi |
+|---|---|---|
+| 1 | Re-stamp `timestamp := timestamp + interval` des rows binance, policy collisions « WS fait foi » | brief § 1 ; audit : 0 collision attendue |
+| 2 | Périmètre piloté par le JSON de frontières, jamais de date en dur | brief § 4d ; `last_open_stamped_ts` par série |
+| 3 | Mécanique **staging par fenêtre, ordre décroissant**, ≤ 4 000 rows / transaction | PK non déferrable → `UPDATE` batché échoue ; `INSERT…SELECT + DELETE` par mois en ordre croissant collisionne avec le mois suivant encore en place ; l'ordre décroissant libère la cible avant usage ; chunks TimescaleDB de **30 jours** (112 chunks, pas de compression) traversés par l'INSERT |
+| 4 | Pas de réglage `maintenance_work_mem` ; `VACUUM ANALYZE` (jamais `FULL`) après exécution | ≤ 4 000 rows par tx ; bloat temporaire réclamé par autovacuum |
+| 5 | Classification par **vote par row** (close Bybit le plus proche : `T` = end, `T+i` = open), agrégé par semaine ISO ; frontière = dernière row *open* ; fenêtres < 3 rows non décisives | méthode B3 § 5(b) généralisée aux 7 TF ; au 1w chaque fenêtre = 1 row et bascule sur l'écart inter-exchange quand deux closes hebdo consécutifs sont quasi égaux (3 cas, § 2.b) |
+| 6 | Signature de doublon `(T, T+i)` OHLCV identiques **avec `volume > 0`**, datée | les candles plates (`volume = 0`, 2021–2022) donnent des dizaines de milliers de faux positifs au 1m |
+| 7 | Commentaire de colonne `timestamp` : modèle + **mini-révision Alembic** `b4c0ffee0001` (`COMMENT ON COLUMN` seul) | validé par Bruno ; aucun commentaire de colonne n'existe en DB aujourd'hui (`col_description` NULL) |
+| 8 | Refus d'`--execute` via le tunnel (port 5433) et sans `--i-have-a-fresh-backup` | brief § 5, § 11 |
+| 9 | **GATE 1 (Bruno, 2026-09-13)** : re-stamp GO ; policy « WS fait foi » confirmée, le chemin `ON CONFLICT` reste mais **toute collision non prévue par l'audit = mismatch → STOP** (fenêtre annulée) ; périmètre 100 % des rows binance validé | décisions 1–3 du GATE 1 |
+| 10 | Invariant § 6.1 durci (GATE 1 a) : post-migration, **chaque** fenêtre vote *end* (mode strict, une seule fenêtre *open* résiduelle = STOP) et les rows ambiguës pré-migration sont revérifiées une à une à `T + interval` | `assess_votes(strict=True)`, `unexpected_rows` du manifeste |
+| 11 | Scope ajouté (GATE 1 b) : `scripts/binance_vision_import.py` écrit désormais `open_time + interval` (+ tests dédiés), commit `fix(scripts)` séparé | un ré-import ne réintroduira plus d'open-stamps |
+| 12 | Invariant ajouté (GATE 1 c) : la dernière candle 1w de chaque paire est une **semaine complète** (open = 1ᵉʳ 1d open même source ; close/high/low vs les 7 jours 1d Bybit, tolérance 50 bps ; signature de troncature = close égal au dernier 1d Binance) | § 2.g |
+| 13 | **Vote hybride** : le close tranche, sauf si les deux closes Bybit candidats sont à < 0,1 % l'un de l'autre (ambigu) → distance OHLC complète. Remplace le vote « close seul » | la distance OHLC seule bascule sur les premières semaines Bybit EU (marché illiquide, SOL 2025-06-30) ; le close seul bascule sur deux closes hebdo quasi égaux (3 cas) ; l'hybride donne 0 fenêtre ambiguë sur les 21 séries |
+| 14 | **Reprise atomique** (revue adversariale, § 2.h) : progression enregistrée **dans la transaction de chaque fenêtre** (table `b4_restamp_progress`, PK fenêtre + identité du plan : `max_rows`, frontière, stamp du manifeste), ledger JSONL = miroir. Pré-vol par série avant toute écriture : fenêtres faites = préfixe du plan, même identité, et `COUNT` des originales restantes = `expected_restamps − déjà stagées`. Garde in-transaction : slot `w_end` libre, `deleted == staged`, collisions ≤ autorisées | sans cela, une reprise après crash entre COMMIT et écriture du ledger (ou avec un autre `--max-rows-per-tx`) redécalait des rows déjà décalées |
+| 15 | Table `b4_restamp_progress` = **seule écriture hors `exchange='binance'`** (table auxiliaire, 2 550 rows, à supprimer à la clôture) — dérogation à soumettre au GATE 2 | brief § 11 |
+
+Faits DB (lecture seule, 2026-09-13) : TimescaleDB 2.24.0 / PostgreSQL 16.11, hypertable 3 002 MB,
+`chunk_time_interval = 30 days`, compression désactivée, `max_locks_per_transaction = 512`,
+`maintenance_work_mem ≈ 478 MB`, `alembic_version = f7a8b9c0d1e2`. Volumes : binance 8 712 718 ·
+kraken 1 181 469 · bybit 2 556 036 (en croissance WS).
+
+## 2. Audit (étape 1, read-only) — `scripts/audit/b4_timestamp_audit.py`
+
+Sortie brute complète : `results/b4_timestamp_audit_pre_migration.txt` (run `generated_at=2026-09-13T16:26:52Z`,
+exit code 0, « all series consistent with 'open' convention — no problem »). Reproduire :
+
+```bash
+poetry run python scripts/audit/b4_timestamp_audit.py \
+    --out-json results/b4_binance_stamp_boundaries.json --out-md /tmp/b4_audit.md
+```
+
+### 2.a Cartographie des 21 séries
+
+```
+  Series              rows min                        boundary (last open ts)     restamps collisions  win open/end/tie
+  BTC/USDC 1m      2521597 2021-01-01T00:00:00+00:00  2026-03-31T23:59:00+00:00    2521597          0    40/0/0
+  BTC/USDC 5m       504321 2021-01-01T00:00:00+00:00  2026-03-31T23:55:00+00:00     504321          0    40/0/0
+  BTC/USDC 15m      168108 2021-01-01T00:00:00+00:00  2026-03-31T23:45:00+00:00     168108          0    40/0/0
+  BTC/USDC 1h        42031 2021-01-01T00:00:00+00:00  2026-03-31T23:00:00+00:00      42031          0    40/0/0
+  BTC/USDC 4h        10512 2021-01-01T00:00:00+00:00  2026-03-31T20:00:00+00:00      10512          0    40/0/0
+  BTC/USDC 1d         1753 2021-01-01T00:00:00+00:00  2026-03-31T00:00:00+00:00       1753          0    40/0/0
+  BTC/USDC 1w          246 2021-01-04T00:00:00+00:00  2026-03-30T00:00:00+00:00        246          0    37/2/0
+  ETH/USDC 1m      2521597 2021-01-01T00:00:00+00:00  2026-03-31T23:59:00+00:00    2521597          0    40/0/0
+  ETH/USDC 5m       504321 2021-01-01T00:00:00+00:00  2026-03-31T23:55:00+00:00     504321          0    40/0/0
+  ETH/USDC 15m      168108 2021-01-01T00:00:00+00:00  2026-03-31T23:45:00+00:00     168108          0    40/0/0
+  ETH/USDC 1h        42031 2021-01-01T00:00:00+00:00  2026-03-31T23:00:00+00:00      42031          0    40/0/0
+  ETH/USDC 4h        10512 2021-01-01T00:00:00+00:00  2026-03-31T20:00:00+00:00      10512          0    40/0/0
+  ETH/USDC 1d         1753 2021-01-01T00:00:00+00:00  2026-03-31T00:00:00+00:00       1753          0    40/0/0
+  ETH/USDC 1w          246 2021-01-04T00:00:00+00:00  2026-03-30T00:00:00+00:00        246          0    39/1/0
+  SOL/USDC 1m      1719780 2021-09-24T10:00:00+00:00  2026-03-31T23:59:00+00:00    1719780          0    40/0/0
+  SOL/USDC 5m       343956 2021-09-24T10:00:00+00:00  2026-03-31T23:55:00+00:00     343956          0    40/0/0
+  SOL/USDC 15m      114652 2021-09-24T10:00:00+00:00  2026-03-31T23:45:00+00:00     114652          0    40/0/0
+  SOL/USDC 1h        28663 2021-09-24T10:00:00+00:00  2026-03-31T23:00:00+00:00      28663          0    40/0/0
+  SOL/USDC 4h         7167 2021-09-24T08:00:00+00:00  2026-03-31T20:00:00+00:00       7167          0    40/0/0
+  SOL/USDC 1d         1196 2021-09-24T00:00:00+00:00  2026-03-31T00:00:00+00:00       1196          0    40/0/0
+  SOL/USDC 1w          168 2021-09-20T00:00:00+00:00  2026-03-30T00:00:00+00:00        168          0    40/0/0
+  total rows=8712718 restamps=8712718 collisions=0 series=21
+```
+(`win open/end/tie` = fenêtres hebdomadaires du recouvrement Bybit ; `boundary` = `last_open_stamped_ts`.)
+
+- Alignement grille : **0 row désalignée** sur les 21 séries (grille 1w ancrée lundi, `MIN`/`MAX` alignés).
+- Trous internes (LAG), identiques sur les 4 TF ≤ 1h de BTC et ETH (8 trous) : 6 micro-trous Binance en 2021
+  (79 à 284 min), un trou de **164 jours `2022-09-29 03:00 → 2023-03-12 06:30`** (BTC, ETH ; SOL : 455 jours,
+  `2022-09-29 → 2023-12-28`) = retrait des paires USDC par Binance (conversion BUSD, sept. 2022) — **trou de
+  marché, pas un défaut d'import** ; 1 micro-trou le 2023-03-24. 1w : 6 trous d'une semaine (2022, 2025) +
+  le trou de 2022–2023. Ces trous sont conservés tels quels ; l'invariant post-migration est « même liste,
+  décalée de +interval ».
+
+### 2.b Classification open/end par contenu (vote hybride, décision 13)
+
+- Recouvrement Bybit : BTC dès `2025-06-11 09:21`, ETH/SOL dès `2025-06-27` ; 40 semaines votées par série
+  (1m : ~437 k rows votées par paire).
+- **Open gagne 100 % des fenêtres des 21 séries ; majorité par row *open* partout ; 0 fenêtre ambiguë.**
+  Avec le vote « close seul » (première version de l'audit, run 16:26 UTC), trois fenêtres 1w d'une seule row
+  votaient *end* — closes hebdo consécutifs quasi égaux, l'écart inter-exchange tranchait ; le vote hybride les
+  classe *open* franchement (distance OHLC) et elles restent listées dans le manifeste (`unexpected_rows`) pour
+  la revérification post-migration exigée au GATE 1 (a) :
+
+```
+BTC/USDC 1w 2025-09-15 binance close=115314.26 | bybit close at T=115329.60 at T+1w=115337.20
+BTC/USDC 1w 2025-12-01 binance close=90412.00  | bybit close at T=90400.80  at T+1w=90466.50
+ETH/USDC 1w 2025-12-08 binance close=3064.38   | bybit close at T=3062.83   at T+1w=3060.53
+```
+- Avant le recouvrement (2021 → juin 2025) : provenance 100 % Vision (`scripts/binance_vision_import.py`,
+  `timestamp = row[0]` = open time), spot-check BTC 1d (§ 2.e), continuité `close(N) = open(N+1)` non utilisée
+  (vraie sous les deux conventions). Aucune bascule détectée en aval → tout est open-stamped.
+- **Signature de doublon** `(T, T+i)` OHLCV identiques, `volume > 0` : 1m BTC 38 (2023-04 → 2024-06), ETH 50
+  (2021-03 → 2024-06), SOL 347 (2021-10 → 2024-09) ; 5m SOL 2 (2022-09-04) ; **0 au-delà**. Toutes en marché
+  peu liquide 2021–2024, aucune en 2026 → **aucune zone de chevauchement Vision/WS**. (Candles plates
+  `volume = 0` : 11 537 / 29 339 / 78 576 au 1m, non significatives.)
+
+### 2.c Quantification pour la migration
+
+Par série : `rows_to_restamp = COUNT(*) WHERE timestamp <= last_open_stamped_ts` = **toutes les rows** ;
+collisions (cible `T + i` déjà occupée par une row hors périmètre) = **0 sur les 21 séries** ; total
+**8 712 718 re-stamps, 0 collision, 0 suppression** → `rows_after == rows_before` attendu.
+
+### 2.d Frontières exactes
+
+`results/b4_binance_stamp_boundaries.json` (versionné) : `last_open_stamped_ts` = `MAX(timestamp)` de chaque
+série (`2026-03-31 23:59` au 1m, `23:55` 5m, `23:45` 15m, `23:00` 1h, `20:00` 4h, `2026-03-31 00:00` 1d,
+`2026-03-30 00:00` 1w), `first_end_stamped_ts = null`, plus `gaps` et `dup_signature_volume_gt0` de référence
+pour l'invariant 3. Le script de migration et le mode `--post-migration` de l'audit ne lisent que ce fichier.
+
+### 2.e Bord amont, autres exchanges, spot-check
+
+- Pour chaque série : la row à `boundary + i` est **absente**, aucune row binance après la frontière
+  (ex. BTC 1m : `23:58` c=68254.77, `23:59` o=68256.48 c=68240.16, rien à `2026-04-01 00:00`).
+- `exchange='kraken'` (non touché) : `XBT/USDC` 1m 581 759 rows `2025-02-15 → 2026-05-30 02:00`, 5m
+  `2023-02-16 → 2026-05-30`, … : ce sont les rows WS de l'époque (collector redémarré sur Kraken faute
+  d'`EXCHANGE_NAME`, cf. `settings.py`) — explique l'absence de rows binance avril–juin 2026. Hors scope B4.1.
+- Spot-check BTC 1d : `2024-01-01 00:00` open 42274.27 / close 44185.08 (candle du 1ᵉʳ janvier stampée à l'open)
+  → **OK** ; attendu à `2024-01-02 00:00` après migration.
+
+### 2.f Dry-run de la migration via tunnel (lecture seule, hors protocole serveur)
+
+Premier dry-run (16:27 → 16:35 UTC, manifeste 16:25) : **2 550 fenêtres** (BTC et ETH : 690 au 1m, 138 au
+5m, 46 au 15m, 12 au 1h, 3 au 4h, 1 au 1d et 1w = 891 chacune ; SOL : 594 + 119 + 40 + 10 + 3 + 1 + 1 = 768),
+`staged = audit` sur les 21 séries, `collisions = 0 = audit` → MATCH. (Une version antérieure de ce rapport
+écrivait « 2 511 » : erreur d'addition, les tallies par série n'ont jamais changé.)
+Rejoué après la revue adversariale contre le manifeste **versionné** (`--dry-run --allow-tunnel --explain`,
+plans `EXPLAIN` des trois statements du chemin `--execute` validés sur le schéma réel, table temporaire de
+session vide, aucune écriture) : voir `results/b4_restamp_dryrun_tunnel.txt` (stamp du manifeste en en-tête).
+
+### 2.g Complétude de la dernière 1w (GATE 1 c)
+
+La dernière candle 1w Binance (`2026-03-30`, semaine 30/03 → 05/04) est **COMPLETE** sur les 3 paires : les
+1d Binance s'arrêtant au 31/03, la vérification croise les 7 jours 1d **Bybit** (end-stamped 31/03 → 06/04) :
+
+```
+BTC/USDC 1w o=65977.66 h=69297.69 l=65705.71 c=69019.18 | close diff=2.4 bps high diff=4.6 bps low diff=1.6 bps
+ETH/USDC 1w o=1983.56  h=2167.77  l=1979.08  c=2109.66  | close diff=3.9 bps high diff=1.9 bps low diff=15.5 bps
+SOL/USDC 1w o=81.40    h=86.65    l=76.68    c=81.86    | close diff=21.9 bps high diff=6.9 bps low diff=2.6 bps
+```
+(open = open 1d Binance du 30/03, exact ; tolérance 50 bps ; signature de troncature absente : le close 1w ≠
+close 1d Binance du 31/03.) Post-migration cette 1w sera stampée `2026-04-06 00:00`, cohérente avec sa fin réelle.
+
+### 2.h Revue adversariale avant contact serveur (workflow multi-agents, 2026-09-13)
+
+4 lentilles (SQL/TimescaleDB, fenêtres/reprise, invariants d'audit + importer, sécurité opérationnelle) →
+24 findings uniques → 3 réfutateurs indépendants chacun (majorité) → **11 confirmés, 13 réfutés**. Corrigés :
+
+| Finding confirmé | Correction |
+|---|---|
+| **Critique** — COMMIT et écriture du ledger non atomiques ; clé de fenêtre sans taille de batch : une reprise (crash entre COMMIT et append, autre `--max-rows-per-tx`, autre `--ledger`/HOME) redécalait des rows déjà décalées et en perdait une par fenêtre | décision 14 : table de progression transactionnelle + identité du plan + pré-vol (préfixe, `COUNT` des originales restantes) + garde slot `w_end` + verrou advisory ; tests de reprise après crash simulé, batch différent, progression non-préfixe, état DB ≠ manifeste |
+| `--pairs`/`--intervals` inconnus → 0 série et `MATCH` rc 0 | refus rc 2 (valeurs validées contre le manifeste, sélection vide refusée), `MATCH` exige ≥ 1 série |
+| Vote « close seul » strict post-migration : ~2–3 fenêtres 1w basculeraient par bruit → faux STOP | décision 13 (vote hybride), 0 fenêtre ambiguë pré-migration |
+| `bybit_b3_crosscheck.py` code en dur l'ancien décalage : inutilisable comme invariant 4 | invariant 4 = vote au **même** timestamp du script d'audit (`--post-migration`) ; le script B3 reste un artefact historique non modifié (annexe § 5) |
+| Docstrings `src/krakenbot/data/backfill.py`, `connectors/exchange.py`, `skills/bybit.md`, `README.md`, `CODE_MAP.md` disent encore « Binance mixte/open-stamped » | ajoutés à la liste § 7 (commit docs après GATE 3) |
+| Traçabilité : le dry-run cité pointait un manifeste non versionné ; § 5.1 contredisait le diff (importer) | dry-run rejoué contre le manifeste versionné (2.f) ; § 5.1 mis à jour |
+| Collisions imprévues absorbées silencieusement (réfuté 0/3 mais aligné sur la décision GATE 1-2) | toute collision > `expected_collisions` → `RestampStop`, fenêtre annulée, rc 3 |
+
+Réfutés (non corrigés, consignés) : pré-vol contre `db_totals` (le pré-vol par série le remplace), garde tunnel
+« heuristique » (protocole serveur), VACUUM avant le tableau final (désormais chronométré, tableau imprimé même
+en cas d'erreur), bloat/WAL (59 GB libres), SQL du chemin execute jamais exécuté sur PG (couvert par `--explain`
+et le dry-run serveur), `refine_boundary` sur run initial (sans objet : aucune bascule).
+
+## ⛔ GATE 1 — décision Bruno (2026-09-13) : **GO**
+
+1. Re-stamp : GO. 2. Policy « WS fait foi » confirmée ; le chemin `ON CONFLICT` reste ; toute collision au
+dry-run serveur = mismatch → STOP. 3. Périmètre 100 % des rows `exchange='binance'` validé. Ajouts a/b/c →
+décisions 10–12. Séquence GATE 2 rappelée : checkout serveur, backup frais (le dump du 7 sept ne compte pas),
+`stop krakenbot-collector` (heure notée), dry-run serveur en tmux = **exactement 2 550 fenêtres / 8 712 718
+rows / 0 collision**, estimation de durée du `--execute` à fournir, **STOP au GATE 2**.
+
+## 3. Migration (étape 2, serveur) — à compléter après GATE 2
+
+- Backup frais (avant toute écriture, collector encore actif) : `~/backups/krakenbot/krakenbot_20260913_b4pre.dump`,
+  `pg_dump -Fc --no-owner --no-acl` dans le container, **254 100 825 octets**, créé `2026-09-13 17:34:29 UTC`,
+  terminé `17:35:29 UTC`, exit 0, sha256 `89639d98172c64fcd46c654d63bcea6ead313045dcb5129984096fbc9f7166b3`,
+  `pg_restore -l` : 1 172 entrées TOC (144 TABLE DATA, `market_data_ohlc` + chunks `_hyper_2_*`). Le dump du
+  7 sept (211 MB, antérieur à l'import Bybit) est ignoré. Disque serveur : 59 GB libres.
+- Serveur : `git checkout feat/b4-1-binance-restamp` @ `f71cf6a`, manifeste identique au dépôt (sha256
+  `eb62eab6…`). Arrêt collector : **2026-09-13 17:46:59 UTC** (`systemctl stop`, `inactive`, journal propre :
+  « Deactivated successfully »).
+- Dry-run serveur (tmux `b4-dryrun`, `--dry-run --explain`, DB locale port 5432) : **17:47:05 → 17:49:07 UTC**,
+  **2 550 fenêtres, staged = 8 712 718 = audit, collisions = 0 = audit, 21/21 séries → MATCH**, exit 0 ;
+  plans `EXPLAIN` du chemin `--execute` OK sur chaque première fenêtre (Bitmap/Index Scan sur le chunk,
+  `ModifyHypertable` pour DELETE et INSERT `ON CONFLICT DO NOTHING`). Sortie : `results/b4_restamp_dryrun_server.txt`.
+  Cadence des requêtes de comptage : ~42 fenêtres/s (2 min pour 8,7 M rows).
+- **Estimation `--execute`** (à confirmer par les lignes ETA imprimées toutes les 50 fenêtres) : par fenêtre,
+  staging 4 000 rows + DELETE + INSERT avec 4 index btree + COMMIT ≈ 0,3–0,6 s sur le CX33 → **2 550 fenêtres ≈
+  13–25 min**, + `VACUUM ANALYZE` 2–5 min, + audit `--post-migration` sur le serveur ≈ 3 min, + relance collector
+  → **fenêtre d'arrêt du collector ≈ 45 min après le GO** (arrêt déjà effectif depuis 17:46:59 UTC ; backfill
+  nocturne 03:30 UTC avec fenêtre de 3 jours pour le trou Bybit).
+- Écriture hors `exchange='binance'` à autoriser au GO : table auxiliaire `b4_restamp_progress` (≈ 2 550 rows,
+  progression transactionnelle, supprimée à la clôture) — décision 15.
+- **GO GATE 2 (Bruno)** : dérogation `b4_restamp_progress` accordée (table à supprimer à la clôture, création et
+  suppression consignées), correction 2 511 → 2 550 acceptée (comptabilité qui fait foi : rows + tallies par
+  série + sha256 du manifeste `eb62eab641babd7b12cb44209fac27096d452a9139fc7c86b94610b2f7f01e5a`), fix de reprise
+  transactionnelle validé.
+- Pré-vol `--execute` (17:56:53 UTC) : serveur @ `f71cf6a`, collector et trader `inactive`, **`df -h /` : 75 G
+  total, 14 G utilisés, 59 G libres (19 %)** (même volume pour le container DB), RAM disponible 5,9 G, table
+  `b4_restamp_progress` absente, 8 712 718 rows binance, DB 3 156 MB.
+- **`--execute --i-have-a-fresh-backup --ledger ~/b4_restamp_ledger.jsonl`** (tmux `b4-execute`) : début
+  **17:56:57 UTC**, fin **18:07:40 UTC** (10 min 43 s ; 575 s cumulés de transactions, 0,24 s par fenêtre en
+  moyenne), **2 550 fenêtres, staged = deleted = inserted = 8 712 718, collisions = 0, 21/21 séries → MATCH,
+  exit 0**, aucune garde déclenchée, aucune reprise. `VACUUM ANALYZE market_data_ohlc` : **22 s**. Table
+  `b4_restamp_progress` **créée** par le script (`CREATE TABLE IF NOT EXISTS`, 2 550 rows, `done_at` 17:56:59 →
+  18:07:16 UTC, à supprimer à la clôture) ; ledger miroir `~/b4_restamp_ledger.jsonl` 2 550 lignes. Sorties :
+  `results/b4_restamp_execute_server.txt`, `results/b4_restamp_ledger_server.jsonl`. Disque après : 58 G libres
+  (hypertable 3 572 MB, DB 3 726 MB — bloat temporaire réclamé par autovacuum).
+- Contrôles immédiats (psql) : `binance` 8 712 718 / `kraken` 1 181 469 inchangés, `bybit` 2 556 345 (dernières
+  candles WS écrites avant l'arrêt) ; BTC 1m `2021-01-01 00:01 → 2026-04-01 00:00`, 1d `2021-01-02 → 2026-04-01`,
+  1w `2021-01-11 → 2026-04-06` ; BTC 1d `2024-01-02 00:00` open 42274.27 / close 44185.08.
+- Audit post-migration strict (tmux `b4-postaudit`, 18:08:19 → ~18:12 UTC) : **exit 1 — 6 fenêtres résiduelles**
+  (§ 4.1, STOP remonté à Bruno). Sortie : `results/b4_timestamp_audit_post_migration.txt`.
+- **Reprise collector : 2026-09-13 18:13:23 UTC**, `active (running)`, abonnements WS Bybit (kline 7 TF + tickers
+  × 3 paires) et scheduler `gap_backfill` (`30 3 * * *`) démarrés, aucune erreur dans le journal. Relancé avant la
+  décision de Bruno sur le STOP de l'audit (§ 4.1) pour ne pas laisser grandir le trou Bybit pendant l'attente :
+  l'exécution est comptablement exacte et le collector n'écrit que des rows `bybit` (réversible). Arrêt total :
+  17:46:59 → 18:13:23 UTC (26 min 24 s).
+
+## 4. Invariants post-migration (étape 3)
+
+### 4.1 Invariant 1 — du STOP v1 à l'audit v2 (décision Bruno : option 2 encadrée)
+
+**Run strict v1 (evidence conservée : `results/b4_timestamp_audit_post_migration.txt`, exit 1).** Vote « close
+puis OHLC si les deux closes candidats sont à < 0,1 % », toutes fenêtres incluses. 15/21 séries à 100 % *end*,
+majorité par row *end* partout, 36/36 rows ambiguës *end*, **6 fenêtres résiduelles** :
+
+| Série | Fenêtre | open/end/tie | Mécanisme (lecture seule) |
+|---|---|---|---|
+| BTC 1m | 2025-06-30 | 170/120/10 | 1ʳᵉ semaine tradée sur Bybit EU : 1 000 minutes avec volume sur 10 080, 300 rows votantes, 0,014 BTC/min. Candles Bybit à un trade → prix en retard d'≈ 1 min sur Binance : pré-migration ce retard éloignait le mauvais candidat (candle précédente), post-migration il rapproche la candle suivante |
+| BTC 5m | 2025-06-30 | 168/166/5 | idem, retard ≪ 5 min → pile ou face |
+| ETH 1m | 2025-06-30 | 97/46/7 | idem (626 minutes avec volume, 150 votantes) |
+| SOL 1m | 2025-06-30 | 38/18/8 | idem (368 minutes avec volume, 64 votantes) |
+| ETH 1w, SOL 1w | 2025-06-30 | 1/0/0 | 1ʳᵉ candle 1w Bybit **partielle** (3 jours 27→29/06, spikes de lancement, ETH high 2785.93) comparée à la semaine Binance complète |
+| ETH 1w | 2026-03-02 | 1/0/0 | closes Bybit candidats à 0,21 % (> seuil 0,1 %) et écart Binance/Bybit 0,32 % au close : le close seul tranchait à tort ; distance OHLC : same 9.84 vs next 188.68 |
+
+Aucune n'est un défaut de migration (comptabilité exacte, invariant 2) : ce sont des limites de la
+**référence** (première semaine de liquidité Bybit EU, première 1w partielle, seuil d'ambiguïté du vote).
+
+**Spec v2 (validée par Bruno, `scripts/audit/b4_timestamp_audit.py` commit `17e2925` + `8c1ab70`) :**
+
+1. **Vote unifié** : distance OHLC L1 (|open|+|high|+|low|+|close|) entre la candle Binance à `T` et la candle
+   de référence à `T` (hypothèse *end*) vs `T + intervalle` (hypothèse *open*) ; agrège 4 points, dégénère
+   proprement en *tie* sur candles plates, plus de seuil hybride. Pas de raison de conserver le close seul.
+2. **Règle A — première semaine de recouvrement** par paire × TF : la semaine ISO de la **première row de
+   référence avec `volume > 0`** sur cette série (ramp-up de listing ; 1w partielle par construction) et
+   tout ce qui précède sont exclus. Définie par le premier trade, pas par la première row : les candles
+   Bybit antérieures au listing effectif sont plates (`volume = 0`) et ne votent jamais.
+3. **Règle B — plancher de couverture** : couverture d'une paire-semaine = part des minutes de la semaine
+   avec volume Bybit sur la série 1m. Distribution sur les 129 paire-semaines du recouvrement (histogramme par
+   décile : 0–9 % : 12 · 10–19 : 7 · 20–29 : 7 · 30–39 : 7 · 40–49 : 9 · 50–59 : 10 · 60–69 : 8 · 70–79 : 5 ·
+   80–89 : 9 · **≥ 90 : 55**) : une rampe continue de juillet à octobre 2025 (BTC 9,9 → 25,9 → 20,6 → 15,5 → …
+   → 98 %) puis le régime mature. **Cassure naturelle = le saut 9 → 55 entre les déciles 80 et 90 : plancher
+   à 90 %** (le mode de la distribution), sans aucun rapport avec les fenêtres en échec (≤ 9,9 %). Table de
+   sensibilité 0 → 95 % imprimée à chaque run ; verdict « stable » = plateau sans fenêtre incluse en défaut,
+   ≥ 30 points de large, atteignant 95 % et contenant le plancher choisi (la première version du script
+   exigeait la stabilité dès 0 % — plus strict que la spec « stable sur une plage », corrigé en `8c1ab70`).
+   Portée : TF intraday (spec) ; option `--coverage-scope all` = proposition § 4.1.b.
+4. Aucune fenêtre n'est nommée dans les règles ; les fenêtres exclues restent listées avec leurs votes.
+5. **Contrôles de puissance** : (i) rejeu sur l'état courant → *end* sur toutes les fenêtres incluses ;
+   (ii) rejeu sur la **vue virtuelle `timestamp − intervalle`** (`--pre-migration-view`, reconstruction
+   bit-exacte de l'état pré-migration : rows, bornes, trous, signature de doublon comparés **égaux** au
+   manifeste) → *open* sur toutes les fenêtres incluses. Les 36 rows de revérification sont revotées dans
+   les deux sens.
+
+#### 4.1.a Résultats v2, portée spec (règle B sur les TF intraday) — `results/b4_timestamp_audit_{post_migration,premigration_view}_v21_intraday.txt`
+
+Serveur, 19:01–19:10 UTC (premiers runs v2 à 18:46/18:50 : `*_v2.txt`, mêmes votes, verdict de sensibilité
+encore « dès 0 % » ; conservés). 842 fenêtres hebdomadaires (21 séries) ; 2 exclues par la règle A (1w ETH/SOL,
+semaine 06-30), 325 intraday exclues par la règle B à 90 %, **515 incluses**.
+
+| | Contrôle direct (état courant, attendu *end*) | Contrôle inverse (vue `timestamp − intervalle`, attendu *open*) |
+|---|---|---|
+| Fenêtres incluses en défaut | **1** : SOL 1w `2025-07-07` (1/0/0, semaine à 3,7 % de couverture) | 0 |
+| Rows de revérification (36) | **1 en défaut** : BTC 1d `2025-07-05 → 07-06` vote *open* | **1 en défaut** : BTC 1d `2025-07-05` vote *end* |
+| Sensibilité (600 fenêtres intraday) | stable **de 20 % à 95 %** (0 % : 6 en défaut, 10 % : 1 — BTC 1m `2025-08-04` 317/313 à 19,1 %) | stable de 0 % à 95 % |
+| Comptabilité / trous / bornes / queue 1w | 21/21 exacts, 21/21 identiques (+intervalle), 3/3 complètes | 21/21 exacts, 21/21 identiques **(égalité bit-exacte)**, 3/3 complètes |
+| Exit code | 1 | 1 |
+
+Table de sensibilité intraday (règle A fixée), contrôle direct / inverse :
+
+```
+floor  included  excl.cov  offending(direct)  offending(inverse)
+  0%      600        0            6                 0
+ 10%      585       15            1                 0
+ 20%      550       50            0                 0
+ 30%      515       85            0                 0
+ 50%      435      165            0                 0
+ 70%      345      255            0                 0
+ 90%      275      325            0                 0
+ 95%      235      365            0                 0
+```
+
+**Ce qui reste et pourquoi (STOP par la règle « une fenêtre incluse qui échoue au contrôle inverse doit être
+exclue par la règle de couverture »)** : les deux éléments en défaut sont **la même semaine `2025-06-30`**
+(BTC 9,9 %, SOL 3,7 % de couverture) sur des TF non intraday, hors portée de la règle B telle que spécifiée :
+- BTC 1d, candle Bybit du **5 juillet 2025** (2,59 BTC échangés sur la journée) : high 110 740,8 vs 109 812,1
+  Binance, low 107 326,9 vs 107 279,5 → distance OHLC à la même candle 5 623 contre 2 280 à la suivante
+  (direct) et 4 469 à la précédente (inverse). Une candle de référence agrégée sur une journée quasi vide
+  échoue **dans les deux sens** : ce n'est pas une question de convention mais de fiabilité de la référence.
+- SOL 1w `2025-07-07` (candle Bybit 30/06 → 06/07 à 3,7 % de couverture minute) : même mécanisme.
+
+La règle A ne les couvre pas : pour BTC, quelques minutes ont été tradées sur Bybit EU dès la semaine du
+09/06 (couverture 0,0x %), donc « première semaine tradée » = 06-09, alors que le vrai ramp-up est 06-30.
+La règle B (intraday) ne les couvre pas par périmètre.
+
+#### 4.1.b Proposition : règle B étendue à tous les TF (`--coverage-scope all`) — `results/b4_timestamp_audit_{post_migration,premigration_view}_v21_all.txt`
+
+La couverture minute d'une paire-semaine mesure la liquidité de la **référence** ; une candle 1d ou 1w Bybit
+agrégée sur une semaine à 4–10 % de minutes tradées est aussi peu fiable que ses candles 1m. Appliquer le même
+plancher (même valeur, même dérivation, même table de sensibilité) à tous les TF est la généralisation
+naturelle : aucune fenêtre nommée, aucun paramètre ajouté. Sous cette portée (serveur, 19:10–19:19 UTC) :
+
+| | Contrôle direct (attendu *end*) | Contrôle inverse (attendu *open*) |
+|---|---|---|
+| Fenêtres | 842 ; 2 règle A, 454 règle B, **386 incluses** | 839 ; 2 règle A, 452 règle B, **385 incluses** |
+| Fenêtres incluses en défaut | **0** | **0** |
+| Rows de revérification | 36 : **20 assessées, toutes *end*** ; 16 dans des semaines exclues (listées, non assessées, dont BTC 1d 2025-07-06) | 36 : **20 assessées, toutes *open*** ; 16 non assessées |
+| Sensibilité (840 fenêtres) | stable **de 20 % à 95 %** (0 % : 7, 10 % : 2) | stable de 0 % à 95 % |
+| Comptabilité / trous / bornes / queue 1w | 21/21, 21/21, 3/3 | 21/21, 21/21 (bit-exact), 3/3 |
+| Exit code | **0** | **0** |
+
+Plateau de stabilité [20 %, 95 %] dans les deux sens, plancher retenu 90 % (mode de la distribution) loin du
+bord ; les 7 fenêtres en défaut à 0 % sont toutes ≤ 19,1 % de couverture (semaines de listing/ramp-up).
+
+#### 4.1.c Décision GATE 3 (Bruno, 2026-09-13) : portée `all` adoptée — invariant 1 **vert**
+
+Justification, dans l'ordre :
+
+1. **La couverture minute est une propriété de la paire-semaine sur la référence** ; l'agrégation par TF ne
+   blanchit pas l'illiquidité. Pièce : BTC 1d Bybit du 2025-07-05 (2,59 BTC échangés), **même candle
+   physique aux deux stamps**, échec dans les deux sens (direct : distance 5 623 à la même candle contre
+   2 280 à la suivante ; inverse : 4 469 à la précédente contre 5 623 à la même).
+2. **L'extension de la règle B à tous les TF est imposée par la règle du contrôle inverse** (« une fenêtre
+   incluse qui échoue doit tomber sous la règle de couverture »), pas choisie pour le verdict. Le scoping
+   intraday initial était l'élément arbitraire de la spec ; il est levé (`--coverage-scope all`, désormais
+   le défaut du script).
+3. **Plancher 90 % = bord conservateur de la cassure** de la distribution (saut 9 → 55 paire-semaines entre
+   les déciles 80 et 90) ; plateau de stabilité **20 → 95 % direct, 0 → 95 % inverse** ; les échecs
+   historiques sont tous à ≤ 9,9 % de couverture (semaine de listing).
+4. **Sorties v1 strict et v2-intraday conservées en evidence** (`results/b4_timestamp_audit_post_migration.txt`,
+   `*_v2.txt`, `*_v21_intraday.txt`) ; dans chaque sortie les fenêtres exclues sont listées avec leurs votes.
+
+Ventilation des fenêtres incluses par série sous portée `all` (contrôle direct = état courant, attendu *end* ;
+contrôle inverse = vue `timestamp − intervalle`, attendu *open* ; « rows » = rows votantes des fenêtres
+incluses ; rows de revérification = celles du manifeste, assessées hors semaines exclues) — **aucune série à
+zéro évidence directe** (minimum 16 fenêtres, 681 120 rows votantes au total) :
+
+| Série | Fenêtres total / incluses | Direct open/end/tie (rows) | Inverse open/end/tie (rows) | Rows revérif. (assessées) |
+|---|---|---|---|---|
+| BTC/USDC 1m | 40 / **22** | 0/22/0 (206 069) | 22/0/0 (206 069) | 0 |
+| BTC/USDC 5m | 40 / **22** | 0/22/0 (42 882) | 22/0/0 (42 881) | 0 |
+| BTC/USDC 15m | 40 / **22** | 0/22/0 (14 305) | 22/0/0 (14 304) | 0 |
+| BTC/USDC 1h | 40 / **22** | 0/22/0 (3 577) | 22/0/0 (3 576) | 0 |
+| BTC/USDC 4h | 40 / **22** | 0/22/0 (895) | 22/0/0 (894) | 0 |
+| BTC/USDC 1d | 40 / **22** | 0/22/0 (150) | 22/0/0 (149) | 16 (6 assessées, 6 *end* / 6 *open*) |
+| BTC/USDC 1w | 40 / **23** | 0/23/0 (23) | 22/0/0 (22) | 2 (1 assessée) |
+| ETH/USDC 1m | 40 / **16** | 0/16/0 (154 428) | 16/0/0 (154 428) | 0 |
+| ETH/USDC 5m | 40 / **16** | 0/16/0 (32 084) | 16/0/0 (32 084) | 0 |
+| ETH/USDC 15m | 40 / **16** | 0/16/0 (10 752) | 16/0/0 (10 752) | 0 |
+| ETH/USDC 1h | 40 / **16** | 0/16/0 (2 688) | 16/0/0 (2 688) | 0 |
+| ETH/USDC 4h | 40 / **16** | 0/16/0 (672) | 16/0/0 (672) | 0 |
+| ETH/USDC 1d | 40 / **16** | 0/16/0 (112) | 16/0/0 (112) | 11 (7 assessées) |
+| ETH/USDC 1w | 41 / **16** | 0/16/0 (16) | 16/0/0 (16) | 1 (1 assessée) |
+| SOL/USDC 1m | 40 / **17** | 0/17/0 (163 227) | 17/0/0 (163 227) | 0 |
+| SOL/USDC 5m | 40 / **17** | 0/17/0 (34 112) | 17/0/0 (34 112) | 0 |
+| SOL/USDC 15m | 40 / **17** | 0/17/0 (11 422) | 17/0/0 (11 422) | 0 |
+| SOL/USDC 1h | 40 / **17** | 0/17/0 (2 856) | 17/0/0 (2 856) | 0 |
+| SOL/USDC 4h | 40 / **17** | 0/17/0 (714) | 17/0/0 (714) | 0 |
+| SOL/USDC 1d | 40 / **17** | 0/17/0 (119) | 17/0/0 (119) | 6 (5 assessées) |
+| SOL/USDC 1w | 41 / **17** | 0/17/0 (17) | 17/0/0 (17) | 0 |
+| **Total** | 842 / **386** | 0/386/0 (681 120) | 385/0/0 (681 114) | 36 (20 assessées, 20/20 conformes dans chaque sens) |
+
+(BTC 1w : 23 fenêtres directes contre 22 inverses — la dernière 1w, stampée `2026-04-06` après migration,
+n'a de voisine Bybit `+1w` qu'à l'état courant. Les fenêtres incluses sont celles des semaines ≥ 90 % de
+couverture : BTC dès fin octobre 2025, ETH et SOL dès mi-novembre 2025, jusqu'à fin mars 2026.)
+
+1. **Invariant 1 — ✅ vert** (décision GATE 3, § 4.1.c) : v1 strict = STOP (6 résidus, § 4.1) ; v2 portée
+   intraday = STOP (2 éléments de la semaine 06-30 hors portée de la règle B) ; v2 portée `all` = **end sur
+   les 386 fenêtres incluses directes, open sur les 385 inverses, 20/20 rows de revérification dans chaque
+   sens**. Détail du run v1 strict ci-dessous :
+   **15/21 séries à 100 % *end*** (40/40 fenêtres) ; majorité par row *end* sur les 21 séries ; **les 36 rows
+   ambiguës revérifiées une à une votent toutes *end*** (dont BTC 1w 2025-09-15 et 2025-12-01, ETH 1w
+   2025-12-08). **⛔ 6 fenêtres résiduelles → exit 1 → STOP** (règle GATE 1 a) :
+
+   | Série | Fenêtre | open/end/tie | Cause identifiée (lecture seule, § 4.1) |
+   |---|---|---|---|
+   | BTC 1m | 2025-06-30 | 170/120/10 | 1ʳᵉ semaine de liquidité Bybit EU : 1 000 minutes avec volume sur 10 080, 300 rows votantes, volume moyen 0,014 BTC/min |
+   | BTC 5m | 2025-06-30 | 168/166/5 | idem, pile ou face |
+   | ETH 1m | 2025-06-30 | 97/46/7 | idem (626 minutes avec volume, 150 votantes) |
+   | SOL 1m | 2025-06-30 | 38/18/8 | idem (368 minutes avec volume, 64 votantes) |
+   | ETH 1w, SOL 1w | 2025-06-30 | 1/0/0 | 1ʳᵉ candle 1w Bybit **partielle** (3 jours 27→29/06, spikes de lancement : ETH H 2785.93) comparée à la semaine Binance complète 23→29/06 |
+   | ETH 1w | 2026-03-02 | 1/0/0 | closes Bybit candidats à 0,21 % (> seuil d'ambiguïté 0,1 %) et écart Binance/Bybit de 0,32 % au close : le close seul tranche à tort ; distance OHLC : same 9.84 vs next 188.68 (*end* ×19) |
+
+   Explication du signe post-migration sur la semaine 06-30 : avec des candles Bybit à 1 trade, le prix Bybit
+   **retarde d'environ une minute** sur Binance ; pré-migration ce retard éloignait le mauvais candidat (candle
+   précédente, −2 min) et confortait *open* ; post-migration il rapproche le mauvais candidat (candle suivante,
+   ≈ 0 min) → *open* par bruit. Dès la semaine du 07-07 (2 610 minutes Bybit avec volume) *end* gagne 719/483,
+   puis partout. Les comptages par série sont exacts (invariant 2) : ce n'est pas un défaut de migration mais une
+   limite de la référence Bybit sur sa première semaine. **Décision Bruno requise** (cf. § 4.1).
+2. Comptabilité : **21/21 séries exactes** (`rows_after == rows_before − 0`), total 8 712 718 ; tallies du script
+   (staged = deleted = inserted par série) = manifeste ; `kraken` inchangé. ✅
+3. Trous : **21/21 listes identiques à l'audit décalées de +interval** ; signature de doublon (`volume > 0`)
+   inchangée (38/50/347 au 1m, 2 au 5m SOL). ✅
+4. Spot-check BTC 1d `2024-01-02 00:00` open 42274.27 / close 44185.08 : **OK** ; 1w binance en lundi 00:00
+   (`2021-01-11 → 2026-04-06`) ; 1d/1w Bybit au **même** timestamp : fenêtres 1d 40/40 *end* sur les 3 paires,
+   1w 40/40 (BTC), 38/40 (ETH), 39/40 (SOL) — résidus expliqués au point 1. ✅ (sous réserve du point 1)
+5. `MAX(timestamp)` : 1m `2026-04-01 00:00`, 5m/15m/1h/4h/1d `2026-04-01 00:00`, 1w `2026-04-06 00:00` = frontière
+   + intervalle sur les 21 séries ; `MIN` décalé de +intervalle sur les 21 séries. ✅
+6. Backtest de référence (serveur, tmux `b4-backtest`, 18:15:35 UTC, lecture seule). La commande littérale du
+   brief (`--days 1095`, depuis « maintenant ») couvre 2023-09-14 → 2026-09-13 au pas 1m, période **différente** du
+   baseline P6 (2023-04-01 → 2026-04-01, pas 5m) : la comparaison qui fait foi est le **run A** aligné sur la période
+   et le pas du baseline ; le run B (commande littérale) est consigné pour mémoire. Delta brut, sans analyse (B4.3) :
+
+   | Métrique | Baseline P6 (`P6_phase_d_results.json`, `all`) | **Run A** (période P6, 5m, données re-stampées) | Run B (brief littéral, 1m, 2023-09-14 → 2026-09-13) |
+   |---|---|---|---|
+   | Total return | +3.29 % | **+2.42 %** | +3.34 % |
+   | Net P&L | +31.16 USDC | **+22.45 USDC** | +31.92 USDC |
+   | Trades | 46 | **46** | 39 |
+   | Win rate | 45.65 % | **36.96 %** | 41.03 % |
+   | Profit factor | 1.82 | **1.56** | 1.99 |
+   | Max drawdown | 1.76 % | **2.17 %** | 2.15 % |
+   | Sharpe | 0.336 | **0.25** | 0.39 |
+   | Sortino | 0.48 | **0.36** | 0.57 |
+
+   **Les métriques diffèrent du baseline** (même nombre de trades, issues différentes) → pas de red flag, le
+   re-stamp a bien changé ce que voient les stratégies multi-TF. ✅ Sorties : `results/b4_reference_backtest_A_p6period.txt`,
+   `results/b4_reference_backtest_B_brief.txt`.
+7. Dernière 1w de chaque paire = semaine complète, stampée `2026-04-06 00:00`, close/high/low à 2–22 bps des
+   7 jours 1d Bybit (BTC 2.4/4.6/1.6, ETH 3.9/1.9/15.5, SOL 21.9/6.9/2.6 bps). ✅
+8. Lendemain (Bruno) : `gap_backfill` 03:30 UTC vert, trou Bybit **17:46:59 → 18:13:23 UTC** comblé
+   (`task_execution_logs`). Collector vérifié à 18:20 UTC : `active`, 0 erreur dans le journal.
+
+## 5. Tâches annexes consignées (non faites, hors scope B4.1)
+
+1. ~~`scripts/binance_vision_import.py` écrit toujours l'open time~~ → **corrigé dans cette branche** (GATE 1 b) :
+   `parse_klines_csv` renvoie `open_time + interval`, tests `test_timestamp_is_utc_period_end` et
+   `test_timestamp_period_end_per_interval` (7 TF, ms et µs). Le fichier était « lecture seule » dans le brief ;
+   dérogation explicite de Bruno au GATE 1.
+2. Rows `exchange='kraken'` `XBT/USDC` de 2025-02 → 2026-05 = données WS de l'ancien connecteur ; à traiter avec
+   la suppression prévue du legacy kraken (PROJECT_CONTEXT § 6).
+3. Dette 11 / `PROJECT_CONTEXT.md` § 9 et `skills/binance_import.md` (« toutes finissent en juin 2026 ») :
+   la fenêtre avril–juin 2026 n'a jamais existé sous `binance` ; docs à corriger (commit docs, après GATE 3).
+4. Trous Vision 1w d'une semaine (2022-05-30, 06-27, 08-29, 2025-01-27, 02-24) et micro-trous 2021 : données
+   absentes de Binance Vision, pas comblables sans source ; à documenter dans `P6_data_coverage.md` si besoin.
+5. `ruff format --check` : `scripts/backtest.py`, `scripts/p6_5_diagnose_*.py` non formatés (pré-existant, dette 10).
+6. `scripts/audit/bybit_b3_crosscheck.py` (B3) code en dur le décalage d'un intervalle Binance/Bybit : après B4.1 son
+   contrôle (a) affichera « STOP » à tort. Artefact historique, non modifié ; à paramétrer ou archiver si réutilisé.
+7. Docstrings à réaligner au commit docs (§ 7, revue 2.h) : `src/krakenbot/data/backfill.py` (module),
+   `src/krakenbot/connectors/exchange.py` (`fetch_ohlcv`), `skills/bybit.md`, `README.md` (« 2026-06 »),
+   `docs/CODE_MAP.md` — la garantie « Bybit seulement » reste vraie (les clients REST Binance/Kraken renvoient
+   l'open time ccxt), mais plus « parce que la DB Binance est mixte ».
+8. ~~Table auxiliaire `b4_restamp_progress` à supprimer après GATE 3~~ → supprimée le 2026-09-13 19:27:35 UTC (§ 7).
+9. Suite pytest : `ERROR at teardown` (`ResourceWarning`) sur `test_grid_atr_v4_backward_compat_hash`, présent
+   avec et sans les tests B4 ; à traiter avec les 4 échecs ordre-dépendants (scope B4.2).
+
+## 6. Tests et qualité
+
+- Nouveaux : `tests/test_scripts/test_b4_stamp_lib.py` (23 : votes, mode strict, bascule, raffinement de
+  frontière, fenêtres décroissantes ancrées lundi, manifeste JSON aller-retour, ledger, comptabilité, plan de
+  reprise) et `tests/test_scripts/test_b4_restamp_binance.py` (20 : refus tunnel / backup / batch > 5000 /
+  identifiant de table / filtres inconnus, dry-run = manifeste ou rc 1/2, `--explain`, exécution complète,
+  reprise depuis la table DB sans double décalage après crash simulé post-COMMIT, refus batch différent /
+  progression non-préfixe / état DB ≠ manifeste, collision imprévue → rollback rc 3, collision autorisée
+  comptée, garde slot occupé, VACUUM en fin d'exécution) ; `test_binance_vision_import.py` (+2, end-stamps).
+- Aucun test ne touche la DB en local ; les tests DB (`--post-migration`, dry-run serveur) se jouent sur le serveur.
+- Suite complète (`pytest -q --ignore=tests/test_scripts/test_run_p6_determinism.py`, 19:30 UTC) : **1 189 passés,
+  6 skipped, 4 échecs** = les 4 ordre-dépendants connus (B3), plus un `ERROR at teardown` sur l'un d'eux
+  (`test_grid_atr_v4_backward_compat_hash` : `ResourceWarning` socket / event loop non fermés, collecté au
+  teardown de ce test qui ouvre lui-même une connexion DB). Reproduit à l'identique **sans** les fichiers
+  `test_b4_*` (4 échecs + 1 error, 1 141 passés) : indépendant de B4.1, à ranger avec les 4 échecs connus (B4.2). `ruff check` propre ; `ruff format --check` : 3 fichiers pré-existants (dette 10).
+  65 tests B4 (`test_b4_stamp_lib.py` 29, `test_b4_restamp_binance.py` 20, `test_binance_vision_import.py` 16).
+
+## 7. Clôture (GATE 3 — étapes exécutées après la décision de Bruno, 2026-09-13)
+
+| Étape | Résultat |
+|---|---|
+| Commit docs `5f78319` (`docs(project): resolve debt 11, unify end-stamp convention`) | `PROJECT_CONTEXT.md` (§ 6 volumes et convention, dette 11 ✅ avec prémisse corrigée : fenêtre avril–juin inexistante en DB, rows WS de l'époque = `kraken` `XBT/USDC` jusqu'au 2026-05-30, renvoi dette 1 ; correction 2 511 → 2 550 explicite ; fenêtre d'arrêt collector 17:46:59 → 18:13:23 ; dette 12 reformulée), `skills/database.md`, `skills/binance_import.md`, `skills/bybit.md`, `README.md`, `docs/CODE_MAP.md`, `results/INDEX.md`, docstrings `src/krakenbot/data/backfill.py` et `connectors/exchange.py` |
+| Commit `867c6d1` | `--coverage-scope` par défaut `all` (décision GATE 3), `intraday` conservé pour les runs d'evidence |
+| `alembic upgrade head` sur le serveur (`f7a8b9c0d1e2 → b4c0ffee0001`) | 19:27:27 → 19:27:34 UTC, DDL transactionnel, `alembic_version = b4c0ffee0001`, `col_description(timestamp)` : `NULL` → **« Candle period-end timestamp (UTC): open_time + interval »** |
+| `DROP TABLE b4_restamp_progress` | 19:27:35 UTC, après relevé final : 2 550 rows, `SUM(staged) = 8 712 718`, `SUM(collisions) = 0`, `done_at` 17:56:59 → 18:07:16 UTC (contenu conservé dans `results/b4_restamp_ledger_server.jsonl`) ; `to_regclass` → NULL ; counts inchangés (`binance` 8 712 718, `kraken` 1 181 469, `bybit` 2 556 630 en croissance WS) |
+| Collector | `active` depuis 18:13:23 UTC, 0 redémarrage, stats WS `errors: 0, reconnections: 0`, 1m BTC écrit jusqu'à 19:27 UTC ; `gap_backfill` planifié 2026-09-14 03:30 UTC (vérification Bruno, invariant 8) |
+| Manifeste | `results/b4_binance_stamp_boundaries.json` sha256 `eb62eab641babd7b12cb44209fac27096d452a9139fc7c86b94610b2f7f01e5a` (inchangé depuis le dry-run serveur ; les rejeux ne l'écrivent pas) |
+
+Reste hors de ce brief (workflow de clôture de phase) : review humaine → PR `feat/b4-1-binance-restamp` → `dev` →
+push vérifié → serveur → observation → tag.

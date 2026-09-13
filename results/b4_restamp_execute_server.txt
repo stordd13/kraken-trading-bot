@@ -1,0 +1,118 @@
+mode=EXECUTE series=21 max_rows_per_tx=4000 manifest=2026-09-13T17:38:35.614359+00:00 progress_table=b4_restamp_progress ledger=/home/bruno/b4_restamp_ledger.jsonl
+    BTC/USDC 1m: 50/690 windows, 200000 rows, 12s elapsed, 4.07 win/s, ETA 157s
+    BTC/USDC 1m: 100/690 windows, 400000 rows, 25s elapsed, 4.07 win/s, ETA 145s
+    BTC/USDC 1m: 150/690 windows, 600000 rows, 37s elapsed, 4.05 win/s, ETA 133s
+    BTC/USDC 1m: 200/690 windows, 800000 rows, 50s elapsed, 4.01 win/s, ETA 122s
+    BTC/USDC 1m: 250/690 windows, 1000000 rows, 62s elapsed, 4.01 win/s, ETA 110s
+    BTC/USDC 1m: 300/690 windows, 1200000 rows, 75s elapsed, 4.00 win/s, ETA 98s
+    BTC/USDC 1m: 350/690 windows, 1400000 rows, 87s elapsed, 4.01 win/s, ETA 85s
+    BTC/USDC 1m: 400/690 windows, 1599920 rows, 100s elapsed, 4.00 win/s, ETA 72s
+    BTC/USDC 1m: 450/690 windows, 1606570 rows, 102s elapsed, 4.42 win/s, ETA 54s
+    BTC/USDC 1m: 500/690 windows, 1763550 rows, 112s elapsed, 4.45 win/s, ETA 43s
+    BTC/USDC 1m: 550/690 windows, 1963550 rows, 125s elapsed, 4.39 win/s, ETA 32s
+    BTC/USDC 1m: 600/690 windows, 2163430 rows, 138s elapsed, 4.35 win/s, ETA 21s
+    BTC/USDC 1m: 650/690 windows, 2362876 rows, 150s elapsed, 4.34 win/s, ETA 9s
+    BTC/USDC 1m: 690/690 windows, 2521597 rows, 159s elapsed, 4.34 win/s, ETA 0s
+  BTC/USDC 1m: plan=690 resumed=0 run=690 staged=2521597 collisions=0 (158.9s)
+    BTC/USDC 5m: 50/138 windows, 200000 rows, 14s elapsed, 3.63 win/s, ETA 24s
+    BTC/USDC 5m: 100/138 windows, 352710 rows, 24s elapsed, 4.17 win/s, ETA 9s
+    BTC/USDC 5m: 138/138 windows, 504321 rows, 34s elapsed, 4.10 win/s, ETA 0s
+  BTC/USDC 5m: plan=138 resumed=0 run=138 staged=504321 collisions=0 (33.7s)
+    BTC/USDC 15m: 46/46 windows, 168108 rows, 15s elapsed, 3.04 win/s, ETA 0s
+  BTC/USDC 15m: plan=46 resumed=0 run=46 staged=168108 collisions=0 (15.1s)
+    BTC/USDC 1h: 12/12 windows, 42031 rows, 7s elapsed, 1.63 win/s, ETA 0s
+  BTC/USDC 1h: plan=12 resumed=0 run=12 staged=42031 collisions=0 (7.3s)
+    BTC/USDC 4h: 3/3 windows, 10512 rows, 4s elapsed, 0.79 win/s, ETA 0s
+  BTC/USDC 4h: plan=3 resumed=0 run=3 staged=10512 collisions=0 (3.8s)
+    BTC/USDC 1d: 1/1 windows, 1753 rows, 2s elapsed, 0.41 win/s, ETA 0s
+  BTC/USDC 1d: plan=1 resumed=0 run=1 staged=1753 collisions=0 (2.5s)
+    BTC/USDC 1w: 1/1 windows, 246 rows, 2s elapsed, 0.45 win/s, ETA 0s
+  BTC/USDC 1w: plan=1 resumed=0 run=1 staged=246 collisions=0 (2.2s)
+    ETH/USDC 1m: 50/690 windows, 200000 rows, 13s elapsed, 3.93 win/s, ETA 163s
+    ETH/USDC 1m: 100/690 windows, 400000 rows, 26s elapsed, 3.82 win/s, ETA 154s
+    ETH/USDC 1m: 150/690 windows, 600000 rows, 38s elapsed, 3.91 win/s, ETA 138s
+    ETH/USDC 1m: 200/690 windows, 800000 rows, 50s elapsed, 3.96 win/s, ETA 124s
+    ETH/USDC 1m: 250/690 windows, 1000000 rows, 63s elapsed, 3.99 win/s, ETA 110s
+    ETH/USDC 1m: 300/690 windows, 1200000 rows, 74s elapsed, 4.04 win/s, ETA 97s
+    ETH/USDC 1m: 350/690 windows, 1400000 rows, 85s elapsed, 4.10 win/s, ETA 83s
+    ETH/USDC 1m: 400/690 windows, 1599920 rows, 96s elapsed, 4.15 win/s, ETA 70s
+    ETH/USDC 1m: 450/690 windows, 1606570 rows, 98s elapsed, 4.60 win/s, ETA 52s
+    ETH/USDC 1m: 500/690 windows, 1763550 rows, 107s elapsed, 4.67 win/s, ETA 41s
+    ETH/USDC 1m: 550/690 windows, 1963550 rows, 118s elapsed, 4.65 win/s, ETA 30s
+    ETH/USDC 1m: 600/690 windows, 2163430 rows, 130s elapsed, 4.63 win/s, ETA 19s
+    ETH/USDC 1m: 650/690 windows, 2362876 rows, 141s elapsed, 4.61 win/s, ETA 9s
+    ETH/USDC 1m: 690/690 windows, 2521597 rows, 150s elapsed, 4.61 win/s, ETA 0s
+  ETH/USDC 1m: plan=690 resumed=0 run=690 staged=2521597 collisions=0 (149.8s)
+    ETH/USDC 5m: 50/138 windows, 200000 rows, 14s elapsed, 3.70 win/s, ETA 24s
+    ETH/USDC 5m: 100/138 windows, 352710 rows, 23s elapsed, 4.32 win/s, ETA 9s
+    ETH/USDC 5m: 138/138 windows, 504321 rows, 32s elapsed, 4.25 win/s, ETA 0s
+  ETH/USDC 5m: plan=138 resumed=0 run=138 staged=504321 collisions=0 (32.5s)
+    ETH/USDC 15m: 46/46 windows, 168108 rows, 15s elapsed, 2.97 win/s, ETA 0s
+  ETH/USDC 15m: plan=46 resumed=0 run=46 staged=168108 collisions=0 (15.5s)
+    ETH/USDC 1h: 12/12 windows, 42031 rows, 7s elapsed, 1.68 win/s, ETA 0s
+  ETH/USDC 1h: plan=12 resumed=0 run=12 staged=42031 collisions=0 (7.1s)
+    ETH/USDC 4h: 3/3 windows, 10512 rows, 4s elapsed, 0.83 win/s, ETA 0s
+  ETH/USDC 4h: plan=3 resumed=0 run=3 staged=10512 collisions=0 (3.6s)
+    ETH/USDC 1d: 1/1 windows, 1753 rows, 2s elapsed, 0.43 win/s, ETA 0s
+  ETH/USDC 1d: plan=1 resumed=0 run=1 staged=1753 collisions=0 (2.3s)
+    ETH/USDC 1w: 1/1 windows, 246 rows, 2s elapsed, 0.46 win/s, ETA 0s
+  ETH/USDC 1w: plan=1 resumed=0 run=1 staged=246 collisions=0 (2.2s)
+    SOL/USDC 1m: 50/594 windows, 200000 rows, 13s elapsed, 3.83 win/s, ETA 142s
+    SOL/USDC 1m: 100/594 windows, 400000 rows, 26s elapsed, 3.86 win/s, ETA 128s
+    SOL/USDC 1m: 150/594 windows, 600000 rows, 38s elapsed, 3.98 win/s, ETA 112s
+    SOL/USDC 1m: 200/594 windows, 800000 rows, 50s elapsed, 4.04 win/s, ETA 98s
+    SOL/USDC 1m: 250/594 windows, 1000000 rows, 61s elapsed, 4.07 win/s, ETA 85s
+    SOL/USDC 1m: 300/594 windows, 1187520 rows, 73s elapsed, 4.12 win/s, ETA 71s
+    SOL/USDC 1m: 350/594 windows, 1187520 rows, 75s elapsed, 4.69 win/s, ETA 52s
+    SOL/USDC 1m: 400/594 windows, 1187520 rows, 77s elapsed, 5.23 win/s, ETA 37s
+    SOL/USDC 1m: 450/594 windows, 1187520 rows, 78s elapsed, 5.76 win/s, ETA 25s
+    SOL/USDC 1m: 500/594 windows, 1344500 rows, 88s elapsed, 5.70 win/s, ETA 16s
+    SOL/USDC 1m: 550/594 windows, 1544500 rows, 100s elapsed, 5.50 win/s, ETA 8s
+    SOL/USDC 1m: 594/594 windows, 1719780 rows, 110s elapsed, 5.38 win/s, ETA 0s
+  SOL/USDC 1m: plan=594 resumed=0 run=594 staged=1719780 collisions=0 (110.4s)
+    SOL/USDC 5m: 50/119 windows, 200000 rows, 14s elapsed, 3.53 win/s, ETA 20s
+    SOL/USDC 5m: 100/119 windows, 268900 rows, 20s elapsed, 5.02 win/s, ETA 4s
+    SOL/USDC 5m: 119/119 windows, 343956 rows, 25s elapsed, 4.80 win/s, ETA 0s
+  SOL/USDC 5m: plan=119 resumed=0 run=119 staged=343956 collisions=0 (24.8s)
+    SOL/USDC 15m: 40/40 windows, 114652 rows, 11s elapsed, 3.49 win/s, ETA 0s
+  SOL/USDC 15m: plan=40 resumed=0 run=40 staged=114652 collisions=0 (11.5s)
+    SOL/USDC 1h: 10/10 windows, 28663 rows, 6s elapsed, 1.81 win/s, ETA 0s
+  SOL/USDC 1h: plan=10 resumed=0 run=10 staged=28663 collisions=0 (5.5s)
+    SOL/USDC 4h: 3/3 windows, 7167 rows, 3s elapsed, 1.08 win/s, ETA 0s
+  SOL/USDC 4h: plan=3 resumed=0 run=3 staged=7167 collisions=0 (2.8s)
+    SOL/USDC 1d: 1/1 windows, 1196 rows, 2s elapsed, 0.51 win/s, ETA 0s
+  SOL/USDC 1d: plan=1 resumed=0 run=1 staged=1196 collisions=0 (2.0s)
+    SOL/USDC 1w: 1/1 windows, 168 rows, 2s elapsed, 0.51 win/s, ETA 0s
+  SOL/USDC 1w: plan=1 resumed=0 run=1 staged=168 collisions=0 (1.9s)
+  VACUUM ANALYZE market_data_ohlc …
+  VACUUM ANALYZE done in 22s
+
+====================================================================================================
+  B4.1 re-stamp EXECUTE — exchange='binance' manifest=2026-09-13T17:38:35.614359+00:00
+====================================================================================================
+  Series         windows    staged     audit   deleted  inserted collisions  audit  Status
+  BTC/USDC 1m        690   2521597   2521597   2521597   2521597          0      0  OK
+  BTC/USDC 5m        138    504321    504321    504321    504321          0      0  OK
+  BTC/USDC 15m        46    168108    168108    168108    168108          0      0  OK
+  BTC/USDC 1h         12     42031     42031     42031     42031          0      0  OK
+  BTC/USDC 4h          3     10512     10512     10512     10512          0      0  OK
+  BTC/USDC 1d          1      1753      1753      1753      1753          0      0  OK
+  BTC/USDC 1w          1       246       246       246       246          0      0  OK
+  ETH/USDC 1m        690   2521597   2521597   2521597   2521597          0      0  OK
+  ETH/USDC 5m        138    504321    504321    504321    504321          0      0  OK
+  ETH/USDC 15m        46    168108    168108    168108    168108          0      0  OK
+  ETH/USDC 1h         12     42031     42031     42031     42031          0      0  OK
+  ETH/USDC 4h          3     10512     10512     10512     10512          0      0  OK
+  ETH/USDC 1d          1      1753      1753      1753      1753          0      0  OK
+  ETH/USDC 1w          1       246       246       246       246          0      0  OK
+  SOL/USDC 1m        594   1719780   1719780   1719780   1719780          0      0  OK
+  SOL/USDC 5m        119    343956    343956    343956    343956          0      0  OK
+  SOL/USDC 15m        40    114652    114652    114652    114652          0      0  OK
+  SOL/USDC 1h         10     28663     28663     28663     28663          0      0  OK
+  SOL/USDC 4h          3      7167      7167      7167      7167          0      0  OK
+  SOL/USDC 1d          1      1196      1196      1196      1196          0      0  OK
+  SOL/USDC 1w          1       168       168       168       168          0      0  OK
+  --------------------------------------------------------------------------------------------------
+  total staged=8712718 audit=8712718 collisions=0 audit=0 series=21/21 → MATCH
+  started=2026-09-13T17:56:57.124833+00:00 finished=2026-09-13T18:07:40.331440+00:00
+EXIT=0

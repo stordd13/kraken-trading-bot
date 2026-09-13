@@ -120,7 +120,7 @@ src/krakenbot/
 
 scripts/
 ├── backtest.py           # BacktestEngine (signal + grid)
-├── binance_vision_import.py  # Historical data import (Binance, frozen 2021-01 → 2026-06)
+├── binance_vision_import.py  # Historical data import (Binance, frozen 2021-01 → 2026-03, period-end stamped since B4.1)
 ├── run_p6_backtests.py   # 24-combo backtest campaign (multiprocessing)
 ├── run_p7_grid_search.py # Parameter grid search
 └── dashboard.py          # Dash dashboard

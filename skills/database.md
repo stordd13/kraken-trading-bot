@@ -98,13 +98,12 @@ GROUP BY exchange, pair, interval
 ORDER BY exchange, pair, interval;
 ```
 
-Notes : SOL/USDC commence le 2021-09-24 sur Binance. **Conventions de `timestamp` divergentes, vérifiées
-en DB (B3, 2026-09-11)** : les rows `binance` (import Vision) sont stampées à l'**open time** (BTC 1d
-`2024-01-01` = candle du 1er janvier, 1m se termine à `23:59`) ; les rows `bybit` (WS B2 + import B3) sont
-stampées en **fin de période** (`start + interval` = `end + 1 ms`). Même candle 1d/1w ⇒ timestamps décalés
-d'exactement un intervalle entre les deux exchanges. Ne jamais mélanger les deux exchanges dans une même
-série (filtre `settings.exchange_name`) ; remédiation côté Binance/moteur de backtest tranchée en B4
-(`PROJECT_CONTEXT.md` § Dettes).
+Notes : SOL/USDC commence le 2021-09-24 sur Binance. **Convention de `timestamp` : fin de période pour tous les exchanges** (`open + interval` ;
+Bybit `end + 1 ms`). Historique : les rows `binance` (import Vision) étaient stampées à l'**open time**
+(constat B3, 2026-09-11, dette 11) ; elles ont été **re-stampées en fin de période le 2026-09-13 (B4.1)** —
+`results/B4_1_timestamp_restamp_report.md`, scripts `scripts/audit/b4_*.py`, manifeste
+`results/b4_binance_stamp_boundaries.json`. `scripts/binance_vision_import.py` écrit la fin de période depuis
+B4.1. Les 8.7 M rows `binance` finissent le `2026-04-01 00:00` (1w : `2026-04-06`).
 
 ## Inserts — TOUJOURS BATCHER
 
