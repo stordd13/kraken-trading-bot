@@ -1,0 +1,51 @@
+mode=DRY-RUN series=21 max_rows_per_tx=4000 ledger=/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/37dd2cf3-0179-463c-8fb5-498323ba8fbc/scratchpad/dryrun_ledger.jsonl resumed_windows=0
+  BTC/USDC 1m: windows=690 skipped=0 staged=2521597 collisions=0 (133.9s)
+  BTC/USDC 5m: windows=138 skipped=0 staged=504321 collisions=0 (25.1s)
+  BTC/USDC 15m: windows=46 skipped=0 staged=168108 collisions=0 (11.7s)
+  BTC/USDC 1h: windows=12 skipped=0 staged=42031 collisions=0 (5.6s)
+  BTC/USDC 4h: windows=3 skipped=0 staged=10512 collisions=0 (4.5s)
+  BTC/USDC 1d: windows=1 skipped=0 staged=1753 collisions=0 (4.1s)
+  BTC/USDC 1w: windows=1 skipped=0 staged=246 collisions=0 (3.7s)
+  ETH/USDC 1m: windows=690 skipped=0 staged=2521597 collisions=0 (112.5s)
+  ETH/USDC 5m: windows=138 skipped=0 staged=504321 collisions=0 (25.6s)
+  ETH/USDC 15m: windows=46 skipped=0 staged=168108 collisions=0 (9.9s)
+  ETH/USDC 1h: windows=12 skipped=0 staged=42031 collisions=0 (5.2s)
+  ETH/USDC 4h: windows=3 skipped=0 staged=10512 collisions=0 (3.7s)
+  ETH/USDC 1d: windows=1 skipped=0 staged=1753 collisions=0 (3.2s)
+  ETH/USDC 1w: windows=1 skipped=0 staged=246 collisions=0 (3.3s)
+  SOL/USDC 1m: windows=594 skipped=0 staged=1719780 collisions=0 (93.7s)
+  SOL/USDC 5m: windows=119 skipped=0 staged=343956 collisions=0 (21.1s)
+  SOL/USDC 15m: windows=40 skipped=0 staged=114652 collisions=0 (8.5s)
+  SOL/USDC 1h: windows=10 skipped=0 staged=28663 collisions=0 (3.7s)
+  SOL/USDC 4h: windows=3 skipped=0 staged=7167 collisions=0 (2.8s)
+  SOL/USDC 1d: windows=1 skipped=0 staged=1196 collisions=0 (2.4s)
+  SOL/USDC 1w: windows=1 skipped=0 staged=168 collisions=0 (2.6s)
+
+====================================================================================================
+  B4.1 re-stamp DRY-RUN — exchange='binance' manifest=2026-09-13T16:25:04.924320+00:00
+====================================================================================================
+  Series         windows    staged     audit   deleted  inserted collisions  audit  Status
+  BTC/USDC 1m        690   2521597   2521597   2521597   2521597          0      0  OK
+  BTC/USDC 5m        138    504321    504321    504321    504321          0      0  OK
+  BTC/USDC 15m        46    168108    168108    168108    168108          0      0  OK
+  BTC/USDC 1h         12     42031     42031     42031     42031          0      0  OK
+  BTC/USDC 4h          3     10512     10512     10512     10512          0      0  OK
+  BTC/USDC 1d          1      1753      1753      1753      1753          0      0  OK
+  BTC/USDC 1w          1       246       246       246       246          0      0  OK
+  ETH/USDC 1m        690   2521597   2521597   2521597   2521597          0      0  OK
+  ETH/USDC 5m        138    504321    504321    504321    504321          0      0  OK
+  ETH/USDC 15m        46    168108    168108    168108    168108          0      0  OK
+  ETH/USDC 1h         12     42031     42031     42031     42031          0      0  OK
+  ETH/USDC 4h          3     10512     10512     10512     10512          0      0  OK
+  ETH/USDC 1d          1      1753      1753      1753      1753          0      0  OK
+  ETH/USDC 1w          1       246       246       246       246          0      0  OK
+  SOL/USDC 1m        594   1719780   1719780   1719780   1719780          0      0  OK
+  SOL/USDC 5m        119    343956    343956    343956    343956          0      0  OK
+  SOL/USDC 15m        40    114652    114652    114652    114652          0      0  OK
+  SOL/USDC 1h         10     28663     28663     28663     28663          0      0  OK
+  SOL/USDC 4h          3      7167      7167      7167      7167          0      0  OK
+  SOL/USDC 1d          1      1196      1196      1196      1196          0      0  OK
+  SOL/USDC 1w          1       168       168       168       168          0      0  OK
+  --------------------------------------------------------------------------------------------------
+  total staged=8712718 audit=8712718 collisions=0 audit=0 → MATCH
+  started=2026-09-13T16:26:55.984847+00:00 finished=2026-09-13T16:35:03.463888+00:00
