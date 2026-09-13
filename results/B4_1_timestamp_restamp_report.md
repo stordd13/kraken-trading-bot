@@ -199,7 +199,11 @@ rows / 0 collision**, estimation de durée du `--execute` à fournir, **STOP au 
 
 ## 3. Migration (étape 2, serveur) — à compléter après GATE 2
 
-- Backup frais : _à consigner (fichier, taille, horodatage)_.
+- Backup frais (avant toute écriture, collector encore actif) : `~/backups/krakenbot/krakenbot_20260913_b4pre.dump`,
+  `pg_dump -Fc --no-owner --no-acl` dans le container, **254 100 825 octets**, créé `2026-09-13 17:34:29 UTC`,
+  terminé `17:35:29 UTC`, exit 0, sha256 `89639d98172c64fcd46c654d63bcea6ead313045dcb5129984096fbc9f7166b3`,
+  `pg_restore -l` : 1 172 entrées TOC (144 TABLE DATA, `market_data_ohlc` + chunks `_hyper_2_*`). Le dump du
+  7 sept (211 MB, antérieur à l'import Bybit) est ignoré. Disque serveur : 59 GB libres.
 - Arrêt collector : _heure UTC_. Dry-run serveur : _sortie_. GO GATE 2 : _heure_.
 - `--execute --i-have-a-fresh-backup --ledger ~/b4_restamp_ledger.jsonl` : _durée, tableau final, VACUUM ANALYZE_.
 - Reprise collector : _heure UTC, `active (running)`, logs WS propres_.

@@ -1,28 +1,155 @@
-mode=DRY-RUN series=21 max_rows_per_tx=4000 ledger=/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/37dd2cf3-0179-463c-8fb5-498323ba8fbc/scratchpad/dryrun_ledger.jsonl resumed_windows=0
-  BTC/USDC 1m: windows=690 skipped=0 staged=2521597 collisions=0 (133.9s)
-  BTC/USDC 5m: windows=138 skipped=0 staged=504321 collisions=0 (25.1s)
-  BTC/USDC 15m: windows=46 skipped=0 staged=168108 collisions=0 (11.7s)
-  BTC/USDC 1h: windows=12 skipped=0 staged=42031 collisions=0 (5.6s)
-  BTC/USDC 4h: windows=3 skipped=0 staged=10512 collisions=0 (4.5s)
-  BTC/USDC 1d: windows=1 skipped=0 staged=1753 collisions=0 (4.1s)
-  BTC/USDC 1w: windows=1 skipped=0 staged=246 collisions=0 (3.7s)
-  ETH/USDC 1m: windows=690 skipped=0 staged=2521597 collisions=0 (112.5s)
-  ETH/USDC 5m: windows=138 skipped=0 staged=504321 collisions=0 (25.6s)
-  ETH/USDC 15m: windows=46 skipped=0 staged=168108 collisions=0 (9.9s)
-  ETH/USDC 1h: windows=12 skipped=0 staged=42031 collisions=0 (5.2s)
-  ETH/USDC 4h: windows=3 skipped=0 staged=10512 collisions=0 (3.7s)
-  ETH/USDC 1d: windows=1 skipped=0 staged=1753 collisions=0 (3.2s)
-  ETH/USDC 1w: windows=1 skipped=0 staged=246 collisions=0 (3.3s)
-  SOL/USDC 1m: windows=594 skipped=0 staged=1719780 collisions=0 (93.7s)
-  SOL/USDC 5m: windows=119 skipped=0 staged=343956 collisions=0 (21.1s)
-  SOL/USDC 15m: windows=40 skipped=0 staged=114652 collisions=0 (8.5s)
-  SOL/USDC 1h: windows=10 skipped=0 staged=28663 collisions=0 (3.7s)
-  SOL/USDC 4h: windows=3 skipped=0 staged=7167 collisions=0 (2.8s)
-  SOL/USDC 1d: windows=1 skipped=0 staged=1196 collisions=0 (2.4s)
-  SOL/USDC 1w: windows=1 skipped=0 staged=168 collisions=0 (2.6s)
+mode=DRY-RUN series=21 max_rows_per_tx=4000 manifest=2026-09-13T17:38:35.614359+00:00 progress_table=b4_restamp_progress ledger=/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/37dd2cf3-0179-463c-8fb5-498323ba8fbc/scratchpad/dryrun_ledger2.jsonl
+      EXPLAIN stage: Insert on b4_stage  (cost=940.35..3591.92 rows=0 width=0) | ->  Result  (cost=940.35..3591.92 rows=3387 width=72) | ->  Bitmap Heap Scan on _hyper_2_3313_chunk  (cost=940.35..3541.12 rows=3387 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=940.35..3541.12 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=940.35..3541.12 rows=0 width=0) | Delete on _hyper_2_3313_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    BTC/USDC 1m: 50/690 windows, 200000 rows, 8s elapsed, 6.61 win/s, ETA 97s
+    BTC/USDC 1m: 100/690 windows, 400000 rows, 15s elapsed, 6.68 win/s, ETA 88s
+    BTC/USDC 1m: 150/690 windows, 600000 rows, 22s elapsed, 6.76 win/s, ETA 80s
+    BTC/USDC 1m: 200/690 windows, 800000 rows, 29s elapsed, 6.85 win/s, ETA 72s
+    BTC/USDC 1m: 250/690 windows, 1000000 rows, 36s elapsed, 6.91 win/s, ETA 64s
+    BTC/USDC 1m: 300/690 windows, 1200000 rows, 43s elapsed, 6.94 win/s, ETA 56s
+    BTC/USDC 1m: 350/690 windows, 1400000 rows, 50s elapsed, 6.97 win/s, ETA 49s
+    BTC/USDC 1m: 400/690 windows, 1599920 rows, 57s elapsed, 7.00 win/s, ETA 41s
+    BTC/USDC 1m: 450/690 windows, 1606570 rows, 63s elapsed, 7.12 win/s, ETA 34s
+    BTC/USDC 1m: 500/690 windows, 1763550 rows, 70s elapsed, 7.14 win/s, ETA 27s
+    BTC/USDC 1m: 550/690 windows, 1963550 rows, 77s elapsed, 7.15 win/s, ETA 20s
+    BTC/USDC 1m: 600/690 windows, 2163430 rows, 84s elapsed, 7.15 win/s, ETA 13s
+    BTC/USDC 1m: 650/690 windows, 2362876 rows, 91s elapsed, 7.16 win/s, ETA 6s
+    BTC/USDC 1m: 690/690 windows, 2521597 rows, 96s elapsed, 7.16 win/s, ETA 0s
+  BTC/USDC 1m: plan=690 resumed=0 run=690 staged=2521597 collisions=0 (96.3s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..6274.55 rows=0 width=0) | ->  Result  (cost=0.42..6274.55 rows=3271 width=72) | ->  Index Scan using _hyper_2_3313_chunk_ix_ohlc_pair_timestamp on _hyper_2_3313_chunk  (cost=0.42..6225.48 rows=3271 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..6225.48 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..6225.48 rows=0 width=0) | Delete on _hyper_2_3313_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    BTC/USDC 5m: 50/138 windows, 200000 rows, 8s elapsed, 6.04 win/s, ETA 15s
+    BTC/USDC 5m: 100/138 windows, 352710 rows, 16s elapsed, 6.41 win/s, ETA 6s
+    BTC/USDC 5m: 138/138 windows, 504321 rows, 21s elapsed, 6.46 win/s, ETA 0s
+  BTC/USDC 5m: plan=138 resumed=0 run=138 staged=504321 collisions=0 (21.4s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..14918.57 rows=0 width=0) | ->  Result  (cost=0.42..14918.57 rows=3215 width=72) | ->  Append  (cost=0.42..14870.34 rows=3215 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..14870.34 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..14870.34 rows=0 width=0) | Delete on _hyper_2_3253_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    BTC/USDC 15m: 46/46 windows, 168108 rows, 9s elapsed, 4.84 win/s, ETA 0s
+  BTC/USDC 15m: plan=46 resumed=0 run=46 staged=168108 collisions=0 (9.5s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..55860.31 rows=0 width=0) | ->  Result  (cost=0.42..55860.31 rows=3596 width=73) | ->  Append  (cost=0.42..55806.37 rows=3596 width=74)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..55806.37 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..55806.37 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    BTC/USDC 1h: 12/12 windows, 42031 rows, 5s elapsed, 2.35 win/s, ETA 0s
+  BTC/USDC 1h: plan=12 resumed=0 run=12 staged=42031 collisions=0 (5.1s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..156826.00 rows=0 width=0) | ->  Result  (cost=0.42..156826.00 rows=3343 width=82) | ->  Append  (cost=0.42..156775.86 rows=3343 width=81)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..156775.86 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..156775.86 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    BTC/USDC 4h: 3/3 windows, 10512 rows, 4s elapsed, 0.73 win/s, ETA 0s
+  BTC/USDC 4h: plan=3 resumed=0 run=3 staged=10512 collisions=0 (4.1s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..297603.02 rows=0 width=0) | ->  Result  (cost=0.42..297603.02 rows=1606 width=85) | ->  Append  (cost=0.42..297578.93 rows=1606 width=86)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..297578.93 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..297578.93 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    BTC/USDC 1d: 1/1 windows, 1753 rows, 4s elapsed, 0.26 win/s, ETA 0s
+  BTC/USDC 1d: plan=1 resumed=0 run=1 staged=1753 collisions=0 (3.8s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..296698.38 rows=0 width=0) | ->  Result  (cost=0.42..296698.38 rows=327 width=85) | ->  Append  (cost=0.42..296693.48 rows=327 width=85)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..296693.48 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..296693.48 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    BTC/USDC 1w: 1/1 windows, 246 rows, 3s elapsed, 0.29 win/s, ETA 0s
+  BTC/USDC 1w: plan=1 resumed=0 run=1 staged=246 collisions=0 (3.4s)
+      EXPLAIN stage: Insert on b4_stage  (cost=940.36..3612.11 rows=0 width=0) | ->  Result  (cost=940.36..3612.11 rows=3422 width=72) | ->  Bitmap Heap Scan on _hyper_2_3313_chunk  (cost=940.36..3560.78 rows=3422 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=940.36..3560.78 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=940.36..3560.78 rows=0 width=0) | Delete on _hyper_2_3313_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    ETH/USDC 1m: 50/690 windows, 200000 rows, 7s elapsed, 6.86 win/s, ETA 93s
+    ETH/USDC 1m: 100/690 windows, 400000 rows, 15s elapsed, 6.84 win/s, ETA 86s
+    ETH/USDC 1m: 150/690 windows, 600000 rows, 22s elapsed, 6.86 win/s, ETA 79s
+    ETH/USDC 1m: 200/690 windows, 800000 rows, 29s elapsed, 6.89 win/s, ETA 71s
+    ETH/USDC 1m: 250/690 windows, 1000000 rows, 36s elapsed, 6.94 win/s, ETA 63s
+    ETH/USDC 1m: 300/690 windows, 1200000 rows, 43s elapsed, 6.97 win/s, ETA 56s
+    ETH/USDC 1m: 350/690 windows, 1400000 rows, 50s elapsed, 7.00 win/s, ETA 49s
+    ETH/USDC 1m: 400/690 windows, 1599920 rows, 57s elapsed, 7.02 win/s, ETA 41s
+    ETH/USDC 1m: 450/690 windows, 1606570 rows, 63s elapsed, 7.13 win/s, ETA 34s
+    ETH/USDC 1m: 500/690 windows, 1763550 rows, 70s elapsed, 7.15 win/s, ETA 27s
+    ETH/USDC 1m: 550/690 windows, 1963550 rows, 77s elapsed, 7.15 win/s, ETA 20s
+    ETH/USDC 1m: 600/690 windows, 2163430 rows, 84s elapsed, 7.14 win/s, ETA 13s
+    ETH/USDC 1m: 650/690 windows, 2362876 rows, 91s elapsed, 7.14 win/s, ETA 6s
+    ETH/USDC 1m: 690/690 windows, 2521597 rows, 97s elapsed, 7.14 win/s, ETA 0s
+  ETH/USDC 1m: plan=690 resumed=0 run=690 staged=2521597 collisions=0 (96.7s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..6293.01 rows=0 width=0) | ->  Result  (cost=0.42..6293.01 rows=3304 width=72) | ->  Index Scan using _hyper_2_3313_chunk_ix_ohlc_pair_timestamp on _hyper_2_3313_chunk  (cost=0.42..6243.45 rows=3304 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..6243.45 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..6243.45 rows=0 width=0) | Delete on _hyper_2_3313_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    ETH/USDC 5m: 50/138 windows, 200000 rows, 8s elapsed, 6.05 win/s, ETA 15s
+    ETH/USDC 5m: 100/138 windows, 352710 rows, 16s elapsed, 6.41 win/s, ETA 6s
+    ETH/USDC 5m: 138/138 windows, 504321 rows, 21s elapsed, 6.45 win/s, ETA 0s
+  ETH/USDC 5m: plan=138 resumed=0 run=138 staged=504321 collisions=0 (21.4s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..14943.84 rows=0 width=0) | ->  Result  (cost=0.42..14943.84 rows=3225 width=72) | ->  Append  (cost=0.42..14895.46 rows=3225 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..14895.46 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..14895.46 rows=0 width=0) | Delete on _hyper_2_3253_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    ETH/USDC 15m: 46/46 windows, 168108 rows, 10s elapsed, 4.81 win/s, ETA 0s
+  ETH/USDC 15m: plan=46 resumed=0 run=46 staged=168108 collisions=0 (9.6s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..55885.04 rows=0 width=0) | ->  Result  (cost=0.42..55885.04 rows=3600 width=73) | ->  Append  (cost=0.42..55831.04 rows=3600 width=74)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..55831.04 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..55831.04 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    ETH/USDC 1h: 12/12 windows, 42031 rows, 5s elapsed, 2.49 win/s, ETA 0s
+  ETH/USDC 1h: plan=12 resumed=0 run=12 staged=42031 collisions=0 (4.8s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..156761.74 rows=0 width=0) | ->  Result  (cost=0.42..156761.74 rows=3336 width=82) | ->  Append  (cost=0.42..156711.70 rows=3336 width=81)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..156711.70 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..156711.70 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    ETH/USDC 4h: 3/3 windows, 10512 rows, 4s elapsed, 0.83 win/s, ETA 0s
+  ETH/USDC 4h: plan=3 resumed=0 run=3 staged=10512 collisions=0 (3.6s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..297437.51 rows=0 width=0) | ->  Result  (cost=0.42..297437.51 rows=1590 width=85) | ->  Append  (cost=0.42..297413.66 rows=1590 width=86)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..297413.66 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..297413.66 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    ETH/USDC 1d: 1/1 windows, 1753 rows, 4s elapsed, 0.26 win/s, ETA 0s
+  ETH/USDC 1d: plan=1 resumed=0 run=1 staged=1753 collisions=0 (3.9s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..296597.44 rows=0 width=0) | ->  Result  (cost=0.42..296597.44 rows=323 width=85) | ->  Append  (cost=0.42..296592.59 rows=323 width=85)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..296592.59 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..296592.59 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    ETH/USDC 1w: 1/1 windows, 246 rows, 4s elapsed, 0.27 win/s, ETA 0s
+  ETH/USDC 1w: plan=1 resumed=0 run=1 staged=246 collisions=0 (3.8s)
+      EXPLAIN stage: Insert on b4_stage  (cost=940.31..3492.80 rows=0 width=0) | ->  Result  (cost=940.31..3492.80 rows=3211 width=72) | ->  Bitmap Heap Scan on _hyper_2_3313_chunk  (cost=940.31..3444.64 rows=3211 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=940.31..3444.64 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=940.31..3444.64 rows=0 width=0) | Delete on _hyper_2_3313_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    SOL/USDC 1m: 50/594 windows, 200000 rows, 8s elapsed, 6.66 win/s, ETA 82s
+    SOL/USDC 1m: 100/594 windows, 400000 rows, 15s elapsed, 6.65 win/s, ETA 74s
+    SOL/USDC 1m: 150/594 windows, 600000 rows, 22s elapsed, 6.70 win/s, ETA 66s
+    SOL/USDC 1m: 200/594 windows, 800000 rows, 30s elapsed, 6.75 win/s, ETA 58s
+    SOL/USDC 1m: 250/594 windows, 1000000 rows, 37s elapsed, 6.76 win/s, ETA 51s
+    SOL/USDC 1m: 300/594 windows, 1187520 rows, 44s elapsed, 6.79 win/s, ETA 43s
+    SOL/USDC 1m: 350/594 windows, 1187520 rows, 51s elapsed, 6.92 win/s, ETA 35s
+    SOL/USDC 1m: 400/594 windows, 1187520 rows, 57s elapsed, 7.02 win/s, ETA 28s
+    SOL/USDC 1m: 450/594 windows, 1187520 rows, 63s elapsed, 7.13 win/s, ETA 20s
+    SOL/USDC 1m: 500/594 windows, 1344500 rows, 70s elapsed, 7.13 win/s, ETA 13s
+    SOL/USDC 1m: 550/594 windows, 1544500 rows, 77s elapsed, 7.11 win/s, ETA 6s
+    SOL/USDC 1m: 594/594 windows, 1719780 rows, 84s elapsed, 7.10 win/s, ETA 0s
+  SOL/USDC 1m: plan=594 resumed=0 run=594 staged=1719780 collisions=0 (83.7s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..6180.95 rows=0 width=0) | ->  Result  (cost=0.42..6180.95 rows=3100 width=72) | ->  Index Scan using _hyper_2_3313_chunk_ix_ohlc_pair_timestamp on _hyper_2_3313_chunk  (cost=0.42..6134.45 rows=3100 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..6134.45 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..6134.45 rows=0 width=0) | Delete on _hyper_2_3313_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    SOL/USDC 5m: 50/119 windows, 200000 rows, 8s elapsed, 5.89 win/s, ETA 12s
+    SOL/USDC 5m: 100/119 windows, 268900 rows, 16s elapsed, 6.40 win/s, ETA 3s
+    SOL/USDC 5m: 119/119 windows, 343956 rows, 19s elapsed, 6.38 win/s, ETA 0s
+  SOL/USDC 5m: plan=119 resumed=0 run=119 staged=343956 collisions=0 (18.7s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..14614.02 rows=0 width=0) | ->  Result  (cost=0.42..14614.02 rows=2966 width=72) | ->  Append  (cost=0.42..14569.53 rows=2966 width=72)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..14569.53 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..14569.53 rows=0 width=0) | Delete on _hyper_2_3253_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    SOL/USDC 15m: 40/40 windows, 114652 rows, 8s elapsed, 5.28 win/s, ETA 0s
+  SOL/USDC 15m: plan=40 resumed=0 run=40 staged=114652 collisions=0 (7.6s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..51723.09 rows=0 width=0) | ->  Result  (cost=0.42..51723.09 rows=2902 width=73) | ->  Append  (cost=0.42..51679.56 rows=2902 width=74)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..51679.56 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..51679.56 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    SOL/USDC 1h: 10/10 windows, 28663 rows, 3s elapsed, 2.99 win/s, ETA 0s
+  SOL/USDC 1h: plan=10 resumed=0 run=10 staged=28663 collisions=0 (3.3s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..145022.11 rows=0 width=0) | ->  Result  (cost=0.42..145022.11 rows=2726 width=82) | ->  Append  (cost=0.42..144981.22 rows=2726 width=81)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..144981.22 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..144981.22 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    SOL/USDC 4h: 3/3 windows, 7167 rows, 2s elapsed, 1.31 win/s, ETA 0s
+  SOL/USDC 4h: plan=3 resumed=0 run=3 staged=7167 collisions=0 (2.3s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..209314.84 rows=0 width=0) | ->  Result  (cost=0.42..209314.84 rows=899 width=85) | ->  Append  (cost=0.42..209301.35 rows=899 width=84)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..209301.35 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..209301.35 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    SOL/USDC 1d: 1/1 windows, 1196 rows, 2s elapsed, 0.50 win/s, ETA 0s
+  SOL/USDC 1d: plan=1 resumed=0 run=1 staged=1196 collisions=0 (2.0s)
+      EXPLAIN stage: Insert on b4_stage  (cost=0.42..209174.43 rows=0 width=0) | ->  Result  (cost=0.42..209174.43 rows=190 width=83) | ->  Append  (cost=0.42..209171.58 rows=190 width=83)
+      EXPLAIN delete: Custom Scan (ModifyHypertable)  (cost=0.42..209171.58 rows=0 width=0) | ->  Delete on market_data_ohlc  (cost=0.42..209171.58 rows=0 width=0) | Delete on _hyper_2_3251_chunk market_data_ohlc_1
+      EXPLAIN insert: Custom Scan (ModifyHypertable)  (cost=0.00..12.90 rows=0 width=0) | ->  Insert on market_data_ohlc  (cost=0.00..12.90 rows=0 width=0) | Conflict Resolution: NOTHING
+    SOL/USDC 1w: 1/1 windows, 168 rows, 2s elapsed, 0.51 win/s, ETA 0s
+  SOL/USDC 1w: plan=1 resumed=0 run=1 staged=168 collisions=0 (2.0s)
 
 ====================================================================================================
-  B4.1 re-stamp DRY-RUN — exchange='binance' manifest=2026-09-13T16:25:04.924320+00:00
+  B4.1 re-stamp DRY-RUN — exchange='binance' manifest=2026-09-13T17:38:35.614359+00:00
 ====================================================================================================
   Series         windows    staged     audit   deleted  inserted collisions  audit  Status
   BTC/USDC 1m        690   2521597   2521597   2521597   2521597          0      0  OK
@@ -47,5 +174,5 @@ mode=DRY-RUN series=21 max_rows_per_tx=4000 ledger=/private/tmp/claude-501/-User
   SOL/USDC 1d          1      1196      1196      1196      1196          0      0  OK
   SOL/USDC 1w          1       168       168       168       168          0      0  OK
   --------------------------------------------------------------------------------------------------
-  total staged=8712718 audit=8712718 collisions=0 audit=0 → MATCH
-  started=2026-09-13T16:26:55.984847+00:00 finished=2026-09-13T16:35:03.463888+00:00
+  total staged=8712718 audit=8712718 collisions=0 audit=0 series=21/21 → MATCH
+  started=2026-09-13T17:38:48.847282+00:00 finished=2026-09-13T17:46:16.579225+00:00
