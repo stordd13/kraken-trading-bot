@@ -191,8 +191,13 @@ class BacktestMetrics:
     # P&L metrics
     total_pnl: Decimal = Decimal("0")
     total_fees: Decimal = Decimal("0")
-    net_pnl: Decimal = Decimal("0")  # total_pnl - total_fees
-    unrealized_pnl: Decimal = Decimal("0")  # Force-close P&L from positions open at backtest end
+    # B4.3: total_pnl minus the BUY-side fees only — every SELL fee (maker fill, market exit,
+    # forced liquidation) is already netted inside its trade's pnl. When the run ends flat
+    # (no open inventory) net_pnl == ending_balance - starting_balance, in both engines.
+    net_pnl: Decimal = Decimal("0")
+    # Grid engine: P&L realised by the end-of-run market liquidation of the terminal inventory
+    # (B4.3). The key name is kept for schema stability (P6/P7 JSON, gold hash, harness).
+    unrealized_pnl: Decimal = Decimal("0")
 
     # Performance ratios
     win_rate: float = 0.0  # winning_trades / total_trades
@@ -875,8 +880,12 @@ class BacktestEngine:
         if total_losses > 0:
             self.metrics.profit_factor = float(total_wins / total_losses)
 
-        # Net P&L
-        self.metrics.net_pnl = self.metrics.total_pnl - self.metrics.total_fees
+        # Net P&L (B4.3): sell fees are already netted inside each trade's pnl (proceeds - fee
+        # - cost basis, cost basis = order amount - buy fee): subtract the buy fees once.
+        buy_fees = sum(
+            (t.fee for t in self.metrics.trades if t.side == TradeSide.BUY), Decimal("0")
+        )
+        self.metrics.net_pnl = self.metrics.total_pnl - buy_fees
 
         # Final balance — prefer equity curve (values crypto at last candle close)
         if self.equity_curve:
@@ -1564,6 +1573,7 @@ class GridBacktester:
         self._last_timestamp: datetime | None = None
         self._strategy_obj: Any = None
         self.liquidated_positions: int = 0
+        self.buy_fees: Decimal = Decimal("0")
         self.inventory_divergence_btc: Decimal = Decimal("0")
         self.liquidation_dust_btc: Decimal = Decimal("0")
 
@@ -2359,7 +2369,14 @@ class GridBacktester:
 
         self.metrics.total_trades = self.pairs_completed + self.liquidated_positions
         self.metrics.total_fees = self.total_fees
-        self.metrics.net_pnl = self.metrics.total_pnl - self.total_fees
+        # B4.3: every SELL fee (maker fill or taker liquidation) is already inside its trade's
+        # pnl (pnl = net proceeds - cost basis, cost basis = amount_usdc - buy fee), so the buy
+        # fee is the only fee not yet netted. Once the inventory is liquidated:
+        # net_pnl == usdc_balance - starting_balance == ending_balance - starting_balance.
+        self.buy_fees = sum(
+            (t.fee for t in self.metrics.trades if t.side == TradeSide.BUY), Decimal("0")
+        )
+        self.metrics.net_pnl = self.metrics.total_pnl - self.buy_fees
 
         if self.metrics.total_trades > 0:
             self.metrics.win_rate = self.metrics.winning_trades / self.metrics.total_trades
@@ -2470,9 +2487,13 @@ class GridBacktester:
         print("-" * 80)
 
         print(f"{'Grid Pairs Completed (maker):':<30} {self.pairs_completed}")
-        print(f"{'Grid Profit:':<30} {float(self.grid_profit):+.2f} USDC")
+        print(f"{'Grid Profit (maker pairs):':<30} {float(self.grid_profit):+.2f} USDC")
         print(f"{'Total Fees:':<30} {float(self.total_fees):.2f} USDC")
-        print(f"{'Net Grid Profit:':<30} {float(self.grid_profit - self.total_fees):+.2f} USDC")
+        print(f"{'Buy Fees:':<30} {float(self.buy_fees):.2f} USDC")
+        print(
+            f"{'Sell Fees (incl. liquidation):':<30} "
+            f"{float(self.total_fees - self.buy_fees):.2f} USDC"
+        )
 
         print(
             f"{'BTC residual after liquidation:':<30} {float(self.btc_held):.6f} BTC "
@@ -2780,7 +2801,10 @@ def dump_trades_json(
         # B4.3 terminal liquidation block — outside the harness' schema-1 projection.
         tagged = [t for t in trades if t.forced_liquidation]
         first = tagged[0] if tagged else None
+        buy_fees = getattr(engine, "buy_fees", Decimal("0"))
         payload["liquidation"] = {
+            "buy_fees": _dec(buy_fees),
+            "sell_fees": _dec(engine.total_fees - buy_fees),
             "positions": getattr(engine, "liquidated_positions", 0),
             "trades": len(tagged),
             "residual_trade_btc": _dec(
