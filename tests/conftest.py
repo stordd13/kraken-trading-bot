@@ -9,6 +9,7 @@ This module provides common fixtures used across all test modules including:
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Generator
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -30,17 +31,62 @@ from krakenbot.config.settings import (
 )
 from krakenbot.models.base import BotStatus, TradeSide, TradeStatus
 
+#: Exchange credentials purged from os.environ for every test. ``_env_file=None`` only
+#: disables pydantic-settings' dotenv source, never its environment source, so a key leaked
+#: into os.environ (a script's ``load_dotenv`` executed at run time, or a developer shell
+#: exporting it) would silently satisfy "credentials present" assertions.
+_EXCHANGE_CREDENTIAL_VARS = (
+    "BYBIT_API_KEY",
+    "BYBIT_API_SECRET",
+    "BYBIT_TRADE_API_KEY",
+    "BYBIT_TRADE_API_SECRET",
+    "KRAKEN_API_KEY",
+    "KRAKEN_API_SECRET",
+    "KRAKEN_FUTURES_API_KEY",
+    "KRAKEN_FUTURES_API_SECRET",
+    "BINANCE_API_KEY",
+    "BINANCE_API_SECRET",
+)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _session_event_loop() -> Generator[None, None, None]:
+    """Own the main thread's current event loop for the whole session and close it.
+
+    pytest-asyncio (1.3) calls ``asyncio.get_event_loop()`` while installing its temporary
+    policy before every async test. With no current loop, Python <= 3.13 creates one
+    implicitly and the plugin never closes it (it only keeps it as ``old_loop``). The first
+    sync test that calls ``asyncio.run()`` (the P6 runner in the gold-hash test) replaces the
+    current loop, the orphan is garbage-collected mid-test and its ``__del__`` raises
+    ``ResourceWarning: unclosed event loop`` (+ its two self-pipe sockets), which
+    ``filterwarnings = error`` turns into an ERROR at teardown. Providing the loop here means
+    nothing is created implicitly, and it is closed deterministically at session end.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        yield
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
+
 
 @pytest.fixture(autouse=True)
 def _default_exchange_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pin EXCHANGE_NAME for every test.
+    """Pin EXCHANGE_NAME and purge exchange credentials for every test.
 
     ``Settings.exchange_name`` is required (no default) since B1. Tests that build
     ``Settings(...)`` without it inherit Kraken here; tests targeting another
-    exchange pass ``exchange_name=`` explicitly (kwargs beat env vars). Setting it
-    unconditionally also shields the suite from the developer's local ``.env``.
+    exchange pass ``exchange_name=`` explicitly (kwargs beat env vars).
+
+    The credential purge makes the suite order-independent and hermetic: no
+    script may load ``.env`` at import time any more (B4.2), but ``runner.main()``
+    is invoked at run time by the DB-gated tests and a developer shell may export
+    keys. ``DATABASE_URL*`` is deliberately left alone (DB-gated tests need it).
     """
     monkeypatch.setenv("EXCHANGE_NAME", "kraken")
+    for var in _EXCHANGE_CREDENTIAL_VARS:
+        monkeypatch.delenv(var, raising=False)
 
 
 @pytest.fixture

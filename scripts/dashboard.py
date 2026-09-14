@@ -27,13 +27,15 @@ import argparse
 import asyncio
 from datetime import UTC, datetime, timedelta
 import os
+from pathlib import Path
 import sys
 import threading
 
 from dotenv import load_dotenv
 
-# Load .env file BEFORE accessing os.environ
-load_dotenv()
+# Load .env file BEFORE accessing os.environ (module level: get_settings() and DATABASE_URL
+# are read at import). Explicit project-root path: never depend on find_dotenv()'s frame walk.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import dash
 from dash import Input, Output, State, callback, dash_table, dcc, html
@@ -50,6 +52,10 @@ from krakenbot.config.settings import get_settings
 
 # Load settings and build per-strategy exit configuration
 _settings = get_settings()
+
+#: Dashboard backtests use the production fee model (PROJECT_CONTEXT.md §5); the OHLC data
+#: source of BacktestEngine keeps its default here (annex, out of B4.2 scope).
+DASHBOARD_FEE_MODEL = "bybit"
 
 # Per-strategy exit configuration for target price calculation.
 # Built dynamically from strategies.yaml — zero code changes when adding a new strategy.
@@ -906,6 +912,7 @@ def run_backtest_in_thread(strategy: str, days: int, interval: int, pair: str) -
                 db_manager=db_manager,
                 strategy_name=strategy,
                 candle_interval=interval,
+                fee_model=DASHBOARD_FEE_MODEL,
             )
 
             end_time = datetime.now(UTC)

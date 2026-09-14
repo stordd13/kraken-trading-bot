@@ -676,6 +676,7 @@ class TestP1IntegrationGaps:
         backtest_engine = BacktestEngine(
             settings,
             MagicMock(),
+            fee_model="kraken",
             strategy_name="grok_supertrend_4h",
             candle_interval=240,
         )
@@ -784,6 +785,7 @@ class TestP1IntegrationGaps:
         bt = BacktestEngine(
             settings,
             MagicMock(),
+            fee_model="kraken",
             strategy_name="grok_supertrend_4h",
             candle_interval=240,
         )

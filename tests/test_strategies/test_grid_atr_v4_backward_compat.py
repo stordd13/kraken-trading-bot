@@ -6,7 +6,8 @@ strategies.yaml params MUST produce a bit-identical metrics hash to the
 ``EXPECTED_HASH`` baseline frozen below.
 
 The baseline was captured on branch ``feat/p7-parameter-optimization``
-BEFORE the introduction of ``bear_protection_mode``. Any code change that
+BEFORE the introduction of ``bear_protection_mode`` and re-baselined in B4.2
+on the re-stamped Binance data (see ``EXPECTED_HASH``). Any code change that
 shifts a trade timestamp, fee calc, fill price, or PnL aggregation will
 break this hash — which is the intent.
 
@@ -66,10 +67,15 @@ WINDOW_START = datetime(2025, 3, 1, tzinfo=UTC)
 WINDOW_END = datetime(2025, 3, 15, tzinfo=UTC)
 
 # Set to None to print the actual hash on first run, then paste it back here.
-# Baseline captured 2026-05-29 on branch feat/p7-parameter-optimization,
-# pre-bear_protection_mode introduction. See plan in
-# .claude/plans/ok-c-est-parti-pour-binary-bunny.md (Phase A, point 4-bis).
-EXPECTED_HASH: str | None = "32c157cd30dfe3858eb6cb36876fef3c13e9ee0e8e1725d308ee6bc0dcfe955a"
+# History:
+# - 2026-05-29 (feat/p7-parameter-optimization, pre-bear_protection_mode, open-stamped
+#   Binance data): 32c157cd30dfe3858eb6cb36876fef3c13e9ee0e8e1725d308ee6bc0dcfe955a
+# - 2026-09-14 (B4.2, gate decision n3): re-baselined on the B4.1 re-stamped data
+#   (period-end timestamps, results/B4_1_timestamp_restamp_report.md § 7.2) under the
+#   Binance BNB flat fee model (maker == taker == 0.075 %, the runner's model since P6).
+#   B4.2 keeps this value bit-exact through the fee-model refactor (--fees binance);
+#   B4.3 may add a second, Bybit-pinned hash.
+EXPECTED_HASH: str | None = "abb3a6d80c918eb8d3ec1ebf9a16b3fc8ba29b23c785ccfb057cf90a3076a60b"
 
 
 # ---------------------------------------------------------------------------
@@ -103,12 +109,13 @@ def _run_combo(tmp_path: Path) -> dict[str, Any]:
         capital=runner.CAPITAL,
         exchange=runner.EXCHANGE,
         candle_interval=runner.CANDLE_INTERVAL,
+        fees="binance",
     ).to_dict()
 
     original_build = runner.build_job_list
-    runner.build_job_list = lambda: [job]  # type: ignore[assignment]
+    runner.build_job_list = lambda **_: [job]  # type: ignore[assignment]
     try:
-        argv = ["--output", str(out), "--force", "--serial"]
+        argv = ["--output", str(out), "--force", "--serial", "--fees", "binance"]
         rc = runner.main(argv)
         assert rc == 0, "backtest run failed"
         data = json.loads(out.read_text())

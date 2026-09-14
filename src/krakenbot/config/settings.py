@@ -576,8 +576,18 @@ class CommonIndicatorsSettings(BaseModel):
     adx_period: int = Field(default=14, ge=5, le=50)
 
 
+#: Backtest fee models accepted by ``--fees`` (scripts/backtest.py, P6/P7 runners, walk-forward).
+FEE_MODEL_NAMES: tuple[str, ...] = ("bybit", "binance", "kraken")
+
+
 class ExchangeFees(BaseModel):
-    """Trading fees configuration. Defaults match Kraken Spot (backward compat)."""
+    """Trading fees configuration. Defaults match Kraken Spot (backward compat).
+
+    ``settings.exchange_fees`` is the **live/paper** model consumed by the REST connectors
+    and by ``OrderManager`` paper fills. Backtests never read it: ``scripts/backtest.py``
+    and the runners take an explicit ``--fees`` name resolved through :meth:`from_name`
+    (B4.2 — the fee model is independent of the OHLC data source).
+    """
 
     maker: Decimal = Field(default=Decimal("0.0016"), description="Maker fee rate (limit orders)")
     taker: Decimal = Field(default=Decimal("0.0026"), description="Taker fee rate (market orders)")
@@ -605,6 +615,24 @@ class ExchangeFees(BaseModel):
             taker=Decimal("0.0025"),
             spread=Decimal("0.0002"),
             slippage=Decimal("0.0002"),
+        )
+
+    @classmethod
+    def from_name(cls, name: str) -> ExchangeFees:
+        """Backtest fee-model registry (``--fees``): ``bybit`` | ``binance`` | ``kraken``.
+
+        ``binance`` is the BNB flat model (maker == taker == 0.075 %) that produced every
+        P6/P7 result so far; ``kraken`` is field-identical to the bare ``ExchangeFees()``.
+        """
+        key = name.strip().lower()
+        if key == "bybit":
+            return cls.bybit_defaults()
+        if key == "binance":
+            return cls.binance_defaults(use_bnb=True)
+        if key == "kraken":
+            return cls.kraken_defaults()
+        raise ValueError(
+            f"Unknown fee model {name!r}; expected one of {', '.join(FEE_MODEL_NAMES)}"
         )
 
 
@@ -804,7 +832,10 @@ class Settings(BaseSettings):
     paper: PaperSettings = Field(default_factory=PaperSettings)
     telegram: TelegramSettings = Field(default_factory=TelegramSettings)
     common_indicators: CommonIndicatorsSettings = Field(default_factory=CommonIndicatorsSettings)
-    exchange_fees: ExchangeFees = Field(default_factory=ExchangeFees)
+    exchange_fees: ExchangeFees = Field(
+        default_factory=ExchangeFees,
+        description="Live/paper fee model (connectors, OrderManager); backtests use --fees",
+    )
 
     # ML settings (loaded from strategies.yaml ml: section)
     ml: MLSettings = Field(default_factory=lambda: MLSettings())

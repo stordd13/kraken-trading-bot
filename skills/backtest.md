@@ -10,10 +10,9 @@
 - **Fees** : tout ce qui a été produit jusqu'ici (P6, P7 phase 1) l'a été avec les fees Binance
   **0.075 % flat**. Ces résultats ne sont **pas transposables** à Bybit (maker 0.10 / taker 0.25,
   asymétriques) : la machinerie est réutilisable, les classements sont à rejouer en **B4**.
-- **Dette bloquante pour B4** : `scripts/backtest.py` applique un taux flat (`ExchangeFees.binance_defaults`
-  aux deux endroits `BacktestEngine.__init__` / `GridBacktester.__init__`, et `ExchangeFees()` nu = Kraken
-  pour tout autre `--exchange`). B4 exige maker et taker **distincts** (sorties SL/trailing/timeout =
-  MARKET = taker). À faire en ouverture de B4.
+- **Modèle de fees (B4.2)** : `--fees {bybit,binance,kraken}` est **obligatoire** sur `backtest.py`, les
+  runners P6/P7 et le walk-forward (absence → exit 2) ; il est indépendant de `--exchange`. Voir
+  « Modèle de fees » ci-dessous.
 - Résultats existants et verdicts : `results/INDEX.md`.
 
 ## Lancer les 24 backtests P6 en parallèle
@@ -24,25 +23,26 @@ worker ouvre sa propre connexion DB et exécute train + test + all séquentielle
 
 ```bash
 # Parallèle (par défaut), worker count auto-détecté
-poetry run python scripts/run_p6_backtests.py
+poetry run python scripts/run_p6_backtests.py --fees bybit
 
 # Explicite
-poetry run python scripts/run_p6_backtests.py --workers 8
+poetry run python scripts/run_p6_backtests.py --fees bybit --workers 8
 
-# Resume automatique : relancer sans --force → combos déjà faits sont skippés
-poetry run python scripts/run_p6_backtests.py
+# Resume automatique : relancer sans --force → combos déjà faits sont skippés (même --fees exigé :
+# un fichier produit sous un autre modèle, ou sans clé `fees` (pré-B4.2), est refusé → exit 2)
+poetry run python scripts/run_p6_backtests.py --fees bybit
 
 # Force re-run
-poetry run python scripts/run_p6_backtests.py --force
+poetry run python scripts/run_p6_backtests.py --fees bybit --force
 
 # Série (debug / gate déterminisme)
-poetry run python scripts/run_p6_backtests.py --serial
+poetry run python scripts/run_p6_backtests.py --fees bybit --serial
 
 # Sous-set pour tests rapides (après tri par durée estimée)
-poetry run python scripts/run_p6_backtests.py --limit 3
+poetry run python scripts/run_p6_backtests.py --fees bybit --limit 3
 
 # Timeout par job (défaut 1800s)
-poetry run python scripts/run_p6_backtests.py --timeout 600
+poetry run python scripts/run_p6_backtests.py --fees bybit --timeout 600
 ```
 
 ### Monitoring temps réel
@@ -62,6 +62,8 @@ serveur Hetzner 8 GB si jamais on lance en prod.
 ### Resume et atomic save
 
 Les résultats sont écrits dans `results/P6_phase_d_results.json` après CHAQUE job terminé
+(⚠️ ce fichier date de P6 sous fees Binance et n'a pas de clé `fees` : B4.3 écrit dans un **nouveau**
+`--output`, ex. `results/P6_phase_d_results_bybit.json`, sinon la reprise refuse — c'est voulu)
 via `tempfile + os.replace` atomique POSIX — crash/Ctrl+C ne corrompt pas le fichier. La
 sauvegarde est partagée par le main thread et le handler SIGINT via un `threading.Lock`.
 
@@ -88,16 +90,17 @@ configurations méritent un paper trading.
 
 ```bash
 # Phase 1 — cross-validate 70/30 sur 212 configurations
-poetry run python scripts/run_p7_grid_search.py --phase 1 --workers 8 --timeout 3600
+poetry run python scripts/run_p7_grid_search.py --phase 1 --fees bybit --workers 8 --timeout 3600
 
-# Phase 2 — walk-forward 8 fenêtres × top-5 par combo (≈ 280 backtests)
-poetry run python scripts/run_p7_grid_search.py --phase 2 --workers 8 --timeout 3600
+# Phase 2 — walk-forward 8 fenêtres × top-5 par combo (≈ 280 backtests) ; le fichier phase 1
+# doit avoir été produit avec le même --fees (validé, sinon exit 2)
+poetry run python scripts/run_p7_grid_search.py --phase 2 --fees bybit --workers 8 --timeout 3600
 
-# Phase rapport — agrège phase 2, applique 7 critères, écrit le markdown
-poetry run python scripts/run_p7_grid_search.py --phase report
+# Phase rapport — agrège phase 2, applique 7 critères, écrit le markdown (--fees validé contre les 2 fichiers)
+poetry run python scripts/run_p7_grid_search.py --phase report --fees bybit
 
 # Filtres utiles (smoke tests)
-poetry run python scripts/run_p7_grid_search.py --phase 1 \
+poetry run python scripts/run_p7_grid_search.py --phase 1 --fees bybit \
     --strategy grok_supertrend_4h --pair BTC/USDC --limit 1 --serial
 ```
 
@@ -132,7 +135,8 @@ qui figé un SHA256 bit-à-bit de la baseline pré-P7.
 6. `mean_sharpe_oos / mean_sharpe_train > 0.5` (anti-overfit)
 7. Bat soit Buy & Hold soit DCA fixe en Sharpe (OU permissif)
 
-Benchmarks Sharpe extraits du rapport P6 v2 (1k USDC, fees Binance 0.075 % flat — à recalculer en B4) :
+Benchmarks Sharpe extraits du rapport P6 v2 (1k USDC, fees Binance 0.075 % flat — à recalculer en B4.3
+avec `--fees bybit`) :
 
 | Pair | Buy & Hold | DCA fixed |
 |---|---|---|
@@ -145,8 +149,8 @@ dans `results/P7_optimization_report.md` (produit par `--phase report`, pas enco
 
 ### État P7 (30 mai 2026)
 
-Phase 1 terminée : `results/P7_phase1_cross_validate.json` (212 jobs, fees Binance). Phase 2 et
-rapport non lancés. Le tout est rejoué en B4 avec `ExchangeFees.bybit_defaults()`.
+Phase 1 terminée : `results/P7_phase1_cross_validate.json` (212 jobs, fees Binance, sans clé `fees`). Phase 2
+et rapport non lancés. Le tout est rejoué en B4.3 avec `--fees bybit` dans de nouveaux fichiers de sortie.
 
 ---
 
@@ -157,11 +161,17 @@ poetry run python scripts/backtest.py \
     --strategy grok_supertrend_4h \
     --pair BTC/USDC \
     --exchange binance \
+    --fees bybit \
     --start-date 2023-04-01 \
     --end-date 2026-04-01 \
     --capital 1000 \
     --cross-validate \
     --save
+
+# Run unitaire avec dump des trades (audit fee par fee) et overrides de spread/slippage par paire
+poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/USDC \
+    --exchange binance --fees bybit --interval 5 --start-date 2023-04-01 --end-date 2026-04-01 \
+    --trades-out results/my_run_trades.json --pair-costs-file config/pair_costs.json
 ```
 
 
@@ -169,8 +179,14 @@ poetry run python scripts/backtest.py \
 
 - `--strategy` : nom de la classe (snake_case)
 - `--pair` : `BTC/USDC`, `ETH/USDC`, ou `SOL/USDC`
-- `--exchange` : `binance` (source de données ; les fees appliquées suivent aussi ce flag tant que la
-  dette B4 n'est pas réglée)
+- `--exchange` : `binance` (source de données OHLC uniquement ; les fees n'en dérivent plus)
+- `--fees` : **obligatoire** — `bybit` (cible de production), `binance` (0.075 % flat, modèle des résultats
+  P6/P7 historiques, sert au rejeu iso-fees) ou `kraken` ; voir « Modèle de fees »
+- `--trades-out PATH.json` : dump trade par trade (prix, prix de référence, fee, taux, base, liquidité
+  maker/taker, spread/slippage) — run unitaire seulement (pas avec `--cross-validate`)
+- `--pair-costs-file PATH.json` : overrides de spread/slippage par paire pour les fills market
+  (`{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}`) ; moteur signal seulement ; sans fichier,
+  les valeurs globales du modèle s'appliquent (comportement inchangé)
 - `--cross-validate` : split 70% train / 30% test temporel
 - `--save` : sauvegarde les résultats dans `backtest_runs` en DB
 
@@ -180,6 +196,36 @@ poetry run python scripts/backtest.py \
 - **GridBacktester** : pour la grid (GrokGridATRAdaptiveV4)
 
 Le script détecte automatiquement le mode selon la stratégie.
+
+## Modèle de fees (`--fees`) — doctrine maker/taker (B4.2)
+
+Le modèle de fees est **découplé de la source de données** : `--fees {bybit,binance,kraken}` est requis
+partout (`backtest.py`, `run_p6_backtests.py`, `run_p7_grid_search.py` toutes phases, `run_p6_walkforward.py`),
+résolu par `ExchangeFees.from_name()` ; les constructeurs `BacktestEngine` / `GridBacktester` prennent un
+`fee_model` keyword-only requis (nom ou instance `ExchangeFees`). `settings.exchange_fees` reste le modèle
+**live/paper** des connecteurs : le backtest ne le lit jamais.
+
+| Site de fill | Ordre simulé | Fee |
+|---|---|---|
+| Moteur signal, entrée `order_type: limit` remplie par toucher (`candle.low <= limit_price`) | limit reposant | **maker**, spread = slippage = 0 |
+| Moteur signal, sortie `order_type: market` (SL, trailing, timeout, régime, flip) à l'open de N+1 | market | **taker** + spread + slippage sur le prix |
+| Grid ATR : niveaux BUY et cibles SELL remplis par toucher | limit reposant | **maker** |
+| Grid ATR : liquidation forcée de fin de run (`_force_close_open_positions`) | market (mark-to-market) | **taker**, sans spread/slippage (choix B4.2) — inopérant sur le chemin grok tant que `_last_close` n'y est pas posé (B4.3) |
+
+Hypothèses documentées (B4.3) : les sorties limit émises après franchissement du niveau
+(`gemini_scalping_volatilite` TP, `gemini_retour_moyenne` TP) sont marketables en réel mais facturées
+maker ; les ordres appariés de la grille sont pricés sur le fill, pas sur le marché.
+
+Chaque `BacktestTrade` porte `liquidity`, `fee_rate`, `fee_base_usdc`, `reference_price`, `spread_pct`,
+`slippage_pct` ; `--trades-out` les écrit, et `scripts/audit/b4_2_reference_capture.py verify-fees
+dump.json --fees bybit` vérifie trade par trade (entrées 0.0010, sorties market 0.0025 + 0.0002 + 0.0002).
+Régression iso-fees : `capture` / `compare` / `normalise-log` du même harnais (voir
+`results/B4_2_fees_engine_report.md`). Chaque entrée de résultat P6/P7 porte sa clé `fees` ; la reprise
+refuse un fichier d'un autre modèle ou sans clé (`--force` = seule échappatoire).
+
+Note `.env` : les scripts chargent `.env` dans `main()` (jamais à l'import) avec un chemin explicite ;
+`get_settings()` retombe sur une résolution par fichier appelant qui devient dépendante du CWD sous
+`pytest --cov` / debugger — lancer les rejeux depuis la racine, sans couverture.
 
 ## Fees Bybit EU (CRITIQUE)
 
@@ -232,8 +278,11 @@ Pour évaluer la qualité réelle d'une stratégie, regarde le **Profit Factor**
 
 La grid a des particularités :
 - `win_rate: 1.0` est normal (chaque paire complétée est un win)
-- `profit_factor: 0.0` est un bug de calcul (division par 0 si 0 losing trades)
-- Les **positions ouvertes en fin de backtest** créent des pertes non réalisées qui tirent le return vers le bas. Ce n'est pas un bug de la stratégie, c'est le design de la grid.
+- `profit_factor` vaut `inf` quand il n'y a aucun trade perdant (corrigé ; l'ancien `0.0` était un bug)
+- Les **positions ouvertes en fin de backtest** sont valorisées au dernier close dans le return (equity
+  curve) mais **ne sont pas comptées en trades perdants** pour le chemin grok : `_force_close_open_positions`
+  n'y est jamais atteint (`_last_close` posé seulement par la boucle legacy) — biais de survie résiduel,
+  annexe B4.3 (`results/B4_2_fees_engine_report.md`). `win_rate` reste donc 1.0 sur la grid.
 - Regarder plutôt : nombre de paires complétées, profit par paire vs fees, comportement en bear vs bull.
 
 ## Cross-validation
@@ -271,7 +320,8 @@ Si une stratégie ne bat ni l'un ni l'autre, elle ne sert à rien.
 
 ## Pièges courants
 
-1. **Oublier les fees, ou utiliser les mauvaises** → résultats trop optimistes (P6/P7 = 0.075 % flat)
+1. **Oublier les fees, ou utiliser les mauvaises** → résultats trop optimistes (P6/P7 = 0.075 % flat ;
+   depuis B4.2 `--fees` est obligatoire, `--fees bybit` pour toute décision de paper)
 2. **Look-ahead bias** → le backtest "voit" le futur. Toujours next-bar execution.
 3. **Survivorship bias** → ne tester que les paires qui ont survécu
 4. **Overfitting** → toujours cross-validate, jamais optimiser sur le test set

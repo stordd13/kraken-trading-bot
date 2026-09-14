@@ -44,7 +44,12 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   `01:05` du 11/09), `TaskScheduler` générique (client read-only, job `gap_backfill` 03:30 UTC) actif après restart
   du collector, cohérences 1d/1w (décalage d'un intervalle attendu), prix 1h (corr ≥ 0,99998) et WS/REST (identiques)
   passées. Rapport : `results/B3_bybit_data_report.md`. **Constat** : dette 11 (convention timestamp, B4).
-- 🚧 Prochaine phase : B4 — ouvrir par la dette 11 (convention timestamp) puis fees maker/taker.
+- ✅ **B4.1 (13 sept)** : 8 712 718 rows Binance re-stampées en fin de période (dette 11), tag
+  `v2.6.0-b4-1-binance-restamp` ; ✅ **B4.2 (14 sept)** : modèle de fees maker/taker découplé de la source de
+  données (`--fees` obligatoire), chemins morts supprimés, suite de tests hermétique (dotenv, boucle
+  d'événements) — `results/B4_2_fees_engine_report.md`.
+- 🚧 Prochaine phase : B4.3 — re-run P6/P7 avec `--fees bybit` (nouveaux fichiers de sortie), révision du
+  risk management, correction du force-close grok et du double comptage `net_pnl`, re-baseline Bybit.
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
 
@@ -177,6 +182,16 @@ Vérifiées sur le compte (spot, VIP0) :
 Round-trip limit/limit **0.20 %**, limit/market (stop-loss, trailing, timeout) **0.35 %**. Les sorties
 MARKET sont le premier poste de coût : les backtests doivent utiliser maker et taker **distincts**.
 
+**Mécanisme (B4.2)** : le modèle de fees est **découplé de la source de données**. `scripts/backtest.py`,
+`run_p6_backtests.py`, `run_p7_grid_search.py` et `run_p6_walkforward.py` exigent `--fees {bybit,binance,kraken}`
+(pas de défaut ; absence → erreur), résolu par `ExchangeFees.from_name()` ; le dashboard passe `bybit`.
+`--exchange` ne choisit que les données. Sites de fill : entrées limit et fills de grille = maker ; sorties
+market = taker + spread + slippage ; liquidations forcées de fin de run du GridBacktester = taker.
+`settings.exchange_fees` reste le modèle **live/paper** des connecteurs ; le backtest ne le lit jamais.
+Chaque résultat P6/P7 porte désormais sa clé `fees` et la reprise refuse un fichier d'un autre modèle
+(`--force` = seule échappatoire) : B4.3 écrit dans de nouveaux fichiers. Détails : `skills/backtest.md`,
+`results/B4_2_fees_engine_report.md`.
+
 Contexte historique : les backtests P6 et P7 phase 1 ont été faits avec les fees Binance BNB
 **0.075 % flat** (round-trip ~0.18 %). Les fees Kraken (0.16 / 0.26 %) sont le défaut de `ExchangeFees()` nu.
 
@@ -257,11 +272,13 @@ Détail : `ROADMAP.md`.
    `EXCHANGE_NAME` ; le `.env` local non plus. **Résolu en B1** : `exchange_name` est `Literal[kraken|binance|bybit]`
    **sans default** (erreur explicite au démarrage), `.env.example` à jour, `.env` local = `bybit`.
    Reste : `deploy.yml` / `.env` serveur (B2).
-2. **`scripts/backtest.py` : fees flat.** `BacktestEngine.__init__` et `GridBacktester.__init__`
-   choisissent `ExchangeFees.binance_defaults(use_bnb=True)` (maker = taker = 0.075 %) ou `ExchangeFees()`
-   nu (= Kraken) ; `settings.exchange_fees` est ignoré ; rollover `0.0001`/4h en dur. **B4 exige maker
-   et taker distincts** (sorties SL/trailing/timeout = MARKET = taker 0.25 %). À faire en B1 ou en
-   ouverture de B4.
+2. ✅ **B4.2 (2026-09-14)** — `scripts/backtest.py` : fees flat choisies sur la source de données. Résolu :
+   `--fees {bybit,binance,kraken}` obligatoire partout, registre `ExchangeFees.from_name()`, maker/taker
+   par site de fill (liquidations forcées du GridBacktester → taker), `settings.exchange_fees` = live/paper
+   documenté, rollover supprimé avec le chemin short mort. Régression iso-fees bit-exacte prouvée
+   (`results/B4_2_fees_engine_report.md`). Reste (annexes B4.3) : `_force_close_open_positions` inopérant
+   sur le chemin grok (`_last_close` jamais posé), double comptage de la fee de vente dans `net_pnl`,
+   sorties limit marketables facturées maker.
 3. ✅ **B3** — `TaskScheduler` généralisé : client REST injecté par le collector (factory, `read_only=True`),
    backfill de gaps `krakenbot.data.backfill`, plus d'import de `scripts/` depuis `src/` ;
    `scripts/fetch_ohlc.py` et `backfill_binance_gap.py` supprimés.
@@ -275,8 +292,11 @@ Détail : `ROADMAP.md`.
 8. ✅ **B3** — `exchange` est **obligatoire** (plus de default `"binance"`) dans
    `MultiTimeframeAnalyzer.initialize` et `MultiPairAnalyzerRegistry.initialize_all` ; `main.py` passe
    `settings.exchange_name`.
-9. **`BacktestEngine` garde un chemin `is_multi` mort** (multi-position legacy, toujours `False`
-   depuis B0.5) et `GridBacktester` un `_check_directional_pause` inutilisé — à nettoyer avec la dette 2.
+9. ✅ **B4.2** — chemin `is_multi` mort de `BacktestEngine`, chemin short/rollover (`_execute_short_signal`,
+   seul émetteur supprimé en B0.5), `_check_directional_pause` et son état (`_grid_paused`,
+   `_hourly_prices`, `directional_pause_pct`) et 3 attributs write-only supprimés avec preuves
+   d'inatteignabilité (3 réfutateurs par affirmation). Reste : le chemin grid legacy non-grok
+   (inatteignable en prod, couvert seulement par `tests/test_grid_metrics.py`) → B4.3.
 10. **`scripts/p6_5_diagnose_*.py`** ne passent pas `ruff format` (pré-existant, hors CI qui ne vérifie
     que `src/`).
 11. ✅ **B4.1 (2026-09-13) — Convention de timestamp Binance** : les 8 712 718 rows `binance` (import Vision,

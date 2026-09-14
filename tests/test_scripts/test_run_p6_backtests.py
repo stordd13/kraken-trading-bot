@@ -25,13 +25,13 @@ from scripts import run_p6_backtests as runner
 
 class TestBuildJobList:
     def test_24_combos(self) -> None:
-        jobs = runner.build_job_list()
+        jobs = runner.build_job_list(fees="binance")
         assert len(jobs) == 24
         assert len(runner.STRATEGIES) == 8
         assert len(runner.PAIRS) == 3
 
     def test_all_pairs_present_per_strategy(self) -> None:
-        jobs = runner.build_job_list()
+        jobs = runner.build_job_list(fees="binance")
         by_strategy: dict[str, set[str]] = {}
         for j in jobs:
             by_strategy.setdefault(j["strategy"], set()).add(j["pair"])
@@ -41,7 +41,7 @@ class TestBuildJobList:
     def test_job_dict_is_picklable(self) -> None:
         import pickle
 
-        for job in runner.build_job_list():
+        for job in runner.build_job_list(fees="binance"):
             pickle.loads(pickle.dumps(job))
 
 
@@ -50,7 +50,9 @@ class TestMakeKey:
         assert runner.make_key("grok_supertrend_4h", "BTC/USDC") == "grok_supertrend_4h_BTC_USDC"
 
     def test_unique_across_all_combos(self) -> None:
-        keys = [runner.make_key(j["strategy"], j["pair"]) for j in runner.build_job_list()]
+        keys = [
+            runner.make_key(j["strategy"], j["pair"]) for j in runner.build_job_list(fees="binance")
+        ]
         assert len(keys) == len(set(keys))
 
 
@@ -77,7 +79,7 @@ class TestEstimateDuration:
 
 class TestSortJobsByDuration:
     def test_grid_first_desc(self) -> None:
-        jobs = runner.build_job_list()
+        jobs = runner.build_job_list(fees="binance")
         sorted_jobs = runner.sort_jobs_by_duration(jobs)
         # First 3 must be grid (one per pair)
         first_three_strats = {j["strategy"] for j in sorted_jobs[:3]}
@@ -109,27 +111,48 @@ class TestLoadExistingResults:
 
 
 class TestFilterPendingJobs:
-    def _mkjob(self, strategy: str, pair: str) -> dict:
-        return {"strategy": strategy, "pair": pair}
+    def _mkjob(self, strategy: str, pair: str, fees: str = "binance") -> dict:
+        return {"strategy": strategy, "pair": pair, "fees": fees}
 
     def test_skips_completed(self) -> None:
         jobs = [self._mkjob("grok_supertrend_4h", "BTC/USDC")]
-        existing = {"grok_supertrend_4h_BTC_USDC": {"strategy": "grok_supertrend_4h", "test": {}}}
-        assert runner.filter_pending_jobs(jobs, existing, force=False) == []
+        existing = {
+            "grok_supertrend_4h_BTC_USDC": {
+                "strategy": "grok_supertrend_4h",
+                "fees": "binance",
+                "test": {},
+            }
+        }
+        assert runner.filter_pending_jobs(jobs, existing, force=False, fees="binance") == []
 
     def test_reruns_errored(self) -> None:
         jobs = [self._mkjob("grok_supertrend_4h", "BTC/USDC")]
-        existing = {"grok_supertrend_4h_BTC_USDC": {"error": "boom"}}
-        assert runner.filter_pending_jobs(jobs, existing, force=False) == jobs
+        existing = {"grok_supertrend_4h_BTC_USDC": {"error": "boom", "fees": "bybit"}}
+        assert runner.filter_pending_jobs(jobs, existing, force=False, fees="binance") == jobs
 
     def test_force_flag_reruns_all(self) -> None:
         jobs = [self._mkjob("grok_supertrend_4h", "BTC/USDC")]
         existing = {"grok_supertrend_4h_BTC_USDC": {"strategy": "grok_supertrend_4h", "test": {}}}
-        assert runner.filter_pending_jobs(jobs, existing, force=True) == jobs
+        assert runner.filter_pending_jobs(jobs, existing, force=True, fees="binance") == jobs
 
     def test_missing_key_returns_job(self) -> None:
         jobs = [self._mkjob("grok_supertrend_4h", "ETH/USDC")]
-        assert runner.filter_pending_jobs(jobs, {}, force=False) == jobs
+        assert runner.filter_pending_jobs(jobs, {}, force=False, fees="binance") == jobs
+
+    def test_other_fee_model_is_refused(self) -> None:
+        jobs = [self._mkjob("grok_supertrend_4h", "BTC/USDC", fees="bybit")]
+        existing = {"grok_supertrend_4h_BTC_USDC": {"fees": "binance", "test": {}}}
+        with pytest.raises(runner.FeeModelMismatchError, match="fees=binance") as exc:
+            runner.filter_pending_jobs(jobs, existing, force=False, fees="bybit")
+        assert "--fees bybit" in str(exc.value)
+        assert "--force" in str(exc.value)
+
+    def test_legacy_entry_without_fees_is_refused(self) -> None:
+        """Pre-B4.2 results files carry 'exchange' but no 'fees': never assume a model."""
+        jobs = [self._mkjob("grok_supertrend_4h", "BTC/USDC")]
+        existing = {"grok_supertrend_4h_BTC_USDC": {"exchange": "binance", "test": {}}}
+        with pytest.raises(runner.FeeModelMismatchError, match="pre-B4.2"):
+            runner.filter_pending_jobs(jobs, existing, force=False, fees="binance")
 
 
 # ---------------------------------------------------------------------------
@@ -299,7 +322,11 @@ class TestRunSerial:
             return {
                 "status": "success",
                 "job": job,
-                "result": {"strategy": job["strategy"], "pair": job["pair"]},
+                "result": {
+                    "strategy": job["strategy"],
+                    "pair": job["pair"],
+                    "fees": job.get("fees"),
+                },
                 "duration_sec": 0.1,
             }
 
@@ -341,7 +368,11 @@ class TestRunSerial:
             return {
                 "status": "success",
                 "job": job,
-                "result": {"strategy": job["strategy"], "pair": job["pair"]},
+                "result": {
+                    "strategy": job["strategy"],
+                    "pair": job["pair"],
+                    "fees": job.get("fees"),
+                },
                 "duration_sec": 0.1,
             }
 
@@ -389,8 +420,20 @@ class TestStatusState:
 
 
 class TestParseArgs:
-    def test_defaults(self) -> None:
-        args = runner.parse_args([])
+    def test_missing_fees_exits_2(self, capsys: pytest.CaptureFixture[str]) -> None:
+        with pytest.raises(SystemExit) as exc:
+            runner.parse_args([])
+        assert exc.value.code == 2
+        assert "--fees" in capsys.readouterr().err
+
+    def test_invalid_fees_exits_2(self) -> None:
+        with pytest.raises(SystemExit) as exc:
+            runner.parse_args(["--fees", "ftx"])
+        assert exc.value.code == 2
+
+    def test_defaults_with_fees(self) -> None:
+        args = runner.parse_args(["--fees", "binance"])
+        assert args.fees == "binance"
         assert args.workers is None
         assert args.timeout == runner.DEFAULT_TIMEOUT_SEC
         assert args.force is False
@@ -402,6 +445,8 @@ class TestParseArgs:
         out = tmp_path / "x.json"
         args = runner.parse_args(
             [
+                "--fees",
+                "bybit",
                 "--workers",
                 "4",
                 "--timeout",
@@ -414,6 +459,7 @@ class TestParseArgs:
                 "3",
             ]
         )
+        assert args.fees == "bybit"
         assert args.workers == 4
         assert args.timeout == 60
         assert args.force is True
@@ -438,7 +484,11 @@ class TestMainSerial:
             return {
                 "status": "success",
                 "job": job,
-                "result": {"strategy": job["strategy"], "pair": job["pair"]},
+                "result": {
+                    "strategy": job["strategy"],
+                    "pair": job["pair"],
+                    "fees": job.get("fees"),
+                },
                 "duration_sec": 0.01,
             }
 
@@ -454,6 +504,7 @@ class TestMainSerial:
                 "capital": 1000.0,
                 "exchange": "binance",
                 "candle_interval": 5,
+                "fees": "binance",
             },
             {
                 "strategy": "grok_supertrend_4h",
@@ -464,6 +515,7 @@ class TestMainSerial:
                 "capital": 1000.0,
                 "exchange": "binance",
                 "candle_interval": 5,
+                "fees": "binance",
             },
             {
                 "strategy": "grok_supertrend_4h",
@@ -474,18 +526,19 @@ class TestMainSerial:
                 "capital": 1000.0,
                 "exchange": "binance",
                 "candle_interval": 5,
+                "fees": "binance",
             },
         ]
-        monkeypatch.setattr(runner, "build_job_list", lambda: list(small))
+        monkeypatch.setattr(runner, "build_job_list", lambda **_: list(small))
 
         # First pass — simulate crash after 2 jobs by pre-populating existing
-        rc = runner.main(["--serial", "--output", str(out), "--limit", "2"])
+        rc = runner.main(["--fees", "binance", "--serial", "--output", str(out), "--limit", "2"])
         assert rc == 0
         assert len(call_log) == 2
 
         # Second pass — no limit, same output → only the missing one runs
         call_log.clear()
-        rc = runner.main(["--serial", "--output", str(out)])
+        rc = runner.main(["--fees", "binance", "--serial", "--output", str(out)])
         assert rc == 0
         assert len(call_log) == 1  # only the third job
         saved = json.loads(out.read_text())
@@ -516,7 +569,11 @@ class TestMainSerial:
             return {
                 "status": "success",
                 "job": job,
-                "result": {"strategy": job["strategy"], "pair": job["pair"]},
+                "result": {
+                    "strategy": job["strategy"],
+                    "pair": job["pair"],
+                    "fees": job.get("fees"),
+                },
                 "duration_sec": 0.01,
             }
 
@@ -531,10 +588,70 @@ class TestMainSerial:
                 "capital": 1000.0,
                 "exchange": "binance",
                 "candle_interval": 5,
+                "fees": "binance",
             },
         ]
-        monkeypatch.setattr(runner, "build_job_list", lambda: list(small))
+        monkeypatch.setattr(runner, "build_job_list", lambda **_: list(small))
 
-        rc = runner.main(["--serial", "--output", str(out), "--force"])
+        rc = runner.main(["--fees", "binance", "--serial", "--output", str(out), "--force"])
         assert rc == 0
         assert call_log == ["grok_supertrend_4h_BTC_USDC"]
+
+    def test_resume_mismatch_returns_2(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A results file made under another fee model is never resumed silently."""
+        out = tmp_path / "r.json"
+        out.write_text(
+            json.dumps(
+                {
+                    "grok_supertrend_4h_BTC_USDC": {
+                        "strategy": "grok_supertrend_4h",
+                        "pair": "BTC/USDC",
+                        "fees": "binance",
+                        "train": {},
+                        "test": {},
+                        "all": {},
+                    }
+                }
+            )
+        )
+        called: list[dict] = []
+        monkeypatch.setattr(runner, "run_single_backtest_job", lambda job: called.append(job))
+        small = [
+            {
+                "strategy": "grok_supertrend_4h",
+                "pair": "BTC/USDC",
+                "start_iso": runner.P6_START.isoformat(),
+                "end_iso": runner.P6_END.isoformat(),
+                "train_ratio": 0.7,
+                "capital": 1000.0,
+                "exchange": "binance",
+                "candle_interval": 5,
+                "fees": "bybit",
+            }
+        ]
+        monkeypatch.setattr(runner, "build_job_list", lambda **_: list(small))
+
+        rc = runner.main(["--fees", "bybit", "--serial", "--output", str(out)])
+        assert rc == 2
+        assert called == []
+        err = capsys.readouterr().err
+        assert "fees=binance" in err and "--fees bybit" in err and str(out) in err
+
+    def test_failure_entry_records_exchange_and_fees(self, tmp_path: Path) -> None:
+        job = runner.build_job_list(fees="bybit")[0]
+        result = {
+            "status": "failed",
+            "job": job,
+            "error": "boom",
+            "traceback": "",
+            "duration_sec": 0.0,
+        }
+        store: dict = {}
+        state = runner.StatusState(total=1)
+        runner._apply_result(result, store, state, tmp_path / "out.json")
+        entry = store[runner.make_key(job["strategy"], job["pair"])]
+        assert entry["fees"] == "bybit"
+        assert entry["exchange"] == "binance"
+        assert entry["error"] == "boom"

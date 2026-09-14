@@ -174,7 +174,7 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 - [ ] Rework du dashboard Dash pour afficher multi-pair + P&L par stratégie, filtre `settings.exchange_name`
 - [ ] Type check mypy : 10 erreurs `union-attr` dans `main.py` (15 sur `src/`), post-B0.5
 - [ ] Généraliser `execution/` (`normalize_asset_*`, type hint `KrakenRestClient`) hors de `connectors/kraken`
-- [ ] Nettoyer le chemin `is_multi` mort de `BacktestEngine` avec la refonte des fees (B4)
+- [x] Nettoyer le chemin `is_multi` mort de `BacktestEngine` avec la refonte des fees (B4.2, `refactor(backtest): remove dead is_multi and short/rollover paths`)
 - [ ] P6.8 — Optimisation backtest speedup (priorité basse) : DB locale ou cache OHLC Parquet pour éliminer
       la contention tunnel SSH ; cible 5-6× (vs 3× actuel) ; à faire avant P11 (ML)
 - [x] `.env.example` : template Bybit (B1) · [x] `deploy.yml` : `EXCHANGE_NAME` + `BYBIT_*` (B2 ; secrets GitHub à créer) · [ ] `deploy.yml` ne doit pas redémarrer `krakenbot` avant B5

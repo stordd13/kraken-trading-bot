@@ -67,6 +67,7 @@ def _settings(mode: TradingMode, **overrides: object) -> Settings:
             api_secret="test_bybit_secret",
             trade_api_key="test_bybit_trade_key",
             trade_api_secret="test_bybit_trade_secret",
+            _env_file=None,
         ),
         database=DatabaseSettings(
             url="postgresql+asyncpg://test:test@localhost:5432/krakenbot_test",

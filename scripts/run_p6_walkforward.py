@@ -10,6 +10,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 from datetime import UTC, datetime
 import json
@@ -20,11 +21,9 @@ import time
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from krakenbot.config.settings import get_settings
+from krakenbot.config.settings import FEE_MODEL_NAMES, get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.logger import get_logger
 
@@ -85,6 +84,8 @@ async def run_single_backtest(
     pair: str,
     start: datetime,
     end: datetime,
+    *,
+    fee_model: str,
 ) -> dict:
     """Run a single backtest and return metrics dict."""
     if strategy in GRID_STRATEGIES:
@@ -95,6 +96,7 @@ async def run_single_backtest(
             candle_interval=5,
             exchange=EXCHANGE,
             starting_capital=CAPITAL,
+            fee_model=fee_model,
         )
     else:
         engine = BacktestEngine(
@@ -104,21 +106,54 @@ async def run_single_backtest(
             candle_interval=5,
             exchange=EXCHANGE,
             starting_capital=CAPITAL,
+            fee_model=fee_model,
         )
 
     await engine.run(pair, start, end)
     return engine.metrics.to_dict()
 
 
-async def main() -> None:
-    if not SURVIVORS_PATH.exists():
-        print(f"ERROR: {SURVIVORS_PATH} not found. Run Phase E first.")
-        sys.exit(1)
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="P6 Phase F walk-forward validation.")
+    parser.add_argument(
+        "--fees",
+        choices=FEE_MODEL_NAMES,
+        required=True,
+        help=(
+            "Fee model applied by the engines (bybit | binance | kraken); the survivors file "
+            "must have been produced under the same model. No default."
+        ),
+    )
+    parser.add_argument("--survivors", type=Path, default=SURVIVORS_PATH)
+    parser.add_argument("--output", type=Path, default=OUTPUT_PATH)
+    return parser.parse_args(argv)
 
-    survivors = json.loads(SURVIVORS_PATH.read_text())
+
+async def main(argv: list[str] | None = None) -> int:
+    # Load .env here, not at import time (see run_p6_backtests.main).
+    load_dotenv(Path(__file__).parent.parent / ".env")
+    args = parse_args(argv)
+    survivors_path: Path = args.survivors
+    output_path: Path = args.output
+    if not survivors_path.exists():
+        print(f"ERROR: {survivors_path} not found. Run Phase E first.", file=sys.stderr)
+        return 1
+
+    survivors = json.loads(survivors_path.read_text())
     if not survivors:
         print("No survivors to validate. Exiting.")
-        sys.exit(0)
+        return 0
+    # Survivors are verbatim P6 result entries: they carry the fee model they were selected under.
+    for key, data in survivors.items():
+        if data.get("fees") != args.fees:
+            print(
+                f"ERROR: survivor {key} was selected under fees="
+                f"{data.get('fees', '<absent: pre-B4.2 file>')}, not --fees {args.fees}; "
+                "regenerate the survivors from a P6 results file produced with the same --fees.",
+                file=sys.stderr,
+            )
+            return 2
+    print(f"Fee model: {args.fees}")
 
     settings = get_settings()
     db_manager = DatabaseManager()
@@ -152,6 +187,7 @@ async def main() -> None:
                         pair,
                         w["test_start"],
                         w["test_end"],
+                        fee_model=args.fees,
                     )
                     window_results.append(
                         {
@@ -206,6 +242,7 @@ async def main() -> None:
             results[key] = {
                 "strategy": strategy,
                 "pair": pair,
+                "fees": args.fees,
                 "windows": window_results,
                 "mean_metrics": mean_metrics,
                 "consistency_score": round(consistency_score, 2),
@@ -224,8 +261,8 @@ async def main() -> None:
             )
 
             # Save progressively
-            OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
-            OUTPUT_PATH.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(json.dumps(results, indent=2, default=str), encoding="utf-8")
 
     finally:
         await db_manager.close_db()
@@ -246,8 +283,9 @@ async def main() -> None:
             f"consistency={cs:.0%} mean_sharpe={ms:.2f} [{flag}]"
         )
 
-    print(f"\n  Results: {OUTPUT_PATH}")
+    print(f"\n  Results: {output_path}")
+    return 0
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    raise SystemExit(asyncio.run(main()))

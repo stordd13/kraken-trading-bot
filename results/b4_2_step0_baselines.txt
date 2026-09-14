@@ -1,0 +1,27 @@
+# B4.2 step 0 — baselines on HEAD-intact engines (dev @ 10a2df8, local venv Python 3.12, tunnel 5433)
+
+## mypy src/ --ignore-missing-imports (tail)
+Found 64 errors in 18 files (checked 81 source files)
+
+## ruff format --check (HEAD)
+Would reformat: scripts/backtest.py (pre-existing debt) — 8 other files already formatted
+
+## pre-fix suite, default order (pytest -q -p no:cacheprovider --ignore=tests/test_scripts/test_run_p6_determinism.py tests/)
+ERROR tests/test_strategies/test_grid_atr_v4_backward_compat.py::test_grid_atr_v4_backward_compat_hash
+FAILED tests/test_config/test_settings.py::TestExchangeNameRequired::test_live_mode_requires_keys_of_selected_exchange
+FAILED tests/test_config/test_settings.py::TestExchangeNameRequired::test_bybit_credentials_by_role
+FAILED tests/test_connectors/test_bybit_rest.py::TestInit::test_live_without_trade_key_raises
+FAILED tests/test_strategies/test_grid_atr_v4_backward_compat.py::test_grid_atr_v4_backward_compat_hash
+4 failed, 1189 passed, 6 skipped, 1 error in 64.13s (0:01:04)
+
+## ERROR at teardown (literal, pre-fix)
+ResourceWarning: unclosed <socket.socket fd=12, family=1, type=1, proto=0>
+ResourceWarning: unclosed <socket.socket fd=13, family=1, type=1, proto=0>
+ResourceWarning: unclosed event loop <_UnixSelectorEventLoop running=False closed=False debug=False>
+
+## grid P6 determinism (two full runs, normalised logs)
+lines:   326400 /   326400 — cmp: IDENTICAL
+sha256(normalised log) = d8c8272d1e8d3f96344ee4ca28a5068fc660a20e7567faf51121f6088ef00ab9
+
+## signal A vs B4.1 server reference (normalised logs)
+lines:     5576 /     5576 — diff: IDENTICAL

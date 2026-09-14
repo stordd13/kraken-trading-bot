@@ -32,10 +32,9 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from krakenbot.config.settings import FEE_MODEL_NAMES
 from krakenbot.core.logger import get_logger
 
 logger = get_logger().bind(component="p6_backtests")
@@ -91,8 +90,9 @@ class Job:
     end_iso: str
     train_ratio: float
     capital: float
-    exchange: str
+    exchange: str  # OHLC data source only
     candle_interval: int
+    fees: str  # fee model applied by the engines (--fees), independent of exchange
 
     @property
     def key(self) -> str:
@@ -108,6 +108,7 @@ class Job:
             "capital": self.capital,
             "exchange": self.exchange,
             "candle_interval": self.candle_interval,
+            "fees": self.fees,
         }
 
     @classmethod
@@ -124,6 +125,8 @@ def build_job_list(
     pairs: list[str] = PAIRS,
     start: datetime = P6_START,
     end: datetime = P6_END,
+    *,
+    fees: str,
 ) -> list[dict[str, Any]]:
     return [
         Job(
@@ -135,6 +138,7 @@ def build_job_list(
             capital=CAPITAL,
             exchange=EXCHANGE,
             candle_interval=CANDLE_INTERVAL,
+            fees=fees,
         ).to_dict()
         for s in strategies
         for p in pairs
@@ -168,11 +172,28 @@ def load_existing_results(path: Path) -> dict[str, Any]:
         ) from e
 
 
+class FeeModelMismatchError(RuntimeError):
+    """A results file entry was produced under another fee model (or none, pre-B4.2)."""
+
+
+def _fee_mismatch_message(key: str, existing: str | None, requested: str, path: Path) -> str:
+    return (
+        f"Resume refused for {key}: {path} holds a result produced with fees="
+        f"{existing if existing is not None else '<absent: pre-B4.2 file>'} but --fees "
+        f"{requested} was requested. Mixed fee models would invalidate the ranking: write to "
+        f"a fresh --output (e.g. a fee-suffixed file) or pass --force to overwrite everything."
+    )
+
+
 def filter_pending_jobs(
     jobs: list[dict[str, Any]],
     existing: dict[str, Any],
     force: bool,
+    *,
+    fees: str,
+    path: Path | None = None,
 ) -> list[dict[str, Any]]:
+    """Jobs not yet in ``existing``; refuses to skip a result made under another fee model."""
     if force:
         return list(jobs)
     pending = []
@@ -181,6 +202,11 @@ def filter_pending_jobs(
         entry = existing.get(key)
         if entry is None or "error" in entry:
             pending.append(job)
+            continue
+        if entry.get("fees") != fees:
+            raise FeeModelMismatchError(
+                _fee_mismatch_message(key, entry.get("fees"), fees, path or OUTPUT_PATH)
+            )
     return pending
 
 
@@ -341,6 +367,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
                 candle_interval=job.candle_interval,
                 exchange=job.exchange,
                 starting_capital=job.capital,
+                fee_model=job.fees,
             )
 
         async def _run_segment(seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
@@ -358,6 +385,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
             "strategy": job.strategy,
             "pair": job.pair,
             "exchange": job.exchange,
+            "fees": job.fees,
             "period": {
                 "start": start.isoformat(),
                 "end": end.isoformat(),
@@ -430,6 +458,8 @@ def _apply_result(
         results_store[key] = {
             "strategy": job["strategy"],
             "pair": job["pair"],
+            "exchange": job.get("exchange"),
+            "fees": job.get("fees"),
             "error": result["error"],
             "traceback": result.get("traceback", ""),
         }
@@ -537,6 +567,15 @@ def _install_sigint_handler(
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="P6 Phase D parallel backtest runner.")
+    parser.add_argument(
+        "--fees",
+        choices=FEE_MODEL_NAMES,
+        required=True,
+        help=(
+            "Fee model applied by the engines (bybit | binance | kraken). Independent of the "
+            "EXCHANGE data-source constant; recorded in every result entry. No default."
+        ),
+    )
     parser.add_argument("--workers", type=int, default=None, help="Worker count. Default: auto.")
     parser.add_argument(
         "--timeout",
@@ -564,13 +603,22 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Load .env here, not at import time: importing this module must not mutate os.environ
+    # (tests import it at collection). Spawn workers inherit the parent's environment.
+    load_dotenv(Path(__file__).parent.parent / ".env")
     args = parse_args(argv)
 
-    jobs = build_job_list()
+    jobs = build_job_list(fees=args.fees)
     jobs = sort_jobs_by_duration(jobs)
 
     existing = load_existing_results(args.output)
-    pending = filter_pending_jobs(jobs, existing, force=args.force)
+    try:
+        pending = filter_pending_jobs(
+            jobs, existing, force=args.force, fees=args.fees, path=args.output
+        )
+    except FeeModelMismatchError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     if args.limit is not None:
         pending = pending[: args.limit]
 

@@ -50,7 +50,10 @@ class TestEngineLoadStrategyParams:
             [{"name": "grok_supertrend_4h", "params": {"atr_period": 10, "atr_multiplier": 3.0}}]
         )
         engine = BacktestEngine(
-            settings, db_manager=MagicMock(), strategy_name="grok_supertrend_4h"
+            settings,
+            db_manager=MagicMock(),
+            fee_model="kraken",
+            strategy_name="grok_supertrend_4h",
         )
         out = engine._load_strategy_params("grok_supertrend_4h")
         assert out == {"atr_period": 10, "atr_multiplier": 3.0}
@@ -62,6 +65,7 @@ class TestEngineLoadStrategyParams:
         engine = BacktestEngine(
             settings,
             db_manager=MagicMock(),
+            fee_model="kraken",
             strategy_name="grok_supertrend_4h",
             strategy_params_override={"atr_period": 14},
         )
@@ -76,6 +80,7 @@ class TestEngineLoadStrategyParams:
         engine = BacktestEngine(
             settings,
             db_manager=MagicMock(),
+            fee_model="kraken",
             strategy_name="x",
             strategy_params_override={"b": 2},
         )
@@ -88,6 +93,7 @@ class TestEngineLoadStrategyParams:
         engine = BacktestEngine(
             settings,
             db_manager=MagicMock(),
+            fee_model="kraken",
             strategy_name="x",
             strategy_params_override={"a": 1, "b": 2},
         )
@@ -96,7 +102,9 @@ class TestEngineLoadStrategyParams:
 
     def test_no_override_no_yaml_returns_none(self) -> None:
         settings = _settings_with([])
-        engine = BacktestEngine(settings, db_manager=MagicMock(), strategy_name="x")
+        engine = BacktestEngine(
+            settings, db_manager=MagicMock(), fee_model="kraken", strategy_name="x"
+        )
         assert engine._load_strategy_params("x") is None
 
 
@@ -122,7 +130,10 @@ class TestEngineLoadInnerStrategyParams:
             ]
         )
         engine = BacktestEngine(
-            settings, db_manager=MagicMock(), strategy_name="grok_supertrend_4h"
+            settings,
+            db_manager=MagicMock(),
+            fee_model="kraken",
+            strategy_name="grok_supertrend_4h",
         )
         out = engine._load_inner_strategy_params("grok_supertrend_4h")
         assert out == {"atr_period": 10, "atr_multiplier": 3.0}
@@ -145,6 +156,7 @@ class TestEngineLoadInnerStrategyParams:
         engine = BacktestEngine(
             settings,
             db_manager=MagicMock(),
+            fee_model="kraken",
             strategy_name="grok_supertrend_4h",
             strategy_params_override={"atr_multiplier": 2.5},
         )
@@ -175,7 +187,10 @@ class TestGridBacktesterLoadParams:
             ]
         )
         bt = GridBacktester(
-            settings, db_manager=MagicMock(), strategy_name="grok_grid_atr_adaptive_v4"
+            settings,
+            db_manager=MagicMock(),
+            fee_model="kraken",
+            strategy_name="grok_grid_atr_adaptive_v4",
         )
         # __init__ already loaded params; check that the result matches
         assert bt._strategy_params == {"grid_levels": 12, "atr_multiplier": 4.0}
@@ -199,6 +214,7 @@ class TestGridBacktesterLoadParams:
         bt = GridBacktester(
             settings,
             db_manager=MagicMock(),
+            fee_model="kraken",
             strategy_name="grok_grid_atr_adaptive_v4",
             strategy_params_override={"atr_multiplier": 2.5, "bear_protection_mode": "1d_only"},
         )

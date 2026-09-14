@@ -9,6 +9,7 @@ from pydantic import SecretStr, ValidationError
 import pytest
 
 from krakenbot.config.settings import (
+    FEE_MODEL_NAMES,
     BybitSettings,
     ExchangeFees,
     MultiStrategySettings,
@@ -169,3 +170,32 @@ class TestBybitFees:
         assert fees.taker == Decimal("0.0025")
         assert fees.spread == Decimal("0.0002")
         assert fees.slippage == Decimal("0.0002")
+
+
+class TestExchangeFeesRegistry:
+    """``ExchangeFees.from_name`` is the backtest fee-model registry (B4.2, --fees)."""
+
+    def test_names(self) -> None:
+        assert FEE_MODEL_NAMES == ("bybit", "binance", "kraken")
+
+    def test_bybit(self) -> None:
+        fees = ExchangeFees.from_name("bybit")
+        assert (fees.maker, fees.taker) == (Decimal("0.0010"), Decimal("0.0025"))
+        assert (fees.spread, fees.slippage) == (Decimal("0.0002"), Decimal("0.0002"))
+
+    def test_binance_is_the_bnb_flat_model(self) -> None:
+        fees = ExchangeFees.from_name("binance")
+        assert fees.maker == fees.taker == Decimal("0.00075")
+        assert fees.maker.as_tuple() == fees.taker.as_tuple()
+
+    def test_kraken_equals_bare_defaults_field_by_field(self) -> None:
+        fees, bare = ExchangeFees.from_name("kraken"), ExchangeFees()
+        for name in ("maker", "taker", "spread", "slippage"):
+            assert getattr(fees, name).as_tuple() == getattr(bare, name).as_tuple()
+
+    def test_case_and_whitespace_insensitive(self) -> None:
+        assert ExchangeFees.from_name(" Bybit ").taker == Decimal("0.0025")
+
+    def test_unknown_lists_choices(self) -> None:
+        with pytest.raises(ValueError, match="bybit, binance, kraken"):
+            ExchangeFees.from_name("okx")

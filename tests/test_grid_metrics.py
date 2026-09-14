@@ -47,10 +47,11 @@ def _build_grid_settings() -> SimpleNamespace:
     )
 
 
-def _new_backtester() -> GridBacktester:
+def _new_backtester(fee_model: str = "kraken") -> GridBacktester:
     return GridBacktester(
         _build_grid_settings(),
         MagicMock(),
+        fee_model=fee_model,
         strategy_name="grok_grid_atr_adaptive_v4",
         candle_interval=240,
     )

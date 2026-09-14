@@ -161,7 +161,7 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Allow unused imports in __init__.py
 "tests/**/*.py" = ["ARG"]  # Allow unused arguments in tests
-"scripts/*.py" = ["E402"]  # Allow imports after load_dotenv()
+"scripts/*.py" = ["E402"]  # scripts bootstrap sys.path before importing krakenbot
 
 [tool.ruff.lint.isort]
 known-first-party = ["krakenbot"]
