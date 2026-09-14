@@ -2,12 +2,17 @@
 
 > Une ligne par fichier conservé : date, phase, verdict, pourquoi il est encore là.
 > Tout ce qui n'est plus une référence courante est dans `results/archive/` (rien n'est supprimé).
-> Dernière mise à jour : 2026-09-13 (B4.1).
+> Dernière mise à jour : 2026-09-14 (B4.2).
 
 ## Fichiers de référence (à la racine de `results/`)
 
 | Fichier | Date | Phase | Verdict / contenu | Pourquoi il reste |
 |---|---|---|---|---|
+| `B4_2_fees_engine_report.md` | 2026-09-14 | B4.2 | **Modèle de fees maker/taker découplé de la source de données** (`--fees` obligatoire) : table de classification des sites de fill, chemins morts prouvés, cause racine dotenv + `ResourceWarning`, régression iso-fees bit-exacte, validations | Source de la résolution des dettes 2 et 9 ; prérequis de B4.3 |
+| `b4_2_ref_signal_A_head.txt` · `b4_2_ref_signal_A_head.json` | 2026-09-14 | B4.2 étape 0 | Run A (`grok_supertrend_4h` BTC, période P6, 5m) sur le moteur HEAD intact : log complet + capture JSON pleine précision (92 fills, +2.42 %) ; log normalisé identique à `b4_reference_backtest_A_p6period.txt` (serveur) | Cible bit-exacte du rejeu `--fees binance` |
+| `b4_2_ref_grid_quick_head.txt` · `b4_2_ref_grid_quick_head.json` | 2026-09-14 | B4.2 étape 0 | Grid ATR v4 BTC sur la fenêtre du gold hash (2025-03-01 → 03-15) : 45 BUY / 37 SELL, 0 liquidation forcée | Cible bit-exacte rapide (grid) |
+| `b4_2_ref_grid_A_head.json` · `b4_2_ref_grid_A_head.report.txt` | 2026-09-14 | B4.2 étape 0 | Grid ATR v4 BTC période P6 (2 097 fills, 1 032 paires, +12.95 %, 0 liquidation forcée) : capture JSON + bloc rapport ; log brut (130 Mo) non versionné, sha256 du log normalisé dans `b4_2_step0_baselines.txt` ; deux runs identiques | Cible bit-exacte du rejeu grid ; preuve de déterminisme grid sur 3 ans |
+| `b4_2_step0_baselines.txt` | 2026-09-14 | B4.2 étape 0 | Baselines qualité (mypy 64, ruff format, suite pré-fix 4 failed + 1 error, texte du `ResourceWarning`, sha256 grid) | Référence des validations 7.4-7.5 |
 | `B4_1_timestamp_restamp_report.md` | 2026-09-13 | B4.1 | **Re-stamp des 8 712 718 rows Binance en fin de période** (open time → `open + interval`) : audit, 3 gates, exécution serveur (2 550 fenêtres, 0 collision), invariants, audit v2 (vote OHLC, règles A/B, vue virtuelle), backtest de référence différent du baseline P6 | Source de la résolution de la dette 11 ; prérequis de validité de B4.2/B4.3 |
 | `b4_binance_stamp_boundaries.json` | 2026-09-13 | B4.1 | Manifeste des frontières (21 séries, `last_open_stamped_ts`, counts, trous, rows à revérifier), sha256 `eb62eab6…` | Source de vérité du périmètre migré ; entrée des rejeux d'audit |
 | `b4_timestamp_audit_pre_migration.txt` · `b4_restamp_dryrun_tunnel.txt` · `b4_restamp_dryrun_server.txt` · `b4_restamp_execute_server.txt` · `b4_restamp_ledger_server.jsonl` | 2026-09-13 | B4.1 | Sorties brutes : audit pré-migration, dry-runs (tunnel + serveur), exécution, ledger des 2 550 fenêtres | Preuves GATE 1/2 |
