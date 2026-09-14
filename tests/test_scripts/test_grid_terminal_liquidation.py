@@ -186,8 +186,14 @@ async def test_grok_path_liquidates_terminal_inventory_at_market(tmp_path: Path)
     assert m.ending_balance == engine.usdc_balance
     assert m.total_return_pct == pytest.approx(-0.25876622725)
     assert m.max_drawdown == Decimal("2.5876622725")  # peak = starting balance
-    # Cash identity (fix b): every fee counted once.
+    # Cash identity (fix b): every fee counted once; lot accounting agrees with the wallet.
     assert m.net_pnl == Decimal("-2.5876622725") == engine.usdc_balance - m.starting_balance
+    assert engine.net_pnl_lot_basis == m.net_pnl
+    assert engine.liquidation_residual_proceeds == Decimal("0")
+    # Holding time: the forced liquidation is excluded from the maker-pair statistic (no
+    # maker sell here -> 0.0) and reported from the lot's entry time instead (c0 -> c9).
+    assert m.average_holding_time_minutes == 0.0
+    assert engine.liquidation_holding_minutes == [45.0]
 
     # Harness parity: the capture counts the taker liquidation; the dump tags it and passes
     # verify-fees; both project onto the same schema-1 core (the liquidation block is outside).
@@ -224,6 +230,9 @@ async def test_grok_path_liquidates_terminal_inventory_at_market(tmp_path: Path)
     assert Decimal(payload["liquidation"]["buy_fees"]) == Decimal("0.025")
     assert Decimal(payload["liquidation"]["sell_fees"]) == liq.fee
     assert Decimal(payload["liquidation"]["pnl"]) == liq.pnl
+    assert payload["liquidation"]["avg_holding_minutes"] == 45.0
+    assert Decimal(payload["liquidation"]["net_pnl_lot_basis"]) == m.net_pnl
+    assert payload["liquidation"]["residual_net_proceeds"] == "0"
     assert payload["grid"]["btc_held"] == "0"
     violations, counts = harness.verify_fees(payload, harness.FEE_FACTORIES["bybit"]())
     assert violations == []
@@ -322,6 +331,8 @@ async def test_completed_pair_leaves_nothing_to_liquidate(tmp_path: Path) -> Non
     m = engine.metrics
     assert m.net_pnl == Decimal("0.4490255") == engine.usdc_balance - m.starting_balance
     assert m.net_pnl != m.total_pnl - m.total_fees  # the old formula double-counted the sell fee
+    assert m.average_holding_time_minutes == 5.0  # c0 buy -> c1 maker sell
+    assert engine.liquidation_holding_minutes == []
     out = tmp_path / "dump.json"
     dump_trades_json(
         engine,
@@ -462,6 +473,12 @@ def test_btc_without_a_lot_is_liquidated_with_unknown_cost_basis() -> None:
     net = sum((t.amount_usdc - t.fee for t in tagged), Decimal("0"))
     assert engine.usdc_balance == Decimal("1000") + net
     assert engine.metrics.ending_balance == engine.usdc_balance
+    # Cash identity holds by construction; the lot-basis figure lags by the residual proceeds.
+    assert engine.metrics.net_pnl == engine.usdc_balance - Decimal("1000")
+    assert engine.liquidation_residual_proceeds == tagged[1].amount_usdc - tagged[1].fee
+    # The lot-basis figure only knows the booked lot (this fixture never bought: buy fees 0).
+    assert engine.net_pnl_lot_basis == engine.metrics.total_pnl == tagged[0].pnl
+    assert engine.net_pnl_lot_basis != engine.metrics.net_pnl
 
 
 @pytest.mark.parametrize("dust", [Decimal("-1E-20"), Decimal("1E-20")])
@@ -518,15 +535,22 @@ def test_no_tradeable_candle_means_no_liquidation() -> None:
 @pytest.mark.asyncio
 async def test_final_metrics_are_idempotent_after_the_liquidation() -> None:
     engine = await _run(_engine("bybit"), _open_then_flat())
-    trades, curve, net = (
-        list(engine.metrics.trades),
-        list(engine.equity_curve),
-        engine.metrics.net_pnl,
-    )
+
+    def snapshot() -> tuple:
+        return (
+            list(engine.metrics.trades),
+            list(engine.equity_curve),
+            engine.metrics.to_dict(),
+            engine.inventory_divergence_btc,
+            engine.liquidation_dust_btc,
+            list(engine.liquidation_holding_minutes),
+        )
+
+    before = snapshot()
+    assert engine.metrics.unrealized_pnl == Decimal("-2.5626622725")
     engine._calculate_final_metrics()
-    assert engine.metrics.trades == trades
-    assert engine.equity_curve == curve
-    assert engine.metrics.net_pnl == net
+    assert snapshot() == before  # the inner strategy still lists its lot: not re-liquidated
+    assert engine.metrics.unrealized_pnl == Decimal("-2.5626622725")
     assert engine.btc_held == Decimal("0")
 
 

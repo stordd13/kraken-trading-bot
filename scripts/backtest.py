@@ -191,9 +191,11 @@ class BacktestMetrics:
     # P&L metrics
     total_pnl: Decimal = Decimal("0")
     total_fees: Decimal = Decimal("0")
-    # B4.3: total_pnl minus the BUY-side fees only — every SELL fee (maker fill, market exit,
-    # forced liquidation) is already netted inside its trade's pnl. When the run ends flat
-    # (no open inventory) net_pnl == ending_balance - starting_balance, in both engines.
+    # B4.3: net P&L with every fee counted once. Signal engine: total_pnl minus the BUY-side
+    # fees (every SELL fee is already netted inside its trade's pnl) — equals the cash P&L
+    # ending_balance - starting_balance when the run ends flat. Grid engine: the realised cash
+    # P&L after the terminal liquidation (== total_pnl - buy fees whenever the lot accounting
+    # agrees with the wallet; the difference is the inventory divergence, exposed in the dump).
     net_pnl: Decimal = Decimal("0")
     # Grid engine: P&L realised by the end-of-run market liquidation of the terminal inventory
     # (B4.3). The key name is kept for schema stability (P6/P7 JSON, gold hash, harness).
@@ -1574,8 +1576,12 @@ class GridBacktester:
         self._strategy_obj: Any = None
         self.liquidated_positions: int = 0
         self.buy_fees: Decimal = Decimal("0")
+        self.net_pnl_lot_basis: Decimal = Decimal("0")
         self.inventory_divergence_btc: Decimal = Decimal("0")
         self.liquidation_dust_btc: Decimal = Decimal("0")
+        self.liquidation_residual_proceeds: Decimal = Decimal("0")
+        self.liquidation_holding_minutes: list[float] = []
+        self._terminal_liquidation_done = False
 
         # Grid state
         self.active_buy_orders: list[dict[str, Decimal]] = []  # {price, amount_usdc}
@@ -2216,13 +2222,15 @@ class GridBacktester:
         spread_pct: Decimal,
         slippage_pct: Decimal,
         final_ts: datetime,
+        entry_time: datetime | None = None,
     ) -> Decimal:
         """Sell ``amount_btc`` at market at the end of the run and book it (B4.3).
 
         Taker fee on the spread/slippage-adjusted price, balances settled, trade tagged
         ``forced_liquidation``. ``entry_price`` None means BTC held without a known lot
-        (inventory divergence): proceeds are credited but no pnl / win-loss is booked.
-        Returns the booked pnl (0 when unknown).
+        (inventory divergence): the proceeds are real cash (credited, counted in the
+        realised ``net_pnl``) but no lot pnl / win-loss is booked. ``entry_time`` feeds the
+        liquidation holding-time statistic. Returns the booked lot pnl (0 when unknown).
         """
         gross_usdc = amount_btc * exec_price
         fee = gross_usdc * self.fees.taker
@@ -2239,6 +2247,10 @@ class GridBacktester:
                 self.metrics.winning_trades += 1
             else:
                 self.metrics.losing_trades += 1
+        else:
+            self.liquidation_residual_proceeds += net_usdc
+        if entry_time is not None:
+            self.liquidation_holding_minutes.append((final_ts - entry_time).total_seconds() / 60)
 
         self.metrics.trades.append(
             BacktestTrade(
@@ -2279,18 +2291,24 @@ class GridBacktester:
         ``_INVENTORY_DUST_BTC`` is clamped; BTC held without any lot is liquidated as one
         trade with unknown cost basis (``pnl`` None); |residual| <= dust is written off.
         The signed divergence and the written-off dust are surfaced on the engine.
+        Idempotent: the liquidation is booked once per run (the inner strategy still lists
+        its positions afterwards, the engine does not notify it).
         """
+        if self._terminal_liquidation_done:
+            return
         reference_price = self._last_close
         final_ts = self._last_timestamp or self.metrics.end_time
         if reference_price is None or reference_price <= 0 or final_ts is None:
             return  # no tradeable candle replayed: nothing to mark
+        self._terminal_liquidation_done = True
 
         spread_pct, slippage_pct = self._costs_for_pair(self._pair)
         # Exact form mirrored from the signal engine's market sell (verify-fees checks it).
         exec_price = reference_price * (Decimal("1") - spread_pct - slippage_pct)
 
-        lots: list[tuple[Decimal, Decimal]] = [
-            (order["amount_btc"], order["entry_price"]) for order in self.active_sell_orders
+        lots: list[tuple[Decimal, Decimal, datetime | None]] = [
+            (order["amount_btc"], order["entry_price"], order.get("entry_time"))
+            for order in self.active_sell_orders
         ]
         inner_strategy = self._strategy_obj
         if inner_strategy is not None and hasattr(inner_strategy, "open_positions"):
@@ -2299,15 +2317,15 @@ class GridBacktester:
                 entry_price = getattr(position, "entry_price", None)
                 if amount_btc is None or entry_price is None:
                     continue
-                lots.append((amount_btc, entry_price))
+                lots.append((amount_btc, entry_price, getattr(position, "entry_time", None)))
 
         self.inventory_divergence_btc = self.btc_held - sum(
-            (amount for amount, _ in lots), Decimal("0")
+            (amount for amount, _, _ in lots), Decimal("0")
         )
 
         unrealized_total = Decimal("0")
         booked = 0
-        for amount_btc, entry_price in lots:
+        for amount_btc, entry_price, entry_time in lots:
             if amount_btc - self.btc_held > self._INVENTORY_DUST_BTC:
                 # Phantom lot (strategy closed another lot by proximity): clamp to what is held.
                 amount_btc = max(self.btc_held, Decimal("0"))
@@ -2321,6 +2339,7 @@ class GridBacktester:
                 spread_pct,
                 slippage_pct,
                 final_ts,
+                entry_time,
             )
             booked += 1
         if self.btc_held > self._INVENTORY_DUST_BTC:
@@ -2371,12 +2390,20 @@ class GridBacktester:
         self.metrics.total_fees = self.total_fees
         # B4.3: every SELL fee (maker fill or taker liquidation) is already inside its trade's
         # pnl (pnl = net proceeds - cost basis, cost basis = amount_usdc - buy fee), so the buy
-        # fee is the only fee not yet netted. Once the inventory is liquidated:
-        # net_pnl == usdc_balance - starting_balance == ending_balance - starting_balance.
+        # fee is the only fee not yet netted: net_pnl_lot_basis = total_pnl - buy fees. Once the
+        # inventory is liquidated the wallet is flat and net_pnl is the REALISED CASH P&L
+        # (usdc_balance - starting_balance == ending_balance - starting_balance, by
+        # construction); it equals net_pnl_lot_basis whenever the lot accounting agrees with the
+        # wallet — the difference, if any, is the inventory divergence (residual proceeds with
+        # unknown cost basis, or a clamped phantom lot) and is exposed in the dump.
         self.buy_fees = sum(
             (t.fee for t in self.metrics.trades if t.side == TradeSide.BUY), Decimal("0")
         )
-        self.metrics.net_pnl = self.metrics.total_pnl - self.buy_fees
+        self.net_pnl_lot_basis = self.metrics.total_pnl - self.buy_fees
+        if self._terminal_liquidation_done and self.btc_held == 0:
+            self.metrics.net_pnl = self.usdc_balance - self.metrics.starting_balance
+        else:
+            self.metrics.net_pnl = self.net_pnl_lot_basis
 
         if self.metrics.total_trades > 0:
             self.metrics.win_rate = self.metrics.winning_trades / self.metrics.total_trades
@@ -2399,9 +2426,14 @@ class GridBacktester:
             self.metrics.profit_factor = float("inf")
         # else: keep default 0.0 (no trades)
 
-        # Average holding time — match each sell to the most recent prior buy
+        # Average holding time — match each maker sell to the most recent prior buy. Forced
+        # liquidations are excluded (they all share the final timestamp and would each be
+        # matched to the run's last buy); their real holding time, from the lot's entry time,
+        # is reported in the liquidation block (liquidation_holding_minutes).
         buy_trades_by_ts = {t.timestamp: t for t in self.metrics.trades if t.side == TradeSide.BUY}
-        sell_trades = [t for t in self.metrics.trades if t.side == TradeSide.SELL]
+        sell_trades = [
+            t for t in self.metrics.trades if t.side == TradeSide.SELL and not t.forced_liquidation
+        ]
         holding_times: list[float] = []
         for sell_trade in sell_trades:
             matching_buys = [
@@ -2519,6 +2551,11 @@ class GridBacktester:
                 f"slippage {first.slippage_pct}, taker {self.fees.taker})"
             )
             print(f"{'Liquidation P&L:':<30} {float(self.metrics.unrealized_pnl):+.2f} USDC")
+            if self.liquidation_holding_minutes:
+                avg_h = sum(self.liquidation_holding_minutes) / len(
+                    self.liquidation_holding_minutes
+                )
+                print(f"{'Liquidated lots avg holding:':<30} {avg_h / 1440:.1f} days")
             print(
                 f"{'Liquidation Fees:':<30} "
                 f"{float(sum((t.fee for t in liquidations), Decimal('0'))):.2f} USDC"
@@ -2802,9 +2839,15 @@ def dump_trades_json(
         tagged = [t for t in trades if t.forced_liquidation]
         first = tagged[0] if tagged else None
         buy_fees = getattr(engine, "buy_fees", Decimal("0"))
+        holding = getattr(engine, "liquidation_holding_minutes", [])
         payload["liquidation"] = {
             "buy_fees": _dec(buy_fees),
             "sell_fees": _dec(engine.total_fees - buy_fees),
+            "net_pnl_lot_basis": _dec(getattr(engine, "net_pnl_lot_basis", Decimal("0"))),
+            "residual_net_proceeds": _dec(
+                getattr(engine, "liquidation_residual_proceeds", Decimal("0"))
+            ),
+            "avg_holding_minutes": (sum(holding) / len(holding)) if holding else None,
             "positions": getattr(engine, "liquidated_positions", 0),
             "trades": len(tagged),
             "residual_trade_btc": _dec(

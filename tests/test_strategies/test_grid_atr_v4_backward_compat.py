@@ -88,9 +88,15 @@ WINDOW_END = datetime(2025, 3, 15, tzinfo=UTC)
 #   Fix (b) alone moved net_pnl by exactly +sum(sell fees): +0.6965 / +0.1141 / +0.8455.
 #   A second hash pins the campaign fee model (--fees bybit, same window): all = 45 trades,
 #   8 L, PF 1.1552, liquidation P&L -11.47, net_pnl 0.65 == ending 1000.65 - 1000.
+#   First values (commit 19d1ded): binance 71d68b95…, bybit 97cae113….
+# - 2026-09-14 (B4.3 chantier 0, review fix): average_holding_time_minutes excludes the
+#   forced liquidations (they share the final timestamp and were each matched to the run's
+#   last buy: all 594.22 -> 323.78 = the pre-chantier value, train 227.76 -> 286.40); the
+#   liquidated lots' real holding time now lives in the dump's liquidation block. Every other
+#   key of the three segments is unchanged (binance and bybit).
 EXPECTED_HASHES: dict[str, str | None] = {
-    "binance": "71d68b95825c673f2b79d4f22c5184578b1ca2d29a3d5d98856932489d0a3725",
-    "bybit": "97cae1135b19bfe5d435cbe51135ef3552d580213a5668607894f73b4b349166",
+    "binance": "43dcdf8d283db5c837f9d98d5e38dbddf1717f71177d4a19d9ea36460cf39faf",
+    "bybit": "818d7fa875d5626bda6f7862739eadda5fb7e24622703a86841f00162397f39a",
 }
 
 
