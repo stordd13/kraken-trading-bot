@@ -1238,7 +1238,7 @@ class BacktestEngine:
             from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
             from krakenbot.strategies.grok_adaptive_dca_weekly import (
                 GrokAdaptiveDCAWeekly,
-           )
+            )
 
             analyzer = MultiTimeframeAnalyzer()
             strategy_params = _override_pair_in_params(
@@ -1252,7 +1252,6 @@ class BacktestEngine:
                 strategy_params=strategy_params,
                 analyzer=analyzer,
             )
-
 
         elif self.strategy_name == "grok_donchian_breakout_4h":
             from krakenbot.indicators.multi_timeframe import MultiTimeframeAnalyzer
