@@ -20,8 +20,6 @@ import time
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from krakenbot.config.settings import get_settings
@@ -111,6 +109,8 @@ async def run_single_backtest(
 
 
 async def main() -> None:
+    # Load .env here, not at import time (see run_p6_backtests.main).
+    load_dotenv(Path(__file__).parent.parent / ".env")
     if not SURVIVORS_PATH.exists():
         print(f"ERROR: {SURVIVORS_PATH} not found. Run Phase E first.")
         sys.exit(1)

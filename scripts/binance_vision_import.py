@@ -41,8 +41,6 @@ from dotenv import load_dotenv
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 import structlog
 
-load_dotenv()
-
 # Add project root to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
@@ -231,6 +229,8 @@ async def import_month(
 
 
 async def main() -> None:
+    # Load .env here, not at import time: tests import this module at collection.
+    load_dotenv(Path(__file__).resolve().parent.parent / ".env")
     """CLI entry point."""
     parser = argparse.ArgumentParser(description="Import historical OHLC data from Binance Vision")
     parser.add_argument(

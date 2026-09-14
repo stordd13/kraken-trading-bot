@@ -32,8 +32,6 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from krakenbot.core.logger import get_logger
@@ -564,6 +562,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Load .env here, not at import time: importing this module must not mutate os.environ
+    # (tests import it at collection). Spawn workers inherit the parent's environment.
+    load_dotenv(Path(__file__).parent.parent / ".env")
     args = parse_args(argv)
 
     jobs = build_job_list()

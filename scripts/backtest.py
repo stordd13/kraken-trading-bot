@@ -18,9 +18,6 @@ from typing import Any
 from dotenv import load_dotenv
 from sqlalchemy import select, text
 
-# Load .env from project root
-load_dotenv(Path(__file__).parent.parent / ".env")
-
 from krakenbot.config.settings import ExchangeFees, Settings, get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import EventBus
@@ -2563,6 +2560,9 @@ class GridBacktester:
 
 async def main() -> None:
     """CLI entry point for backtesting."""
+    # Load .env here, not at import time: importing this module must not mutate
+    # os.environ (tests import it at collection). Explicit project-root path.
+    load_dotenv(Path(__file__).parent.parent / ".env")
     parser = argparse.ArgumentParser(description="Backtest KrakenBot trading strategies")
     parser.add_argument(
         "--strategy",

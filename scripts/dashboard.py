@@ -27,13 +27,15 @@ import argparse
 import asyncio
 from datetime import UTC, datetime, timedelta
 import os
+from pathlib import Path
 import sys
 import threading
 
 from dotenv import load_dotenv
 
-# Load .env file BEFORE accessing os.environ
-load_dotenv()
+# Load .env file BEFORE accessing os.environ (module level: get_settings() and DATABASE_URL
+# are read at import). Explicit project-root path: never depend on find_dotenv()'s frame walk.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 import dash
 from dash import Input, Output, State, callback, dash_table, dcc, html

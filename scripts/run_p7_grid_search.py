@@ -47,8 +47,6 @@ from typing import Any
 
 from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).parent.parent / ".env")
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -820,6 +818,8 @@ def _run_report_phase(phase1_path: Path, phase2_path: Path) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Load .env here, not at import time (see run_p6_backtests.main).
+    load_dotenv(Path(__file__).parent.parent / ".env")
     args = parse_args(argv)
 
     if args.phase == "report":
