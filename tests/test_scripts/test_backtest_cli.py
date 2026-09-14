@@ -37,7 +37,32 @@ def test_each_fee_model_is_accepted(model: str) -> None:
     args = parse_args([*BASE, "--fees", model])
     assert args.fees == model
     assert args.exchange == "binance"
+    assert args.pair_costs_file is None
     assert args.trades_out is None
+
+
+def test_pair_costs_file_refused_with_grid_strategy(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    costs = tmp_path / "costs.json"
+    costs.write_text('{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}')
+    with pytest.raises(SystemExit) as exc:
+        parse_args(
+            [
+                "--strategy",
+                "grok_grid_atr_adaptive_v4",
+                "--pair",
+                "BTC/USDC",
+                "--exchange",
+                "binance",
+                "--fees",
+                "bybit",
+                "--pair-costs-file",
+                str(costs),
+            ]
+        )
+    assert exc.value.code == 2
+    assert "GridBacktester" in capsys.readouterr().err
 
 
 def test_trades_out_refused_with_cross_validate(

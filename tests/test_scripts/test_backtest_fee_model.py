@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(_project_root) / "src"))
 sys.path.insert(0, str(Path(_project_root) / "scripts"))
 
 from krakenbot.config.settings import FEE_MODEL_NAMES, ExchangeFees
-from scripts.backtest import BacktestEngine, GridBacktester, resolve_fee_model
+from scripts.backtest import BacktestEngine, GridBacktester, PairCosts, resolve_fee_model
 
 
 def _grid_settings() -> SimpleNamespace:
@@ -140,3 +140,13 @@ class TestEngineContract:
         engine = BacktestEngine(MagicMock(), MagicMock(), fee_model=custom)
         assert engine.fees is custom
         assert engine.fee_model_name == "custom"
+
+    def test_grid_backtester_rejects_pair_costs(self) -> None:
+        """GridBacktester consumes no spread/slippage: accepting the kwarg would be a no-op."""
+        with pytest.raises(TypeError, match="pair_costs"):
+            GridBacktester(
+                _grid_settings(),
+                MagicMock(),
+                fee_model="bybit",
+                pair_costs={"BTC/USDC": PairCosts(Decimal("0.0001"), Decimal("0.0001"))},
+            )

@@ -10,6 +10,7 @@ Usage:
 
 import argparse
 import asyncio
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -101,6 +102,40 @@ def _override_pair_in_params(
     merged = dict(params or {})
     merged["pair"] = pair
     return merged
+
+
+@dataclass(frozen=True)
+class PairCosts:
+    """Per-pair spread/slippage override for market fills (fractions, e.g. 0.0002)."""
+
+    spread: Decimal
+    slippage: Decimal
+
+    def __post_init__(self) -> None:
+        if self.spread < 0 or self.slippage < 0:
+            raise ValueError(f"PairCosts must not be negative: {self}")
+
+
+def load_pair_costs(path: Path) -> dict[str, PairCosts]:
+    """Load ``{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}, ...}`` (Decimal(str))."""
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError(f"{path}: expected a JSON object keyed by pair, got {type(raw).__name__}")
+    costs: dict[str, PairCosts] = {}
+    for pair, entry in raw.items():
+        if "/" not in pair:
+            raise ValueError(f"{path}: {pair!r} is not a pair (expected BASE/QUOTE)")
+        if not isinstance(entry, dict):
+            raise ValueError(f"{path}: {pair}: expected an object with spread and slippage")
+        if set(entry) != {"spread", "slippage"}:
+            raise ValueError(
+                f"{path}: {pair}: expected exactly the keys spread and slippage, got "
+                f"{sorted(entry)}"
+            )
+        costs[pair] = PairCosts(
+            spread=Decimal(str(entry["spread"])), slippage=Decimal(str(entry["slippage"]))
+        )
+    return costs
 
 
 def resolve_fee_model(fee_model: str | ExchangeFees | None) -> tuple[ExchangeFees, str]:
@@ -226,6 +261,7 @@ class BacktestEngine:
         exchange: str = "kraken",
         starting_capital: float = 1000.0,
         strategy_params_override: dict[str, Any] | None = None,
+        pair_costs: Mapping[str, PairCosts] | None = None,
     ):
         """Initialize backtest engine.
 
@@ -239,6 +275,8 @@ class BacktestEngine:
             exchange: OHLC data source to filter on (``exchange`` column); it does NOT
                 select the fees any more (B4.2)
             starting_capital: Starting balance in USDC
+            pair_costs: Optional per-pair spread/slippage overrides applied to market
+                fills only; ``None`` keeps the fee model's global values (unchanged).
             strategy_params_override: Optional dict of params merged on top of
                 the strategies.yaml entry for this strategy. Used by the P7
                 grid search to inject sweep params without editing the YAML.
@@ -254,6 +292,7 @@ class BacktestEngine:
 
         # Fee model (B4.2): explicit, decoupled from the OHLC data source.
         self.fees, self.fee_model_name = resolve_fee_model(fee_model)
+        self._pair_costs: dict[str, PairCosts] = dict(pair_costs or {})
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -562,6 +601,13 @@ class BacktestEngine:
             return False
         return bool(signal.metadata.get("is_short_open") or signal.metadata.get("is_short_close"))
 
+    def _costs_for_pair(self, pair: str) -> tuple[Decimal, Decimal]:
+        """Spread and slippage for a market fill on ``pair`` (override or model globals)."""
+        override = self._pair_costs.get(pair)
+        if override is None:
+            return self.fees.spread, self.fees.slippage
+        return override.spread, override.slippage
+
     async def execute_signal(
         self, signal: TradingSignal, current_price: Decimal, *, is_limit_fill: bool = False
     ) -> None:
@@ -581,7 +627,7 @@ class BacktestEngine:
             return
 
         # Realistic trading costs: resting limit fill -> maker, no spread/slippage;
-        # market fill -> taker + spread + slippage.
+        # market fill -> taker + spread + slippage (per-pair override or model globals).
         if is_limit_fill:
             liquidity = "maker"
             fee_pct = self.fees.maker
@@ -590,8 +636,7 @@ class BacktestEngine:
         else:
             liquidity = "taker"
             fee_pct = self.fees.taker
-            spread_pct = self.fees.spread
-            slippage_pct = self.fees.slippage
+            spread_pct, slippage_pct = self._costs_for_pair(signal.pair)
 
         # Multi-position (legacy) strategies were removed in B0.5; kept as an
         # empty hook so the BUY/SELL branching below stays readable.
@@ -1694,8 +1739,8 @@ class GridBacktester:
         ``fee_model`` (required, B4.2) names the fee model (``--fees``) or is an
         ``ExchangeFees`` instance; ``exchange`` only selects the OHLC data source.
         Grid fills are resting limit orders (maker, no spread/slippage); the only
-        taker site is the end-of-run mark-to-market in ``_force_close_open_positions``.
-        ``strategy_params_override`` merges on top of
+        taker site is the end-of-run mark-to-market in ``_force_close_open_positions``,
+        hence no ``pair_costs`` here. ``strategy_params_override`` merges on top of
         the strategies.yaml entry for this grid strategy. None preserves YAML-only
         behavior. Used by the P7 grid search.
         """
@@ -2736,6 +2781,15 @@ def build_parser() -> argparse.ArgumentParser:
         ),
     )
     parser.add_argument(
+        "--pair-costs-file",
+        type=Path,
+        default=None,
+        help=(
+            "JSON per-pair spread/slippage overrides for market fills, e.g. "
+            '{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}. Signal engine only.'
+        ),
+    )
+    parser.add_argument(
         "--trades-out",
         type=Path,
         default=None,
@@ -2748,6 +2802,17 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse and validate the CLI arguments (exit 2 on cross-flag violations)."""
     parser = build_parser()
     args = parser.parse_args(argv)
+    args.pair_costs = None
+    if args.pair_costs_file is not None:
+        if args.strategy in GridBacktester.GRID_STRATEGIES:
+            parser.error(
+                "--pair-costs-file applies to the signal engine only: GridBacktester fills "
+                "are resting limit orders (maker) and consume no spread/slippage"
+            )
+        try:
+            args.pair_costs = load_pair_costs(args.pair_costs_file)
+        except (OSError, ValueError) as exc:
+            parser.error(f"--pair-costs-file: {exc}")
     if args.trades_out is not None and args.cross_validate:
         parser.error("--trades-out is a single-run artifact; drop it or drop --cross-validate")
     return args
@@ -2788,6 +2853,13 @@ def dump_trades_json(
             "spread": str(engine.fees.spread),
             "slippage": str(engine.fees.slippage),
         },
+        "pair_costs": (
+            {
+                p: {"spread": str(c.spread), "slippage": str(c.slippage)}
+                for p, c in sorted(getattr(engine, "_pair_costs", {}).items())
+            }
+            or None
+        ),
         "metrics": engine.metrics.to_dict(),
         "trades": [
             {
@@ -2851,7 +2923,8 @@ async def main(argv: list[str] | None = None) -> None:
     fees, _ = resolve_fee_model(args.fees)
     print(
         f"Fee model: {args.fees} (maker {fees.maker} / taker {fees.taker} / "
-        f"spread {fees.spread} / slippage {fees.slippage}); data source: {args.exchange}"
+        f"spread {fees.spread} / slippage {fees.slippage}); data source: {args.exchange}; "
+        f"pair costs: {sorted(args.pair_costs) if args.pair_costs else 'none'}"
     )
 
     # Parse dates
@@ -2904,6 +2977,7 @@ async def main(argv: list[str] | None = None) -> None:
                 exchange=args.exchange,
                 starting_capital=args.capital,
                 fee_model=args.fees,
+                pair_costs=args.pair_costs,
             )
             train_metrics = await train_engine.run(args.pair, start_time, split_time)
             train_engine.print_report()
@@ -2921,6 +2995,7 @@ async def main(argv: list[str] | None = None) -> None:
                 exchange=args.exchange,
                 starting_capital=args.capital,
                 fee_model=args.fees,
+                pair_costs=args.pair_costs,
             )
             test_metrics = await test_engine.run(args.pair, split_time, end_time)
             test_engine.print_report()
@@ -3007,6 +3082,7 @@ async def main(argv: list[str] | None = None) -> None:
                     exchange=args.exchange,
                     starting_capital=args.capital,
                     fee_model=args.fees,
+                    pair_costs=args.pair_costs,
                 )
 
             await engine.run(args.pair, start_time, end_time)

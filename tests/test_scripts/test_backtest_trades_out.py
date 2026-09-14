@@ -90,6 +90,7 @@ def test_dump_schema_and_decimal_strings(tmp_path: Path) -> None:
         "spread": "0.0002",
         "slippage": "0.0002",
     }
+    assert payload["pair_costs"] is None
     assert payload["metrics"] == _engine_with_trades().metrics.to_dict()
     buy, sell = payload["trades"]
     assert buy["price"] == "28444.01751"
