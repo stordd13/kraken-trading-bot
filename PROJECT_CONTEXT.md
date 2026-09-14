@@ -47,7 +47,8 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - ✅ **B4.1 (13 sept)** : 8 712 718 rows Binance re-stampées en fin de période (dette 11), tag
   `v2.6.0-b4-1-binance-restamp` ; ✅ **B4.2 (14 sept)** : modèle de fees maker/taker découplé de la source de
   données (`--fees` obligatoire), chemins morts supprimés, suite de tests hermétique (dotenv, boucle
-  d'événements) — `results/B4_2_fees_engine_report.md`.
+  d'événements) — mergé dans `dev` (`3406a6c`), tag `v2.7.0-b4-2-fees-engine` (`fea0e16`), serveur en parité
+  sans restart — `results/B4_2_fees_engine_report.md`.
 - 🚧 Prochaine phase : B4.3 — re-run P6/P7 avec `--fees bybit` (nouveaux fichiers de sortie), révision du
   risk management, correction du force-close grok et du double comptage `net_pnl`, re-baseline Bybit.
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit

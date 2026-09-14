@@ -4,9 +4,9 @@
 > (tag `v2.6.0-b4-1-binance-restamp`). Plan GATE 1 approuvé par Bruno le 2026-09-14 (plan :
 > `.claude/plans/impl-mente-agent-agent-b4-2-fees-engine-silly-tower.md`, 32 agents read-only :
 > 5 auditeurs, 2 designs + juge, 8 affirmations × 3 réfutateurs).
-> État : **STOP final** — implémentation terminée (11 commits sur `feat/b4-2-fees-engine`), validations 7.1-7.6
-> vertes ; en attente de la review humaine avant PR vers `dev` (clôture standard : merge → CODE_MAP → tag
-> `v2.7.0-b4-2-fees-engine`).
+> État : **CLÔTURÉ le 2026-09-14** — review Bruno OK, mergé dans `dev` (`3406a6c`, merge `--no-ff` local :
+> `gh` non authentifié, comme B4.1), `docs/CODE_MAP.md` régénéré (`fea0e16`), tag `v2.7.0-b4-2-fees-engine`
+> sur `fea0e16`, serveur en parité par `git pull --ff-only` **sans restart** (§ 12).
 
 ## 1. Résumé
 
@@ -319,3 +319,20 @@ prouvé par `tests/test_scripts/test_grid_fee_sites.py` (branche legacy et branc
 | 10 | `refactor(backtest): remove dead is_multi and short/rollover paths` | −255 lignes, grep propre |
 | 11 | `docs(project): resolve debts 2 and 9, update backtest skill` | `CLAUDE.md`, `PROJECT_CONTEXT.md`, `ROADMAP.md`, `skills/backtest.md` |
 | 12 | `chore(results): B4.2 validation artifacts and report` | ce rapport, `b4_2_validation_outputs.txt`, dumps bybit, `INDEX.md` |
+
+## 12. Clôture (2026-09-14)
+
+| Étape | Résultat |
+|---|---|
+| Review | OK (Bruno), 12 commits de `feat/b4-2-fees-engine` (§ 11) |
+| PR → merge `dev` | `gh auth status` non connecté → merge local `git merge --no-ff feat/b4-2-fees-engine` = **`3406a6c`** (même procédure que B4.1) ; branche poussée sur `origin` pour trace |
+| CODE_MAP | régénéré selon la méthode de son en-tête (7 modules touchés + ligne du harnais, totaux src 28 884 / scripts 13 603, point d'attention 5 → ✅ B4.2) : **`fea0e16`** |
+| Push | `origin/dev` = `fea0e16` vérifié par `git fetch` + `git rev-parse` ; `feat/b4-2-fees-engine` = `3d0bda5` contenue dans `origin/dev` |
+| Tag | `v2.7.0-b4-2-fees-engine` (annoté) → `fea0e16`, poussé, `git ls-remote --tags` le renvoie (objet `b6f94cd`) |
+| Zip | `~/Desktop/krakenbot-src-v2.7.0-b4-2-fees-engine.zip` = `git archive HEAD` (374 fichiers, 1.9 Mo, sans `.env`) |
+| Serveur | `~/apps/kraken-trading-bot` : `d3d3423` → `fea0e16` par `git pull --ff-only origin dev` ; **aucun restart** : `krakenbot-collector` `active` depuis 2026-09-13 19:54 UTC (inchangé), `krakenbot` `inactive` (attendu jusqu'à B4/B5) |
+| CI | pas de run sur `dev` (workflow ciblé `main`, comme noté en B4.1) ; validations locales § 7 font foi |
+
+Aucun code du serveur n'est exécuté par les scripts modifiés (backtests lancés depuis le poste local via le
+tunnel) : le pull ne sert qu'à la parité du clone. Prochaine phase : B4.3 (§ 10, nouveaux fichiers de sortie
+`--fees bybit`, force-close grok, double comptage `net_pnl`).
