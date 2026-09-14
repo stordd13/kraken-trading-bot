@@ -210,6 +210,32 @@ class TestVerifyFees:
         assert violations == []
         assert counts == {"buy/maker": 1, "sell/taker-market": 1, "sell/taker-liquidation": 1}
 
+    def test_pair_costs_overrides_replace_the_globals_for_taker_market(self) -> None:
+        """B4.3: a dump produced with --pair-costs-file carries its own expected costs."""
+        fees = ExchangeFees.bybit_defaults()
+        trade = {
+            "n": 1,
+            "side": "sell",
+            "liquidity": "taker",
+            "price": str(Decimal("90000") * (Decimal("1") - Decimal("0.0010") - Decimal("0.0005"))),
+            "reference_price": "90000",
+            "fee_base_usdc": "10",
+            "fee": str(Decimal("10") * fees.taker),
+            "fee_rate": str(fees.taker),
+            "spread_pct": "0.0010",
+            "slippage_pct": "0.0005",
+        }
+        payload = {
+            "pair": "BTC/USDC",
+            "pair_costs": {"BTC/USDC": {"spread": "0.0010", "slippage": "0.0005"}},
+            "trades": [trade],
+        }
+        assert h.verify_fees(payload, fees) == ([], {"sell/taker-market": 1})
+        # Without the override (or for another pair) the globals are expected again.
+        assert h.verify_fees({"pair": "BTC/USDC", "trades": [trade]}, fees)[0] != []
+        other = dict(payload, pair_costs={"ETH/USDC": payload["pair_costs"]["BTC/USDC"]})
+        assert h.verify_fees(other, fees)[0] != []
+
     def test_wrong_rate_and_spread_on_maker_are_violations(self) -> None:
         fees = ExchangeFees.bybit_defaults()
         bad_rate = _dump_trade(1, "buy", "maker", fees)

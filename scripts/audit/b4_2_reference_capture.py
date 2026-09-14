@@ -265,6 +265,19 @@ def _d(value: Any) -> Decimal | None:
     return None if value is None else Decimal(str(value))
 
 
+def _expected_costs(payload: dict[str, Any], fees: ExchangeFees) -> tuple[Decimal, Decimal]:
+    """Spread/slippage every taker-market trade of ``payload`` must carry.
+
+    Per-pair overrides recorded by ``--trades-out`` (``payload["pair_costs"]``, B4.2 n12 /
+    B4.3 grid liquidation) win over the fee-model globals for the dump's pair.
+    """
+    overrides = payload.get("pair_costs") or {}
+    entry = overrides.get(payload.get("pair"))
+    if isinstance(entry, dict) and "spread" in entry and "slippage" in entry:
+        return Decimal(str(entry["spread"])), Decimal(str(entry["slippage"]))
+    return fees.spread, fees.slippage
+
+
 def verify_fees(payload: dict[str, Any], fees: ExchangeFees) -> tuple[list[str], dict[str, int]]:
     """Check every trade of a post-refactor dump against ``fees``.
 
@@ -277,6 +290,7 @@ def verify_fees(payload: dict[str, Any], fees: ExchangeFees) -> tuple[list[str],
     violations: list[str] = []
     counts: dict[str, int] = {}
     fee_sum = _ZERO
+    exp_spread, exp_slippage = _expected_costs(payload, fees)
     for t in payload.get("trades", []):
         n = t.get("n")
         side = t.get("side")
@@ -313,10 +327,9 @@ def verify_fees(payload: dict[str, Any], fees: ExchangeFees) -> tuple[list[str],
                     )
             else:
                 kind = "taker-market"
-                if spread != fees.spread or slippage != fees.slippage:
+                if spread != exp_spread or slippage != exp_slippage:
                     violations.append(
-                        f"trade {n}: taker costs {spread}/{slippage} != "
-                        f"{fees.spread}/{fees.slippage}"
+                        f"trade {n}: taker costs {spread}/{slippage} != {exp_spread}/{exp_slippage}"
                     )
                 if reference is not None:
                     factor = (
