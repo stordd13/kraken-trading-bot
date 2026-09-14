@@ -1,0 +1,83 @@
+# B4.2 — validation outputs (branch feat/b4-2-fees-engine, engine final state = commit 10 1da4075)
+# Local venv Python 3.12 (poetry), tunnel SSH 5433 up, .env present, run from the repo root, no coverage.
+
+# B4.2 — validation 7.1 (iso-fees, --fees binance replays on the final engine, commit 10 = 1da4075) vs step-0 HEAD captures
+
+## signal_A
+normalised log: IDENTICAL (    5576 lines)
+IDENTICAL (schema-1 projection): results/b4_2_ref_signal_A_head.json == /private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/dd33be3d-1429-4dbf-a3ef-f2078736b978/scratchpad/replay_final/signal_A_binance.json
+buy/maker                    46
+sell/taker-market            46
+OK: every trade matches fee model binance
+
+## grid_quick
+normalised log: IDENTICAL (    4309 lines)
+IDENTICAL (schema-1 projection): results/b4_2_ref_grid_quick_head.json == /private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/dd33be3d-1429-4dbf-a3ef-f2078736b978/scratchpad/replay_final/grid_quick_binance.json
+buy/maker                    45
+sell/maker                   37
+OK: every trade matches fee model binance
+
+## grid_A
+normalised log: IDENTICAL (  326400 lines)
+IDENTICAL (schema-1 projection): results/b4_2_ref_grid_A_head.json == /private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/dd33be3d-1429-4dbf-a3ef-f2078736b978/scratchpad/replay_final/grid_A_binance.json
+buy/maker                  1065
+sell/maker                 1032
+OK: every trade matches fee model binance
+
+## 7.1 bis — replays after each engine-touching commit (signal A + grid quick, --fees binance, vs step 0)
+commit 7 5ae4c50 (working tree incl. per-pair, default None): signal 5 576 lines IDENTICAL, grid quick 4 309 lines IDENTICAL, grid P6 326 400 lines IDENTICAL; JSON projections IDENTICAL; gold hash == abb3a6d8… (1 passed)
+commit 8 0d78422 (git worktree): signal IDENTICAL, grid quick IDENTICAL, JSON IDENTICAL
+commit 9 2ce918f (git worktree): signal IDENTICAL, grid quick IDENTICAL, JSON IDENTICAL
+commit 10 1da4075 (final): see 7.1 above (all three runs) + gold hash in the three orders below
+
+## 7.3 — each entry point without --fees
+$ poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/USDC --exchange binance  → rc=2 :: backtest.py: error: the following arguments are required: --fees
+$ poetry run python scripts/run_p6_backtests.py --serial --limit 1  → rc=2 :: run_p6_backtests.py: error: the following arguments are required: --fees
+$ poetry run python scripts/run_p7_grid_search.py --phase 1  → rc=2 :: run_p7_grid_search.py: error: the following arguments are required: --fees
+$ poetry run python scripts/run_p6_walkforward.py  → rc=2 :: run_p6_walkforward.py: error: the following arguments are required: --fees
+
+## 7.4 — full suite, three orders (pytest -q -p no:cacheprovider -W error::ResourceWarning, .env present, tunnel up; test_run_p6_determinism run separately)
+[2026-09-14T08:48:06Z] ORDER A default
+A rc=0
+1300 passed, 6 skipped in 92.76s (0:01:32)
+[2026-09-14T08:49:39Z] ORDER B reversed
+B rc=0
+1300 passed, 6 skipped in 61.18s (0:01:01)
+[2026-09-14T08:50:41Z] ORDER C victims first
+C rc=0
+1300 passed, 6 skipped in 63.06s (0:01:03)
+[2026-09-14T08:51:45Z] determinism quick lane
+D rc=0
+6 passed, 24 deselected in 437.46s (0:07:17)
+[2026-09-14T08:59:03Z] done
+failures/errors per order: A=0 B=0 C=0
+ORDER B command: pytest $(find tests -name 'test_*.py' | grep -v test_run_p6_determinism | sort -r)
+ORDER C command: pytest tests/test_config/test_settings.py tests/test_connectors/test_bybit_rest.py tests/test_backtest.py tests/test_scripts tests/test_strategies tests/
+6 skips = BYBIT_INTEGRATION-gated integration tests (unchanged)
+
+## 7.5 — lint / types
+ruff check + ruff format --check on the 28 .py files changed vs dev @ 10a2df8: All checks passed! / 28 files already formatted
+mypy src/ --ignore-missing-imports: Found 64 errors in 18 files (checked 81 source files)  (baseline on dev @ 10a2df8 in this venv: 64 errors in 18 files — no new error)
+
+## 7.6 — grep of the removed symbols
+scripts/backtest.py: is_multi, _entry_regimes, _is_short_signal, _execute_short_signal, rollover, is_short_open, is_short_close, mode.*margin, _check_directional_pause, _grid_paused, _hourly_prices, directional_pause_pct, binance_defaults(use_bnb=True), exchange == "binance", add_position, close_position, min_spacing_pct, max_spacing_pct, self.atr_multiplier -> GREP CLEAN
+repo-wide (excluding results/, docs/archive/, agent/, .claude, venv): only PROJECT_CONTEXT.md debt 9 / ROADMAP.md:177 (updated in the docs commit), docs/CODE_MAP.md (regenerated at merge) and scripts/audit/bybit_b3_crosscheck.py:check_hourly_prices (unrelated symbol)
+live-path readers kept (protected / out of scope): src/krakenbot/strategies/base.py:423-424, src/krakenbot/execution/engine.py:432-648, models/trades.py:561, execution/risk.py:658, scripts/dashboard.py:2187/2303 (trading_mode column)
+
+## ResourceWarning characterisation (pre-fix, PYTHONTRACEMALLOC=25, tests/test_backtest.py + gold hash)
+ResourceWarning: unclosed <socket.socket fd=12/13, family=1, type=1, proto=0> (AF_UNIX self-pipe) + unclosed event loop <_UnixSelectorEventLoop running=False closed=False debug=False>
+Object allocated at: pytest_asyncio/plugin.py:805 _scoped_runner -> :618 _temporary_event_loop_policy -> :649 asyncio.get_event_loop() -> asyncio/events.py:699 set_event_loop(self.new_event_loop()) -> selector_events.py:120 socket.socketpair()
+Fix: tests/conftest.py _session_event_loop (commit 7504136); proof: -W error::ResourceWarning -> 0 error in the three orders
+## 7.2 — verify-fees --fees bybit (final engine)
+### signal_A
+buy/maker                    46
+sell/taker-market            46
+OK: every trade matches fee model bybit
+### grid_quick
+buy/maker                    45
+sell/maker                   37
+OK: every trade matches fee model bybit
+### grid_A
+buy/maker                  1064
+sell/maker                 1031
+OK: every trade matches fee model bybit
