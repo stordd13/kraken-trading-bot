@@ -13,6 +13,7 @@ These verify the pure-Python pieces that do not touch the DB:
 from __future__ import annotations
 
 from datetime import UTC, datetime
+import json
 from pathlib import Path
 import sys
 
@@ -62,17 +63,17 @@ class TestKeyConstruction:
 
 class TestBuildPhase1Jobs:
     def test_total_212(self) -> None:
-        jobs = p7.build_phase1_jobs()
+        jobs = p7.build_phase1_jobs(fees="binance")
         assert len(jobs) == 212
 
     def test_filter_by_strategy(self) -> None:
-        jobs = p7.build_phase1_jobs(strategy_filter="grok_supertrend_4h")
+        jobs = p7.build_phase1_jobs(strategy_filter="grok_supertrend_4h", fees="binance")
         assert len(jobs) == 60
         for j in jobs:
             assert j["strategy"] == "grok_supertrend_4h"
 
     def test_filter_by_pair(self) -> None:
-        jobs = p7.build_phase1_jobs(pair_filter="SOL/USDC")
+        jobs = p7.build_phase1_jobs(pair_filter="SOL/USDC", fees="binance")
         # SuperTrend (20) + Grid ATR (48) + Donchian (8) → 76 on SOL
         assert len(jobs) == 76
         for j in jobs:
@@ -82,18 +83,21 @@ class TestBuildPhase1Jobs:
         jobs = p7.build_phase1_jobs(
             strategy_filter="grok_grid_atr_adaptive_v4",
             pair_filter="BTC/USDC",
+            fees="binance",
         )
         assert len(jobs) == 48
 
     def test_jobs_are_picklable(self) -> None:
         import pickle
 
-        jobs = p7.build_phase1_jobs()
+        jobs = p7.build_phase1_jobs(fees="binance")
         for j in jobs[:10]:  # spot-check first 10
             pickle.loads(pickle.dumps(j))
 
     def test_train_test_split(self) -> None:
-        jobs = p7.build_phase1_jobs(strategy_filter="grok_supertrend_4h", pair_filter="BTC/USDC")
+        jobs = p7.build_phase1_jobs(
+            strategy_filter="grok_supertrend_4h", pair_filter="BTC/USDC", fees="binance"
+        )
         j = jobs[0]
         # 70/30 split of 2023-04 → 2026-04 (3 years = 1095 days) → 766.5 train, 328.5 test
         train_start = datetime.fromisoformat(j["train_start_iso"])
@@ -105,7 +109,7 @@ class TestBuildPhase1Jobs:
         assert train_end == test_start  # continuous split
 
     def test_keys_unique(self) -> None:
-        jobs = p7.build_phase1_jobs()
+        jobs = p7.build_phase1_jobs(fees="binance")
         keys = [
             p7.make_key(j["strategy"], j["pair"], j["params"], j["phase"], j.get("window_idx"))
             for j in jobs
@@ -236,12 +240,12 @@ class TestBuildPhase2Jobs:
     def test_cross_product(self) -> None:
         top_k = {
             ("s", "BTC/USDC"): [
-                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": 1}, "test": {}},
-                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": 2}, "test": {}},
+                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": 1}, "fees": "binance"},
+                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": 2}, "fees": "binance"},
             ]
         }
         windows = p7.generate_walk_forward_windows()
-        jobs = p7.build_phase2_jobs(top_k, windows=windows)
+        jobs = p7.build_phase2_jobs(top_k, windows=windows, fees="binance")
         # 2 configs × 8 windows = 16
         assert len(jobs) == 16
         # Every job has phase="2" and a window_idx between 1 and 8
@@ -252,11 +256,11 @@ class TestBuildPhase2Jobs:
     def test_keys_unique(self) -> None:
         top_k = {
             ("s", "BTC/USDC"): [
-                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": i}, "test": {}}
+                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": i}, "fees": "binance"}
                 for i in range(3)
             ]
         }
-        jobs = p7.build_phase2_jobs(top_k)
+        jobs = p7.build_phase2_jobs(top_k, fees="binance")
         keys = [
             p7.make_key(j["strategy"], j["pair"], j["params"], j["phase"], j["window_idx"])
             for j in jobs
@@ -272,12 +276,12 @@ class TestBuildPhase2Jobs:
 class TestFilterPending:
     def _build_jobs(self) -> list[dict]:
         return p7.build_phase1_jobs(
-            strategy_filter="grok_donchian_breakout_4h", pair_filter="SOL/USDC"
+            strategy_filter="grok_donchian_breakout_4h", pair_filter="SOL/USDC", fees="binance"
         )
 
     def test_no_existing_returns_all(self) -> None:
         jobs = self._build_jobs()
-        pending = p7.filter_pending_jobs(jobs, existing={}, force=False)
+        pending = p7.filter_pending_jobs(jobs, existing={}, force=False, fees="binance")
         assert pending == jobs
 
     def test_existing_keys_excluded(self) -> None:
@@ -285,7 +289,9 @@ class TestFilterPending:
         existing_key = p7.make_key(
             jobs[0]["strategy"], jobs[0]["pair"], jobs[0]["params"], jobs[0]["phase"]
         )
-        pending = p7.filter_pending_jobs(jobs, existing={existing_key: {"ok": 1}}, force=False)
+        pending = p7.filter_pending_jobs(
+            jobs, existing={existing_key: {"ok": 1, "fees": "binance"}}, force=False, fees="binance"
+        )
         assert len(pending) == len(jobs) - 1
 
     def test_failed_entries_retried(self) -> None:
@@ -294,7 +300,7 @@ class TestFilterPending:
             jobs[0]["strategy"], jobs[0]["pair"], jobs[0]["params"], jobs[0]["phase"]
         )
         pending = p7.filter_pending_jobs(
-            jobs, existing={existing_key: {"error": "timeout"}}, force=False
+            jobs, existing={existing_key: {"error": "timeout"}}, force=False, fees="binance"
         )
         assert len(pending) == len(jobs)
 
@@ -303,8 +309,89 @@ class TestFilterPending:
         existing = {
             p7.make_key(j["strategy"], j["pair"], j["params"], j["phase"]): {"ok": 1} for j in jobs
         }
-        pending = p7.filter_pending_jobs(jobs, existing=existing, force=True)
+        pending = p7.filter_pending_jobs(jobs, existing=existing, force=True, fees="binance")
         assert len(pending) == len(jobs)
+
+    def test_other_fee_model_is_refused(self) -> None:
+        jobs = self._build_jobs()
+        key = p7.make_key(jobs[0]["strategy"], jobs[0]["pair"], jobs[0]["params"], jobs[0]["phase"])
+        with pytest.raises(p7.FeeModelMismatchError, match="fees=bybit"):
+            p7.filter_pending_jobs(
+                jobs, existing={key: {"fees": "bybit"}}, force=False, fees="binance"
+            )
+
+    def test_legacy_entry_without_fees_is_refused(self) -> None:
+        jobs = self._build_jobs()
+        key = p7.make_key(jobs[0]["strategy"], jobs[0]["pair"], jobs[0]["params"], jobs[0]["phase"])
+        with pytest.raises(p7.FeeModelMismatchError, match="pre-B4.2"):
+            p7.filter_pending_jobs(jobs, existing={key: {"ok": 1}}, force=False, fees="binance")
+
+
+class TestFeeModelPlumbing:
+    def test_missing_fees_exits_2(self, capsys: pytest.CaptureFixture[str]) -> None:
+        for phase in ("1", "2", "report"):
+            with pytest.raises(SystemExit) as exc:
+                p7.parse_args(["--phase", phase])
+            assert exc.value.code == 2
+            assert "--fees" in capsys.readouterr().err
+
+    def test_invalid_fees_exits_2(self) -> None:
+        with pytest.raises(SystemExit) as exc:
+            p7.parse_args(["--phase", "1", "--fees", "ftx"])
+        assert exc.value.code == 2
+
+    def test_fees_accepted_and_propagated(self) -> None:
+        args = p7.parse_args(["--phase", "report", "--fees", "bybit"])
+        assert args.fees == "bybit"
+        jobs = p7.build_phase1_jobs(
+            strategy_filter="grok_supertrend_4h", pair_filter="BTC/USDC", fees="bybit"
+        )
+        assert {j["fees"] for j in jobs} == {"bybit"}
+        assert p7.P7Job.from_dict(jobs[0]).fees == "bybit"
+
+    def test_p7job_requires_fees(self) -> None:
+        with pytest.raises(TypeError, match="fees"):
+            p7.P7Job(  # type: ignore[call-arg]
+                strategy="s",
+                pair="BTC/USDC",
+                params={},
+                phase="1",
+                train_start_iso="2023-04-01T00:00:00+00:00",
+                train_end_iso="2025-04-01T00:00:00+00:00",
+                test_start_iso="2025-04-01T00:00:00+00:00",
+                test_end_iso="2026-04-01T00:00:00+00:00",
+            )
+
+    def test_phase2_refuses_phase1_entries_of_another_model(self) -> None:
+        top_k = {
+            ("s", "BTC/USDC"): [
+                {"strategy": "s", "pair": "BTC/USDC", "params": {}, "fees": "binance"}
+            ]
+        }
+        with pytest.raises(p7.FeeModelMismatchError, match="fees=binance"):
+            p7.build_phase2_jobs(top_k, fees="bybit")
+        legacy = {("s", "BTC/USDC"): [{"strategy": "s", "pair": "BTC/USDC", "params": {}}]}
+        with pytest.raises(p7.FeeModelMismatchError, match="pre-B4.2"):
+            p7.build_phase2_jobs(legacy, fees="bybit")
+
+    def test_assert_results_fee_model(self, tmp_path: Path) -> None:
+        path = tmp_path / "phase1.json"
+        p7._assert_results_fee_model({"k": {"fees": "bybit"}, "e": {"error": "x"}}, "bybit", path)
+        with pytest.raises(p7.FeeModelMismatchError):
+            p7._assert_results_fee_model({"k": {"fees": "binance"}}, "bybit", path)
+        with pytest.raises(p7.FeeModelMismatchError):
+            p7._assert_results_fee_model({"k": {"exchange": "binance"}}, "bybit", path)
+
+    def test_report_phase_refuses_mismatched_inputs(
+        self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        phase1 = tmp_path / "p1.json"
+        phase2 = tmp_path / "p2.json"
+        phase1.write_text(json.dumps({"k": {"fees": "binance", "test": {}}}))
+        phase2.write_text(json.dumps({"k": {"fees": "bybit", "test": {}}}))
+        rc = p7._run_report_phase(phase1, phase2, fees="bybit")
+        assert rc == 2
+        assert "fees=binance" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------

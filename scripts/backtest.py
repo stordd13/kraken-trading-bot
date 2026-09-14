@@ -4,7 +4,8 @@ This module provides tools to test trading strategies on historical data
 and calculate performance metrics.
 
 Usage:
-    python -m scripts.backtest --strategy threshold --days 7 --pair XBT/USDC
+    poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/USDC \\
+        --exchange binance --fees bybit --days 1095 --capital 1000
 """
 
 import argparse
@@ -12,13 +13,14 @@ import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+import json
 from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
 from sqlalchemy import select, text
 
-from krakenbot.config.settings import ExchangeFees, Settings, get_settings
+from krakenbot.config.settings import FEE_MODEL_NAMES, ExchangeFees, Settings, get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import EventBus
 from krakenbot.core.logger import get_logger
@@ -101,6 +103,24 @@ def _override_pair_in_params(
     return merged
 
 
+def resolve_fee_model(fee_model: str | ExchangeFees | None) -> tuple[ExchangeFees, str]:
+    """Resolve the engine fee model: a ``--fees`` name or an ``ExchangeFees`` instance.
+
+    There is deliberately no default (B4.2): the fee model is independent of the OHLC data
+    source (``exchange``) and must be stated explicitly, like ``settings.exchange_name``.
+    """
+    if fee_model is None:
+        raise ValueError(
+            "fee_model is required (no silent default): pass one of "
+            f"{', '.join(FEE_MODEL_NAMES)} or an ExchangeFees instance — see PROJECT_CONTEXT.md §5"
+        )
+    if isinstance(fee_model, ExchangeFees):
+        return fee_model, "custom"
+    if isinstance(fee_model, str):
+        return ExchangeFees.from_name(fee_model), fee_model.strip().lower()
+    raise TypeError(f"fee_model must be a str or ExchangeFees, got {type(fee_model).__name__}")
+
+
 @dataclass
 class BacktestTrade:
     """Record of a simulated trade during backtesting."""
@@ -113,6 +133,13 @@ class BacktestTrade:
     fee: Decimal
     pnl: Decimal | None = None  # Profit/loss (set when closing position)
     regime: str | None = None  # Market regime at trade time
+    # Fee audit fields (B4.2): how the fee was billed, for trade-by-trade verification.
+    liquidity: str | None = None  # "maker" (resting limit fill) | "taker" (market / liquidation)
+    fee_rate: Decimal | None = None  # rate applied (fees.maker or fees.taker)
+    fee_base_usdc: Decimal | None = None  # notional the fee was computed on
+    reference_price: Decimal | None = None  # price before spread + slippage
+    spread_pct: Decimal | None = None
+    slippage_pct: Decimal | None = None
 
 
 @dataclass
@@ -192,6 +219,8 @@ class BacktestEngine:
         self,
         settings: Settings,
         db_manager: DatabaseManager,
+        *,
+        fee_model: str | ExchangeFees,
         strategy_name: str = "threshold",
         candle_interval: int = 1,
         exchange: str = "kraken",
@@ -203,9 +232,12 @@ class BacktestEngine:
         Args:
             settings: Application settings
             db_manager: Database manager for historical data
+            fee_model: Fee model name (``--fees``: bybit | binance | kraken) or an
+                ``ExchangeFees`` instance. Required — independent of ``exchange``.
             strategy_name: Name of strategy to backtest
             candle_interval: Candle interval in minutes (default: 1)
-            exchange: Exchange data source to filter on
+            exchange: OHLC data source to filter on (``exchange`` column); it does NOT
+                select the fees any more (B4.2)
             starting_capital: Starting balance in USDC
             strategy_params_override: Optional dict of params merged on top of
                 the strategies.yaml entry for this strategy. Used by the P7
@@ -220,11 +252,8 @@ class BacktestEngine:
         self._params_override = strategy_params_override
         self.logger = get_logger().bind(component="backtest")
 
-        # Exchange-aware fees
-        if exchange == "binance":
-            self.fees = ExchangeFees.binance_defaults(use_bnb=True)
-        else:
-            self.fees = ExchangeFees()
+        # Fee model (B4.2): explicit, decoupled from the OHLC data source.
+        self.fees, self.fee_model_name = resolve_fee_model(fee_model)
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -551,12 +580,15 @@ class BacktestEngine:
             await self._execute_short_signal(signal, current_price, is_limit_fill=is_limit_fill)
             return
 
-        # Realistic trading costs (exchange-aware)
+        # Realistic trading costs: resting limit fill -> maker, no spread/slippage;
+        # market fill -> taker + spread + slippage.
         if is_limit_fill:
+            liquidity = "maker"
             fee_pct = self.fees.maker
             spread_pct = Decimal("0")  # Limit order: no spread
             slippage_pct = Decimal("0")  # Limit order: no slippage
         else:
+            liquidity = "taker"
             fee_pct = self.fees.taker
             spread_pct = self.fees.spread
             slippage_pct = self.fees.slippage
@@ -672,6 +704,12 @@ class BacktestEngine:
                 amount_crypto=crypto_bought,
                 fee=fee,
                 regime=entry_regime,
+                liquidity=liquidity,
+                fee_rate=fee_pct,
+                fee_base_usdc=order_amount,
+                reference_price=current_price,
+                spread_pct=spread_pct,
+                slippage_pct=slippage_pct,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
@@ -794,6 +832,12 @@ class BacktestEngine:
                 fee=fee,
                 pnl=pnl,
                 regime=sell_regime,
+                liquidity=liquidity,
+                fee_rate=fee_pct,
+                fee_base_usdc=proceeds,
+                reference_price=current_price,
+                spread_pct=spread_pct,
+                slippage_pct=slippage_pct,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
@@ -1637,6 +1681,8 @@ class GridBacktester:
         self,
         settings: Settings,
         db_manager: DatabaseManager,
+        *,
+        fee_model: str | ExchangeFees,
         strategy_name: str = "grok_grid_atr_adaptive_v4",
         candle_interval: int = 5,
         exchange: str = "kraken",
@@ -1645,9 +1691,13 @@ class GridBacktester:
     ):
         """Initialize grid backtester.
 
-        ``strategy_params_override`` merges on top of the strategies.yaml
-        entry for this grid strategy. None preserves YAML-only behavior.
-        Used by the P7 grid search.
+        ``fee_model`` (required, B4.2) names the fee model (``--fees``) or is an
+        ``ExchangeFees`` instance; ``exchange`` only selects the OHLC data source.
+        Grid fills are resting limit orders (maker, no spread/slippage); the only
+        taker site is the end-of-run mark-to-market in ``_force_close_open_positions``.
+        ``strategy_params_override`` merges on top of
+        the strategies.yaml entry for this grid strategy. None preserves YAML-only
+        behavior. Used by the P7 grid search.
         """
         self.settings = settings
         self.db_manager = db_manager
@@ -1657,11 +1707,8 @@ class GridBacktester:
         self._params_override = strategy_params_override
         self.logger = get_logger().bind(component="grid_backtest")
 
-        # Exchange-aware fees
-        if exchange == "binance":
-            self.fees = ExchangeFees.binance_defaults(use_bnb=True)
-        else:
-            self.fees = ExchangeFees()
+        # Fee model (B4.2): explicit, decoupled from the OHLC data source.
+        self.fees, self.fee_model_name = resolve_fee_model(fee_model)
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -1892,6 +1939,12 @@ class GridBacktester:
                 amount_usdc=amount_usdc,
                 amount_crypto=btc_bought,
                 fee=fee,
+                liquidity="maker",
+                fee_rate=self.fees.maker,
+                fee_base_usdc=amount_usdc,
+                reference_price=fill_price,
+                spread_pct=Decimal("0"),
+                slippage_pct=Decimal("0"),
             )
         )
 
@@ -1952,6 +2005,12 @@ class GridBacktester:
                 amount_crypto=amount_btc,
                 fee=fee,
                 pnl=pnl,
+                liquidity="maker",
+                fee_rate=self.fees.maker,
+                fee_base_usdc=gross_usdc,
+                reference_price=fill_price,
+                spread_pct=Decimal("0"),
+                slippage_pct=Decimal("0"),
             )
         )
 
@@ -2026,6 +2085,12 @@ class GridBacktester:
                 amount_usdc=amount_usdc,
                 amount_crypto=btc_bought,
                 fee=fee,
+                liquidity="maker",
+                fee_rate=self.fees.maker,
+                fee_base_usdc=amount_usdc,
+                reference_price=fill_price,
+                spread_pct=Decimal("0"),
+                slippage_pct=Decimal("0"),
             )
         )
 
@@ -2086,6 +2151,12 @@ class GridBacktester:
                 amount_crypto=amount_btc,
                 fee=fee,
                 pnl=pnl,
+                liquidity="maker",
+                fee_rate=self.fees.maker,
+                fee_base_usdc=gross_usdc,
+                reference_price=fill_price,
+                spread_pct=Decimal("0"),
+                slippage_pct=Decimal("0"),
             )
         )
 
@@ -2320,6 +2391,12 @@ class GridBacktester:
                     amount_crypto=amount_btc,
                     fee=fee,
                     pnl=pnl,
+                    liquidity="maker",
+                    fee_rate=self.fees.maker,
+                    fee_base_usdc=gross_usdc,
+                    reference_price=final_price,
+                    spread_pct=Decimal("0"),
+                    slippage_pct=Decimal("0"),
                 )
             )
             self.metrics.total_pnl += pnl
@@ -2354,6 +2431,12 @@ class GridBacktester:
                         amount_crypto=amount_btc,
                         fee=fee,
                         pnl=pnl,
+                        liquidity="maker",
+                        fee_rate=self.fees.maker,
+                        fee_base_usdc=gross_usdc,
+                        reference_price=final_price,
+                        spread_pct=Decimal("0"),
+                        slippage_pct=Decimal("0"),
                     )
                 )
                 self.metrics.total_pnl += pnl
@@ -2557,11 +2640,8 @@ class GridBacktester:
         return backtest_run
 
 
-async def main() -> None:
-    """CLI entry point for backtesting."""
-    # Load .env here, not at import time: importing this module must not mutate
-    # os.environ (tests import it at collection). Explicit project-root path.
-    load_dotenv(Path(__file__).parent.parent / ".env")
+def build_parser() -> argparse.ArgumentParser:
+    """CLI parser of scripts/backtest.py (module level so tests can exercise it)."""
     parser = argparse.ArgumentParser(description="Backtest KrakenBot trading strategies")
     parser.add_argument(
         "--strategy",
@@ -2619,7 +2699,10 @@ async def main() -> None:
         "--exchange",
         type=str,
         default="kraken",
-        help="Exchange data source: kraken or binance (default: kraken)",
+        help=(
+            "OHLC data source: kraken or binance (default: kraken). Fees are NOT derived "
+            "from it — see --fees."
+        ),
     )
     parser.add_argument(
         "--start-date",
@@ -2634,7 +2717,134 @@ async def main() -> None:
         help="Starting capital in USDC (default: 1000)",
     )
 
-    args = parser.parse_args()
+    parser.add_argument(
+        "--fees",
+        choices=FEE_MODEL_NAMES,
+        required=True,
+        help=(
+            "Fee model applied by the engine (maker/taker/spread/slippage): bybit, binance "
+            "(BNB flat 0.075%%, the P6/P7 model) or kraken. Independent of --exchange "
+            "(data source). No default on purpose."
+        ),
+    )
+    parser.add_argument(
+        "--trades-out",
+        type=Path,
+        default=None,
+        help="Write the per-trade fee audit JSON after the run (single run only).",
+    )
+    return parser
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    """Parse and validate the CLI arguments (exit 2 on cross-flag violations)."""
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.trades_out is not None and args.cross_validate:
+        parser.error("--trades-out is a single-run artifact; drop it or drop --cross-validate")
+    return args
+
+
+def _dec(value: Any) -> str | None:
+    return None if value is None else str(value)
+
+
+def dump_trades_json(
+    engine: Any,
+    path: Path,
+    *,
+    pair: str,
+    start: datetime,
+    end: datetime,
+    exchange: str,
+    interval: int,
+    capital: float,
+) -> None:
+    """Write the per-trade fee audit JSON (superset of scripts/audit/b4_2_reference_capture
+    schema 1: same core keys, plus fee model, rates, overrides and per-trade audit fields).
+    All Decimals are serialised with ``str()`` — no rounding."""
+    trades = list(engine.metrics.trades)
+    payload: dict[str, Any] = {
+        "schema_version": 1,
+        "engine": type(engine).__name__,
+        "strategy": engine.strategy_name,
+        "pair": pair,
+        "exchange": exchange,
+        "period": {"start": start.isoformat(), "end": end.isoformat()},
+        "interval": interval,
+        "capital": str(Decimal(str(capital))),
+        "fees": engine.fee_model_name,
+        "fee_rates": {
+            "maker": str(engine.fees.maker),
+            "taker": str(engine.fees.taker),
+            "spread": str(engine.fees.spread),
+            "slippage": str(engine.fees.slippage),
+        },
+        "metrics": engine.metrics.to_dict(),
+        "trades": [
+            {
+                "n": n,
+                "timestamp": trade.timestamp.isoformat(),
+                "side": trade.side.value if hasattr(trade.side, "value") else str(trade.side),
+                "liquidity": trade.liquidity,
+                "price": _dec(trade.price),
+                "reference_price": _dec(trade.reference_price),
+                "amount_usdc": _dec(trade.amount_usdc),
+                "amount_crypto": _dec(trade.amount_crypto),
+                "fee": _dec(trade.fee),
+                "fee_rate": _dec(trade.fee_rate),
+                "fee_base_usdc": _dec(trade.fee_base_usdc),
+                "spread_pct": _dec(trade.spread_pct),
+                "slippage_pct": _dec(trade.slippage_pct),
+                "pnl": _dec(trade.pnl),
+                "regime": trade.regime,
+            }
+            for n, trade in enumerate(trades, start=1)
+        ],
+    }
+    regime_stats = getattr(engine, "_regime_stats", None)
+    if regime_stats:
+        payload["regime_breakdown"] = {
+            regime: {
+                "trades": stats["trades"],
+                "wins": stats["wins"],
+                "losses": stats["losses"],
+                "pnl": _dec(stats["pnl"]),
+            }
+            for regime, stats in sorted(regime_stats.items())
+        }
+    if hasattr(engine, "pairs_completed"):
+        payload["grid"] = {
+            "pairs_completed": engine.pairs_completed,
+            "grid_profit": _dec(engine.grid_profit),
+            "total_fees": _dec(engine.total_fees),
+            "total_orders_placed": engine.total_orders_placed,
+            "rebalance_count": engine.rebalance_count,
+            "btc_held": _dec(engine.btc_held),
+            "fills": {
+                "buy": sum(1 for t in trades if t.side == TradeSide.BUY),
+                "sell": sum(1 for t in trades if t.side == TradeSide.SELL),
+                "force_closed": sum(1 for t in trades if t.liquidity == "taker"),
+            },
+        }
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
+async def main(argv: list[str] | None = None) -> None:
+    """CLI entry point for backtesting."""
+    # Load .env here, not at import time: importing this module must not mutate
+    # os.environ (tests import it at collection). Explicit project-root path.
+    load_dotenv(Path(__file__).parent.parent / ".env")
+    args = parse_args(argv)
+    fees, _ = resolve_fee_model(args.fees)
+    print(
+        f"Fee model: {args.fees} (maker {fees.maker} / taker {fees.taker} / "
+        f"spread {fees.spread} / slippage {fees.slippage}); data source: {args.exchange}"
+    )
 
     # Parse dates
     if args.end_date:
@@ -2685,6 +2895,7 @@ async def main() -> None:
                 candle_interval=args.interval,
                 exchange=args.exchange,
                 starting_capital=args.capital,
+                fee_model=args.fees,
             )
             train_metrics = await train_engine.run(args.pair, start_time, split_time)
             train_engine.print_report()
@@ -2701,6 +2912,7 @@ async def main() -> None:
                 candle_interval=args.interval,
                 exchange=args.exchange,
                 starting_capital=args.capital,
+                fee_model=args.fees,
             )
             test_metrics = await test_engine.run(args.pair, split_time, end_time)
             test_engine.print_report()
@@ -2776,6 +2988,7 @@ async def main() -> None:
                     candle_interval=args.interval,
                     exchange=args.exchange,
                     starting_capital=args.capital,
+                    fee_model=args.fees,
                 )
             else:
                 engine = BacktestEngine(
@@ -2785,9 +2998,23 @@ async def main() -> None:
                     candle_interval=args.interval,
                     exchange=args.exchange,
                     starting_capital=args.capital,
+                    fee_model=args.fees,
                 )
 
             await engine.run(args.pair, start_time, end_time)
+
+            if args.trades_out is not None:
+                dump_trades_json(
+                    engine,
+                    args.trades_out,
+                    pair=args.pair,
+                    start=start_time,
+                    end=end_time,
+                    exchange=args.exchange,
+                    interval=args.interval,
+                    capital=args.capital,
+                )
+                print(f"Trades written to {args.trades_out}")
 
             # Print report
             engine.print_report()

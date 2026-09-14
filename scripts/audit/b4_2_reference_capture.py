@@ -90,7 +90,7 @@ _ZERO = Decimal("0")
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 _TS_PREFIX_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} ")
 #: Lines printed by ``main()`` after B4.2 (never by the engines) — dropped before a byte diff.
-_MAIN_ONLY_RE = re.compile(r"^(Fee model:|EXIT_[A-Z0-9_]*=)")
+_MAIN_ONLY_RE = re.compile(r"^(Fee model:|Trades written to |EXIT_[A-Z0-9_]*=)")
 
 
 # ---------------------------------------------------------------------------

@@ -132,7 +132,7 @@ async def test_backtest_metrics_calculation():
     metrics.total_trades = 2
 
     # Calculate metrics
-    engine = BacktestEngine(None, None)  # type: ignore
+    engine = BacktestEngine(None, None, fee_model="kraken")  # type: ignore
     engine.metrics = metrics
     engine.calculate_final_metrics()
 
@@ -176,7 +176,13 @@ def test_backtest_metrics_initialization():
 @pytest.mark.asyncio
 async def test_build_replay_sequence_skips_unused_1h_and_15m_for_4h_strategy():
     """Pure 4h strategies should not load lower-timeframe replay feeds."""
-    engine = BacktestEngine(None, None, strategy_name="grok_supertrend_4h", candle_interval=240)  # type: ignore[arg-type]
+    engine = BacktestEngine(
+        None,  # type: ignore[arg-type]
+        None,  # type: ignore[arg-type]
+        fee_model="kraken",
+        strategy_name="grok_supertrend_4h",
+        candle_interval=240,
+    )
     start_time = datetime.now(UTC) - timedelta(days=30)
     end_time = datetime.now(UTC)
     loaded_intervals: list[int] = []
@@ -206,6 +212,7 @@ def test_grid_backtester_loads_inner_router_params_for_grok_grid_atr_v4():
     backtester = GridBacktester(
         _build_grid_settings(),
         MagicMock(),
+        fee_model="kraken",
         strategy_name="grok_grid_atr_adaptive_v4",
         candle_interval=240,
     )
@@ -222,6 +229,7 @@ async def test_build_grok_grid_replay_sequence_uses_only_4h_1d_1w():
     backtester = GridBacktester(
         _build_grid_settings(),
         MagicMock(),
+        fee_model="kraken",
         strategy_name="grok_grid_atr_adaptive_v4",
         candle_interval=240,
     )
@@ -249,6 +257,7 @@ async def test_grok_grid_buy_fill_creates_paired_sell_via_strategy():
     backtester = GridBacktester(
         _build_grid_settings(),
         MagicMock(),
+        fee_model="kraken",
         strategy_name="grok_grid_atr_adaptive_v4",
         candle_interval=240,
     )
@@ -292,6 +301,7 @@ async def test_grok_grid_sell_fill_closes_position_and_places_paired_buy():
     backtester = GridBacktester(
         _build_grid_settings(),
         MagicMock(),
+        fee_model="kraken",
         strategy_name="grok_grid_atr_adaptive_v4",
         candle_interval=240,
     )
@@ -349,6 +359,7 @@ async def test_grok_grid_pending_orders_preserve_sell_targets_after_recalc():
     backtester = GridBacktester(
         _build_grid_settings(),
         MagicMock(),
+        fee_model="kraken",
         strategy_name="grok_grid_atr_adaptive_v4",
         candle_interval=240,
     )

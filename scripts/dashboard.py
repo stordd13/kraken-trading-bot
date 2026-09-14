@@ -53,6 +53,10 @@ from krakenbot.config.settings import get_settings
 # Load settings and build per-strategy exit configuration
 _settings = get_settings()
 
+#: Dashboard backtests use the production fee model (PROJECT_CONTEXT.md §5); the OHLC data
+#: source of BacktestEngine keeps its default here (annex, out of B4.2 scope).
+DASHBOARD_FEE_MODEL = "bybit"
+
 # Per-strategy exit configuration for target price calculation.
 # Built dynamically from strategies.yaml — zero code changes when adding a new strategy.
 _default_sell_pct = _settings.strategy.sell_threshold_pct  # e.g., 2.0 for +2%
@@ -908,6 +912,7 @@ def run_backtest_in_thread(strategy: str, days: int, interval: int, pair: str) -
                 db_manager=db_manager,
                 strategy_name=strategy,
                 candle_interval=interval,
+                fee_model=DASHBOARD_FEE_MODEL,
             )
 
             end_time = datetime.now(UTC)

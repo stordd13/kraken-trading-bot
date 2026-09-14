@@ -235,6 +235,7 @@ class TestNormaliseLog:
             "2026-09-14 08:53:01 [info     ] backtest_starting component=backtest",
             "\x1b[32m2026-09-14 08:53:02\x1b[0m [debug    ] backtest_buy price=1.0",
             "Fee model: bybit (maker 0.0010 / taker 0.0025)",
+            "Trades written to results/x.json",
             "EXIT_A1=0",
             "Total Return:                  +2.42%",
         ]

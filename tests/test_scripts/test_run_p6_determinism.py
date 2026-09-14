@@ -107,6 +107,7 @@ def _make_job(
         capital=runner.CAPITAL,
         exchange=runner.EXCHANGE,
         candle_interval=runner.CANDLE_INTERVAL,
+        fees="binance",
     ).to_dict()
 
 
@@ -137,9 +138,9 @@ def _run_one_combo(
     # Monkey patch the job list for this invocation
     jobs = [_make_job(strategy, pair, start, end)]
     original_build = runner.build_job_list
-    runner.build_job_list = lambda: list(jobs)  # type: ignore[assignment]
+    runner.build_job_list = lambda **_: list(jobs)  # type: ignore[assignment]
     try:
-        argv = ["--output", str(out), "--force"]
+        argv = ["--output", str(out), "--force", "--fees", "binance"]
         if serial:
             argv.append("--serial")
         else:

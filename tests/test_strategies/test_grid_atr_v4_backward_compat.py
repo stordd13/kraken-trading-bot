@@ -109,12 +109,13 @@ def _run_combo(tmp_path: Path) -> dict[str, Any]:
         capital=runner.CAPITAL,
         exchange=runner.EXCHANGE,
         candle_interval=runner.CANDLE_INTERVAL,
+        fees="binance",
     ).to_dict()
 
     original_build = runner.build_job_list
-    runner.build_job_list = lambda: [job]  # type: ignore[assignment]
+    runner.build_job_list = lambda **_: [job]  # type: ignore[assignment]
     try:
-        argv = ["--output", str(out), "--force", "--serial"]
+        argv = ["--output", str(out), "--force", "--serial", "--fees", "binance"]
         rc = runner.main(argv)
         assert rc == 0, "backtest run failed"
         data = json.loads(out.read_text())

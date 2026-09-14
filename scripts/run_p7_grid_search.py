@@ -51,6 +51,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from krakenbot.config.settings import FEE_MODEL_NAMES
 from krakenbot.core.logger import get_logger
 
 try:
@@ -118,8 +119,9 @@ class P7Job:
     train_end_iso: str
     test_start_iso: str
     test_end_iso: str
+    fees: str  # fee model applied by the engines (--fees); no default, before the defaulted fields
     capital: float = CAPITAL
-    exchange: str = EXCHANGE
+    exchange: str = EXCHANGE  # OHLC data source only
     candle_interval: int = CANDLE_INTERVAL
     window_idx: int | None = None  # phase 2 only
 
@@ -162,6 +164,8 @@ def make_key(
 def build_phase1_jobs(
     strategy_filter: str | None = None,
     pair_filter: str | None = None,
+    *,
+    fees: str,
 ) -> list[dict[str, Any]]:
     """Build the full phase-1 job list as picklable dicts.
 
@@ -185,6 +189,7 @@ def build_phase1_jobs(
                 train_end_iso=split.isoformat(),
                 test_start_iso=split.isoformat(),
                 test_end_iso=P7_END.isoformat(),
+                fees=fees,
             ).to_dict()
         )
     return out
@@ -311,13 +316,25 @@ def _safe_sharpe(metrics: dict[str, Any]) -> float:
 def build_phase2_jobs(
     top_k_per_combo: dict[tuple[str, str], list[dict[str, Any]]],
     windows: list[WalkForwardWindow] | None = None,
+    *,
+    fees: str,
 ) -> list[dict[str, Any]]:
-    """Cross top-K configs with walk-forward windows → list of P7Job dicts."""
+    """Cross top-K configs with walk-forward windows → list of P7Job dicts.
+
+    A phase-1 ranking produced under another fee model (or none, pre-B4.2) must not seed
+    a walk-forward: every source entry has to carry ``fees == fees``.
+    """
     if windows is None:
         windows = generate_walk_forward_windows()
     out: list[dict[str, Any]] = []
     for (strategy, pair), entries in top_k_per_combo.items():
         for entry in entries:
+            if entry.get("fees") != fees:
+                raise FeeModelMismatchError(
+                    f"phase-1 entry {strategy} {pair} was produced with fees="
+                    f"{entry.get('fees', '<absent: pre-B4.2 file>')}; it cannot seed a "
+                    f"--fees {fees} walk-forward (regenerate phase 1 with --fees {fees})"
+                )
             params = entry.get("params") or {}
             for window in windows:
                 out.append(
@@ -326,6 +343,7 @@ def build_phase2_jobs(
                         pair=pair,
                         params=dict(params),
                         phase="2",
+                        fees=fees,
                         train_start_iso=window.train_start.isoformat(),
                         train_end_iso=window.train_end.isoformat(),
                         test_start_iso=window.test_start.isoformat(),
@@ -339,6 +357,19 @@ def build_phase2_jobs(
 # ---------------------------------------------------------------------------
 # Resume support (shared between phases)
 # ---------------------------------------------------------------------------
+
+
+class FeeModelMismatchError(RuntimeError):
+    """A results file entry was produced under another fee model (or none, pre-B4.2)."""
+
+
+def _fee_mismatch_message(key: str, existing: str | None, requested: str, path: Path) -> str:
+    return (
+        f"Resume refused for {key}: {path} holds a result produced with fees="
+        f"{existing if existing is not None else '<absent: pre-B4.2 file>'} but --fees "
+        f"{requested} was requested. Mixed fee models would invalidate the ranking: write to "
+        f"a fresh --output (e.g. a fee-suffixed file) or pass --force to overwrite everything."
+    )
 
 
 def load_existing_results(path: Path) -> dict[str, Any]:
@@ -357,7 +388,11 @@ def filter_pending_jobs(
     jobs: list[dict[str, Any]],
     existing: dict[str, Any],
     force: bool,
+    *,
+    fees: str,
+    path: Path | None = None,
 ) -> list[dict[str, Any]]:
+    """Jobs not yet in ``existing``; refuses to skip a result made under another fee model."""
     if force:
         return list(jobs)
     pending = []
@@ -372,7 +407,21 @@ def filter_pending_jobs(
         entry = existing.get(key)
         if entry is None or "error" in entry:
             pending.append(job)
+            continue
+        if entry.get("fees") != fees:
+            raise FeeModelMismatchError(
+                _fee_mismatch_message(key, entry.get("fees"), fees, path or PHASE1_OUTPUT)
+            )
     return pending
+
+
+def _assert_results_fee_model(entries: dict[str, Any], fees: str, path: Path) -> None:
+    """Every non-error entry of a results file must carry the requested fee model."""
+    for key, entry in entries.items():
+        if "error" in entry:
+            continue
+        if entry.get("fees") != fees:
+            raise FeeModelMismatchError(_fee_mismatch_message(key, entry.get("fees"), fees, path))
 
 
 # ---------------------------------------------------------------------------
@@ -511,6 +560,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
                 exchange=job.exchange,
                 starting_capital=job.capital,
                 strategy_params_override=dict(job.params),
+                fee_model=job.fees,
             )
 
         async def _run_segment(seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
@@ -531,6 +581,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
             "strategy": job.strategy,
             "pair": job.pair,
             "exchange": job.exchange,
+            "fees": job.fees,
             "params": dict(job.params),
             "phase": job.phase,
             "window_idx": job.window_idx,
@@ -608,6 +659,8 @@ def _apply_result(
         results_store[key] = {
             "strategy": job["strategy"],
             "pair": job["pair"],
+            "exchange": job.get("exchange"),
+            "fees": job.get("fees"),
             "params": job["params"],
             "phase": job["phase"],
             "window_idx": job.get("window_idx"),
@@ -753,6 +806,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "2 = walk-forward top-5, report = aggregate + select + write report markdown."
         ),
     )
+    parser.add_argument(
+        "--fees",
+        choices=FEE_MODEL_NAMES,
+        required=True,
+        help=(
+            "Fee model applied by the engines (bybit | binance | kraken), required for every "
+            "phase: recorded in each result entry and validated against the input files in "
+            "phase 2 and report. Independent of the EXCHANGE data-source constant. No default."
+        ),
+    )
     parser.add_argument("--workers", type=int, default=None, help="Worker count. Default: auto.")
     parser.add_argument(
         "--timeout",
@@ -788,8 +851,12 @@ REPORT_MD_PATH = ROOT / "results" / "P7_optimization_report.md"
 FINAL_SELECTION_PATH = ROOT / "results" / "P7_final_selection.json"
 
 
-def _run_report_phase(phase1_path: Path, phase2_path: Path) -> int:
-    """Run the report-only phase: aggregate + selection + markdown."""
+def _run_report_phase(phase1_path: Path, phase2_path: Path, *, fees: str) -> int:
+    """Run the report-only phase: aggregate + selection + markdown.
+
+    Both input files must have been produced under ``fees`` (mixed or pre-B4.2 files are
+    refused): the selection is only meaningful under one fee model.
+    """
     try:
         from scripts import p7_report
     except ModuleNotFoundError:
@@ -801,6 +868,13 @@ def _run_report_phase(phase1_path: Path, phase2_path: Path) -> int:
     if not phase2_path.exists():
         print(f"Phase-2 results not found at {phase2_path}.", file=sys.stderr)
         return 2
+    try:
+        _assert_results_fee_model(load_existing_results(phase1_path), fees, phase1_path)
+        _assert_results_fee_model(load_existing_results(phase2_path), fees, phase2_path)
+    except FeeModelMismatchError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
+    print(f"Fee model: {fees} (validated against both input files)")
 
     selection = p7_report.generate_report(
         phase1_path=phase1_path,
@@ -825,20 +899,27 @@ def main(argv: list[str] | None = None) -> int:
     if args.phase == "report":
         phase1_path = args.phase1_input
         phase2_path = args.output or PHASE2_OUTPUT
-        return _run_report_phase(phase1_path, phase2_path)
+        return _run_report_phase(phase1_path, phase2_path, fees=args.fees)
 
     if args.phase == "1":
         output_path = args.output or PHASE1_OUTPUT
-        jobs = build_phase1_jobs(strategy_filter=args.strategy, pair_filter=args.pair)
+        jobs = build_phase1_jobs(
+            strategy_filter=args.strategy, pair_filter=args.pair, fees=args.fees
+        )
     else:
         output_path = args.output or PHASE2_OUTPUT
         if not args.phase1_input.exists():
             print(f"Phase-1 results not found at {args.phase1_input}.", file=sys.stderr)
             return 2
         phase1 = load_existing_results(args.phase1_input)
-        top_k = select_top_k_per_combo(phase1, k=WF_TOP_K)
-        windows = generate_walk_forward_windows()
-        jobs = build_phase2_jobs(top_k, windows=windows)
+        try:
+            _assert_results_fee_model(phase1, args.fees, args.phase1_input)
+            top_k = select_top_k_per_combo(phase1, k=WF_TOP_K)
+            windows = generate_walk_forward_windows()
+            jobs = build_phase2_jobs(top_k, windows=windows, fees=args.fees)
+        except FeeModelMismatchError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 2
         logger.info(
             "phase2_built",
             n_combos=len(top_k),
@@ -849,7 +930,13 @@ def main(argv: list[str] | None = None) -> int:
     jobs = sort_jobs_by_duration(jobs)
 
     existing = load_existing_results(output_path)
-    pending = filter_pending_jobs(jobs, existing, force=args.force)
+    try:
+        pending = filter_pending_jobs(
+            jobs, existing, force=args.force, fees=args.fees, path=output_path
+        )
+    except FeeModelMismatchError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     if args.limit is not None:
         pending = pending[: args.limit]
 
