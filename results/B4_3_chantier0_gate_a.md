@@ -7,7 +7,8 @@
 > Runs de référence exécutés en local via le tunnel SSH (lecture seule, collector intouché), comme en B4.2.
 > Références de lignes `scripts/backtest.py` = **base `539c339`** (état diagnostiqué), sauf mention « HEAD ».
 > Revue adversariale du diff (43 agents read-only, § 7) : 4 défauts confirmés, corrigés (C6/C7) avant soumission.
-> État : **soumis au GATE A** — aucun run de campagne n'a été lancé.
+> État : **GATE A validé par Bruno le 2026-09-14** (« GO GATE A — chantier 0 validé », § 9) — aucun run de campagne
+> n'a été lancé ; le GATE B (`results/B4_3_gate_b_configs.md`) attend les valeurs du summary q3.
 
 ## 1. Résumé
 
@@ -136,6 +137,10 @@ maker / **33 liquidations** à 68 212.86 (taker 0.25 %, spread 0.02 %, slippage 
 +11.59 % → **+11.42 %**), `net_pnl` 316.18 → **114.21 = `ending − 1000`** (identité exacte, = lot-basis, résidu 0),
 MaxDD 19.989 % inchangé, `average_holding_time_minutes` 1 434.86 inchangé, `verify-fees --fees bybit` OK
 (1 064 / 1 031 / 33). Chiffres bruts : la lecture stratégique est la campagne, pas ce chantier.
+**Écart avec la ligne info bybit du plan (ending pré-estimé 1 127.77)** : la pré-estimation appliquait le coût de
+liquidation bybit (1.73 USDC) au run **binance** (ending 1 129.50) ; le baseline bybit réel (`b4_2_bybit_grid_A.json`)
+finit à 1 115.94 parce que le maker 0.10 % vs 0.075 % renchérit chaque fill (fees 52.74 vs 39.60 = **13.14 USDC**) et
+modifie la trajectoire (1 031 paires vs 1 032, **0.42 USDC**) : 1 115.94 − 1.73 = **1 114.21**, le run fait foi.
 
 ## 5. Fenêtre gold hash (BTC/USDC 2025-03-01 → 03-15, runner P6 : train / test / all)
 
@@ -213,6 +218,38 @@ Réconciliation du segment `all` (`b4_3_ref_grid_quick_post.json` vs `b4_2_ref_g
   (dette 10 préexistante) ; `mypy src/ --ignore-missing-imports` : 64 erreurs / 18 fichiers = baseline B4.2 (aucune
   nouvelle). Dérogation 1 : à C1 et C2 le gold hash DB-gated était rouge (attendu, annoncé), suite sans DB verte.
 
+## 6b. Écarts au contrat § 3 du plan — section unique (exigence GO GATE A, point 1)
+
+Tout ce qui, sur les runs réels, s'écarte de la table § 3 du plan ou n'y figurait pas, au même endroit :
+
+| # | Écart | Nature | Valeur | Statut |
+|---|---|---|---|---|
+| 1 | `max_drawdown_pct` | conditionnel déclaré (lu au run) | **inchangé** 19.699 % (P6) / 3.051 % (quick) | ✅ dans la borne `[old, old + coût de liquidation]` |
+| 2 | Sharpe / Sortino / Calmar | conditionnels déclarés | P6 : 0.023707 → 0.023614, 0.033857 → 0.033725, 0.218928 → 0.217867 ; quick : ↓ également | ✅ en baisse comme pré-signé pour cette config |
+| 3 | Segments train / test du gold hash | non pré-estimables (pas de capture B4.2) | train 38 trades / 13 liquidations (−30.42), test 6 trades / 0 liquidation | ✅ lus au run, chiffrés § 5 |
+| 4 | `average_holding_time_minutes` | **non listé au § 3** — pollué par les liquidations à C1-C3 (P6 1 439 → 1 992, +38 % ; hashé dans les H1/H2 de C3), détecté par la revue | corrigé à C6 (liquidations exclues, durée réelle des lots reportée à part) → **delta final 0** (1 439.25 P6, 323.78 quick) | ✅ dérogation 1 **étendue** par Bruno : second re-baseline C6 accepté, écart déclaré |
+| 5 | Définition de `net_pnl` grid | choix de design hors D2 littérale : cash réalisé après liquidation au lieu de `total_pnl − fees d'achat` | identiques sur tous les runs de référence (écart formule vs cash ≤ 1.6e-23 en Decimal, table ci-dessous) | ✅ accepté par Bruno (point 2) ; contrepartie : évidence ci-dessous + règle de campagne § 12 |
+| 6 | Ligne info bybit du plan (§ 3 : ending 1 127.77) | pré-estimation appliquée au **baseline binance** (1 129.50) au lieu du baseline bybit (1 115.94) | run : 1 114.21 = 1 115.94 − 1.73 (coût de liquidation bybit) ; écart 13.56 = 13.14 de différentiel maker 0.10 % vs 0.075 % sur les 2 095 fills du run + 0.42 de trajectoire (1 031 vs 1 032 paires) | ✅ le run fait foi (§ 4) |
+| 7 | `net_pnl` signal (garde d) | écart **prévu** par la garde amendée D3 | +1.7445 (binance) / +5.8128 (bybit) = Σ fees de vente exactement | ✅ § 3 |
+
+Aucun autre écart : les 18 clés de `to_dict()` sont soit dans la table § 4 (identités exactes), soit dans les lignes 1-4 ci-dessus.
+
+**Évidence « formule vs cash » (exigence GO GATE A, point 2)** — `results/b4_3_net_pnl_identity_outputs.txt`, recalcul
+Decimal depuis les enregistrements de trades des dumps du moteur final (grid : cash = −Σ achats + Σ (brut − fee) des
+ventes ; signal : cash = −Σ achats + Σ ventes nettes) :
+
+| Run | Dump | formule `Σpnl − fees d'achat` | cash `Σ(−achats) + Σ(ventes nettes)` | formule − cash | `metrics.net_pnl` | \|net_pnl − cash\| (float) | résidu | divergence BTC |
+|---|---|---|---|---|---|---|---|---|
+| grid P6 `--fees binance` | b4_3_ref_grid_A_post_trades.json | 128.872541788016 | 128.872541788016 | +1.5e-23 | 128.872541788016 | 1.2e-14 | 0 | -1.1E-29 |
+| grid P6 `--fees bybit` | b4_3_bybit_grid_A_post.json | 114.206947482766 | 114.206947482766 | -1.6e-23 | 114.206947482766 | 2.5e-15 | 0 | -4E-30 |
+| grid fenêtre rapide binance | b4_3_ref_grid_quick_post_trades.json | 1.520224293758 | 1.520224293758 | +0.0e-25 | 1.520224293758 | 7.3e-17 | 0 | 0E-30 |
+| grid fenêtre rapide bybit | b4_3_bybit_grid_quick_post.json | 0.654537804207 | 0.654537804207 | -9.3e-25 | 0.654537804207 | 2.3e-17 | 0 | -1E-30 |
+| signal A binance | b4_3_ref_signal_A_post_trades.json | 24.197312853870 | 24.197312853870 | +1.7e-24 | 24.197312853870 | 1.1e-16 | — | — |
+| signal A bybit | b4_3_bybit_signal_A_post.json | 19.314423426762 | 19.314423426762 | +1.9e-24 | 19.314423426762 | 2.1e-16 | — | — |
+
+Écart formule vs cash ≤ 1.6e-23 (arrondi Decimal prec-28) sur les six dumps, deux moteurs, deux modèles ; résidu et
+divergence d'inventaire nuls (≤ 1.1e-29 = dérive) sur tous les runs grid.
+
 ## 7. Revue adversariale du diff (43 agents read-only : 6 lenses, 2 vérificateurs par constat, recalcul indépendant)
 
 18 constats bruts → **13 confirmés** (≥ 2 vérificateurs), regroupés en 4 défauts réels, tous corrigés (C6/C7) :
@@ -239,6 +276,8 @@ T3 sont bit-identiques (trades et `to_dict()`). Un override pour une autre paire
 
 ## 9. Dérogations accordées et exigences opposables (GO Bruno, 2026-09-14)
 
+0. **GO GATE A (Bruno, 2026-09-14)** : chantier 0 validé ; dérogation 1 étendue au second re-baseline C6 ;
+   `net_pnl` grid = cash réalisé accepté avec l'évidence § 6b et la règle de campagne § 12 ; écart bybit expliqué § 4.
 1. Gold hash DB-gated **rouge à C1 et C2 tunnel ouvert** (annoncé dans les messages de commit ; suite sans DB verte
    à chaque commit : 1 300 passés à C1, 316 tests backtest/scripts à C2 ; CI non concernée) ; re-baseline **unique à
    C3** (H1 + H2) — **puis un second re-baseline à C6**, imposé par le correctif de revue (`average_holding_time_minutes`
@@ -281,6 +320,11 @@ T3 sont bit-identiques (trades et `to_dict()`). Un override pour une autre paire
 (`b4_2_ref_grid_*`) restent comme **baselines supersédées** (biais de survie documenté).
 
 ## 12. Suite (après GO A)
+
+**Règle de campagne (GO GATE A, point 2)** : tout run grid de la campagne dont le bloc `liquidation` montre une
+divergence d'inventaire (`inventory_divergence_btc` ou `residual_net_proceeds` ≠ 0 au-delà de la dérive 1e-12) ou un
+écart `net_pnl` ≠ `net_pnl_lot_basis` est **flaggé nominativement** (stratégie × paire × config × segment) dans le
+rapport B4 — le runner persiste ces indicateurs par segment (commit campagne, GATE B § 5).
 
 GATE B (`results/B4_3_gate_b_configs.md`, brief § 5) : coûts par paire depuis le summary q3 de Bruno →
 `config/pair_costs_b4.json` (signal + liquidation grid) ; cartographie risk backtest-visible vs runtime ; grilles

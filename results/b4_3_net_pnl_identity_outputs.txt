@@ -1,0 +1,12 @@
+# B4.3 chantier 0 — net_pnl identity evidence (Decimal, recomputed from the trade records of the reference dumps, final engine 442068a)
+# formula = sum(sell pnl) - sum(buy fees); cash = -sum(buy amount_usdc) + sum(sell net proceeds) == usdc_balance - capital
+# requirement (GO GATE A, point 2): |formula - cash| <= 1e-12 on the reference runs of BOTH engines, both fee models
+
+| Run | Dump | formule `Σpnl − fees d'achat` | cash `Σ(−achats) + Σ(ventes nettes)` | formule − cash | `metrics.net_pnl` | \|net_pnl − cash\| (float) | résidu | divergence BTC |
+|---|---|---|---|---|---|---|---|---|
+| grid P6 `--fees binance` | b4_3_ref_grid_A_post_trades.json | 128.872541788016 | 128.872541788016 | +1.5e-23 | 128.872541788016 | 1.2e-14 | 0 | -1.1E-29 |
+| grid P6 `--fees bybit` | b4_3_bybit_grid_A_post.json | 114.206947482766 | 114.206947482766 | -1.6e-23 | 114.206947482766 | 2.5e-15 | 0 | -4E-30 |
+| grid fenêtre rapide binance | b4_3_ref_grid_quick_post_trades.json | 1.520224293758 | 1.520224293758 | +0.0e-25 | 1.520224293758 | 7.3e-17 | 0 | 0E-30 |
+| grid fenêtre rapide bybit | b4_3_bybit_grid_quick_post.json | 0.654537804207 | 0.654537804207 | -9.3e-25 | 0.654537804207 | 2.3e-17 | 0 | -1E-30 |
+| signal A binance | b4_3_ref_signal_A_post_trades.json | 24.197312853870 | 24.197312853870 | +1.7e-24 | 24.197312853870 | 1.1e-16 | — | — |
+| signal A bybit | b4_3_bybit_signal_A_post.json | 19.314423426762 | 19.314423426762 | +1.9e-24 | 19.314423426762 | 2.1e-16 | — | — |
