@@ -482,8 +482,10 @@ couverture : BTC dès fin octobre 2025, ETH et SOL dès mi-novembre 2025, jusqu'
    `docs/CODE_MAP.md` — la garantie « Bybit seulement » reste vraie (les clients REST Binance/Kraken renvoient
    l'open time ccxt), mais plus « parce que la DB Binance est mixte ».
 8. ~~Table auxiliaire `b4_restamp_progress` à supprimer après GATE 3~~ → supprimée le 2026-09-13 19:27:35 UTC (§ 7).
-9. Suite pytest : `ERROR at teardown` (`ResourceWarning`) sur `test_grid_atr_v4_backward_compat_hash`, présent
-   avec et sans les tests B4 ; à traiter avec les 4 échecs ordre-dépendants (scope B4.2).
+9. `test_grid_atr_v4_backward_compat_hash` : gold hash capturé sur les données open-stamped → dérive **attendue**
+   après le re-stamp (§ 7.2), échoue même en isolation avec DB joignable (skippé en CI), teardown avec
+   `ResourceWarning`. À re-baseliner en B4.3 (après les fees B4.2), pas avant.
+10. CI GitHub Actions non câblée sur `dev` (`ci.yml` : `main`, `develop`) — décision Bruno.
 
 ## 6. Tests et qualité
 
@@ -513,5 +515,32 @@ couverture : BTC dès fin octobre 2025, ETH et SOL dès mi-novembre 2025, jusqu'
 | Collector | `active` depuis 18:13:23 UTC, 0 redémarrage, stats WS `errors: 0, reconnections: 0`, 1m BTC écrit jusqu'à 19:27 UTC ; `gap_backfill` planifié 2026-09-14 03:30 UTC (vérification Bruno, invariant 8) |
 | Manifeste | `results/b4_binance_stamp_boundaries.json` sha256 `eb62eab641babd7b12cb44209fac27096d452a9139fc7c86b94610b2f7f01e5a` (inchangé depuis le dry-run serveur ; les rejeux ne l'écrivent pas) |
 
-Reste hors de ce brief (workflow de clôture de phase) : review humaine → PR `feat/b4-1-binance-restamp` → `dev` →
-push vérifié → serveur → observation → tag.
+### 7.1 Clôture de phase (2026-09-13 → 14)
+
+| Étape | Résultat |
+|---|---|
+| Review humaine + spot-checks DB indépendants (Bruno) | OK, GO clôture |
+| Merge `feat/b4-1-binance-restamp` → `dev` | `c67daeb` (`--no-ff`, merge local : `gh` non authentifié sur le poste, pas de PR GitHub), `origin/dev` vérifié |
+| `docs/CODE_MAP.md` régénéré (méthode de l'en-tête) | `d3d3423` sur `dev`, poussé |
+| Serveur | `dev` @ `d3d3423`, collector redémarré 2026-09-13 19:54:11 UTC, `active`, 0 erreur |
+| Invariant 8 — `gap_backfill` 2026-09-14 03:30 UTC (vérifié par Bruno, relevé `task_execution_logs` id 698) | **success, gaps_found = 19, gaps_filled = 19, candles_inserted = 109, failures = 0, 10,5 s** — la fenêtre d'arrêt 17:46:59 → 18:13:23 est comblée (ex. SOL 1h 18:00). Stats WS sur la nuit : 0 erreur, 1 reconnexion, 0 resubscribe |
+| Tag | **`v2.6.0-b4-1-binance-restamp`** (annoté, 2026-09-14 06:34 UTC) sur `dev` @ `d3d3423`, poussé, visible sur origin (`236acfd → d3d3423`) |
+| CI | `ci.yml` ne se déclenche que sur `main` et `develop` (`pull_request` : `main`) ; la branche de travail est `dev` → **aucun run GitHub Actions n'existe sur `dev`** (API : `total_count = 0`). Étapes du workflow reproduites localement sur `d3d3423` dans une copie sans `.env` (§ 7.2). Câblage CI sur `dev` : décision Bruno (une ligne `branches: [main, dev]`), hors scope B4.1 |
+
+### 7.2 Équivalent CI sur `dev` @ `d3d3423` (copie sans `.env`, venv du projet, 2026-09-14 06:40 UTC)
+
+| Étape `ci.yml` | Résultat |
+|---|---|
+| `ruff check src/` | All checks passed |
+| `ruff format --check src/` | 81 files already formatted |
+| `mypy src/ --ignore-missing-imports` (`continue-on-error`) | 64 erreurs dans 18 fichiers — **identique sur `08e8e1f` (pré-B4.1)** dans le même environnement : B4.1 ne touche `src/` que par des docstrings |
+| `pytest tests/ --tb=short` (hors `test_run_p6_determinism.py`, skippé en CI faute de DB) | **1 192 passés, 6 skipped, 1 échec + 1 error** : `test_grid_atr_v4_backward_compat_hash` |
+
+Sans `.env`, les 3 autres échecs ordre-dépendants connus disparaissent (pollution de `os.environ` par le `.env`
+local). Le dernier est **attendu et expliqué** : ce test rejoue un backtest `grok_grid_atr_adaptive_v4` sur les
+données Binance de la DB et compare un hash figé des métriques (`EXPECTED_HASH = 32c157cd…`, capturé en P7 sur
+les données open-stamped) ; après le re-stamp les mêmes candles sont vues aux bons instants et le hash dérive
+(`abb3a6d8…`) — même nature que l'invariant 6. Il ne s'exécute qu'avec une DB joignable (`skipif`), donc il est
+**skippé en CI** ; localement il échoue désormais même en isolation, et son teardown émet le `ResourceWarning`
+noté en § 6. Re-baseliner `EXPECTED_HASH` n'est pas fait ici : la valeur changera à nouveau avec les fees
+maker/taker (B4.2) — à figer en B4.3 sur les données re-stampées + fees Bybit (annexe § 5).
