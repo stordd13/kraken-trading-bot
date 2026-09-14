@@ -51,13 +51,16 @@ poetry run ruff check . --fix && poetry run ruff format .   # lint + format
 poetry run python -m krakenbot                              # bot (paper) — connecteur Bybit : B1
 poetry run python -m krakenbot.collector                    # collector — Bybit WS : B2
 poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/USDC \
-    --exchange binance --days 1095 --capital 1000           # backtest unitaire
-poetry run python scripts/run_p6_backtests.py --workers 8   # 24 combos P6 (resume auto, --serial, --force)
-poetry run python scripts/run_p7_grid_search.py --phase 1 --workers 8   # P7 : --phase 1 | 2 | report
+    --exchange binance --fees bybit --days 1095 --capital 1000   # backtest unitaire (--fees obligatoire)
+poetry run python scripts/run_p6_backtests.py --fees bybit --workers 8   # 24 combos P6 (resume auto, --serial, --force)
+poetry run python scripts/run_p7_grid_search.py --phase 1 --fees bybit --workers 8   # P7 : --phase 1 | 2 | report
 poetry run python scripts/dashboard.py                      # dashboard Dash
 ```
 
 `--exchange binance` désigne la **source de données** (8.7M rows Binance), pas l'exchange cible.
+`--fees {bybit,binance,kraken}` est **obligatoire** (B4.2) et désigne le **modèle de fees** appliqué par les
+moteurs (maker/taker/spread/slippage), indépendant de la source de données ; `binance` = 0.075 % flat des
+résultats P6/P7 historiques, `bybit` = cible de production. Détails : `skills/backtest.md`.
 
 ## Conventions git
 
