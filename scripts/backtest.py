@@ -305,7 +305,6 @@ class BacktestEngine:
         self.equity_curve: list[tuple[datetime, Decimal]] = []
         self._current_regime: str | None = None
         self._regime_stats: dict[str, dict] = {}
-        self._entry_regimes: dict[int, str] = {}  # position_id → entry regime
         self._entry_regime: str | None = None  # single-position mode
 
         # Strategy instance (will be created during run)
@@ -594,13 +593,6 @@ class BacktestEngine:
             # Market order: fill at open of N+1 (spread+slippage added by execute_signal)
             return candle.open, False
 
-    @staticmethod
-    def _is_short_signal(signal: TradingSignal) -> bool:
-        """Check if a signal is a margin/short signal."""
-        if not signal.metadata:
-            return False
-        return bool(signal.metadata.get("is_short_open") or signal.metadata.get("is_short_close"))
-
     def _costs_for_pair(self, pair: str) -> tuple[Decimal, Decimal]:
         """Spread and slippage for a market fill on ``pair`` (override or model globals)."""
         override = self._pair_costs.get(pair)
@@ -621,11 +613,6 @@ class BacktestEngine:
         if signal.signal_type == SignalType.HOLD:
             return
 
-        # Route margin (short) signals to separate handler
-        if signal.metadata and signal.metadata.get("mode") == "margin":
-            await self._execute_short_signal(signal, current_price, is_limit_fill=is_limit_fill)
-            return
-
         # Realistic trading costs: resting limit fill -> maker, no spread/slippage;
         # market fill -> taker + spread + slippage (per-pair override or model globals).
         if is_limit_fill:
@@ -637,10 +624,6 @@ class BacktestEngine:
             liquidity = "taker"
             fee_pct = self.fees.taker
             spread_pct, slippage_pct = self._costs_for_pair(signal.pair)
-
-        # Multi-position (legacy) strategies were removed in B0.5; kept as an
-        # empty hook so the BUY/SELL branching below stays readable.
-        is_multi = False
 
         # Accumulation strategies buy repeatedly without selling (e.g. DCA)
         is_accumulation = self.strategy_name in [
@@ -668,9 +651,7 @@ class BacktestEngine:
         else:
             order_amount_override = None
 
-        if signal.signal_type == SignalType.BUY and (
-            is_multi or is_accumulation or not self.in_position
-        ):
+        if signal.signal_type == SignalType.BUY and (is_accumulation or not self.in_position):
             # Buy with available USDC
             if order_amount_override is not None:
                 order_amount = order_amount_override
@@ -712,15 +693,7 @@ class BacktestEngine:
             self.in_position = True
 
             # Update strategy position state for next signal generation
-            if is_multi:
-                # For multi-position, notify strategy of new position
-                position_id = self.strategy.add_position(
-                    entry_price=current_price,  # Use mid-price for strategy
-                    amount_usdc=order_amount,
-                    entry_time=signal.timestamp,
-                )
-                self.logger.debug("multi_position_opened", position_id=position_id)
-            elif uses_otf:
+            if uses_otf:
                 # Grok strategies: notify via on_trade_filled
                 await self.strategy.on_trade_filled(
                     trade_id=f"bt-{len(self.metrics.trades) + 1}",
@@ -760,10 +733,7 @@ class BacktestEngine:
             self.metrics.total_fees += fee
 
             # Store entry regime for future SELL trade
-            if is_multi:
-                self._entry_regimes[position_id] = entry_regime or "unknown"
-            else:
-                self._entry_regime = entry_regime
+            self._entry_regime = entry_regime
 
             self.logger.debug(
                 "backtest_buy",
@@ -772,49 +742,12 @@ class BacktestEngine:
                 crypto=float(crypto_bought),
             )
 
-        elif signal.signal_type == SignalType.SELL and (is_multi or self.in_position):
+        elif signal.signal_type == SignalType.SELL and self.in_position:
             # Apply spread + slippage to get realistic execution price
             # When selling, we receive the BID price (lower than mid)
             execution_price = current_price * (Decimal("1") - spread_pct - slippage_pct)
 
-            # For multi-position strategies, get position details first
-            if is_multi:
-                position_id = signal.metadata.get("position_id") if signal.metadata else None
-                if position_id:
-                    # Close position and get its details
-                    closed_pos = self.strategy.close_position(position_id)
-                    if closed_pos:
-                        # Calculate crypto amount from position's USDC amount and entry price
-                        crypto_amount = closed_pos.amount_usdc / closed_pos.entry_price
-                    else:
-                        # Position not found, skip this sell
-                        self.logger.warning("position_not_found_for_sell", position_id=position_id)
-                        return
-                else:
-                    # No position_id in metadata
-                    self.logger.warning("no_position_id_in_sell_signal")
-                    return
-
-                # Calculate proceeds from this specific position
-                proceeds = crypto_amount * execution_price
-                fee = proceeds * fee_pct
-                amount_after_fee = proceeds - fee
-
-                # Calculate P&L for this position
-                cost_basis = closed_pos.amount_usdc  # Original USDC spent
-                pnl = amount_after_fee - cost_basis
-
-                # Update balances
-                self.usdc_balance += amount_after_fee
-                self.crypto_balance -= crypto_amount  # Decrement crypto balance
-                crypto_sold = crypto_amount
-
-                # Check if all positions are closed
-                if not self.strategy.open_positions:
-                    self.in_position = False
-
-                self.logger.debug("multi_position_closed", position_id=position_id)
-            elif uses_otf:
+            if uses_otf:
                 # Grok strategies: sell via on_trade_filled
                 proceeds = self.crypto_balance * execution_price
                 fee = proceeds * fee_pct
@@ -863,11 +796,8 @@ class BacktestEngine:
                 self.strategy.set_position_state(has_position=False, entry_price=None)
 
             # Record trade with ENTRY regime (not exit regime)
-            if is_multi and position_id:
-                sell_regime = self._entry_regimes.pop(position_id, self._current_regime)
-            else:
-                sell_regime = self._entry_regime or self._current_regime
-                self._entry_regime = None
+            sell_regime = self._entry_regime or self._current_regime
+            self._entry_regime = None
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.SELL,
@@ -911,143 +841,6 @@ class BacktestEngine:
             self.logger.debug("backtest_sell", **log_data)
 
             self.entry_price = None
-
-    async def _execute_short_signal(
-        self, signal: TradingSignal, current_price: Decimal, *, is_limit_fill: bool = False
-    ) -> None:
-        """Execute a margin short signal in the simulation.
-
-        SELL with is_short_open: open a short (lock margin collateral).
-        BUY with is_short_close: close a short (release margin, calculate PnL).
-
-        Rollover fee: 0.01% per 4h of position value.
-        """
-        if is_limit_fill:
-            fee_pct = self.fees.maker
-            spread_pct = Decimal("0")
-            slippage_pct = Decimal("0")
-        else:
-            fee_pct = self.fees.taker
-            spread_pct = self.fees.spread
-            slippage_pct = self.fees.slippage
-
-        if signal.metadata.get("is_short_open") and signal.signal_type == SignalType.SELL:
-            # Open short: lock margin collateral
-            leverage = signal.metadata.get("leverage", 2)
-            order_amount = min(
-                self.usdc_balance,
-                Decimal(str(self.settings.trading.default_order_amount_eur)),
-            )
-
-            if order_amount < Decimal("1"):
-                return
-
-            # Execution: selling at bid (lower)
-            execution_price = current_price * (Decimal("1") - spread_pct - slippage_pct)
-            fee = order_amount * fee_pct
-
-            # Lock margin collateral (order_amount / leverage)
-            collateral = order_amount / Decimal(str(leverage))
-            self.usdc_balance -= collateral
-
-            # Notify strategy
-            position_id = self.strategy.add_position(
-                entry_price=current_price,
-                amount_usdc=order_amount,
-                entry_time=signal.timestamp,
-            )
-
-            self.in_position = True
-
-            entry_regime = (
-                signal.metadata.get("regime") if signal.metadata else None
-            ) or self._current_regime
-            trade = BacktestTrade(
-                timestamp=signal.timestamp,
-                side=TradeSide.SELL,
-                price=execution_price,
-                amount_usdc=order_amount,
-                amount_crypto=order_amount / execution_price,
-                fee=fee,
-                regime=entry_regime,
-            )
-            self.metrics.trades.append(trade)
-            self.metrics.total_fees += fee
-            # Store entry regime for future short close
-            self._entry_regimes[position_id] = entry_regime or "unknown"
-
-            self.logger.debug(
-                "backtest_short_open",
-                price=float(current_price),
-                amount_usdc=float(order_amount),
-                collateral=float(collateral),
-                position_id=position_id,
-            )
-
-        elif signal.metadata.get("is_short_close") and signal.signal_type == SignalType.BUY:
-            # Close short: release collateral, calculate PnL
-            position_id = signal.metadata.get("position_id")
-            if not position_id:
-                return
-
-            closed_pos = self.strategy.close_position(position_id)
-            if not closed_pos:
-                self.logger.warning("short_position_not_found", position_id=position_id)
-                return
-
-            # Execution: buying at ask (higher)
-            execution_price = current_price * (Decimal("1") + spread_pct + slippage_pct)
-            crypto_amount = closed_pos.amount_usdc / closed_pos.entry_price
-            close_value = crypto_amount * execution_price
-            fee = close_value * fee_pct
-
-            # Short PnL: (entry - exit) * amount
-            gross_pnl = (closed_pos.entry_price - execution_price) * crypto_amount
-
-            # Rollover fee: 0.01% per 4h of position value
-            holding_hours = (signal.timestamp - closed_pos.entry_time).total_seconds() / 3600
-            rollover_periods = holding_hours / 4
-            position_value = closed_pos.amount_usdc
-            rollover_fee = position_value * Decimal("0.0001") * Decimal(str(rollover_periods))
-
-            pnl = gross_pnl - fee - rollover_fee
-
-            # Release collateral and apply PnL
-            leverage = signal.metadata.get("leverage", 2)
-            collateral = closed_pos.amount_usdc / Decimal(str(leverage))
-            self.usdc_balance += collateral + pnl
-
-            if not self.strategy.open_positions:
-                self.in_position = False
-
-            # Use ENTRY regime for short close (not exit regime)
-            close_regime = self._entry_regimes.pop(position_id, self._current_regime)
-            trade = BacktestTrade(
-                timestamp=signal.timestamp,
-                side=TradeSide.BUY,
-                price=execution_price,
-                amount_usdc=close_value,
-                amount_crypto=crypto_amount,
-                fee=fee + rollover_fee,
-                pnl=pnl,
-                regime=close_regime,
-            )
-            self.metrics.trades.append(trade)
-            self.metrics.total_fees += fee + rollover_fee
-            self.metrics.total_pnl += pnl
-
-            if pnl > 0:
-                self.metrics.winning_trades += 1
-            else:
-                self.metrics.losing_trades += 1
-
-            self.logger.debug(
-                "backtest_short_close",
-                price=float(current_price),
-                pnl=float(pnl),
-                rollover_fee=float(rollover_fee),
-                holding_hours=round(holding_hours, 1),
-            )
 
     def calculate_final_metrics(self) -> None:
         """Calculate final performance metrics after backtest completes."""
@@ -1426,14 +1219,7 @@ class BacktestEngine:
                 if fill_price is not None:
                     saved_regime = self._current_regime
                     self._current_regime = entry_regime
-                    if self._is_short_signal(pending_signal):
-                        await self._execute_short_signal(
-                            pending_signal, fill_price, is_limit_fill=is_limit
-                        )
-                    else:
-                        await self.execute_signal(
-                            pending_signal, fill_price, is_limit_fill=is_limit
-                        )
+                    await self.execute_signal(pending_signal, fill_price, is_limit_fill=is_limit)
                     self._current_regime = saved_regime
                 else:
                     self.logger.debug(
@@ -1793,18 +1579,6 @@ class GridBacktester:
         # Grid center tracking
         self._grid_center: Decimal | None = None
         self._grid_initialized = False
-
-        # For adaptive grid: ATR-based params
-        self.atr_multiplier = Decimal(str(self._strategy_params.get("atr_multiplier", 3.0)))
-        self.min_spacing_pct = Decimal(str(self._strategy_params.get("min_spacing_pct", 1.5)))
-        self.max_spacing_pct = Decimal(str(self._strategy_params.get("max_spacing_pct", 4.0)))
-        self.directional_pause_pct = Decimal(
-            str(self._strategy_params.get("directional_pause_pct", 25.0))
-        )
-
-        # Directional pause tracking
-        self._hourly_prices: list[Decimal] = []
-        self._grid_paused: bool = False
 
     def _apply_params_override(self, params: dict[str, Any] | None) -> dict[str, Any] | None:
         """Merge engine-level override (if any) onto YAML params."""
@@ -2222,22 +1996,6 @@ class GridBacktester:
             return True
         return False
 
-    def _check_directional_pause(self, current_price: Decimal) -> None:
-        """Check and update directional pause state."""
-        if self.directional_pause_pct <= 0:
-            self._grid_paused = False
-            return
-
-        if len(self._hourly_prices) < 50:
-            return
-
-        sma50 = sum(self._hourly_prices[-50:]) / Decimal("50")
-        if sma50 <= 0:
-            return
-
-        deviation_pct = abs(current_price - sma50) / sma50 * Decimal("100")
-        self._grid_paused = deviation_pct > self.directional_pause_pct
-
     async def run(self, pair: str, start_time: datetime, end_time: datetime) -> BacktestMetrics:
         """Run grid backtest."""
         self.metrics.start_time = start_time
@@ -2331,8 +2089,6 @@ class GridBacktester:
 
             # Initialize grid on first tradeable candle
             if not self._grid_initialized:
-                if self._grid_paused:
-                    continue
                 self._initialize_grid(current_price)
                 continue
 
@@ -2362,9 +2118,8 @@ class GridBacktester:
             for order in filled_sells:
                 self._process_sell_fill(order, candle)
 
-            # Check rebalance (skip if directional pause active)
-            if not self._grid_paused:
-                self._check_rebalance(current_price)
+            # Check rebalance
+            self._check_rebalance(current_price)
 
             # Track equity
             equity = self.usdc_balance + self.btc_held * current_price
