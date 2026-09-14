@@ -9,6 +9,7 @@ This module provides common fixtures used across all test modules including:
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Generator
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -46,6 +47,28 @@ _EXCHANGE_CREDENTIAL_VARS = (
     "BINANCE_API_KEY",
     "BINANCE_API_SECRET",
 )
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _session_event_loop() -> Generator[None, None, None]:
+    """Own the main thread's current event loop for the whole session and close it.
+
+    pytest-asyncio (1.3) calls ``asyncio.get_event_loop()`` while installing its temporary
+    policy before every async test. With no current loop, Python <= 3.13 creates one
+    implicitly and the plugin never closes it (it only keeps it as ``old_loop``). The first
+    sync test that calls ``asyncio.run()`` (the P6 runner in the gold-hash test) replaces the
+    current loop, the orphan is garbage-collected mid-test and its ``__del__`` raises
+    ``ResourceWarning: unclosed event loop`` (+ its two self-pipe sockets), which
+    ``filterwarnings = error`` turns into an ERROR at teardown. Providing the loop here means
+    nothing is created implicitly, and it is closed deterministically at session end.
+    """
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        yield
+    finally:
+        loop.close()
+        asyncio.set_event_loop(None)
 
 
 @pytest.fixture(autouse=True)
