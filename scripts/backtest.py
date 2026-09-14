@@ -2366,6 +2366,14 @@ class GridBacktester:
         producing win_rate=1.0 regardless of actual performance. Open longs
         that went underwater are ignored unless we mark them to the final
         close.
+
+        The mark-to-market is a forced liquidation (the resting limit sell never
+        filled), so it is billed at the TAKER rate (B4.2). Spread and slippage are
+        deliberately not applied to ``final_price``: the fee model's Binance flat
+        preset keeps non-zero spread/slippage, so a price adjustment here would
+        break the iso-fees regression of B4.2 — modelling choice deferred to B4.3.
+        Note: for ``grok_grid_atr_adaptive_v4`` runs ``_last_close`` is only set by
+        the legacy loop, so this is currently a no-op in production (B4.3 annex).
         """
         final_price = getattr(self, "_last_close", Decimal("0"))
         final_ts = getattr(self, "_last_timestamp", self.metrics.end_time)
@@ -2377,7 +2385,7 @@ class GridBacktester:
             amount_btc = sell["amount_btc"]
             entry_price = sell["entry_price"]
             gross_usdc = amount_btc * final_price
-            fee = gross_usdc * self.fees.maker
+            fee = gross_usdc * self.fees.taker
             net_usdc = gross_usdc - fee
             pnl = net_usdc - amount_btc * entry_price
             unrealized_total += pnl
@@ -2391,8 +2399,8 @@ class GridBacktester:
                     amount_crypto=amount_btc,
                     fee=fee,
                     pnl=pnl,
-                    liquidity="maker",
-                    fee_rate=self.fees.maker,
+                    liquidity="taker",
+                    fee_rate=self.fees.taker,
                     fee_base_usdc=gross_usdc,
                     reference_price=final_price,
                     spread_pct=Decimal("0"),
@@ -2417,7 +2425,7 @@ class GridBacktester:
                 if amount_btc is None or entry_price is None:
                     continue
                 gross_usdc = amount_btc * final_price
-                fee = gross_usdc * self.fees.maker
+                fee = gross_usdc * self.fees.taker
                 net_usdc = gross_usdc - fee
                 pnl = net_usdc - amount_btc * entry_price
                 unrealized_total += pnl
@@ -2431,8 +2439,8 @@ class GridBacktester:
                         amount_crypto=amount_btc,
                         fee=fee,
                         pnl=pnl,
-                        liquidity="maker",
-                        fee_rate=self.fees.maker,
+                        liquidity="taker",
+                        fee_rate=self.fees.taker,
                         fee_base_usdc=gross_usdc,
                         reference_price=final_price,
                         spread_pct=Decimal("0"),
