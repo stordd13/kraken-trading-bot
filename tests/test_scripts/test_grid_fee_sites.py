@@ -1,9 +1,11 @@
-"""Maker / taker classification per fill site of GridBacktester (B4.2, no DB).
+"""Maker / taker classification per fill site of GridBacktester (B4.2 + B4.3, no DB).
 
 Grid fills are resting limit orders touched by the candle (maker); the only taker site is the
-end-of-run forced liquidation in ``_force_close_open_positions`` (mark-to-market, no spread or
-slippage on the price — gate decision n1). The grok path never reaches it today because
-``_last_close`` is only set on the legacy loop (annex, B4.3): the no-op is pinned here.
+end-of-run liquidation of the terminal inventory in ``_force_close_open_positions`` — since
+B4.3 a MARKET sell at ``last_close × (1 − spread − slippage)`` billed taker, settled in the
+balances and tagged ``forced_liquidation``, reachable on the grok path (``run()`` records the
+last tradeable close on both replay paths — end-to-end coverage lives in
+``test_grid_terminal_liquidation.py``).
 """
 
 # ruff: noqa: E402
@@ -28,6 +30,7 @@ from krakenbot.models.market_data import OHLCData
 from scripts.backtest import GridBacktester
 
 MAKER, TAKER = Decimal("0.0010"), Decimal("0.0025")  # bybit
+SPREAD, SLIPPAGE = Decimal("0.0002"), Decimal("0.0002")  # bybit market costs
 
 
 def _grid_settings() -> SimpleNamespace:
@@ -141,12 +144,13 @@ async def test_grok_grid_buy_and_sell_fills_bill_maker() -> None:
     assert engine.total_fees == buy.fee + sell.fee
 
 
-def test_force_close_legacy_orders_bills_taker_without_costs() -> None:
+def test_force_close_legacy_orders_bills_taker_with_market_costs() -> None:
     engine = _engine()
     now = datetime(2025, 3, 15, tzinfo=UTC)
     engine._last_close = Decimal("90000")
     engine._last_timestamp = now
     engine.metrics.end_time = now
+    engine.btc_held = Decimal("0.01")
     engine.active_sell_orders = [
         {
             "price": Decimal("105000"),
@@ -154,46 +158,72 @@ def test_force_close_legacy_orders_bills_taker_without_costs() -> None:
             "entry_price": Decimal("100000"),
         }
     ]
-    engine.equity_curve = [(now, Decimal("900"))]
+    engine.equity_curve = [(now, engine.usdc_balance + Decimal("0.01") * Decimal("90000"))]
 
     engine._calculate_final_metrics()
 
     trade = engine.metrics.trades[-1]
-    gross = Decimal("0.01") * Decimal("90000")
-    assert trade.fee == gross * TAKER
+    price = Decimal("90000") * (Decimal("1") - SPREAD - SLIPPAGE)  # 89964
+    gross = Decimal("0.01") * price
+    assert trade.price == price == Decimal("89964")
+    assert trade.reference_price == Decimal("90000")
+    assert trade.spread_pct == SPREAD
+    assert trade.slippage_pct == SLIPPAGE
+    assert trade.fee == gross * TAKER == Decimal("2.2491")
     assert trade.liquidity == "taker"
     assert trade.fee_rate == TAKER
     assert trade.fee_base_usdc == gross
-    assert trade.price == trade.reference_price == Decimal("90000")
-    assert trade.spread_pct == trade.slippage_pct == Decimal("0")
+    assert trade.forced_liquidation is True
     assert trade.pnl == gross - trade.fee - Decimal("0.01") * Decimal("100000")
+    assert trade.pnl == Decimal("-102.6091")
     assert engine.metrics.total_fees == trade.fee
+    # Balances settled and the liquidation is the last equity point.
+    assert engine.btc_held == Decimal("0")
+    assert engine.usdc_balance == Decimal("1000") + gross - trade.fee
+    assert engine.active_sell_orders == []
+    assert len(engine.equity_curve) == 2
+    assert engine.equity_curve[-1] == (now, engine.usdc_balance)
+    assert engine.metrics.ending_balance == engine.usdc_balance
+    assert engine.metrics.total_trades == engine.liquidated_positions == 1
+    assert engine.pairs_completed == 0
 
 
-def test_force_close_grok_positions_bills_taker() -> None:
-    """First coverage of the grok branch (:2338-2369 on dev @ 10a2df8)."""
+def test_force_close_grok_positions_bills_taker_with_market_costs() -> None:
+    """Grok branch: the inner strategy's open positions are liquidated at market (B4.3)."""
     engine = _engine()
     now = datetime(2025, 3, 15, tzinfo=UTC)
     engine._last_close = Decimal("90000")
     engine._last_timestamp = now
     engine.metrics.end_time = now
+    engine.btc_held = Decimal("0.02")
     engine._strategy_obj = SimpleNamespace(
         open_positions=[SimpleNamespace(amount_btc=Decimal("0.02"), entry_price=Decimal("95000"))]
     )
-    engine.equity_curve = [(now, Decimal("900"))]
+    engine.equity_curve = [(now, engine.usdc_balance + Decimal("0.02") * Decimal("90000"))]
 
     engine._calculate_final_metrics()
 
     trade = engine.metrics.trades[-1]
-    gross = Decimal("0.02") * Decimal("90000")
-    assert trade.fee == gross * TAKER
+    gross = Decimal("0.02") * Decimal("89964")
+    assert trade.price == Decimal("89964")
+    assert trade.fee == gross * TAKER == Decimal("4.4982")
     assert trade.liquidity == "taker"
+    assert trade.forced_liquidation is True
     assert engine.metrics.losing_trades == 1
     assert engine.metrics.unrealized_pnl == gross - trade.fee - Decimal("0.02") * Decimal("95000")
+    assert engine.metrics.unrealized_pnl == Decimal("-105.2182")
+    assert engine.btc_held == Decimal("0")
+    assert engine.inventory_divergence_btc == Decimal("0")
+    assert engine.liquidation_dust_btc == Decimal("0")
+    assert engine.metrics.ending_balance == engine.usdc_balance == engine.equity_curve[-1][1]
 
 
 def test_force_close_is_a_noop_without_last_close() -> None:
-    """Grok runs never set _last_close today (annex B4.3): nothing is booked."""
+    """Unit-level guard: without run(), _last_close stays None and nothing is booked.
+
+    (run() always records the last tradeable close since B4.3 — see
+    test_grid_terminal_liquidation.py for the end-to-end path.)
+    """
     engine = _engine()
     engine.metrics.end_time = datetime(2025, 3, 15, tzinfo=UTC)
     engine._strategy_obj = SimpleNamespace(

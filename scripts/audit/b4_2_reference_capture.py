@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import copy
 from datetime import UTC, datetime
 from decimal import Decimal
 import json
@@ -175,8 +176,9 @@ def capture_payload(
                 "buy": sum(1 for t in trades if _side(t.side) == "buy"),
                 "sell": sum(1 for t in trades if _side(t.side) == "sell"),
                 # A grid trade is a forced end-of-run liquidation iff it is billed taker
-                # (post-refactor field); on the HEAD-intact engines the attribute does not
-                # exist and the force-close is unreachable for the grok path -> 0.
+                # (every other grid fill is a resting limit order, maker). HEAD-intact B4.2
+                # engines had no such attribute and never reached the force-close -> 0;
+                # since B4.3 the terminal inventory is liquidated on the grok path too.
                 "force_closed": sum(1 for t in trades if getattr(t, "liquidity", None) == "taker"),
             },
         }
@@ -224,9 +226,31 @@ def first_difference(a: Any, b: Any, path: str = "$") -> str | None:
     return None
 
 
-def compare_payloads(a: dict[str, Any], b: dict[str, Any]) -> str | None:
-    """Byte-exact comparison of the schema-1 projections; None when identical."""
-    pa, pb = project_core(a), project_core(b)
+def drop_key(payload: dict[str, Any], dotted: str) -> None:
+    """Remove ``dotted`` (e.g. ``metrics.net_pnl``) from ``payload`` in place, if present."""
+    parts = dotted.split(".")
+    node: Any = payload
+    for part in parts[:-1]:
+        node = node.get(part) if isinstance(node, dict) else None
+        if node is None:
+            return
+    if isinstance(node, dict):
+        node.pop(parts[-1], None)
+
+
+def compare_payloads(
+    a: dict[str, Any], b: dict[str, Any], ignore: tuple[str, ...] | list[str] = ()
+) -> str | None:
+    """Byte-exact comparison of the schema-1 projections; None when identical.
+
+    ``ignore`` lists dotted keys dropped from BOTH projections before the comparison
+    (B4.3 guard: ``metrics.net_pnl`` moves by exactly the sell fees, everything else must
+    stay bit-exact). The inputs are never mutated.
+    """
+    pa, pb = copy.deepcopy(project_core(a)), copy.deepcopy(project_core(b))
+    for key in ignore:
+        drop_key(pa, key)
+        drop_key(pb, key)
     if dumps_canonical(pa) == dumps_canonical(pb):
         return None
     return first_difference(pa, pb) or "$: canonical dumps differ"
@@ -246,7 +270,9 @@ def verify_fees(payload: dict[str, Any], fees: ExchangeFees) -> tuple[list[str],
 
     Returns ``(violations, counts)`` where counts is keyed by ``side/kind`` with kind in
     ``maker`` (resting limit fill), ``taker-market`` (market order with spread+slippage on
-    the price) and ``taker-liquidation`` (forced mark-to-market, no price adjustment).
+    the price — since B4.3 this includes the grid's end-of-run liquidation, priced
+    ``reference × (1 − spread − slippage)``) and ``taker-liquidation`` (taker without any
+    price adjustment: the pre-B4.3 mark-to-market convention, kept for old dumps).
     """
     violations: list[str] = []
     counts: dict[str, int] = {}
@@ -402,6 +428,14 @@ def build_parser() -> argparse.ArgumentParser:
     cmp_ = sub.add_parser("compare", help="Compare two JSON captures on the schema-1 keys.")
     cmp_.add_argument("left", type=Path)
     cmp_.add_argument("right", type=Path)
+    cmp_.add_argument(
+        "--ignore",
+        action="append",
+        default=[],
+        metavar="DOTTED.KEY",
+        help="Drop this key from both projections before comparing (repeatable), "
+        "e.g. --ignore metrics.net_pnl (B4.3 signal guard).",
+    )
 
     ver = sub.add_parser("verify-fees", help="Verify a --trades-out dump against a fee model.")
     ver.add_argument("dump", type=Path)
@@ -432,9 +466,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0
     if args.command == "compare":
-        diff = compare_payloads(_load(args.left), _load(args.right))
+        diff = compare_payloads(_load(args.left), _load(args.right), ignore=args.ignore)
+        ignored = f" ignoring {', '.join(args.ignore)}" if args.ignore else ""
         if diff is None:
-            print(f"IDENTICAL (schema-1 projection): {args.left} == {args.right}")
+            print(f"IDENTICAL (schema-1 projection{ignored}): {args.left} == {args.right}")
             return 0
         print(f"DIFFERENT: {diff}")
         return 1

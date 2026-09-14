@@ -146,6 +146,7 @@ def test_grid_force_close_adds_losing_trades_at_unfavorable_price() -> None:
     engine.metrics.end_time = now
     engine.metrics.starting_balance = Decimal("1000")
     # One open sell order whose entry was way above current price → unrealized loss
+    engine.btc_held = Decimal("0.01")
     engine.active_sell_orders = [
         {
             "price": Decimal("105000"),
@@ -153,7 +154,7 @@ def test_grid_force_close_adds_losing_trades_at_unfavorable_price() -> None:
             "entry_price": Decimal("100000"),
         }
     ]
-    engine.equity_curve = [(now, Decimal("900"))]
+    engine.equity_curve = [(now, engine.usdc_balance + Decimal("0.01") * Decimal("90000"))]
 
     engine._calculate_final_metrics()
 
@@ -161,8 +162,10 @@ def test_grid_force_close_adds_losing_trades_at_unfavorable_price() -> None:
     assert engine.metrics.unrealized_pnl < 0
     # win_rate < 1.0 because we just recorded a forced loss
     assert engine.metrics.win_rate < 1.0
-    # active_sell_orders cleared after force-close
+    # active_sell_orders cleared after force-close, inventory settled into cash (B4.3)
     assert engine.active_sell_orders == []
+    assert engine.btc_held == Decimal("0")
+    assert engine.metrics.ending_balance == engine.equity_curve[-1][1] == engine.usdc_balance
 
 
 def test_grid_avg_holding_time_calculated() -> None:

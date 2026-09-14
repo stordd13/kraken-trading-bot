@@ -139,6 +139,17 @@ class TestCompare:
         b["trades"][0]["fee_rate"] = "0.0010"
         assert h.compare_payloads(a, b) is None
 
+    def test_ignore_drops_the_key_on_both_sides_without_mutating_inputs(self) -> None:
+        """B4.3 signal guard: bit-exact except metrics.net_pnl."""
+        a = _payload(_signal_engine([_trade()]))
+        b = _payload(_signal_engine([_trade()]))
+        a["metrics"]["net_pnl"], b["metrics"]["net_pnl"] = 1.0, 2.0
+        assert h.compare_payloads(a, b) == "$.metrics.net_pnl: 1.0 != 2.0"
+        assert h.compare_payloads(a, b, ignore=["metrics.net_pnl"]) is None
+        assert a["metrics"]["net_pnl"] == 1.0 and b["metrics"]["net_pnl"] == 2.0
+        # A missing intermediate node or an unknown key is a no-op, never an error.
+        assert h.compare_payloads(a, b, ignore=["grid.nothing", "nope"]) is not None
+
     def test_detects_first_differing_trade_field(self) -> None:
         a = _payload(_signal_engine([_trade()]))
         b = _payload(_signal_engine([_trade(fee=Decimal("0.0376"))]))
