@@ -185,8 +185,8 @@ poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/U
 - `--trades-out PATH.json` : dump trade par trade (prix, prix de référence, fee, taux, base, liquidité
   maker/taker, spread/slippage) — run unitaire seulement (pas avec `--cross-validate`)
 - `--pair-costs-file PATH.json` : overrides de spread/slippage par paire pour les fills market
-  (`{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}`) ; moteur signal seulement ; sans fichier,
-  les valeurs globales du modèle s'appliquent (comportement inchangé)
+  (`{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}`) : sorties market du moteur signal **et**
+  liquidation terminale du grid (B4.3) ; sans fichier, les valeurs globales du modèle s'appliquent
 - `--cross-validate` : split 70% train / 30% test temporel
 - `--save` : sauvegarde les résultats dans `backtest_runs` en DB
 
@@ -210,15 +210,25 @@ résolu par `ExchangeFees.from_name()` ; les constructeurs `BacktestEngine` / `G
 | Moteur signal, entrée `order_type: limit` remplie par toucher (`candle.low <= limit_price`) | limit reposant | **maker**, spread = slippage = 0 |
 | Moteur signal, sortie `order_type: market` (SL, trailing, timeout, régime, flip) à l'open de N+1 | market | **taker** + spread + slippage sur le prix |
 | Grid ATR : niveaux BUY et cibles SELL remplis par toucher | limit reposant | **maker** |
-| Grid ATR : liquidation forcée de fin de run (`_force_close_open_positions`) | market (mark-to-market) | **taker**, sans spread/slippage (choix B4.2) — inopérant sur le chemin grok tant que `_last_close` n'y est pas posé (B4.3) |
+| Grid ATR : liquidation de l'inventaire terminal en fin de run (`_force_close_open_positions`, B4.3) | MARKET au dernier close tradeable (candle 5 m en P6/P7) | **taker** + spread + slippage (`--pair-costs-file` ou globaux du modèle) ; soldes réglés, trades `forced_liquidation`, point d'equity final |
 
 Hypothèses documentées (B4.3) : les sorties limit émises après franchissement du niveau
 (`gemini_scalping_volatilite` TP, `gemini_retour_moyenne` TP) sont marketables en réel mais facturées
 maker ; les ordres appariés de la grille sont pricés sur le fill, pas sur le marché.
 
 Chaque `BacktestTrade` porte `liquidity`, `fee_rate`, `fee_base_usdc`, `reference_price`, `spread_pct`,
-`slippage_pct` ; `--trades-out` les écrit, et `scripts/audit/b4_2_reference_capture.py verify-fees
-dump.json --fees bybit` vérifie trade par trade (entrées 0.0010, sorties market 0.0025 + 0.0002 + 0.0002).
+`slippage_pct` (et `forced_liquidation` pour le grid) ; `--trades-out` les écrit, et
+`scripts/audit/b4_2_reference_capture.py verify-fees dump.json --fees bybit` vérifie trade par trade (entrées
+0.0010, sorties market et liquidations 0.0025 + 0.0002 + 0.0002 ; avec `--pair-costs-file`, le harnais
+attend encore les globaux → ne pas l'appliquer à ces dumps avant le commit campagne).
+
+**`net_pnl` (B4.3, les deux moteurs)** : chaque fee comptée une fois. Signal : `net_pnl = total_pnl − Σ fees
+d'achat` — la fee de vente est déjà dans le `pnl` de chaque trade ; l'ancienne formule `total_pnl − total_fees` la
+comptait deux fois ; run plat ⇒ `net_pnl == ending_balance − capital`. Grid : `net_pnl` = **cash réalisé après la
+liquidation terminale** (`usdc − capital`, identité par construction), égal à `total_pnl − fees d'achat`
+(`liquidation.net_pnl_lot_basis` du dump) dès que la comptabilité par lot concorde avec le wallet — un écart signale
+une divergence d'inventaire (`residual_net_proceeds`, `inventory_divergence_btc`). Vérifié à 1e-9 sur les rejeux de
+référence (`results/B4_3_chantier0_gate_a.md`). Le critère de drift B5 lit ce chiffre.
 Régression iso-fees : `capture` / `compare` / `normalise-log` du même harnais (voir
 `results/B4_2_fees_engine_report.md`). Chaque entrée de résultat P6/P7 porte sa clé `fees` ; la reprise
 refuse un fichier d'un autre modèle ou sans clé (`--force` = seule échappatoire).
@@ -277,13 +287,16 @@ Pour évaluer la qualité réelle d'une stratégie, regarde le **Profit Factor**
 ### Métriques spécifiques à la grid
 
 La grid a des particularités :
-- `win_rate: 1.0` est normal (chaque paire complétée est un win)
-- `profit_factor` vaut `inf` quand il n'y a aucun trade perdant (corrigé ; l'ancien `0.0` était un bug)
-- Les **positions ouvertes en fin de backtest** sont valorisées au dernier close dans le return (equity
-  curve) mais **ne sont pas comptées en trades perdants** pour le chemin grok : `_force_close_open_positions`
-  n'y est jamais atteint (`_last_close` posé seulement par la boucle legacy) — biais de survie résiduel,
-  annexe B4.3 (`results/B4_2_fees_engine_report.md`). `win_rate` reste donc 1.0 sur la grid.
-- Regarder plutôt : nombre de paires complétées, profit par paire vs fees, comportement en bear vs bull.
+- Chaque paire maker complétée est un win par construction ; les **pertes** viennent de la **liquidation
+  terminale** (B4.3) : en fin de run l'inventaire ouvert est vendu MARKET au dernier close (taker + spread +
+  slippage), chaque lot compte comme un trade (perdant s'il est sous l'eau), `unrealized_pnl` porte ce P&L
+  réalisé, `total_trades = paires maker + lots liquidés`. Sur le run P6 de référence : 33 lots tous sous
+  l'eau → `win_rate` 0.969, PF inf → 1.66, `net_pnl` 336 → 129 USDC (= `ending − 1000`).
+- `profit_factor` vaut `inf` seulement si aucun lot n'est perdant (inventaire vide ou tout en profit).
+- Le rapport sépare « Grid Pairs Completed (maker) », « Forced Liquidations », « Buy Fees » / « Sell Fees
+  (incl. liquidation) » ; le dump `--trades-out` a un bloc `liquidation` (positions, prix, fees, résidu,
+  divergence d'inventaire — attendus 0 sur tout run sain).
+- Regarder : paires maker vs lots liquidés, profit par paire vs fees, comportement en bear vs bull.
 
 ## Cross-validation
 

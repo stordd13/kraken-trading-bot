@@ -49,8 +49,11 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   données (`--fees` obligatoire), chemins morts supprimés, suite de tests hermétique (dotenv, boucle
   d'événements) — mergé dans `dev` (`3406a6c`), tag `v2.7.0-b4-2-fees-engine` (`fea0e16`), serveur en parité
   sans restart — `results/B4_2_fees_engine_report.md`.
-- 🚧 Prochaine phase : B4.3 — re-run P6/P7 avec `--fees bybit` (nouveaux fichiers de sortie), révision du
-  risk management, correction du force-close grok et du double comptage `net_pnl`, re-baseline Bybit.
+- 🚧 **B4.3 en cours** — chantier 0 fait le 14 sept (branche `feat/b4-3-campaign`) : liquidation terminale du
+  `GridBacktester` atteignable (MARKET au dernier close, taker + spread + slippage, soldes réglés), `net_pnl`
+  unifié dans les deux moteurs (`total_pnl − fees d'achat`), gold hashes binance/bybit re-baselinés, garde
+  signal et deltas grid signés (`results/B4_3_chantier0_gate_a.md`) → **GATE A** ; ensuite GATE B (coûts par
+  paire, grilles P7, risk) puis campagne P6/P7 `--fees bybit` dans de nouveaux fichiers de sortie.
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
 
@@ -187,7 +190,10 @@ MARKET sont le premier poste de coût : les backtests doivent utiliser maker et 
 `run_p6_backtests.py`, `run_p7_grid_search.py` et `run_p6_walkforward.py` exigent `--fees {bybit,binance,kraken}`
 (pas de défaut ; absence → erreur), résolu par `ExchangeFees.from_name()` ; le dashboard passe `bybit`.
 `--exchange` ne choisit que les données. Sites de fill : entrées limit et fills de grille = maker ; sorties
-market = taker + spread + slippage ; liquidations forcées de fin de run du GridBacktester = taker.
+market = taker + spread + slippage ; liquidation de l'inventaire terminal du GridBacktester (B4.3) = MARKET au
+dernier close, taker + spread + slippage, soldes réglés. `net_pnl` compte chaque fee une fois dans les deux
+moteurs (B4.3) : signal `total_pnl − fees d'achat`, grid = cash réalisé après liquidation ; run plat ⇒
+`net_pnl == ending − capital` (identité vérifiée sur les rejeux de référence).
 `settings.exchange_fees` reste le modèle **live/paper** des connecteurs ; le backtest ne le lit jamais.
 Chaque résultat P6/P7 porte désormais sa clé `fees` et la reprise refuse un fichier d'un autre modèle
 (`--force` = seule échappatoire) : B4.3 écrit dans de nouveaux fichiers. Détails : `skills/backtest.md`,
@@ -277,9 +283,12 @@ Détail : `ROADMAP.md`.
    `--fees {bybit,binance,kraken}` obligatoire partout, registre `ExchangeFees.from_name()`, maker/taker
    par site de fill (liquidations forcées du GridBacktester → taker), `settings.exchange_fees` = live/paper
    documenté, rollover supprimé avec le chemin short mort. Régression iso-fees bit-exacte prouvée
-   (`results/B4_2_fees_engine_report.md`). Reste (annexes B4.3) : `_force_close_open_positions` inopérant
-   sur le chemin grok (`_last_close` jamais posé), double comptage de la fee de vente dans `net_pnl`,
-   sorties limit marketables facturées maker.
+   (`results/B4_2_fees_engine_report.md`). ✅ **B4.3 chantier 0 (2026-09-14)** : liquidation terminale du
+   grid atteignable sur le chemin grok (MARKET au dernier close, taker + spread + slippage, soldes réglés,
+   trades `forced_liquidation`), `net_pnl` compte chaque fee une fois dans les deux moteurs
+   (`results/B4_3_chantier0_gate_a.md`). Reste : sorties limit marketables facturées maker ; « mauvais pop »
+   de la stratégie grid (fermeture par proximité de prix vs id) instrumenté (`inventory_divergence_btc`), non
+   corrigé (fichier protégé).
 3. ✅ **B3** — `TaskScheduler` généralisé : client REST injecté par le collector (factory, `read_only=True`),
    backfill de gaps `krakenbot.data.backfill`, plus d'import de `scripts/` depuis `src/` ;
    `scripts/fetch_ohlc.py` et `backfill_binance_gap.py` supprimés.

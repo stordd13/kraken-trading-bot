@@ -2,16 +2,21 @@
 
 > Une ligne par fichier conservé : date, phase, verdict, pourquoi il est encore là.
 > Tout ce qui n'est plus une référence courante est dans `results/archive/` (rien n'est supprimé).
-> Dernière mise à jour : 2026-09-14 (B4.2).
+> Dernière mise à jour : 2026-09-14 (B4.3 chantier 0).
 
 ## Fichiers de référence (à la racine de `results/`)
 
 | Fichier | Date | Phase | Verdict / contenu | Pourquoi il reste |
 |---|---|---|---|---|
+| `B4_3_chantier0_gate_a.md` | 2026-09-14 | B4.3 chantier 0 | **Moteur grid honnête** : liquidation terminale atteignable (MARKET au dernier close, taker + spread + slippage, soldes réglés), `net_pnl` compte chaque fee une fois dans les deux moteurs ; garde signal bit-exacte sauf `net_pnl` (delta = Σ fees vente prouvé), run grid P6 réconcilié 37/37 contre le baseline B4.2 (revue adversariale du diff : 4 défauts corrigés avant soumission) (33 lots liquidés −227 USDC, PF inf → 1.66, `net_pnl` 336 → 129 = `ending − 1000`), gold hashes H1/H2, preuve D4 | Livrable GATE A ; contrat de la campagne B4.3 |
+| `b4_3_step0_baselines.txt` · `b4_3_validation_outputs.txt` · `b4_3_guard_signal_outputs.txt` | 2026-09-14 | B4.3 chantier 0 | Baselines HEAD (mypy 64, 1 300 passés) + sha256 des logs P6 ; validation 7.4 (3 ordres, ruff, mypy, déterminisme) ; sorties brutes de la garde d) amendée (diff de logs = 2 lignes `net_pnl`, `compare --ignore`, `verify-fees`, identités) | Preuves GATE A |
+| `b4_3_ref_signal_A_post.txt` · `b4_3_ref_signal_A_post_trades.json` · `b4_3_bybit_signal_A_post.json` | 2026-09-14 | B4.3 chantier 0 | Rejeu signal A post-chantier 0 (log normalisé, dumps `--trades-out` binance et bybit) : identiques aux références B4.2 sauf `metrics.net_pnl` (+1.7445 / +5.8128 = Σ fees vente) | Nouvelles références signal (`net_pnl` unifié) |
+| `b4_3_ref_grid_A_post.json` · `b4_3_ref_grid_A_post_trades.json` · `b4_3_ref_grid_A_post.report.txt` · `b4_3_bybit_grid_A_post.json` | 2026-09-14 | B4.3 chantier 0 | Grid ATR v4 BTC période P6 avec liquidation terminale : 2 097 trades B4.2 bit-identiques + 33 liquidations taker (binance : PF 1.6555, `net_pnl` 128.87, ending 1 128.87 ; bybit : PF 1.617, `net_pnl` 114.21) ; log brut 130 Mo non versionné (sha256 dans `b4_3_step0_baselines.txt`) ; deux captures identiques | **Nouvelles références grid** (supersèdent `b4_2_ref_grid_A_head.*`) ; baseline de la campagne |
+| `b4_3_ref_grid_quick_post.json` · `b4_3_ref_grid_quick_post_trades.json` · `b4_3_bybit_grid_quick_post.json` | 2026-09-14 | B4.3 chantier 0 | Fenêtre gold hash (2025-03-01 → 03-15) avec liquidation : 45 BUY / 37 SELL maker / 8 liquidations, PF 1.2125 (binance) / 1.1552 (bybit) | Cibles rapides des hashes H1/H2 |
 | `B4_2_fees_engine_report.md` | 2026-09-14 | B4.2 | **Modèle de fees maker/taker découplé de la source de données** (`--fees` obligatoire) : table de classification des sites de fill, chemins morts prouvés, cause racine dotenv + `ResourceWarning`, régression iso-fees bit-exacte, validations | Source de la résolution des dettes 2 et 9 ; prérequis de B4.3 |
 | `b4_2_ref_signal_A_head.txt` · `b4_2_ref_signal_A_head.json` | 2026-09-14 | B4.2 étape 0 | Run A (`grok_supertrend_4h` BTC, période P6, 5m) sur le moteur HEAD intact : log complet + capture JSON pleine précision (92 fills, +2.42 %) ; log normalisé identique à `b4_reference_backtest_A_p6period.txt` (serveur) | Cible bit-exacte du rejeu `--fees binance` |
-| `b4_2_ref_grid_quick_head.txt` · `b4_2_ref_grid_quick_head.json` | 2026-09-14 | B4.2 étape 0 | Grid ATR v4 BTC sur la fenêtre du gold hash (2025-03-01 → 03-15) : 45 BUY / 37 SELL, 0 liquidation forcée | Cible bit-exacte rapide (grid) |
-| `b4_2_ref_grid_A_head.json` · `b4_2_ref_grid_A_head.report.txt` | 2026-09-14 | B4.2 étape 0 | Grid ATR v4 BTC période P6 (2 097 fills, 1 032 paires, +12.95 %, 0 liquidation forcée) : capture JSON + bloc rapport ; log brut (130 Mo) non versionné, sha256 du log normalisé dans `b4_2_step0_baselines.txt` ; deux runs identiques | Cible bit-exacte du rejeu grid ; preuve de déterminisme grid sur 3 ans |
+| `b4_2_ref_grid_quick_head.txt` · `b4_2_ref_grid_quick_head.json` | 2026-09-14 | B4.2 étape 0 | Grid ATR v4 BTC sur la fenêtre du gold hash (2025-03-01 → 03-15) : 45 BUY / 37 SELL, 0 liquidation forcée (moteur biaisé) | **Supersédée par B4.3** (`b4_3_ref_grid_quick_post.*`) ; baseline de la réconciliation GATE A |
+| `b4_2_ref_grid_A_head.json` · `b4_2_ref_grid_A_head.report.txt` | 2026-09-14 | B4.2 étape 0 | Grid ATR v4 BTC période P6 (2 097 fills, 1 032 paires, +12.95 %, 0 liquidation forcée = biais de survie, 33 positions ouvertes non liquidées) : capture JSON + bloc rapport ; log brut (130 Mo) non versionné | **Supersédée par B4.3** (`b4_3_ref_grid_A_post.*`) ; baseline de la réconciliation GATE A (préfixe bit-identique des 2 097 trades) |
 | `b4_2_validation_outputs.txt` | 2026-09-14 | B4.2 | Sorties brutes des validations 7.1 (diffs vides des 3 rejeux `--fees binance` + rejeux par commit), 7.3 (exit 2 sans `--fees`), 7.4 (3 ordres : 1 300 passés / 0 échec / 0 error + déterminisme), 7.5 (ruff, mypy 64), 7.6 (grep), caractérisation du `ResourceWarning` | Preuves du rapport B4.2 |
 | `b4_2_bybit_signal_A.json` · `b4_2_bybit_grid_quick.json` · `b4_2_bybit_grid_A.json` | 2026-09-14 | B4.2 | Dumps `--trades-out` sous `--fees bybit` (moteur final) : chaque trade avec liquidité, taux, base, prix de référence, spread/slippage ; `verify-fees --fees bybit` OK | Preuve trade par trade (validation 7.2) ; premiers chiffres Bybit bruts pour B4.3 |
 | `b4_2_step0_baselines.txt` | 2026-09-14 | B4.2 étape 0 | Baselines qualité (mypy 64, ruff format, suite pré-fix 4 failed + 1 error, texte du `ResourceWarning`, sha256 grid) | Référence des validations 7.4-7.5 |
@@ -46,6 +51,7 @@ en B4 avec les fees Bybit.
 
 - `P7_phase2_walk_forward.json`, `P7_final_selection.json`, `P7_optimization_report.md` : produits par
   `scripts/run_p7_grid_search.py --phase 2` / `--phase report` — non lancés (rejoués en B4).
+- `B4_3_gate_b_configs.md` : document GATE B (coûts par paire, risk, grilles P7, exécution serveur, sorties) — après le GO A.
 - `B4_bybit_backtest_report.md` : livrable de B4.
 
 ### Scripts qui écrivent encore dans `results/`
