@@ -138,7 +138,7 @@ disque **58 G libres / 75 G**, load 0.03 ; `krakenbot-collector` **active**, `kr
 | Timeouts | `--timeout 5400` (P6.7 : jobs grid à 2 953 s en parallèle > 1 800 s par défaut) |
 | Calibration | `run_p6_backtests.py --fees bybit --pair-costs-file config/pair_costs_b4.json --min-order-usdc 5 --workers 3 --limit 3 --output results/B4_P6_phase_d_results.json` (3 premiers jobs = les grids) → mesure la durée réelle sur DB locale avant de lancer les 24 (reprise automatique ensuite, sans `--force`) |
 | Durées estimées (P6.7 via tunnel, DB locale probablement plus rapide) | P6 : Σ série 291 min → 3 workers, contention ~1.6 × ⇒ **≈ 2.5 h** ; P7 phase 1 : ≈ 51 h série (grid 96 jobs × ~25 min, SuperTrend 60 × 7, DCA 48 × 3.7, Donchian 8 × 6.7) ⇒ **≈ 27 h** ; phase 2 : 280 fenêtres de 15 mois ⇒ **≈ 8-10 h** ; rapport : minutes. Total ≈ 40 h serveur, reprise possible à tout moment |
-| Fenêtre | P6 jour J (après GO B) ; P7 phase 1 lancée le soir de J, ~1.5 j ; phase 2 J+2 ; `df -h` avant chaque phase (≥ 20 G libres) |
+| Fenêtre | P6 jour J (après GO B) ; P7 phase 1 lancée le soir de J, ~1.5 j ; phase 2 J+2 ; `df -h` avant chaque phase (≥ 20 G libres). **Mesuré le 15/09** : P6 24 combos en **22 min** sur le serveur (DB locale) → P7 phase 1 ≈ 3 h, phase 2 ≈ 1 h (`results/B4_P6_checkpoint.md`) |
 | Collector | `systemctl is-active krakenbot-collector` + `journalctl -u krakenbot-collector --since <début>` avant/après chaque phase ; aucun redémarrage ; comptage des candles `bybit` sur la fenêtre (brief § 7.5) |
 | Fin | `tmux kill-session -t b4`, `ps aux \| grep run_p` vide, `df -h`, résultats rapatriés (`scp`) et commités depuis le poste local |
 

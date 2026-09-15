@@ -1,0 +1,3131 @@
+{
+  "grok_grid_atr_adaptive_v4_BTC_USDC": {
+    "strategy": "grok_grid_atr_adaptive_v4",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokGridATRAdaptiveV4",
+      "passed_params": {
+        "pair": "BTC/USDC"
+      },
+      "params": {
+        "grid_levels": {
+          "value": 12,
+          "source": "class_default"
+        },
+        "min_spacing_pct": {
+          "value": "0.015",
+          "source": "class_default"
+        },
+        "max_spacing_pct": {
+          "value": "0.05",
+          "source": "class_default"
+        },
+        "atr_period": {
+          "value": 14,
+          "source": "class_default"
+        },
+        "atr_multiplier": {
+          "value": "4.0",
+          "source": "class_default"
+        },
+        "recalc_hours": {
+          "value": 6,
+          "source": "class_default"
+        },
+        "bias_1d": {
+          "value": "0.2",
+          "source": "class_default"
+        },
+        "pause_1w_strong_bear": {
+          "value": true,
+          "source": "class_default"
+        },
+        "bear_protection_mode": {
+          "value": null,
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "25",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "20.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": {
+      "train": {
+        "buy_fees": "21.1250",
+        "sell_fees": "21.62809980046157891318115283",
+        "net_pnl_lot_basis": "270.5443631660536585806396362",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 138579.16666666666,
+        "positions": 6,
+        "trades": 6,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "-1.7E-30",
+        "inventory_divergence_btc": "-2E-30",
+        "pnl": "-9.58332056578265566792423955",
+        "fees": "0.3515455624917727928122199509",
+        "gross_usdc": "140.6182249967091171248879804",
+        "timestamp": "2025-05-07T04:45:00+00:00",
+        "reference_price": "96497.99000000",
+        "price": "96459.390804000000",
+        "spread_pct": "0.0002",
+        "slippage_pct": "0.0002"
+      },
+      "test": {
+        "buy_fees": "7.3250",
+        "sell_fees": "8.15304107187110746462760242",
+        "net_pnl_lot_basis": "-115.6015775911202122029764521",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 131879.69696969696,
+        "positions": 33,
+        "trades": 33,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "-1.3E-30",
+        "inventory_divergence_btc": "0E-30",
+        "pnl": "-202.0744104204128813716424472",
+        "fees": "1.559149347317260948943252012",
+        "gross_usdc": "623.6597389269043795773008048",
+        "timestamp": "2026-04-01T00:00:00+00:00",
+        "reference_price": "68240.16000000",
+        "price": "68212.863936000000",
+        "spread_pct": "0.0002",
+        "slippage_pct": "0.0002"
+      },
+      "all": {
+        "buy_fees": "26.6000",
+        "sell_fees": "27.63816600941196447925376197",
+        "net_pnl_lot_basis": "114.2069474827656025390707044",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 152131.81818181818,
+        "positions": 33,
+        "trades": 33,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "-5.0E-30",
+        "inventory_divergence_btc": "-4E-30",
+        "pnl": "-228.1216042133417033634341028",
+        "fees": "1.493868159866311520392395733",
+        "gross_usdc": "597.5472639465246081569582929",
+        "timestamp": "2026-04-01T00:00:00+00:00",
+        "reference_price": "68240.16000000",
+        "price": "68212.863936000000",
+        "spread_pct": "0.0002",
+        "slippage_pct": "0.0002"
+      }
+    },
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 845,
+      "winning_trades": 839,
+      "losing_trades": 6,
+      "win_rate": 0.9928994082840237,
+      "total_return_pct": 27.054436316605365,
+      "sharpe_ratio": 0.07489957105500765,
+      "sortino_ratio": 0.10664285787831186,
+      "max_drawdown_pct": 7.946733675141113,
+      "profit_factor": 31.4351045302045,
+      "calmar_ratio": 1.6196982077884945,
+      "net_pnl": 270.54436316605364,
+      "total_fees": 42.75309980046158,
+      "total_pnl": 291.66936316605364,
+      "unrealized_pnl": -9.583320565782655,
+      "starting_balance": 1000.0,
+      "ending_balance": 1270.5443631660537,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 1258.3611442193087
+    },
+    "test": {
+      "total_trades": 293,
+      "winning_trades": 261,
+      "losing_trades": 32,
+      "win_rate": 0.8907849829351536,
+      "total_return_pct": -11.560157759112021,
+      "sharpe_ratio": -0.033032365826188875,
+      "sortino_ratio": -0.047509695474072196,
+      "max_drawdown_pct": 23.97039476264812,
+      "profit_factor": 0.46463537326055876,
+      "calmar_ratio": -0.5353645743370131,
+      "net_pnl": -115.60157759112022,
+      "total_fees": 15.478041071871107,
+      "total_pnl": -108.27657759112022,
+      "unrealized_pnl": -202.07441042041287,
+      "starting_balance": 1000.0,
+      "ending_balance": 884.3984224088798,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 1462.6923076923076
+    },
+    "all": {
+      "total_trades": 1064,
+      "winning_trades": 1031,
+      "losing_trades": 33,
+      "win_rate": 0.9689849624060151,
+      "total_return_pct": 11.42069474827656,
+      "sharpe_ratio": 0.021315713220962134,
+      "sortino_ratio": 0.03043520172193686,
+      "max_drawdown_pct": 19.989341858830254,
+      "profit_factor": 1.617245122259799,
+      "calmar_ratio": 0.19027263773756986,
+      "net_pnl": 114.2069474827656,
+      "total_fees": 54.23816600941196,
+      "total_pnl": 140.8069474827656,
+      "unrealized_pnl": -228.1216042133417,
+      "starting_balance": 1000.0,
+      "ending_balance": 1114.2069474827656,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 1434.8593598448108
+    }
+  },
+  "grok_grid_atr_adaptive_v4_ETH_USDC": {
+    "strategy": "grok_grid_atr_adaptive_v4",
+    "pair": "ETH/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokGridATRAdaptiveV4",
+      "passed_params": {
+        "pair": "ETH/USDC"
+      },
+      "params": {
+        "grid_levels": {
+          "value": 12,
+          "source": "class_default"
+        },
+        "min_spacing_pct": {
+          "value": "0.015",
+          "source": "class_default"
+        },
+        "max_spacing_pct": {
+          "value": "0.05",
+          "source": "class_default"
+        },
+        "atr_period": {
+          "value": 14,
+          "source": "class_default"
+        },
+        "atr_multiplier": {
+          "value": "4.0",
+          "source": "class_default"
+        },
+        "recalc_hours": {
+          "value": 6,
+          "source": "class_default"
+        },
+        "bias_1d": {
+          "value": "0.2",
+          "source": "class_default"
+        },
+        "pause_1w_strong_bear": {
+          "value": true,
+          "source": "class_default"
+        },
+        "bear_protection_mode": {
+          "value": null,
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "25",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "20.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "ETH/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": {
+      "train": {
+        "buy_fees": "31.3250",
+        "sell_fees": "32.64555992123630669685411020",
+        "net_pnl_lot_basis": "13.31043557222535810898302756",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 128446.3,
+        "positions": 50,
+        "trades": 50,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "-9.8E-28",
+        "inventory_divergence_btc": "-6E-28",
+        "pnl": "-401.1383893810080536878984100",
+        "fees": "2.124339876238075053413788448",
+        "gross_usdc": "849.7359504952300213655153787",
+        "timestamp": "2025-05-07T04:45:00+00:00",
+        "reference_price": "1826.12000000",
+        "price": "1825.206940000000",
+        "spread_pct": "0.0003",
+        "slippage_pct": "0.0002"
+      },
+      "test": {
+        "buy_fees": "10.1000",
+        "sell_fees": "10.78505112781504826737672664",
+        "net_pnl_lot_basis": "-317.3167168948780647848834768",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 178271.81818181818,
+        "positions": 44,
+        "trades": 44,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "4.28E-28",
+        "inventory_divergence_btc": "3E-28",
+        "pnl": "-439.4974422678959962103348340",
+        "fees": "1.652637989303518806490388888",
+        "gross_usdc": "661.0551957214075225961555551",
+        "timestamp": "2026-04-01T00:00:00+00:00",
+        "reference_price": "2104.36000000",
+        "price": "2103.307820000000",
+        "spread_pct": "0.0003",
+        "slippage_pct": "0.0002"
+      },
+      "all": {
+        "buy_fees": "51.3750",
+        "sell_fees": "53.0265187440497657943640149",
+        "net_pnl_lot_basis": "210.7821592531904330245930424",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 154747.32142857142,
+        "positions": 56,
+        "trades": 56,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "-5.9E-28",
+        "inventory_divergence_btc": "-7E-28",
+        "pnl": "-475.7728060750704789625363728",
+        "fees": "2.312850110087542659241763477",
+        "gross_usdc": "925.1400440350170636967053907",
+        "timestamp": "2026-04-01T00:00:00+00:00",
+        "reference_price": "2104.36000000",
+        "price": "2103.307820000000",
+        "spread_pct": "0.0003",
+        "slippage_pct": "0.0002"
+      }
+    },
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 1253,
+      "winning_trades": 1203,
+      "losing_trades": 50,
+      "win_rate": 0.960095770151636,
+      "total_return_pct": 1.3310435572225359,
+      "sharpe_ratio": 0.009080893028822725,
+      "sortino_ratio": 0.012769002726260636,
+      "max_drawdown_pct": 38.66825878647434,
+      "profit_factor": 1.111271912022935,
+      "calmar_ratio": 0.016376531370470453,
+      "net_pnl": 13.310435572225359,
+      "total_fees": 63.97055992123631,
+      "total_pnl": 44.63543557222536,
+      "unrealized_pnl": -401.13838938100804,
+      "starting_balance": 1000.0,
+      "ending_balance": 1013.3104355722254,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 983.474646716542
+    },
+    "test": {
+      "total_trades": 404,
+      "winning_trades": 360,
+      "losing_trades": 44,
+      "win_rate": 0.8910891089108911,
+      "total_return_pct": -31.731671689487808,
+      "sharpe_ratio": -0.046640422487139205,
+      "sortino_ratio": -0.06716111629803766,
+      "max_drawdown_pct": 44.69582520751829,
+      "profit_factor": 0.3009817865842917,
+      "calmar_ratio": -0.7881103806079844,
+      "net_pnl": -317.3167168948781,
+      "total_fees": 20.88505112781505,
+      "total_pnl": -307.21671689487806,
+      "unrealized_pnl": -439.497442267896,
+      "starting_balance": 1000.0,
+      "ending_balance": 682.683283105122,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 763.6666666666666
+    },
+    "all": {
+      "total_trades": 2055,
+      "winning_trades": 2000,
+      "losing_trades": 55,
+      "win_rate": 0.9732360097323601,
+      "total_return_pct": 21.078215925319043,
+      "sharpe_ratio": 0.02143211607501917,
+      "sortino_ratio": 0.03048473826169037,
+      "max_drawdown_pct": 34.48117249482112,
+      "profit_factor": 1.5509726141664602,
+      "calmar_ratio": 0.2035795426199135,
+      "net_pnl": 210.78215925319043,
+      "total_fees": 104.40151874404977,
+      "total_pnl": 262.15715925319046,
+      "unrealized_pnl": -475.7728060750705,
+      "starting_balance": 1000.0,
+      "ending_balance": 1210.7821592531905,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 963.3141570785393
+    }
+  },
+  "grok_grid_atr_adaptive_v4_SOL_USDC": {
+    "strategy": "grok_grid_atr_adaptive_v4",
+    "pair": "SOL/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokGridATRAdaptiveV4",
+      "passed_params": {
+        "pair": "SOL/USDC"
+      },
+      "params": {
+        "grid_levels": {
+          "value": 12,
+          "source": "class_default"
+        },
+        "min_spacing_pct": {
+          "value": "0.015",
+          "source": "class_default"
+        },
+        "max_spacing_pct": {
+          "value": "0.05",
+          "source": "class_default"
+        },
+        "atr_period": {
+          "value": 14,
+          "source": "class_default"
+        },
+        "atr_multiplier": {
+          "value": "4.0",
+          "source": "class_default"
+        },
+        "recalc_hours": {
+          "value": 6,
+          "source": "class_default"
+        },
+        "bias_1d": {
+          "value": "0.2",
+          "source": "class_default"
+        },
+        "pause_1w_strong_bear": {
+          "value": true,
+          "source": "class_default"
+        },
+        "bear_protection_mode": {
+          "value": null,
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "25",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "20.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "SOL/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": {
+      "train": {
+        "buy_fees": "42.0250",
+        "sell_fees": "43.36360297207972702495639858",
+        "net_pnl_lot_basis": "484.3079194700849573245609320",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 107073.27586206897,
+        "positions": 29,
+        "trades": 29,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "0E-28",
+        "inventory_divergence_btc": "-0.025647635176225406481895346",
+        "pnl": "-178.7410100372345187234853560",
+        "fees": "1.357823262863191012896292224",
+        "gross_usdc": "543.1293051452764051585168894",
+        "timestamp": "2025-05-07T04:45:00+00:00",
+        "reference_price": "146.02000000",
+        "price": "145.830174000000",
+        "spread_pct": "0.0011",
+        "slippage_pct": "0.0002"
+      },
+      "test": {
+        "buy_fees": "14.5000",
+        "sell_fees": "14.89498302805562010939147377",
+        "net_pnl_lot_basis": "-443.6526993665501604597355850",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 206893.1914893617,
+        "positions": 47,
+        "trades": 47,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "0E-28",
+        "inventory_divergence_btc": "-0.005809007961228377788323002",
+        "pnl": "-624.7993892012167660474437370",
+        "fees": "1.374140495688586470164538644",
+        "gross_usdc": "549.6561982754345880658154572",
+        "timestamp": "2026-04-01T00:00:00+00:00",
+        "reference_price": "83.14000000",
+        "price": "83.031918000000",
+        "spread_pct": "0.0011",
+        "slippage_pct": "0.0002"
+      },
+      "all": {
+        "buy_fees": "57.7500",
+        "sell_fees": "58.9341623026944776928038733",
+        "net_pnl_lot_basis": "313.6339624011340646958120296",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 218901.55555555556,
+        "positions": 45,
+        "trades": 45,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "0E-28",
+        "inventory_divergence_btc": "-0.033472291971067908103841611",
+        "pnl": "-577.7334719846053560428739032",
+        "fees": "1.359094800806850645017400438",
+        "gross_usdc": "543.6379203227402580069601752",
+        "timestamp": "2026-04-01T00:00:00+00:00",
+        "reference_price": "83.14000000",
+        "price": "83.031918000000",
+        "spread_pct": "0.0011",
+        "slippage_pct": "0.0002"
+      }
+    },
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 1681,
+      "winning_trades": 1652,
+      "losing_trades": 29,
+      "win_rate": 0.9827483640690066,
+      "total_return_pct": 48.05454113897327,
+      "sharpe_ratio": 0.0699471735899689,
+      "sortino_ratio": 0.10120235100813797,
+      "max_drawdown_pct": 22.278408009501785,
+      "profit_factor": 3.9446679268537292,
+      "calmar_ratio": 1.026206004662745,
+      "net_pnl": 480.5454113897327,
+      "total_fees": 85.38860297207972,
+      "total_pnl": 526.3329194700849,
+      "unrealized_pnl": -178.74101003723453,
+      "starting_balance": 1000.0,
+      "ending_balance": 1480.5454113897326,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 385.60532687651335
+    },
+    "test": {
+      "total_trades": 580,
+      "winning_trades": 533,
+      "losing_trades": 47,
+      "win_rate": 0.9189655172413793,
+      "total_return_pct": -44.43962523855874,
+      "sharpe_ratio": -0.05828632470864003,
+      "sortino_ratio": -0.08328609706011939,
+      "max_drawdown_pct": 58.49944907024038,
+      "profit_factor": 0.31313521302380554,
+      "calmar_ratio": -0.8432952758225285,
+      "net_pnl": -444.3962523855874,
+      "total_fees": 29.39498302805562,
+      "total_pnl": -429.15269936655017,
+      "unrealized_pnl": -624.7993892012167,
+      "starting_balance": 1000.0,
+      "ending_balance": 555.6037476144126,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 701.8761726078799
+    },
+    "all": {
+      "total_trades": 2310,
+      "winning_trades": 2265,
+      "losing_trades": 45,
+      "win_rate": 0.9805194805194806,
+      "total_return_pct": 30.977125990767284,
+      "sharpe_ratio": 0.03383881579907362,
+      "sortino_ratio": 0.04863866071823137,
+      "max_drawdown_pct": 32.09355051339828,
+      "profit_factor": 1.6428292290653885,
+      "calmar_ratio": 0.3214442537996372,
+      "net_pnl": 309.7712599076728,
+      "total_fees": 116.68416230269447,
+      "total_pnl": 371.38396240113406,
+      "unrealized_pnl": -577.7334719846053,
+      "starting_balance": 1000.0,
+      "ending_balance": 1309.7712599076729,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 446.2119205298013
+    }
+  },
+  "grok_supertrend_4h_BTC_USDC": {
+    "strategy": "grok_supertrend_4h",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokSuperTrend4hRegime",
+      "passed_params": {
+        "pair": "BTC/USDC"
+      },
+      "params": {
+        "st_atr_period": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "st_multiplier": {
+          "value": "3.0",
+          "source": "class_default"
+        },
+        "sl_atr_mult": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 37,
+      "winning_trades": 11,
+      "losing_trades": 26,
+      "win_rate": 0.2972972972972973,
+      "total_return_pct": 1.6364019592077783,
+      "sharpe_ratio": 0.21615612659733943,
+      "sortino_ratio": 0.3055224402939986,
+      "max_drawdown_pct": 2.3029036525597424,
+      "profit_factor": 1.4240458668193485,
+      "calmar_ratio": 0.3380636627216464,
+      "net_pnl": 16.48367673964418,
+      "total_fees": 6.578029265011639,
+      "total_pnl": 18.383676739644184,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1016.3640195920777,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 10741.621621621622
+    },
+    "test": {
+      "total_trades": 9,
+      "winning_trades": 5,
+      "losing_trades": 4,
+      "win_rate": 0.5555555555555556,
+      "total_return_pct": 0.26912663545849363,
+      "sharpe_ratio": 0.15640840534273792,
+      "sortino_ratio": 0.2337477635585427,
+      "max_drawdown_pct": 0.6186128976779429,
+      "profit_factor": 1.5657105600981918,
+      "calmar_ratio": 0.48294621540164656,
+      "net_pnl": 2.6912663545849362,
+      "total_fees": 1.5845645773297867,
+      "total_pnl": 3.1412663545849364,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1002.691266354585,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 10240.0
+    },
+    "all": {
+      "total_trades": 46,
+      "winning_trades": 16,
+      "losing_trades": 30,
+      "win_rate": 0.34782608695652173,
+      "total_return_pct": 1.9314423426761564,
+      "sharpe_ratio": 0.20145830594004827,
+      "sortino_ratio": 0.2863626216519523,
+      "max_drawdown_pct": 2.3029036525597424,
+      "profit_factor": 1.441960161120876,
+      "calmar_ratio": 0.2793111608787254,
+      "net_pnl": 19.314423426761564,
+      "total_fees": 8.11281810382647,
+      "total_pnl": 21.614423426761565,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1019.3144234267616,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 10653.91304347826
+    }
+  },
+  "grok_supertrend_4h_ETH_USDC": {
+    "strategy": "grok_supertrend_4h",
+    "pair": "ETH/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokSuperTrend4hRegime",
+      "passed_params": {
+        "pair": "ETH/USDC"
+      },
+      "params": {
+        "st_atr_period": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "st_multiplier": {
+          "value": "3.0",
+          "source": "class_default"
+        },
+        "sl_atr_mult": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "ETH/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 27,
+      "winning_trades": 8,
+      "losing_trades": 19,
+      "win_rate": 0.2962962962962963,
+      "total_return_pct": -0.006227966611729276,
+      "sharpe_ratio": 0.0023743356800980863,
+      "sortino_ratio": 0.00319980986122964,
+      "max_drawdown_pct": 2.232765298458938,
+      "profit_factor": 1.0301740443140963,
+      "calmar_ratio": -0.001327050567920426,
+      "net_pnl": -0.06227966611729276,
+      "total_fees": 4.733302557227776,
+      "total_pnl": 1.2877203338827072,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 999.9377203338827,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 10702.222222222223
+    },
+    "test": {
+      "total_trades": 13,
+      "winning_trades": 4,
+      "losing_trades": 9,
+      "win_rate": 0.3076923076923077,
+      "total_return_pct": 1.1500702301430445,
+      "sharpe_ratio": 0.2858188211980848,
+      "sortino_ratio": 0.4199490480220154,
+      "max_drawdown_pct": 1.8219441242856045,
+      "profit_factor": 1.5250445135921578,
+      "calmar_ratio": 0.7007294391838427,
+      "net_pnl": 11.500702301430445,
+      "total_fees": 2.3078964969960665,
+      "total_pnl": 12.150702301430446,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1011.5007023014305,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 10098.461538461539
+    },
+    "all": {
+      "total_trades": 40,
+      "winning_trades": 12,
+      "losing_trades": 28,
+      "win_rate": 0.3,
+      "total_return_pct": 1.1438422635313152,
+      "sharpe_ratio": 0.09771218530569747,
+      "sortino_ratio": 0.13581662652104182,
+      "max_drawdown_pct": 3.2571818490077624,
+      "profit_factor": 1.2041734539143074,
+      "calmar_ratio": 0.11695167425987638,
+      "net_pnl": 11.438422635313152,
+      "total_fees": 7.041199054223842,
+      "total_pnl": 13.438422635313152,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1011.4384226353131,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 10506.0
+    }
+  },
+  "grok_supertrend_4h_SOL_USDC": {
+    "strategy": "grok_supertrend_4h",
+    "pair": "SOL/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokSuperTrend4hRegime",
+      "passed_params": {
+        "pair": "SOL/USDC"
+      },
+      "params": {
+        "st_atr_period": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "st_multiplier": {
+          "value": "3.0",
+          "source": "class_default"
+        },
+        "sl_atr_mult": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "SOL/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 16,
+      "winning_trades": 6,
+      "losing_trades": 10,
+      "win_rate": 0.375,
+      "total_return_pct": 0.8845603594712975,
+      "sharpe_ratio": 0.11114665358468333,
+      "sortino_ratio": 0.15555539431397253,
+      "max_drawdown_pct": 2.8689106819400556,
+      "profit_factor": 1.3859067631521358,
+      "calmar_ratio": 0.14668804342369146,
+      "net_pnl": 8.845603594712975,
+      "total_fees": 2.827181963896524,
+      "total_pnl": 9.645603594712975,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1008.845603594713,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 10020.0
+    },
+    "test": {
+      "total_trades": 10,
+      "winning_trades": 5,
+      "losing_trades": 5,
+      "win_rate": 0.5,
+      "total_return_pct": 0.8085511344581533,
+      "sharpe_ratio": 0.21062246519791294,
+      "sortino_ratio": 0.3087100840159437,
+      "max_drawdown_pct": 1.1476380313738979,
+      "profit_factor": 1.585161870434436,
+      "calmar_ratio": 0.7821023927570593,
+      "net_pnl": 8.085511344581533,
+      "total_fees": 1.7733972715403046,
+      "total_pnl": 8.585511344581533,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1008.0855113445815,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 10680.0
+    },
+    "all": {
+      "total_trades": 26,
+      "winning_trades": 11,
+      "losing_trades": 15,
+      "win_rate": 0.4230769230769231,
+      "total_return_pct": 1.6931114939294507,
+      "sharpe_ratio": 0.1407222486865843,
+      "sortino_ratio": 0.19911481388044783,
+      "max_drawdown_pct": 2.8689106819400556,
+      "profit_factor": 1.4596078348973374,
+      "calmar_ratio": 0.1965399497935712,
+      "net_pnl": 16.93111493929451,
+      "total_fees": 4.600579235436828,
+      "total_pnl": 18.231114939294507,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1016.9311149392945,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 10273.846153846154
+    }
+  },
+  "grok_ema_adx_atr_BTC_USDC": {
+    "strategy": "grok_ema_adx_atr",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokEMA27_125_ADX_ATR",
+      "passed_params": {
+        "pair": "BTC/USDC"
+      },
+      "params": {
+        "ema_fast": {
+          "value": null,
+          "source": "class_default"
+        },
+        "ema_slow": {
+          "value": null,
+          "source": "class_default"
+        },
+        "adx_threshold": {
+          "value": "14",
+          "source": "class_default"
+        },
+        "atr_mult_stop": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "breakeven_atr": {
+          "value": "1.5",
+          "source": "class_default"
+        },
+        "trailing_atr": {
+          "value": "3.0",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "40",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 8,
+      "winning_trades": 3,
+      "losing_trades": 5,
+      "win_rate": 0.375,
+      "total_return_pct": 1.0473622105006248,
+      "sharpe_ratio": 0.29940950054919624,
+      "sortino_ratio": 0.41323809880538653,
+      "max_drawdown_pct": 0.9588737175793463,
+      "profit_factor": 2.649995261879945,
+      "calmar_ratio": 0.5196605583353496,
+      "net_pnl": 10.47362210500625,
+      "total_fees": 1.148254691992497,
+      "total_pnl": 10.79362210500625,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1010.4736221050063,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 10950.0
+    },
+    "test": {
+      "total_trades": 1,
+      "winning_trades": 0,
+      "losing_trades": 1,
+      "win_rate": 0.0,
+      "total_return_pct": -0.02231246216506006,
+      "sharpe_ratio": -0.06645883230607808,
+      "sortino_ratio": -0.09448780149740671,
+      "max_drawdown_pct": 0.11635136284055958,
+      "profit_factor": 0.0,
+      "calmar_ratio": -0.2128810864581191,
+      "net_pnl": -0.22312462165060062,
+      "total_fees": 0.13969141698834436,
+      "total_pnl": -0.18312462165060062,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 999.7768753783494,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 12240.0
+    },
+    "all": {
+      "total_trades": 9,
+      "winning_trades": 3,
+      "losing_trades": 6,
+      "win_rate": 0.3333333333333333,
+      "total_return_pct": 1.025049748335565,
+      "sharpe_ratio": 0.2427060922953321,
+      "sortino_ratio": 0.33518834737681014,
+      "max_drawdown_pct": 0.9814964840542086,
+      "profit_factor": 2.5778318895368026,
+      "calmar_ratio": 0.3478071497978941,
+      "net_pnl": 10.250497483355648,
+      "total_fees": 1.2879461089808413,
+      "total_pnl": 10.61049748335565,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1010.2504974833556,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 11093.333333333334
+    }
+  },
+  "grok_ema_adx_atr_ETH_USDC": {
+    "strategy": "grok_ema_adx_atr",
+    "pair": "ETH/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokEMA27_125_ADX_ATR",
+      "passed_params": {
+        "pair": "ETH/USDC"
+      },
+      "params": {
+        "ema_fast": {
+          "value": null,
+          "source": "class_default"
+        },
+        "ema_slow": {
+          "value": null,
+          "source": "class_default"
+        },
+        "adx_threshold": {
+          "value": "14",
+          "source": "class_default"
+        },
+        "atr_mult_stop": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "breakeven_atr": {
+          "value": "1.5",
+          "source": "class_default"
+        },
+        "trailing_atr": {
+          "value": "3.0",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "40",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "ETH/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 4,
+      "winning_trades": 1,
+      "losing_trades": 3,
+      "win_rate": 0.25,
+      "total_return_pct": -0.2949189093635176,
+      "sharpe_ratio": -0.18244652123810517,
+      "sortino_ratio": -0.25499046689715665,
+      "max_drawdown_pct": 0.6729331729524773,
+      "profit_factor": 0.5479538052391021,
+      "calmar_ratio": -0.20850426914969195,
+      "net_pnl": -2.9491890936351757,
+      "total_fees": 0.55361105490317,
+      "total_pnl": -2.789189093635176,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 997.0508109063649,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 4080.0
+    },
+    "test": {
+      "total_trades": 2,
+      "winning_trades": 1,
+      "losing_trades": 1,
+      "win_rate": 0.5,
+      "total_return_pct": 0.05816330604463848,
+      "sharpe_ratio": 0.1114313375228264,
+      "sortino_ratio": 0.17581503528873865,
+      "max_drawdown_pct": 0.2578712163051041,
+      "profit_factor": 4.002655148621533,
+      "calmar_ratio": 0.250384402327184,
+      "net_pnl": 0.5816330604463847,
+      "total_fees": 0.2819589801013694,
+      "total_pnl": 0.6616330604463848,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1000.5816330604464,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 4560.0
+    },
+    "all": {
+      "total_trades": 6,
+      "winning_trades": 2,
+      "losing_trades": 4,
+      "win_rate": 0.3333333333333333,
+      "total_return_pct": -0.2367556033188791,
+      "sharpe_ratio": -0.10944964414385443,
+      "sortino_ratio": -0.1563523441966971,
+      "max_drawdown_pct": 0.6729331729524773,
+      "profit_factor": 0.6670747193703718,
+      "calmar_ratio": -0.11716843759033198,
+      "net_pnl": -2.3675560331887913,
+      "total_fees": 0.8355700350045394,
+      "total_pnl": -2.127556033188791,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 997.6324439668113,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 4240.0
+    }
+  },
+  "grok_ema_adx_atr_SOL_USDC": {
+    "strategy": "grok_ema_adx_atr",
+    "pair": "SOL/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokEMA27_125_ADX_ATR",
+      "passed_params": {
+        "pair": "SOL/USDC"
+      },
+      "params": {
+        "ema_fast": {
+          "value": null,
+          "source": "class_default"
+        },
+        "ema_slow": {
+          "value": null,
+          "source": "class_default"
+        },
+        "adx_threshold": {
+          "value": "14",
+          "source": "class_default"
+        },
+        "atr_mult_stop": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "breakeven_atr": {
+          "value": "1.5",
+          "source": "class_default"
+        },
+        "trailing_atr": {
+          "value": "3.0",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "40",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "SOL/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 2,
+      "winning_trades": 2,
+      "losing_trades": 0,
+      "win_rate": 1.0,
+      "total_return_pct": 1.397483565192756,
+      "sharpe_ratio": 0.3540800395085545,
+      "sortino_ratio": 0.4924807291502829,
+      "max_drawdown_pct": 0.7666889300724592,
+      "profit_factor": 0.0,
+      "calmar_ratio": 0.867185059200071,
+      "net_pnl": 13.97483565192756,
+      "total_fees": 0.31552590388954277,
+      "total_pnl": 14.05483565192756,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1013.9748356519276,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 19440.0
+    },
+    "test": {
+      "total_trades": 2,
+      "winning_trades": 1,
+      "losing_trades": 1,
+      "win_rate": 0.5,
+      "total_return_pct": -0.2081166555756864,
+      "sharpe_ratio": -0.14531652829903793,
+      "sortino_ratio": -0.20583578906879552,
+      "max_drawdown_pct": 0.8037875800328845,
+      "profit_factor": 0.3204211219468065,
+      "calmar_ratio": -0.2874263649880024,
+      "net_pnl": -2.0811665557568637,
+      "total_fees": 0.27528529685273967,
+      "total_pnl": -2.001166555756864,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 997.9188334442431,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 9720.0
+    },
+    "all": {
+      "total_trades": 4,
+      "winning_trades": 3,
+      "losing_trades": 1,
+      "win_rate": 0.75,
+      "total_return_pct": 1.1893669096170696,
+      "sharpe_ratio": 0.2149621768534865,
+      "sortino_ratio": 0.29986936902626854,
+      "max_drawdown_pct": 0.79277481370536,
+      "profit_factor": 5.093321916277001,
+      "calmar_ratio": 0.4996297814915848,
+      "net_pnl": 11.893669096170695,
+      "total_fees": 0.5908112007422824,
+      "total_pnl": 12.053669096170696,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1011.8936690961707,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 14580.0
+    }
+  },
+  "grok_adaptive_dca_weekly_BTC_USDC": {
+    "strategy": "grok_adaptive_dca_weekly",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokAdaptiveDCAWeekly",
+      "passed_params": {
+        "pair": "BTC/USDC"
+      },
+      "params": {
+        "base_amount_usdc": {
+          "value": "15",
+          "source": "class_default"
+        },
+        "oversold_multiplier": {
+          "value": "2.5",
+          "source": "class_default"
+        },
+        "bull_reduction": {
+          "value": "0.5",
+          "source": "class_default"
+        },
+        "rsi_oversold": {
+          "value": "30",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "25.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 101,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": 143.50970204213183,
+      "sharpe_ratio": 1.312110897712538,
+      "sortino_ratio": 2.0655750593223097,
+      "max_drawdown_pct": 27.903919188545597,
+      "profit_factor": 0.0,
+      "calmar_ratio": 2.446810455005998,
+      "net_pnl": -0.9975,
+      "total_fees": 0.9975,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 2435.0970204213186,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 0.0
+    },
+    "test": {
+      "total_trades": 45,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": -10.0920516284534,
+      "sharpe_ratio": -1.1987896055464895,
+      "sortino_ratio": -1.5874164020102164,
+      "max_drawdown_pct": 13.507391094053665,
+      "profit_factor": 0.0,
+      "calmar_ratio": -0.8294095746824796,
+      "net_pnl": -0.4425,
+      "total_fees": 0.4425,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 899.079483715466,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 0.0
+    },
+    "all": {
+      "total_trades": 101,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": 71.68428231977339,
+      "sharpe_ratio": 0.653117836061125,
+      "sortino_ratio": 0.9731451408480488,
+      "max_drawdown_pct": 49.61105090482215,
+      "profit_factor": 0.0,
+      "calmar_ratio": 0.48120244479462687,
+      "net_pnl": -0.9975,
+      "total_fees": 0.9975,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1716.8428231977339,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 0.0
+    }
+  },
+  "grok_adaptive_dca_weekly_ETH_USDC": {
+    "strategy": "grok_adaptive_dca_weekly",
+    "pair": "ETH/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokAdaptiveDCAWeekly",
+      "passed_params": {
+        "pair": "ETH/USDC"
+      },
+      "params": {
+        "base_amount_usdc": {
+          "value": "15",
+          "source": "class_default"
+        },
+        "oversold_multiplier": {
+          "value": "2.5",
+          "source": "class_default"
+        },
+        "bull_reduction": {
+          "value": "0.5",
+          "source": "class_default"
+        },
+        "rsi_oversold": {
+          "value": "30",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "25.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "ETH/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 88,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": -16.67825416948341,
+      "sharpe_ratio": 0.08011126924299931,
+      "sortino_ratio": 0.11568102672636003,
+      "max_drawdown_pct": 63.171809433345814,
+      "profit_factor": 0.0,
+      "calmar_ratio": -0.12560633441193017,
+      "net_pnl": -0.9975,
+      "total_fees": 0.9975,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 833.2174583051659,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 0.0
+    },
+    "test": {
+      "total_trades": 47,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": -12.179776805779444,
+      "sharpe_ratio": -0.5648390680765196,
+      "sortino_ratio": -0.7806176276585529,
+      "max_drawdown_pct": 27.688168556464987,
+      "profit_factor": 0.0,
+      "calmar_ratio": -0.4883218478889235,
+      "net_pnl": -0.5475,
+      "total_fees": 0.5475,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 878.2022319422056,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 0.0
+    },
+    "all": {
+      "total_trades": 88,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": -3.542509215038804,
+      "sharpe_ratio": 0.26979338256743557,
+      "sortino_ratio": 0.40298496864073635,
+      "max_drawdown_pct": 62.17255684173536,
+      "profit_factor": 0.0,
+      "calmar_ratio": -0.01897555866227391,
+      "net_pnl": -0.9975,
+      "total_fees": 0.9975,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 964.5749078496119,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 0.0
+    }
+  },
+  "grok_adaptive_dca_weekly_SOL_USDC": {
+    "strategy": "grok_adaptive_dca_weekly",
+    "pair": "SOL/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokAdaptiveDCAWeekly",
+      "passed_params": {
+        "pair": "SOL/USDC"
+      },
+      "params": {
+        "base_amount_usdc": {
+          "value": "15",
+          "source": "class_default"
+        },
+        "oversold_multiplier": {
+          "value": "2.5",
+          "source": "class_default"
+        },
+        "bull_reduction": {
+          "value": "0.5",
+          "source": "class_default"
+        },
+        "rsi_oversold": {
+          "value": "30",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "25.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "SOL/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 70,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": 2.3071481135368477,
+      "sharpe_ratio": 0.25329436974177555,
+      "sortino_ratio": 0.37481320492271547,
+      "max_drawdown_pct": 43.866648616170075,
+      "profit_factor": 0.0,
+      "calmar_ratio": 0.02502218844856282,
+      "net_pnl": -0.675,
+      "total_fees": 0.675,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1023.0714811353685,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 0.0
+    },
+    "test": {
+      "total_trades": 46,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": -22.523937801585213,
+      "sharpe_ratio": -1.1380433113012276,
+      "sortino_ratio": -1.5093598801673962,
+      "max_drawdown_pct": 32.37696023616372,
+      "profit_factor": 0.0,
+      "calmar_ratio": -0.7722702467468323,
+      "net_pnl": -0.6225,
+      "total_fees": 0.6225,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 774.7606219841479,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 0.0
+    },
+    "all": {
+      "total_trades": 104,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": -43.548100891365145,
+      "sharpe_ratio": -0.19522357721948724,
+      "sortino_ratio": -0.2769032639074577,
+      "max_drawdown_pct": 66.60833483513638,
+      "profit_factor": 0.0,
+      "calmar_ratio": -0.2177323470121123,
+      "net_pnl": -1.0,
+      "total_fees": 1.0,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 564.5189910863486,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 0.0
+    }
+  },
+  "grok_donchian_breakout_4h_BTC_USDC": {
+    "strategy": "grok_donchian_breakout_4h",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokDonchianChannelBreakoutV1",
+      "passed_params": {
+        "pair": "BTC/USDC"
+      },
+      "params": {
+        "donchian_upper_period": {
+          "value": 20,
+          "source": "class_default"
+        },
+        "donchian_lower_period": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "breakout_confirmation": {
+          "value": "close",
+          "source": "class_default"
+        },
+        "sl_atr_mult": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "adx_threshold": {
+          "value": "18",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 36,
+      "winning_trades": 10,
+      "losing_trades": 26,
+      "win_rate": 0.2777777777777778,
+      "total_return_pct": 1.0045653603933167,
+      "sharpe_ratio": 0.16762832461907162,
+      "sortino_ratio": 0.23827247616099523,
+      "max_drawdown_pct": 1.598674734792762,
+      "profit_factor": 1.4013505867958933,
+      "calmar_ratio": 0.2989526155682841,
+      "net_pnl": 10.165310751499565,
+      "total_fees": 6.386880478073934,
+      "total_pnl": 12.015310751499564,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1010.0456536039331,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 6173.333333333333
+    },
+    "test": {
+      "total_trades": 8,
+      "winning_trades": 4,
+      "losing_trades": 4,
+      "win_rate": 0.5,
+      "total_return_pct": -0.28651796392613677,
+      "sharpe_ratio": -0.2217842135030504,
+      "sortino_ratio": -0.3174458029877734,
+      "max_drawdown_pct": 0.7346144290797395,
+      "profit_factor": 0.5952917424763868,
+      "calmar_ratio": -0.4329656651536859,
+      "net_pnl": -2.8651796392613678,
+      "total_fees": 1.3953253643126282,
+      "total_pnl": -2.465179639261368,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 997.1348203607387,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 5010.0
+    },
+    "all": {
+      "total_trades": 44,
+      "winning_trades": 14,
+      "losing_trades": 30,
+      "win_rate": 0.3181818181818182,
+      "total_return_pct": 0.8591309407265679,
+      "sharpe_ratio": 0.11443691160103137,
+      "sortino_ratio": 0.16311780791448402,
+      "max_drawdown_pct": 1.597919943397478,
+      "profit_factor": 1.299521921751997,
+      "calmar_ratio": 0.1790550825523018,
+      "net_pnl": 8.59130940726568,
+      "total_fees": 7.73531656493049,
+      "total_pnl": 10.791309407265679,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1008.5913094072657,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 6000.0
+    }
+  },
+  "grok_donchian_breakout_4h_ETH_USDC": {
+    "strategy": "grok_donchian_breakout_4h",
+    "pair": "ETH/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokDonchianChannelBreakoutV1",
+      "passed_params": {
+        "pair": "ETH/USDC"
+      },
+      "params": {
+        "donchian_upper_period": {
+          "value": 20,
+          "source": "class_default"
+        },
+        "donchian_lower_period": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "breakout_confirmation": {
+          "value": "close",
+          "source": "class_default"
+        },
+        "sl_atr_mult": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "adx_threshold": {
+          "value": "18",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "ETH/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 26,
+      "winning_trades": 7,
+      "losing_trades": 19,
+      "win_rate": 0.2692307692307692,
+      "total_return_pct": -0.7914086039818153,
+      "sharpe_ratio": -0.1294107603925505,
+      "sortino_ratio": -0.17020425221530094,
+      "max_drawdown_pct": 2.5131994164282556,
+      "profit_factor": 0.7827651102748125,
+      "calmar_ratio": -0.14981596208951156,
+      "net_pnl": -7.914086039818153,
+      "total_fees": 4.538310561303714,
+      "total_pnl": -6.614086039818153,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 992.0859139601819,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 6618.461538461538
+    },
+    "test": {
+      "total_trades": 12,
+      "winning_trades": 4,
+      "losing_trades": 8,
+      "win_rate": 0.3333333333333333,
+      "total_return_pct": 0.16852730440826416,
+      "sharpe_ratio": 0.059152775633727936,
+      "sortino_ratio": 0.08690230220731562,
+      "max_drawdown_pct": 1.6086695769178085,
+      "profit_factor": 1.1048559811264411,
+      "calmar_ratio": 0.11629592071713499,
+      "net_pnl": 1.6852730440826418,
+      "total_fees": 2.10798314046136,
+      "total_pnl": 2.2852730440826416,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1001.6852730440827,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 6320.0
+    },
+    "all": {
+      "total_trades": 38,
+      "winning_trades": 11,
+      "losing_trades": 27,
+      "win_rate": 0.2894736842105263,
+      "total_return_pct": -0.6228812995735511,
+      "sharpe_ratio": -0.06642821462092528,
+      "sortino_ratio": -0.09074578775046674,
+      "max_drawdown_pct": 4.03235881683846,
+      "profit_factor": 0.9171377915928062,
+      "calmar_ratio": -0.05144325405940646,
+      "net_pnl": -6.228812995735511,
+      "total_fees": 6.646293701765074,
+      "total_pnl": -4.328812995735511,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 993.7711870042644,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 6524.210526315789
+    }
+  },
+  "grok_donchian_breakout_4h_SOL_USDC": {
+    "strategy": "grok_donchian_breakout_4h",
+    "pair": "SOL/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GrokDonchianChannelBreakoutV1",
+      "passed_params": {
+        "pair": "SOL/USDC"
+      },
+      "params": {
+        "donchian_upper_period": {
+          "value": 20,
+          "source": "class_default"
+        },
+        "donchian_lower_period": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "breakout_confirmation": {
+          "value": "close",
+          "source": "class_default"
+        },
+        "sl_atr_mult": {
+          "value": "3.5",
+          "source": "class_default"
+        },
+        "adx_threshold": {
+          "value": "18",
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "SOL/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 20,
+      "winning_trades": 3,
+      "losing_trades": 17,
+      "win_rate": 0.15,
+      "total_return_pct": -2.3752785921516235,
+      "sharpe_ratio": -0.36411178864325283,
+      "sortino_ratio": -0.48060179279730125,
+      "max_drawdown_pct": 3.179220993612016,
+      "profit_factor": 0.4152029420581441,
+      "calmar_ratio": -0.35544966337696565,
+      "net_pnl": -23.752785921516235,
+      "total_fees": 3.4467348723771525,
+      "total_pnl": -22.752785921516235,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 976.2472140784838,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 5064.0
+    },
+    "test": {
+      "total_trades": 14,
+      "winning_trades": 6,
+      "losing_trades": 8,
+      "win_rate": 0.42857142857142855,
+      "total_return_pct": -0.6964385331879562,
+      "sharpe_ratio": -0.22666730566858026,
+      "sortino_ratio": -0.3122763182756517,
+      "max_drawdown_pct": 1.3504307423069943,
+      "profit_factor": 0.6946737518847618,
+      "calmar_ratio": -0.5724947807569869,
+      "net_pnl": -6.964385331879563,
+      "total_fees": 2.4369313650830087,
+      "total_pnl": -6.264385331879563,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 993.0356146681204,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 4697.142857142857
+    },
+    "all": {
+      "total_trades": 34,
+      "winning_trades": 9,
+      "losing_trades": 25,
+      "win_rate": 0.2647058823529412,
+      "total_return_pct": -3.0717171253395796,
+      "sharpe_ratio": -0.3158835651825831,
+      "sortino_ratio": -0.42140639142988207,
+      "max_drawdown_pct": 4.464975329399129,
+      "profit_factor": 0.5116941291214565,
+      "calmar_ratio": -0.22911022176852394,
+      "net_pnl": -30.717171253395797,
+      "total_fees": 5.883666237460161,
+      "total_pnl": -29.017171253395798,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 969.2828287466042,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 4912.941176470588
+    }
+  },
+  "gemini_scalping_volatilite_BTC_USDC": {
+    "strategy": "gemini_scalping_volatilite",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiScalpingVolatilite",
+      "passed_params": {
+        "pair": "BTC/USDC",
+        "rsi_period": 7,
+        "rsi_oversold": 30,
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 1.0,
+        "trail_activation_atr": 0.5,
+        "trail_atr_mult": 1.0,
+        "order_size_usdc": 25,
+        "max_allocation_pct": 10.0,
+        "max_open_positions": 2,
+        "close_hour_utc": 23
+      },
+      "params": {
+        "rsi_period": {
+          "value": 7,
+          "source": "passed"
+        },
+        "rsi_oversold": {
+          "value": "30",
+          "source": "passed"
+        },
+        "sl_atr_mult": {
+          "value": "1.5",
+          "source": "passed"
+        },
+        "tp_atr_mult": {
+          "value": "1.0",
+          "source": "passed"
+        },
+        "trail_activation_atr": {
+          "value": "0.5",
+          "source": "passed"
+        },
+        "trail_atr_mult": {
+          "value": "1.0",
+          "source": "passed"
+        },
+        "order_size_usdc": {
+          "value": "25",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "10.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 2,
+          "source": "passed"
+        },
+        "close_hour_utc": {
+          "value": 23,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 475,
+      "winning_trades": 216,
+      "losing_trades": 259,
+      "win_rate": 0.45473684210526316,
+      "total_return_pct": -4.104883853445107,
+      "sharpe_ratio": -0.5420104523202093,
+      "sortino_ratio": -0.6470065153654928,
+      "max_drawdown_pct": 4.113481707399498,
+      "profit_factor": 0.227691668649616,
+      "calmar_ratio": -0.47476158747591235,
+      "net_pnl": -41.048838534451065,
+      "total_fees": 33.32627073745741,
+      "total_pnl": -29.173838534451065,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 958.9511614655489,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 27.57894736842105
+    },
+    "test": {
+      "total_trades": 217,
+      "winning_trades": 82,
+      "losing_trades": 135,
+      "win_rate": 0.3778801843317972,
+      "total_return_pct": -2.0070911727396954,
+      "sharpe_ratio": -0.6965742589798162,
+      "sortino_ratio": -0.8120607283126716,
+      "max_drawdown_pct": 2.0109795427602997,
+      "profit_factor": 0.15204068630694362,
+      "calmar_ratio": -1.1079508725500002,
+      "net_pnl": -20.070911727396954,
+      "total_fees": 15.54631896565333,
+      "total_pnl": -14.645911727396953,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 979.929088272603,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 29.56221198156682
+    },
+    "all": {
+      "total_trades": 692,
+      "winning_trades": 298,
+      "losing_trades": 394,
+      "win_rate": 0.430635838150289,
+      "total_return_pct": -6.111975026184801,
+      "sharpe_ratio": -0.5851275117935867,
+      "sortino_ratio": -0.694040440887549,
+      "max_drawdown_pct": 6.114025093453726,
+      "profit_factor": 0.2039547790048847,
+      "calmar_ratio": -0.3329175305028581,
+      "net_pnl": -61.11975026184801,
+      "total_fees": 48.87258970311074,
+      "total_pnl": -43.819750261848014,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 938.880249738152,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 28.20086705202312
+    }
+  },
+  "gemini_scalping_volatilite_ETH_USDC": {
+    "strategy": "gemini_scalping_volatilite",
+    "pair": "ETH/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiScalpingVolatilite",
+      "passed_params": {
+        "pair": "ETH/USDC",
+        "rsi_period": 7,
+        "rsi_oversold": 30,
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 1.0,
+        "trail_activation_atr": 0.5,
+        "trail_atr_mult": 1.0,
+        "order_size_usdc": 25,
+        "max_allocation_pct": 10.0,
+        "max_open_positions": 2,
+        "close_hour_utc": 23
+      },
+      "params": {
+        "rsi_period": {
+          "value": 7,
+          "source": "passed"
+        },
+        "rsi_oversold": {
+          "value": "30",
+          "source": "passed"
+        },
+        "sl_atr_mult": {
+          "value": "1.5",
+          "source": "passed"
+        },
+        "tp_atr_mult": {
+          "value": "1.0",
+          "source": "passed"
+        },
+        "trail_activation_atr": {
+          "value": "0.5",
+          "source": "passed"
+        },
+        "trail_atr_mult": {
+          "value": "1.0",
+          "source": "passed"
+        },
+        "order_size_usdc": {
+          "value": "25",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "10.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 2,
+          "source": "passed"
+        },
+        "close_hour_utc": {
+          "value": 23,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "ETH/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 546,
+      "winning_trades": 230,
+      "losing_trades": 316,
+      "win_rate": 0.42124542124542125,
+      "total_return_pct": -5.508744521351465,
+      "sharpe_ratio": -0.5909168771290256,
+      "sortino_ratio": -0.6954435839498856,
+      "max_drawdown_pct": 5.508744521351465,
+      "profit_factor": 0.20826876469375563,
+      "calmar_ratio": -0.4757559958289885,
+      "net_pnl": -55.08744521351465,
+      "total_fees": 39.51203100329224,
+      "total_pnl": -41.43744521351465,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 944.9125547864853,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 29.34981684981685
+    },
+    "test": {
+      "total_trades": 298,
+      "winning_trades": 140,
+      "losing_trades": 158,
+      "win_rate": 0.4697986577181208,
+      "total_return_pct": -2.639512018196806,
+      "sharpe_ratio": -0.5933190304518513,
+      "sortino_ratio": -0.7254230449423704,
+      "max_drawdown_pct": 2.6765103930902208,
+      "profit_factor": 0.2793682668946745,
+      "calmar_ratio": -1.0947520452666177,
+      "net_pnl": -26.39512018196806,
+      "total_fees": 21.08283264079861,
+      "total_pnl": -18.94512018196806,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 973.6048798180319,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 30.721476510067113
+    },
+    "all": {
+      "total_trades": 844,
+      "winning_trades": 370,
+      "losing_trades": 474,
+      "win_rate": 0.43838862559241704,
+      "total_return_pct": -8.148256539548271,
+      "sharpe_ratio": -0.5902396379347289,
+      "sortino_ratio": -0.7041906488251631,
+      "max_drawdown_pct": 8.15484039234761,
+      "profit_factor": 0.23204137144404954,
+      "calmar_ratio": -0.3327603242261382,
+      "net_pnl": -81.48256539548271,
+      "total_fees": 60.59486364409086,
+      "total_pnl": -60.382565395482715,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 918.5174346045172,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 29.834123222748815
+    }
+  },
+  "gemini_scalping_volatilite_SOL_USDC": {
+    "strategy": "gemini_scalping_volatilite",
+    "pair": "SOL/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiScalpingVolatilite",
+      "passed_params": {
+        "pair": "SOL/USDC",
+        "rsi_period": 7,
+        "rsi_oversold": 30,
+        "sl_atr_mult": 1.5,
+        "tp_atr_mult": 1.0,
+        "trail_activation_atr": 0.5,
+        "trail_atr_mult": 1.0,
+        "order_size_usdc": 25,
+        "max_allocation_pct": 10.0,
+        "max_open_positions": 2,
+        "close_hour_utc": 23
+      },
+      "params": {
+        "rsi_period": {
+          "value": 7,
+          "source": "passed"
+        },
+        "rsi_oversold": {
+          "value": "30",
+          "source": "passed"
+        },
+        "sl_atr_mult": {
+          "value": "1.5",
+          "source": "passed"
+        },
+        "tp_atr_mult": {
+          "value": "1.0",
+          "source": "passed"
+        },
+        "trail_activation_atr": {
+          "value": "0.5",
+          "source": "passed"
+        },
+        "trail_atr_mult": {
+          "value": "1.0",
+          "source": "passed"
+        },
+        "order_size_usdc": {
+          "value": "25",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "10.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 2,
+          "source": "passed"
+        },
+        "close_hour_utc": {
+          "value": 23,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "SOL/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 515,
+      "winning_trades": 240,
+      "losing_trades": 275,
+      "win_rate": 0.46601941747572817,
+      "total_return_pct": -5.8686356452058765,
+      "sharpe_ratio": -0.6126273225090179,
+      "sortino_ratio": -0.7395947995780577,
+      "max_drawdown_pct": 5.870760899492654,
+      "profit_factor": 0.27161222339006236,
+      "calmar_ratio": -0.4755837690108799,
+      "net_pnl": -58.68635645205877,
+      "total_fees": 36.66321452731005,
+      "total_pnl": -45.81135645205877,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 941.3136435479412,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 28.54368932038835
+    },
+    "test": {
+      "total_trades": 370,
+      "winning_trades": 164,
+      "losing_trades": 206,
+      "win_rate": 0.44324324324324327,
+      "total_return_pct": -4.094954950098093,
+      "sharpe_ratio": -0.7105819192620088,
+      "sortino_ratio": -0.863773895235915,
+      "max_drawdown_pct": 4.114183716145926,
+      "profit_factor": 0.23254484684109478,
+      "calmar_ratio": -1.104908979278361,
+      "net_pnl": -40.94954950098093,
+      "total_fees": 26.37643448064318,
+      "total_pnl": -31.69954950098093,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 959.0504504990191,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 30.89189189189189
+    },
+    "all": {
+      "total_trades": 885,
+      "winning_trades": 404,
+      "losing_trades": 481,
+      "win_rate": 0.45649717514124294,
+      "total_return_pct": -9.96359059530397,
+      "sharpe_ratio": -0.650485900775927,
+      "sortino_ratio": -0.78733281518479,
+      "max_drawdown_pct": 9.970500336248241,
+      "profit_factor": 0.25612580411626024,
+      "calmar_ratio": -0.3327984016937919,
+      "net_pnl": -99.6359059530397,
+      "total_fees": 63.03964900795323,
+      "total_pnl": -77.5109059530397,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 900.3640940469603,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 29.52542372881356
+    }
+  },
+  "gemini_suivi_tendance_momentum_BTC_USDC": {
+    "strategy": "gemini_suivi_tendance_momentum",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiSuiviTendanceMomentum",
+      "passed_params": {
+        "pair": "BTC/USDC",
+        "adx_min": 20,
+        "initial_sl_atr_mult": 2.5,
+        "trailing_atr_mult": 2.0,
+        "order_size_usdc": 50,
+        "max_allocation_pct": 15.0,
+        "max_open_positions": 1
+      },
+      "params": {
+        "adx_min": {
+          "value": "20",
+          "source": "passed"
+        },
+        "initial_sl_atr_mult": {
+          "value": "2.5",
+          "source": "passed"
+        },
+        "trailing_atr_mult": {
+          "value": "2.0",
+          "source": "passed"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 1,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 120,
+      "winning_trades": 44,
+      "losing_trades": 76,
+      "win_rate": 0.36666666666666664,
+      "total_return_pct": -1.0684175914704732,
+      "sharpe_ratio": -0.026578370495752575,
+      "sortino_ratio": -0.03700223399872156,
+      "max_drawdown_pct": 1.855921693976267,
+      "profit_factor": 0.9067493798132674,
+      "calmar_ratio": -0.27388336309718486,
+      "net_pnl": -11.801051312531916,
+      "total_fees": 21.05814272854002,
+      "total_pnl": -5.751051312531915,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 989.3158240852953,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 1936.0
+    },
+    "test": {
+      "total_trades": 12,
+      "winning_trades": 2,
+      "losing_trades": 10,
+      "win_rate": 0.16666666666666666,
+      "total_return_pct": -0.525622074711721,
+      "sharpe_ratio": -0.1395718203162839,
+      "sortino_ratio": -0.18925432477320026,
+      "max_drawdown_pct": 0.6440182060465953,
+      "profit_factor": 0.16228830677547815,
+      "calmar_ratio": -0.9060173344243254,
+      "net_pnl": -5.25622074711721,
+      "total_fees": 2.0905859129144932,
+      "total_pnl": -4.65622074711721,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 994.7437792528827,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 938.75
+    },
+    "all": {
+      "total_trades": 161,
+      "winning_trades": 55,
+      "losing_trades": 106,
+      "win_rate": 0.3416149068322981,
+      "total_return_pct": -2.314133398474533,
+      "sharpe_ratio": -0.0458621156873652,
+      "sortino_ratio": -0.06388328366796703,
+      "max_drawdown_pct": 2.9615039543195603,
+      "profit_factor": 0.8108066966360316,
+      "calmar_ratio": -0.2602306123909034,
+      "net_pnl": -23.14133398474533,
+      "total_fees": 28.167440265702393,
+      "total_pnl": -15.091333984745331,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 976.8586660152547,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 1861.4906832298136
+    }
+  },
+  "gemini_suivi_tendance_momentum_ETH_USDC": {
+    "strategy": "gemini_suivi_tendance_momentum",
+    "pair": "ETH/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiSuiviTendanceMomentum",
+      "passed_params": {
+        "pair": "ETH/USDC",
+        "adx_min": 20,
+        "initial_sl_atr_mult": 2.5,
+        "trailing_atr_mult": 2.0,
+        "order_size_usdc": 50,
+        "max_allocation_pct": 15.0,
+        "max_open_positions": 1
+      },
+      "params": {
+        "adx_min": {
+          "value": "20",
+          "source": "passed"
+        },
+        "initial_sl_atr_mult": {
+          "value": "2.5",
+          "source": "passed"
+        },
+        "trailing_atr_mult": {
+          "value": "2.0",
+          "source": "passed"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 1,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "ETH/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 94,
+      "winning_trades": 32,
+      "losing_trades": 62,
+      "win_rate": 0.3404255319148936,
+      "total_return_pct": -1.4930562732233184,
+      "sharpe_ratio": -0.03470563584572162,
+      "sortino_ratio": -0.048928166956436654,
+      "max_drawdown_pct": 3.1603195062392344,
+      "profit_factor": 0.8296086527775185,
+      "calmar_ratio": -0.22476539878126692,
+      "net_pnl": -14.930562732233184,
+      "total_fees": 16.442028664831497,
+      "total_pnl": -10.230562732233185,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 985.0694372677668,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 1972.3936170212767
+    },
+    "test": {
+      "total_trades": 15,
+      "winning_trades": 4,
+      "losing_trades": 11,
+      "win_rate": 0.26666666666666666,
+      "total_return_pct": -0.4623293275054366,
+      "sharpe_ratio": -0.04186672282114123,
+      "sortino_ratio": -0.06159509273181593,
+      "max_drawdown_pct": 0.9893730447400384,
+      "profit_factor": 0.6638342464117567,
+      "calmar_ratio": -0.5187432099697806,
+      "net_pnl": -4.623293275054366,
+      "total_fees": 2.618112046929688,
+      "total_pnl": -3.873293275054366,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 995.3767067249456,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 1700.6666666666667
+    },
+    "all": {
+      "total_trades": 133,
+      "winning_trades": 48,
+      "losing_trades": 85,
+      "win_rate": 0.3609022556390977,
+      "total_return_pct": -0.07947439353126948,
+      "sharpe_ratio": -0.0008251445793892662,
+      "sortino_ratio": -0.0011678637427418592,
+      "max_drawdown_pct": 3.1603195062392344,
+      "profit_factor": 1.0685328436013701,
+      "calmar_ratio": -0.008374879000021674,
+      "net_pnl": -0.7947439353126948,
+      "total_fees": 23.314674827229794,
+      "total_pnl": 5.855256064687305,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 999.2052560646873,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 2064.097744360902
+    }
+  },
+  "gemini_suivi_tendance_momentum_SOL_USDC": {
+    "strategy": "gemini_suivi_tendance_momentum",
+    "pair": "SOL/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiSuiviTendanceMomentum",
+      "passed_params": {
+        "pair": "SOL/USDC",
+        "adx_min": 20,
+        "initial_sl_atr_mult": 2.5,
+        "trailing_atr_mult": 2.0,
+        "order_size_usdc": 50,
+        "max_allocation_pct": 15.0,
+        "max_open_positions": 1
+      },
+      "params": {
+        "adx_min": {
+          "value": "20",
+          "source": "passed"
+        },
+        "initial_sl_atr_mult": {
+          "value": "2.5",
+          "source": "passed"
+        },
+        "trailing_atr_mult": {
+          "value": "2.0",
+          "source": "passed"
+        },
+        "order_size_usdc": {
+          "value": "50",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "15.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 1,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "SOL/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 49,
+      "winning_trades": 15,
+      "losing_trades": 34,
+      "win_rate": 0.30612244897959184,
+      "total_return_pct": -1.5917508712986275,
+      "sharpe_ratio": -0.04262500706620359,
+      "sortino_ratio": -0.060246248068790566,
+      "max_drawdown_pct": 1.9910368574748962,
+      "profit_factor": 0.7282911359079328,
+      "calmar_ratio": -0.3803470629101032,
+      "net_pnl": -15.917508712986274,
+      "total_fees": 8.550457371646651,
+      "total_pnl": -13.467508712986275,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 984.0824912870137,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 2015.9183673469388
+    },
+    "test": {
+      "total_trades": 21,
+      "winning_trades": 6,
+      "losing_trades": 15,
+      "win_rate": 0.2857142857142857,
+      "total_return_pct": -1.5546233133716214,
+      "sharpe_ratio": -0.10093292927906282,
+      "sortino_ratio": -0.14495145052432834,
+      "max_drawdown_pct": 2.0830716517756254,
+      "profit_factor": 0.38691358971261236,
+      "calmar_ratio": -0.8284799891114853,
+      "net_pnl": -15.546233133716214,
+      "total_fees": 3.6426159570583554,
+      "total_pnl": -14.496233133716215,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 984.4537668662838,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 1609.5238095238096
+    },
+    "all": {
+      "total_trades": 91,
+      "winning_trades": 28,
+      "losing_trades": 63,
+      "win_rate": 0.3076923076923077,
+      "total_return_pct": -4.331415155554984,
+      "sharpe_ratio": -0.07287579153042933,
+      "sortino_ratio": -0.10189834850651341,
+      "max_drawdown_pct": 4.456206397616691,
+      "profit_factor": 0.6062299530671172,
+      "calmar_ratio": -0.3237030744912015,
+      "net_pnl": -43.314151555549834,
+      "total_fees": 15.84495200111391,
+      "total_pnl": -38.76415155554984,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 956.6858484444501,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 1806.1538461538462
+    }
+  },
+  "gemini_retour_moyenne_BTC_USDC": {
+    "strategy": "gemini_retour_moyenne",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiRetourMoyenne",
+      "passed_params": {
+        "pair": "BTC/USDC",
+        "dca_levels": 3,
+        "dca_spacing_pct": 0.5,
+        "sl_atr_mult": 2.0,
+        "order_size_usdc": 20,
+        "max_allocation_pct": 10.0,
+        "max_open_positions": 2
+      },
+      "params": {
+        "adx_range_max": {
+          "value": "20",
+          "source": "class_default"
+        },
+        "dca_levels": {
+          "value": 3,
+          "source": "passed"
+        },
+        "dca_spacing_pct": {
+          "value": "0.5",
+          "source": "passed"
+        },
+        "sl_atr_mult": {
+          "value": "2.0",
+          "source": "passed"
+        },
+        "divergence_lookback": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "20",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "10.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 2,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 46,
+      "winning_trades": 20,
+      "losing_trades": 26,
+      "win_rate": 0.43478260869565216,
+      "total_return_pct": -0.32703563236131605,
+      "sharpe_ratio": -0.18286755562107543,
+      "sortino_ratio": -0.22431894848676387,
+      "max_drawdown_pct": 0.3335862412402862,
+      "profit_factor": 0.19868084926978086,
+      "calmar_ratio": -0.46641360976740087,
+      "net_pnl": -3.2703563236131603,
+      "total_fees": 2.254874901209756,
+      "total_pnl": -2.3503563236131604,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 996.7296436763868,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 75.65217391304348
+    },
+    "test": {
+      "total_trades": 21,
+      "winning_trades": 9,
+      "losing_trades": 12,
+      "win_rate": 0.42857142857142855,
+      "total_return_pct": -0.15523949469512655,
+      "sharpe_ratio": -0.20273808192042117,
+      "sortino_ratio": -0.2497986205096107,
+      "max_drawdown_pct": 0.1695639392389399,
+      "profit_factor": 0.18969419446652877,
+      "calmar_ratio": -1.0163183773136366,
+      "net_pnl": -1.5523949469512655,
+      "total_fees": 1.077491071185847,
+      "total_pnl": -1.1323949469512655,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 998.4476050530487,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 62.61904761904762
+    },
+    "all": {
+      "total_trades": 67,
+      "winning_trades": 29,
+      "losing_trades": 38,
+      "win_rate": 0.43283582089552236,
+      "total_return_pct": -0.4822751270564426,
+      "sharpe_ratio": -0.18883449110701253,
+      "sortino_ratio": -0.23194643333272602,
+      "max_drawdown_pct": 0.49375822290291077,
+      "profit_factor": 0.19578084266496595,
+      "calmar_ratio": -0.3252840983409495,
+      "net_pnl": -4.822751270564426,
+      "total_fees": 3.332365972395603,
+      "total_pnl": -3.482751270564426,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 995.1772487294355,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 71.56716417910448
+    }
+  },
+  "gemini_retour_moyenne_ETH_USDC": {
+    "strategy": "gemini_retour_moyenne",
+    "pair": "ETH/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiRetourMoyenne",
+      "passed_params": {
+        "pair": "ETH/USDC",
+        "dca_levels": 3,
+        "dca_spacing_pct": 0.5,
+        "sl_atr_mult": 2.0,
+        "order_size_usdc": 20,
+        "max_allocation_pct": 10.0,
+        "max_open_positions": 2
+      },
+      "params": {
+        "adx_range_max": {
+          "value": "20",
+          "source": "class_default"
+        },
+        "dca_levels": {
+          "value": 3,
+          "source": "passed"
+        },
+        "dca_spacing_pct": {
+          "value": "0.5",
+          "source": "passed"
+        },
+        "sl_atr_mult": {
+          "value": "2.0",
+          "source": "passed"
+        },
+        "divergence_lookback": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "20",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "10.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 2,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "ETH/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 44,
+      "winning_trades": 22,
+      "losing_trades": 22,
+      "win_rate": 0.5,
+      "total_return_pct": -0.33719753390062107,
+      "sharpe_ratio": -0.15036291707048305,
+      "sortino_ratio": -0.18657068618113246,
+      "max_drawdown_pct": 0.3463911987391584,
+      "profit_factor": 0.2614249833988931,
+      "calmar_ratio": -0.46312882404605304,
+      "net_pnl": -3.3719753390062106,
+      "total_fees": 2.1739408011907733,
+      "total_pnl": -2.4919753390062103,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 996.6280246609938,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 71.25
+    },
+    "test": {
+      "total_trades": 23,
+      "winning_trades": 9,
+      "losing_trades": 14,
+      "win_rate": 0.391304347826087,
+      "total_return_pct": -0.29487798214447036,
+      "sharpe_ratio": -0.20100349037866386,
+      "sortino_ratio": -0.2450056032676291,
+      "max_drawdown_pct": 0.313396597454866,
+      "profit_factor": 0.10925588352512693,
+      "calmar_ratio": -1.0445016360286896,
+      "net_pnl": -2.948779821444704,
+      "total_fees": 1.1542734244031636,
+      "total_pnl": -2.4887798214447034,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 997.0512201785552,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 68.91304347826087
+    },
+    "all": {
+      "total_trades": 67,
+      "winning_trades": 31,
+      "losing_trades": 36,
+      "win_rate": 0.4626865671641791,
+      "total_return_pct": -0.6320755160450914,
+      "sharpe_ratio": -0.1667894232617215,
+      "sortino_ratio": -0.20509944255502238,
+      "max_drawdown_pct": 0.6477020579165966,
+      "profit_factor": 0.19249468091722302,
+      "calmar_ratio": -0.3249944924981443,
+      "net_pnl": -6.320755160450914,
+      "total_fees": 3.328214225593937,
+      "total_pnl": -4.980755160450914,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 993.6792448395491,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 70.44776119402985
+    }
+  },
+  "gemini_retour_moyenne_SOL_USDC": {
+    "strategy": "gemini_retour_moyenne",
+    "pair": "SOL/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "pair_costs": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    },
+    "min_order_usdc": 5.0,
+    "effective_params": {
+      "strategy_class": "GeminiRetourMoyenne",
+      "passed_params": {
+        "pair": "SOL/USDC",
+        "dca_levels": 3,
+        "dca_spacing_pct": 0.5,
+        "sl_atr_mult": 2.0,
+        "order_size_usdc": 20,
+        "max_allocation_pct": 10.0,
+        "max_open_positions": 2
+      },
+      "params": {
+        "adx_range_max": {
+          "value": "20",
+          "source": "class_default"
+        },
+        "dca_levels": {
+          "value": 3,
+          "source": "passed"
+        },
+        "dca_spacing_pct": {
+          "value": "0.5",
+          "source": "passed"
+        },
+        "sl_atr_mult": {
+          "value": "2.0",
+          "source": "passed"
+        },
+        "divergence_lookback": {
+          "value": 10,
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "20",
+          "source": "passed"
+        },
+        "max_allocation_pct": {
+          "value": "10.0",
+          "source": "passed"
+        },
+        "max_open_positions": {
+          "value": 2,
+          "source": "passed"
+        },
+        "pair": {
+          "value": "SOL/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": null,
+    "period": {
+      "start": "2023-04-01T00:00:00+00:00",
+      "end": "2026-04-01T00:00:00+00:00",
+      "split": "2025-05-07T04:48:00+00:00"
+    },
+    "train": {
+      "total_trades": 22,
+      "winning_trades": 8,
+      "losing_trades": 14,
+      "win_rate": 0.36363636363636365,
+      "total_return_pct": -0.2879574560789021,
+      "sharpe_ratio": -0.15388002506971948,
+      "sortino_ratio": -0.18611116069446818,
+      "max_drawdown_pct": 0.3078068001646349,
+      "profit_factor": 0.14823316229712036,
+      "calmar_ratio": -0.4450762172893035,
+      "net_pnl": -2.879574560789021,
+      "total_fees": 1.0841201738405761,
+      "total_pnl": -2.439574560789021,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 997.120425439211,
+      "duration_days": 767.2,
+      "average_holding_time_minutes": 87.04545454545455
+    },
+    "test": {
+      "total_trades": 21,
+      "winning_trades": 10,
+      "losing_trades": 11,
+      "win_rate": 0.47619047619047616,
+      "total_return_pct": -0.15420160554741058,
+      "sharpe_ratio": -0.1253213461443487,
+      "sortino_ratio": -0.1587364130614011,
+      "max_drawdown_pct": 0.17332685695355665,
+      "profit_factor": 0.37248893825223744,
+      "calmar_ratio": -0.9876068407507167,
+      "net_pnl": -1.5420160554741058,
+      "total_fees": 0.9867952225898887,
+      "total_pnl": -1.1220160554741057,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 998.457983944526,
+      "duration_days": 328.8,
+      "average_holding_time_minutes": 72.61904761904762
+    },
+    "all": {
+      "total_trades": 43,
+      "winning_trades": 18,
+      "losing_trades": 25,
+      "win_rate": 0.4186046511627907,
+      "total_return_pct": -0.4421590616263127,
+      "sharpe_ratio": -0.14253501490567497,
+      "sortino_ratio": -0.17548118584557282,
+      "max_drawdown_pct": 0.45718504848529606,
+      "profit_factor": 0.2344248086530116,
+      "calmar_ratio": -0.3220837552825662,
+      "net_pnl": -4.421590616263127,
+      "total_fees": 2.0709153964304647,
+      "total_pnl": -3.5615906162631266,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 995.5784093837369,
+      "duration_days": 1096.0,
+      "average_holding_time_minutes": 80.0
+    }
+  }
+}
