@@ -8,6 +8,8 @@
 > de la campagne. Séquence validée : commit campagne → calibration `--limit 3` → P6 24 combos → **CHECKPOINT post-P6**
 > (résumé 10 lignes : 24/24, survivants, flags divergence / écart formule-cash, anomalies) **avant** P7 phase 1
 > (~27 h). Tout résultat aberrant = STOP avant la phase suivante.
+> **GO P7 phases 1-2 — Bruno, 2026-09-15** (checkpoint post-P6 validé : 24/24, 0 survivant, 3 flags grid × SOL
+> expliqués, 3 anomalies DCA expliquées) sous **trois règles** consignées au § 7 avant le premier job P7.
 
 ## 0. Décisions GO B (Bruno, 2026-09-15)
 
@@ -18,6 +20,9 @@
 | B.3 | Grille spacing `[0.015, 0.020, 0.025, 0.030]`, plancher 2.0 %, reste identique | § 3 |
 | B.4 | Serveur : 3 workers `nice`, tmux `b4`, `LOG_LEVEL=WARNING`, `--timeout 5400`, calibration `--limit 3`, `git pull --ff-only` du commit chantier 0 (la branche est poussée sur `origin` et suivie sur le serveur), `df` consigné. **Ne pas toucher au tmux `spread`** | § 4 |
 | B.5 | Sorties `B4_P6_*` / `B4_P7_*`, benchmarks `--fees bybit`, jamais de `--force` sur legacy | § 5 |
+| B.6 | **GO P7 — inéligibilité des runs flaggés** : toute config dont un run porte un flag (divergence d'inventaire, résidu, écart lot-basis/cash ≠ 0) est inéligible à la sélection paper quel que soit son score ; grid × SOL exigerait d'abord le fix tolérance de fermeture absolue → relative (stratégie protégée, review humaine) | § 7 |
+| B.7 | **GO P7 — rapport** : note Sharpe DCA (courbe majoritairement cash → non comparable à une stratégie investie) ; comparaison au DCA en return/MaxDD, au B&H pour le Sharpe ; nombre de trades affiché à côté de chaque métrique | § 7 |
+| B.8 | **GO P7 — critères tels quels** : zéro config passante = zéro sélection paper, aucun assouplissement en cours de route | § 7 |
 
 ## 1. Coûts (brief § 5.1)
 
@@ -136,6 +141,7 @@ disque **58 G libres / 75 G**, load 0.03 ; `krakenbot-collector` **active**, `kr
 | Workers | **3** (`--workers 3` explicite : l'auto-détection donnerait `min(4 − 2, 8, 7.6 // 2)` = 2) ; `nice -n 10` ; ~1 Gi/worker → 3 Gi sur 5.8 disponibles ; le collector garde son vCPU |
 | Logs | `LOG_LEVEL=WARNING` dans l'environnement de la commande : sinon chaque run grid imprime ~130 Mo d'INFO (`strategy_tick`) — 3 combos grid × 3 segments en P6, 96 × 3 en P7 = plusieurs dizaines de Go dans le scrollback ; le suivi passe par `logs/p6_status.json` / `p7_status.json` et le résumé final ; `2>&1 \| tee -a logs/b4_p6.log` |
 | Timeouts | `--timeout 5400` (P6.7 : jobs grid à 2 953 s en parallèle > 1 800 s par défaut) |
+| Filtre de log (mesuré P6, corrigé P7) | `LOG_LEVEL` n'est **pas honoré** par les scripts (`get_logger()` ne configure rien ; seuls `collector.py` / `main.py` appellent `configure_logging`) → le flux INFO est filtré par `grep --line-buffered -v -E` avant `tee`. **Défaut du filtre P6** (`~/b4_p6_full.sh`) : motif non ancré (`supertrend_\|donchian_\|ema_\|dca_\|regime_`) qui matchait aussi `key=grok_supertrend_4h_…` → les lignes `job_done` des jobs supertrend/donchian/ema/dca ont été perdues du log persisté (cosmétique : `p6_status.json` faisait foi, le JSON de résultats est complet). P7 : motif **ancré sur l'événement structlog** (`\] +(strategy_tick\|…)`), `backtest_progress` / `backtest_signal` ajoutés ; wrapper versionné dans `skills/backtest.md` |
 | Calibration | `run_p6_backtests.py --fees bybit --pair-costs-file config/pair_costs_b4.json --min-order-usdc 5 --workers 3 --limit 3 --output results/B4_P6_phase_d_results.json` (3 premiers jobs = les grids) → mesure la durée réelle sur DB locale avant de lancer les 24 (reprise automatique ensuite, sans `--force`) |
 | Durées estimées (P6.7 via tunnel, DB locale probablement plus rapide) | P6 : Σ série 291 min → 3 workers, contention ~1.6 × ⇒ **≈ 2.5 h** ; P7 phase 1 : ≈ 51 h série (grid 96 jobs × ~25 min, SuperTrend 60 × 7, DCA 48 × 3.7, Donchian 8 × 6.7) ⇒ **≈ 27 h** ; phase 2 : 280 fenêtres de 15 mois ⇒ **≈ 8-10 h** ; rapport : minutes. Total ≈ 40 h serveur, reprise possible à tout moment |
 | Fenêtre | P6 jour J (après GO B) ; P7 phase 1 lancée le soir de J, ~1.5 j ; phase 2 J+2 ; `df -h` avant chaque phase (≥ 20 G libres). **Mesuré le 15/09** : P6 24 combos en **22 min** sur le serveur (DB locale) → P7 phase 1 ≈ 3 h, phase 2 ≈ 1 h (`results/B4_P6_checkpoint.md`) |
@@ -195,3 +201,38 @@ contexte du rapport) ni écrits.
 
 Stratégies et fichiers protégés intouchés (résolution YAML `class:` et « mauvais pop » consignés) ; `market_data_ohlc`
 en lecture seule ; collector jamais arrêté ; pas de déploiement ni de push `main` ; scalping/ML = P12/P11.
+
+## 7. Règles GO P7 (Bruno, 2026-09-15) — consignées avant le premier job P7
+
+Les trois règles s'ajoutent au contrat GATE A/B ; elles ne modifient **ni grille, ni coût, ni critère, ni benchmark**.
+
+1. **Inéligibilité des runs flaggés (B.6).** Tout run flaggé par la règle GO GATE A (`scripts/b4_flags.py` :
+   divergence d'inventaire ou résidu au-delà de la dérive 1e-12, ou `net_pnl ≠ net_pnl_lot_basis`) rend sa config
+   **inéligible à la sélection paper, quel que soit son score** — en phase 1 (segment train / test / all) comme en
+   phase 2 (n'importe quelle fenêtre, n'importe quel segment). Les configs grid × SOL sont visées en particulier
+   (P6 : 3 flags, « mauvais pop » = fermeture par proximité de prix `|sell_level − prix| < 1` USD, tolérance
+   **absolue**, contre appariement moteur par `position_id`). Une config grid SOL candidate exigerait **d'abord** le
+   fix de la tolérance de fermeture (absolue → relative) dans la stratégie protégée, avec review humaine → dette 14
+   (`PROJECT_CONTEXT.md`). Application : `scripts/p7_report.py` retire les configs flaggées de `selected_for_paper`
+   **avant** la sélection et les liste à part (`ineligible_flagged`, section « Ineligible configurations » du
+   rapport) ; un combo dont les seules configs passantes sont flaggées est abandonné avec cette raison. Les 7
+   critères et `all_verdicts` sont inchangés : c'est un filtre d'éligibilité, pas un 8ᵉ critère. Ce changement ne
+   touche que `--phase report` (les phases 1-2 n'importent pas `p7_report`) ; il est tiré sur le serveur entre
+   deux phases, jamais pendant un run.
+2. **Rapport (B.7).** (a) Note « Sharpe DCA » : la stratégie `grok_adaptive_dca_weekly` garde une equity
+   majoritairement en cash (1 000 USDC, 15 USDC × multiplicateur par semaine) → son Sharpe n'est **pas comparable**
+   à celui d'une stratégie investie ni au B&H ; le benchmark DCA fixe (`compute_benchmarks.py`) a une courbe
+   coins-only partant de 0 où chaque dépôt hebdomadaire compte comme un rendement (Sharpe 2.1-2.4 avec return
+   négatif ETH/SOL, MaxDD 100 % = artefact, pas de `pair_costs`) — sans effet sur le critère 7 (OR, B&H = borne
+   effective). (b) Comparaison **au DCA en return / MaxDD**, **au B&H pour le Sharpe** (rapport P7 généré : table
+   benchmarks élargie + note ; rapport B4 : règle de lecture explicite). (c) **Nombre de trades affiché à côté de
+   chaque métrique** dans toutes les tables (sélection, abandonnés, phase 1, walk-forward, rapport B4).
+3. **Critères tels quels (B.8).** Les 7 critères P7 (`p7_report.py:52-61` : Sharpe OOS > 0.4, PF OOS > 1.3,
+   MaxDD < 30 %, trades ≥ 20 (DCA ≥ 5), cohérence ≥ 5/8, ratio OOS/train > 0.5, bat B&H ou DCA fixe en Sharpe) et
+   `B4_benchmarks.json` restent inchangés. **Zéro config passante = zéro sélection paper**, aucun assouplissement
+   en cours de route ; un constat d'échec est argumenté dans le rapport B4, pas contourné.
+
+Séquence consignée : règles ci-dessus → phase 1 (calibration `--limit 3` puis 212 jobs, ≈ 3 h) → checkpoint →
+phase 2 (280 fenêtres, ≈ 1 h) → checkpoint → rapport P7 → rapport B4 final + sélection (éventuellement vide,
+argumentée) → **STOP final** avant tout merge. Précautions serveur du checkpoint P6 reprises (unset
+`SCHEDULER_PAIRS`/`SCHEDULER_INTERVALS`, filtre de log ancré, collector et tmux `spread` intouchés).

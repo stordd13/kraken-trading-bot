@@ -24,9 +24,18 @@ réellement utilisés par la stratégie, capturés au runtime — la source de l
 pour le grid, le bloc `liquidation` par segment ; la reprise refuse un fichier produit sous d'autres coûts.
 
 ```bash
-# Serveur (tmux b4, jamais la session spread) — LOG_LEVEL=WARNING évite ~130 Mo de logs INFO par run grid
-export LOG_LEVEL=WARNING
+# Serveur (tmux b4, jamais la session spread). Deux pièges mesurés au lancement P6 (2026-09-15) :
+#  - ~/.bashrc fait `set -a; source .env` → tout shell interactif exporte SCHEDULER_PAIRS sans guillemets
+#    (JSON invalide) et load_dotenv ne surcharge pas → SettingsError dans les workers : unset AVANT poetry run.
+#  - LOG_LEVEL n'est PAS honoré par les scripts (aucun n'appelle configure_logging) : ~190 Mo/min d'INFO
+#    (strategy_tick…) → filtrer le flux avec grep --line-buffered AVANT tee (motif ancré sur l'événement
+#    structlog `] +event` — un motif non ancré supprime aussi les `job_done key=grok_supertrend_4h_…`).
+unset SCHEDULER_PAIRS SCHEDULER_INTERVALS
+export LOG_LEVEL=WARNING          # sans effet sur les scripts, gardé par cohérence
 COSTS=config/pair_costs_b4.json   # BTC 2/2 bps, ETH 3/2, SOL 11/2 (dérivation : config/pair_costs_b4.README.md)
+FILTER='\] +(strategy_tick|grid_atr_(buy|sell|built|recalc|pair)|grid_paused|grid_resumed|backtest_(buy|sell|signal|progress)|supertrend_|donchian_|ema_|dca_|regime_)'
+# Forme du wrapper (~/b4_p7_phase1.sh) : … 2>&1 | grep --line-buffered -v -E "$FILTER" | tee -a logs/b4_p7.log ;
+# rc=${PIPESTATUS[0]} ; bornes horodatées dans logs/b4_campaign.log ; suivi via logs/p6_status.json / p7_status.json.
 
 # P6 — calibration sur les 3 jobs les plus lourds (les grids), puis reprise automatique des 24
 nice -n 10 poetry run python scripts/run_p6_backtests.py --fees bybit --pair-costs-file $COSTS \
@@ -43,7 +52,10 @@ poetry run python scripts/generate_p6_report.py --phase-d B4_P6_phase_d_results.
     --survivors B4_P6_phase_e_survivors.json --walkforward B4_P6_phase_f_walkforward.json --output B4_P6_backtest_report.md
 # ⛔ CHECKPOINT post-P6 (24/24, survivants, runs flaggés, anomalies) avant P7
 
-# P7 — 212 jobs phase 1 (~27 h à 3 workers), 280 fenêtres phase 2, rapport
+# P7 — 212 jobs phase 1 (mesuré serveur : ≈ 3 h à 3 workers, DB locale), 280 fenêtres phase 2 (≈ 1 h), rapport.
+# Calibration d'abord : même commande phase 1 avec --limit 3 (3 jobs grid, ≈ 4 min), puis reprise sans --force.
+# Même littéral --pair-costs-file sur les 3 phases (comparé comme chaîne à la reprise) ; --min-order-usdc 5 aussi
+# sur --phase report ; --phase1-input/--phase2-input obligatoires (les défauts sont les fichiers legacy → exit 2).
 nice -n 10 poetry run python scripts/run_p7_grid_search.py --phase 1 --fees bybit --pair-costs-file $COSTS \
     --min-order-usdc 5 --workers 3 --timeout 5400 --output results/B4_P7_phase1_cross_validate.json
 nice -n 10 poetry run python scripts/run_p7_grid_search.py --phase 2 --fees bybit --pair-costs-file $COSTS \
@@ -57,7 +69,14 @@ poetry run python scripts/run_p7_grid_search.py --phase report --fees bybit --pa
 
 Règle de flag (GO GATE A) : `scripts/b4_flags.py` — tout run grid dont le bloc `liquidation` montre un résidu, une
 divergence d'inventaire > 1e-12 BTC ou `net_pnl ≠ net_pnl_lot_basis` est nommé dans les rapports P6/P7
-(section « Flagged runs ») ; attendu : aucun.
+(section « Flagged runs ») ; mesuré en P6 : 3 flags, tous grid × SOL (« mauvais pop », tolérance de fermeture
+absolue de la stratégie).
+
+Règles GO P7 (Bruno, 2026-09-15 — `results/B4_3_gate_b_configs.md` § 7) : (1) une config flaggée est **inéligible**
+à la sélection paper quel que soit son score (`p7_report.py` la sort de `selected_for_paper` → `ineligible_flagged`) ;
+(2) le rapport note que le Sharpe DCA n'est pas comparable (courbe majoritairement cash), compare au DCA en
+return/MaxDD et au B&H en Sharpe, et affiche le nombre de trades à côté de chaque métrique ; (3) critères P7 tels
+quels — zéro config passante = zéro sélection paper.
 
 ## Lancer les 24 backtests P6 en parallèle
 
