@@ -1,7 +1,9 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 13 septembre 2026, B3 clôturée (merge `3ea32d9` dans `dev`, tag `v2.5.0-b3-bybit-data`) : historique Bybit EU en DB, backfill de gaps, scheduler actif. Prochaine phase : B4.
+> Dernière mise à jour : 15 septembre 2026, **B4 close** (merge `4c98b6b` dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7
+> sous fees Bybit → **sélection paper vide** (`results/B4_bybit_backtest_report.md`). **Roadmap B5 → P10 suspendue** ; phase
+> courante : **R&D stratégies**, filtre d'entrée `docs/CONTRAINTES_POST_B4.md`. Pour le moment il n'y a rien à trader.
 
 ---
 
@@ -23,7 +25,7 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - Monitoring Telegram en temps réel
 - Capital initial 1k USDC, scaling progressif vers 20k USDC
 
-### État actuel (8 septembre 2026)
+### État actuel (15 septembre 2026)
 
 - ✅ P0 à P6 terminées (audit, abstraction layer, REST/WS Binance, multi-pair, backtests 24 combos)
 - ✅ P7 phase 1 terminée (30 mai 2026 : 212 jobs de grid search cross-validés, fees Binance)
@@ -59,10 +61,17 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   argumentée** : `results/B4_bybit_backtest_report.md`. **Clos le 15 sept** (GO Bruno) : mergé dans `dev`
   (`4c98b6b`, `--no-ff`), CODE_MAP régénéré (`64ca827`), tag `v2.8.0-b4-3-campaign` @ `64ca827`, zip
   `~/Desktop/krakenbot-src-v2.8.0-b4-3-campaign.zip`, serveur sur `dev` en parité **sans restart** (`src/` inchangé).
-  **B4 est close** ; la suite est B5 (paper — sans stratégie sélectionnée par B4) + P8 (Telegram), avec leurs prérequis
-  (dette 13 : test one-off + alignement YAML ; dette 14 : tolérance grid ; backup DB récurrent ; `deploy.yml` à découpler).
+  **B4 est close** ; sans stratégie sélectionnée, B5 (paper) et P8 (Telegram) **ne démarrent pas** (voir ⏸️ ci-dessous) ;
+  leurs prérequis restent consignés (dette 13 : test one-off + alignement YAML ; dette 14 : tolérance grid ; backup DB
+  récurrent ; `deploy.yml` à découpler).
+- ⏸️ **Roadmap B5 → P10 suspendue (sélection B4 vide)** — décision Bruno du 15 sept : pour le moment, rien à trader.
+  **Phase courante : R&D stratégies.** Toute idée (humaine, IA, article) passe le filtre `docs/CONTRAINTES_POST_B4.md`
+  sur le papier (ticket d'entrée § 6 : mécanisme, fréquence, mouvement capturé vs round-trip 0.39-0.48 %, résolution
+  de la tension significativité/coûts, bear market, données, critère de falsification) **avant une ligne de code** ;
+  deux familles maximum par cycle de R&D ; protocole inchangé (3+ ans → cross-validation → walk-forward → paper).
+  Le serveur reste en **collecte seule** (`krakenbot-collector` actif, `krakenbot` désactivé).
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
-  (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
+  (maker/taker asymétriques) : tout a été rejoué en B4 — verdict ci-dessus.
 
 ---
 
@@ -271,10 +280,14 @@ stricts (rapport v2) — d'où le grid search P7 puis le re-run B4.
 
 Détail : `ROADMAP.md`.
 
-- **Terminées** : P0–P6 (pivot Binance, multi-pair, backtests), P7 phase 1, B0 (audit Bybit), B0.5 (docs).
-- **À venir** : B1 REST Bybit → B2 WS → B3 data/collector → **B4 re-run P6 + P7 fees Bybit** → B5 paper
-  4+ semaines (+ P8 Telegram) → P10 live progressif.
-- **Futures** : P11 (ML signal filter), P12 (éval scalping avec fees réelles), P13 (ML vol), P14 (RL + alloc dynamique).
+- **Terminées** : P0–P6 (pivot Binance, multi-pair, backtests), P7 phase 1, B0 (audit Bybit), B0.5 (docs), B1 REST
+  Bybit, B2 WS, B3 data/collector, **B4 re-run P6 + P7 fees Bybit** (15 sept, tag `v2.8.0-b4-3-campaign`) → **0 survivant**.
+- ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
+  quand une stratégie aura passé le protocole complet (3+ ans → cross-validation → walk-forward) sous fees Bybit.
+- **Phase courante : R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles
+  max par cycle, critères écrits avant les runs ; le pipeline P6/P7 `--fees bybit` est l'outil de test).
+- **Futures** : P11 (ML signal filter), P12 (éval scalping avec fees réelles), P13 (ML vol), P14 (RL + alloc dynamique) —
+  après un edge prouvé, pas avant.
 
 ---
 

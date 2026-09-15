@@ -20,8 +20,10 @@ d'une seule fenêtre.
 
 ## 2. La structure de coûts (mesurée, non négociable)
 
-Bybit EU spot, VIP0, vérifiée sur le compte ; spread/slippage mesurés sur 21 relevés
-horaires couvrant nuit et jour (`results/q3_orderbook.jsonl`) :
+Bybit EU spot, VIP0, vérifiée sur le compte ; spread/slippage mesurés sur 126 relevés de
+carnet (42 par paire, du 14/09 10:46 au 15/09 06:47 UTC, dont 10 nocturnes 00–05 UTC,
+`results/q3_orderbook.jsonl` ; règle GATE B : `max(p75 global, p75 nocturne)` arrondi au bp
+supérieur, slippage ≥ 2 bps) :
 
 | Poste | BTC/USDC | ETH/USDC | SOL/USDC |
 |---|---|---|---|
