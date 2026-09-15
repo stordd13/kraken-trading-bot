@@ -6,9 +6,11 @@
 ## Le projet en deux phrases
 
 Bot de trading spot automatisé multi-pair (BTC/ETH/SOL contre USDC) sur **Bybit EU**, 8 stratégies
-orchestrées par un router avec risk management centralisé, déployé sur Hetzner (services stoppés
-jusqu'à B2/B3). Le connecteur Bybit est en cours (B1–B3) ; les backtests tournent sur les 8.7M rows
-Binance déjà en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %).
+orchestrées par un router avec risk management centralisé, déployé sur Hetzner (collector Bybit actif,
+trader désactivé). **B4 est close (15 sept 2026, tag `v2.8.0-b4-3-campaign`) : aucune stratégie ne survit aux
+fees Bybit (P6 0/24, P7 0/35), sélection paper vide → roadmap B5→P10 suspendue ; phase courante = R&D
+stratégies** sous `docs/CONTRAINTES_POST_B4.md`. Les backtests tournent sur les 8.7M rows Binance end-stampées
+en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts par paire mesurés (GATE B).
 
 ## Routage : type de tâche → fichier à lire
 
@@ -25,6 +27,7 @@ Binance déjà en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %)
 | Flux d'un trade, multi-pair, conventions de code | `docs/architecture.md` |
 | Localiser un module / une fonction | `docs/CODE_MAP.md` |
 | Résultats de backtests (quoi est où, verdicts) | `results/INDEX.md` |
+| **Nouvelle idée de stratégie** (filtre d'entrée, ticket § 6 sur le papier avant tout code) | `docs/CONTRAINTES_POST_B4.md` |
 
 ## Règles d'or (absolues)
 
