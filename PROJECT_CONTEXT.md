@@ -49,15 +49,18 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   données (`--fees` obligatoire), chemins morts supprimés, suite de tests hermétique (dotenv, boucle
   d'événements) — mergé dans `dev` (`3406a6c`), tag `v2.7.0-b4-2-fees-engine` (`fea0e16`), serveur en parité
   sans restart — `results/B4_2_fees_engine_report.md`.
-- ✅ **B4.3 (15 sept, en review)** — chantier 0 (GATE A, 14 sept) : liquidation terminale du `GridBacktester`
+- ✅ **B4.3 (15 sept, close)** — chantier 0 (GATE A, 14 sept) : liquidation terminale du `GridBacktester`
   atteignable (MARKET au dernier close, taker + spread + slippage), `net_pnl` compté une fois dans les deux moteurs,
   gold hashes re-baselinés (`results/B4_3_chantier0_gate_a.md`) ; GATE B (15 sept) : coûts par paire mesurés sur
   `api.bybit.eu` (BTC 2/2 bps, ETH 3/2, SOL 11/2), plancher d'ordre 5 USDC, spacing grid ≥ 2 %, cartographie risk
   (`results/B4_3_gate_b_configs.md`) ; **campagne serveur `--fees bybit`** : P6 24 combos → **0 survivant** ; P7 212 configs
   + 280 fenêtres walk-forward → **0 / 35 configs** passent les 7 critères (règles GO P7 : run flaggé = config inéligible,
   Sharpe DCA non comparable, critères figés) ; grid × SOL : 48 / 48 configs flaggées (dette 14). **Sélection paper vide,
-  argumentée** : `results/B4_bybit_backtest_report.md`. Branche `feat/b4-3-campaign` — **STOP final, en attente de
-  review** (clôture : merge `dev` → CODE_MAP → tag `v2.8.0-b4-3-campaign` → zip).
+  argumentée** : `results/B4_bybit_backtest_report.md`. **Clos le 15 sept** (GO Bruno) : mergé dans `dev`
+  (`4c98b6b`, `--no-ff`), CODE_MAP régénéré (`64ca827`), tag `v2.8.0-b4-3-campaign` @ `64ca827`, zip
+  `~/Desktop/krakenbot-src-v2.8.0-b4-3-campaign.zip`, serveur sur `dev` en parité **sans restart** (`src/` inchangé).
+  **B4 est close** ; la suite est B5 (paper — sans stratégie sélectionnée par B4) + P8 (Telegram), avec leurs prérequis
+  (dette 13 : test one-off + alignement YAML ; dette 14 : tolérance grid ; backup DB récurrent ; `deploy.yml` à découpler).
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
 

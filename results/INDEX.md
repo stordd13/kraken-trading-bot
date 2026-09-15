@@ -2,7 +2,7 @@
 
 > Une ligne par fichier conservé : date, phase, verdict, pourquoi il est encore là.
 > Tout ce qui n'est plus une référence courante est dans `results/archive/` (rien n'est supprimé).
-> Dernière mise à jour : 2026-09-15 (B4.3 campagne P6/P7 — rapport B4, en review).
+> Dernière mise à jour : 2026-09-15 (B4 close : tag `v2.8.0-b4-3-campaign`).
 
 ## Fichiers de référence (à la racine de `results/`)
 

@@ -1,7 +1,8 @@
 # B4 — Rapport de backtest Bybit (fees maker/taker, données saines, moteur grid honnête) et sélection paper
 
 > Livrable B4 (brief `agent/AGENT_B4_3_CAMPAIGN.md` § 6.3, `ROADMAP.md` § B4). Campagne exécutée sur le serveur
-> `krakenbot` (branche `feat/b4-3-campaign`, P6 @ `874fb62`, P7 @ `eb13800` / rapport @ `a59226f`), sur les
+> `krakenbot` (branche `feat/b4-3-campaign`, P6 @ `874fb62`, P7 @ `eb13800` / rapport @ `a59226f` ; mergée dans `dev`
+> le 2026-09-15 = `4c98b6b`, tag `v2.8.0-b4-3-campaign` @ `64ca827`), sur les
 > 8 712 718 rows Binance **end-stampées** (B4.1) avec le modèle de fees **Bybit** (maker 0.10 % / taker 0.25 %, B4.2),
 > les coûts par paire du GATE B (`config/pair_costs_b4.json`), un plancher d'ordre de 5 USDC et le `GridBacktester`
 > corrigé au chantier 0 (liquidation terminale atteignable, `net_pnl` compté une fois — GATE A). Contrats :
