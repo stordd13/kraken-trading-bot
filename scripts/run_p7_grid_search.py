@@ -1001,6 +1001,30 @@ def load_benchmark_sharpe(path: Path) -> dict[str, dict[str, float]]:
     return out
 
 
+def load_benchmark_details(path: Path) -> dict[str, dict[str, dict[str, float]]]:
+    """``compute_benchmarks.py`` JSON → Sharpe / return / MaxDD of both benchmarks per pair.
+
+    Report-only (GO P7 rule 2: Sharpe is compared with Buy & Hold, return / MaxDD with the
+    fixed DCA); criterion 7 keeps reading ``load_benchmark_sharpe``.
+    """
+    data = json.loads(path.read_text(encoding="utf-8"))
+    out: dict[str, dict[str, dict[str, float]]] = {}
+    pairs = set(data.get("buy_and_hold", {})) | set(data.get("dca_fixed_15usd_weekly", {}))
+    for pair in sorted(pairs):
+        out[pair] = {}
+        for name, key in (
+            ("buy_and_hold", "buy_and_hold"),
+            ("dca_fixed", "dca_fixed_15usd_weekly"),
+        ):
+            block = data.get(key, {}).get(pair, {})
+            out[pair][name] = {
+                "sharpe": float(block.get("sharpe_ratio", 0.0) or 0.0),
+                "return_pct": float(block.get("total_return_pct", 0.0) or 0.0),
+                "max_drawdown_pct": float(block.get("max_drawdown_pct", 0.0) or 0.0),
+            }
+    return out
+
+
 def _run_report_phase(
     phase1_path: Path,
     phase2_path: Path,
@@ -1042,6 +1066,7 @@ def _run_report_phase(
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     benchmarks = load_benchmark_sharpe(benchmarks_path) if benchmarks_path else None
+    benchmark_details = load_benchmark_details(benchmarks_path) if benchmarks_path else None
     print(
         f"Fee model: {fees} (validated against both input files); pair costs: "
         f"{pair_costs_file or 'model globals'}; min order: {min_order_usdc}; benchmarks: "
@@ -1054,6 +1079,7 @@ def _run_report_phase(
         output_md_path=report_path,
         selection_json_path=selection_path,
         benchmarks=benchmarks,
+        benchmark_details=benchmark_details,
     )
     n_selected = len(selection["selected_for_paper"])
     n_abandoned = len(selection["abandoned"])
@@ -1061,6 +1087,9 @@ def _run_report_phase(
     print(f"  Selected for paper: {n_selected}")
     print(f"  Abandoned combos:   {n_abandoned}")
     print(f"  Flagged runs:       {len(selection.get('flagged_runs', []))}")
+    print(
+        f"  Ineligible (flagged configs, GO P7 rule 1): {len(selection.get('ineligible_flagged', []))}"
+    )
     print(f"  Machine selection:  {selection_path}")
     return 0
 

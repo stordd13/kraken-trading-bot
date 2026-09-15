@@ -20,7 +20,14 @@ aggregates per (strategy, pair, params_hash):
     6. mean_sharpe_oos / mean_sharpe_train > 0.5 (anti-overfit)
     7. mean_sharpe_oos > buy_and_hold_sharpe OR > dca_fixed_sharpe
 
-Benchmarks come from the P6 v2 report.
+Benchmarks come from the P6 v2 report (or, B4.3, from ``--benchmarks``).
+
+B4.3 — GO P7 rule 1 (Bruno, 2026-09-15): a configuration with at least one flagged run
+(``scripts/b4_flags.py``: grid liquidation not reconciled — inventory divergence, residual,
+or ``net_pnl != net_pnl_lot_basis``) in phase 1 or in any phase-2 window is **ineligible for
+the paper selection whatever its score**. The 7 criteria are unchanged: the gate is applied
+before the selection, the config is listed under ``ineligible_flagged`` and never under
+``selected_for_paper``.
 """
 
 from __future__ import annotations
@@ -369,16 +376,50 @@ def apply_selection_criteria(
     )
 
 
+def ineligible_configs(
+    flags: list[dict[str, Any]],
+) -> dict[tuple[str, str, str], list[dict[str, Any]]]:
+    """GO P7 rule 1: ``{(strategy, pair, params_hash): [flags…]}`` for every flagged run.
+
+    The params hash is read from the run key (phase 1 ``…_p1_<hash>``, phase 2
+    ``…_p2_<hash>_w<idx>``), so a flag on the phase-1 run or on any walk-forward window of a
+    configuration makes that configuration ineligible.
+    """
+    out: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
+    for f in flags:
+        strategy, pair = f.get("strategy"), f.get("pair")
+        if strategy is None or pair is None:
+            continue
+        out[(strategy, pair, _extract_params_hash(str(f.get("run", ""))))].append(f)
+    return dict(out)
+
+
+def _min_trades_per_window(agg: WalkForwardAggregate) -> int:
+    if not agg.per_window:
+        return 0
+    return min(int(_safe_float(w["test_metrics"].get("total_trades"))) for w in agg.per_window)
+
+
 def build_selection(
     aggregates: dict[tuple[str, str, str], WalkForwardAggregate],
     benchmarks: dict[str, dict[str, float]] = BENCHMARK_SHARPE,
+    ineligible: dict[tuple[str, str, str], list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    """Apply selection criteria to every aggregate, return the final selection dict."""
+    """Apply selection criteria to every aggregate, return the final selection dict.
+
+    ``ineligible`` (GO P7 rule 1) maps ``(strategy, pair, params_hash)`` to the flags of that
+    configuration: such a config is never selected, whatever its score, and is listed under
+    ``ineligible_flagged`` with its verdict on the 7 (unchanged) criteria.
+    """
+    ineligible = ineligible or {}
     verdicts: list[ConfigVerdict] = [
         apply_selection_criteria(agg, benchmarks) for agg in aggregates.values()
     ]
 
-    # Group by (strategy, pair). For each, keep the best PASSING config (by
+    def _key(v: ConfigVerdict) -> tuple[str, str, str]:
+        return (v.aggregate.strategy, v.aggregate.pair, v.aggregate.params_hash)
+
+    # Group by (strategy, pair). For each, keep the best PASSING and ELIGIBLE config (by
     # mean_sharpe_oos). If none passes, the combo is abandoned with the best
     # failing config's reasons as the rationale.
     by_combo: dict[tuple[str, str], list[ConfigVerdict]] = defaultdict(list)
@@ -387,9 +428,35 @@ def build_selection(
 
     selected: list[dict[str, Any]] = []
     abandoned: list[dict[str, Any]] = []
+    ineligible_flagged: list[dict[str, Any]] = []
 
     for (strategy, pair), combo_verdicts in by_combo.items():
-        passing = [v for v in combo_verdicts if v.passed]
+        flagged = [v for v in combo_verdicts if _key(v) in ineligible]
+        eligible = [v for v in combo_verdicts if _key(v) not in ineligible]
+        for v in sorted(flagged, key=lambda v: v.aggregate.mean_sharpe_oos, reverse=True):
+            runs = ineligible[_key(v)]
+            ineligible_flagged.append(
+                {
+                    "strategy": strategy,
+                    "pair": pair,
+                    "params": v.aggregate.params,
+                    "params_hash": v.aggregate.params_hash,
+                    "mean_sharpe_oos": v.aggregate.mean_sharpe_oos,
+                    "mean_profit_factor": v.aggregate.mean_pf_oos,
+                    "consistency": v.aggregate.consistency,
+                    "max_drawdown_global": v.aggregate.max_drawdown_global,
+                    "mean_trades_test": v.aggregate.mean_trades_test,
+                    "passed_criteria": v.passed,
+                    "n_flags": len(runs),
+                    "flagged_runs": [f"{f['run']}/{f['segment']}" for f in runs],
+                    "reason": (
+                        f"{len(runs)} flagged run(s) (grid liquidation not reconciled) — "
+                        "ineligible for paper whatever the score (GO P7 rule 1); "
+                        f"7 criteria: {'passed' if v.passed else 'failed'}."
+                    ),
+                }
+            )
+        passing = [v for v in eligible if v.passed]
         if passing:
             # Best by mean_sharpe_oos
             best = max(passing, key=lambda v: v.aggregate.mean_sharpe_oos)
@@ -408,41 +475,63 @@ def build_selection(
                     "strategy": strategy,
                     "pair": pair,
                     "params": best.aggregate.params,
+                    "params_hash": best.aggregate.params_hash,
                     "effective_params": effective,
                     "mean_sharpe_oos": best.aggregate.mean_sharpe_oos,
                     "std_sharpe_oos": best.aggregate.std_sharpe_oos,
                     "mean_profit_factor": best.aggregate.mean_pf_oos,
                     "consistency": best.aggregate.consistency,
                     "max_drawdown_global": best.aggregate.max_drawdown_global,
+                    "mean_trades_test": best.aggregate.mean_trades_test,
+                    "min_trades_window": _min_trades_per_window(best.aggregate),
                     "beats_benchmark": best.beats_benchmark,
                     "rationale": (
                         f"Best of {len(passing)} passing config(s). "
                         f"Sharpe_oos={best.aggregate.mean_sharpe_oos:.2f}, "
                         f"PF={best.aggregate.mean_pf_oos:.2f}, "
                         f"consistency={best.aggregate.consistency}/8, "
-                        f"std_oos={best.aggregate.std_sharpe_oos:.2f}."
+                        f"std_oos={best.aggregate.std_sharpe_oos:.2f}, "
+                        f"trades/window mean={best.aggregate.mean_trades_test:.0f} "
+                        f"min={_min_trades_per_window(best.aggregate)}."
                     ),
                 }
             )
         else:
-            # Best failing config (by sharpe) → its failure reasons
-            best_fail = max(combo_verdicts, key=lambda v: v.aggregate.mean_sharpe_oos)
+            flagged_passing = [v for v in flagged if v.passed]
+            if eligible:
+                # Best eligible failing config (by sharpe) → its failure reasons
+                best_fail = max(eligible, key=lambda v: v.aggregate.mean_sharpe_oos)
+                reason = (
+                    f"No eligible configuration passed all 7 criteria. "
+                    f"Best eligible config failed on: {', '.join(best_fail.failure_reasons())}."
+                )
+            else:
+                best_fail = max(combo_verdicts, key=lambda v: v.aggregate.mean_sharpe_oos)
+                reason = (
+                    f"All {len(combo_verdicts)} configuration(s) are flagged "
+                    "(ineligible for paper, GO P7 rule 1)."
+                )
+            if flagged_passing:
+                reason += (
+                    f" {len(flagged_passing)} config(s) passing the 7 criteria are flagged "
+                    "and ineligible (GO P7 rule 1)."
+                )
             abandoned.append(
                 {
                     "strategy": strategy,
                     "pair": pair,
                     "best_sharpe_oos": best_fail.aggregate.mean_sharpe_oos,
                     "best_params": best_fail.aggregate.params,
-                    "reason": (
-                        f"No configuration passed all 7 criteria. "
-                        f"Best config failed on: {', '.join(best_fail.failure_reasons())}."
-                    ),
+                    "best_mean_trades_test": best_fail.aggregate.mean_trades_test,
+                    "n_ineligible": len(flagged),
+                    "reason": reason,
                 }
             )
 
     return {
         "selected_for_paper": selected,
         "abandoned": abandoned,
+        "ineligible_flagged": ineligible_flagged,
         "all_verdicts": [v.to_dict() for v in verdicts],
         "benchmarks": benchmarks,
         "generated_at": datetime.now(UTC).isoformat(),
@@ -465,11 +554,15 @@ def generate_report(
     output_md_path: Path,
     selection_json_path: Path,
     benchmarks: dict[str, dict[str, float]] | None = None,
+    benchmark_details: dict[str, dict[str, dict[str, float]]] | None = None,
 ) -> dict[str, Any]:
     """Produce the human report + machine selection JSON. Returns the selection dict.
 
     ``benchmarks`` (``{pair: {"buy_and_hold": sharpe, "dca_fixed": sharpe}}``) replaces the
     P6 Binance constants for criterion 7 (B4.3: computed under the campaign fee model).
+    ``benchmark_details`` (``{pair: {"buy_and_hold" | "dca_fixed": {"sharpe", "return_pct",
+    "max_drawdown_pct"}}}``) only feeds the report's benchmark table (GO P7 rule 2: Sharpe is
+    compared with Buy & Hold, return / MaxDD with the fixed DCA).
     """
     phase1_data = (
         json.loads(phase1_path.read_text(encoding="utf-8")) if phase1_path.exists() else {}
@@ -480,20 +573,35 @@ def generate_report(
 
     bench = benchmarks if benchmarks is not None else BENCHMARK_SHARPE
     aggregates = aggregate_walk_forward(phase2_data)
-    selection = build_selection(aggregates, bench)
-    # B4.3 flag rule: name every phase-1 / phase-2 run whose grid liquidation did not reconcile
-    selection["flagged_runs"] = collect_flags(phase1_data) + collect_flags(phase2_data)
+    # B4.3 flag rule: name every phase-1 / phase-2 run whose grid liquidation did not reconcile;
+    # GO P7 rule 1: those configurations are ineligible for the selection, whatever their score.
+    flagged_runs = collect_flags(phase1_data) + collect_flags(phase2_data)
+    selection = build_selection(aggregates, bench, ineligible=ineligible_configs(flagged_runs))
+    selection["flagged_runs"] = flagged_runs
 
     # Write machine-readable selection
     selection_json_path.parent.mkdir(parents=True, exist_ok=True)
     selection_json_path.write_text(json.dumps(selection, indent=2, default=str), encoding="utf-8")
 
     # Write markdown
-    md = _render_markdown(phase1_data, phase2_data, aggregates, selection, bench)
+    md = _render_markdown(phase1_data, phase2_data, aggregates, selection, bench, benchmark_details)
     output_md_path.parent.mkdir(parents=True, exist_ok=True)
     output_md_path.write_text(md, encoding="utf-8")
 
     return selection
+
+
+DCA_SHARPE_NOTE = (
+    "**Reading rule (GO P7, rule 2).** Compare a strategy's **Sharpe with Buy & Hold only**; "
+    "compare it with the **fixed DCA on return and MaxDD**. The fixed-DCA Sharpe is **not "
+    "comparable**: its equity curve is coins-only and starts at 0, so every weekly deposit is "
+    "counted as a return (a Sharpe ≈ 2 next to a negative return is impossible for a real "
+    "equity curve), its MaxDD of 100 % is an artefact of the same construction, and its buys "
+    "ignore the per-pair costs. Likewise `grok_adaptive_dca_weekly` keeps most of its 1 000 USDC "
+    "in cash, so its Sharpe is not comparable with a fully invested strategy: read it on return "
+    "and MaxDD. Every metric is shown with the number of trades it rests on. Criterion 7 is "
+    "unchanged (an OR; Buy & Hold is the binding leg)."
+)
 
 
 def _render_markdown(
@@ -502,6 +610,7 @@ def _render_markdown(
     aggregates: dict[tuple[str, str, str], WalkForwardAggregate],
     selection: dict[str, Any],
     benchmarks: dict[str, dict[str, float]] = BENCHMARK_SHARPE,
+    benchmark_details: dict[str, dict[str, dict[str, float]]] | None = None,
 ) -> str:
     """Compose the P7 optimization report markdown."""
     lines: list[str] = []
@@ -516,30 +625,41 @@ def _render_markdown(
     n_aggregates = len(aggregates)
     n_selected = len(selection["selected_for_paper"])
     n_abandoned = len(selection["abandoned"])
+    n_ineligible = len(selection.get("ineligible_flagged", []))
     lines.append(f"- Phase 1 backtests (succeeded): **{n_phase1}**")
     lines.append(f"- Phase 2 walk-forward windows (succeeded): **{n_phase2}**")
     lines.append(f"- Aggregated configurations evaluated: **{n_aggregates}**")
     lines.append(f"- Selected for paper trading: **{n_selected}**")
     lines.append(f"- Combos abandoned: **{n_abandoned}**")
+    lines.append(
+        f"- Configurations ineligible under the flag rule (GO P7 rule 1): **{n_ineligible}**"
+    )
+    lines.append("")
+    lines.append(DCA_SHARPE_NOTE)
     lines.append("")
 
-    # Selection table
+    # Selection table (trade counts next to the metrics: GO P7 rule 2)
     lines.append("## Selected configurations for paper trading")
     lines.append("")
     if not selection["selected_for_paper"]:
-        lines.append("_No configuration passed all 7 selection criteria._")
+        lines.append(
+            "_No eligible configuration passed all 7 selection criteria "
+            "(zero passing config = zero paper selection, GO P7 rule 3)._"
+        )
     else:
         lines.append(
-            "| Strategy | Pair | Sharpe OOS | std | PF OOS | Consistency | MaxDD | Beats | Params |"
+            "| Strategy | Pair | Sharpe OOS (n trades) | std | PF OOS (n trades) | Consistency | "
+            "MaxDD | Trades/window mean / min | Beats | Params |"
         )
-        lines.append("|---|---|---|---|---|---|---|---|---|")
+        lines.append("|---|---|---|---|---|---|---|---|---|---|")
         for s in selection["selected_for_paper"]:
+            n = s.get("mean_trades_test", 0.0)
             lines.append(
                 f"| {s['strategy']} | {s['pair']} | "
-                f"{s['mean_sharpe_oos']:.2f} | {s['std_sharpe_oos']:.2f} | "
-                f"{s['mean_profit_factor']:.2f} | {s['consistency']}/8 | "
-                f"{s['max_drawdown_global']:.1f}% | {s['beats_benchmark']} | "
-                f"`{_format_params_inline(s['params'])}` |"
+                f"{s['mean_sharpe_oos']:.2f} (n={n:.0f}) | {s['std_sharpe_oos']:.2f} | "
+                f"{s['mean_profit_factor']:.2f} (n={n:.0f}) | {s['consistency']}/8 | "
+                f"{s['max_drawdown_global']:.1f}% | {n:.0f} / {s.get('min_trades_window', 0)} | "
+                f"{s['beats_benchmark']} | `{_format_params_inline(s['params'])}` |"
             )
     lines.append("")
 
@@ -549,11 +669,42 @@ def _render_markdown(
     if not selection["abandoned"]:
         lines.append("_All combos produced at least one passing config — none abandoned._")
     else:
-        lines.append("| Strategy | Pair | Best Sharpe OOS | Reason |")
-        lines.append("|---|---|---|---|")
+        lines.append(
+            "| Strategy | Pair | Best Sharpe OOS (n trades) | Ineligible configs | Reason |"
+        )
+        lines.append("|---|---|---|---|---|")
         for a in selection["abandoned"]:
             lines.append(
-                f"| {a['strategy']} | {a['pair']} | {a['best_sharpe_oos']:.2f} | {a['reason']} |"
+                f"| {a['strategy']} | {a['pair']} | {a['best_sharpe_oos']:.2f} "
+                f"(n={a.get('best_mean_trades_test', 0.0):.0f}) | {a.get('n_ineligible', 0)} | "
+                f"{a['reason']} |"
+            )
+    lines.append("")
+
+    # Ineligible configurations (GO P7 rule 1)
+    lines.append("## Ineligible configurations (flag rule — GO P7 rule 1)")
+    lines.append("")
+    ineligible = selection.get("ineligible_flagged", [])
+    if not ineligible:
+        lines.append("_No configuration flagged: every grid liquidation reconciled._")
+    else:
+        lines.append(
+            "A configuration with at least one flagged run (phase 1 or any walk-forward window) "
+            "is ineligible for paper whatever its score; the 7 criteria are reported unchanged."
+        )
+        lines.append("")
+        lines.append(
+            "| Strategy | Pair | Params | Sharpe OOS (n trades) | PF OOS (n trades) | "
+            "Consistency | MaxDD | 7 criteria | Flagged runs | Reason |"
+        )
+        lines.append("|---|---|---|---|---|---|---|---|---|---|")
+        for i in ineligible:
+            n = i.get("mean_trades_test", 0.0)
+            lines.append(
+                f"| {i['strategy']} | {i['pair']} | `{_format_params_inline(i['params'])}` | "
+                f"{i['mean_sharpe_oos']:.2f} (n={n:.0f}) | {i['mean_profit_factor']:.2f} (n={n:.0f}) | "
+                f"{i['consistency']}/8 | {i['max_drawdown_global']:.1f}% | "
+                f"{'passed' if i['passed_criteria'] else 'failed'} | {i['n_flags']} | {i['reason']} |"
             )
     lines.append("")
 
@@ -564,7 +715,9 @@ def _render_markdown(
     for (strat, pair), entries in sorted(grouped_p1.items()):
         lines.append(f"### {strat} on {pair}")
         lines.append("")
-        lines.append("| Rank | Test Sharpe | Test PF | Test Trades | Train Sharpe | Params |")
+        lines.append(
+            "| Rank | Test Sharpe | Test PF | Test Trades | Train Sharpe (n trades) | Params |"
+        )
         lines.append("|---|---|---|---|---|---|")
         for i, e in enumerate(entries[:5], start=1):
             ts = e.get("test", {})
@@ -573,7 +726,8 @@ def _render_markdown(
                 f"| {i} | {_safe_float(ts.get('sharpe_ratio')):.2f} | "
                 f"{_safe_float(ts.get('profit_factor')):.2f} | "
                 f"{int(_safe_float(ts.get('total_trades')))} | "
-                f"{_safe_float(tr.get('sharpe_ratio')):.2f} | "
+                f"{_safe_float(tr.get('sharpe_ratio')):.2f} "
+                f"(n={int(_safe_float(tr.get('total_trades')))}) | "
                 f"`{_format_params_inline(e.get('params') or {})}` |"
             )
         lines.append("")
@@ -588,20 +742,20 @@ def _render_markdown(
         lines.append(f"### {strat} on {pair}")
         lines.append("")
         lines.append(
-            "| Mean Sharpe OOS | std | Mean PF | Consistency | MaxDD | Mean Trades | Train Sharpe | Min trades/window | Params |"
+            "| Mean Sharpe OOS | std | Mean PF | Consistency | MaxDD | Mean Trades | "
+            "Train Sharpe (n trades) | Min trades/window | Params |"
         )
         lines.append("|---|---|---|---|---|---|---|---|---|")
         for a in sorted(aggs, key=lambda x: x.mean_sharpe_oos, reverse=True)[:5]:
-            min_trades_per_window = (
-                min(int(_safe_float(w["test_metrics"].get("total_trades"))) for w in a.per_window)
-                if a.per_window
-                else 0
+            min_trades_per_window = _min_trades_per_window(a)
+            train_trades = _mean(
+                [_safe_float(w["train_metrics"].get("total_trades")) for w in a.per_window]
             )
             lines.append(
                 f"| {a.mean_sharpe_oos:.2f} | {a.std_sharpe_oos:.2f} | "
                 f"{a.mean_pf_oos:.2f} | {a.consistency}/{a.n_windows} | "
                 f"{a.max_drawdown_global:.1f}% | {a.mean_trades_test:.0f} | "
-                f"{a.mean_sharpe_train:.2f} | {min_trades_per_window} | "
+                f"{a.mean_sharpe_train:.2f} (n={train_trades:.0f}) | {min_trades_per_window} | "
                 f"`{_format_params_inline(a.params)}` |"
             )
         lines.append("")
@@ -614,10 +768,31 @@ def _render_markdown(
     )
     lines.append(f"## Benchmarks ({source})")
     lines.append("")
-    lines.append("| Pair | Buy & Hold Sharpe | DCA fixed Sharpe |")
-    lines.append("|---|---|---|")
-    for pair, bench in benchmarks.items():
-        lines.append(f"| {pair} | {bench['buy_and_hold']:.2f} | {bench['dca_fixed']:.2f} |")
+    if benchmark_details:
+        lines.append(
+            "| Pair | Buy & Hold Sharpe | Buy & Hold Return | Buy & Hold MaxDD | "
+            "DCA fixed Return | DCA fixed MaxDD (artefact) | DCA fixed Sharpe (not comparable) |"
+        )
+        lines.append("|---|---|---|---|---|---|---|")
+        for pair in sorted(set(benchmarks) | set(benchmark_details)):
+            d = benchmark_details.get(pair, {})
+            bh, dca = d.get("buy_and_hold", {}), d.get("dca_fixed", {})
+            fallback = benchmarks.get(pair, {})
+            lines.append(
+                f"| {pair} | {_safe_float(bh.get('sharpe', fallback.get('buy_and_hold'))):.2f} | "
+                f"{_safe_float(bh.get('return_pct')):+.1f}% | "
+                f"{_safe_float(bh.get('max_drawdown_pct')):.1f}% | "
+                f"{_safe_float(dca.get('return_pct')):+.1f}% | "
+                f"{_safe_float(dca.get('max_drawdown_pct')):.1f}% | "
+                f"{_safe_float(dca.get('sharpe', fallback.get('dca_fixed'))):.2f} |"
+            )
+    else:
+        lines.append("| Pair | Buy & Hold Sharpe | DCA fixed Sharpe (not comparable) |")
+        lines.append("|---|---|---|")
+        for pair, bench in benchmarks.items():
+            lines.append(f"| {pair} | {bench['buy_and_hold']:.2f} | {bench['dca_fixed']:.2f} |")
+    lines.append("")
+    lines.append(DCA_SHARPE_NOTE)
     lines.append("")
 
     # B4.3 flag rule

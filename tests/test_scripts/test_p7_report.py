@@ -124,12 +124,13 @@ def _agg(
     mean_trades_test: float = 30.0,
     max_drawdown_global: float = 10.0,
     consistency: int = 6,
+    params_hash: str = "abc12345",
 ) -> r.WalkForwardAggregate:
     return r.WalkForwardAggregate(
         strategy=strategy,
         pair=pair,
         params={"st_atr_period": 10},
-        params_hash="abc12345",
+        params_hash=params_hash,
         n_windows=8,
         mean_sharpe_train=mean_sharpe_train,
         mean_sharpe_oos=mean_sharpe_oos,
@@ -246,6 +247,49 @@ class TestBuildSelection:
         assert len(out["abandoned"]) == 1
         assert out["abandoned"][0]["strategy"] == "grok_supertrend_4h"
         assert out["abandoned"][0]["pair"] == "BTC/USDC"
+
+    def test_ineligible_config_is_never_selected(self) -> None:
+        """GO P7 rule 1: a flagged config is skipped whatever its score; the next eligible
+        passing config wins; the 7 criteria are untouched (its verdict still says passed)."""
+        aggs = {
+            ("grok_supertrend_4h", "BTC/USDC", "h1"): _agg(mean_sharpe_oos=1.0, params_hash="h1"),
+            ("grok_supertrend_4h", "BTC/USDC", "h2"): _agg(mean_sharpe_oos=1.5, params_hash="h2"),
+        }
+        flag = {"run": "grok_supertrend_4h_BTC_USDC_p2_h2_w3", "segment": "test"}
+        out = r.build_selection(aggs, ineligible={("grok_supertrend_4h", "BTC/USDC", "h2"): [flag]})
+        assert [s["params_hash"] for s in out["selected_for_paper"]] == ["h1"]
+        assert out["ineligible_flagged"][0]["params_hash"] == "h2"
+        assert out["ineligible_flagged"][0]["passed_criteria"] is True
+        assert out["abandoned"] == []
+        assert {v["params_hash"]: v["passed"] for v in out["all_verdicts"]} == {
+            "h1": True,
+            "h2": True,
+        }
+
+    def test_ineligible_configs_from_flags(self) -> None:
+        flags = [
+            {
+                "run": "s_BTC_USDC_p1_aaaa1111",
+                "strategy": "s",
+                "pair": "BTC/USDC",
+                "segment": "all",
+            },
+            {
+                "run": "s_BTC_USDC_p2_aaaa1111_w2",
+                "strategy": "s",
+                "pair": "BTC/USDC",
+                "segment": "test",
+            },
+            {
+                "run": "s_SOL_USDC_p2_bbbb2222_w0",
+                "strategy": "s",
+                "pair": "SOL/USDC",
+                "segment": "train",
+            },
+        ]
+        out = r.ineligible_configs(flags)
+        assert set(out) == {("s", "BTC/USDC", "aaaa1111"), ("s", "SOL/USDC", "bbbb2222")}
+        assert len(out[("s", "BTC/USDC", "aaaa1111")]) == 2
 
 
 # ---------------------------------------------------------------------------

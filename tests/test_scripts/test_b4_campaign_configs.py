@@ -334,49 +334,174 @@ def _window(idx: int, sharpe: float, flagged: bool = False) -> dict:
 
 
 class TestP7ReportCampaign:
-    def test_report_uses_benchmarks_file_flags_and_effective_params(self, tmp_path: Path) -> None:
+    """GO P7 rules (Bruno, 2026-09-15): a flagged config is ineligible whatever its score (1);
+    trades next to every metric and benchmark return/MaxDD with the DCA note (2); criteria
+    unchanged (3)."""
+
+    LOW = {"BTC/USDC": {"buy_and_hold": 0.1, "dca_fixed": 0.1}}
+
+    def _report(self, tmp_path: Path, p1: dict, p2: dict, **kw) -> tuple[dict, str]:
+        p1_path, p2_path = tmp_path / "p1.json", tmp_path / "p2.json"
+        p1_path.write_text(json.dumps(p1))
+        p2_path.write_text(json.dumps(p2))
+        md, sel = tmp_path / "r.md", tmp_path / "s.json"
+        selection = p7_report.generate_report(p1_path, p2_path, md, sel, **kw)
+        return selection, md.read_text()
+
+    def test_report_uses_benchmarks_file_and_effective_params(self, tmp_path: Path) -> None:
+        p2 = {
+            f"grok_grid_atr_adaptive_v4_BTC_USDC_p2_abcd1234_w{i}": _window(i, 1.0)
+            for i in range(8)
+        }
+        # A benchmark above the OOS Sharpe must abandon the combo (criterion 7)...
+        selection, _ = self._report(
+            tmp_path, {}, p2, benchmarks={"BTC/USDC": {"buy_and_hold": 5.0, "dca_fixed": 5.0}}
+        )
+        assert selection["selected_for_paper"] == [] and len(selection["abandoned"]) == 1
+        # ... and a low one selects it, with the runtime-captured params embedded and the
+        # trade counts next to the metrics (GO P7 rule 2).
+        selection, text = self._report(tmp_path, {}, p2, benchmarks=self.LOW)
+        assert len(selection["selected_for_paper"]) == 1
+        sel = selection["selected_for_paper"][0]
+        assert sel["effective_params"]["params"]["order_size_usdc"]["value"] == "25"
+        assert sel["mean_trades_test"] == 40 and sel["min_trades_window"] == 40
+        assert selection["flagged_runs"] == [] and selection["ineligible_flagged"] == []
+        assert "campaign benchmarks file" in text and "order_size_usdc" in text
+        assert "1.00 (n=40)" in text and "40 / 40" in text
+        assert "Reading rule (GO P7, rule 2)" in text
+        assert (
+            json.loads((tmp_path / "s.json").read_text())["benchmarks"]["BTC/USDC"]["buy_and_hold"]
+            == 0.1
+        )
+
+    def test_flagged_window_makes_the_config_ineligible_whatever_its_score(
+        self, tmp_path: Path
+    ) -> None:
         p2 = {
             f"grok_grid_atr_adaptive_v4_BTC_USDC_p2_abcd1234_w{i}": _window(
                 i, 1.0, flagged=(i == 2)
             )
             for i in range(8)
         }
-        p1_path, p2_path = tmp_path / "p1.json", tmp_path / "p2.json"
-        p1_path.write_text("{}")
-        p2_path.write_text(json.dumps(p2))
-        md, sel = tmp_path / "r.md", tmp_path / "s.json"
-        # A benchmark above the OOS Sharpe must abandon the combo (criterion 7)...
-        selection = p7_report.generate_report(
-            p1_path,
-            p2_path,
-            md,
-            sel,
-            benchmarks={"BTC/USDC": {"buy_and_hold": 5.0, "dca_fixed": 5.0}},
-        )
-        assert selection["selected_for_paper"] == [] and len(selection["abandoned"]) == 1
-        # ... and a low one selects it, with the runtime-captured params embedded.
-        selection = p7_report.generate_report(
-            p1_path,
-            p2_path,
-            md,
-            sel,
-            benchmarks={"BTC/USDC": {"buy_and_hold": 0.1, "dca_fixed": 0.1}},
-        )
-        assert len(selection["selected_for_paper"]) == 1
-        assert (
-            selection["selected_for_paper"][0]["effective_params"]["params"]["order_size_usdc"][
-                "value"
-            ]
-            == "25"
-        )
+        selection, text = self._report(tmp_path, {}, p2, benchmarks=self.LOW)
+        # The config passes the 7 criteria but is flagged → never selected (GO P7 rule 1).
+        assert selection["selected_for_paper"] == []
         assert [f["segment"] for f in selection["flagged_runs"]] == ["test"]
-        text = md.read_text()
-        assert (
-            "campaign benchmarks file" in text
-            and "Flagged runs" in text
-            and "order_size_usdc" in text
+        assert len(selection["ineligible_flagged"]) == 1
+        inel = selection["ineligible_flagged"][0]
+        assert inel["passed_criteria"] is True and inel["n_flags"] == 1
+        assert inel["params_hash"] == "abcd1234" and inel["mean_trades_test"] == 40
+        assert inel["flagged_runs"] == ["grok_grid_atr_adaptive_v4_BTC_USDC_p2_abcd1234_w2/test"]
+        assert len(selection["abandoned"]) == 1
+        assert "flagged" in selection["abandoned"][0]["reason"]
+        assert selection["abandoned"][0]["n_ineligible"] == 1
+        # The 7 criteria themselves are untouched (rule 3): the verdict still says passed.
+        assert [v["passed"] for v in selection["all_verdicts"]] == [True]
+        assert "Ineligible configurations (flag rule" in text and "Flagged runs" in text
+
+    def test_phase1_flag_alone_makes_the_config_ineligible(self, tmp_path: Path) -> None:
+        p1 = {
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_abcd1234": {
+                "strategy": "grok_grid_atr_adaptive_v4",
+                "pair": "BTC/USDC",
+                "params": {"min_spacing_pct": 0.02},
+                "train": {"sharpe_ratio": 1.0, "total_trades": 30},
+                "test": {"sharpe_ratio": 1.0, "profit_factor": 2.0, "total_trades": 40},
+                "all": {"sharpe_ratio": 1.0, "net_pnl": 5.0},
+                "liquidation": {
+                    "all": {
+                        "residual_net_proceeds": "0",
+                        "inventory_divergence_btc": "-0.03",
+                        "net_pnl_lot_basis": "5.0",
+                    }
+                },
+            },
+            # Another config of the same combo, clean in phase 1 and selected.
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ffff0000": {
+                "strategy": "grok_grid_atr_adaptive_v4",
+                "pair": "BTC/USDC",
+                "params": {"min_spacing_pct": 0.03},
+                "train": {"sharpe_ratio": 0.9, "total_trades": 30},
+                "test": {"sharpe_ratio": 0.9, "profit_factor": 1.9, "total_trades": 35},
+            },
+        }
+        p2 = {
+            f"grok_grid_atr_adaptive_v4_BTC_USDC_p2_abcd1234_w{i}": _window(i, 1.5)
+            for i in range(8)
+        }
+        p2.update(
+            {
+                f"grok_grid_atr_adaptive_v4_BTC_USDC_p2_ffff0000_w{i}": dict(
+                    _window(i, 0.9), params={"min_spacing_pct": 0.03}
+                )
+                for i in range(8)
+            }
         )
-        assert json.loads(sel.read_text())["benchmarks"]["BTC/USDC"]["buy_and_hold"] == 0.1
+        selection, text = self._report(tmp_path, p1, p2, benchmarks=self.LOW)
+        assert [f["segment"] for f in selection["flagged_runs"]] == ["all"]
+        # abcd1234 has the best OOS Sharpe (1.5) but its phase-1 run is flagged → ineligible;
+        # the clean ffff0000 (0.9) is the one selected.
+        assert [i["params_hash"] for i in selection["ineligible_flagged"]] == ["abcd1234"]
+        assert [s["params_hash"] for s in selection["selected_for_paper"]] == ["ffff0000"]
+        assert selection["abandoned"] == []
+        assert "Train Sharpe (n trades)" in text and "1.00 (n=30)" in text
+
+    def test_all_configs_flagged_abandons_the_combo(self, tmp_path: Path) -> None:
+        p2 = {
+            f"grok_grid_atr_adaptive_v4_BTC_USDC_p2_abcd1234_w{i}": _window(i, 1.0, flagged=True)
+            for i in range(8)
+        }
+        selection, _ = self._report(tmp_path, {}, p2, benchmarks=self.LOW)
+        assert selection["selected_for_paper"] == []
+        assert len(selection["ineligible_flagged"]) == 1
+        assert selection["ineligible_flagged"][0]["n_flags"] == 8
+        assert "All 1 configuration(s) are flagged" in selection["abandoned"][0]["reason"]
+
+    def test_benchmark_details_table_and_dca_note(self, tmp_path: Path) -> None:
+        p2 = {
+            f"grok_grid_atr_adaptive_v4_BTC_USDC_p2_abcd1234_w{i}": _window(i, 1.0)
+            for i in range(8)
+        }
+        details = {
+            "BTC/USDC": {
+                "buy_and_hold": {"sharpe": 0.84, "return_pct": 137.5, "max_drawdown_pct": 49.6},
+                "dca_fixed": {"sharpe": 2.35, "return_pct": 45.2, "max_drawdown_pct": 100.0},
+            }
+        }
+        _, text = self._report(tmp_path, {}, p2, benchmarks=self.LOW, benchmark_details=details)
+        assert "| Buy & Hold Return | Buy & Hold MaxDD | DCA fixed Return |" in text
+        assert "| BTC/USDC | 0.84 | +137.5% | 49.6% | +45.2% | 100.0% | 2.35 |" in text
+        assert "not comparable" in text and "Reading rule (GO P7, rule 2)" in text
+
+    def test_load_benchmark_details(self, tmp_path: Path) -> None:
+        path = tmp_path / "b.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "buy_and_hold": {
+                        "BTC/USDC": {
+                            "sharpe_ratio": 0.5,
+                            "total_return_pct": 10.0,
+                            "max_drawdown_pct": 20.0,
+                        }
+                    },
+                    "dca_fixed_15usd_weekly": {
+                        "BTC/USDC": {"sharpe_ratio": 1.5, "total_return_pct": -5.0},
+                        "ETH/USDC": {"error": "no data"},
+                    },
+                }
+            )
+        )
+        details = p7.load_benchmark_details(path)
+        assert details["BTC/USDC"]["buy_and_hold"] == {
+            "sharpe": 0.5,
+            "return_pct": 10.0,
+            "max_drawdown_pct": 20.0,
+        }
+        assert details["BTC/USDC"]["dca_fixed"]["return_pct"] == -5.0
+        assert details["ETH/USDC"]["dca_fixed"]["sharpe"] == 0.0
+        # criterion 7 keeps its own loader, unchanged
+        assert p7.load_benchmark_sharpe(path)["BTC/USDC"] == {"buy_and_hold": 0.5, "dca_fixed": 1.5}
 
 
 # ---------------------------------------------------------------------------
@@ -583,3 +708,87 @@ def test_p6_checkpoint_summary_lines(tmp_path: Path) -> None:
     assert "0 trades" in lines[5]  # anomaly on the grid test segment
     assert "3 lots" in lines[6]
     assert "STOP" in lines[9]
+
+
+# ---------------------------------------------------------------------------
+# P7 checkpoint summary (phase 1 and phase 2 shapes)
+# ---------------------------------------------------------------------------
+
+
+def test_p7_checkpoint_summary_lines() -> None:
+    sys.path.insert(0, str(Path(_project_root) / "scripts" / "audit"))
+    import b4_p7_checkpoint as cp
+
+    good = {
+        "sharpe_ratio": 0.6,
+        "profit_factor": 1.6,
+        "total_trades": 25,
+        "total_return_pct": 3.0,
+        "max_drawdown_pct": 12.0,
+        "net_pnl": 30.0,
+    }
+    base = {
+        "fees": "bybit",
+        "pair_costs_file": "config/pair_costs_b4.json",
+        "min_order_usdc": 5.0,
+        "params": {"min_spacing_pct": 0.02},
+    }
+    p1 = {
+        "grok_supertrend_4h_BTC_USDC_p1_aaaa1111": dict(
+            base,
+            strategy="grok_supertrend_4h",
+            pair="BTC/USDC",
+            phase="1",
+            train=dict(good),
+            test=dict(good),
+            all=dict(good),
+        ),
+        "grok_grid_atr_adaptive_v4_SOL_USDC_p1_bbbb2222": dict(
+            base,
+            strategy="grok_grid_atr_adaptive_v4",
+            pair="SOL/USDC",
+            phase="1",
+            train=dict(good),
+            test=dict(good, profit_factor=12.0, total_trades=4),
+            all=dict(good),
+            liquidation={
+                "all": {
+                    "positions": 3,
+                    "pnl": "-10",
+                    "fees": "0.1",
+                    "residual_net_proceeds": "0",
+                    "inventory_divergence_btc": "-0.03",
+                    "net_pnl_lot_basis": "30.0",
+                }
+            },
+        ),
+        "crashed_p1_cccc3333": {"strategy": "x", "pair": "ETH/USDC", "phase": "1", "error": "boom"},
+    }
+    lines = cp.summarize(p1)
+    assert len(lines) == 10
+    assert lines[0].startswith("1. Completion (phase 1): 2/212") and "crashed" in lines[0]
+    assert "1 flagged run(s) → 1 ineligible config(s)" in lines[2] and "#bbbb2222" in lines[2]
+    assert "too good — PF 12.0 on 4 trades" in lines[3]
+    assert "n=25" in lines[4] and "train 0.60" in lines[4]
+    assert "grok_supertrend_4h_BTC_USDC_p1_aaaa1111" in lines[5]  # clears criteria 1-2-4
+    assert "1 not reconciled" in lines[6]
+    assert lines[9].startswith("10. Verdict: phase 1 INCOMPLETE") and "STOP" in lines[9]
+
+    p2 = {
+        f"grok_supertrend_4h_BTC_USDC_p2_aaaa1111_w{i}": dict(
+            base,
+            strategy="grok_supertrend_4h",
+            pair="BTC/USDC",
+            phase="2",
+            window_idx=i,
+            period={"train_start": "t", "train_end": "t", "test_start": "t", "test_end": "t"},
+            train=dict(good),
+            test=dict(good, sharpe_ratio=1.0),
+        )
+        for i in range(8)
+    }
+    lines = cp.summarize(p2, {"BTC/USDC": {"buy_and_hold": 0.1, "dca_fixed": 0.1}})
+    assert lines[0].startswith("1. Completion (phase 2): 8/280")
+    assert "1 passing, 1 passing AND eligible" in lines[5]
+    assert "n=25" in lines[4]
+    assert "0 segments" in lines[6]
