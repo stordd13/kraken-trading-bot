@@ -522,3 +522,64 @@ async def test_capture_effective_params_reports_defaults_passed_and_overrides() 
         "inventory_divergence_btc",
     }
     assert capture_effective_params(object(), None, None)["params"] == {}
+
+
+# ---------------------------------------------------------------------------
+# Post-P6 checkpoint summary
+# ---------------------------------------------------------------------------
+
+
+def test_p6_checkpoint_summary_lines(tmp_path: Path) -> None:
+    sys.path.insert(0, str(Path(_project_root) / "scripts" / "audit"))
+    import b4_p6_checkpoint as cp
+
+    good = {
+        "sharpe_ratio": 1.5,
+        "sortino_ratio": 2.0,
+        "max_drawdown_pct": 10.0,
+        "profit_factor": 2.0,
+        "calmar_ratio": 1.0,
+        "total_trades": 40,
+        "total_return_pct": 5.0,
+        "net_pnl": 50.0,
+    }
+    results = {
+        "grok_supertrend_4h_BTC_USDC": {
+            "strategy": "grok_supertrend_4h",
+            "pair": "BTC/USDC",
+            "fees": "bybit",
+            "pair_costs_file": "config/pair_costs_b4.json",
+            "min_order_usdc": 5.0,
+            "train": dict(good),
+            "test": dict(good),
+            "all": dict(good),
+        },
+        "grok_grid_atr_adaptive_v4_BTC_USDC": {
+            "strategy": "grok_grid_atr_adaptive_v4",
+            "pair": "BTC/USDC",
+            "fees": "bybit",
+            "pair_costs_file": "config/pair_costs_b4.json",
+            "min_order_usdc": 5.0,
+            "train": dict(good),
+            "test": dict(good, total_trades=0),
+            "all": dict(good),
+            "liquidation": {
+                "all": {
+                    "positions": 3,
+                    "pnl": "-10",
+                    "fees": "0.1",
+                    "residual_net_proceeds": "0",
+                    "inventory_divergence_btc": "0",
+                    "net_pnl_lot_basis": "50.0",
+                }
+            },
+        },
+        "crashed": {"strategy": "x", "pair": "ETH/USDC", "error": "boom"},
+    }
+    lines = cp.summarize(results, {"buy_and_hold": {"BTC/USDC": {"sharpe_ratio": 0.1}}})
+    assert len(lines) == 10
+    assert lines[0].startswith("1. Completion: 2/24") and "crashed" in lines[0]
+    assert "grok_supertrend_4h_BTC_USDC" in lines[2]  # survivor
+    assert "0 trades" in lines[5]  # anomaly on the grid test segment
+    assert "3 lots" in lines[6]
+    assert "STOP" in lines[9]
