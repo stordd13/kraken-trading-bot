@@ -49,11 +49,15 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   données (`--fees` obligatoire), chemins morts supprimés, suite de tests hermétique (dotenv, boucle
   d'événements) — mergé dans `dev` (`3406a6c`), tag `v2.7.0-b4-2-fees-engine` (`fea0e16`), serveur en parité
   sans restart — `results/B4_2_fees_engine_report.md`.
-- 🚧 **B4.3 en cours** — chantier 0 fait le 14 sept (branche `feat/b4-3-campaign`) : liquidation terminale du
-  `GridBacktester` atteignable (MARKET au dernier close, taker + spread + slippage, soldes réglés), `net_pnl`
-  unifié dans les deux moteurs (`total_pnl − fees d'achat`), gold hashes binance/bybit re-baselinés, garde
-  signal et deltas grid signés (`results/B4_3_chantier0_gate_a.md`) → **GATE A** ; ensuite GATE B (coûts par
-  paire, grilles P7, risk) puis campagne P6/P7 `--fees bybit` dans de nouveaux fichiers de sortie.
+- ✅ **B4.3 (15 sept, en review)** — chantier 0 (GATE A, 14 sept) : liquidation terminale du `GridBacktester`
+  atteignable (MARKET au dernier close, taker + spread + slippage), `net_pnl` compté une fois dans les deux moteurs,
+  gold hashes re-baselinés (`results/B4_3_chantier0_gate_a.md`) ; GATE B (15 sept) : coûts par paire mesurés sur
+  `api.bybit.eu` (BTC 2/2 bps, ETH 3/2, SOL 11/2), plancher d'ordre 5 USDC, spacing grid ≥ 2 %, cartographie risk
+  (`results/B4_3_gate_b_configs.md`) ; **campagne serveur `--fees bybit`** : P6 24 combos → **0 survivant** ; P7 212 configs
+  + 280 fenêtres walk-forward → **0 / 35 configs** passent les 7 critères (règles GO P7 : run flaggé = config inéligible,
+  Sharpe DCA non comparable, critères figés) ; grid × SOL : 48 / 48 configs flaggées (dette 14). **Sélection paper vide,
+  argumentée** : `results/B4_bybit_backtest_report.md`. Branche `feat/b4-3-campaign` — **STOP final, en attente de
+  review** (clôture : merge `dev` → CODE_MAP → tag `v2.8.0-b4-3-campaign` → zip).
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
 
@@ -330,6 +334,13 @@ Détail : `ROADMAP.md`.
     résultat, `B4_P7_final_selection.json`) et alignent `strategies.yaml` en B5 ; **fix de la résolution post-B4**, après
     cet alignement (il change toutes les métriques grok). **Prérequis B5** : test one-off prouvant que le chemin
     live/router résout bien par instance (`class:`) — consigné, non fait.
+14. **Tolérance de fermeture absolue du grid** (`grok_grid_atr_adaptive_v4.py`, ~:631 : `|sell_level − prix| < 1` USD)
+    contre appariement moteur par `position_id` → « mauvais pop » : sur SOL (~180 USD) des cibles SELL à moins de 1 USD
+    sont fréquentes et **40 lots ont été vendus deux fois** sur le run P6 B4 (3 runs flaggés, divergence d'inventaire
+    jusqu'à −0.033 SOL, lot-basis +1.2 % trop optimiste ; `net_pnl` cash exact) ; jamais sur BTC, quasi jamais sur ETH.
+    **Règle GO P7 n° 1** : toute config flaggée est inéligible à la sélection paper ; une candidature grid × SOL exige
+    d'abord ce fix (tolérance **relative**, en % du prix ou fraction du spacing) dans la stratégie protégée, review
+    humaine, puis re-run. Source : `results/B4_P6_checkpoint.md`, `results/B4_bybit_backtest_report.md` § 6.
 12. **`fetch_ohlcv` end-stamped pour Bybit seulement** : le backfill générique (`krakenbot.data.backfill`)
     n'est garanti correct que pour `EXCHANGE_NAME=bybit` ; les clients REST Binance/Kraken renvoient l'open
     time ccxt alors que la DB est end-stamped (B4.1) : un backfill y insérerait des candles décalées d'un

@@ -2,12 +2,16 @@
 
 > Une ligne par fichier conservé : date, phase, verdict, pourquoi il est encore là.
 > Tout ce qui n'est plus une référence courante est dans `results/archive/` (rien n'est supprimé).
-> Dernière mise à jour : 2026-09-15 (B4.3 GATE B).
+> Dernière mise à jour : 2026-09-15 (B4.3 campagne P6/P7 — rapport B4, en review).
 
 ## Fichiers de référence (à la racine de `results/`)
 
 | Fichier | Date | Phase | Verdict / contenu | Pourquoi il reste |
 |---|---|---|---|---|
+| `B4_bybit_backtest_report.md` | 2026-09-15 | **B4 — livrable** | Verdict B4 : **0 / 24** en P6, **0 / 35** configs P7 sous fees Bybit, données end-stampées, grid honnête → **sélection paper vide, argumentée** ; encadré « non comparable », couverture SOL chiffrée par fenêtre (train 64.6 % / w1-w3 26-76 %), P6 et P7 avec le nombre de trades à côté de chaque métrique, benchmarks avec règle de lecture (Sharpe → B&H, return/MaxDD → DCA), flags et inéligibilité (dette 14), risk révisé pour B5, annexes | **Livrable B4** (ROADMAP § B4) ; entrée de B5 |
+| `B4_P7_phase1_cross_validate.json` · `B4_P7_phase2_walk_forward.json` · `B4_P7_optimization_report.md` · `B4_P7_final_selection.json` · `B4_P7_checkpoint.md` | 2026-09-15 | B4.3 campagne P7 | 212 configs (SuperTrend 60, Grid 96, DCA 48, Donchian 8) cross-validées 70/30 puis 280 fenêtres walk-forward (top-5 × 8) sous fees Bybit : **0 / 35** configs agrégées passent les 7 critères ; `selected_for_paper = []`, 7 combos abandonnés, **5 configs inéligibles** (grid × SOL flaggé, règle GO P7 n° 1), 204 runs flaggés ; checkpoints phase 1 / phase 2 avec anomalies expliquées | Résultats bruts et sélection machine (`effective_params` par entrée) ; contrat de lecture B5 |
+| `B4_P6_phase_d_results.json` · `B4_P6_phase_e_filtering.md` · `B4_P6_phase_e_survivors.json` · `B4_P6_phase_f_walkforward.json` · `B4_P6_backtest_report.md` · `B4_P6_checkpoint.md` | 2026-09-15 | B4.3 campagne P6 | 24 combos (8 × 3) sous **fees Bybit** (maker/taker par site de fill), coûts par paire, plancher 5 USDC, moteur grid honnête : **0 / 24** passent les 5 critères stricts (meilleur Sharpe test `grok_supertrend_4h` ETH 0.29, 13 trades) ; survivants `{}` et walk-forward `{}` (normal, voir note) ; **3 runs flaggés** grid × SOL (mauvais pop, dette 14) ; checkpoint validé par Bruno (GO P7) | Résultats bruts et verdict P6 de la campagne B4 ; `effective_params` et blocs `liquidation` par entrée |
+| `B4_benchmarks.json` | 2026-09-15 | B4.3 campagne | B&H et DCA fixe 15 USDC/semaine sous `--fees bybit` + coûts par paire : B&H Sharpe 0.84 / 0.38 / 0.30, return +137.5 / +12.5 / −20.4 % ; DCA return +20.9 / −18.3 / −42.9 % (Sharpe DCA 2.1-2.4 **non comparable**, MaxDD 100 % artefact — rapport B4 § 5) | Benchmarks du critère P7 n° 7 et du rapport B4 |
 | `B4_3_chantier0_gate_a.md` | 2026-09-14 | B4.3 chantier 0 | **Moteur grid honnête** : liquidation terminale atteignable (MARKET au dernier close, taker + spread + slippage, soldes réglés), `net_pnl` compte chaque fee une fois dans les deux moteurs ; garde signal bit-exacte sauf `net_pnl` (delta = Σ fees vente prouvé), run grid P6 réconcilié 37/37 contre le baseline B4.2 (revue adversariale du diff : 4 défauts corrigés avant soumission) (33 lots liquidés −227 USDC, PF inf → 1.66, `net_pnl` 336 → 129 = `ending − 1000`), gold hashes H1/H2, preuve D4 | Livrable GATE A ; contrat de la campagne B4.3 |
 | `b4_3_step0_baselines.txt` · `b4_3_validation_outputs.txt` · `b4_3_guard_signal_outputs.txt` · `b4_3_net_pnl_identity_outputs.txt` | 2026-09-14 | B4.3 chantier 0 | Baselines HEAD (mypy 64, 1 300 passés) + sha256 des logs P6 ; validation 7.4 (3 ordres, ruff, mypy, déterminisme) ; sorties brutes de la garde d) amendée (diff de logs = 2 lignes `net_pnl`, `compare --ignore`, `verify-fees`, identités) ; évidence formule vs cash ≤ 1.6e-23 sur les 6 dumps (GO GATE A point 2) | Preuves GATE A |
 | `b4_3_ref_signal_A_post.txt` · `b4_3_ref_signal_A_post_trades.json` · `b4_3_bybit_signal_A_post.json` | 2026-09-14 | B4.3 chantier 0 | Rejeu signal A post-chantier 0 (log normalisé, dumps `--trades-out` binance et bybit) : identiques aux références B4.2 sauf `metrics.net_pnl` (+1.7445 / +5.8128 = Σ fees vente) | Nouvelles références signal (`net_pnl` unifié) |
@@ -28,19 +32,19 @@
 | `b4_reference_backtest_A_p6period.txt` · `b4_reference_backtest_B_brief.txt` | 2026-09-13 | B4.1 | Backtest de référence `grok_supertrend_4h` BTC après re-stamp (A : période/pas P6 ; B : commande littérale du brief) | Invariant 6 ; delta brut pour B4.3 |
 | `B3_bybit_data_report.md` | 2026-09-11 | B3 | **Historique Bybit EU en DB** (3 paires × 7 TF depuis 2025-06-11), backfill de gaps démontré avant l'import, scheduler actif ; cohérences 1d/1w (décalage d'un intervalle attendu), prix 1h, WS/REST ; **constat** convention Binance open-stamped → dette B4 | Preuve des données live Bybit, sorties SQL brutes, décisions de convention (source de la dette 11) |
 | `bybit_integration_audit.md` | 2026-09-07 | B0 | **GO avec réserves** : instance EU séparée (`api.bybit.eu`), fees 0.10/0.25, historique EU depuis 2025-06-11, corrélation prix Binance/Bybit 0.999999, clés API non vérifiées | Source des constantes B1–B3 (`skills/bybit.md`) et de la décision « données Binance + fees Bybit » |
-| `P7_phase1_cross_validate.json` | 2026-05-30 | P7 phase 1 | 212 jobs de grid search cross-validés 70/30 (grid ATR v4, SuperTrend, DCA, Donchian), **fees Binance 0.075 % flat** | Machinerie et grilles réutilisées en B4 ; classements non transposables aux fees Bybit |
+| `P7_phase1_cross_validate.json` | 2026-05-30 | P7 phase 1 | 212 jobs de grid search cross-validés 70/30 (grid ATR v4, SuperTrend, DCA, Donchian), **fees Binance 0.075 % flat**, données open-stampées, grid biaisé — **supersédé par `B4_P7_phase1_cross_validate.json`** | Contexte historique du rapport B4 (§ 1 « non comparable ») ; jamais réécrit (`--force` interdit) |
 | `P6_backtest_report_v2.md` | 2026-04-19 | P6 | 24 combos (8 stratégies × 3 paires, 2023-04 → 2026-04, cross-validate) : **0/24 passent les 5 critères stricts** ; recommandations par stratégie | Rapport P6 de référence (v1 archivée) |
-| `P6_phase_d_results.json` | 2026-04-19 | P6 phase D | Résultats bruts des 24 backtests (train / test / all, fees Binance) | Baseline de comparaison fees Binance vs Bybit en B4 |
-| `P6_benchmarks.json` | 2026-04-19 | P6 | Buy & Hold et DCA fixe 15 USDC/semaine par paire (Sharpe, return) | Benchmarks des critères P7/B4 (« bat B&H ou DCA ») |
+| `P6_phase_d_results.json` | 2026-04-19 | P6 phase D | Résultats bruts des 24 backtests (train / test / all, fees Binance, open-stampés) — **supersédé par `B4_P6_phase_d_results.json`** | Contexte historique du rapport B4 § 3.3 (deltas signés) ; jamais réécrit |
+| `P6_benchmarks.json` | 2026-04-19 | P6 | Buy & Hold et DCA fixe 15 USDC/semaine par paire (Sharpe, return), sans fee, open-stampé — **supersédé par `B4_benchmarks.json`** | Référence Binance historique |
 | `P6_data_coverage.md` | 2026-04-16 | P6 | Couverture des 8.7M rows Binance par paire × TF (min/max date, gaps) | Preuve de la base de données de backtest |
 | `P6_7_multiprocessing_benchmark.md` | 2026-05-20 | P6.7 | Timings 24 combos série vs parallèle (8 workers), déterminisme validé | Tuning du runner pour B4 (workers, RAM, temps attendu) |
 | `P6_phase_e_survivors.json` | 2026-04-19 | P6 phase E | `{}` | Voir note ci-dessous |
 | `P6_phase_f_walkforward.json` | 2026-04-19 | P6 phase F | `{}` | Voir note ci-dessous |
 
-**Note obligatoire — `P6_phase_e_survivors.json` et `P6_phase_f_walkforward.json` contiennent `{}`.**
-C'est **normal** : 0 combinaison sur 24 a passé les critères P6 (cf. rapport v2), donc zéro survivant en
-phase E et pas de walk-forward en phase F. Ce ne sont pas des fichiers corrompus. Ils seront régénérés
-en B4 avec les fees Bybit.
+**Note obligatoire — `P6_phase_e_survivors.json` / `P6_phase_f_walkforward.json` et leurs jumeaux
+`B4_P6_phase_e_survivors.json` / `B4_P6_phase_f_walkforward.json` contiennent `{}`.** C'est **normal** : 0 combinaison
+sur 24 a passé les critères P6, en avril (fees Binance) comme en B4 (fees Bybit), donc zéro survivant en phase E et
+pas de walk-forward en phase F. Ce ne sont pas des fichiers corrompus.
 
 ### Fichiers locaux non versionnés (gitignorés)
 
@@ -50,12 +54,8 @@ en B4 avec les fees Bybit.
 
 ### À venir
 
-- `P7_phase2_walk_forward.json`, `P7_final_selection.json`, `P7_optimization_report.md` : produits par
-  `scripts/run_p7_grid_search.py --phase 2` / `--phase report` — non lancés (rejoués en B4).
-- `B4_P6_phase_d_results.json`, `B4_P6_phase_e_survivors.json`, `B4_P6_phase_e_filtering.md`, `B4_P6_phase_f_walkforward.json`,
-  `B4_P6_backtest_report.md`, `B4_benchmarks.json`, `B4_P7_phase1_cross_validate.json`, `B4_P7_phase2_walk_forward.json`,
-  `B4_P7_final_selection.json`, `B4_P7_optimization_report.md` : produits par la campagne B4.3 (commandes dans `skills/backtest.md`).
-- `B4_bybit_backtest_report.md` : livrable de B4.
+- `P7_phase2_walk_forward.json`, `P7_final_selection.json`, `P7_optimization_report.md` (fees Binance) : jamais
+  produits — la phase 2 et le rapport P7 n'existent que sous fees Bybit (`B4_P7_*`, campagne B4.3).
 
 ### Scripts qui écrivent encore dans `results/`
 
