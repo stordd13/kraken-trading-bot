@@ -3,6 +3,7 @@
 # ruff: noqa: E402
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 import sys
 
@@ -13,7 +14,7 @@ sys.path.insert(0, _project_root)
 sys.path.insert(0, str(Path(_project_root) / "src"))
 sys.path.insert(0, str(Path(_project_root) / "scripts"))
 
-from scripts.backtest import parse_args
+from scripts.backtest import PairCosts, parse_args
 
 BASE = ["--strategy", "grok_supertrend_4h", "--pair", "BTC/USDC", "--exchange", "binance"]
 
@@ -41,28 +42,25 @@ def test_each_fee_model_is_accepted(model: str) -> None:
     assert args.trades_out is None
 
 
-def test_pair_costs_file_refused_with_grid_strategy(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
+def test_pair_costs_file_accepted_with_grid_strategy(tmp_path: Path) -> None:
+    """B4.3: the grid end-of-run liquidation is a market fill, so per-pair costs apply."""
     costs = tmp_path / "costs.json"
     costs.write_text('{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}')
-    with pytest.raises(SystemExit) as exc:
-        parse_args(
-            [
-                "--strategy",
-                "grok_grid_atr_adaptive_v4",
-                "--pair",
-                "BTC/USDC",
-                "--exchange",
-                "binance",
-                "--fees",
-                "bybit",
-                "--pair-costs-file",
-                str(costs),
-            ]
-        )
-    assert exc.value.code == 2
-    assert "GridBacktester" in capsys.readouterr().err
+    args = parse_args(
+        [
+            "--strategy",
+            "grok_grid_atr_adaptive_v4",
+            "--pair",
+            "BTC/USDC",
+            "--exchange",
+            "binance",
+            "--fees",
+            "bybit",
+            "--pair-costs-file",
+            str(costs),
+        ]
+    )
+    assert args.pair_costs == {"BTC/USDC": PairCosts(Decimal("0.0002"), Decimal("0.0002"))}
 
 
 def test_trades_out_refused_with_cross_validate(

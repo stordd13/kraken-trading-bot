@@ -1,0 +1,94 @@
+{
+  "period": {
+    "start": "2023-04-01",
+    "end": "2026-04-01"
+  },
+  "fees": "bybit",
+  "pair_costs": {
+    "BTC/USDC": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "ETH/USDC": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "SOL/USDC": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    }
+  },
+  "buy_and_hold": {
+    "BTC/USDC": {
+      "sharpe_ratio": 0.8387,
+      "sortino_ratio": 1.274,
+      "max_drawdown_pct": 49.65,
+      "calmar_ratio": 0.9232,
+      "total_return_pct": 137.51,
+      "starting_balance": 1000.0,
+      "ending_balance": 2375.09,
+      "entry_price": 28038.941092,
+      "exit_price": 66761.95,
+      "entry_fee_usdc": 2.5
+    },
+    "ETH/USDC": {
+      "sharpe_ratio": 0.3769,
+      "sortino_ratio": 0.567,
+      "max_drawdown_pct": 63.79,
+      "calmar_ratio": 0.0655,
+      "total_return_pct": 12.53,
+      "starting_balance": 1000.0,
+      "ending_balance": 1125.27,
+      "entry_price": 1795.57734,
+      "exit_price": 2025.57,
+      "entry_fee_usdc": 2.5
+    },
+    "SOL/USDC": {
+      "sharpe_ratio": 0.3048,
+      "sortino_ratio": 0.4518,
+      "max_drawdown_pct": 70.23,
+      "calmar_ratio": -0.129,
+      "total_return_pct": -20.43,
+      "starting_balance": 1000.0,
+      "ending_balance": 795.65,
+      "entry_price": 103.454316,
+      "exit_price": 82.52,
+      "entry_fee_usdc": 2.5
+    }
+  },
+  "dca_fixed_15usd_weekly": {
+    "BTC/USDC": {
+      "sharpe_ratio": 2.3541,
+      "sortino_ratio": 6.7584,
+      "max_drawdown_pct": 100.0,
+      "calmar_ratio": 62.9421,
+      "total_return_pct": 20.91,
+      "total_invested": 2355.0,
+      "ending_balance": 2847.39,
+      "num_buys": 157,
+      "avg_cost_basis": 55216.93
+    },
+    "ETH/USDC": {
+      "sharpe_ratio": 2.0892,
+      "sortino_ratio": 4.7382,
+      "max_drawdown_pct": 100.0,
+      "calmar_ratio": 42.4485,
+      "total_return_pct": -18.25,
+      "total_invested": 2355.0,
+      "ending_balance": 1925.18,
+      "num_buys": 157,
+      "avg_cost_basis": 2477.8
+    },
+    "SOL/USDC": {
+      "sharpe_ratio": 2.0803,
+      "sortino_ratio": 4.5154,
+      "max_drawdown_pct": 100.0,
+      "calmar_ratio": 29.4172,
+      "total_return_pct": -42.94,
+      "total_invested": 1770.0,
+      "ending_balance": 1009.94,
+      "num_buys": 118,
+      "avg_cost_basis": 144.62
+    }
+  }
+}

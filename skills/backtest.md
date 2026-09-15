@@ -15,6 +15,69 @@
   « Modèle de fees » ci-dessous.
 - Résultats existants et verdicts : `results/INDEX.md`.
 
+## Campagne B4.3 (fees Bybit, coûts par paire, plancher d'ordre) — commandes validées au GATE B
+
+Toutes les sorties vont dans de **nouveaux** fichiers `results/B4_*` ; les fichiers P6/P7 historiques (sans clé
+`fees`) ne sont jamais réécrits (`--force` interdit dessus). Chaque entrée de résultat enregistre `fees`,
+`pair_costs_file`, `pair_costs` (valeurs appliquées à la paire), `min_order_usdc`, `effective_params` (params
+réellement utilisés par la stratégie, capturés au runtime — la source de l'alignement `strategies.yaml` en B5) et,
+pour le grid, le bloc `liquidation` par segment ; la reprise refuse un fichier produit sous d'autres coûts.
+
+```bash
+# Serveur (tmux b4, jamais la session spread). Deux pièges mesurés au lancement P6 (2026-09-15) :
+#  - ~/.bashrc fait `set -a; source .env` → tout shell interactif exporte SCHEDULER_PAIRS sans guillemets
+#    (JSON invalide) et load_dotenv ne surcharge pas → SettingsError dans les workers : unset AVANT poetry run.
+#  - LOG_LEVEL n'est PAS honoré par les scripts (aucun n'appelle configure_logging) : ~190 Mo/min d'INFO
+#    (strategy_tick…) → filtrer le flux avec grep --line-buffered AVANT tee (motif ancré sur l'événement
+#    structlog `] +event` — un motif non ancré supprime aussi les `job_done key=grok_supertrend_4h_…`).
+unset SCHEDULER_PAIRS SCHEDULER_INTERVALS
+export LOG_LEVEL=WARNING          # sans effet sur les scripts, gardé par cohérence
+COSTS=config/pair_costs_b4.json   # BTC 2/2 bps, ETH 3/2, SOL 11/2 (dérivation : config/pair_costs_b4.README.md)
+FILTER='\] +(strategy_tick|grid_atr_(buy|sell|built|recalc|pair)|grid_paused|grid_resumed|backtest_(buy|sell|signal|progress)|supertrend_|donchian_|ema_|dca_|regime_)'
+# Forme du wrapper (~/b4_p7_phase1.sh) : … 2>&1 | grep --line-buffered -v -E "$FILTER" | tee -a logs/b4_p7.log ;
+# rc=${PIPESTATUS[0]} ; bornes horodatées dans logs/b4_campaign.log ; suivi via logs/p6_status.json / p7_status.json.
+
+# P6 — calibration sur les 3 jobs les plus lourds (les grids), puis reprise automatique des 24
+nice -n 10 poetry run python scripts/run_p6_backtests.py --fees bybit --pair-costs-file $COSTS \
+    --min-order-usdc 5 --workers 3 --timeout 5400 --limit 3 --output results/B4_P6_phase_d_results.json
+nice -n 10 poetry run python scripts/run_p6_backtests.py --fees bybit --pair-costs-file $COSTS \
+    --min-order-usdc 5 --workers 3 --timeout 5400 --output results/B4_P6_phase_d_results.json
+poetry run python scripts/compute_benchmarks.py --fees bybit --pair-costs-file $COSTS --output results/B4_benchmarks.json
+poetry run python scripts/filter_p6_survivors.py --input results/B4_P6_phase_d_results.json \
+    --benchmarks results/B4_benchmarks.json --survivors results/B4_P6_phase_e_survivors.json \
+    --report results/B4_P6_phase_e_filtering.md
+poetry run python scripts/run_p6_walkforward.py --fees bybit --pair-costs-file $COSTS --min-order-usdc 5 \
+    --survivors results/B4_P6_phase_e_survivors.json --output results/B4_P6_phase_f_walkforward.json
+poetry run python scripts/generate_p6_report.py --phase-d B4_P6_phase_d_results.json --benchmarks B4_benchmarks.json \
+    --survivors B4_P6_phase_e_survivors.json --walkforward B4_P6_phase_f_walkforward.json --output B4_P6_backtest_report.md
+# ⛔ CHECKPOINT post-P6 (24/24, survivants, runs flaggés, anomalies) avant P7
+
+# P7 — 212 jobs phase 1 (mesuré serveur : ≈ 3 h à 3 workers, DB locale), 280 fenêtres phase 2 (≈ 1 h), rapport.
+# Calibration d'abord : même commande phase 1 avec --limit 3 (3 jobs grid, ≈ 4 min), puis reprise sans --force.
+# Même littéral --pair-costs-file sur les 3 phases (comparé comme chaîne à la reprise) ; --min-order-usdc 5 aussi
+# sur --phase report ; --phase1-input/--phase2-input obligatoires (les défauts sont les fichiers legacy → exit 2).
+nice -n 10 poetry run python scripts/run_p7_grid_search.py --phase 1 --fees bybit --pair-costs-file $COSTS \
+    --min-order-usdc 5 --workers 3 --timeout 5400 --output results/B4_P7_phase1_cross_validate.json
+nice -n 10 poetry run python scripts/run_p7_grid_search.py --phase 2 --fees bybit --pair-costs-file $COSTS \
+    --min-order-usdc 5 --workers 3 --timeout 5400 --phase1-input results/B4_P7_phase1_cross_validate.json \
+    --output results/B4_P7_phase2_walk_forward.json
+poetry run python scripts/run_p7_grid_search.py --phase report --fees bybit --pair-costs-file $COSTS --min-order-usdc 5 \
+    --phase1-input results/B4_P7_phase1_cross_validate.json --phase2-input results/B4_P7_phase2_walk_forward.json \
+    --benchmarks results/B4_benchmarks.json --report results/B4_P7_optimization_report.md \
+    --selection results/B4_P7_final_selection.json
+```
+
+Règle de flag (GO GATE A) : `scripts/b4_flags.py` — tout run grid dont le bloc `liquidation` montre un résidu, une
+divergence d'inventaire > 1e-12 BTC ou `net_pnl ≠ net_pnl_lot_basis` est nommé dans les rapports P6/P7
+(section « Flagged runs ») ; mesuré en P6 : 3 flags, tous grid × SOL (« mauvais pop », tolérance de fermeture
+absolue de la stratégie).
+
+Règles GO P7 (Bruno, 2026-09-15 — `results/B4_3_gate_b_configs.md` § 7) : (1) une config flaggée est **inéligible**
+à la sélection paper quel que soit son score (`p7_report.py` la sort de `selected_for_paper` → `ineligible_flagged`) ;
+(2) le rapport note que le Sharpe DCA n'est pas comparable (courbe majoritairement cash), compare au DCA en
+return/MaxDD et au B&H en Sharpe, et affiche le nombre de trades à côté de chaque métrique ; (3) critères P7 tels
+quels — zéro config passante = zéro sélection paper.
+
 ## Lancer les 24 backtests P6 en parallèle
 
 Pour (re)lancer toute la campagne P6 (8 stratégies × 3 paires), utiliser le runner
@@ -185,8 +248,10 @@ poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/U
 - `--trades-out PATH.json` : dump trade par trade (prix, prix de référence, fee, taux, base, liquidité
   maker/taker, spread/slippage) — run unitaire seulement (pas avec `--cross-validate`)
 - `--pair-costs-file PATH.json` : overrides de spread/slippage par paire pour les fills market
-  (`{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}`) ; moteur signal seulement ; sans fichier,
-  les valeurs globales du modèle s'appliquent (comportement inchangé)
+  (`{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}`) : sorties market du moteur signal **et**
+  liquidation terminale du grid (B4.3) ; sans fichier, les valeurs globales du modèle s'appliquent
+- `--min-order-usdc N` : plancher de notionnel d'un BUY du moteur signal (rejet `minOrderAmt` simulé : un ordre
+  dimensionné en dessous est sauté) ; défaut 1 = comportement historique, campagne B4 = 5 (Bybit)
 - `--cross-validate` : split 70% train / 30% test temporel
 - `--save` : sauvegarde les résultats dans `backtest_runs` en DB
 
@@ -210,15 +275,25 @@ résolu par `ExchangeFees.from_name()` ; les constructeurs `BacktestEngine` / `G
 | Moteur signal, entrée `order_type: limit` remplie par toucher (`candle.low <= limit_price`) | limit reposant | **maker**, spread = slippage = 0 |
 | Moteur signal, sortie `order_type: market` (SL, trailing, timeout, régime, flip) à l'open de N+1 | market | **taker** + spread + slippage sur le prix |
 | Grid ATR : niveaux BUY et cibles SELL remplis par toucher | limit reposant | **maker** |
-| Grid ATR : liquidation forcée de fin de run (`_force_close_open_positions`) | market (mark-to-market) | **taker**, sans spread/slippage (choix B4.2) — inopérant sur le chemin grok tant que `_last_close` n'y est pas posé (B4.3) |
+| Grid ATR : liquidation de l'inventaire terminal en fin de run (`_force_close_open_positions`, B4.3) | MARKET au dernier close tradeable (candle 5 m en P6/P7) | **taker** + spread + slippage (`--pair-costs-file` ou globaux du modèle) ; soldes réglés, trades `forced_liquidation`, point d'equity final |
 
 Hypothèses documentées (B4.3) : les sorties limit émises après franchissement du niveau
 (`gemini_scalping_volatilite` TP, `gemini_retour_moyenne` TP) sont marketables en réel mais facturées
 maker ; les ordres appariés de la grille sont pricés sur le fill, pas sur le marché.
 
 Chaque `BacktestTrade` porte `liquidity`, `fee_rate`, `fee_base_usdc`, `reference_price`, `spread_pct`,
-`slippage_pct` ; `--trades-out` les écrit, et `scripts/audit/b4_2_reference_capture.py verify-fees
-dump.json --fees bybit` vérifie trade par trade (entrées 0.0010, sorties market 0.0025 + 0.0002 + 0.0002).
+`slippage_pct` (et `forced_liquidation` pour le grid) ; `--trades-out` les écrit, et
+`scripts/audit/b4_2_reference_capture.py verify-fees dump.json --fees bybit` vérifie trade par trade (entrées
+0.0010, sorties market et liquidations 0.0025 + 0.0002 + 0.0002 ; avec `--pair-costs-file`, le harnais
+attend encore les globaux → ne pas l'appliquer à ces dumps avant le commit campagne).
+
+**`net_pnl` (B4.3, les deux moteurs)** : chaque fee comptée une fois. Signal : `net_pnl = total_pnl − Σ fees
+d'achat` — la fee de vente est déjà dans le `pnl` de chaque trade ; l'ancienne formule `total_pnl − total_fees` la
+comptait deux fois ; run plat ⇒ `net_pnl == ending_balance − capital`. Grid : `net_pnl` = **cash réalisé après la
+liquidation terminale** (`usdc − capital`, identité par construction), égal à `total_pnl − fees d'achat`
+(`liquidation.net_pnl_lot_basis` du dump) dès que la comptabilité par lot concorde avec le wallet — un écart signale
+une divergence d'inventaire (`residual_net_proceeds`, `inventory_divergence_btc`). Vérifié à 1e-9 sur les rejeux de
+référence (`results/B4_3_chantier0_gate_a.md`). Le critère de drift B5 lit ce chiffre.
 Régression iso-fees : `capture` / `compare` / `normalise-log` du même harnais (voir
 `results/B4_2_fees_engine_report.md`). Chaque entrée de résultat P6/P7 porte sa clé `fees` ; la reprise
 refuse un fichier d'un autre modèle ou sans clé (`--force` = seule échappatoire).
@@ -277,13 +352,16 @@ Pour évaluer la qualité réelle d'une stratégie, regarde le **Profit Factor**
 ### Métriques spécifiques à la grid
 
 La grid a des particularités :
-- `win_rate: 1.0` est normal (chaque paire complétée est un win)
-- `profit_factor` vaut `inf` quand il n'y a aucun trade perdant (corrigé ; l'ancien `0.0` était un bug)
-- Les **positions ouvertes en fin de backtest** sont valorisées au dernier close dans le return (equity
-  curve) mais **ne sont pas comptées en trades perdants** pour le chemin grok : `_force_close_open_positions`
-  n'y est jamais atteint (`_last_close` posé seulement par la boucle legacy) — biais de survie résiduel,
-  annexe B4.3 (`results/B4_2_fees_engine_report.md`). `win_rate` reste donc 1.0 sur la grid.
-- Regarder plutôt : nombre de paires complétées, profit par paire vs fees, comportement en bear vs bull.
+- Chaque paire maker complétée est un win par construction ; les **pertes** viennent de la **liquidation
+  terminale** (B4.3) : en fin de run l'inventaire ouvert est vendu MARKET au dernier close (taker + spread +
+  slippage), chaque lot compte comme un trade (perdant s'il est sous l'eau), `unrealized_pnl` porte ce P&L
+  réalisé, `total_trades = paires maker + lots liquidés`. Sur le run P6 de référence : 33 lots tous sous
+  l'eau → `win_rate` 0.969, PF inf → 1.66, `net_pnl` 336 → 129 USDC (= `ending − 1000`).
+- `profit_factor` vaut `inf` seulement si aucun lot n'est perdant (inventaire vide ou tout en profit).
+- Le rapport sépare « Grid Pairs Completed (maker) », « Forced Liquidations », « Buy Fees » / « Sell Fees
+  (incl. liquidation) » ; le dump `--trades-out` a un bloc `liquidation` (positions, prix, fees, résidu,
+  divergence d'inventaire — attendus 0 sur tout run sain).
+- Regarder : paires maker vs lots liquidés, profit par paire vs fees, comportement en bear vs bull.
 
 ## Cross-validation
 

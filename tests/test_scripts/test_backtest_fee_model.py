@@ -141,12 +141,17 @@ class TestEngineContract:
         assert engine.fees is custom
         assert engine.fee_model_name == "custom"
 
-    def test_grid_backtester_rejects_pair_costs(self) -> None:
-        """GridBacktester consumes no spread/slippage: accepting the kwarg would be a no-op."""
-        with pytest.raises(TypeError, match="pair_costs"):
-            GridBacktester(
-                _grid_settings(),
-                MagicMock(),
-                fee_model="bybit",
-                pair_costs={"BTC/USDC": PairCosts(Decimal("0.0001"), Decimal("0.0001"))},
-            )
+    def test_grid_backtester_accepts_pair_costs_for_the_liquidation(self) -> None:
+        """B4.3: per-pair costs apply to the grid end-of-run market liquidation only."""
+        override = PairCosts(Decimal("0.0001"), Decimal("0.0001"))
+        engine = GridBacktester(
+            _grid_settings(), MagicMock(), fee_model="bybit", pair_costs={"BTC/USDC": override}
+        )
+        assert engine._pair_costs == {"BTC/USDC": override}
+        assert engine._costs_for_pair("BTC/USDC") == (Decimal("0.0001"), Decimal("0.0001"))
+        assert engine._costs_for_pair("ETH/USDC") == (engine.fees.spread, engine.fees.slippage)
+        assert engine._costs_for_pair(None) == (engine.fees.spread, engine.fees.slippage)
+        # Absent kwarg and pair_costs=None are the same engine (B4.3 GATE A proof, unit level).
+        bare = GridBacktester(_grid_settings(), MagicMock(), fee_model="bybit")
+        explicit = GridBacktester(_grid_settings(), MagicMock(), fee_model="bybit", pair_costs=None)
+        assert bare._pair_costs == explicit._pair_costs == {}

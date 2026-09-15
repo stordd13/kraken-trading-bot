@@ -1,0 +1,48 @@
+# B4.3 chantier 0 — guard (d) amended: signal A replay on 442068a vs B4.2 references
+# run: backtest.py --strategy grok_supertrend_4h --pair BTC/USDC --exchange binance --interval 5 --capital 1000 --start-date 2023-04-01 --end-date 2026-04-01 --fees {binance,bybit} --trades-out ...
+
+## (a) normalised logs: B4.2 HEAD-intact (b4_2_ref_signal_A_head.txt) vs post-chantier-0 (--fees binance)
+lines:     5576 /     5576
+diff exit=1  changed lines (old side): 2
+5528c5528
+< [info     ] backtest_completed             component=backtest net_pnl=22.45285652698451 total_return_pct=2.42 total_trades=46 win_rate=36.96
+---
+> [info     ] backtest_completed             component=backtest net_pnl=24.19731285387008 total_return_pct=2.42 total_trades=46 win_rate=36.96
+5544c5544
+< Net P&L:                       +22.45 USDC
+---
+> Net P&L:                       +24.20 USDC
+
+## (b) harness compare (schema-1 projection), --fees binance: without / with --ignore metrics.net_pnl
+DIFFERENT: $.metrics.net_pnl: 22.45285652698451 != 24.19731285387008
+exit=1
+IDENTICAL (schema-1 projection ignoring metrics.net_pnl): results/b4_2_ref_signal_A_head.json == results/b4_3_ref_signal_A_post_trades.json
+exit=0
+
+## (c) verify-fees --fees binance
+buy/maker                    46
+sell/taker-market            46
+OK: every trade matches fee model binance
+exit=0
+
+## (d) --fees bybit: compare vs results/b4_2_bybit_signal_A.json (without / with --ignore), verify-fees, byte diff
+DIFFERENT: $.metrics.net_pnl: 13.501605322935093 != 19.314423426761564
+exit=1
+IDENTICAL (schema-1 projection ignoring metrics.net_pnl): results/b4_2_bybit_signal_A.json == results/b4_3_bybit_signal_A_post.json
+exit=0
+buy/maker                    46
+sell/taker-market            46
+OK: every trade matches fee model bybit
+exit=0
+byte diff of the two bybit dumps:
+20c20
+<     "net_pnl": 13.501605322935093,
+---
+>     "net_pnl": 19.314423426761564,
+diff exit=1
+
+## (e) net_pnl delta == sum(sell fees) and cash identity net_pnl == ending_balance - 1000 (both fee models)
+binance: trades 92 (buy 46 / sell 46), net_pnl 22.452856527 -> 24.197312854, delta +1.744456327, sum(sell fees) 1.744456327, |delta - sell_fees| = 3.265e-15
+        cash identity: net_pnl - (ending - 1000) = +8.000e-14; buy fees 1.7250000; other metric keys differing: []
+bybit: trades 92 (buy 46 / sell 46), net_pnl 13.501605323 -> 19.314423427, delta +5.812818104, sum(sell fees) 5.812818104, |delta - sell_fees| = 9.143e-16
+        cash identity: net_pnl - (ending - 1000) = -3.600e-14; buy fees 2.300000; other metric keys differing: []

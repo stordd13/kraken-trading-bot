@@ -93,6 +93,10 @@ class Job:
     exchange: str  # OHLC data source only
     candle_interval: int
     fees: str  # fee model applied by the engines (--fees), independent of exchange
+    # B4.3 campaign configs (GATE B): per-pair spread/slippage file and the minimum order
+    # notional; both recorded in every result entry and checked on resume like ``fees``.
+    pair_costs_file: str | None = None
+    min_order_usdc: float = 1.0
 
     @property
     def key(self) -> str:
@@ -109,6 +113,8 @@ class Job:
             "exchange": self.exchange,
             "candle_interval": self.candle_interval,
             "fees": self.fees,
+            "pair_costs_file": self.pair_costs_file,
+            "min_order_usdc": self.min_order_usdc,
         }
 
     @classmethod
@@ -127,6 +133,8 @@ def build_job_list(
     end: datetime = P6_END,
     *,
     fees: str,
+    pair_costs_file: str | None = None,
+    min_order_usdc: float = 1.0,
 ) -> list[dict[str, Any]]:
     return [
         Job(
@@ -139,6 +147,8 @@ def build_job_list(
             exchange=EXCHANGE,
             candle_interval=CANDLE_INTERVAL,
             fees=fees,
+            pair_costs_file=pair_costs_file,
+            min_order_usdc=min_order_usdc,
         ).to_dict()
         for s in strategies
         for p in pairs
@@ -185,6 +195,15 @@ def _fee_mismatch_message(key: str, existing: str | None, requested: str, path: 
     )
 
 
+class CampaignConfigMismatchError(FeeModelMismatchError):
+    """A results file entry was produced with other campaign costs (pair costs / min order)."""
+
+
+def _campaign_signature(entry: dict[str, Any]) -> tuple[str | None, float]:
+    """(pair_costs_file, min_order_usdc) of a result entry; pre-B4.3 entries = (None, 1.0)."""
+    return (entry.get("pair_costs_file"), float(entry.get("min_order_usdc", 1.0)))
+
+
 def filter_pending_jobs(
     jobs: list[dict[str, Any]],
     existing: dict[str, Any],
@@ -193,7 +212,8 @@ def filter_pending_jobs(
     fees: str,
     path: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Jobs not yet in ``existing``; refuses to skip a result made under another fee model."""
+    """Jobs not yet in ``existing``; refuses to skip a result made under another fee model
+    or other campaign costs (``pair_costs_file`` / ``min_order_usdc``, B4.3)."""
     if force:
         return list(jobs)
     pending = []
@@ -206,6 +226,13 @@ def filter_pending_jobs(
         if entry.get("fees") != fees:
             raise FeeModelMismatchError(
                 _fee_mismatch_message(key, entry.get("fees"), fees, path or OUTPUT_PATH)
+            )
+        wanted = (job.get("pair_costs_file"), float(job.get("min_order_usdc", 1.0)))
+        if _campaign_signature(entry) != wanted:
+            raise CampaignConfigMismatchError(
+                f"Resume refused for {key}: {path or OUTPUT_PATH} holds a result produced with "
+                f"(pair_costs_file, min_order_usdc)={_campaign_signature(entry)} but "
+                f"{wanted} was requested. Write to a fresh --output or pass --force."
             )
     return pending
 
@@ -341,7 +368,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
     from krakenbot.core.database import DatabaseManager
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from backtest import BacktestEngine, GridBacktester
+    from backtest import BacktestEngine, GridBacktester, load_pair_costs
 
     # Per-worker logger
     pid = os.getpid()
@@ -357,6 +384,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
         end = datetime.fromisoformat(job.end_iso)
         total_duration = end - start
         split_time = start + total_duration * job.train_ratio
+        pair_costs = load_pair_costs(Path(job.pair_costs_file)) if job.pair_costs_file else None
 
         def _engine() -> Any:
             cls = GridBacktester if job.strategy in GRID_STRATEGIES else BacktestEngine
@@ -368,24 +396,44 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
                 exchange=job.exchange,
                 starting_capital=job.capital,
                 fee_model=job.fees,
+                pair_costs=pair_costs,
+                min_order_usdc=job.min_order_usdc,
             )
 
-        async def _run_segment(seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
+        liquidation: dict[str, Any] = {}
+        effective_params: dict[str, Any] | None = None
+
+        async def _run_segment(name: str, seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
+            nonlocal effective_params
             engine = _engine()
             await engine.run(job.pair, seg_start, seg_end)
+            if hasattr(engine, "liquidation_summary"):
+                liquidation[name] = engine.liquidation_summary()
+            effective_params = getattr(engine, "effective_params", None)
             return engine.metrics.to_dict()
 
         worker_logger.info("worker_job_start", key=job.key)
-        train = await _run_segment(start, split_time)
-        test = await _run_segment(split_time, end)
-        full = await _run_segment(start, end)
+        train = await _run_segment("train", start, split_time)
+        test = await _run_segment("test", split_time, end)
+        full = await _run_segment("all", start, end)
         worker_logger.info("worker_job_done", key=job.key)
 
+        applied = pair_costs.get(job.pair) if pair_costs else None
         return {
             "strategy": job.strategy,
             "pair": job.pair,
             "exchange": job.exchange,
             "fees": job.fees,
+            # B4.3 campaign configs, recorded for the resume check and the report
+            "pair_costs_file": job.pair_costs_file,
+            "pair_costs": (
+                {"spread": str(applied.spread), "slippage": str(applied.slippage)}
+                if applied is not None
+                else None
+            ),
+            "min_order_usdc": job.min_order_usdc,
+            "effective_params": effective_params,
+            "liquidation": liquidation or None,
             "period": {
                 "start": start.isoformat(),
                 "end": end.isoformat(),
@@ -460,6 +508,8 @@ def _apply_result(
             "pair": job["pair"],
             "exchange": job.get("exchange"),
             "fees": job.get("fees"),
+            "pair_costs_file": job.get("pair_costs_file"),
+            "min_order_usdc": job.get("min_order_usdc", 1.0),
             "error": result["error"],
             "traceback": result.get("traceback", ""),
         }
@@ -599,7 +649,31 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Run only first N jobs (after sort). Useful for quick determinism tests.",
     )
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--pair-costs-file",
+        type=Path,
+        default=None,
+        help=(
+            "Per-pair spread/slippage JSON (B4.3 campaign): signal market fills and grid "
+            "terminal liquidation. Recorded in every result entry, checked on resume."
+        ),
+    )
+    parser.add_argument(
+        "--min-order-usdc",
+        type=float,
+        default=1.0,
+        help="Smallest BUY notional the signal engine places (default 1.0; B4.3 campaign: 5).",
+    )
+    args = parser.parse_args(argv)
+    if args.pair_costs_file is not None:
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from backtest import load_pair_costs
+
+            load_pair_costs(args.pair_costs_file)  # validate early, workers reload it
+        except (OSError, ValueError) as exc:
+            parser.error(f"--pair-costs-file: {exc}")
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -608,7 +682,11 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(Path(__file__).parent.parent / ".env")
     args = parse_args(argv)
 
-    jobs = build_job_list(fees=args.fees)
+    jobs = build_job_list(
+        fees=args.fees,
+        pair_costs_file=str(args.pair_costs_file) if args.pair_costs_file else None,
+        min_order_usdc=args.min_order_usdc,
+    )
     jobs = sort_jobs_by_duration(jobs)
 
     existing = load_existing_results(args.output)

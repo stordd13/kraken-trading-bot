@@ -1,0 +1,42 @@
+================================================================================
+                              GRID BACKTEST REPORT                              
+================================================================================
+
+Strategy:                      grok_grid_atr_adaptive_v4
+Period:                        2023-04-01 to 2026-04-01
+Duration:                      1096.0 days
+
+--------------------------------------------------------------------------------
+GRID METRICS
+--------------------------------------------------------------------------------
+Grid Pairs Completed (maker):  1032
+Grid Profit (maker pairs):     +375.91 USDC
+Total Fees:                    40.05 USDC
+Buy Fees:                      19.97 USDC
+Sell Fees (incl. liquidation): 20.08 USDC
+BTC residual after liquidation: 0.000000 BTC (dust -9.8E-30, divergence -1.1E-29)
+Grid Efficiency:               7.9%
+Total Orders Placed:           26058
+Rebalances:                    3787
+Forced Liquidations:           33 positions (33 trades) @ 68219.69 (close 68240.16, spread 0.0002, slippage 0.0001, taker 0.00075)
+Liquidation P&L:               -227.07 USDC
+Liquidated lots avg holding:   105.6 days
+Liquidation Fees:              0.45 USDC
+
+--------------------------------------------------------------------------------
+PERFORMANCE SUMMARY
+--------------------------------------------------------------------------------
+Starting Balance:              1000.00 USDC
+Ending Balance:                1128.87 USDC
+Total Return:                  +12.89%
+Net P&L:                       +128.87 USDC
+
+--------------------------------------------------------------------------------
+RISK METRICS
+--------------------------------------------------------------------------------
+Max Drawdown:                  258.79 USDC
+Max Drawdown %:                19.70%
+Sharpe Ratio:                  0.02
+Sortino Ratio:                 0.03
+
+================================================================================

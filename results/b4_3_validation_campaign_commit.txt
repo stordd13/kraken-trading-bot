@@ -1,0 +1,16 @@
+# B4.3 campaign commit — validation (working tree on top of 2df4897), local venv, tunnel 5433
+
+## ruff check .
+All checks passed!
+## ruff format --check (p6_5_diagnose_* = debt 10)
+2 files would be reformatted, 223 files already formatted
+## mypy src/ (baseline 64)
+Found 64 errors in 18 files (checked 81 source files)
+
+## full suite (tunnel up, gold hashes included)
+.................................................                        [100%]
+=========================== short test summary info ============================
+1339 passed, 6 skipped in 158.01s (0:02:38)
+
+## determinism quick lane
+6 passed, 24 deselected in 239.34s (0:03:59)

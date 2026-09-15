@@ -1,0 +1,31 @@
+# B4.3 chantier 0 — validation 7.4 on 442068a (+ uncommitted docs/results/audit script), local venv, tunnel 5433
+
+## ruff check .
+All checks passed!
+
+## ruff format --check . (p6_5_diagnose_* = pre-existing debt 10)
+Would reformat: scripts/p6_5_diagnose_dca.py
+Would reformat: scripts/p6_5_diagnose_filters.py
+2 files would be reformatted, 221 files already formatted
+
+## mypy src/ --ignore-missing-imports (baseline 64)
+Found 64 errors in 18 files (checked 81 source files)
+
+## full suite order A default order (pytest -q -p no:cacheprovider -W error::ResourceWarning --ignore=tests/test_scripts/test_run_p6_determinism.py, tunnel up, gold hashes included)
+............................                                             [100%]
+=========================== short test summary info ============================
+1318 passed, 6 skipped in 73.65s (0:01:13)
+
+## full suite order B reversed file order (pytest -q -p no:cacheprovider -W error::ResourceWarning --ignore=tests/test_scripts/test_run_p6_determinism.py, tunnel up, gold hashes included)
+............................                                             [100%]
+=========================== short test summary info ============================
+1318 passed, 6 skipped in 70.36s (0:01:10)
+
+## full suite order C victims first (pytest -q -p no:cacheprovider -W error::ResourceWarning --ignore=tests/test_scripts/test_run_p6_determinism.py, tunnel up, gold hashes included)
+............................                                             [100%]
+=========================== short test summary info ============================
+1318 passed, 6 skipped in 70.60s (0:01:10)
+
+## determinism quick lane
+......                                                                   [100%]
+6 passed, 24 deselected in 249.07s (0:04:09)

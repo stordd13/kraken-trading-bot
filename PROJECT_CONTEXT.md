@@ -49,8 +49,15 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   données (`--fees` obligatoire), chemins morts supprimés, suite de tests hermétique (dotenv, boucle
   d'événements) — mergé dans `dev` (`3406a6c`), tag `v2.7.0-b4-2-fees-engine` (`fea0e16`), serveur en parité
   sans restart — `results/B4_2_fees_engine_report.md`.
-- 🚧 Prochaine phase : B4.3 — re-run P6/P7 avec `--fees bybit` (nouveaux fichiers de sortie), révision du
-  risk management, correction du force-close grok et du double comptage `net_pnl`, re-baseline Bybit.
+- ✅ **B4.3 (15 sept, en review)** — chantier 0 (GATE A, 14 sept) : liquidation terminale du `GridBacktester`
+  atteignable (MARKET au dernier close, taker + spread + slippage), `net_pnl` compté une fois dans les deux moteurs,
+  gold hashes re-baselinés (`results/B4_3_chantier0_gate_a.md`) ; GATE B (15 sept) : coûts par paire mesurés sur
+  `api.bybit.eu` (BTC 2/2 bps, ETH 3/2, SOL 11/2), plancher d'ordre 5 USDC, spacing grid ≥ 2 %, cartographie risk
+  (`results/B4_3_gate_b_configs.md`) ; **campagne serveur `--fees bybit`** : P6 24 combos → **0 survivant** ; P7 212 configs
+  + 280 fenêtres walk-forward → **0 / 35 configs** passent les 7 critères (règles GO P7 : run flaggé = config inéligible,
+  Sharpe DCA non comparable, critères figés) ; grid × SOL : 48 / 48 configs flaggées (dette 14). **Sélection paper vide,
+  argumentée** : `results/B4_bybit_backtest_report.md`. Branche `feat/b4-3-campaign` — **STOP final, en attente de
+  review** (clôture : merge `dev` → CODE_MAP → tag `v2.8.0-b4-3-campaign` → zip).
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout est rejoué en B4 avant tout paper trading.
 
@@ -187,7 +194,10 @@ MARKET sont le premier poste de coût : les backtests doivent utiliser maker et 
 `run_p6_backtests.py`, `run_p7_grid_search.py` et `run_p6_walkforward.py` exigent `--fees {bybit,binance,kraken}`
 (pas de défaut ; absence → erreur), résolu par `ExchangeFees.from_name()` ; le dashboard passe `bybit`.
 `--exchange` ne choisit que les données. Sites de fill : entrées limit et fills de grille = maker ; sorties
-market = taker + spread + slippage ; liquidations forcées de fin de run du GridBacktester = taker.
+market = taker + spread + slippage ; liquidation de l'inventaire terminal du GridBacktester (B4.3) = MARKET au
+dernier close, taker + spread + slippage, soldes réglés. `net_pnl` compte chaque fee une fois dans les deux
+moteurs (B4.3) : signal `total_pnl − fees d'achat`, grid = cash réalisé après liquidation ; run plat ⇒
+`net_pnl == ending − capital` (identité vérifiée sur les rejeux de référence).
 `settings.exchange_fees` reste le modèle **live/paper** des connecteurs ; le backtest ne le lit jamais.
 Chaque résultat P6/P7 porte désormais sa clé `fees` et la reprise refuse un fichier d'un autre modèle
 (`--force` = seule échappatoire) : B4.3 écrit dans de nouveaux fichiers. Détails : `skills/backtest.md`,
@@ -277,9 +287,12 @@ Détail : `ROADMAP.md`.
    `--fees {bybit,binance,kraken}` obligatoire partout, registre `ExchangeFees.from_name()`, maker/taker
    par site de fill (liquidations forcées du GridBacktester → taker), `settings.exchange_fees` = live/paper
    documenté, rollover supprimé avec le chemin short mort. Régression iso-fees bit-exacte prouvée
-   (`results/B4_2_fees_engine_report.md`). Reste (annexes B4.3) : `_force_close_open_positions` inopérant
-   sur le chemin grok (`_last_close` jamais posé), double comptage de la fee de vente dans `net_pnl`,
-   sorties limit marketables facturées maker.
+   (`results/B4_2_fees_engine_report.md`). ✅ **B4.3 chantier 0 (2026-09-14)** : liquidation terminale du
+   grid atteignable sur le chemin grok (MARKET au dernier close, taker + spread + slippage, soldes réglés,
+   trades `forced_liquidation`), `net_pnl` compte chaque fee une fois dans les deux moteurs
+   (`results/B4_3_chantier0_gate_a.md`). Reste : sorties limit marketables facturées maker ; « mauvais pop »
+   de la stratégie grid (fermeture par proximité de prix vs id) instrumenté (`inventory_divergence_btc`), non
+   corrigé (fichier protégé).
 3. ✅ **B3** — `TaskScheduler` généralisé : client REST injecté par le collector (factory, `read_only=True`),
    backfill de gaps `krakenbot.data.backfill`, plus d'import de `scripts/` depuis `src/` ;
    `scripts/fetch_ohlc.py` et `backfill_binance_gap.py` supprimés.
@@ -312,6 +325,22 @@ Détail : `ROADMAP.md`.
     exclues, contrôle inverse sur la vue virtuelle `timestamp − interval`) ; backtest de référence différent
     du baseline P6 (look-ahead multi-TF supprimé). `scripts/binance_vision_import.py` écrit désormais la fin de
     période. Source : `results/B4_1_timestamp_restamp_report.md`.
+13. **Résolution des params de stratégie par nom de classe dans les moteurs de backtest** (constat B4.3 GATE B,
+    vérifié par instanciation) : `BacktestEngine._load_inner_strategy_params` / `GridBacktester._load_grid_strategy_params`
+    cherchent `router.strategies["<classe>"]` alors que `strategies.yaml` indexe les instances (`grid_atr_btc`,
+    `class: grok_grid_atr_adaptive_v4`) → les 5 stratégies grok ont toujours backtesté (P6, P7, B4) sur leurs **défauts
+    de classe** (grid : lots 25 USDC, le YAML dit 10), les 3 gemini (clé = classe) sur le YAML. Décision GO B (B.2a) :
+    défauts conservés pour la campagne B4 ; les params effectifs sont capturés au runtime (`effective_params` dans chaque
+    résultat, `B4_P7_final_selection.json`) et alignent `strategies.yaml` en B5 ; **fix de la résolution post-B4**, après
+    cet alignement (il change toutes les métriques grok). **Prérequis B5** : test one-off prouvant que le chemin
+    live/router résout bien par instance (`class:`) — consigné, non fait.
+14. **Tolérance de fermeture absolue du grid** (`grok_grid_atr_adaptive_v4.py`, ~:631 : `|sell_level − prix| < 1` USD)
+    contre appariement moteur par `position_id` → « mauvais pop » : sur SOL (~180 USD) des cibles SELL à moins de 1 USD
+    sont fréquentes et **40 lots ont été vendus deux fois** sur le run P6 B4 (3 runs flaggés, divergence d'inventaire
+    jusqu'à −0.033 SOL, lot-basis +1.2 % trop optimiste ; `net_pnl` cash exact) ; jamais sur BTC, quasi jamais sur ETH.
+    **Règle GO P7 n° 1** : toute config flaggée est inéligible à la sélection paper ; une candidature grid × SOL exige
+    d'abord ce fix (tolérance **relative**, en % du prix ou fraction du spacing) dans la stratégie protégée, review
+    humaine, puis re-run. Source : `results/B4_P6_checkpoint.md`, `results/B4_bybit_backtest_report.md` § 6.
 12. **`fetch_ohlcv` end-stamped pour Bybit seulement** : le backfill générique (`krakenbot.data.backfill`)
     n'est garanti correct que pour `EXCHANGE_NAME=bybit` ; les clients REST Binance/Kraken renvoient l'open
     time ccxt alors que la DB est end-stamped (B4.1) : un backfill y insérerait des candles décalées d'un

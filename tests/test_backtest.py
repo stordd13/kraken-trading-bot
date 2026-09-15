@@ -140,8 +140,9 @@ async def test_backtest_metrics_calculation():
     assert engine.metrics.winning_trades == 1
     assert engine.metrics.losing_trades == 1
     assert engine.metrics.win_rate == 0.5
-    # Net P&L = total_pnl - total_fees = -0.8 - 1.6 = -2.4
-    assert engine.metrics.net_pnl == Decimal("-2.4")
+    # Net P&L (B4.3) = total_pnl - buy fees = -0.8 - (0.4 + 0.4) = -1.6: each sell's pnl
+    # already carries its own sell fee, so only the buy fees are subtracted once.
+    assert engine.metrics.net_pnl == Decimal("-1.6")
 
 
 def test_backtest_trade_creation():

@@ -53,9 +53,12 @@ SUPERTREND_GRID: dict[str, list[Any]] = {
 
 # 4 × 4 × 3 = 48 combos per pair
 # Note: min_spacing_pct is a FRACTION (0.015 = 1.5%), matching the strategy's
-# internal Decimal usage. The spec lists 1.0/1.5/2.0/2.5 (%) — converted here.
+# internal Decimal usage. P7 phase 1 (Binance fees) swept 1.0/1.5/2.0/2.5 %; B4.3 GATE B
+# re-floors the sweep for Bybit (maker/maker round trip 0.20 % vs 0.15 %: the 1.5 % floor
+# was 10x the cycle cost, 2.0 % keeps that coverage): 1.0 % dropped (5x only), 1.5 % kept
+# as the Binance-calibration witness, 3.0 % added. Production floor proposal: 2.0 %.
 GRID_ATR_GRID: dict[str, list[Any]] = {
-    "min_spacing_pct": [0.010, 0.015, 0.020, 0.025],
+    "min_spacing_pct": [0.015, 0.020, 0.025, 0.030],
     "atr_multiplier": [1.5, 2.0, 2.5, 3.0],
     "bear_protection_mode": ["none", "1w_only", "1d_only"],
 }

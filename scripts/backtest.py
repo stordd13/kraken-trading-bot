@@ -14,8 +14,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+import inspect
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from dotenv import load_dotenv
@@ -156,6 +158,67 @@ def resolve_fee_model(fee_model: str | ExchangeFees | None) -> tuple[ExchangeFee
     raise TypeError(f"fee_model must be a str or ExchangeFees, got {type(fee_model).__name__}")
 
 
+_PARAMS_GET_RE = re.compile(r"""params\.get\(\s*["']([A-Za-z0-9_]+)["']""")
+_SIMPLE_TYPES = (bool, int, float, str, Decimal)
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, _SIMPLE_TYPES) or value is None:
+        return value
+    return repr(value)
+
+
+def capture_effective_params(
+    strategy: Any,
+    passed_params: Mapping[str, Any] | None,
+    override: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Machine-readable snapshot of the parameters a strategy instance actually runs with.
+
+    B4.3 GATE B (decision B.2a): the engines resolve router inner-strategy params by class
+    name while ``strategies.yaml`` keys them by instance, so most strategies backtest on
+    their class defaults. This captures, at runtime, every ``params.get("<name>", …)`` read
+    by the strategy's ``__init__`` with its resolved value (the instance attribute of the same
+    name when it exists, else the passed value) and its source: ``override`` (P7 sweep),
+    ``passed`` (YAML / engine-injected such as ``pair``) or ``class_default``. Never raises.
+    """
+    passed = dict(passed_params or {})
+    override = dict(override or {})
+    names: list[str] = []
+    try:
+        source = inspect.getsource(type(strategy).__init__)
+        for name in _PARAMS_GET_RE.findall(source):
+            if name not in names:
+                names.append(name)
+    except (OSError, TypeError):
+        pass
+    for name in passed:
+        if name not in names:
+            names.append(name)
+    params: dict[str, dict[str, Any]] = {}
+    for name in names:
+        if hasattr(strategy, name):
+            value: Any = _jsonable(getattr(strategy, name))
+        elif name in passed:
+            value = _jsonable(passed[name])
+        else:
+            value = None  # read by __init__ under another attribute name: value not exposed
+        if name in override:
+            origin = "override"
+        elif name in passed:
+            origin = "passed"
+        else:
+            origin = "class_default"
+        params[name] = {"value": value, "source": origin}
+    return {
+        "strategy_class": type(strategy).__name__,
+        "passed_params": {k: _jsonable(v) for k, v in passed.items()},
+        "params": params,
+    }
+
+
 @dataclass
 class BacktestTrade:
     """Record of a simulated trade during backtesting."""
@@ -175,6 +238,8 @@ class BacktestTrade:
     reference_price: Decimal | None = None  # price before spread + slippage
     spread_pct: Decimal | None = None
     slippage_pct: Decimal | None = None
+    # B4.3: True for the end-of-run market liquidation of terminal inventory (grid engine).
+    forced_liquidation: bool = False
 
 
 @dataclass
@@ -189,8 +254,15 @@ class BacktestMetrics:
     # P&L metrics
     total_pnl: Decimal = Decimal("0")
     total_fees: Decimal = Decimal("0")
-    net_pnl: Decimal = Decimal("0")  # total_pnl - total_fees
-    unrealized_pnl: Decimal = Decimal("0")  # Force-close P&L from positions open at backtest end
+    # B4.3: net P&L with every fee counted once. Signal engine: total_pnl minus the BUY-side
+    # fees (every SELL fee is already netted inside its trade's pnl) — equals the cash P&L
+    # ending_balance - starting_balance when the run ends flat. Grid engine: the realised cash
+    # P&L after the terminal liquidation (== total_pnl - buy fees whenever the lot accounting
+    # agrees with the wallet; the difference is the inventory divergence, exposed in the dump).
+    net_pnl: Decimal = Decimal("0")
+    # Grid engine: P&L realised by the end-of-run market liquidation of the terminal inventory
+    # (B4.3). The key name is kept for schema stability (P6/P7 JSON, gold hash, harness).
+    unrealized_pnl: Decimal = Decimal("0")
 
     # Performance ratios
     win_rate: float = 0.0  # winning_trades / total_trades
@@ -262,6 +334,7 @@ class BacktestEngine:
         starting_capital: float = 1000.0,
         strategy_params_override: dict[str, Any] | None = None,
         pair_costs: Mapping[str, PairCosts] | None = None,
+        min_order_usdc: float | Decimal = 1.0,
     ):
         """Initialize backtest engine.
 
@@ -277,6 +350,9 @@ class BacktestEngine:
             starting_capital: Starting balance in USDC
             pair_costs: Optional per-pair spread/slippage overrides applied to market
                 fills only; ``None`` keeps the fee model's global values (unchanged).
+            min_order_usdc: Smallest BUY notional the simulation places (B4.3 GATE B):
+                a sized order below it is skipped, like an exchange ``minOrderAmt``
+                rejection. Default 1 = historical behaviour (bit-identical).
             strategy_params_override: Optional dict of params merged on top of
                 the strategies.yaml entry for this strategy. Used by the P7
                 grid search to inject sweep params without editing the YAML.
@@ -293,6 +369,9 @@ class BacktestEngine:
         # Fee model (B4.2): explicit, decoupled from the OHLC data source.
         self.fees, self.fee_model_name = resolve_fee_model(fee_model)
         self._pair_costs: dict[str, PairCosts] = dict(pair_costs or {})
+        self.min_order_usdc = Decimal(str(min_order_usdc))
+        # Runtime snapshot of the strategy's effective parameters (set by run(), B4.3 GATE B).
+        self.effective_params: dict[str, Any] | None = None
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -669,10 +748,10 @@ class BacktestEngine:
                 "backtest_buy_attempt",
                 usdc_balance=float(self.usdc_balance),
                 order_amount=float(order_amount),
-                min_order=1.0,
+                min_order=float(self.min_order_usdc),
             )
 
-            if order_amount < Decimal("1"):  # Minimum order
+            if order_amount < self.min_order_usdc:  # Minimum order (exchange minOrderAmt)
                 self.logger.warning(
                     "backtest_buy_skipped_min_order", order_amount=float(order_amount)
                 )
@@ -873,8 +952,12 @@ class BacktestEngine:
         if total_losses > 0:
             self.metrics.profit_factor = float(total_wins / total_losses)
 
-        # Net P&L
-        self.metrics.net_pnl = self.metrics.total_pnl - self.metrics.total_fees
+        # Net P&L (B4.3): sell fees are already netted inside each trade's pnl (proceeds - fee
+        # - cost basis, cost basis = order amount - buy fee): subtract the buy fees once.
+        buy_fees = sum(
+            (t.fee for t in self.metrics.trades if t.side == TradeSide.BUY), Decimal("0")
+        )
+        self.metrics.net_pnl = self.metrics.total_pnl - buy_fees
 
         # Final balance — prefer equity curve (values crypto at last candle close)
         if self.equity_curve:
@@ -1164,6 +1247,9 @@ class BacktestEngine:
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies
         self.strategy._skip_db_sync = True
+        self.effective_params = capture_effective_params(
+            self.strategy, strategy_params, self._params_override
+        )
 
         # Pre-register lazy indicators so they exist before warmup data flows.
         # Without this, the first get_*() call returns None because the indicator
@@ -1508,6 +1594,10 @@ class GridBacktester:
 
     GRID_STRATEGIES = {"grok_grid_atr_adaptive_v4"}
 
+    # Decimal prec-28 running sums drift by ~1e-29 BTC while a real grid lot is ~1e-4 BTC:
+    # below this threshold a residual is Decimal dust, not inventory (B4.3 liquidation).
+    _INVENTORY_DUST_BTC = Decimal("1e-12")
+
     def __init__(
         self,
         settings: Settings,
@@ -1519,16 +1609,22 @@ class GridBacktester:
         exchange: str = "kraken",
         starting_capital: float = 1000.0,
         strategy_params_override: dict[str, Any] | None = None,
+        pair_costs: Mapping[str, PairCosts] | None = None,
+        min_order_usdc: float | Decimal = 1.0,
     ):
         """Initialize grid backtester.
 
         ``fee_model`` (required, B4.2) names the fee model (``--fees``) or is an
         ``ExchangeFees`` instance; ``exchange`` only selects the OHLC data source.
-        Grid fills are resting limit orders (maker, no spread/slippage); the only
-        taker site is the end-of-run mark-to-market in ``_force_close_open_positions``,
-        hence no ``pair_costs`` here. ``strategy_params_override`` merges on top of
-        the strategies.yaml entry for this grid strategy. None preserves YAML-only
-        behavior. Used by the P7 grid search.
+        Grid fills are resting limit orders (maker, no spread/slippage). The only
+        taker site is the end-of-run MARKET liquidation of the terminal inventory
+        (``_force_close_open_positions``, B4.3): taker fee plus spread and slippage on
+        the last tradeable close, per-pair override through ``pair_costs`` (same
+        ``PairCosts`` mapping as the signal engine), else the fee-model globals.
+        ``strategy_params_override`` merges on top of the strategies.yaml entry for
+        this grid strategy. None preserves YAML-only behavior. Used by the P7 grid search.
+        ``min_order_usdc`` is accepted for runner symmetry only: grid lots are fixed
+        (``order_size_usdc``) and a buy is skipped when the balance cannot cover the lot.
         """
         self.settings = settings
         self.db_manager = db_manager
@@ -1540,10 +1636,30 @@ class GridBacktester:
 
         # Fee model (B4.2): explicit, decoupled from the OHLC data source.
         self.fees, self.fee_model_name = resolve_fee_model(fee_model)
+        # Per-pair spread/slippage overrides (B4.3): consumed only by the end-of-run market
+        # liquidation; grid fills are resting limit orders and never pay them.
+        self._pair_costs: dict[str, PairCosts] = dict(pair_costs or {})
+        self._pair: str | None = None
+        self.min_order_usdc = Decimal(str(min_order_usdc))
+        self.effective_params: dict[str, Any] | None = None
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
         self.btc_held = Decimal("0")
+
+        # Terminal liquidation state (B4.3): last tradeable close/timestamp seen by run(),
+        # inner strategy exposed on the grok path, and liquidation accounting.
+        self._last_close: Decimal | None = None
+        self._last_timestamp: datetime | None = None
+        self._strategy_obj: Any = None
+        self.liquidated_positions: int = 0
+        self.buy_fees: Decimal = Decimal("0")
+        self.net_pnl_lot_basis: Decimal = Decimal("0")
+        self.inventory_divergence_btc: Decimal = Decimal("0")
+        self.liquidation_dust_btc: Decimal = Decimal("0")
+        self.liquidation_residual_proceeds: Decimal = Decimal("0")
+        self.liquidation_holding_minutes: list[float] = []
+        self._terminal_liquidation_done = False
 
         # Grid state
         self.active_buy_orders: list[dict[str, Decimal]] = []  # {price, amount_usdc}
@@ -1579,6 +1695,26 @@ class GridBacktester:
         # Grid center tracking
         self._grid_center: Decimal | None = None
         self._grid_initialized = False
+
+    def _costs_for_pair(self, pair: str | None) -> tuple[Decimal, Decimal]:
+        """Spread and slippage for the market liquidation on ``pair`` (override or globals)."""
+        override = self._pair_costs.get(pair) if pair is not None else None
+        if override is None:
+            return self.fees.spread, self.fees.slippage
+        return override.spread, override.slippage
+
+    def _record_equity(self, candle: OHLCData) -> None:
+        """Append the mark-to-market equity point and remember the last tradeable close.
+
+        ``_last_close`` / ``_last_timestamp`` feed the end-of-run liquidation (B4.3): on
+        both replay paths they are the close of the last tradeable candle at
+        ``candle_interval`` — the same price as the last equity point.
+        """
+        self.equity_curve.append(
+            (candle.timestamp, self.usdc_balance + self.btc_held * candle.close)
+        )
+        self._last_close = candle.close
+        self._last_timestamp = candle.timestamp
 
     def _apply_params_override(self, params: dict[str, Any] | None) -> dict[str, Any] | None:
         """Merge engine-level override (if any) onto YAML params."""
@@ -1679,6 +1815,9 @@ class GridBacktester:
         )
         strategy._skip_db_sync = True
         strategy._running = True
+        self.effective_params = capture_effective_params(
+            strategy, self._strategy_params, self._params_override
+        )
         return strategy, analyzer
 
     def _get_grok_grid_pending_orders(self, strategy: Any) -> list[dict[str, Any]]:
@@ -2003,6 +2142,7 @@ class GridBacktester:
         self.metrics.duration_days = (end_time - start_time).total_seconds() / 86400
 
         self.settings.trading.pair = pair
+        self._pair = pair
 
         # Override hardcoded pair in YAML strategy_params so the inner strategy
         # (e.g. grok_grid_atr_adaptive_v4) binds to the backtest pair, not the
@@ -2080,8 +2220,7 @@ class GridBacktester:
                 ):
                     self.rebalance_count += 1
 
-                equity = self.usdc_balance + self.btc_held * current_price
-                self.equity_curve.append((candle.timestamp, equity))
+                self._record_equity(candle)
                 continue
 
             if not is_tradeable:
@@ -2121,11 +2260,8 @@ class GridBacktester:
             # Check rebalance
             self._check_rebalance(current_price)
 
-            # Track equity
-            equity = self.usdc_balance + self.btc_held * current_price
-            self.equity_curve.append((candle.timestamp, equity))
-            self._last_close = current_price
-            self._last_timestamp = candle.timestamp
+            # Track equity and remember the last tradeable close for the liquidation
+            self._record_equity(candle)
 
         # Calculate final metrics
         self._calculate_final_metrics()
@@ -2158,113 +2294,232 @@ class GridBacktester:
             exchange=self.exchange,
         )
 
-    def _force_close_open_positions(self) -> None:
-        """Book unrealized P&L on positions still open at backtest end.
+    def _liquidate_lot(
+        self,
+        amount_btc: Decimal,
+        entry_price: Decimal | None,
+        exec_price: Decimal,
+        reference_price: Decimal,
+        spread_pct: Decimal,
+        slippage_pct: Decimal,
+        final_ts: datetime,
+        entry_time: datetime | None = None,
+    ) -> Decimal:
+        """Sell ``amount_btc`` at market at the end of the run and book it (B4.3).
 
-        Without this, grid metrics suffer survivorship bias: only completed
-        buy→sell pairs are recorded as trades (always profitable by design),
-        producing win_rate=1.0 regardless of actual performance. Open longs
-        that went underwater are ignored unless we mark them to the final
-        close.
-
-        The mark-to-market is a forced liquidation (the resting limit sell never
-        filled), so it is billed at the TAKER rate (B4.2). Spread and slippage are
-        deliberately not applied to ``final_price``: the fee model's Binance flat
-        preset keeps non-zero spread/slippage, so a price adjustment here would
-        break the iso-fees regression of B4.2 — modelling choice deferred to B4.3.
-        Note: for ``grok_grid_atr_adaptive_v4`` runs ``_last_close`` is only set by
-        the legacy loop, so this is currently a no-op in production (B4.3 annex).
+        Taker fee on the spread/slippage-adjusted price, balances settled, trade tagged
+        ``forced_liquidation``. ``entry_price`` None means BTC held without a known lot
+        (inventory divergence): the proceeds are real cash (credited, counted in the
+        realised ``net_pnl``) but no lot pnl / win-loss is booked. ``entry_time`` feeds the
+        liquidation holding-time statistic. Returns the booked lot pnl (0 when unknown).
         """
-        final_price = getattr(self, "_last_close", Decimal("0"))
-        final_ts = getattr(self, "_last_timestamp", self.metrics.end_time)
-        if final_price <= 0 or final_ts is None:
-            return
+        gross_usdc = amount_btc * exec_price
+        fee = gross_usdc * self.fees.taker
+        net_usdc = gross_usdc - fee
+        pnl = None if entry_price is None else net_usdc - amount_btc * entry_price
 
-        unrealized_total = Decimal("0")
-        for sell in list(self.active_sell_orders):
-            amount_btc = sell["amount_btc"]
-            entry_price = sell["entry_price"]
-            gross_usdc = amount_btc * final_price
-            fee = gross_usdc * self.fees.taker
-            net_usdc = gross_usdc - fee
-            pnl = net_usdc - amount_btc * entry_price
-            unrealized_total += pnl
-
-            self.metrics.trades.append(
-                BacktestTrade(
-                    timestamp=final_ts,
-                    side=TradeSide.SELL,
-                    price=final_price,
-                    amount_usdc=gross_usdc,
-                    amount_crypto=amount_btc,
-                    fee=fee,
-                    pnl=pnl,
-                    liquidity="taker",
-                    fee_rate=self.fees.taker,
-                    fee_base_usdc=gross_usdc,
-                    reference_price=final_price,
-                    spread_pct=Decimal("0"),
-                    slippage_pct=Decimal("0"),
-                )
-            )
+        self.btc_held -= amount_btc
+        self.usdc_balance += net_usdc
+        self.total_fees += fee
+        if pnl is not None:
             self.metrics.total_pnl += pnl
-            self.total_fees += fee
-            self.pairs_completed += 1
+            self.liquidated_positions += 1
             if pnl > 0:
                 self.metrics.winning_trades += 1
             else:
                 self.metrics.losing_trades += 1
-        self.active_sell_orders.clear()
+        else:
+            self.liquidation_residual_proceeds += net_usdc
+        if entry_time is not None:
+            self.liquidation_holding_minutes.append((final_ts - entry_time).total_seconds() / 60)
 
-        # Also close Grok-grid positions held by the inner strategy (if present).
-        inner_strategy = getattr(self, "_strategy_obj", None)
+        self.metrics.trades.append(
+            BacktestTrade(
+                timestamp=final_ts,
+                side=TradeSide.SELL,
+                price=exec_price,
+                amount_usdc=gross_usdc,
+                amount_crypto=amount_btc,
+                fee=fee,
+                pnl=pnl,
+                liquidity="taker",
+                fee_rate=self.fees.taker,
+                fee_base_usdc=gross_usdc,
+                reference_price=reference_price,
+                spread_pct=spread_pct,
+                slippage_pct=slippage_pct,
+                forced_liquidation=True,
+            )
+        )
+        return pnl if pnl is not None else Decimal("0")
+
+    def _force_close_open_positions(self) -> None:
+        """Liquidate the terminal inventory at MARKET on the last tradeable close (B4.3).
+
+        Without this, grid metrics suffer survivorship bias: only completed buy→sell
+        pairs are recorded (always profitable by design), win_rate is 1.0 and open lots
+        that went underwater are never counted. Semantics (brief B4.3 §4a): every open
+        lot — legacy ``active_sell_orders`` and the inner grok strategy's
+        ``open_positions`` — is sold at ``last_close × (1 − spread − slippage)`` with the
+        TAKER fee (per-pair ``pair_costs`` override, else the fee-model globals); balances
+        are settled (``btc_held`` → 0, ``usdc_balance`` += net proceeds); each trade is
+        tagged ``forced_liquidation``; one final equity point is appended so ending
+        balance, return, drawdown and Sharpe all carry the liquidation cost.
+
+        Inventory reconciliation: the strategy closes positions by price proximity while
+        the engine debits by position id, so ``sum(lots)`` can diverge from ``btc_held``
+        (phantom lot). A lot exceeding the BTC actually held by more than
+        ``_INVENTORY_DUST_BTC`` is clamped; BTC held without any lot is liquidated as one
+        trade with unknown cost basis (``pnl`` None); |residual| <= dust is written off.
+        The signed divergence and the written-off dust are surfaced on the engine.
+        Idempotent: the liquidation is booked once per run (the inner strategy still lists
+        its positions afterwards, the engine does not notify it).
+        """
+        if self._terminal_liquidation_done:
+            return
+        reference_price = self._last_close
+        final_ts = self._last_timestamp or self.metrics.end_time
+        if reference_price is None or reference_price <= 0 or final_ts is None:
+            return  # no tradeable candle replayed: nothing to mark
+        self._terminal_liquidation_done = True
+
+        spread_pct, slippage_pct = self._costs_for_pair(self._pair)
+        # Exact form mirrored from the signal engine's market sell (verify-fees checks it).
+        exec_price = reference_price * (Decimal("1") - spread_pct - slippage_pct)
+
+        lots: list[tuple[Decimal, Decimal, datetime | None]] = [
+            (order["amount_btc"], order["entry_price"], order.get("entry_time"))
+            for order in self.active_sell_orders
+        ]
+        inner_strategy = self._strategy_obj
         if inner_strategy is not None and hasattr(inner_strategy, "open_positions"):
             for position in list(inner_strategy.open_positions):
                 amount_btc = getattr(position, "amount_btc", None)
                 entry_price = getattr(position, "entry_price", None)
                 if amount_btc is None or entry_price is None:
                     continue
-                gross_usdc = amount_btc * final_price
-                fee = gross_usdc * self.fees.taker
-                net_usdc = gross_usdc - fee
-                pnl = net_usdc - amount_btc * entry_price
-                unrealized_total += pnl
+                lots.append((amount_btc, entry_price, getattr(position, "entry_time", None)))
 
-                self.metrics.trades.append(
-                    BacktestTrade(
-                        timestamp=final_ts,
-                        side=TradeSide.SELL,
-                        price=final_price,
-                        amount_usdc=gross_usdc,
-                        amount_crypto=amount_btc,
-                        fee=fee,
-                        pnl=pnl,
-                        liquidity="taker",
-                        fee_rate=self.fees.taker,
-                        fee_base_usdc=gross_usdc,
-                        reference_price=final_price,
-                        spread_pct=Decimal("0"),
-                        slippage_pct=Decimal("0"),
-                    )
-                )
-                self.metrics.total_pnl += pnl
-                self.total_fees += fee
-                self.pairs_completed += 1
-                if pnl > 0:
-                    self.metrics.winning_trades += 1
-                else:
-                    self.metrics.losing_trades += 1
+        self.inventory_divergence_btc = self.btc_held - sum(
+            (amount for amount, _, _ in lots), Decimal("0")
+        )
+
+        unrealized_total = Decimal("0")
+        booked = 0
+        for amount_btc, entry_price, entry_time in lots:
+            if amount_btc - self.btc_held > self._INVENTORY_DUST_BTC:
+                # Phantom lot (strategy closed another lot by proximity): clamp to what is held.
+                amount_btc = max(self.btc_held, Decimal("0"))
+            if amount_btc <= 0:
+                continue
+            unrealized_total += self._liquidate_lot(
+                amount_btc,
+                entry_price,
+                exec_price,
+                reference_price,
+                spread_pct,
+                slippage_pct,
+                final_ts,
+                entry_time,
+            )
+            booked += 1
+        if self.btc_held > self._INVENTORY_DUST_BTC:
+            # BTC held without a matching lot: cost basis unknown, proceeds still real.
+            self._liquidate_lot(
+                self.btc_held,
+                None,
+                exec_price,
+                reference_price,
+                spread_pct,
+                slippage_pct,
+                final_ts,
+            )
+            booked += 1
+        self.liquidation_dust_btc = self.btc_held  # |x| <= dust after the above
+        self.btc_held = Decimal("0")
+        self.active_sell_orders.clear()
+
+        if booked:
+            self.equity_curve.append(
+                (final_ts, self.usdc_balance + self.btc_held * reference_price)
+            )
+            self.logger.info(
+                "grid_terminal_liquidation",
+                positions=self.liquidated_positions,
+                trades=booked,
+                reference_price=float(reference_price),
+                price=float(exec_price),
+                pnl=float(unrealized_total),
+                dust_btc=float(self.liquidation_dust_btc),
+                divergence_btc=float(self.inventory_divergence_btc),
+            )
+        if abs(self.inventory_divergence_btc) > self._INVENTORY_DUST_BTC:
+            self.logger.warning(
+                "grid_liquidation_inventory_divergence",
+                divergence_btc=float(self.inventory_divergence_btc),
+                lots=len(lots),
+            )
 
         self.metrics.unrealized_pnl = unrealized_total
 
+    def liquidation_summary(self) -> dict[str, Any]:
+        """Terminal-liquidation indicators of the finished run (B4.3), JSON-serialisable.
+
+        Persisted by the campaign runners next to the metrics so the reports can flag any
+        run whose inventory diverged (``residual_net_proceeds`` / ``inventory_divergence_btc``
+        beyond Decimal dust) or whose realised-cash ``net_pnl`` differs from the lot-basis
+        figure. Same content as the ``liquidation`` block of ``dump_trades_json``.
+        """
+        trades = list(self.metrics.trades)
+        tagged = [t for t in trades if t.forced_liquidation]
+        first = tagged[0] if tagged else None
+        holding = self.liquidation_holding_minutes
+        return {
+            "buy_fees": _dec(self.buy_fees),
+            "sell_fees": _dec(self.total_fees - self.buy_fees),
+            "net_pnl_lot_basis": _dec(self.net_pnl_lot_basis),
+            "residual_net_proceeds": _dec(self.liquidation_residual_proceeds),
+            "avg_holding_minutes": (sum(holding) / len(holding)) if holding else None,
+            "positions": self.liquidated_positions,
+            "trades": len(tagged),
+            "residual_trade_btc": _dec(
+                sum((t.amount_crypto for t in tagged if t.pnl is None), Decimal("0"))
+            ),
+            "dust_written_off_btc": _dec(self.liquidation_dust_btc),
+            "inventory_divergence_btc": _dec(self.inventory_divergence_btc),
+            "pnl": _dec(self.metrics.unrealized_pnl),
+            "fees": _dec(sum((t.fee for t in tagged), Decimal("0"))),
+            "gross_usdc": _dec(sum((t.amount_usdc for t in tagged), Decimal("0"))),
+            "timestamp": first.timestamp.isoformat() if first else None,
+            "reference_price": _dec(first.reference_price) if first else None,
+            "price": _dec(first.price) if first else None,
+            "spread_pct": _dec(first.spread_pct) if first else None,
+            "slippage_pct": _dec(first.slippage_pct) if first else None,
+        }
+
     def _calculate_final_metrics(self) -> None:
         """Calculate final performance metrics."""
-        # Force-close any still-open positions so losing trades are counted.
+        # Liquidate the terminal inventory first so its losses are counted (B4.3).
         self._force_close_open_positions()
 
-        self.metrics.total_trades = self.pairs_completed
+        self.metrics.total_trades = self.pairs_completed + self.liquidated_positions
         self.metrics.total_fees = self.total_fees
-        self.metrics.net_pnl = self.metrics.total_pnl - self.total_fees
+        # B4.3: every SELL fee (maker fill or taker liquidation) is already inside its trade's
+        # pnl (pnl = net proceeds - cost basis, cost basis = amount_usdc - buy fee), so the buy
+        # fee is the only fee not yet netted: net_pnl_lot_basis = total_pnl - buy fees. Once the
+        # inventory is liquidated the wallet is flat and net_pnl is the REALISED CASH P&L
+        # (usdc_balance - starting_balance == ending_balance - starting_balance, by
+        # construction); it equals net_pnl_lot_basis whenever the lot accounting agrees with the
+        # wallet — the difference, if any, is the inventory divergence (residual proceeds with
+        # unknown cost basis, or a clamped phantom lot) and is exposed in the dump.
+        self.buy_fees = sum(
+            (t.fee for t in self.metrics.trades if t.side == TradeSide.BUY), Decimal("0")
+        )
+        self.net_pnl_lot_basis = self.metrics.total_pnl - self.buy_fees
+        if self._terminal_liquidation_done and self.btc_held == 0:
+            self.metrics.net_pnl = self.usdc_balance - self.metrics.starting_balance
+        else:
+            self.metrics.net_pnl = self.net_pnl_lot_basis
 
         if self.metrics.total_trades > 0:
             self.metrics.win_rate = self.metrics.winning_trades / self.metrics.total_trades
@@ -2287,9 +2542,14 @@ class GridBacktester:
             self.metrics.profit_factor = float("inf")
         # else: keep default 0.0 (no trades)
 
-        # Average holding time — match each sell to the most recent prior buy
+        # Average holding time — match each maker sell to the most recent prior buy. Forced
+        # liquidations are excluded (they all share the final timestamp and would each be
+        # matched to the run's last buy); their real holding time, from the lot's entry time,
+        # is reported in the liquidation block (liquidation_holding_minutes).
         buy_trades_by_ts = {t.timestamp: t for t in self.metrics.trades if t.side == TradeSide.BUY}
-        sell_trades = [t for t in self.metrics.trades if t.side == TradeSide.SELL]
+        sell_trades = [
+            t for t in self.metrics.trades if t.side == TradeSide.SELL and not t.forced_liquidation
+        ]
         holding_times: list[float] = []
         for sell_trade in sell_trades:
             matching_buys = [
@@ -2374,12 +2634,19 @@ class GridBacktester:
         print("GRID METRICS")
         print("-" * 80)
 
-        print(f"{'Grid Pairs Completed:':<30} {self.pairs_completed}")
-        print(f"{'Grid Profit:':<30} {float(self.grid_profit):+.2f} USDC")
+        print(f"{'Grid Pairs Completed (maker):':<30} {self.pairs_completed}")
+        print(f"{'Grid Profit (maker pairs):':<30} {float(self.grid_profit):+.2f} USDC")
         print(f"{'Total Fees:':<30} {float(self.total_fees):.2f} USDC")
-        print(f"{'Net Grid Profit:':<30} {float(self.grid_profit - self.total_fees):+.2f} USDC")
+        print(f"{'Buy Fees:':<30} {float(self.buy_fees):.2f} USDC")
+        print(
+            f"{'Sell Fees (incl. liquidation):':<30} "
+            f"{float(self.total_fees - self.buy_fees):.2f} USDC"
+        )
 
-        print(f"{'BTC Held (unrealized):':<30} {float(self.btc_held):.6f} BTC")
+        print(
+            f"{'BTC residual after liquidation:':<30} {float(self.btc_held):.6f} BTC "
+            f"(dust {self.liquidation_dust_btc}, divergence {self.inventory_divergence_btc})"
+        )
 
         efficiency = (
             (self.pairs_completed * 2) / self.total_orders_placed * 100
@@ -2389,6 +2656,28 @@ class GridBacktester:
         print(f"{'Grid Efficiency:':<30} {efficiency:.1f}%")
         print(f"{'Total Orders Placed:':<30} {self.total_orders_placed}")
         print(f"{'Rebalances:':<30} {self.rebalance_count}")
+
+        liquidations = [t for t in self.metrics.trades if t.forced_liquidation]
+        if liquidations:
+            first = liquidations[0]
+            print(
+                f"{'Forced Liquidations:':<30} {self.liquidated_positions} positions "
+                f"({len(liquidations)} trades) @ {float(first.price):.2f} "
+                f"(close {float(first.reference_price or 0):.2f}, spread {first.spread_pct}, "
+                f"slippage {first.slippage_pct}, taker {self.fees.taker})"
+            )
+            print(f"{'Liquidation P&L:':<30} {float(self.metrics.unrealized_pnl):+.2f} USDC")
+            if self.liquidation_holding_minutes:
+                avg_h = sum(self.liquidation_holding_minutes) / len(
+                    self.liquidation_holding_minutes
+                )
+                print(f"{'Liquidated lots avg holding:':<30} {avg_h / 1440:.1f} days")
+            print(
+                f"{'Liquidation Fees:':<30} "
+                f"{float(sum((t.fee for t in liquidations), Decimal('0'))):.2f} USDC"
+            )
+        else:
+            print(f"{'Forced Liquidations:':<30} 0 (inventory empty)")
 
         print("\n" + "-" * 80)
         print("PERFORMANCE SUMMARY")
@@ -2541,7 +2830,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help=(
             "JSON per-pair spread/slippage overrides for market fills, e.g. "
-            '{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}. Signal engine only.'
+            '{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}. Applies to the '
+            "signal engine's market fills and to the grid end-of-run liquidation."
         ),
     )
     parser.add_argument(
@@ -2549,6 +2839,15 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Write the per-trade fee audit JSON after the run (single run only).",
+    )
+    parser.add_argument(
+        "--min-order-usdc",
+        type=float,
+        default=1.0,
+        help=(
+            "Smallest BUY notional the signal engine places (exchange minOrderAmt); smaller "
+            "sized orders are skipped. Default 1.0 = historical behaviour (B4.3 campaign: 5)."
+        ),
     )
     return parser
 
@@ -2559,11 +2858,6 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     args = parser.parse_args(argv)
     args.pair_costs = None
     if args.pair_costs_file is not None:
-        if args.strategy in GridBacktester.GRID_STRATEGIES:
-            parser.error(
-                "--pair-costs-file applies to the signal engine only: GridBacktester fills "
-                "are resting limit orders (maker) and consume no spread/slippage"
-            )
         try:
             args.pair_costs = load_pair_costs(args.pair_costs_file)
         except (OSError, ValueError) as exc:
@@ -2590,8 +2884,11 @@ def dump_trades_json(
 ) -> None:
     """Write the per-trade fee audit JSON (superset of scripts/audit/b4_2_reference_capture
     schema 1: same core keys, plus fee model, rates, overrides and per-trade audit fields).
-    All Decimals are serialised with ``str()`` — no rounding."""
+    All Decimals are serialised with ``str()`` — no rounding. Grid engines additionally
+    carry the per-trade ``forced_liquidation`` flag and a top-level ``liquidation`` block
+    (B4.3); signal dumps are unchanged."""
     trades = list(engine.metrics.trades)
+    is_grid = hasattr(engine, "pairs_completed")
     payload: dict[str, Any] = {
         "schema_version": 1,
         "engine": type(engine).__name__,
@@ -2633,6 +2930,7 @@ def dump_trades_json(
                 "slippage_pct": _dec(trade.slippage_pct),
                 "pnl": _dec(trade.pnl),
                 "regime": trade.regime,
+                **({"forced_liquidation": trade.forced_liquidation} if is_grid else {}),
             }
             for n, trade in enumerate(trades, start=1)
         ],
@@ -2662,6 +2960,8 @@ def dump_trades_json(
                 "force_closed": sum(1 for t in trades if t.liquidity == "taker"),
             },
         }
+        # B4.3 terminal liquidation block — outside the harness' schema-1 projection.
+        payload["liquidation"] = engine.liquidation_summary()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
@@ -2733,6 +3033,7 @@ async def main(argv: list[str] | None = None) -> None:
                 starting_capital=args.capital,
                 fee_model=args.fees,
                 pair_costs=args.pair_costs,
+                min_order_usdc=args.min_order_usdc,
             )
             train_metrics = await train_engine.run(args.pair, start_time, split_time)
             train_engine.print_report()
@@ -2751,6 +3052,7 @@ async def main(argv: list[str] | None = None) -> None:
                 starting_capital=args.capital,
                 fee_model=args.fees,
                 pair_costs=args.pair_costs,
+                min_order_usdc=args.min_order_usdc,
             )
             test_metrics = await test_engine.run(args.pair, split_time, end_time)
             test_engine.print_report()
@@ -2827,6 +3129,8 @@ async def main(argv: list[str] | None = None) -> None:
                     exchange=args.exchange,
                     starting_capital=args.capital,
                     fee_model=args.fees,
+                    pair_costs=args.pair_costs,
+                    min_order_usdc=args.min_order_usdc,
                 )
             else:
                 engine = BacktestEngine(
@@ -2838,6 +3142,7 @@ async def main(argv: list[str] | None = None) -> None:
                     starting_capital=args.capital,
                     fee_model=args.fees,
                     pair_costs=args.pair_costs,
+                    min_order_usdc=args.min_order_usdc,
                 )
 
             await engine.run(args.pair, start_time, end_time)
