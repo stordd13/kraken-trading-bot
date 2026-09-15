@@ -2,7 +2,7 @@
 
 > Une ligne par fichier conservé : date, phase, verdict, pourquoi il est encore là.
 > Tout ce qui n'est plus une référence courante est dans `results/archive/` (rien n'est supprimé).
-> Dernière mise à jour : 2026-09-14 (B4.3 chantier 0).
+> Dernière mise à jour : 2026-09-15 (B4.3 GATE B).
 
 ## Fichiers de référence (à la racine de `results/`)
 
@@ -13,6 +13,7 @@
 | `b4_3_ref_signal_A_post.txt` · `b4_3_ref_signal_A_post_trades.json` · `b4_3_bybit_signal_A_post.json` | 2026-09-14 | B4.3 chantier 0 | Rejeu signal A post-chantier 0 (log normalisé, dumps `--trades-out` binance et bybit) : identiques aux références B4.2 sauf `metrics.net_pnl` (+1.7445 / +5.8128 = Σ fees vente) | Nouvelles références signal (`net_pnl` unifié) |
 | `b4_3_ref_grid_A_post.json` · `b4_3_ref_grid_A_post_trades.json` · `b4_3_ref_grid_A_post.report.txt` · `b4_3_bybit_grid_A_post.json` | 2026-09-14 | B4.3 chantier 0 | Grid ATR v4 BTC période P6 avec liquidation terminale : 2 097 trades B4.2 bit-identiques + 33 liquidations taker (binance : PF 1.6555, `net_pnl` 128.87, ending 1 128.87 ; bybit : PF 1.617, `net_pnl` 114.21) ; log brut 130 Mo non versionné (sha256 dans `b4_3_step0_baselines.txt`) ; deux captures identiques | **Nouvelles références grid** (supersèdent `b4_2_ref_grid_A_head.*`) ; baseline de la campagne |
 | `b4_3_ref_grid_quick_post.json` · `b4_3_ref_grid_quick_post_trades.json` · `b4_3_bybit_grid_quick_post.json` | 2026-09-14 | B4.3 chantier 0 | Fenêtre gold hash (2025-03-01 → 03-15) avec liquidation : 45 BUY / 37 SELL maker / 8 liquidations, PF 1.2125 (binance) / 1.1552 (bybit) | Cibles rapides des hashes H1/H2 |
+| `B4_3_gate_b_configs.md` · `q3_orderbook.jsonl` | 2026-09-15 | B4.3 GATE B | Configs de campagne validées (GO B) : coûts par paire dérivés des 126 mesures de carnet Bybit EU (`q3_orderbook.jsonl`, 14-15/09) → `config/pair_costs_b4.json` (BTC 2/2 bps, ETH 3/2, SOL 11/2), risk mapping (défauts de classe conservés, dette 13), `--min-order-usdc 5`, grilles P7 (plancher 2.0 %), serveur, sorties `B4_*` | Contrat de la campagne ; source des coûts |
 | `B4_2_fees_engine_report.md` | 2026-09-14 | B4.2 | **Modèle de fees maker/taker découplé de la source de données** (`--fees` obligatoire) : table de classification des sites de fill, chemins morts prouvés, cause racine dotenv + `ResourceWarning`, régression iso-fees bit-exacte, validations | Source de la résolution des dettes 2 et 9 ; prérequis de B4.3 |
 | `b4_2_ref_signal_A_head.txt` · `b4_2_ref_signal_A_head.json` | 2026-09-14 | B4.2 étape 0 | Run A (`grok_supertrend_4h` BTC, période P6, 5m) sur le moteur HEAD intact : log complet + capture JSON pleine précision (92 fills, +2.42 %) ; log normalisé identique à `b4_reference_backtest_A_p6period.txt` (serveur) | Cible bit-exacte du rejeu `--fees binance` |
 | `b4_2_ref_grid_quick_head.txt` · `b4_2_ref_grid_quick_head.json` | 2026-09-14 | B4.2 étape 0 | Grid ATR v4 BTC sur la fenêtre du gold hash (2025-03-01 → 03-15) : 45 BUY / 37 SELL, 0 liquidation forcée (moteur biaisé) | **Supersédée par B4.3** (`b4_3_ref_grid_quick_post.*`) ; baseline de la réconciliation GATE A |
@@ -51,7 +52,9 @@ en B4 avec les fees Bybit.
 
 - `P7_phase2_walk_forward.json`, `P7_final_selection.json`, `P7_optimization_report.md` : produits par
   `scripts/run_p7_grid_search.py --phase 2` / `--phase report` — non lancés (rejoués en B4).
-- `B4_3_gate_b_configs.md` : document GATE B (coûts par paire, risk, grilles P7, exécution serveur, sorties) — après le GO A.
+- `B4_P6_phase_d_results.json`, `B4_P6_phase_e_survivors.json`, `B4_P6_phase_e_filtering.md`, `B4_P6_phase_f_walkforward.json`,
+  `B4_P6_backtest_report.md`, `B4_benchmarks.json`, `B4_P7_phase1_cross_validate.json`, `B4_P7_phase2_walk_forward.json`,
+  `B4_P7_final_selection.json`, `B4_P7_optimization_report.md` : produits par la campagne B4.3 (commandes dans `skills/backtest.md`).
 - `B4_bybit_backtest_report.md` : livrable de B4.
 
 ### Scripts qui écrivent encore dans `results/`

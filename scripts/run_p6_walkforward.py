@@ -28,7 +28,7 @@ from krakenbot.core.database import DatabaseManager
 from krakenbot.core.logger import get_logger
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from backtest import BacktestEngine, GridBacktester
+from backtest import BacktestEngine, GridBacktester, PairCosts, load_pair_costs
 
 logger = get_logger().bind(component="p6_walkforward")
 
@@ -86,31 +86,26 @@ async def run_single_backtest(
     end: datetime,
     *,
     fee_model: str,
-) -> dict:
-    """Run a single backtest and return metrics dict."""
-    if strategy in GRID_STRATEGIES:
-        engine = GridBacktester(
-            settings,
-            db_manager,
-            strategy_name=strategy,
-            candle_interval=5,
-            exchange=EXCHANGE,
-            starting_capital=CAPITAL,
-            fee_model=fee_model,
-        )
-    else:
-        engine = BacktestEngine(
-            settings,
-            db_manager,
-            strategy_name=strategy,
-            candle_interval=5,
-            exchange=EXCHANGE,
-            starting_capital=CAPITAL,
-            fee_model=fee_model,
-        )
+    pair_costs: dict[str, PairCosts] | None = None,
+    min_order_usdc: float = 1.0,
+) -> tuple[dict, dict | None]:
+    """Run a single backtest; return (metrics dict, grid liquidation summary or None)."""
+    cls = GridBacktester if strategy in GRID_STRATEGIES else BacktestEngine
+    engine = cls(
+        settings,
+        db_manager,
+        strategy_name=strategy,
+        candle_interval=5,
+        exchange=EXCHANGE,
+        starting_capital=CAPITAL,
+        fee_model=fee_model,
+        pair_costs=pair_costs,
+        min_order_usdc=min_order_usdc,
+    )
 
     await engine.run(pair, start, end)
-    return engine.metrics.to_dict()
+    liquidation = engine.liquidation_summary() if hasattr(engine, "liquidation_summary") else None
+    return engine.metrics.to_dict(), liquidation
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -126,7 +121,26 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--survivors", type=Path, default=SURVIVORS_PATH)
     parser.add_argument("--output", type=Path, default=OUTPUT_PATH)
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--pair-costs-file",
+        type=Path,
+        default=None,
+        help="Per-pair spread/slippage JSON (B4.3 campaign); must match the survivors' file.",
+    )
+    parser.add_argument(
+        "--min-order-usdc",
+        type=float,
+        default=1.0,
+        help="Smallest BUY notional (default 1.0; B4.3 campaign: 5); must match the survivors.",
+    )
+    args = parser.parse_args(argv)
+    args.pair_costs = None
+    if args.pair_costs_file is not None:
+        try:
+            args.pair_costs = load_pair_costs(args.pair_costs_file)
+        except (OSError, ValueError) as exc:
+            parser.error(f"--pair-costs-file: {exc}")
+    return args
 
 
 async def main(argv: list[str] | None = None) -> int:
@@ -143,7 +157,9 @@ async def main(argv: list[str] | None = None) -> int:
     if not survivors:
         print("No survivors to validate. Exiting.")
         return 0
-    # Survivors are verbatim P6 result entries: they carry the fee model they were selected under.
+    # Survivors are verbatim P6 result entries: they carry the fee model and the campaign
+    # costs they were selected under.
+    wanted_costs = str(args.pair_costs_file) if args.pair_costs_file else None
     for key, data in survivors.items():
         if data.get("fees") != args.fees:
             print(
@@ -153,7 +169,19 @@ async def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
-    print(f"Fee model: {args.fees}")
+        existing_costs = (data.get("pair_costs_file"), float(data.get("min_order_usdc", 1.0)))
+        if existing_costs != (wanted_costs, float(args.min_order_usdc)):
+            print(
+                f"ERROR: survivor {key} was selected with (pair_costs_file, min_order_usdc)="
+                f"{existing_costs}, not {(wanted_costs, float(args.min_order_usdc))}; pass the "
+                "same --pair-costs-file / --min-order-usdc as the P6 run.",
+                file=sys.stderr,
+            )
+            return 2
+    print(
+        f"Fee model: {args.fees}; pair costs: {wanted_costs or 'model globals'}; "
+        f"min order: {args.min_order_usdc} USDC"
+    )
 
     settings = get_settings()
     db_manager = DatabaseManager()
@@ -180,7 +208,7 @@ async def main(argv: list[str] | None = None) -> int:
             for i, w in enumerate(windows):
                 try:
                     # Only run the TEST window (no re-training in P6)
-                    test_metrics = await run_single_backtest(
+                    test_metrics, liquidation = await run_single_backtest(
                         settings,
                         db_manager,
                         strategy,
@@ -188,6 +216,8 @@ async def main(argv: list[str] | None = None) -> int:
                         w["test_start"],
                         w["test_end"],
                         fee_model=args.fees,
+                        pair_costs=args.pair_costs,
+                        min_order_usdc=args.min_order_usdc,
                     )
                     window_results.append(
                         {
@@ -197,6 +227,7 @@ async def main(argv: list[str] | None = None) -> int:
                             "test_start": w["test_start"].isoformat(),
                             "test_end": w["test_end"].isoformat(),
                             "metrics": test_metrics,
+                            "liquidation": liquidation,
                         }
                     )
                     logger.info(
@@ -243,6 +274,8 @@ async def main(argv: list[str] | None = None) -> int:
                 "strategy": strategy,
                 "pair": pair,
                 "fees": args.fees,
+                "pair_costs_file": wanted_costs,
+                "min_order_usdc": args.min_order_usdc,
                 "windows": window_results,
                 "mean_metrics": mean_metrics,
                 "consistency_score": round(consistency_score, 2),

@@ -15,6 +15,50 @@
   « Modèle de fees » ci-dessous.
 - Résultats existants et verdicts : `results/INDEX.md`.
 
+## Campagne B4.3 (fees Bybit, coûts par paire, plancher d'ordre) — commandes validées au GATE B
+
+Toutes les sorties vont dans de **nouveaux** fichiers `results/B4_*` ; les fichiers P6/P7 historiques (sans clé
+`fees`) ne sont jamais réécrits (`--force` interdit dessus). Chaque entrée de résultat enregistre `fees`,
+`pair_costs_file`, `pair_costs` (valeurs appliquées à la paire), `min_order_usdc`, `effective_params` (params
+réellement utilisés par la stratégie, capturés au runtime — la source de l'alignement `strategies.yaml` en B5) et,
+pour le grid, le bloc `liquidation` par segment ; la reprise refuse un fichier produit sous d'autres coûts.
+
+```bash
+# Serveur (tmux b4, jamais la session spread) — LOG_LEVEL=WARNING évite ~130 Mo de logs INFO par run grid
+export LOG_LEVEL=WARNING
+COSTS=config/pair_costs_b4.json   # BTC 2/2 bps, ETH 3/2, SOL 11/2 (dérivation : config/pair_costs_b4.README.md)
+
+# P6 — calibration sur les 3 jobs les plus lourds (les grids), puis reprise automatique des 24
+nice -n 10 poetry run python scripts/run_p6_backtests.py --fees bybit --pair-costs-file $COSTS \
+    --min-order-usdc 5 --workers 3 --timeout 5400 --limit 3 --output results/B4_P6_phase_d_results.json
+nice -n 10 poetry run python scripts/run_p6_backtests.py --fees bybit --pair-costs-file $COSTS \
+    --min-order-usdc 5 --workers 3 --timeout 5400 --output results/B4_P6_phase_d_results.json
+poetry run python scripts/compute_benchmarks.py --fees bybit --pair-costs-file $COSTS --output results/B4_benchmarks.json
+poetry run python scripts/filter_p6_survivors.py --input results/B4_P6_phase_d_results.json \
+    --benchmarks results/B4_benchmarks.json --survivors results/B4_P6_phase_e_survivors.json \
+    --report results/B4_P6_phase_e_filtering.md
+poetry run python scripts/run_p6_walkforward.py --fees bybit --pair-costs-file $COSTS --min-order-usdc 5 \
+    --survivors results/B4_P6_phase_e_survivors.json --output results/B4_P6_phase_f_walkforward.json
+poetry run python scripts/generate_p6_report.py --phase-d B4_P6_phase_d_results.json --benchmarks B4_benchmarks.json \
+    --survivors B4_P6_phase_e_survivors.json --walkforward B4_P6_phase_f_walkforward.json --output B4_P6_backtest_report.md
+# ⛔ CHECKPOINT post-P6 (24/24, survivants, runs flaggés, anomalies) avant P7
+
+# P7 — 212 jobs phase 1 (~27 h à 3 workers), 280 fenêtres phase 2, rapport
+nice -n 10 poetry run python scripts/run_p7_grid_search.py --phase 1 --fees bybit --pair-costs-file $COSTS \
+    --min-order-usdc 5 --workers 3 --timeout 5400 --output results/B4_P7_phase1_cross_validate.json
+nice -n 10 poetry run python scripts/run_p7_grid_search.py --phase 2 --fees bybit --pair-costs-file $COSTS \
+    --min-order-usdc 5 --workers 3 --timeout 5400 --phase1-input results/B4_P7_phase1_cross_validate.json \
+    --output results/B4_P7_phase2_walk_forward.json
+poetry run python scripts/run_p7_grid_search.py --phase report --fees bybit --pair-costs-file $COSTS --min-order-usdc 5 \
+    --phase1-input results/B4_P7_phase1_cross_validate.json --phase2-input results/B4_P7_phase2_walk_forward.json \
+    --benchmarks results/B4_benchmarks.json --report results/B4_P7_optimization_report.md \
+    --selection results/B4_P7_final_selection.json
+```
+
+Règle de flag (GO GATE A) : `scripts/b4_flags.py` — tout run grid dont le bloc `liquidation` montre un résidu, une
+divergence d'inventaire > 1e-12 BTC ou `net_pnl ≠ net_pnl_lot_basis` est nommé dans les rapports P6/P7
+(section « Flagged runs ») ; attendu : aucun.
+
 ## Lancer les 24 backtests P6 en parallèle
 
 Pour (re)lancer toute la campagne P6 (8 stratégies × 3 paires), utiliser le runner
@@ -187,6 +231,8 @@ poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/U
 - `--pair-costs-file PATH.json` : overrides de spread/slippage par paire pour les fills market
   (`{"BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"}}`) : sorties market du moteur signal **et**
   liquidation terminale du grid (B4.3) ; sans fichier, les valeurs globales du modèle s'appliquent
+- `--min-order-usdc N` : plancher de notionnel d'un BUY du moteur signal (rejet `minOrderAmt` simulé : un ordre
+  dimensionné en dessous est sauté) ; défaut 1 = comportement historique, campagne B4 = 5 (Bybit)
 - `--cross-validate` : split 70% train / 30% test temporel
 - `--save` : sauvegarde les résultats dans `backtest_runs` en DB
 

@@ -321,6 +321,15 @@ Détail : `ROADMAP.md`.
     exclues, contrôle inverse sur la vue virtuelle `timestamp − interval`) ; backtest de référence différent
     du baseline P6 (look-ahead multi-TF supprimé). `scripts/binance_vision_import.py` écrit désormais la fin de
     période. Source : `results/B4_1_timestamp_restamp_report.md`.
+13. **Résolution des params de stratégie par nom de classe dans les moteurs de backtest** (constat B4.3 GATE B,
+    vérifié par instanciation) : `BacktestEngine._load_inner_strategy_params` / `GridBacktester._load_grid_strategy_params`
+    cherchent `router.strategies["<classe>"]` alors que `strategies.yaml` indexe les instances (`grid_atr_btc`,
+    `class: grok_grid_atr_adaptive_v4`) → les 5 stratégies grok ont toujours backtesté (P6, P7, B4) sur leurs **défauts
+    de classe** (grid : lots 25 USDC, le YAML dit 10), les 3 gemini (clé = classe) sur le YAML. Décision GO B (B.2a) :
+    défauts conservés pour la campagne B4 ; les params effectifs sont capturés au runtime (`effective_params` dans chaque
+    résultat, `B4_P7_final_selection.json`) et alignent `strategies.yaml` en B5 ; **fix de la résolution post-B4**, après
+    cet alignement (il change toutes les métriques grok). **Prérequis B5** : test one-off prouvant que le chemin
+    live/router résout bien par instance (`class:`) — consigné, non fait.
 12. **`fetch_ohlcv` end-stamped pour Bybit seulement** : le backfill générique (`krakenbot.data.backfill`)
     n'est garanti correct que pour `EXCHANGE_NAME=bybit` ; les clients REST Binance/Kraken renvoient l'open
     time ccxt alors que la DB est end-stamped (B4.1) : un backfill y insérerait des candles décalées d'un

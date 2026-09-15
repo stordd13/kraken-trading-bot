@@ -2,33 +2,40 @@
 
 > Brief : `agent/AGENT_B4_3_CAMPAIGN.md` § 5 (5 points) et § 6 (campagne). Prérequis : GATE A validé (GO Bruno
 > 2026-09-14, `results/B4_3_chantier0_gate_a.md`). Moteur = branche `feat/b4-3-campaign` @ `69fcf2c`
-> (gold hashes `43dcdf8d…` / `818d7fa8…`). **Zéro run de campagne tant que ce document n'est pas validé, valeurs de
-> `config/pair_costs_b4.json` incluses** (fichier = placeholder marqué « valeurs au summary q3 »). Le commit
-> `feat(scripts): b4 campaign configs` (§ 5.3) n'est écrit qu'après le GO B ; il ne change **aucune** métrique par
-> défaut (gold hashes et garde signal inchangés) — les nouveautés n'agissent que par les flags de la campagne.
+> (gold hashes `43dcdf8d…` / `818d7fa8…`). **GO GATE B — Bruno, 2026-09-15 : les 5 points validés, valeurs incluses**
+> (§ 0). Le commit `feat(scripts): b4 campaign configs` (§ 5.3) est écrit après ce GO ; il ne change **aucune**
+> métrique par défaut (gold hashes et garde signal inchangés, vérifiés) — les nouveautés n'agissent que par les flags
+> de la campagne. Séquence validée : commit campagne → calibration `--limit 3` → P6 24 combos → **CHECKPOINT post-P6**
+> (résumé 10 lignes : 24/24, survivants, flags divergence / écart formule-cash, anomalies) **avant** P7 phase 1
+> (~27 h). Tout résultat aberrant = STOP avant la phase suivante.
 
-## 0. Checklist GO B (décisions attendues de Bruno)
+## 0. Décisions GO B (Bruno, 2026-09-15)
 
-| # | Décision | Proposition | Section |
+| # | Décision | Validé | Section |
 |---|---|---|---|
-| B.1 | Valeurs `pair_costs_b4.json` (BTC/ETH/SOL) + règle d'arrondi | placeholder = globaux 0.0002/0.0002 ; règle « p75 nocturne, bp supérieur » | § 1 |
-| B.2a | Params des stratégies grok dans les runs : **défauts de classe** (état P6/P7, comparable) ou résolution YAML par instance (change tout, re-gate) | défauts de classe pour la campagne, YAML aligné au B5 sur les params backtestés ; fix de résolution consigné post-B4 | § 2.1 |
-| B.2b | Plancher de position simulé | `--min-order-usdc 5` (flag runner → moteurs, défaut 1 = comportement actuel) | § 2.3 |
-| B.2c | Runtime pur (max positions, daily loss, exposition, GRM) : documenté, non simulé | valeurs cibles du § 4 PROJECT_CONTEXT reprises pour la config paper B5 | § 2.4 |
-| B.3 | Grilles P7 | `min_spacing_pct: [0.015, 0.020, 0.025, 0.030]`, plancher de production **2.0 %**, reste identique | § 3 |
-| B.4 | Serveur : branche, session tmux, workers, `LOG_LEVEL`, timeouts, fenêtre | `feat/b4-3-campaign` checkout, tmux `b4`, 3 workers `nice -n 10`, `LOG_LEVEL=WARNING`, `--timeout 5400`, calibration `--limit 3` | § 4 |
-| B.5 | Sorties, benchmarks, règle de flag, contenu du commit campagne | fichiers `B4_*`, `--input/--output` explicites, indicateurs de liquidation persistés | § 5 |
+| B.1 | Coûts | `--fees bybit` partout ; `config/pair_costs_b4.json` = **BTC 0.0002/0.0002, ETH 0.0003/0.0002, SOL 0.0011/0.0002**. Règle « p75 nocturne » **amendée** en `max(p75 global, p75 nocturne 00–05 UTC)`, bp supérieur, après constat que le spread est piloté par la volatilité (soirée du 14 : ETH 0.124 %) — amendement strictement conservateur. Source `results/q3_orderbook.jsonl` (versionné au commit campagne). Dérivation § 1 | § 1 |
+| B.2 | Risk mapping validé ; **`--min-order-usdc 5`** ; **B.2a : défauts de classe conservés** pour la campagne. Conditions : (1) le rapport B4 embarque le **dump machine-readable des params effectifs** de chaque config sélectionnée, capturé au runtime (`effective_params` par entrée de résultat, `effective_params` des configs sélectionnées dans `B4_P7_final_selection.json`) — c'est lui qui alignera `strategies.yaml` en B5 ; (2) **dette numérotée** dans `PROJECT_CONTEXT.md` (résolution par nom de classe, dette 13), fix post-B4 après alignement YAML ; (3) test one-off « le chemin live/router résout par instance » = **prérequis B5**, consigné (dette 13) | § 2 |
+| B.3 | Grille spacing `[0.015, 0.020, 0.025, 0.030]`, plancher 2.0 %, reste identique | § 3 |
+| B.4 | Serveur : 3 workers `nice`, tmux `b4`, `LOG_LEVEL=WARNING`, `--timeout 5400`, calibration `--limit 3`, `git pull --ff-only` du commit chantier 0 (la branche est poussée sur `origin` et suivie sur le serveur), `df` consigné. **Ne pas toucher au tmux `spread`** | § 4 |
+| B.5 | Sorties `B4_P6_*` / `B4_P7_*`, benchmarks `--fees bybit`, jamais de `--force` sur legacy | § 5 |
 
 ## 1. Coûts (brief § 5.1)
 
 - **`--fees bybit` partout** : `run_p6_backtests.py`, `run_p6_walkforward.py`, `run_p7_grid_search.py --phase 1|2|report`,
   `compute_benchmarks.py` (§ 5.2). Chaque entrée de résultat porte `fees`, la reprise refuse un autre modèle.
-- **`config/pair_costs_b4.json`** — **PLACEHOLDER** : les trois paires aux globaux Bybit (spread 0.0002, slippage
-  0.0002) pour que le fichier se charge (`load_pair_costs` OK) ; **valeurs réelles au summary q3** (diurne + nocturne
-  01:00-03:00 UTC). Règle d'arrondi proposée (conservateur) : `spread` = p75 du spread **nocturne** en fraction,
-  arrondi au **bp supérieur** (0.0001) ; `slippage` = max(0.0002, p75 nocturne de l'impact mesuré ou, à défaut,
-  spread/2) arrondi au bp supérieur ; BTC restera probablement aux globaux, ETH/SOL au-dessus. Bruno tranche les
-  valeurs et la règle.
+- **`config/pair_costs_b4.json`** (valeurs GO B) et dérivation depuis `results/q3_orderbook.jsonl` (126 mesures de
+  carnet `api.bybit.eu`, 42 par paire, du 2026-09-14 10:46 au 2026-09-15 06:47 UTC, dont 10 nocturnes 00–05 UTC ;
+  `spread_pct` en % du mid ; slippage mesuré pour 1 k USDC) :
+
+  | Paire | p75 spread global | p75 nocturne 00–05 | max → bp supérieur | slippage mesuré p75 | **Retenu** |
+  |---|---|---|---|---|---|
+  | BTC/USDC | 0.018 % (1.8 bps) | 0.0015 % (0.15 bps) | 1.8 → **2 bps** | 0 → plancher 2 bps | **0.0002 / 0.0002** |
+  | ETH/USDC | 0.028 % (2.8 bps) | 0.0016 % (0.16 bps) | 2.8 → **3 bps** | 0 → 2 bps | **0.0003 / 0.0002** |
+  | SOL/USDC | 0.087 % (8.7 bps) | 0.108 % (10.8 bps) | 10.8 → **11 bps** | 0 → 2 bps | **0.0011 / 0.0002** |
+
+  Règle amendée au GO B : `spread = ceil_bp(max(p75 global, p75 nocturne))`, `slippage = max(2 bps, p75 mesuré)` —
+  la proposition initiale « p75 nocturne seul » aurait donné 1 bp sur BTC/ETH ; l'amendement est strictement
+  conservateur. Détail : `config/pair_costs_b4.README.md`.
 - **Où ça s'applique** : fills **market** du moteur signal (SL, trailing, timeout, `regime_shift_bear`,
   `supertrend_flip`, `death_cross`, `donchian_lower_break`) et **liquidation terminale du grid** (chantier 0, D4) ;
   jamais aux fills limit/maker (entrées signal, grille). Sous `--pair-costs-file`, un run BTC aux globaux est
@@ -59,11 +66,12 @@ P7 n'est pas concerné pour les params balayés (override explicite) ; les autre
 | `grok_ema_adx_atr` | défauts de classe | 40 USDC | `ema_cross_btc` : alloc 15 % (inactif) |
 | `gemini_*` (3) | **YAML** | 25 / 25 / 50 USDC | idem |
 
-**Décision B.2a** — proposition : garder les **défauts de classe** pour la campagne (continuité avec P6/P7,
-aucune re-gate : c'est le moteur du GATE A) et **documenter la table des params effectifs** dans le rapport B4 ;
-la config paper B5 est alors alignée sur les **params backtestés** (ou re-backtestée si elle s'en écarte). Le fix
-de résolution (`class:` → clé) est consigné post-B4 (il changerait toutes les métriques grok). Alternative :
-corriger maintenant → nouveau chantier gaté avant la campagne.
+**Décision B.2a (GO B)** — **défauts de classe conservés** pour la campagne. Conditions appliquées : (1) les moteurs
+capturent au runtime les params effectifs de chaque stratégie (`capture_effective_params`, source `class_default` /
+`passed` / `override`) ; les runners les persistent dans chaque entrée (`effective_params`) et `p7_report` les embarque
+pour chaque config sélectionnée (`B4_P7_final_selection.json`, section du rapport) — c'est le dump qui alignera
+`strategies.yaml` en B5 ; (2) dette 13 dans `PROJECT_CONTEXT.md` (résolution par nom de classe), fix post-B4 après
+l'alignement YAML ; (3) test one-off « le chemin live/router résout bien par instance » consigné comme prérequis B5.
 
 ### 2.2 Simulé par les moteurs (backtest-visible)
 
@@ -123,7 +131,7 @@ disque **58 G libres / 75 G**, load 0.03 ; `krakenbot-collector` **active**, `kr
 
 | Point | Proposition |
 |---|---|
-| Code | pousser `feat/b4-3-campaign` sur `origin` (trace, comme B4.2) ; sur le serveur `git fetch origin && git checkout feat/b4-3-campaign` (le collector tourne sur les modules déjà chargés ; la branche ne touche ni `collector` ni `src/` hors une docstring — aucun restart) ; retour sur `dev` à la clôture |
+| Code | pousser `feat/b4-3-campaign` sur `origin` (trace, comme B4.2) ; sur le serveur `git fetch origin && git checkout -b feat/b4-3-campaign origin/feat/b4-3-campaign` puis `git pull --ff-only` à chaque commit (le collector tourne sur les modules déjà chargés ; la branche ne touche ni `collector` ni `src/` hors une docstring — aucun restart) ; retour sur `dev` à la clôture |
 | Session | `tmux new -s b4` (jamais `spread`) ; une commande par phase, `Ctrl+B D` |
 | Workers | **3** (`--workers 3` explicite : l'auto-détection donnerait `min(4 − 2, 8, 7.6 // 2)` = 2) ; `nice -n 10` ; ~1 Gi/worker → 3 Gi sur 5.8 disponibles ; le collector garde son vCPU |
 | Logs | `LOG_LEVEL=WARNING` dans l'environnement de la commande : sinon chaque run grid imprime ~130 Mo d'INFO (`strategy_tick`) — 3 combos grid × 3 segments en P6, 96 × 3 en P7 = plusieurs dizaines de Go dans le scrollback ; le suivi passe par `logs/p6_status.json` / `p7_status.json` et le résumé final ; `2>&1 \| tee -a logs/b4_p6.log` |

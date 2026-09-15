@@ -31,7 +31,12 @@ from datetime import UTC, datetime
 import json
 import math
 from pathlib import Path
+import sys
 from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from b4_flags import collect_flags, render_flags_markdown  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Benchmarks (Sharpe ratios from P6_backtest_report_v2.md, period
@@ -182,6 +187,8 @@ def aggregate_walk_forward(
                         "test_end": w.get("period", {}).get("test_end"),
                         "train_metrics": w.get("train", {}),
                         "test_metrics": w.get("test", {}),
+                        "effective_params": w.get("effective_params"),
+                        "liquidation": w.get("liquidation"),
                     }
                     for w in windows
                 ],
@@ -364,9 +371,12 @@ def apply_selection_criteria(
 
 def build_selection(
     aggregates: dict[tuple[str, str, str], WalkForwardAggregate],
+    benchmarks: dict[str, dict[str, float]] = BENCHMARK_SHARPE,
 ) -> dict[str, Any]:
     """Apply selection criteria to every aggregate, return the final selection dict."""
-    verdicts: list[ConfigVerdict] = [apply_selection_criteria(agg) for agg in aggregates.values()]
+    verdicts: list[ConfigVerdict] = [
+        apply_selection_criteria(agg, benchmarks) for agg in aggregates.values()
+    ]
 
     # Group by (strategy, pair). For each, keep the best PASSING config (by
     # mean_sharpe_oos). If none passes, the combo is abandoned with the best
@@ -383,11 +393,22 @@ def build_selection(
         if passing:
             # Best by mean_sharpe_oos
             best = max(passing, key=lambda v: v.aggregate.mean_sharpe_oos)
+            # B4.3 (GO GATE B, B.2a): the runtime-captured effective parameters of the
+            # selected config — the machine-readable source for the B5 strategies.yaml.
+            effective = next(
+                (
+                    w.get("effective_params")
+                    for w in best.aggregate.per_window
+                    if w.get("effective_params")
+                ),
+                None,
+            )
             selected.append(
                 {
                     "strategy": strategy,
                     "pair": pair,
                     "params": best.aggregate.params,
+                    "effective_params": effective,
                     "mean_sharpe_oos": best.aggregate.mean_sharpe_oos,
                     "std_sharpe_oos": best.aggregate.std_sharpe_oos,
                     "mean_profit_factor": best.aggregate.mean_pf_oos,
@@ -423,6 +444,7 @@ def build_selection(
         "selected_for_paper": selected,
         "abandoned": abandoned,
         "all_verdicts": [v.to_dict() for v in verdicts],
+        "benchmarks": benchmarks,
         "generated_at": datetime.now(UTC).isoformat(),
     }
 
@@ -442,8 +464,13 @@ def generate_report(
     phase2_path: Path,
     output_md_path: Path,
     selection_json_path: Path,
+    benchmarks: dict[str, dict[str, float]] | None = None,
 ) -> dict[str, Any]:
-    """Produce the human report + machine selection JSON. Returns the selection dict."""
+    """Produce the human report + machine selection JSON. Returns the selection dict.
+
+    ``benchmarks`` (``{pair: {"buy_and_hold": sharpe, "dca_fixed": sharpe}}``) replaces the
+    P6 Binance constants for criterion 7 (B4.3: computed under the campaign fee model).
+    """
     phase1_data = (
         json.loads(phase1_path.read_text(encoding="utf-8")) if phase1_path.exists() else {}
     )
@@ -451,15 +478,18 @@ def generate_report(
         json.loads(phase2_path.read_text(encoding="utf-8")) if phase2_path.exists() else {}
     )
 
+    bench = benchmarks if benchmarks is not None else BENCHMARK_SHARPE
     aggregates = aggregate_walk_forward(phase2_data)
-    selection = build_selection(aggregates)
+    selection = build_selection(aggregates, bench)
+    # B4.3 flag rule: name every phase-1 / phase-2 run whose grid liquidation did not reconcile
+    selection["flagged_runs"] = collect_flags(phase1_data) + collect_flags(phase2_data)
 
     # Write machine-readable selection
     selection_json_path.parent.mkdir(parents=True, exist_ok=True)
     selection_json_path.write_text(json.dumps(selection, indent=2, default=str), encoding="utf-8")
 
     # Write markdown
-    md = _render_markdown(phase1_data, phase2_data, aggregates, selection)
+    md = _render_markdown(phase1_data, phase2_data, aggregates, selection, bench)
     output_md_path.parent.mkdir(parents=True, exist_ok=True)
     output_md_path.write_text(md, encoding="utf-8")
 
@@ -471,6 +501,7 @@ def _render_markdown(
     phase2_data: dict[str, Any],
     aggregates: dict[tuple[str, str, str], WalkForwardAggregate],
     selection: dict[str, Any],
+    benchmarks: dict[str, dict[str, float]] = BENCHMARK_SHARPE,
 ) -> str:
     """Compose the P7 optimization report markdown."""
     lines: list[str] = []
@@ -576,13 +607,42 @@ def _render_markdown(
         lines.append("")
 
     # Benchmarks reminder
-    lines.append("## Benchmarks (from P6_backtest_report_v2)")
+    source = (
+        "campaign benchmarks file"
+        if benchmarks is not BENCHMARK_SHARPE
+        else "P6_backtest_report_v2"
+    )
+    lines.append(f"## Benchmarks ({source})")
     lines.append("")
     lines.append("| Pair | Buy & Hold Sharpe | DCA fixed Sharpe |")
     lines.append("|---|---|---|")
-    for pair, bench in BENCHMARK_SHARPE.items():
+    for pair, bench in benchmarks.items():
         lines.append(f"| {pair} | {bench['buy_and_hold']:.2f} | {bench['dca_fixed']:.2f} |")
     lines.append("")
+
+    # B4.3 flag rule
+    lines.extend(render_flags_markdown(selection.get("flagged_runs", [])))
+
+    # Effective parameters of the selected configs (runtime capture)
+    lines.append("## Effective parameters of the selected configurations (runtime capture)")
+    lines.append("")
+    if not selection["selected_for_paper"]:
+        lines.append("_No selected configuration._")
+    for sel in selection["selected_for_paper"]:
+        eff = sel.get("effective_params") or {}
+        lines.append(f"### {sel['strategy']} on {sel['pair']}")
+        lines.append("")
+        if not eff:
+            lines.append("_Not captured (pre-B4.3 entries)._")
+            lines.append("")
+            continue
+        lines.append(f"Class: `{eff.get('strategy_class')}`")
+        lines.append("")
+        lines.append("| Param | Value | Source |")
+        lines.append("|---|---|---|")
+        for name, info in sorted((eff.get("params") or {}).items()):
+            lines.append(f"| `{name}` | {info.get('value')} | {info.get('source')} |")
+        lines.append("")
 
     return "\n".join(lines) + "\n"
 

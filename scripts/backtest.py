@@ -14,8 +14,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+import inspect
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from dotenv import load_dotenv
@@ -156,6 +158,67 @@ def resolve_fee_model(fee_model: str | ExchangeFees | None) -> tuple[ExchangeFee
     raise TypeError(f"fee_model must be a str or ExchangeFees, got {type(fee_model).__name__}")
 
 
+_PARAMS_GET_RE = re.compile(r"""params\.get\(\s*["']([A-Za-z0-9_]+)["']""")
+_SIMPLE_TYPES = (bool, int, float, str, Decimal)
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return str(value)
+    if isinstance(value, _SIMPLE_TYPES) or value is None:
+        return value
+    return repr(value)
+
+
+def capture_effective_params(
+    strategy: Any,
+    passed_params: Mapping[str, Any] | None,
+    override: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    """Machine-readable snapshot of the parameters a strategy instance actually runs with.
+
+    B4.3 GATE B (decision B.2a): the engines resolve router inner-strategy params by class
+    name while ``strategies.yaml`` keys them by instance, so most strategies backtest on
+    their class defaults. This captures, at runtime, every ``params.get("<name>", …)`` read
+    by the strategy's ``__init__`` with its resolved value (the instance attribute of the same
+    name when it exists, else the passed value) and its source: ``override`` (P7 sweep),
+    ``passed`` (YAML / engine-injected such as ``pair``) or ``class_default``. Never raises.
+    """
+    passed = dict(passed_params or {})
+    override = dict(override or {})
+    names: list[str] = []
+    try:
+        source = inspect.getsource(type(strategy).__init__)
+        for name in _PARAMS_GET_RE.findall(source):
+            if name not in names:
+                names.append(name)
+    except (OSError, TypeError):
+        pass
+    for name in passed:
+        if name not in names:
+            names.append(name)
+    params: dict[str, dict[str, Any]] = {}
+    for name in names:
+        if hasattr(strategy, name):
+            value: Any = _jsonable(getattr(strategy, name))
+        elif name in passed:
+            value = _jsonable(passed[name])
+        else:
+            value = None  # read by __init__ under another attribute name: value not exposed
+        if name in override:
+            origin = "override"
+        elif name in passed:
+            origin = "passed"
+        else:
+            origin = "class_default"
+        params[name] = {"value": value, "source": origin}
+    return {
+        "strategy_class": type(strategy).__name__,
+        "passed_params": {k: _jsonable(v) for k, v in passed.items()},
+        "params": params,
+    }
+
+
 @dataclass
 class BacktestTrade:
     """Record of a simulated trade during backtesting."""
@@ -271,6 +334,7 @@ class BacktestEngine:
         starting_capital: float = 1000.0,
         strategy_params_override: dict[str, Any] | None = None,
         pair_costs: Mapping[str, PairCosts] | None = None,
+        min_order_usdc: float | Decimal = 1.0,
     ):
         """Initialize backtest engine.
 
@@ -286,6 +350,9 @@ class BacktestEngine:
             starting_capital: Starting balance in USDC
             pair_costs: Optional per-pair spread/slippage overrides applied to market
                 fills only; ``None`` keeps the fee model's global values (unchanged).
+            min_order_usdc: Smallest BUY notional the simulation places (B4.3 GATE B):
+                a sized order below it is skipped, like an exchange ``minOrderAmt``
+                rejection. Default 1 = historical behaviour (bit-identical).
             strategy_params_override: Optional dict of params merged on top of
                 the strategies.yaml entry for this strategy. Used by the P7
                 grid search to inject sweep params without editing the YAML.
@@ -302,6 +369,9 @@ class BacktestEngine:
         # Fee model (B4.2): explicit, decoupled from the OHLC data source.
         self.fees, self.fee_model_name = resolve_fee_model(fee_model)
         self._pair_costs: dict[str, PairCosts] = dict(pair_costs or {})
+        self.min_order_usdc = Decimal(str(min_order_usdc))
+        # Runtime snapshot of the strategy's effective parameters (set by run(), B4.3 GATE B).
+        self.effective_params: dict[str, Any] | None = None
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -678,10 +748,10 @@ class BacktestEngine:
                 "backtest_buy_attempt",
                 usdc_balance=float(self.usdc_balance),
                 order_amount=float(order_amount),
-                min_order=1.0,
+                min_order=float(self.min_order_usdc),
             )
 
-            if order_amount < Decimal("1"):  # Minimum order
+            if order_amount < self.min_order_usdc:  # Minimum order (exchange minOrderAmt)
                 self.logger.warning(
                     "backtest_buy_skipped_min_order", order_amount=float(order_amount)
                 )
@@ -1177,6 +1247,9 @@ class BacktestEngine:
 
         # CRITICAL: Skip DB sync in backtest mode for all strategies
         self.strategy._skip_db_sync = True
+        self.effective_params = capture_effective_params(
+            self.strategy, strategy_params, self._params_override
+        )
 
         # Pre-register lazy indicators so they exist before warmup data flows.
         # Without this, the first get_*() call returns None because the indicator
@@ -1537,6 +1610,7 @@ class GridBacktester:
         starting_capital: float = 1000.0,
         strategy_params_override: dict[str, Any] | None = None,
         pair_costs: Mapping[str, PairCosts] | None = None,
+        min_order_usdc: float | Decimal = 1.0,
     ):
         """Initialize grid backtester.
 
@@ -1549,6 +1623,8 @@ class GridBacktester:
         ``PairCosts`` mapping as the signal engine), else the fee-model globals.
         ``strategy_params_override`` merges on top of the strategies.yaml entry for
         this grid strategy. None preserves YAML-only behavior. Used by the P7 grid search.
+        ``min_order_usdc`` is accepted for runner symmetry only: grid lots are fixed
+        (``order_size_usdc``) and a buy is skipped when the balance cannot cover the lot.
         """
         self.settings = settings
         self.db_manager = db_manager
@@ -1564,6 +1640,8 @@ class GridBacktester:
         # liquidation; grid fills are resting limit orders and never pay them.
         self._pair_costs: dict[str, PairCosts] = dict(pair_costs or {})
         self._pair: str | None = None
+        self.min_order_usdc = Decimal(str(min_order_usdc))
+        self.effective_params: dict[str, Any] | None = None
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -1737,6 +1815,9 @@ class GridBacktester:
         )
         strategy._skip_db_sync = True
         strategy._running = True
+        self.effective_params = capture_effective_params(
+            strategy, self._strategy_params, self._params_override
+        )
         return strategy, analyzer
 
     def _get_grok_grid_pending_orders(self, strategy: Any) -> list[dict[str, Any]]:
@@ -2381,6 +2462,41 @@ class GridBacktester:
 
         self.metrics.unrealized_pnl = unrealized_total
 
+    def liquidation_summary(self) -> dict[str, Any]:
+        """Terminal-liquidation indicators of the finished run (B4.3), JSON-serialisable.
+
+        Persisted by the campaign runners next to the metrics so the reports can flag any
+        run whose inventory diverged (``residual_net_proceeds`` / ``inventory_divergence_btc``
+        beyond Decimal dust) or whose realised-cash ``net_pnl`` differs from the lot-basis
+        figure. Same content as the ``liquidation`` block of ``dump_trades_json``.
+        """
+        trades = list(self.metrics.trades)
+        tagged = [t for t in trades if t.forced_liquidation]
+        first = tagged[0] if tagged else None
+        holding = self.liquidation_holding_minutes
+        return {
+            "buy_fees": _dec(self.buy_fees),
+            "sell_fees": _dec(self.total_fees - self.buy_fees),
+            "net_pnl_lot_basis": _dec(self.net_pnl_lot_basis),
+            "residual_net_proceeds": _dec(self.liquidation_residual_proceeds),
+            "avg_holding_minutes": (sum(holding) / len(holding)) if holding else None,
+            "positions": self.liquidated_positions,
+            "trades": len(tagged),
+            "residual_trade_btc": _dec(
+                sum((t.amount_crypto for t in tagged if t.pnl is None), Decimal("0"))
+            ),
+            "dust_written_off_btc": _dec(self.liquidation_dust_btc),
+            "inventory_divergence_btc": _dec(self.inventory_divergence_btc),
+            "pnl": _dec(self.metrics.unrealized_pnl),
+            "fees": _dec(sum((t.fee for t in tagged), Decimal("0"))),
+            "gross_usdc": _dec(sum((t.amount_usdc for t in tagged), Decimal("0"))),
+            "timestamp": first.timestamp.isoformat() if first else None,
+            "reference_price": _dec(first.reference_price) if first else None,
+            "price": _dec(first.price) if first else None,
+            "spread_pct": _dec(first.spread_pct) if first else None,
+            "slippage_pct": _dec(first.slippage_pct) if first else None,
+        }
+
     def _calculate_final_metrics(self) -> None:
         """Calculate final performance metrics."""
         # Liquidate the terminal inventory first so its losses are counted (B4.3).
@@ -2724,6 +2840,15 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Write the per-trade fee audit JSON after the run (single run only).",
     )
+    parser.add_argument(
+        "--min-order-usdc",
+        type=float,
+        default=1.0,
+        help=(
+            "Smallest BUY notional the signal engine places (exchange minOrderAmt); smaller "
+            "sized orders are skipped. Default 1.0 = historical behaviour (B4.3 campaign: 5)."
+        ),
+    )
     return parser
 
 
@@ -2836,36 +2961,7 @@ def dump_trades_json(
             },
         }
         # B4.3 terminal liquidation block — outside the harness' schema-1 projection.
-        tagged = [t for t in trades if t.forced_liquidation]
-        first = tagged[0] if tagged else None
-        buy_fees = getattr(engine, "buy_fees", Decimal("0"))
-        holding = getattr(engine, "liquidation_holding_minutes", [])
-        payload["liquidation"] = {
-            "buy_fees": _dec(buy_fees),
-            "sell_fees": _dec(engine.total_fees - buy_fees),
-            "net_pnl_lot_basis": _dec(getattr(engine, "net_pnl_lot_basis", Decimal("0"))),
-            "residual_net_proceeds": _dec(
-                getattr(engine, "liquidation_residual_proceeds", Decimal("0"))
-            ),
-            "avg_holding_minutes": (sum(holding) / len(holding)) if holding else None,
-            "positions": getattr(engine, "liquidated_positions", 0),
-            "trades": len(tagged),
-            "residual_trade_btc": _dec(
-                sum((t.amount_crypto for t in tagged if t.pnl is None), Decimal("0"))
-            ),
-            "dust_written_off_btc": _dec(getattr(engine, "liquidation_dust_btc", Decimal("0"))),
-            "inventory_divergence_btc": _dec(
-                getattr(engine, "inventory_divergence_btc", Decimal("0"))
-            ),
-            "pnl": _dec(engine.metrics.unrealized_pnl),
-            "fees": _dec(sum((t.fee for t in tagged), Decimal("0"))),
-            "gross_usdc": _dec(sum((t.amount_usdc for t in tagged), Decimal("0"))),
-            "timestamp": first.timestamp.isoformat() if first else None,
-            "reference_price": _dec(first.reference_price) if first else None,
-            "price": _dec(first.price) if first else None,
-            "spread_pct": _dec(first.spread_pct) if first else None,
-            "slippage_pct": _dec(first.slippage_pct) if first else None,
-        }
+        payload["liquidation"] = engine.liquidation_summary()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps(payload, sort_keys=True, indent=2, ensure_ascii=False) + "\n",
@@ -2937,6 +3033,7 @@ async def main(argv: list[str] | None = None) -> None:
                 starting_capital=args.capital,
                 fee_model=args.fees,
                 pair_costs=args.pair_costs,
+                min_order_usdc=args.min_order_usdc,
             )
             train_metrics = await train_engine.run(args.pair, start_time, split_time)
             train_engine.print_report()
@@ -2955,6 +3052,7 @@ async def main(argv: list[str] | None = None) -> None:
                 starting_capital=args.capital,
                 fee_model=args.fees,
                 pair_costs=args.pair_costs,
+                min_order_usdc=args.min_order_usdc,
             )
             test_metrics = await test_engine.run(args.pair, split_time, end_time)
             test_engine.print_report()
@@ -3032,6 +3130,7 @@ async def main(argv: list[str] | None = None) -> None:
                     starting_capital=args.capital,
                     fee_model=args.fees,
                     pair_costs=args.pair_costs,
+                    min_order_usdc=args.min_order_usdc,
                 )
             else:
                 engine = BacktestEngine(
@@ -3043,6 +3142,7 @@ async def main(argv: list[str] | None = None) -> None:
                     starting_capital=args.capital,
                     fee_model=args.fees,
                     pair_costs=args.pair_costs,
+                    min_order_usdc=args.min_order_usdc,
                 )
 
             await engine.run(args.pair, start_time, end_time)

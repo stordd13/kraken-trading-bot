@@ -5,13 +5,24 @@ produces a list of survivors + filtering report.
 
 Usage:
     poetry run python scripts/filter_p6_survivors.py
+    poetry run python scripts/filter_p6_survivors.py --input results/B4_P6_phase_d_results.json \
+        --benchmarks results/B4_benchmarks.json --survivors results/B4_P6_phase_e_survivors.json \
+        --report results/B4_P6_phase_e_filtering.md
+
+B4.3: the filtering report names every run flagged by the campaign rule (grid liquidation
+not reconciled: residual proceeds, inventory divergence, net_pnl != lot basis).
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from b4_flags import collect_flags, render_flags_markdown  # noqa: E402
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 PHASE_D_PATH = RESULTS_DIR / "P6_phase_d_results.json"
@@ -89,17 +100,34 @@ def check_beats_benchmark(test: dict, pair: str, benchmarks: dict) -> bool:
     return test_sharpe > bh_sharpe or test_sharpe > dca_sharpe
 
 
-def main() -> None:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="P6 Phase E — survivor filtering.")
+    parser.add_argument("--input", type=Path, default=PHASE_D_PATH, help="Phase D results JSON.")
+    parser.add_argument(
+        "--benchmarks", type=Path, default=BENCHMARKS_PATH, help="Benchmarks JSON (B&H / DCA)."
+    )
+    parser.add_argument("--survivors", type=Path, default=SURVIVORS_PATH, help="Output JSON.")
+    parser.add_argument("--report", type=Path, default=REPORT_PATH, help="Output markdown.")
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
+    phase_d_path: Path = args.input
+    benchmarks_path: Path = args.benchmarks
+    survivors_path: Path = args.survivors
+    report_path: Path = args.report
+
     # Load data
-    if not PHASE_D_PATH.exists():
-        print(f"ERROR: {PHASE_D_PATH} not found. Run Phase D first.")
+    if not phase_d_path.exists():
+        print(f"ERROR: {phase_d_path} not found. Run Phase D first.")
         sys.exit(1)
 
-    phase_d = json.loads(PHASE_D_PATH.read_text())
+    phase_d = json.loads(phase_d_path.read_text())
 
     benchmarks = {}
-    if BENCHMARKS_PATH.exists():
-        benchmarks = json.loads(BENCHMARKS_PATH.read_text())
+    if benchmarks_path.exists():
+        benchmarks = json.loads(benchmarks_path.read_text())
 
     survivors: dict = {}
     all_rows: list[dict] = []
@@ -158,8 +186,8 @@ def main() -> None:
             survivors[key] = data
 
     # Save survivors JSON
-    SURVIVORS_PATH.parent.mkdir(parents=True, exist_ok=True)
-    SURVIVORS_PATH.write_text(json.dumps(survivors, indent=2, default=str), encoding="utf-8")
+    survivors_path.parent.mkdir(parents=True, exist_ok=True)
+    survivors_path.write_text(json.dumps(survivors, indent=2, default=str), encoding="utf-8")
 
     # Generate markdown report
     lines = []
@@ -229,10 +257,16 @@ def main() -> None:
         lines.append("No combinations passed all criteria.")
     lines.append("")
 
-    REPORT_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # B4.3 flag rule: name every run whose grid liquidation did not reconcile
+    flags = collect_flags(phase_d)
+    lines.extend(render_flags_markdown(flags))
+
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Survivors: {len(survivors)}/{len(all_rows)}")
-    print(f"Report: {REPORT_PATH}")
-    print(f"JSON: {SURVIVORS_PATH}")
+    print(f"Flagged runs: {len(flags)}")
+    print(f"Report: {report_path}")
+    print(f"JSON: {survivors_path}")
 
     if survivors:
         print("\nSurvivors:")

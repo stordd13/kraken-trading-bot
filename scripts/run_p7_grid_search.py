@@ -124,6 +124,9 @@ class P7Job:
     exchange: str = EXCHANGE  # OHLC data source only
     candle_interval: int = CANDLE_INTERVAL
     window_idx: int | None = None  # phase 2 only
+    # B4.3 campaign configs (GATE B): recorded per entry, checked on resume like ``fees``.
+    pair_costs_file: str | None = None
+    min_order_usdc: float = 1.0
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -166,6 +169,8 @@ def build_phase1_jobs(
     pair_filter: str | None = None,
     *,
     fees: str,
+    pair_costs_file: str | None = None,
+    min_order_usdc: float = 1.0,
 ) -> list[dict[str, Any]]:
     """Build the full phase-1 job list as picklable dicts.
 
@@ -190,6 +195,8 @@ def build_phase1_jobs(
                 test_start_iso=split.isoformat(),
                 test_end_iso=P7_END.isoformat(),
                 fees=fees,
+                pair_costs_file=pair_costs_file,
+                min_order_usdc=min_order_usdc,
             ).to_dict()
         )
     return out
@@ -318,14 +325,18 @@ def build_phase2_jobs(
     windows: list[WalkForwardWindow] | None = None,
     *,
     fees: str,
+    pair_costs_file: str | None = None,
+    min_order_usdc: float = 1.0,
 ) -> list[dict[str, Any]]:
     """Cross top-K configs with walk-forward windows → list of P7Job dicts.
 
-    A phase-1 ranking produced under another fee model (or none, pre-B4.2) must not seed
-    a walk-forward: every source entry has to carry ``fees == fees``.
+    A phase-1 ranking produced under another fee model (or none, pre-B4.2) or other campaign
+    costs (B4.3) must not seed a walk-forward: every source entry has to carry the same
+    ``fees`` / ``pair_costs_file`` / ``min_order_usdc``.
     """
     if windows is None:
         windows = generate_walk_forward_windows()
+    wanted = (pair_costs_file, float(min_order_usdc))
     out: list[dict[str, Any]] = []
     for (strategy, pair), entries in top_k_per_combo.items():
         for entry in entries:
@@ -334,6 +345,12 @@ def build_phase2_jobs(
                     f"phase-1 entry {strategy} {pair} was produced with fees="
                     f"{entry.get('fees', '<absent: pre-B4.2 file>')}; it cannot seed a "
                     f"--fees {fees} walk-forward (regenerate phase 1 with --fees {fees})"
+                )
+            if _campaign_signature(entry) != wanted:
+                raise CampaignConfigMismatchError(
+                    f"phase-1 entry {strategy} {pair} was produced with (pair_costs_file, "
+                    f"min_order_usdc)={_campaign_signature(entry)}; it cannot seed a walk-forward "
+                    f"requested with {wanted}"
                 )
             params = entry.get("params") or {}
             for window in windows:
@@ -349,6 +366,8 @@ def build_phase2_jobs(
                         test_start_iso=window.test_start.isoformat(),
                         test_end_iso=window.test_end.isoformat(),
                         window_idx=window.idx,
+                        pair_costs_file=pair_costs_file,
+                        min_order_usdc=min_order_usdc,
                     ).to_dict()
                 )
     return out
@@ -384,6 +403,25 @@ def load_existing_results(path: Path) -> dict[str, Any]:
         ) from e
 
 
+class CampaignConfigMismatchError(FeeModelMismatchError):
+    """A results file entry was produced with other campaign costs (pair costs / min order)."""
+
+
+def _campaign_signature(entry: dict[str, Any]) -> tuple[str | None, float]:
+    """(pair_costs_file, min_order_usdc) of a result entry; pre-B4.3 entries = (None, 1.0)."""
+    return (entry.get("pair_costs_file"), float(entry.get("min_order_usdc", 1.0)))
+
+
+def _campaign_mismatch_message(
+    key: str, existing: tuple[str | None, float], wanted: tuple[str | None, float], path: Path
+) -> str:
+    return (
+        f"Resume refused for {key}: {path} holds a result produced with (pair_costs_file, "
+        f"min_order_usdc)={existing} but {wanted} was requested. Write to a fresh --output or "
+        "pass --force."
+    )
+
+
 def filter_pending_jobs(
     jobs: list[dict[str, Any]],
     existing: dict[str, Any],
@@ -392,7 +430,8 @@ def filter_pending_jobs(
     fees: str,
     path: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Jobs not yet in ``existing``; refuses to skip a result made under another fee model."""
+    """Jobs not yet in ``existing``; refuses to skip a result made under another fee model
+    or other campaign costs (``pair_costs_file`` / ``min_order_usdc``, B4.3)."""
     if force:
         return list(jobs)
     pending = []
@@ -412,16 +451,38 @@ def filter_pending_jobs(
             raise FeeModelMismatchError(
                 _fee_mismatch_message(key, entry.get("fees"), fees, path or PHASE1_OUTPUT)
             )
+        wanted = (job.get("pair_costs_file"), float(job.get("min_order_usdc", 1.0)))
+        if _campaign_signature(entry) != wanted:
+            raise CampaignConfigMismatchError(
+                _campaign_mismatch_message(
+                    key, _campaign_signature(entry), wanted, path or PHASE1_OUTPUT
+                )
+            )
     return pending
 
 
-def _assert_results_fee_model(entries: dict[str, Any], fees: str, path: Path) -> None:
-    """Every non-error entry of a results file must carry the requested fee model."""
+def _assert_results_fee_model(
+    entries: dict[str, Any],
+    fees: str,
+    path: Path,
+    *,
+    pair_costs_file: str | None = None,
+    min_order_usdc: float = 1.0,
+    check_campaign: bool = False,
+) -> None:
+    """Every non-error entry of a results file must carry the requested fee model (and, when
+    ``check_campaign`` is set, the requested campaign costs)."""
     for key, entry in entries.items():
         if "error" in entry:
             continue
         if entry.get("fees") != fees:
             raise FeeModelMismatchError(_fee_mismatch_message(key, entry.get("fees"), fees, path))
+        if check_campaign:
+            wanted = (pair_costs_file, float(min_order_usdc))
+            if _campaign_signature(entry) != wanted:
+                raise CampaignConfigMismatchError(
+                    _campaign_mismatch_message(key, _campaign_signature(entry), wanted, path)
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -534,7 +595,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
     from krakenbot.core.database import DatabaseManager
 
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from backtest import BacktestEngine, GridBacktester
+    from backtest import BacktestEngine, GridBacktester, load_pair_costs
 
     pid = os.getpid()
     worker_logger = get_logger().bind(component="p7_worker", pid=pid)
@@ -549,6 +610,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
         train_end = datetime.fromisoformat(job.train_end_iso)
         test_start = datetime.fromisoformat(job.test_start_iso)
         test_end = datetime.fromisoformat(job.test_end_iso)
+        pair_costs = load_pair_costs(Path(job.pair_costs_file)) if job.pair_costs_file else None
 
         def _engine() -> Any:
             cls = GridBacktester if job.strategy in GRID_STRATEGIES else BacktestEngine
@@ -561,27 +623,46 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
                 starting_capital=job.capital,
                 strategy_params_override=dict(job.params),
                 fee_model=job.fees,
+                pair_costs=pair_costs,
+                min_order_usdc=job.min_order_usdc,
             )
 
-        async def _run_segment(seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
+        liquidation: dict[str, Any] = {}
+        effective_params: dict[str, Any] | None = None
+
+        async def _run_segment(name: str, seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
+            nonlocal effective_params
             engine = _engine()
             await engine.run(job.pair, seg_start, seg_end)
+            if hasattr(engine, "liquidation_summary"):
+                liquidation[name] = engine.liquidation_summary()
+            effective_params = getattr(engine, "effective_params", None)
             return engine.metrics.to_dict()
 
         worker_logger.info("worker_job_start", key=job.key)
-        train_metrics = await _run_segment(train_start, train_end)
-        test_metrics = await _run_segment(test_start, test_end)
+        train_metrics = await _run_segment("train", train_start, train_end)
+        test_metrics = await _run_segment("test", test_start, test_end)
         # For phase 1 we also run "all" (train + test combined) to mirror P6
         all_metrics: dict[str, Any] | None = None
         if job.phase == "1":
-            all_metrics = await _run_segment(train_start, test_end)
+            all_metrics = await _run_segment("all", train_start, test_end)
         worker_logger.info("worker_job_done", key=job.key)
 
+        applied = pair_costs.get(job.pair) if pair_costs else None
         result: dict[str, Any] = {
             "strategy": job.strategy,
             "pair": job.pair,
             "exchange": job.exchange,
             "fees": job.fees,
+            "pair_costs_file": job.pair_costs_file,
+            "pair_costs": (
+                {"spread": str(applied.spread), "slippage": str(applied.slippage)}
+                if applied is not None
+                else None
+            ),
+            "min_order_usdc": job.min_order_usdc,
+            "effective_params": effective_params,
+            "liquidation": liquidation or None,
             "params": dict(job.params),
             "phase": job.phase,
             "window_idx": job.window_idx,
@@ -661,6 +742,8 @@ def _apply_result(
             "pair": job["pair"],
             "exchange": job.get("exchange"),
             "fees": job.get("fees"),
+            "pair_costs_file": job.get("pair_costs_file"),
+            "min_order_usdc": job.get("min_order_usdc", 1.0),
             "params": job["params"],
             "phase": job["phase"],
             "window_idx": job.get("window_idx"),
@@ -844,18 +927,95 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--limit", type=int, default=None, help="Run only first N pending jobs (after sort)."
     )
-    return parser.parse_args(argv)
+    # B4.3 campaign configs (GATE B)
+    parser.add_argument(
+        "--pair-costs-file",
+        type=Path,
+        default=None,
+        help=(
+            "Per-pair spread/slippage JSON: signal market fills and grid terminal liquidation. "
+            "Recorded per entry; phase 2 and report require the same file as their inputs."
+        ),
+    )
+    parser.add_argument(
+        "--min-order-usdc",
+        type=float,
+        default=1.0,
+        help="Smallest BUY notional the signal engine places (default 1.0; B4.3 campaign: 5).",
+    )
+    parser.add_argument(
+        "--phase2-input",
+        type=Path,
+        default=None,
+        help="Report only: phase-2 JSON (default: --output or results/P7_phase2_walk_forward.json).",
+    )
+    parser.add_argument(
+        "--report",
+        type=Path,
+        default=None,
+        help="Report only: markdown output (default: results/P7_optimization_report.md).",
+    )
+    parser.add_argument(
+        "--selection",
+        type=Path,
+        default=None,
+        help="Report only: machine selection JSON (default: results/P7_final_selection.json).",
+    )
+    parser.add_argument(
+        "--benchmarks",
+        type=Path,
+        default=None,
+        help=(
+            "Report only: benchmarks JSON from compute_benchmarks.py (Buy & Hold / DCA Sharpe "
+            "per pair); default = the P6 Binance constants of p7_report.BENCHMARK_SHARPE."
+        ),
+    )
+    args = parser.parse_args(argv)
+    if args.pair_costs_file is not None:
+        try:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from backtest import load_pair_costs
+
+            load_pair_costs(args.pair_costs_file)  # validate early, workers reload it
+        except (OSError, ValueError) as exc:
+            parser.error(f"--pair-costs-file: {exc}")
+    return args
 
 
 REPORT_MD_PATH = ROOT / "results" / "P7_optimization_report.md"
 FINAL_SELECTION_PATH = ROOT / "results" / "P7_final_selection.json"
 
 
-def _run_report_phase(phase1_path: Path, phase2_path: Path, *, fees: str) -> int:
+def load_benchmark_sharpe(path: Path) -> dict[str, dict[str, float]]:
+    """``compute_benchmarks.py`` JSON → ``{pair: {"buy_and_hold": s, "dca_fixed": s}}``."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    out: dict[str, dict[str, float]] = {}
+    pairs = set(data.get("buy_and_hold", {})) | set(data.get("dca_fixed_15usd_weekly", {}))
+    for pair in sorted(pairs):
+        bh = data.get("buy_and_hold", {}).get(pair, {})
+        dca = data.get("dca_fixed_15usd_weekly", {}).get(pair, {})
+        out[pair] = {
+            "buy_and_hold": float(bh.get("sharpe_ratio", 0.0) or 0.0),
+            "dca_fixed": float(dca.get("sharpe_ratio", 0.0) or 0.0),
+        }
+    return out
+
+
+def _run_report_phase(
+    phase1_path: Path,
+    phase2_path: Path,
+    *,
+    fees: str,
+    pair_costs_file: str | None = None,
+    min_order_usdc: float = 1.0,
+    report_path: Path = REPORT_MD_PATH,
+    selection_path: Path = FINAL_SELECTION_PATH,
+    benchmarks_path: Path | None = None,
+) -> int:
     """Run the report-only phase: aggregate + selection + markdown.
 
-    Both input files must have been produced under ``fees`` (mixed or pre-B4.2 files are
-    refused): the selection is only meaningful under one fee model.
+    Both input files must have been produced under ``fees`` and the same campaign costs
+    (mixed or pre-B4.2 files are refused): the selection is only meaningful under one model.
     """
     try:
         from scripts import p7_report
@@ -869,25 +1029,39 @@ def _run_report_phase(phase1_path: Path, phase2_path: Path, *, fees: str) -> int
         print(f"Phase-2 results not found at {phase2_path}.", file=sys.stderr)
         return 2
     try:
-        _assert_results_fee_model(load_existing_results(phase1_path), fees, phase1_path)
-        _assert_results_fee_model(load_existing_results(phase2_path), fees, phase2_path)
+        for path in (phase1_path, phase2_path):
+            _assert_results_fee_model(
+                load_existing_results(path),
+                fees,
+                path,
+                pair_costs_file=pair_costs_file,
+                min_order_usdc=min_order_usdc,
+                check_campaign=True,
+            )
     except FeeModelMismatchError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
-    print(f"Fee model: {fees} (validated against both input files)")
+    benchmarks = load_benchmark_sharpe(benchmarks_path) if benchmarks_path else None
+    print(
+        f"Fee model: {fees} (validated against both input files); pair costs: "
+        f"{pair_costs_file or 'model globals'}; min order: {min_order_usdc}; benchmarks: "
+        f"{benchmarks_path or 'P6 Binance constants'}"
+    )
 
     selection = p7_report.generate_report(
         phase1_path=phase1_path,
         phase2_path=phase2_path,
-        output_md_path=REPORT_MD_PATH,
-        selection_json_path=FINAL_SELECTION_PATH,
+        output_md_path=report_path,
+        selection_json_path=selection_path,
+        benchmarks=benchmarks,
     )
     n_selected = len(selection["selected_for_paper"])
     n_abandoned = len(selection["abandoned"])
-    print(f"P7 report written to {REPORT_MD_PATH}")
+    print(f"P7 report written to {report_path}")
     print(f"  Selected for paper: {n_selected}")
     print(f"  Abandoned combos:   {n_abandoned}")
-    print(f"  Machine selection:  {FINAL_SELECTION_PATH}")
+    print(f"  Flagged runs:       {len(selection.get('flagged_runs', []))}")
+    print(f"  Machine selection:  {selection_path}")
     return 0
 
 
@@ -895,16 +1069,30 @@ def main(argv: list[str] | None = None) -> int:
     # Load .env here, not at import time (see run_p6_backtests.main).
     load_dotenv(Path(__file__).parent.parent / ".env")
     args = parse_args(argv)
+    pair_costs_file = str(args.pair_costs_file) if args.pair_costs_file else None
 
     if args.phase == "report":
         phase1_path = args.phase1_input
-        phase2_path = args.output or PHASE2_OUTPUT
-        return _run_report_phase(phase1_path, phase2_path, fees=args.fees)
+        phase2_path = args.phase2_input or args.output or PHASE2_OUTPUT
+        return _run_report_phase(
+            phase1_path,
+            phase2_path,
+            fees=args.fees,
+            pair_costs_file=pair_costs_file,
+            min_order_usdc=args.min_order_usdc,
+            report_path=args.report or REPORT_MD_PATH,
+            selection_path=args.selection or FINAL_SELECTION_PATH,
+            benchmarks_path=args.benchmarks,
+        )
 
     if args.phase == "1":
         output_path = args.output or PHASE1_OUTPUT
         jobs = build_phase1_jobs(
-            strategy_filter=args.strategy, pair_filter=args.pair, fees=args.fees
+            strategy_filter=args.strategy,
+            pair_filter=args.pair,
+            fees=args.fees,
+            pair_costs_file=pair_costs_file,
+            min_order_usdc=args.min_order_usdc,
         )
     else:
         output_path = args.output or PHASE2_OUTPUT
@@ -913,10 +1101,23 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         phase1 = load_existing_results(args.phase1_input)
         try:
-            _assert_results_fee_model(phase1, args.fees, args.phase1_input)
+            _assert_results_fee_model(
+                phase1,
+                args.fees,
+                args.phase1_input,
+                pair_costs_file=pair_costs_file,
+                min_order_usdc=args.min_order_usdc,
+                check_campaign=True,
+            )
             top_k = select_top_k_per_combo(phase1, k=WF_TOP_K)
             windows = generate_walk_forward_windows()
-            jobs = build_phase2_jobs(top_k, windows=windows, fees=args.fees)
+            jobs = build_phase2_jobs(
+                top_k,
+                windows=windows,
+                fees=args.fees,
+                pair_costs_file=pair_costs_file,
+                min_order_usdc=args.min_order_usdc,
+            )
         except FeeModelMismatchError as exc:
             print(f"ERROR: {exc}", file=sys.stderr)
             return 2

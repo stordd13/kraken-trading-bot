@@ -6,6 +6,12 @@ human-readable report.
 Usage:
     poetry run python scripts/generate_p6_report.py
     poetry run python scripts/generate_p6_report.py --output P6_backtest_report_v2.md
+    poetry run python scripts/generate_p6_report.py --phase-d B4_P6_phase_d_results.json \
+        --benchmarks B4_benchmarks.json --survivors B4_P6_phase_e_survivors.json \
+        --walkforward B4_P6_phase_f_walkforward.json --output B4_P6_backtest_report.md
+
+B4.3: the report names every run flagged by the campaign rule (grid liquidation not
+reconciled) and embeds the runtime-captured effective parameters of the survivors.
 """
 
 from __future__ import annotations
@@ -13,6 +19,11 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from b4_flags import collect_flags, render_flags_markdown  # noqa: E402
 
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 BENCHMARKS_PATH = RESULTS_DIR / "P6_benchmarks.json"
@@ -28,7 +39,7 @@ def load_json(path: Path) -> dict:
     return {}
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--output",
@@ -40,14 +51,29 @@ def main() -> None:
         default="P6_phase_d_results.json",
         help="Phase D results filename (relative to results/ directory)",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--benchmarks",
+        default=BENCHMARKS_PATH.name,
+        help="Benchmarks filename (relative to results/ directory)",
+    )
+    parser.add_argument(
+        "--survivors",
+        default=SURVIVORS_PATH.name,
+        help="Phase E survivors filename (relative to results/ directory)",
+    )
+    parser.add_argument(
+        "--walkforward",
+        default=WALKFORWARD_PATH.name,
+        help="Phase F walk-forward filename (relative to results/ directory)",
+    )
+    args = parser.parse_args(argv)
     report_path = RESULTS_DIR / args.output
     phase_d_path = RESULTS_DIR / args.phase_d
 
-    benchmarks = load_json(BENCHMARKS_PATH)
+    benchmarks = load_json(RESULTS_DIR / args.benchmarks)
     phase_d = load_json(phase_d_path)
-    survivors = load_json(SURVIVORS_PATH)
-    walkforward = load_json(WALKFORWARD_PATH)
+    survivors = load_json(RESULTS_DIR / args.survivors)
+    walkforward = load_json(RESULTS_DIR / args.walkforward)
 
     lines: list[str] = []
 
@@ -82,7 +108,16 @@ def main() -> None:
     lines.append("")
     lines.append("- **Period**: 2023-04-01 to 2026-04-01 (3 years)")
     lines.append("- **Exchange**: Binance (historical data from Binance Vision)")
-    lines.append("- **Fees**: 0.075% maker/taker (BNB discount), 0.02% spread, 0.01% slippage")
+    fee_models = sorted({str(v.get("fees")) for v in phase_d.values() if isinstance(v, dict)})
+    cost_files = sorted(
+        {str(v.get("pair_costs_file")) for v in phase_d.values() if v.get("pair_costs_file")}
+    )
+    min_orders = sorted({str(v.get("min_order_usdc", 1.0)) for v in phase_d.values()})
+    lines.append(
+        f"- **Fees**: model `{', '.join(fee_models) or 'unknown'}` (maker/taker per fill site; "
+        f"per-pair costs: {', '.join(cost_files) or 'model globals'}; min order: "
+        f"{', '.join(min_orders)} USDC)"
+    )
     lines.append("- **Starting capital**: $1,000 USDC per backtest")
     lines.append("- **Cross-validation**: 70% train / 30% test temporal split")
     lines.append("- **Walk-forward**: 12-month train / 3-month test, 3-month advance (8 windows)")
@@ -298,6 +333,36 @@ def main() -> None:
         lines.append(f"- {f}")
     lines.append("")
 
+    # ── h2. B4.3 flag rule — runs whose grid liquidation did not reconcile ──
+    flags = collect_flags(phase_d) + collect_flags(walkforward, walkforward=True)
+    lines.extend(render_flags_markdown(flags))
+
+    # ── h3. Effective parameters captured at runtime (survivors) ──
+    lines.append("## Effective parameters (runtime capture, survivors)")
+    lines.append("")
+    if not survivors:
+        lines.append(
+            "_No survivor: the effective parameters of every combo are in the phase D JSON "
+            "(`effective_params` per entry)._"
+        )
+    for key in sorted(survivors):
+        entry = phase_d.get(key, survivors[key])
+        eff = entry.get("effective_params") or {}
+        lines.append(f"### {entry.get('strategy', key)} on {entry.get('pair', '?')}")
+        lines.append("")
+        if not eff:
+            lines.append("_Not captured (pre-B4.3 entry)._")
+            lines.append("")
+            continue
+        lines.append(f"Class: `{eff.get('strategy_class')}`")
+        lines.append("")
+        lines.append("| Param | Value | Source |")
+        lines.append("|---|---|---|")
+        for name, info in sorted((eff.get("params") or {}).items()):
+            lines.append(f"| `{name}` | {info.get('value')} | {info.get('source')} |")
+        lines.append("")
+    lines.append("")
+
     # ── i. Next Steps ──
     lines.append("## Next Steps")
     lines.append("")
@@ -313,6 +378,7 @@ def main() -> None:
     print(f"Report generated: {report_path}")
     print(f"  Combinations: {total}")
     print(f"  Survivors: {n_survivors}")
+    print(f"  Flagged runs: {len(flags)}")
     print(
         f"  Walk-forward confirmed: {sum(1 for v in walkforward.values() if v.get('consistency_score', 0) >= 0.5)}"
     )

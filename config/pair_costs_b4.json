@@ -1,5 +1,5 @@
 {
   "BTC/USDC": {"spread": "0.0002", "slippage": "0.0002"},
-  "ETH/USDC": {"spread": "0.0002", "slippage": "0.0002"},
-  "SOL/USDC": {"spread": "0.0002", "slippage": "0.0002"}
+  "ETH/USDC": {"spread": "0.0003", "slippage": "0.0002"},
+  "SOL/USDC": {"spread": "0.0011", "slippage": "0.0002"}
 }
