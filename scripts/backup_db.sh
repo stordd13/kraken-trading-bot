@@ -18,6 +18,7 @@ BACKUP_DIR="${KRAKENBOT_BACKUP_DIR:-/home/bruno/backups/krakenbot}"
 RETENTION_DAILY="${KRAKENBOT_RETENTION_DAILY:-7}"
 RETENTION_WEEKLY="${KRAKENBOT_RETENTION_WEEKLY:-28}"
 LOG_FILE="${KRAKENBOT_LOG_FILE:-${BACKUP_DIR}/backup.log}"
+DB_CONTAINER="${KRAKENBOT_DB_CONTAINER:-krakenbot-db}"
 # Optional: remote sync destination (uncomment to enable)
 # REMOTE_DEST="${KRAKENBOT_REMOTE_DEST:-}"
 
@@ -59,7 +60,7 @@ FILEPATH="${BACKUP_DIR}/${FILENAME}"
 log "START type=${BACKUP_TYPE} db=${DB_NAME} user=${DB_USER}"
 
 # pg_dump with custom format (most compact, supports selective/parallel restore)
-if pg_dump -Fc -U "$DB_USER" -d "$DB_NAME" -f "$FILEPATH"; then
+if docker exec "$DB_CONTAINER" pg_dump -Fc -U "$DB_USER" -d "$DB_NAME" > "$FILEPATH"; then
     # Compress with gzip
     gzip "$FILEPATH"
     FINAL="${FILEPATH}.gz"
