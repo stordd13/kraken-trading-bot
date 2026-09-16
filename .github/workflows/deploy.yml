@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["CI"]
     branches: [main]
-    types: [completed]
+    types: [completed]  
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
@@ -109,32 +109,36 @@ jobs:
             chmod 600 .env
 
             # Install/update systemd service files
-            sudo cp deploy/krakenbot.service /etc/systemd/system/
+            # B5: re-enable trader
+            # sudo cp deploy/krakenbot.service /etc/systemd/system/
             sudo cp deploy/krakenbot-collector.service /etc/systemd/system/
             sudo systemctl daemon-reload
 
             # Enable services
             sudo systemctl enable krakenbot-collector
-            sudo systemctl enable krakenbot
+            # B5: re-enable trader
+            # sudo systemctl enable krakenbot
 
             # Restart services
             echo "Restarting krakenbot-collector..."
             sudo systemctl restart krakenbot-collector
             sleep 3
-
-            echo "Restarting krakenbot..."
-            sudo systemctl restart krakenbot
-            sleep 10
+            
+            # B5: re-enable trader
+            # echo "Restarting krakenbot..."
+            # sudo systemctl restart krakenbot
+            # sleep 10
 
             # Health check — must succeed or deploy fails
             echo ""
             echo "=== Health check ==="
-            if ! sudo systemctl is-active --quiet krakenbot; then
-              echo "FAIL: krakenbot service is not running"
-              sudo journalctl -u krakenbot --since "1 min ago" --no-pager | tail -50
-              exit 1
-            fi
-            echo "krakenbot service is active"
+            # B5: re-enable trader
+            # if ! sudo systemctl is-active --quiet krakenbot; then
+            #   echo "FAIL: krakenbot service is not running"
+            #   sudo journalctl -u krakenbot --since "1 min ago" --no-pager | tail -50
+            #   exit 1
+            # fi
+            # echo "krakenbot service is active"
 
             if ! sudo systemctl is-active --quiet krakenbot-collector; then
               echo "FAIL: krakenbot-collector service is not running"
@@ -144,13 +148,15 @@ jobs:
             echo "krakenbot-collector service is active"
 
             # Check that the bot has actually started (look for the start log)
-            sleep 5
-            if sudo journalctl -u krakenbot --since "1 min ago" --no-pager | grep -q "krakenbot_started"; then
-              echo "krakenbot startup log detected"
-            else
-              echo "WARNING: krakenbot_started log not found in last minute"
-              sudo journalctl -u krakenbot --since "1 min ago" --no-pager | tail -30
-            fi
+            
+            # B5: re-enable trader
+            # sleep 5
+            # if sudo journalctl -u krakenbot --since "1 min ago" --no-pager | grep -q "krakenbot_started"; then
+            #   echo "krakenbot startup log detected"
+            # else
+            #   echo "WARNING: krakenbot_started log not found in last minute"
+            #   sudo journalctl -u krakenbot --since "1 min ago" --no-pager | tail -30
+            # fi
 
             echo ""
             echo "=== Deployment complete ==="
