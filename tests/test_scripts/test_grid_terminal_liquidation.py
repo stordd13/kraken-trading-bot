@@ -560,7 +560,10 @@ async def test_final_metrics_are_idempotent_after_the_liquidation() -> None:
 
 
 def test_metrics_schema_and_signal_dump_are_unchanged(tmp_path: Path) -> None:
+    """C1 contract (METRICS_VERSION 2): scalar keys only, ratios None when undefined; the
+    daily equity lives outside ``to_dict()`` (gold hashes and campaign files read this dict)."""
     assert list(BacktestMetrics().to_dict()) == [
+        "metrics_version",
         "total_trades",
         "winning_trades",
         "losing_trades",
@@ -568,7 +571,8 @@ def test_metrics_schema_and_signal_dump_are_unchanged(tmp_path: Path) -> None:
         "total_return_pct",
         "sharpe_ratio",
         "sortino_ratio",
-        "max_drawdown_pct",
+        "max_drawdown_pct_daily",
+        "max_drawdown_pct_engine",
         "profit_factor",
         "calmar_ratio",
         "net_pnl",
@@ -579,7 +583,15 @@ def test_metrics_schema_and_signal_dump_are_unchanged(tmp_path: Path) -> None:
         "ending_balance",
         "duration_days",
         "average_holding_time_minutes",
+        "gross_profit_net",
+        "gross_loss_net",
+        "pf_excluded_trades",
+        "n_daily_returns",
     ]
+    fresh = BacktestMetrics().to_dict()
+    assert fresh["metrics_version"] == 2
+    assert fresh["sharpe_ratio"] is None and fresh["profit_factor"] is None
+    assert BacktestMetrics().equity_daily_dict() is None
     trade = BacktestTrade(
         timestamp=T0,
         side=TradeSide.BUY,
@@ -608,3 +620,9 @@ def test_metrics_schema_and_signal_dump_are_unchanged(tmp_path: Path) -> None:
     assert "forced_liquidation" not in payload["trades"][0]
     assert "liquidation" not in payload
     assert "grid" not in payload
+    # C1: per-trade fee allocation and the top-level contract keys, outside the schema-1 core
+    assert payload["trades"][0]["buy_fee_alloc"] is None
+    assert "buy_fee_alloc" not in harness.CORE_TRADE_KEYS
+    assert payload["metrics_version"] == 2 and payload["equity_daily"] is None
+    assert "metrics_version" not in harness.CORE_TOP_KEYS
+    assert "equity_daily" not in harness.CORE_TOP_KEYS
