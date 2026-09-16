@@ -51,6 +51,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+from krakenbot.backtest_metrics import (
+    METRICS_VERSION,
+    MetricsVersionError,
+    entry_metrics_version,
+)
 from krakenbot.config.settings import FEE_MODEL_NAMES
 from krakenbot.core.logger import get_logger
 
@@ -346,6 +351,12 @@ def build_phase2_jobs(
                     f"{entry.get('fees', '<absent: pre-B4.2 file>')}; it cannot seed a "
                     f"--fees {fees} walk-forward (regenerate phase 1 with --fees {fees})"
                 )
+            if entry_metrics_version(entry) != METRICS_VERSION:
+                raise MetricsVersionMismatchError(
+                    f"phase-1 entry {strategy} {pair} was produced with metrics_version="
+                    f"{entry_metrics_version(entry) or '<absent: pre-C1 file>'}; it cannot seed "
+                    f"a metrics_version {METRICS_VERSION} walk-forward (regenerate phase 1)"
+                )
             if _campaign_signature(entry) != wanted:
                 raise CampaignConfigMismatchError(
                     f"phase-1 entry {strategy} {pair} was produced with (pair_costs_file, "
@@ -382,12 +393,31 @@ class FeeModelMismatchError(RuntimeError):
     """A results file entry was produced under another fee model (or none, pre-B4.2)."""
 
 
+_FRESH_OUTPUT = (
+    "write to a fresh --output; --force only recomputes a file that is already homogeneous "
+    "(same fee model, metrics contract and campaign costs) and never overwrites another one."
+)
+
+
 def _fee_mismatch_message(key: str, existing: str | None, requested: str, path: Path) -> str:
     return (
         f"Resume refused for {key}: {path} holds a result produced with fees="
         f"{existing if existing is not None else '<absent: pre-B4.2 file>'} but --fees "
-        f"{requested} was requested. Mixed fee models would invalidate the ranking: write to "
-        f"a fresh --output (e.g. a fee-suffixed file) or pass --force to overwrite everything."
+        f"{requested} was requested. Mixed fee models would invalidate the ranking: "
+        f"{_FRESH_OUTPUT}"
+    )
+
+
+class MetricsVersionMismatchError(FeeModelMismatchError):
+    """A results file entry was produced under another metrics contract (or none, pre-C1)."""
+
+
+def _metrics_version_message(key: str, found: int | None, path: Path) -> str:
+    shown = "<absent: pre-C1 file>" if found is None else str(found)
+    return (
+        f"Resume refused for {key}: {path} holds a result produced with metrics_version="
+        f"{shown} but this code writes metrics_version={METRICS_VERSION}. Metrics of two "
+        f"contracts cannot be aggregated: {_FRESH_OUTPUT}"
     )
 
 
@@ -417,9 +447,29 @@ def _campaign_mismatch_message(
 ) -> str:
     return (
         f"Resume refused for {key}: {path} holds a result produced with (pair_costs_file, "
-        f"min_order_usdc)={existing} but {wanted} was requested. Write to a fresh --output or "
-        "pass --force."
+        f"min_order_usdc)={existing} but {wanted} was requested: {_FRESH_OUTPUT}"
     )
+
+
+def _check_entry(
+    key: str,
+    entry: dict[str, Any],
+    *,
+    fees: str,
+    wanted: tuple[str | None, float] | None,
+    path: Path,
+) -> None:
+    """Raise unless ``entry`` was produced under ``fees``, the current metrics contract (C1)
+    and, when ``wanted`` is given, the requested campaign costs."""
+    if entry.get("fees") != fees:
+        raise FeeModelMismatchError(_fee_mismatch_message(key, entry.get("fees"), fees, path))
+    if wanted is not None and _campaign_signature(entry) != wanted:
+        raise CampaignConfigMismatchError(
+            _campaign_mismatch_message(key, _campaign_signature(entry), wanted, path)
+        )
+    found = entry_metrics_version(entry)
+    if found != METRICS_VERSION:
+        raise MetricsVersionMismatchError(_metrics_version_message(key, found, path))
 
 
 def filter_pending_jobs(
@@ -430,9 +480,24 @@ def filter_pending_jobs(
     fees: str,
     path: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Jobs not yet in ``existing``; refuses to skip a result made under another fee model
-    or other campaign costs (``pair_costs_file`` / ``min_order_usdc``, B4.3)."""
+    """Jobs not yet in ``existing``; refuses to skip (or, with ``force``, to overwrite) a
+    result made under another fee model, another metrics contract (C1) or other campaign
+    costs (``pair_costs_file`` / ``min_order_usdc``, B4.3)."""
+    target = path or PHASE1_OUTPUT
     if force:
+        wanted = (
+            (jobs[0].get("pair_costs_file"), float(jobs[0].get("min_order_usdc", 1.0)))
+            if jobs
+            else None
+        )
+        _assert_results_fee_model(
+            existing,
+            fees,
+            target,
+            pair_costs_file=wanted[0] if wanted else None,
+            min_order_usdc=wanted[1] if wanted else 1.0,
+            check_campaign=wanted is not None,
+        )
         return list(jobs)
     pending = []
     for job in jobs:
@@ -447,17 +512,13 @@ def filter_pending_jobs(
         if entry is None or "error" in entry:
             pending.append(job)
             continue
-        if entry.get("fees") != fees:
-            raise FeeModelMismatchError(
-                _fee_mismatch_message(key, entry.get("fees"), fees, path or PHASE1_OUTPUT)
-            )
-        wanted = (job.get("pair_costs_file"), float(job.get("min_order_usdc", 1.0)))
-        if _campaign_signature(entry) != wanted:
-            raise CampaignConfigMismatchError(
-                _campaign_mismatch_message(
-                    key, _campaign_signature(entry), wanted, path or PHASE1_OUTPUT
-                )
-            )
+        _check_entry(
+            key,
+            entry,
+            fees=fees,
+            wanted=(job.get("pair_costs_file"), float(job.get("min_order_usdc", 1.0))),
+            path=target,
+        )
     return pending
 
 
@@ -470,19 +531,19 @@ def _assert_results_fee_model(
     min_order_usdc: float = 1.0,
     check_campaign: bool = False,
 ) -> None:
-    """Every non-error entry of a results file must carry the requested fee model (and, when
-    ``check_campaign`` is set, the requested campaign costs)."""
+    """Every non-error entry of a results file must carry the requested fee model and the
+    current metrics contract (C1, no escape) and, when ``check_campaign`` is set, the
+    requested campaign costs."""
     for key, entry in entries.items():
-        if "error" in entry:
+        if not isinstance(entry, dict) or "error" in entry:
             continue
-        if entry.get("fees") != fees:
-            raise FeeModelMismatchError(_fee_mismatch_message(key, entry.get("fees"), fees, path))
-        if check_campaign:
-            wanted = (pair_costs_file, float(min_order_usdc))
-            if _campaign_signature(entry) != wanted:
-                raise CampaignConfigMismatchError(
-                    _campaign_mismatch_message(key, _campaign_signature(entry), wanted, path)
-                )
+        _check_entry(
+            key,
+            entry,
+            fees=fees,
+            wanted=(pair_costs_file, float(min_order_usdc)) if check_campaign else None,
+            path=path,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -628,6 +689,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
             )
 
         liquidation: dict[str, Any] = {}
+        equity_daily: dict[str, Any] = {}
         effective_params: dict[str, Any] | None = None
 
         async def _run_segment(name: str, seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
@@ -637,6 +699,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
             if hasattr(engine, "liquidation_summary"):
                 liquidation[name] = engine.liquidation_summary()
             effective_params = getattr(engine, "effective_params", None)
+            equity_daily[name] = engine.metrics.equity_daily_dict()  # C1: daily NAV grid
             return engine.metrics.to_dict()
 
         worker_logger.info("worker_job_start", key=job.key)
@@ -654,6 +717,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
             "pair": job.pair,
             "exchange": job.exchange,
             "fees": job.fees,
+            "metrics_version": METRICS_VERSION,  # C1: contract of the metric dicts below
             "pair_costs_file": job.pair_costs_file,
             "pair_costs": (
                 {"spread": str(applied.spread), "slippage": str(applied.slippage)}
@@ -663,6 +727,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
             "min_order_usdc": job.min_order_usdc,
             "effective_params": effective_params,
             "liquidation": liquidation or None,
+            "equity_daily": equity_daily or None,
             "params": dict(job.params),
             "phase": job.phase,
             "window_idx": job.window_idx,
@@ -742,6 +807,7 @@ def _apply_result(
             "pair": job["pair"],
             "exchange": job.get("exchange"),
             "fees": job.get("fees"),
+            "metrics_version": METRICS_VERSION,
             "pair_costs_file": job.get("pair_costs_file"),
             "min_order_usdc": job.get("min_order_usdc", 1.0),
             "params": job["params"],
@@ -967,7 +1033,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help=(
             "Report only: benchmarks JSON from compute_benchmarks.py (Buy & Hold / DCA Sharpe "
-            "per pair); default = the P6 Binance constants of p7_report.BENCHMARK_SHARPE."
+            f"per pair). Mandatory since C1: metrics_version {METRICS_VERSION} results never "
+            "use the v1 constants of p7_report.BENCHMARK_SHARPE."
         ),
     )
     args = parser.parse_args(argv)
@@ -986,29 +1053,53 @@ REPORT_MD_PATH = ROOT / "results" / "P7_optimization_report.md"
 FINAL_SELECTION_PATH = ROOT / "results" / "P7_final_selection.json"
 
 
-def load_benchmark_sharpe(path: Path) -> dict[str, dict[str, float]]:
-    """``compute_benchmarks.py`` JSON → ``{pair: {"buy_and_hold": s, "dca_fixed": s}}``."""
+def _opt_float(value: Any) -> float | None:
+    """C1: a missing / null benchmark metric stays None (never a 0 that could be beaten)."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _assert_benchmarks_version(path: Path) -> None:
+    """A benchmarks file used with v2 results must have been computed under the same contract."""
     data = json.loads(path.read_text(encoding="utf-8"))
-    out: dict[str, dict[str, float]] = {}
+    found = data.get("metrics_version")
+    if found != METRICS_VERSION:
+        raise MetricsVersionError(
+            f"{path} carries metrics_version={found if found is not None else '<absent: pre-C1 file>'} "
+            f"but metrics_version {METRICS_VERSION} results need benchmarks computed under the "
+            "same contract (rerun scripts/compute_benchmarks.py)"
+        )
+
+
+def load_benchmark_sharpe(path: Path) -> dict[str, dict[str, float | None]]:
+    """``compute_benchmarks.py`` JSON → ``{pair: {"buy_and_hold": s, "dca_fixed": s}}``
+    (``None`` when a leg is missing or undefined — C1)."""
+    data = json.loads(path.read_text(encoding="utf-8"))
+    out: dict[str, dict[str, float | None]] = {}
     pairs = set(data.get("buy_and_hold", {})) | set(data.get("dca_fixed_15usd_weekly", {}))
     for pair in sorted(pairs):
         bh = data.get("buy_and_hold", {}).get(pair, {})
         dca = data.get("dca_fixed_15usd_weekly", {}).get(pair, {})
         out[pair] = {
-            "buy_and_hold": float(bh.get("sharpe_ratio", 0.0) or 0.0),
-            "dca_fixed": float(dca.get("sharpe_ratio", 0.0) or 0.0),
+            "buy_and_hold": _opt_float(bh.get("sharpe_ratio")),
+            "dca_fixed": _opt_float(dca.get("sharpe_ratio")),
         }
     return out
 
 
-def load_benchmark_details(path: Path) -> dict[str, dict[str, dict[str, float]]]:
+def load_benchmark_details(path: Path) -> dict[str, dict[str, dict[str, float | None]]]:
     """``compute_benchmarks.py`` JSON → Sharpe / return / MaxDD of both benchmarks per pair.
 
     Report-only (GO P7 rule 2: Sharpe is compared with Buy & Hold, return / MaxDD with the
-    fixed DCA); criterion 7 keeps reading ``load_benchmark_sharpe``.
+    fixed DCA); criterion 7 keeps reading ``load_benchmark_sharpe``. C1 files carry
+    ``max_drawdown_pct_daily`` (pre-C1: ``max_drawdown_pct``); undefined values stay None.
     """
     data = json.loads(path.read_text(encoding="utf-8"))
-    out: dict[str, dict[str, dict[str, float]]] = {}
+    out: dict[str, dict[str, dict[str, float | None]]] = {}
     pairs = set(data.get("buy_and_hold", {})) | set(data.get("dca_fixed_15usd_weekly", {}))
     for pair in sorted(pairs):
         out[pair] = {}
@@ -1017,10 +1108,11 @@ def load_benchmark_details(path: Path) -> dict[str, dict[str, dict[str, float]]]
             ("dca_fixed", "dca_fixed_15usd_weekly"),
         ):
             block = data.get(key, {}).get(pair, {})
+            max_dd = block.get("max_drawdown_pct_daily", block.get("max_drawdown_pct"))
             out[pair][name] = {
-                "sharpe": float(block.get("sharpe_ratio", 0.0) or 0.0),
-                "return_pct": float(block.get("total_return_pct", 0.0) or 0.0),
-                "max_drawdown_pct": float(block.get("max_drawdown_pct", 0.0) or 0.0),
+                "sharpe": _opt_float(block.get("sharpe_ratio")),
+                "return_pct": _opt_float(block.get("total_return_pct")),
+                "max_drawdown_pct": _opt_float(max_dd),
             }
     return out
 
@@ -1065,22 +1157,40 @@ def _run_report_phase(
     except FeeModelMismatchError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
-    benchmarks = load_benchmark_sharpe(benchmarks_path) if benchmarks_path else None
-    benchmark_details = load_benchmark_details(benchmarks_path) if benchmarks_path else None
+    # C1: the inputs passed the metrics_version guard above, so they are v2 -> a v2
+    # benchmarks file is mandatory (the v1 constants never apply to v2 results).
+    if benchmarks_path is None:
+        print(
+            f"ERROR: metrics_version {METRICS_VERSION} results require --benchmarks (a file "
+            "written by scripts/compute_benchmarks.py under the same contract).",
+            file=sys.stderr,
+        )
+        return 2
+    try:
+        _assert_benchmarks_version(benchmarks_path)
+        benchmarks = load_benchmark_sharpe(benchmarks_path)
+        benchmark_details = load_benchmark_details(benchmarks_path)
+    except MetricsVersionError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     print(
-        f"Fee model: {fees} (validated against both input files); pair costs: "
-        f"{pair_costs_file or 'model globals'}; min order: {min_order_usdc}; benchmarks: "
-        f"{benchmarks_path or 'P6 Binance constants'}"
+        f"Fee model: {fees} (validated against both input files); metrics_version "
+        f"{METRICS_VERSION}; pair costs: {pair_costs_file or 'model globals'}; min order: "
+        f"{min_order_usdc}; benchmarks: {benchmarks_path}"
     )
 
-    selection = p7_report.generate_report(
-        phase1_path=phase1_path,
-        phase2_path=phase2_path,
-        output_md_path=report_path,
-        selection_json_path=selection_path,
-        benchmarks=benchmarks,
-        benchmark_details=benchmark_details,
-    )
+    try:
+        selection = p7_report.generate_report(
+            phase1_path=phase1_path,
+            phase2_path=phase2_path,
+            output_md_path=report_path,
+            selection_json_path=selection_path,
+            benchmarks=benchmarks,
+            benchmark_details=benchmark_details,
+        )
+    except MetricsVersionError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        return 2
     n_selected = len(selection["selected_for_paper"])
     n_abandoned = len(selection["abandoned"])
     print(f"P7 report written to {report_path}")

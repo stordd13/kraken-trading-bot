@@ -75,7 +75,14 @@ class TestP6Plumbing:
     def test_resume_refuses_other_campaign_costs(self) -> None:
         jobs = p6.build_job_list(fees="bybit", pair_costs_file="config/x.json", min_order_usdc=5)
         key = p6.make_key(jobs[0]["strategy"], jobs[0]["pair"])
-        same = {key: {"fees": "bybit", "pair_costs_file": "config/x.json", "min_order_usdc": 5.0}}
+        same = {
+            key: {
+                "fees": "bybit",
+                "pair_costs_file": "config/x.json",
+                "min_order_usdc": 5.0,
+                "metrics_version": 2,
+            }
+        }
         assert jobs[0] not in p6.filter_pending_jobs(jobs, same, force=False, fees="bybit")
         for other in (
             {"fees": "bybit", "pair_costs_file": None, "min_order_usdc": 5.0},
@@ -84,9 +91,10 @@ class TestP6Plumbing:
         ):
             with pytest.raises(p6.CampaignConfigMismatchError):
                 p6.filter_pending_jobs(jobs, {key: other}, force=False, fees="bybit")
-        assert len(
+        # C1: --force recomputes inside a homogeneous file, never over other campaign costs
+        assert len(p6.filter_pending_jobs(jobs, same, force=True, fees="bybit")) == len(jobs)
+        with pytest.raises(p6.CampaignConfigMismatchError):
             p6.filter_pending_jobs(jobs, {key: {"fees": "bybit"}}, force=True, fees="bybit")
-        ) == len(jobs)
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +144,13 @@ class TestP7Plumbing:
     def test_phase2_refuses_phase1_entries_of_other_campaign(self) -> None:
         top_k = {
             ("s", "BTC/USDC"): [
-                {"strategy": "s", "pair": "BTC/USDC", "params": {}, "fees": "bybit"}  # (None, 1.0)
+                {
+                    "strategy": "s",
+                    "pair": "BTC/USDC",
+                    "params": {},
+                    "fees": "bybit",
+                    "metrics_version": 2,
+                }  # (None, 1.0)
             ]
         }
         with pytest.raises(p7.CampaignConfigMismatchError):
@@ -148,7 +162,12 @@ class TestP7Plumbing:
 
     def test_assert_results_campaign_signature(self, tmp_path: Path) -> None:
         entries = {
-            "k": {"fees": "bybit", "pair_costs_file": "config/x.json", "min_order_usdc": 5.0}
+            "k": {
+                "fees": "bybit",
+                "pair_costs_file": "config/x.json",
+                "min_order_usdc": 5.0,
+                "metrics_version": 2,
+            }
         }
         p7._assert_results_fee_model(entries, "bybit", tmp_path / "p.json")  # fees only: fine
         p7._assert_results_fee_model(
@@ -184,7 +203,7 @@ class TestP7Plumbing:
         )
         assert p7.load_benchmark_sharpe(path) == {
             "BTC/USDC": {"buy_and_hold": 0.5, "dca_fixed": 1.5},
-            "ETH/USDC": {"buy_and_hold": 0.0, "dca_fixed": 0.0},
+            "ETH/USDC": {"buy_and_hold": None, "dca_fixed": None},  # C1: never a beatable 0
         }
 
     def test_grid_spacing_sweep_rebased_for_bybit(self) -> None:
@@ -499,7 +518,8 @@ class TestP7ReportCampaign:
             "max_drawdown_pct": 20.0,
         }
         assert details["BTC/USDC"]["dca_fixed"]["return_pct"] == -5.0
-        assert details["ETH/USDC"]["dca_fixed"]["sharpe"] == 0.0
+        assert details["ETH/USDC"]["dca_fixed"]["sharpe"] is None  # C1: undefined stays None
+        assert details["BTC/USDC"]["dca_fixed"]["max_drawdown_pct"] is None
         # criterion 7 keeps its own loader, unchanged
         assert p7.load_benchmark_sharpe(path)["BTC/USDC"] == {"buy_and_hold": 0.5, "dca_fixed": 1.5}
 

@@ -240,8 +240,20 @@ class TestBuildPhase2Jobs:
     def test_cross_product(self) -> None:
         top_k = {
             ("s", "BTC/USDC"): [
-                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": 1}, "fees": "binance"},
-                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": 2}, "fees": "binance"},
+                {
+                    "strategy": "s",
+                    "pair": "BTC/USDC",
+                    "params": {"a": 1},
+                    "fees": "binance",
+                    "metrics_version": 2,
+                },
+                {
+                    "strategy": "s",
+                    "pair": "BTC/USDC",
+                    "params": {"a": 2},
+                    "fees": "binance",
+                    "metrics_version": 2,
+                },
             ]
         }
         windows = p7.generate_walk_forward_windows()
@@ -256,7 +268,13 @@ class TestBuildPhase2Jobs:
     def test_keys_unique(self) -> None:
         top_k = {
             ("s", "BTC/USDC"): [
-                {"strategy": "s", "pair": "BTC/USDC", "params": {"a": i}, "fees": "binance"}
+                {
+                    "strategy": "s",
+                    "pair": "BTC/USDC",
+                    "params": {"a": i},
+                    "fees": "binance",
+                    "metrics_version": 2,
+                }
                 for i in range(3)
             ]
         }
@@ -290,7 +308,10 @@ class TestFilterPending:
             jobs[0]["strategy"], jobs[0]["pair"], jobs[0]["params"], jobs[0]["phase"]
         )
         pending = p7.filter_pending_jobs(
-            jobs, existing={existing_key: {"ok": 1, "fees": "binance"}}, force=False, fees="binance"
+            jobs,
+            existing={existing_key: {"ok": 1, "fees": "binance", "metrics_version": 2}},
+            force=False,
+            fees="binance",
         )
         assert len(pending) == len(jobs) - 1
 
@@ -305,12 +326,26 @@ class TestFilterPending:
         assert len(pending) == len(jobs)
 
     def test_force_rerun_all(self) -> None:
+        """C1: --force recomputes a homogeneous file only (never a pre-B4.2 / pre-C1 one)."""
         jobs = self._build_jobs()
         existing = {
-            p7.make_key(j["strategy"], j["pair"], j["params"], j["phase"]): {"ok": 1} for j in jobs
+            p7.make_key(j["strategy"], j["pair"], j["params"], j["phase"]): {
+                "ok": 1,
+                "fees": "binance",
+                "metrics_version": 2,
+            }
+            for j in jobs
         }
         pending = p7.filter_pending_jobs(jobs, existing=existing, force=True, fees="binance")
         assert len(pending) == len(jobs)
+        foreign = {
+            p7.make_key(j["strategy"], j["pair"], j["params"], j["phase"]): {"ok": 1} for j in jobs
+        }
+        with pytest.raises(p7.FeeModelMismatchError, match="pre-B4.2"):
+            p7.filter_pending_jobs(jobs, existing=foreign, force=True, fees="binance")
+        pre_c1 = {k: {"ok": 1, "fees": "binance"} for k in foreign}
+        with pytest.raises(p7.MetricsVersionMismatchError, match="pre-C1"):
+            p7.filter_pending_jobs(jobs, existing=pre_c1, force=True, fees="binance")
 
     def test_other_fee_model_is_refused(self) -> None:
         jobs = self._build_jobs()
@@ -376,9 +411,13 @@ class TestFeeModelPlumbing:
 
     def test_assert_results_fee_model(self, tmp_path: Path) -> None:
         path = tmp_path / "phase1.json"
-        p7._assert_results_fee_model({"k": {"fees": "bybit"}, "e": {"error": "x"}}, "bybit", path)
+        p7._assert_results_fee_model(
+            {"k": {"fees": "bybit", "metrics_version": 2}, "e": {"error": "x"}}, "bybit", path
+        )
         with pytest.raises(p7.FeeModelMismatchError):
             p7._assert_results_fee_model({"k": {"fees": "binance"}}, "bybit", path)
+        with pytest.raises(p7.MetricsVersionMismatchError, match="pre-C1"):  # C1, no escape
+            p7._assert_results_fee_model({"k": {"fees": "bybit"}}, "bybit", path)
         with pytest.raises(p7.FeeModelMismatchError):
             p7._assert_results_fee_model({"k": {"exchange": "binance"}}, "bybit", path)
 
