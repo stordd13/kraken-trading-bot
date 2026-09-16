@@ -585,13 +585,19 @@ class BacktestRun(Base):
         win_rate: Win rate (0-1).
         total_pnl: Total profit/loss.
         total_fees: Total fees paid.
-        net_pnl: Net profit/loss (total_pnl - total_fees).
+        net_pnl: Net profit/loss (every fee counted once, B4.3).
         total_return_pct: Total return percentage.
-        max_drawdown: Maximum drawdown amount.
-        max_drawdown_pct: Maximum drawdown percentage.
-        sharpe_ratio: Sharpe ratio.
-        sortino_ratio: Sortino ratio (downside volatility only).
-        profit_factor: Profit factor (total_wins / total_losses).
+        max_drawdown: Maximum drawdown amount (engine resolution).
+        max_drawdown_pct: Maximum drawdown percentage (C1: daily NAV, relative to the
+            running peak — ``max_drawdown_pct_daily`` of the metrics contract).
+        sharpe_ratio: Sharpe ratio (C1: daily returns; NULL when undefined).
+        sortino_ratio: Sortino ratio (downside volatility only; NULL when undefined).
+        profit_factor: Profit factor net of both legs (C1); NULL when the losses are 0 —
+            read ``gross_profit_net`` / ``gross_loss_net`` (∞ vs 0/0) and
+            ``pf_excluded_trades`` (incomplete when > 0).
+        gross_profit_net / gross_loss_net: summed net gains / losses behind the profit factor.
+        pf_excluded_trades: closed lots with an unknown cost basis, excluded from the PF.
+        metrics_version: contract of the ratios (``krakenbot.backtest_metrics``; NULL = pre-C1).
         average_win: Average winning trade amount.
         average_loss: Average losing trade amount.
         created_at: When this backtest was run.
@@ -705,23 +711,41 @@ class BacktestRun(Base):
     max_drawdown_pct: Mapped[Decimal] = mapped_column(
         DECIMAL(precision=10, scale=4),
         nullable=False,
-        comment="Maximum drawdown percentage",
+        comment="Maximum drawdown percentage (C1: daily NAV, relative to the running peak)",
     )
-    sharpe_ratio: Mapped[Decimal] = mapped_column(
+    # C1: an undefined ratio is stored as NULL, never as 0 (alembic c1ae7a1c0001)
+    sharpe_ratio: Mapped[Decimal | None] = mapped_column(
         DECIMAL(precision=10, scale=4),
-        nullable=False,
-        comment="Sharpe ratio",
+        nullable=True,
+        comment="Sharpe ratio (daily returns); NULL when undefined",
     )
-    sortino_ratio: Mapped[Decimal] = mapped_column(
+    sortino_ratio: Mapped[Decimal | None] = mapped_column(
         DECIMAL(precision=10, scale=4),
-        nullable=False,
-        default=Decimal("0"),
-        comment="Sortino ratio (downside volatility)",
+        nullable=True,
+        comment="Sortino ratio (downside volatility); NULL when undefined",
     )
-    profit_factor: Mapped[Decimal] = mapped_column(
+    profit_factor: Mapped[Decimal | None] = mapped_column(
         DECIMAL(precision=10, scale=4),
-        nullable=False,
-        comment="Profit factor (total_wins / total_losses)",
+        nullable=True,
+        comment="Profit factor net of both legs; NULL when losses == 0 (see the sums)",
+    )
+    gross_profit_net: Mapped[Decimal | None] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=True,
+        comment="C1: sum of the net gains (buy fee imputed) behind profit_factor",
+    )
+    gross_loss_net: Mapped[Decimal | None] = mapped_column(
+        DECIMAL(precision=18, scale=8),
+        nullable=True,
+        comment="C1: sum of the net losses (absolute value) behind profit_factor",
+    )
+    pf_excluded_trades: Mapped[int | None] = mapped_column(
+        nullable=True,
+        comment="C1: closed lots with an unknown cost basis, excluded from profit_factor",
+    )
+    metrics_version: Mapped[int | None] = mapped_column(
+        nullable=True,
+        comment="C1: contract version of the ratios (krakenbot.backtest_metrics); NULL = pre-C1",
     )
     average_win: Mapped[Decimal] = mapped_column(
         DECIMAL(precision=18, scale=8),
