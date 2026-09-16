@@ -15,6 +15,8 @@ from decimal import Decimal
 
 from backtest import BacktestTrade, GridBacktester, TradeSide
 
+from krakenbot.backtest_metrics import profit_factor_from_sums
+
 
 def _build_grid_settings() -> SimpleNamespace:
     """Minimal settings object for GridBacktester instantiation."""
@@ -57,8 +59,9 @@ def _new_backtester(fee_model: str = "kraken") -> GridBacktester:
     )
 
 
-def test_profit_factor_all_winners_returns_inf() -> None:
-    """When only winning trades exist, profit_factor must be infinity, not 0."""
+def test_profit_factor_all_winners_is_none_disambiguated_by_the_sums() -> None:
+    """Only winning trades (C1): profit_factor is None (no losses), never 0 — the exported sums
+    say "infinite" (gains > 0, losses == 0) and the display shows ∞."""
     engine = _new_backtester()
     now = datetime.now(UTC)
     engine.metrics.trades = [
@@ -85,18 +88,29 @@ def test_profit_factor_all_winners_returns_inf() -> None:
     engine.metrics.winning_trades = 2
     engine.metrics.losing_trades = 0
     engine._calculate_final_metrics()
-    assert engine.metrics.profit_factor == float("inf")
+    assert engine.metrics.profit_factor is None
+    assert engine.metrics.gross_profit_net == Decimal("30")
+    assert engine.metrics.gross_loss_net == Decimal("0")
+    assert profit_factor_from_sums(
+        engine.metrics.gross_profit_net, engine.metrics.gross_loss_net
+    ) == float("inf")
+    assert engine.metrics.profit_factor_display() == "∞"
+    assert engine.metrics.pf_excluded_trades == 0
 
 
-def test_profit_factor_no_trades_stays_zero() -> None:
-    """With no trades, profit_factor should remain 0.0 (default)."""
+def test_profit_factor_no_trades_is_undefined() -> None:
+    """With no trades, profit_factor is None (0/0), shown as n/a — never a fake 0 (C1)."""
     engine = _new_backtester()
     engine._calculate_final_metrics()
-    assert engine.metrics.profit_factor == 0.0
+    assert engine.metrics.profit_factor is None
+    assert (engine.metrics.gross_profit_net, engine.metrics.gross_loss_net) == (0, 0)
+    assert engine.metrics.profit_factor_display() == "n/a"
+    assert engine.metrics.sharpe_ratio is None and engine.metrics.sortino_ratio is None
 
 
 def test_profit_factor_normal_mix() -> None:
-    """Standard case: 2 wins ($10+$20), 1 loss ($5) → profit_factor = 6.0."""
+    """Standard case: 2 wins ($10+$20), 1 loss ($5) → profit_factor = 6.0 (fixture legs carry
+    no buy_fee_alloc: taken at fee 0, a path the engines never produce)."""
     engine = _new_backtester()
     now = datetime.now(UTC)
     engine.metrics.trades = [

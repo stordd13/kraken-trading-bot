@@ -34,6 +34,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from krakenbot.backtest_metrics import METRICS_VERSION, entry_metrics_version
 from krakenbot.config.settings import FEE_MODEL_NAMES
 from krakenbot.core.logger import get_logger
 
@@ -186,12 +187,18 @@ class FeeModelMismatchError(RuntimeError):
     """A results file entry was produced under another fee model (or none, pre-B4.2)."""
 
 
+_FRESH_OUTPUT = (
+    "write to a fresh --output; --force only recomputes a file that is already homogeneous "
+    "(same fee model, metrics contract and campaign costs) and never overwrites another one."
+)
+
+
 def _fee_mismatch_message(key: str, existing: str | None, requested: str, path: Path) -> str:
     return (
         f"Resume refused for {key}: {path} holds a result produced with fees="
         f"{existing if existing is not None else '<absent: pre-B4.2 file>'} but --fees "
-        f"{requested} was requested. Mixed fee models would invalidate the ranking: write to "
-        f"a fresh --output (e.g. a fee-suffixed file) or pass --force to overwrite everything."
+        f"{requested} was requested. Mixed fee models would invalidate the ranking: "
+        f"{_FRESH_OUTPUT}"
     )
 
 
@@ -199,9 +206,68 @@ class CampaignConfigMismatchError(FeeModelMismatchError):
     """A results file entry was produced with other campaign costs (pair costs / min order)."""
 
 
+class MetricsVersionMismatchError(FeeModelMismatchError):
+    """A results file entry was produced under another metrics contract (or none, pre-C1)."""
+
+
+def _metrics_version_message(key: str, found: int | None, path: Path) -> str:
+    shown = "<absent: pre-C1 file>" if found is None else str(found)
+    return (
+        f"Resume refused for {key}: {path} holds a result produced with metrics_version="
+        f"{shown} but this code writes metrics_version={METRICS_VERSION}. Metrics of two "
+        f"contracts cannot be aggregated: {_FRESH_OUTPUT}"
+    )
+
+
 def _campaign_signature(entry: dict[str, Any]) -> tuple[str | None, float]:
     """(pair_costs_file, min_order_usdc) of a result entry; pre-B4.3 entries = (None, 1.0)."""
     return (entry.get("pair_costs_file"), float(entry.get("min_order_usdc", 1.0)))
+
+
+def _campaign_mismatch_message(
+    key: str, existing: tuple[str | None, float], wanted: tuple[str | None, float], path: Path
+) -> str:
+    return (
+        f"Resume refused for {key}: {path} holds a result produced with (pair_costs_file, "
+        f"min_order_usdc)={existing} but {wanted} was requested: {_FRESH_OUTPUT}"
+    )
+
+
+def _check_entry(
+    key: str,
+    entry: dict[str, Any],
+    *,
+    fees: str,
+    wanted: tuple[str | None, float] | None,
+    path: Path,
+) -> None:
+    """Raise unless ``entry`` was produced under ``fees``, the current metrics contract and
+    (when ``wanted`` is given) the requested campaign costs."""
+    if entry.get("fees") != fees:
+        raise FeeModelMismatchError(_fee_mismatch_message(key, entry.get("fees"), fees, path))
+    if wanted is not None and _campaign_signature(entry) != wanted:
+        raise CampaignConfigMismatchError(
+            _campaign_mismatch_message(key, _campaign_signature(entry), wanted, path)
+        )
+    found = entry_metrics_version(entry)
+    if found != METRICS_VERSION:
+        raise MetricsVersionMismatchError(_metrics_version_message(key, found, path))
+
+
+def assert_homogeneous(
+    existing: dict[str, Any],
+    *,
+    fees: str,
+    wanted: tuple[str | None, float] | None,
+    path: Path,
+) -> None:
+    """Every non-error entry of a results file must match the requested run (C1 ``--force``
+    rule: a full recompute happens inside a homogeneous file, never across contracts, and the
+    historical B4 files — no ``metrics_version`` — can never be overwritten)."""
+    for key, entry in existing.items():
+        if not isinstance(entry, dict) or "error" in entry:
+            continue
+        _check_entry(key, entry, fees=fees, wanted=wanted, path=path)
 
 
 def filter_pending_jobs(
@@ -212,8 +278,20 @@ def filter_pending_jobs(
     fees: str,
     path: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """Jobs not yet in ``existing``; refuses to skip a result made under another fee model
-    or other campaign costs (``pair_costs_file`` / ``min_order_usdc``, B4.3)."""
+    """Jobs not yet in ``existing``; refuses to skip (or, with ``force``, to overwrite) a
+    result made under another fee model, another metrics contract (C1) or other campaign
+    costs (``pair_costs_file`` / ``min_order_usdc``, B4.3)."""
+    target = path or OUTPUT_PATH
+    wanted = (
+        (jobs[0].get("pair_costs_file"), float(jobs[0].get("min_order_usdc", 1.0)))
+        if jobs
+        else None
+    )
+    # C1: the whole target file must match the run (fees, contract, campaign costs) whether or
+    # not a job key collides with it — a new-key job must never be appended to a pre-C1 /
+    # other-model file (review finding: the per-key check alone let a disjoint job list
+    # rewrite a historical B4 JSON as a mixed file).
+    assert_homogeneous(existing, fees=fees, wanted=wanted, path=target)
     if force:
         return list(jobs)
     pending = []
@@ -223,17 +301,13 @@ def filter_pending_jobs(
         if entry is None or "error" in entry:
             pending.append(job)
             continue
-        if entry.get("fees") != fees:
-            raise FeeModelMismatchError(
-                _fee_mismatch_message(key, entry.get("fees"), fees, path or OUTPUT_PATH)
-            )
-        wanted = (job.get("pair_costs_file"), float(job.get("min_order_usdc", 1.0)))
-        if _campaign_signature(entry) != wanted:
-            raise CampaignConfigMismatchError(
-                f"Resume refused for {key}: {path or OUTPUT_PATH} holds a result produced with "
-                f"(pair_costs_file, min_order_usdc)={_campaign_signature(entry)} but "
-                f"{wanted} was requested. Write to a fresh --output or pass --force."
-            )
+        _check_entry(
+            key,
+            entry,
+            fees=fees,
+            wanted=(job.get("pair_costs_file"), float(job.get("min_order_usdc", 1.0))),
+            path=target,
+        )
     return pending
 
 
@@ -401,6 +475,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
             )
 
         liquidation: dict[str, Any] = {}
+        equity_daily: dict[str, Any] = {}
         effective_params: dict[str, Any] | None = None
 
         async def _run_segment(name: str, seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
@@ -410,6 +485,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
             if hasattr(engine, "liquidation_summary"):
                 liquidation[name] = engine.liquidation_summary()
             effective_params = getattr(engine, "effective_params", None)
+            equity_daily[name] = engine.metrics.equity_daily_dict()  # C1: daily NAV grid
             return engine.metrics.to_dict()
 
         worker_logger.info("worker_job_start", key=job.key)
@@ -424,6 +500,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
             "pair": job.pair,
             "exchange": job.exchange,
             "fees": job.fees,
+            "metrics_version": METRICS_VERSION,  # C1: contract of the metric dicts below
             # B4.3 campaign configs, recorded for the resume check and the report
             "pair_costs_file": job.pair_costs_file,
             "pair_costs": (
@@ -434,6 +511,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
             "min_order_usdc": job.min_order_usdc,
             "effective_params": effective_params,
             "liquidation": liquidation or None,
+            "equity_daily": equity_daily or None,
             "period": {
                 "start": start.isoformat(),
                 "end": end.isoformat(),
@@ -508,6 +586,7 @@ def _apply_result(
             "pair": job["pair"],
             "exchange": job.get("exchange"),
             "fees": job.get("fees"),
+            "metrics_version": METRICS_VERSION,
             "pair_costs_file": job.get("pair_costs_file"),
             "min_order_usdc": job.get("min_order_usdc", 1.0),
             "error": result["error"],

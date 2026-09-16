@@ -120,6 +120,7 @@ class TestFilterPendingJobs:
             "grok_supertrend_4h_BTC_USDC": {
                 "strategy": "grok_supertrend_4h",
                 "fees": "binance",
+                "metrics_version": 2,
                 "test": {},
             }
         }
@@ -130,14 +131,48 @@ class TestFilterPendingJobs:
         existing = {"grok_supertrend_4h_BTC_USDC": {"error": "boom", "fees": "bybit"}}
         assert runner.filter_pending_jobs(jobs, existing, force=False, fees="binance") == jobs
 
-    def test_force_flag_reruns_all(self) -> None:
+    def test_force_flag_reruns_all_inside_a_homogeneous_file(self) -> None:
+        """C1: --force recomputes every job of a file produced under the same fee model and
+        metrics contract; it never overwrites a foreign (pre-B4.2 / pre-C1 / other-model) file."""
         jobs = [self._mkjob("grok_supertrend_4h", "BTC/USDC")]
-        existing = {"grok_supertrend_4h_BTC_USDC": {"strategy": "grok_supertrend_4h", "test": {}}}
-        assert runner.filter_pending_jobs(jobs, existing, force=True, fees="binance") == jobs
+        same = {
+            "grok_supertrend_4h_BTC_USDC": {
+                "strategy": "grok_supertrend_4h",
+                "fees": "binance",
+                "metrics_version": 2,
+                "test": {},
+            }
+        }
+        assert runner.filter_pending_jobs(jobs, same, force=True, fees="binance") == jobs
+        foreign = {"grok_supertrend_4h_BTC_USDC": {"strategy": "grok_supertrend_4h", "test": {}}}
+        with pytest.raises(runner.FeeModelMismatchError, match="pre-B4.2"):
+            runner.filter_pending_jobs(jobs, foreign, force=True, fees="binance")
+        pre_c1 = {"grok_supertrend_4h_BTC_USDC": {"fees": "binance", "test": {}}}
+        with pytest.raises(runner.MetricsVersionMismatchError, match="pre-C1"):
+            runner.filter_pending_jobs(jobs, pre_c1, force=True, fees="binance")
+        with pytest.raises(runner.MetricsVersionMismatchError, match="pre-C1"):
+            runner.filter_pending_jobs(jobs, pre_c1, force=False, fees="binance")
+        assert "--force to overwrite" not in runner._fee_mismatch_message(
+            "k", None, "binance", Path("x")
+        )
 
     def test_missing_key_returns_job(self) -> None:
         jobs = [self._mkjob("grok_supertrend_4h", "ETH/USDC")]
         assert runner.filter_pending_jobs(jobs, {}, force=False, fees="binance") == jobs
+
+    def test_disjoint_key_never_appended_to_a_foreign_file(self) -> None:
+        """C1 review: a job whose key is absent from the file must still be refused when the
+        file holds entries of another fee model / contract — the historical B4 JSONs can never
+        become mixed files."""
+        jobs = [self._mkjob("brand_new_strategy", "ETH/USDC", fees="bybit")]
+        pre_c1 = {"grok_supertrend_4h_BTC_USDC": {"fees": "bybit", "test": {}}}
+        with pytest.raises(runner.MetricsVersionMismatchError, match="pre-C1"):
+            runner.filter_pending_jobs(jobs, pre_c1, force=False, fees="bybit")
+        other_model = {"grok_supertrend_4h_BTC_USDC": {"fees": "binance", "metrics_version": 2}}
+        with pytest.raises(runner.FeeModelMismatchError, match="fees=binance"):
+            runner.filter_pending_jobs(jobs, other_model, force=False, fees="bybit")
+        same = {"grok_supertrend_4h_BTC_USDC": {"fees": "bybit", "metrics_version": 2}}
+        assert runner.filter_pending_jobs(jobs, same, force=False, fees="bybit") == jobs
 
     def test_other_fee_model_is_refused(self) -> None:
         jobs = [self._mkjob("grok_supertrend_4h", "BTC/USDC", fees="bybit")]
@@ -326,6 +361,7 @@ class TestRunSerial:
                     "strategy": job["strategy"],
                     "pair": job["pair"],
                     "fees": job.get("fees"),
+                    "metrics_version": 2,
                 },
                 "duration_sec": 0.1,
             }
@@ -372,6 +408,7 @@ class TestRunSerial:
                     "strategy": job["strategy"],
                     "pair": job["pair"],
                     "fees": job.get("fees"),
+                    "metrics_version": 2,
                 },
                 "duration_sec": 0.1,
             }
@@ -488,6 +525,7 @@ class TestMainSerial:
                     "strategy": job["strategy"],
                     "pair": job["pair"],
                     "fees": job.get("fees"),
+                    "metrics_version": 2,
                 },
                 "duration_sec": 0.01,
             }
@@ -554,6 +592,8 @@ class TestMainSerial:
                     "grok_supertrend_4h_BTC_USDC": {
                         "strategy": "grok_supertrend_4h",
                         "pair": "BTC/USDC",
+                        "fees": "binance",
+                        "metrics_version": 2,
                         "train": {},
                         "test": {},
                         "all": {},
@@ -573,6 +613,7 @@ class TestMainSerial:
                     "strategy": job["strategy"],
                     "pair": job["pair"],
                     "fees": job.get("fees"),
+                    "metrics_version": 2,
                 },
                 "duration_sec": 0.01,
             }

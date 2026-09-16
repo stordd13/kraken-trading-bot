@@ -26,10 +26,12 @@ from __future__ import annotations
 import argparse
 import asyncio
 from datetime import UTC, datetime, timedelta
+import math
 import os
 from pathlib import Path
 import sys
 import threading
+from typing import Any
 
 from dotenv import load_dotenv
 
@@ -668,6 +670,46 @@ def fetch_current_price(pair: str = "XBT/USDC") -> float | None:
         return None
 
 
+def _is_missing(value: object) -> bool:
+    return value is None or (isinstance(value, float) and math.isnan(value))
+
+
+def _ratio_display(value: object, suffix: str = "") -> str:
+    """C1: a NULL ratio (undefined) is shown as n/a, never as 0."""
+    if _is_missing(value):
+        return "n/a"
+    return f"{float(value):.2f}{suffix}"  # type: ignore[arg-type]
+
+
+def _c1_label(row: Any, suffix: str) -> str:
+    """Suffix for a metric label only when the row was stored under the C1 contract; pre-C1
+    rows (metrics_version NULL) keep the plain label so a v1 gross PF is never called net."""
+    version = row.get("metrics_version")
+    return suffix if not _is_missing(version) and int(version) >= 2 else " (v1)"
+
+
+def _profit_factor_display(row: Any) -> str:
+    """C1: derive ∞ (gains without losses) / n/a (0/0 or pre-C1 NULL) / incomplete from the
+    stored sums and the excluded-lots count."""
+    pf = row.get("profit_factor")
+    gains, losses = row.get("gross_profit_net"), row.get("gross_loss_net")
+    if not _is_missing(pf):
+        text = f"{float(pf):.2f}"
+    elif (
+        not _is_missing(gains)
+        and not _is_missing(losses)
+        and float(gains) > 0
+        and float(losses) == 0
+    ):
+        text = "∞"
+    else:
+        text = "n/a"
+    excluded = row.get("pf_excluded_trades")
+    if not _is_missing(excluded) and int(excluded) > 0:
+        text += f" (incomplete: {int(excluded)} lot(s) with unknown cost)"
+    return text
+
+
 def fetch_backtest_runs() -> pd.DataFrame:
     """Fetch all backtest runs from database."""
     query = """
@@ -675,7 +717,9 @@ def fetch_backtest_runs() -> pd.DataFrame:
            starting_balance, ending_balance, total_trades,
            winning_trades, losing_trades, win_rate,
            net_pnl, total_return_pct, max_drawdown_pct,
-           sharpe_ratio, profit_factor, created_at
+           sharpe_ratio, sortino_ratio, profit_factor,
+           gross_profit_net, gross_loss_net, pf_excluded_trades, metrics_version,
+           created_at
     FROM backtest_runs
     ORDER BY created_at DESC
     LIMIT 20
@@ -2925,7 +2969,7 @@ def update_backtest_details(selected_rows, data):
     # Extract win/loss analysis metrics from backtest_runs
     avg_win = float(bt.get("average_win", 0) or 0)
     avg_loss = float(bt.get("average_loss", 0) or 0)
-    profit_factor = float(bt.get("profit_factor", 0) or 0)
+    profit_factor_text = _profit_factor_display(bt)  # C1: ∞ / n/a / incomplete derived
     net_pnl = float(bt.get("net_pnl", 0) or 0)
     total_fees = float(bt.get("total_fees", 0) or 0)
 
@@ -3017,8 +3061,8 @@ def update_backtest_details(selected_rows, data):
                             ),
                             html.P(
                                 [
-                                    html.Strong("Profit Factor: "),
-                                    f"{profit_factor:.2f}",
+                                    html.Strong(f"Profit Factor{_c1_label(bt, ' (net)')}: "),
+                                    profit_factor_text,
                                 ]
                             ),
                         ],
@@ -3033,14 +3077,14 @@ def update_backtest_details(selected_rows, data):
                         [
                             html.P(
                                 [
-                                    html.Strong("Max Drawdown: "),
-                                    f"{float(bt.get('max_drawdown_pct', 0)):.2f}%",
+                                    html.Strong(f"Max Drawdown{_c1_label(bt, ' (daily)')}: "),
+                                    _ratio_display(bt.get("max_drawdown_pct"), suffix="%"),
                                 ]
                             ),
                             html.P(
                                 [
                                     html.Strong("Sharpe Ratio: "),
-                                    f"{float(bt.get('sharpe_ratio', 0)):.2f}",
+                                    _ratio_display(bt.get("sharpe_ratio")),
                                 ]
                             ),
                         ],
@@ -3555,9 +3599,11 @@ def create_comparison_metrics_table(runs: list[dict]) -> dash_table.DataTable:
             elif key == "net_pnl":
                 val = run.get(key)
                 row[col_name] = f"{float(val):+.2f}" if pd.notna(val) else "—"
-            elif key in ["sharpe_ratio", "profit_factor"]:
+            elif key == "profit_factor":
+                row[col_name] = _profit_factor_display(run)  # C1: ∞ / n/a / incomplete
+            elif key == "sharpe_ratio":
                 val = run.get(key)
-                row[col_name] = f"{float(val):.2f}" if pd.notna(val) else "—"
+                row[col_name] = f"{float(val):.2f}" if pd.notna(val) else "n/a"
             else:
                 row[col_name] = str(run.get(key, "—"))
         rows.append(row)

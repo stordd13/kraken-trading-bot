@@ -24,6 +24,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from b4_flags import collect_flags, render_flags_markdown  # noqa: E402
 
+from krakenbot.backtest_metrics import (  # noqa: E402
+    METRICS_VERSION,
+    MetricsVersionError,
+    fmt,
+    require_metrics_version,
+)
+
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 PHASE_D_PATH = RESULTS_DIR / "P6_phase_d_results.json"
 BENCHMARKS_PATH = RESULTS_DIR / "P6_benchmarks.json"
@@ -47,28 +54,49 @@ DCA_STRATEGIES = {"grok_adaptive_dca_weekly"}
 CONSISTENCY_RATIO = 0.5
 
 
+def metric(block: dict | None, key: str) -> float | None:
+    """C1: a metric absent or null is undefined (None) — never coerced to 0."""
+    value = (block or {}).get(key)
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def max_dd(block: dict | None) -> float | None:
+    """Daily-NAV running-peak drawdown (C1 key), pre-C1 key as fallback."""
+    value = metric(block, "max_drawdown_pct_daily")
+    return value if value is not None else metric(block, "max_drawdown_pct")
+
+
 def check_criteria(test: dict, strategy: str) -> list[str]:
-    """Return list of failed criteria names. Empty = all pass."""
+    """Return list of failed criteria names. Empty = all pass.
+
+    C1: an undefined metric (None) fails its threshold with an explicit ``undefined`` reason.
+    """
     failures = []
 
-    if test.get("sharpe_ratio", 0) < THRESHOLDS["sharpe_ratio"]:
-        failures.append(f"Sharpe {test.get('sharpe_ratio', 0):.2f} < {THRESHOLDS['sharpe_ratio']}")
+    for key, label in (
+        ("sharpe_ratio", "Sharpe"),
+        ("sortino_ratio", "Sortino"),
+        ("profit_factor", "PF"),
+        ("calmar_ratio", "Calmar"),
+    ):
+        value = metric(test, key)
+        if value is None:
+            failures.append(f"{label} undefined (n/a) — threshold {THRESHOLDS[key]} not met")
+        elif value < THRESHOLDS[key]:
+            failures.append(f"{label} {fmt(value)} < {THRESHOLDS[key]}")
 
-    if test.get("sortino_ratio", 0) < THRESHOLDS["sortino_ratio"]:
+    dd = max_dd(test)
+    if dd is None:
         failures.append(
-            f"Sortino {test.get('sortino_ratio', 0):.2f} < {THRESHOLDS['sortino_ratio']}"
+            f"MaxDD undefined (n/a) — threshold {THRESHOLDS['max_drawdown_pct']}% not met"
         )
-
-    if test.get("max_drawdown_pct", 100) > THRESHOLDS["max_drawdown_pct"]:
-        failures.append(
-            f"MaxDD {test.get('max_drawdown_pct', 0):.1f}% > {THRESHOLDS['max_drawdown_pct']}%"
-        )
-
-    if test.get("profit_factor", 0) < THRESHOLDS["profit_factor"]:
-        failures.append(f"PF {test.get('profit_factor', 0):.2f} < {THRESHOLDS['profit_factor']}")
-
-    if test.get("calmar_ratio", 0) < THRESHOLDS["calmar_ratio"]:
-        failures.append(f"Calmar {test.get('calmar_ratio', 0):.2f} < {THRESHOLDS['calmar_ratio']}")
+    elif dd > THRESHOLDS["max_drawdown_pct"]:
+        failures.append(f"MaxDD {fmt(dd, 1)}% > {THRESHOLDS['max_drawdown_pct']}%")
 
     if strategy not in DCA_STRATEGIES:
         if test.get("total_trades", 0) < THRESHOLDS["min_trades"]:
@@ -78,10 +106,12 @@ def check_criteria(test: dict, strategy: str) -> list[str]:
 
 
 def check_consistency(train: dict, test: dict) -> str | None:
-    """Check train/test consistency. Returns warning or None."""
-    train_sharpe = train.get("sharpe_ratio", 0)
-    test_sharpe = test.get("sharpe_ratio", 0)
+    """Check train/test consistency. Returns warning or None (C1: undefined -> warning)."""
+    train_sharpe = metric(train, "sharpe_ratio")
+    test_sharpe = metric(test, "sharpe_ratio")
 
+    if train_sharpe is None or test_sharpe is None:
+        return "Overfit check undefined: a Sharpe is undefined (n/a)"
     if train_sharpe > 0 and test_sharpe / train_sharpe < CONSISTENCY_RATIO:
         return (
             f"Overfit risk: test/train Sharpe ratio = "
@@ -91,13 +121,18 @@ def check_consistency(train: dict, test: dict) -> str | None:
 
 
 def check_beats_benchmark(test: dict, pair: str, benchmarks: dict) -> bool:
-    """Check if strategy beats at least one benchmark in Sharpe on the same pair."""
-    test_sharpe = test.get("sharpe_ratio", 0)
+    """Check if strategy beats at least one benchmark in Sharpe on the same pair (C1: an
+    undefined Sharpe or benchmark leg cannot be beaten)."""
+    test_sharpe = metric(test, "sharpe_ratio")
+    if test_sharpe is None:
+        return False
 
-    bh_sharpe = benchmarks.get("buy_and_hold", {}).get(pair, {}).get("sharpe_ratio", 0)
-    dca_sharpe = benchmarks.get("dca_fixed_15usd_weekly", {}).get(pair, {}).get("sharpe_ratio", 0)
+    bh_sharpe = metric(benchmarks.get("buy_and_hold", {}).get(pair, {}), "sharpe_ratio")
+    dca_sharpe = metric(benchmarks.get("dca_fixed_15usd_weekly", {}).get(pair, {}), "sharpe_ratio")
 
-    return test_sharpe > bh_sharpe or test_sharpe > dca_sharpe
+    return (bh_sharpe is not None and test_sharpe > bh_sharpe) or (
+        dca_sharpe is not None and test_sharpe > dca_sharpe
+    )
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -124,10 +159,23 @@ def main(argv: list[str] | None = None) -> None:
         sys.exit(1)
 
     phase_d = json.loads(phase_d_path.read_text())
+    try:  # C1: one metrics contract per file, never a pre-C1 / mixed one
+        require_metrics_version(phase_d, METRICS_VERSION, path=str(phase_d_path))
+    except MetricsVersionError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(2)
 
     benchmarks = {}
     if benchmarks_path.exists():
         benchmarks = json.loads(benchmarks_path.read_text())
+        if benchmarks.get("metrics_version") != METRICS_VERSION:  # C1: v1 benchmarks (D6) refused
+            print(
+                f"ERROR: {benchmarks_path} carries metrics_version="
+                f"{benchmarks.get('metrics_version', '<absent: pre-C1 file>')}, not "
+                f"{METRICS_VERSION}; rerun scripts/compute_benchmarks.py under this contract.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
 
     survivors: dict = {}
     all_rows: list[dict] = []
@@ -223,18 +271,15 @@ def main(argv: list[str] | None = None) -> None:
     for row in sorted(all_rows, key=lambda r: (r["status"], r["strategy"], r["pair"])):
         test = row.get("test", {})
         ret = test.get("total_return_pct", 0)
-        sharpe = test.get("sharpe_ratio", 0)
-        sortino = test.get("sortino_ratio", 0)
-        max_dd = test.get("max_drawdown_pct", 0)
-        pf = test.get("profit_factor", 0)
-        calmar = test.get("calmar_ratio", 0)
         trades = test.get("total_trades", 0)
         icon = {"PASS": "PASS", "FAIL": "FAIL", "CRASH": "CRASH"}.get(row["status"], "?")
 
         lines.append(
             f"| {row['strategy']} | {row['pair']} | "
-            f"{ret:+.1f}% | {sharpe:.2f} | {sortino:.2f} | "
-            f"{max_dd:.1f}% | {pf:.2f} | {calmar:.2f} | {trades} | "
+            f"{ret:+.1f}% | {fmt(metric(test, 'sharpe_ratio'))} | "
+            f"{fmt(metric(test, 'sortino_ratio'))} | "
+            f"{fmt(max_dd(test), 1)}% | {fmt(metric(test, 'profit_factor'))} | "
+            f"{fmt(metric(test, 'calmar_ratio'))} | {trades} | "
             f"{icon} | {row['reason'][:50]} |"
         )
 
@@ -249,9 +294,9 @@ def main(argv: list[str] | None = None) -> None:
             test = s.get("test", {})
             lines.append(
                 f"- **{s['strategy']}** on {s['pair']}: "
-                f"Sharpe {test.get('sharpe_ratio', 0):.2f}, "
+                f"Sharpe {fmt(metric(test, 'sharpe_ratio'))}, "
                 f"Return {test.get('total_return_pct', 0):+.1f}%, "
-                f"MaxDD {test.get('max_drawdown_pct', 0):.1f}%"
+                f"MaxDD {fmt(max_dd(test), 1)}%"
             )
     else:
         lines.append("No combinations passed all criteria.")
@@ -275,7 +320,7 @@ def main(argv: list[str] | None = None) -> None:
             test = s.get("test", {})
             print(
                 f"  {s['strategy']:40s} {s['pair']:10s} "
-                f"Sharpe={test.get('sharpe_ratio', 0):.2f} "
+                f"Sharpe={fmt(metric(test, 'sharpe_ratio'))} "
                 f"Return={test.get('total_return_pct', 0):+.1f}%"
             )
 

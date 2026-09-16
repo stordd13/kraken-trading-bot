@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -57,6 +58,191 @@ def _wf_entry(
         },
     }
     return key, value
+
+
+def _wf_entry_v2(
+    strategy: str,
+    pair: str,
+    params_hash: str,
+    window_idx: int,
+    *,
+    train_sharpe: float | None = 0.5,
+    test_sharpe: float | None = 0.5,
+    gross_profit: float = 15.0,
+    gross_loss: float = 10.0,
+    test_trades: int = 30,
+    test_dd: float = 10.0,
+) -> tuple[str, dict]:
+    """Phase-2 entry under the C1 contract (metrics_version 2, sums, daily MaxDD)."""
+    key, value = _wf_entry(strategy, pair, params_hash, window_idx, test_trades=test_trades)
+    value["metrics_version"] = 2
+    value["train"] = {"metrics_version": 2, "sharpe_ratio": train_sharpe, "total_trades": 50}
+    value["test"] = {
+        "metrics_version": 2,
+        "sharpe_ratio": test_sharpe,
+        "profit_factor": r.profit_factor_from_sums(gross_profit, gross_loss)
+        if gross_loss > 0
+        else None,
+        "gross_profit_net": gross_profit,
+        "gross_loss_net": gross_loss,
+        "pf_excluded_trades": 0,
+        "total_trades": test_trades,
+        "max_drawdown_pct_daily": test_dd,
+        "max_drawdown_pct_engine": test_dd + 1.0,
+    }
+    return key, value
+
+
+class TestAggregateWalkForwardV2:
+    """C1: None-aware aggregation, summed profit factor, legacy detection."""
+
+    def test_sharpe_none_windows_are_skipped_with_n_reported(self) -> None:
+        sharpes = [0.5, None, 1.0]
+        results = dict(
+            [
+                _wf_entry_v2("s", "BTC/USDC", "h1", i, test_sharpe=x)
+                for i, x in enumerate(sharpes, 1)
+            ]
+        )
+        agg = r.aggregate_walk_forward(results)[("s", "BTC/USDC", "h1")]
+        assert agg.legacy is False
+        assert agg.mean_sharpe_oos == pytest.approx(0.75) and agg.n_sharpe_oos == 2
+        assert agg.consistency == 2  # defined and > 0
+
+    def test_all_sharpe_none_propagates_none(self) -> None:
+        results = dict(
+            [
+                _wf_entry_v2("s", "BTC/USDC", "h1", i, test_sharpe=None, train_sharpe=None)
+                for i in (1, 2)
+            ]
+        )
+        agg = r.aggregate_walk_forward(results)[("s", "BTC/USDC", "h1")]
+        assert agg.mean_sharpe_oos is None and agg.mean_sharpe_train is None
+        assert agg.n_sharpe_oos == 0 and agg.consistency == 0
+        assert (
+            r.apply_selection_criteria(
+                agg, benchmarks={"BTC/USDC": {"buy_and_hold": 0.1, "dca_fixed": 0.1}}
+            ).passed
+            is False
+        )
+
+    def test_pf_aggregated_on_the_sums_infinite_window_never_becomes_zero(self) -> None:
+        windows = [(10.0, 5.0), (8.0, 0.0), (6.0, 3.0)]  # PF 2, ∞, 2
+        results = dict(
+            [
+                _wf_entry_v2("s", "BTC/USDC", "h1", i, gross_profit=gp, gross_loss=gl)
+                for i, (gp, gl) in enumerate(windows, 1)
+            ]
+        )
+        agg = r.aggregate_walk_forward(results)[("s", "BTC/USDC", "h1")]
+        assert (agg.gross_profit_net_oos, agg.gross_loss_net_oos) == (24.0, 8.0)
+        assert agg.profit_factor_oos == 3.0
+        assert agg.n_pf_oos == 2 and agg.mean_pf_oos == 2.0  # diagnostic mean skips the ∞ window
+        only_wins = dict(
+            [
+                _wf_entry_v2("s", "BTC/USDC", "h2", i, gross_profit=5.0, gross_loss=0.0)
+                for i in (1, 2)
+            ]
+        )
+        agg2 = r.aggregate_walk_forward(only_wins)[("s", "BTC/USDC", "h2")]
+        assert agg2.profit_factor_oos == math.inf and agg2.mean_pf_oos is None
+        v = r.apply_selection_criteria(
+            agg2, benchmarks={"BTC/USDC": {"buy_and_hold": 0.1, "dca_fixed": 0.1}}
+        )
+        assert next(c for c in v.criteria if c.name == "profit_factor_oos > 1.3").passed is True
+
+    def test_excluded_lots_make_the_summed_pf_incomplete(self) -> None:
+        key, value = _wf_entry_v2("s", "BTC/USDC", "h1", 1, gross_profit=10.0, gross_loss=2.0)
+        value["test"]["pf_excluded_trades"] = 2
+        agg = r.aggregate_walk_forward({key: value})[("s", "BTC/USDC", "h1")]
+        assert agg.pf_excluded_trades_oos == 2 and agg.profit_factor_oos == 5.0
+        v = r.apply_selection_criteria(
+            agg, benchmarks={"BTC/USDC": {"buy_and_hold": 0.1, "dca_fixed": 0.1}}
+        )
+        c2 = next(c for c in v.criteria if c.name == "profit_factor_oos > 1.3")
+        assert c2.passed is True and "incomplete: 2 lot(s)" in c2.note
+        assert r._pf_text(v.to_dict()) == "5.00 (incomplete: 2 excluded)"
+
+    def test_build_selection_ranks_an_undefined_sharpe_last(self) -> None:
+        undefined = _agg(pair="ETH/USDC", mean_sharpe_oos=None, params_hash="h_none")
+        defined = _agg(pair="ETH/USDC", mean_sharpe_oos=0.5, params_hash="h_ok")
+        sel = r.build_selection(
+            {("s", "ETH/USDC", "h_none"): undefined, ("s", "ETH/USDC", "h_ok"): defined}
+        )
+        assert [x["params_hash"] for x in sel["selected_for_paper"]] == ["h_ok"]
+        only_none = r.build_selection({("s", "ETH/USDC", "h_none"): undefined})
+        assert only_none["selected_for_paper"] == []
+        assert only_none["abandoned"][0]["best_sharpe_oos"] is None
+
+    def test_daily_drawdown_key_and_to_dict_keys(self) -> None:
+        results = dict(
+            [_wf_entry_v2("s", "BTC/USDC", "h1", i, test_dd=float(i * 5)) for i in (1, 2, 3)]
+        )
+        agg = r.aggregate_walk_forward(results)[("s", "BTC/USDC", "h1")]
+        assert agg.max_drawdown_global == 15.0
+        d = agg.to_dict()
+        assert {
+            "profit_factor_oos",
+            "gross_profit_net_oos",
+            "gross_loss_net_oos",
+            "n_pf_oos",
+            "n_sharpe_oos",
+        } <= set(d)
+        assert "mean_profit_factor" not in d
+
+    def test_entries_without_the_sums_take_the_legacy_path(self) -> None:
+        results = dict(
+            [
+                _wf_entry("s", "BTC/USDC", "h1", i, test_pf=float("inf") if i == 2 else 2.0)
+                for i in (1, 2, 3)
+            ]
+        )
+        agg = r.aggregate_walk_forward(results)[("s", "BTC/USDC", "h1")]
+        assert agg.legacy is True
+        assert agg.mean_pf_oos == pytest.approx(
+            4.0 / 3
+        )  # v1: inf coerced to 0 (defect D4, kept for v1)
+        assert agg.profit_factor_oos == agg.mean_pf_oos
+        assert "mean_pf_oos" in agg.to_dict() and "profit_factor_oos" not in agg.to_dict()
+        verdict = r.apply_selection_criteria(agg).to_dict()
+        assert "mean_profit_factor" in verdict and "profit_factor_oos" not in verdict
+        mixed = dict([_wf_entry("s", "BTC/USDC", "h1", 1), _wf_entry_v2("s", "BTC/USDC", "h1", 2)])
+        assert r.aggregate_walk_forward(mixed)[("s", "BTC/USDC", "h1")].legacy is True
+
+
+_B4_DIR = Path(__file__).resolve().parent.parent.parent / "results"
+
+
+@pytest.mark.skipif(
+    not (_B4_DIR / "B4_P7_final_selection.json").exists(), reason="B4 campaign files absent"
+)
+def test_b4_campaign_verdicts_are_reproduced_bit_identically(tmp_path: Path) -> None:
+    """C12: the legacy v1 path must reproduce the frozen B4 selection (v1 files, campaign
+    benchmarks) — all verdicts, selected / abandoned / ineligible lists and flagged runs."""
+    sys.path.insert(0, str(_B4_DIR.parent / "scripts"))
+    from scripts import run_p7_grid_search as p7
+
+    bench_path = _B4_DIR / "B4_benchmarks.json"
+    selection = r.generate_report(
+        _B4_DIR / "B4_P7_phase1_cross_validate.json",
+        _B4_DIR / "B4_P7_phase2_walk_forward.json",
+        tmp_path / "r.md",
+        tmp_path / "s.json",
+        benchmarks=p7.load_benchmark_sharpe(bench_path),
+        benchmark_details=p7.load_benchmark_details(bench_path),
+    )
+    produced = json.loads((tmp_path / "s.json").read_text())
+    frozen = json.loads((_B4_DIR / "B4_P7_final_selection.json").read_text())
+    for key in (
+        "all_verdicts",
+        "selected_for_paper",
+        "abandoned",
+        "ineligible_flagged",
+        "flagged_runs",
+        "benchmarks",
+    ):
+        assert produced[key] == frozen[key], key
+    assert len(selection["all_verdicts"]) == 35 and selection["selected_for_paper"] == []
 
 
 class TestAggregateWalkForward:
@@ -125,7 +311,14 @@ def _agg(
     max_drawdown_global: float = 10.0,
     consistency: int = 6,
     params_hash: str = "abc12345",
+    legacy: bool = False,
+    gross_profit: float | None = None,
+    gross_loss: float | None = None,
 ) -> r.WalkForwardAggregate:
+    """v2 aggregate whose summed PF equals ``mean_pf_oos`` (gains = pf x 100, losses = 100)
+    unless the sums are given; ``legacy=True`` builds a v1 aggregate (mean of PFs)."""
+    if not legacy and gross_profit is None and gross_loss is None:
+        gross_profit, gross_loss = (mean_pf_oos or 0.0) * 100.0, 100.0
     return r.WalkForwardAggregate(
         strategy=strategy,
         pair=pair,
@@ -140,6 +333,12 @@ def _agg(
         max_drawdown_global=max_drawdown_global,
         consistency=consistency,
         per_window=[],
+        legacy=legacy,
+        n_sharpe_train=8,
+        n_sharpe_oos=8 if mean_sharpe_oos is not None else 0,
+        n_pf_oos=8 if mean_pf_oos is not None else 0,
+        gross_profit_net_oos=None if legacy else gross_profit,
+        gross_loss_net_oos=None if legacy else gross_loss,
     )
 
 
@@ -172,7 +371,50 @@ class TestApplySelectionCriteria:
     def test_fails_low_pf(self) -> None:
         v = r.apply_selection_criteria(_agg(mean_pf_oos=1.0))
         assert v.passed is False
-        assert any("mean_profit_factor" in c.name and not c.passed for c in v.criteria)
+        assert any(c.name == "profit_factor_oos > 1.3" and not c.passed for c in v.criteria)
+        legacy = r.apply_selection_criteria(_agg(mean_pf_oos=1.0, legacy=True))
+        assert any(
+            c.name == "mean_profit_factor_oos > 1.3" and not c.passed for c in legacy.criteria
+        )
+
+    # ---- C1 (metrics_version 2): None-aware criteria on the summed profit factor -----------
+
+    def test_undefined_sharpe_fails_with_a_note_never_a_zero(self) -> None:
+        v = r.apply_selection_criteria(_agg(pair="ETH/USDC", mean_sharpe_oos=None))
+        assert v.passed is False
+        c1 = next(c for c in v.criteria if c.name == "mean_sharpe_oos > 0.4")
+        assert c1.passed is False and c1.actual is None and "undefined" in c1.note
+        c6 = next(c for c in v.criteria if "anti-overfit" in c.name)
+        assert c6.passed is False and c6.actual is None and "undefined" in c6.note
+        c7 = next(c for c in v.criteria if c.name == "beats Buy&Hold OR DCA fixed")
+        assert c7.passed is False and "undefined" in c7.note
+        assert "actual=n/a" in v.failure_reasons()[0]
+
+    def test_pf_without_any_loss_is_infinite_and_passes(self) -> None:
+        v = r.apply_selection_criteria(_agg(pair="ETH/USDC", gross_profit=50.0, gross_loss=0.0))
+        c2 = next(c for c in v.criteria if c.name == "profit_factor_oos > 1.3")
+        assert c2.passed is True and c2.actual == 999.0 and "∞" in c2.note
+        assert v.aggregate.profit_factor_oos == math.inf
+        assert v.to_dict()["profit_factor_oos"] is None  # JSON-safe: the sums disambiguate
+        assert (
+            v.to_dict()["gross_loss_net_oos"] == 0.0 and v.to_dict()["gross_profit_net_oos"] == 50.0
+        )
+        assert r._pf_text(v.to_dict()) == "∞"
+
+    def test_pf_zero_over_zero_is_undefined_and_fails(self) -> None:
+        v = r.apply_selection_criteria(_agg(pair="ETH/USDC", gross_profit=0.0, gross_loss=0.0))
+        c2 = next(c for c in v.criteria if c.name == "profit_factor_oos > 1.3")
+        assert c2.passed is False and c2.actual is None and "0/0" in c2.note
+        assert r._pf_text(v.to_dict()) == "n/a"
+
+    def test_benchmark_leg_none_cannot_be_beaten(self) -> None:
+        only_dca = {"BTC/USDC": {"buy_and_hold": None, "dca_fixed": 0.3}}
+        v = r.apply_selection_criteria(_agg(mean_sharpe_oos=0.5), benchmarks=only_dca)
+        assert v.beats_benchmark == "dca_fixed" and v.benchmark_sharpe["buy_and_hold"] is None
+        none_bench = {"BTC/USDC": {"buy_and_hold": None, "dca_fixed": None}}
+        v2 = r.apply_selection_criteria(_agg(mean_sharpe_oos=5.0), benchmarks=none_bench)
+        c7 = next(c for c in v2.criteria if c.name == "beats Buy&Hold OR DCA fixed")
+        assert c7.passed is False and "no benchmark available" in c7.note
 
     def test_fails_high_drawdown(self) -> None:
         v = r.apply_selection_criteria(_agg(max_drawdown_global=35.0))

@@ -25,6 +25,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from b4_flags import collect_flags, render_flags_markdown  # noqa: E402
 
+from krakenbot.backtest_metrics import (  # noqa: E402
+    METRICS_VERSION,
+    MetricsVersionError,
+    fmt,
+    require_metrics_version,
+)
+
+
+def _m(block: dict | None, key: str, digits: int = 2) -> str:
+    """C1: display of a metric that may be undefined (None -> n/a, inf -> ∞)."""
+    value = (block or {}).get(key)
+    if value is None:
+        return "n/a"
+    try:
+        return fmt(float(value), digits)
+    except (TypeError, ValueError):
+        return "n/a"
+
+
+def _dd(block: dict | None) -> str:
+    """Daily-NAV running-peak drawdown (C1 key), pre-C1 key as fallback."""
+    block = block or {}
+    key = "max_drawdown_pct_daily" if "max_drawdown_pct_daily" in block else "max_drawdown_pct"
+    return _m(block, key, 1)
+
+
 RESULTS_DIR = Path(__file__).resolve().parent.parent / "results"
 BENCHMARKS_PATH = RESULTS_DIR / "P6_benchmarks.json"
 PHASE_D_PATH = RESULTS_DIR / "P6_phase_d_results.json"
@@ -71,7 +97,20 @@ def main(argv: list[str] | None = None) -> None:
     phase_d_path = RESULTS_DIR / args.phase_d
 
     benchmarks = load_json(RESULTS_DIR / args.benchmarks)
+    if benchmarks and benchmarks.get("metrics_version") != METRICS_VERSION:  # C1: v1 (D6) refused
+        print(
+            f"ERROR: {RESULTS_DIR / args.benchmarks} carries metrics_version="
+            f"{benchmarks.get('metrics_version', '<absent: pre-C1 file>')}, not {METRICS_VERSION}; "
+            "rerun scripts/compute_benchmarks.py under this contract.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     phase_d = load_json(phase_d_path)
+    try:  # C1: one metrics contract per file, never a pre-C1 / mixed one
+        require_metrics_version(phase_d, METRICS_VERSION, path=str(phase_d_path))
+    except MetricsVersionError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(2)
     survivors = load_json(RESULTS_DIR / args.survivors)
     walkforward = load_json(RESULTS_DIR / args.walkforward)
 
@@ -174,10 +213,10 @@ def main(argv: list[str] | None = None) -> None:
                 lines.append(
                     f"| {pair} | {bm_label} | "
                     f"{m.get('total_return_pct', 0):+.1f}% | "
-                    f"{m.get('sharpe_ratio', 0):.2f} | "
-                    f"{m.get('sortino_ratio', 0):.2f} | "
-                    f"{m.get('max_drawdown_pct', 0):.1f}% | "
-                    f"{m.get('calmar_ratio', 0):.2f} |"
+                    f"{_m(m, 'sharpe_ratio')} | "
+                    f"{_m(m, 'sortino_ratio')} | "
+                    f"{_dd(m)}% | "
+                    f"{_m(m, 'calmar_ratio')} |"
                 )
     lines.append("")
 
@@ -208,11 +247,11 @@ def main(argv: list[str] | None = None) -> None:
             f"| {strategy} | {pair} | "
             f"{train.get('total_return_pct', 0):+.1f}% | "
             f"{test.get('total_return_pct', 0):+.1f}% | "
-            f"{train.get('sharpe_ratio', 0):.2f} | "
-            f"{test.get('sharpe_ratio', 0):.2f} | "
-            f"{test.get('max_drawdown_pct', 0):.1f}% | "
-            f"{test.get('profit_factor', 0):.2f} | "
-            f"{test.get('calmar_ratio', 0):.2f} | "
+            f"{_m(train, 'sharpe_ratio')} | "
+            f"{_m(test, 'sharpe_ratio')} | "
+            f"{_dd(test)}% | "
+            f"{_m(test, 'profit_factor')} | "
+            f"{_m(test, 'calmar_ratio')} | "
             f"{test.get('total_trades', 0)} | "
             f"{status} |"
         )
@@ -237,9 +276,9 @@ def main(argv: list[str] | None = None) -> None:
             lines.append(
                 f"| {wf['strategy']} | {wf['pair']} | "
                 f"{cs:.0%} | "
-                f"{mm.get('sharpe_ratio', 0):.2f} | "
+                f"{_m(mm, 'sharpe_ratio')} | "
                 f"{mm.get('total_return_pct', 0):+.1f}% | "
-                f"{mm.get('max_drawdown_pct', 0):.1f}% | "
+                f"{_dd(mm)}% | "
                 f"{pw}/{tw} | {verdict} |"
             )
         lines.append("")
@@ -277,7 +316,7 @@ def main(argv: list[str] | None = None) -> None:
             lines.append(
                 f"- **{wf['strategy']}** on {wf['pair']} "
                 f"(consistency {wf.get('consistency_score', 0):.0%}, "
-                f"mean Sharpe {mm.get('sharpe_ratio', 0):.2f})"
+                f"mean Sharpe {_m(mm, 'sharpe_ratio')})"
             )
     else:
         lines.append("*None*")
@@ -291,7 +330,7 @@ def main(argv: list[str] | None = None) -> None:
             lines.append(
                 f"- **{wf['strategy']}** on {wf['pair']} "
                 f"(consistency {wf.get('consistency_score', 0):.0%}, "
-                f"mean Sharpe {mm.get('sharpe_ratio', 0):.2f})"
+                f"mean Sharpe {_m(mm, 'sharpe_ratio')})"
             )
     else:
         lines.append("*None*")

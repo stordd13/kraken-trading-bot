@@ -23,6 +23,14 @@ from typing import Any
 from dotenv import load_dotenv
 from sqlalchemy import select, text
 
+from krakenbot.backtest_metrics import (
+    METRICS_VERSION,
+    DailySeries,
+    EquityPoint,
+    TradeLeg,
+    compute_metrics,
+    fmt,
+)
 from krakenbot.config.settings import FEE_MODEL_NAMES, ExchangeFees, Settings, get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import EventBus
@@ -240,6 +248,10 @@ class BacktestTrade:
     slippage_pct: Decimal | None = None
     # B4.3: True for the end-of-run market liquidation of terminal inventory (grid engine).
     forced_liquidation: bool = False
+    # C1: SELL legs only — buy fee of the lot(s) this sell closes, imputed to the closing leg
+    # by the net-of-both-legs profit factor (``pnl`` itself stays net of the sell fee only).
+    # None when the cost basis is unknown (grid inventory divergence: ``pnl`` is None too).
+    buy_fee_alloc: Decimal | None = None
 
 
 @dataclass
@@ -264,18 +276,26 @@ class BacktestMetrics:
     # (B4.3). The key name is kept for schema stability (P6/P7 JSON, gold hash, harness).
     unrealized_pnl: Decimal = Decimal("0")
 
-    # Performance ratios
+    # Performance ratios (C1: ``None`` = undefined, never a fake 0; see
+    # krakenbot.backtest_metrics for the definitions, contract METRICS_VERSION)
     win_rate: float = 0.0  # winning_trades / total_trades
     average_win: Decimal = Decimal("0")
     average_loss: Decimal = Decimal("0")
-    profit_factor: float = 0.0  # total_wins / total_losses
+    # gross_profit_net / gross_loss_net (both legs' fees imputed); None when losses == 0
+    profit_factor: float | None = None
+    gross_profit_net: Decimal = Decimal("0")
+    gross_loss_net: Decimal = Decimal("0")  # absolute value
+    pf_excluded_trades: int = 0  # closed lots with an unknown cost basis (PF incomplete)
 
     # Risk metrics
-    max_drawdown: Decimal = Decimal("0")  # Largest peak-to-trough decline
-    max_drawdown_pct: float = 0.0
-    sharpe_ratio: float = 0.0  # Risk-adjusted return
-    sortino_ratio: float = 0.0  # Risk-adjusted return (downside volatility only)
-    calmar_ratio: float = 0.0  # Annualized return / max drawdown
+    max_drawdown: Decimal = Decimal("0")  # Largest peak-to-trough decline (engine resolution)
+    max_drawdown_pct_daily: float = 0.0  # relative to the running peak, daily NAV (selection)
+    max_drawdown_pct_engine: float = 0.0  # same, at the engine's resolution (diagnostic)
+    sharpe_ratio: float | None = None  # daily returns, sample std, sqrt(365)
+    sortino_ratio: float | None = None  # daily returns, downside deviation (MAR 0)
+    calmar_ratio: float | None = None  # geometric CAGR / max_drawdown_pct_daily
+    n_daily_returns: int = 0
+    equity_daily: DailySeries | None = None  # daily NAV grid (exported next to the metrics)
 
     # Position tracking
     starting_balance: Decimal = Decimal("1000")
@@ -291,9 +311,16 @@ class BacktestMetrics:
     # Trade history
     trades: list[BacktestTrade] = field(default_factory=list)
 
-    def to_dict(self) -> dict[str, float | int]:
-        """Return metrics as a JSON-serializable dict for programmatic use."""
+    def to_dict(self) -> dict[str, float | int | None]:
+        """Scalar metrics, JSON-serialisable — the ``METRICS_VERSION`` 2 contract (C1).
+
+        Ratios are ``None`` when undefined. ``profit_factor`` is disambiguated by the two
+        sums (gains > 0 and losses == 0 -> infinite; both 0 -> undefined) and flagged
+        incomplete by ``pf_excluded_trades``. The daily equity is deliberately NOT here
+        (see ``equity_daily_dict``): this dict feeds the gold hashes and the campaign files.
+        """
         return {
+            "metrics_version": METRICS_VERSION,
             "total_trades": self.total_trades,
             "winning_trades": self.winning_trades,
             "losing_trades": self.losing_trades,
@@ -301,7 +328,8 @@ class BacktestMetrics:
             "total_return_pct": self.total_return_pct,
             "sharpe_ratio": self.sharpe_ratio,
             "sortino_ratio": self.sortino_ratio,
-            "max_drawdown_pct": self.max_drawdown_pct,
+            "max_drawdown_pct_daily": self.max_drawdown_pct_daily,
+            "max_drawdown_pct_engine": self.max_drawdown_pct_engine,
             "profit_factor": self.profit_factor,
             "calmar_ratio": self.calmar_ratio,
             "net_pnl": float(self.net_pnl),
@@ -312,7 +340,89 @@ class BacktestMetrics:
             "ending_balance": float(self.ending_balance),
             "duration_days": self.duration_days,
             "average_holding_time_minutes": self.average_holding_time_minutes,
+            "gross_profit_net": float(self.gross_profit_net),
+            "gross_loss_net": float(self.gross_loss_net),
+            "pf_excluded_trades": self.pf_excluded_trades,
+            "n_daily_returns": self.n_daily_returns,
         }
+
+    def equity_daily_dict(self) -> dict[str, Any] | None:
+        """Daily NAV grid (``{start, end, values}``), stored by the runners next to the
+        metrics and at the top level of the ``--trades-out`` dump; None before a run."""
+        return self.equity_daily.to_dict() if self.equity_daily is not None else None
+
+    def profit_factor_display(self) -> str:
+        """``profit_factor`` for humans: ratio, ∞ (gains without losses), n/a (0/0), with
+        the number of excluded lots when the figure is incomplete."""
+        if self.profit_factor is not None:
+            text = fmt(self.profit_factor)
+        elif self.gross_profit_net > 0 and self.gross_loss_net == 0:
+            text = "∞"
+        else:
+            text = "n/a"
+        if self.pf_excluded_trades:
+            text += f" (incomplete: {self.pf_excluded_trades} lot(s) with unknown cost)"
+        return text
+
+
+def _side_str(side: Any) -> str:
+    return str(getattr(side, "value", side)).lower()
+
+
+def _buy_fee_from_cost_basis(cost_basis: Decimal, maker_rate: Decimal) -> Decimal:
+    """Buy fee of a grid lot from its cost basis: a maker buy books ``crypto = (notional -
+    fee) / price`` with ``fee = notional * r``, hence ``cost_basis = notional * (1 - r)`` and
+    ``fee = cost_basis * r / (1 - r)`` (exact; prorata of a clamped lot by construction)."""
+    return cost_basis * maker_rate / (Decimal("1") - maker_rate)
+
+
+def apply_shared_metrics(
+    metrics: BacktestMetrics, equity_curve: list[tuple[datetime, Decimal]]
+) -> None:
+    """Fill the C1 ratios of ``metrics`` from the raw equity curve and the trade list through
+    ``krakenbot.backtest_metrics`` (both engines call this last; the simulation state is never
+    touched). Without run dates (unit tests) the equity curve's own span is used; with no
+    equity at all only the profit factor is computed and every ratio stays None."""
+    legs = [
+        TradeLeg(
+            side=_side_str(t.side),
+            timestamp=t.timestamp,
+            amount_crypto=t.amount_crypto,
+            fee=t.fee,
+            pnl=t.pnl,
+            buy_fee_alloc=t.buy_fee_alloc,
+        )
+        for t in metrics.trades
+    ]
+    start = metrics.start_time or (equity_curve[0][0] if equity_curve else None)
+    end = metrics.end_time or (equity_curve[-1][0] if equity_curve else None)
+    if start is None or end is None:
+        from krakenbot.backtest_metrics import net_trade_pnls
+
+        pf = net_trade_pnls(legs)
+        metrics.profit_factor = pf.profit_factor
+        metrics.gross_profit_net = pf.gross_profit_net
+        metrics.gross_loss_net = pf.gross_loss_net
+        metrics.pf_excluded_trades = pf.pf_excluded_trades
+        return
+    result = compute_metrics(
+        [EquityPoint(timestamp=ts, equity=eq) for ts, eq in equity_curve],
+        legs,
+        start=start,
+        end=end,
+        starting_balance=metrics.starting_balance,
+    )
+    metrics.sharpe_ratio = result.sharpe_ratio
+    metrics.sortino_ratio = result.sortino_ratio
+    metrics.max_drawdown_pct_daily = result.max_drawdown_pct_daily
+    metrics.max_drawdown_pct_engine = result.max_drawdown_pct_engine
+    metrics.calmar_ratio = result.calmar_ratio
+    metrics.profit_factor = result.profit_factor
+    metrics.gross_profit_net = result.gross_profit_net
+    metrics.gross_loss_net = result.gross_loss_net
+    metrics.pf_excluded_trades = result.pf_excluded_trades
+    metrics.n_daily_returns = result.n_daily_returns
+    metrics.equity_daily = result.daily
 
 
 class BacktestEngine:
@@ -382,6 +492,10 @@ class BacktestEngine:
         # Metrics tracking
         self.metrics = BacktestMetrics(starting_balance=self.usdc_balance)
         self.equity_curve: list[tuple[datetime, Decimal]] = []
+        # C1: same points with cash / inventory / mark price (``--equity-out`` sidecar);
+        # equity_curve itself is unchanged (A/B identity).
+        self.equity_detail: list[EquityPoint] = []
+        self._open_buy_fees = Decimal("0")  # C1: buy fees of the open lot(s), imputed at the sell
         self._current_regime: str | None = None
         self._regime_stats: dict[str, dict] = {}
         self._entry_regime: str | None = None  # single-position mode
@@ -770,6 +884,7 @@ class BacktestEngine:
             self.crypto_balance += crypto_bought
             self.entry_price = execution_price  # Store actual execution price
             self.in_position = True
+            self._open_buy_fees += fee  # C1: imputed to the closing sell (accumulation-safe)
 
             # Update strategy position state for next signal generation
             if uses_otf:
@@ -877,6 +992,8 @@ class BacktestEngine:
             # Record trade with ENTRY regime (not exit regime)
             sell_regime = self._entry_regime or self._current_regime
             self._entry_regime = None
+            buy_fee_alloc = self._open_buy_fees  # C1: the whole position is closed
+            self._open_buy_fees = Decimal("0")
             trade = BacktestTrade(
                 timestamp=signal.timestamp,
                 side=TradeSide.SELL,
@@ -892,6 +1009,7 @@ class BacktestEngine:
                 reference_price=current_price,
                 spread_pct=spread_pct,
                 slippage_pct=slippage_pct,
+                buy_fee_alloc=buy_fee_alloc,
             )
             self.metrics.trades.append(trade)
             self.metrics.total_fees += fee
@@ -946,11 +1064,7 @@ class BacktestEngine:
         if losing_pnls:
             self.metrics.average_loss = sum(losing_pnls, Decimal("0")) / len(losing_pnls)
 
-        # Profit factor
-        total_wins = sum(winning_pnls, Decimal("0"))
-        total_losses = abs(sum(losing_pnls, Decimal("0")))
-        if total_losses > 0:
-            self.metrics.profit_factor = float(total_wins / total_losses)
+        # Profit factor: C1, net of both legs, computed with the shared metrics (see below)
 
         # Net P&L (B4.3): sell fees are already netted inside each trade's pnl (proceeds - fee
         # - cost basis, cost basis = order amount - buy fee): subtract the buy fees once.
@@ -988,9 +1102,7 @@ class BacktestEngine:
             if drawdown > max_dd:
                 max_dd = drawdown
 
-        self.metrics.max_drawdown = max_dd
-        if peak > 0:
-            self.metrics.max_drawdown_pct = float((max_dd / peak) * 100)
+        self.metrics.max_drawdown = max_dd  # money, engine resolution (unchanged by C1)
 
         # Calculate average holding time (for completed trades with timestamps)
         buy_trades = {t.timestamp: t for t in self.metrics.trades if t.side == TradeSide.BUY}
@@ -1008,38 +1120,9 @@ class BacktestEngine:
         if holding_times:
             self.metrics.average_holding_time_minutes = sum(holding_times) / len(holding_times)
 
-        # Sharpe ratio (simplified: assumes daily returns)
-        if len(self.equity_curve) > 1:
-            returns = []
-            for i in range(1, len(self.equity_curve)):
-                prev_equity = self.equity_curve[i - 1][1]
-                curr_equity = self.equity_curve[i][1]
-                if prev_equity > 0:
-                    ret = float((curr_equity - prev_equity) / prev_equity)
-                    returns.append(ret)
-
-            if returns:
-                avg_return = sum(returns) / len(returns)
-                variance = sum((r - avg_return) ** 2 for r in returns) / len(returns)
-                std_dev = variance**0.5
-
-                if std_dev > 0:
-                    # Annualized Sharpe (assuming 365 days)
-                    self.metrics.sharpe_ratio = (avg_return / std_dev) * (365**0.5)
-
-                # Sortino ratio: uses only downside volatility
-                negative_returns = [r for r in returns if r < 0]
-                if negative_returns:
-                    downside_variance = sum(r**2 for r in negative_returns) / len(returns)
-                    downside_std = downside_variance**0.5
-                    if downside_std > 0:
-                        # Annualized Sortino (assuming 365 days)
-                        self.metrics.sortino_ratio = (avg_return / downside_std) * (365**0.5)
-
-        # Calmar ratio: annualized return / max drawdown %
-        if self.metrics.max_drawdown_pct > 0 and self.metrics.duration_days > 0:
-            annualized_return = self.metrics.total_return_pct * (365 / self.metrics.duration_days)
-            self.metrics.calmar_ratio = annualized_return / self.metrics.max_drawdown_pct
+        # C1: Sharpe / Sortino / MaxDD % (daily + engine) / Calmar / net profit factor through
+        # the shared module (daily resampling, flow-aware contract METRICS_VERSION).
+        apply_shared_metrics(self.metrics, self.equity_curve)
 
         # Regime breakdown: aggregate P&L per market regime
         regime_stats: dict[str, dict] = {}
@@ -1387,6 +1470,15 @@ class BacktestEngine:
             if self.crypto_balance > 0:
                 current_equity += self.crypto_balance * candle.close
             self.equity_curve.append((candle.timestamp, current_equity))
+            self.equity_detail.append(
+                EquityPoint(
+                    timestamp=candle.timestamp,
+                    equity=current_equity,
+                    cash=self.usdc_balance,
+                    inventory_qty=self.crypto_balance,
+                    mark_price=candle.close,
+                )
+            )
 
             # Log progress every 100 tradeable candles
             if tradeable_idx % 100 == 0:
@@ -1440,7 +1532,7 @@ class BacktestEngine:
         print(f"{'Win Rate:':<30} {self.metrics.win_rate * 100:.2f}%")
         print(f"{'Average Win:':<30} {float(self.metrics.average_win):+.2f} USDC")
         print(f"{'Average Loss:':<30} {float(self.metrics.average_loss):+.2f} USDC")
-        print(f"{'Profit Factor:':<30} {self.metrics.profit_factor:.2f}")
+        print(f"{'Profit Factor (net):':<30} {self.metrics.profit_factor_display()}")
 
         # Display average holding time if available
         if self.metrics.average_holding_time_minutes > 0:
@@ -1459,9 +1551,11 @@ class BacktestEngine:
         print("-" * 80)
 
         print(f"{'Max Drawdown:':<30} {float(self.metrics.max_drawdown):.2f} USDC")
-        print(f"{'Max Drawdown %:':<30} {self.metrics.max_drawdown_pct:.2f}%")
-        print(f"{'Sharpe Ratio:':<30} {self.metrics.sharpe_ratio:.2f}")
-        print(f"{'Sortino Ratio:':<30} {self.metrics.sortino_ratio:.2f}")
+        print(f"{'Max Drawdown % (daily):':<30} {self.metrics.max_drawdown_pct_daily:.2f}%")
+        print(f"{'Max Drawdown % (engine):':<30} {self.metrics.max_drawdown_pct_engine:.2f}%")
+        print(f"{'Sharpe Ratio (daily):':<30} {fmt(self.metrics.sharpe_ratio)}")
+        print(f"{'Sortino Ratio (daily):':<30} {fmt(self.metrics.sortino_ratio)}")
+        print(f"{'Calmar Ratio:':<30} {fmt(self.metrics.calmar_ratio)}")
 
         # Regime breakdown
         if self._regime_stats:
@@ -1526,10 +1620,14 @@ class BacktestEngine:
             net_pnl=self.metrics.net_pnl,
             total_return_pct=Decimal(str(self.metrics.total_return_pct)),
             max_drawdown=self.metrics.max_drawdown,
-            max_drawdown_pct=Decimal(str(self.metrics.max_drawdown_pct)),
-            sharpe_ratio=Decimal(str(self.metrics.sharpe_ratio)),
-            sortino_ratio=Decimal(str(self.metrics.sortino_ratio)),
-            profit_factor=Decimal(str(self.metrics.profit_factor)),
+            max_drawdown_pct=Decimal(str(self.metrics.max_drawdown_pct_daily)),
+            sharpe_ratio=_db_ratio(self.metrics.sharpe_ratio),
+            sortino_ratio=_db_ratio(self.metrics.sortino_ratio),
+            profit_factor=_db_ratio(self.metrics.profit_factor),
+            gross_profit_net=self.metrics.gross_profit_net,
+            gross_loss_net=self.metrics.gross_loss_net,
+            pf_excluded_trades=self.metrics.pf_excluded_trades,
+            metrics_version=METRICS_VERSION,
             average_win=self.metrics.average_win,
             average_loss=self.metrics.average_loss,
         )
@@ -1675,6 +1773,10 @@ class GridBacktester:
         # Standard metrics
         self.metrics = BacktestMetrics(starting_balance=self.usdc_balance)
         self.equity_curve: list[tuple[datetime, Decimal]] = []
+        # C1: same points with cash / inventory / mark price (``--equity-out`` sidecar);
+        # equity_curve itself is unchanged (A/B identity).
+        self.equity_detail: list[EquityPoint] = []
+        self._open_buy_fees = Decimal("0")  # C1: buy fees of the open lot(s), imputed at the sell
 
         # EventBus for strategy init
         self.event_bus = EventBus()
@@ -1710,8 +1812,16 @@ class GridBacktester:
         both replay paths they are the close of the last tradeable candle at
         ``candle_interval`` — the same price as the last equity point.
         """
-        self.equity_curve.append(
-            (candle.timestamp, self.usdc_balance + self.btc_held * candle.close)
+        equity = self.usdc_balance + self.btc_held * candle.close
+        self.equity_curve.append((candle.timestamp, equity))
+        self.equity_detail.append(
+            EquityPoint(
+                timestamp=candle.timestamp,
+                equity=equity,
+                cash=self.usdc_balance,
+                inventory_qty=self.btc_held,
+                mark_price=candle.close,
+            )
         )
         self._last_close = candle.close
         self._last_timestamp = candle.timestamp
@@ -1969,6 +2079,7 @@ class GridBacktester:
                 reference_price=fill_price,
                 spread_pct=Decimal("0"),
                 slippage_pct=Decimal("0"),
+                buy_fee_alloc=_buy_fee_from_cost_basis(cost_basis, self.fees.maker),
             )
         )
 
@@ -2115,6 +2226,7 @@ class GridBacktester:
                 reference_price=fill_price,
                 spread_pct=Decimal("0"),
                 slippage_pct=Decimal("0"),
+                buy_fee_alloc=_buy_fee_from_cost_basis(cost_basis, self.fees.maker),
             )
         )
 
@@ -2349,6 +2461,11 @@ class GridBacktester:
                 spread_pct=spread_pct,
                 slippage_pct=slippage_pct,
                 forced_liquidation=True,
+                buy_fee_alloc=(
+                    None
+                    if entry_price is None
+                    else _buy_fee_from_cost_basis(amount_btc * entry_price, self.fees.maker)
+                ),
             )
         )
         return pnl if pnl is not None else Decimal("0")
@@ -2440,8 +2557,16 @@ class GridBacktester:
         self.active_sell_orders.clear()
 
         if booked:
-            self.equity_curve.append(
-                (final_ts, self.usdc_balance + self.btc_held * reference_price)
+            final_equity = self.usdc_balance + self.btc_held * reference_price
+            self.equity_curve.append((final_ts, final_equity))
+            self.equity_detail.append(
+                EquityPoint(
+                    timestamp=final_ts,
+                    equity=final_equity,
+                    cash=self.usdc_balance,
+                    inventory_qty=self.btc_held,
+                    mark_price=reference_price,
+                )
             )
             self.logger.info(
                 "grid_terminal_liquidation",
@@ -2533,14 +2658,7 @@ class GridBacktester:
         if losing_pnls:
             self.metrics.average_loss = sum(losing_pnls, Decimal("0")) / len(losing_pnls)
 
-        # Profit factor
-        total_wins = sum(winning_pnls, Decimal("0"))
-        total_losses = abs(sum(losing_pnls, Decimal("0")))
-        if total_losses > 0:
-            self.metrics.profit_factor = float(total_wins / total_losses)
-        elif total_wins > 0:
-            self.metrics.profit_factor = float("inf")
-        # else: keep default 0.0 (no trades)
+        # Profit factor: C1, net of both legs, computed with the shared metrics (see below)
 
         # Average holding time — match each maker sell to the most recent prior buy. Forced
         # liquidations are excluded (they all share the final timestamp and would each be
@@ -2585,37 +2703,11 @@ class GridBacktester:
             drawdown = peak - equity
             if drawdown > max_dd:
                 max_dd = drawdown
-        self.metrics.max_drawdown = max_dd
-        if peak > 0:
-            self.metrics.max_drawdown_pct = float((max_dd / peak) * 100)
+        self.metrics.max_drawdown = max_dd  # money, engine resolution (unchanged by C1)
 
-        # Sharpe ratio
-        if len(self.equity_curve) > 1:
-            returns = []
-            for i in range(1, len(self.equity_curve)):
-                prev_eq = self.equity_curve[i - 1][1]
-                curr_eq = self.equity_curve[i][1]
-                if prev_eq > 0:
-                    returns.append(float((curr_eq - prev_eq) / prev_eq))
-            if returns:
-                avg_ret = sum(returns) / len(returns)
-                variance = sum((r - avg_ret) ** 2 for r in returns) / len(returns)
-                std_dev = variance**0.5
-                if std_dev > 0:
-                    self.metrics.sharpe_ratio = (avg_ret / std_dev) * (365**0.5)
-
-                # Sortino
-                neg_returns = [r for r in returns if r < 0]
-                if neg_returns:
-                    ds_var = sum(r**2 for r in neg_returns) / len(returns)
-                    ds_std = ds_var**0.5
-                    if ds_std > 0:
-                        self.metrics.sortino_ratio = (avg_ret / ds_std) * (365**0.5)
-
-        # Calmar ratio: annualized return / max drawdown %
-        if self.metrics.max_drawdown_pct > 0 and self.metrics.duration_days > 0:
-            annualized_return = self.metrics.total_return_pct * (365 / self.metrics.duration_days)
-            self.metrics.calmar_ratio = annualized_return / self.metrics.max_drawdown_pct
+        # C1: Sharpe / Sortino / MaxDD % (daily + engine) / Calmar / net profit factor through
+        # the shared module (after the terminal liquidation: its point is in the curve).
+        apply_shared_metrics(self.metrics, self.equity_curve)
 
     def print_report(self) -> None:
         """Print grid-specific backtest report."""
@@ -2693,9 +2785,11 @@ class GridBacktester:
         print("-" * 80)
 
         print(f"{'Max Drawdown:':<30} {float(self.metrics.max_drawdown):.2f} USDC")
-        print(f"{'Max Drawdown %:':<30} {self.metrics.max_drawdown_pct:.2f}%")
-        print(f"{'Sharpe Ratio:':<30} {self.metrics.sharpe_ratio:.2f}")
-        print(f"{'Sortino Ratio:':<30} {self.metrics.sortino_ratio:.2f}")
+        print(f"{'Max Drawdown % (daily):':<30} {self.metrics.max_drawdown_pct_daily:.2f}%")
+        print(f"{'Max Drawdown % (engine):':<30} {self.metrics.max_drawdown_pct_engine:.2f}%")
+        print(f"{'Sharpe Ratio (daily):':<30} {fmt(self.metrics.sharpe_ratio)}")
+        print(f"{'Sortino Ratio (daily):':<30} {fmt(self.metrics.sortino_ratio)}")
+        print(f"{'Calmar Ratio:':<30} {fmt(self.metrics.calmar_ratio)}")
 
         print("\n" + "=" * 80 + "\n")
 
@@ -2718,12 +2812,16 @@ class GridBacktester:
             win_rate=Decimal(str(round(self.metrics.win_rate, 4))),
             total_return_pct=Decimal(str(round(self.metrics.total_return_pct, 4))),
             max_drawdown=self.metrics.max_drawdown or Decimal("0"),
-            max_drawdown_pct=Decimal(str(round(self.metrics.max_drawdown_pct, 4))),
+            max_drawdown_pct=Decimal(str(round(self.metrics.max_drawdown_pct_daily, 4))),
             total_pnl=self.metrics.total_pnl,
             net_pnl=self.metrics.net_pnl,
-            sharpe_ratio=Decimal(str(round(self.metrics.sharpe_ratio, 4))),
-            sortino_ratio=Decimal(str(round(self.metrics.sortino_ratio, 4))),
-            profit_factor=Decimal(str(round(self.metrics.profit_factor, 4))),
+            sharpe_ratio=_db_ratio(self.metrics.sharpe_ratio, 4),
+            sortino_ratio=_db_ratio(self.metrics.sortino_ratio, 4),
+            profit_factor=_db_ratio(self.metrics.profit_factor, 4),
+            gross_profit_net=self.metrics.gross_profit_net,
+            gross_loss_net=self.metrics.gross_loss_net,
+            pf_excluded_trades=self.metrics.pf_excluded_trades,
+            metrics_version=METRICS_VERSION,
             average_win=self.metrics.average_win,
             average_loss=self.metrics.average_loss,
             total_fees=self.total_fees,
@@ -2841,6 +2939,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Write the per-trade fee audit JSON after the run (single run only).",
     )
     parser.add_argument(
+        "--equity-out",
+        type=Path,
+        default=None,
+        help="C1: write the engine-resolution equity sidecar (JSONL: timestamp, cash, "
+        "inventory, mark price, equity, external flow) of a single run.",
+    )
+    parser.add_argument(
         "--min-order-usdc",
         type=float,
         default=1.0,
@@ -2862,6 +2967,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             args.pair_costs = load_pair_costs(args.pair_costs_file)
         except (OSError, ValueError) as exc:
             parser.error(f"--pair-costs-file: {exc}")
+    if args.equity_out is not None and args.cross_validate:
+        parser.error("--equity-out applies to a single run, not to --cross-validate")
     if args.trades_out is not None and args.cross_validate:
         parser.error("--trades-out is a single-run artifact; drop it or drop --cross-validate")
     return args
@@ -2869,6 +2976,48 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _dec(value: Any) -> str | None:
     return None if value is None else str(value)
+
+
+def _db_ratio(value: float | None, ndigits: int | None = None) -> Decimal | None:
+    """Ratio column of ``BacktestRun``: NULL when the metric is undefined (C1)."""
+    if value is None:
+        return None
+    return Decimal(str(round(value, ndigits) if ndigits is not None else value))
+
+
+def dump_equity_jsonl(engine: Any, path: Path, *, pair: str) -> int:
+    """C1 equity sidecar: one header line, then one line per engine-resolution point
+    (timestamp, cash, inventory_qty, mark_price, equity, external_flow — 0 for the engines;
+    the field exists for the benchmarks). Mark-to-market at the close of every processed
+    tradeable candle (plus the grid's post-liquidation point): intrabar excursions are not
+    captured. Returns the number of points written."""
+    header = {
+        "metrics_version": METRICS_VERSION,
+        "engine": type(engine).__name__,
+        "strategy": engine.strategy_name,
+        "pair": pair,
+        "fees": engine.fee_model_name,
+        "resolution": "engine",
+        "valuation": "mark-to-market at the close of each processed tradeable candle",
+    }
+    lines = [json.dumps(header, sort_keys=True)]
+    for point in engine.equity_detail:
+        lines.append(
+            json.dumps(
+                {
+                    "timestamp": point.timestamp.isoformat(),
+                    "cash": _dec(point.cash),
+                    "inventory_qty": _dec(point.inventory_qty),
+                    "mark_price": _dec(point.mark_price),
+                    "equity": _dec(point.equity),
+                    "external_flow": "0",
+                },
+                sort_keys=True,
+            )
+        )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    return len(engine.equity_detail)
 
 
 def dump_trades_json(
@@ -2930,11 +3079,15 @@ def dump_trades_json(
                 "slippage_pct": _dec(trade.slippage_pct),
                 "pnl": _dec(trade.pnl),
                 "regime": trade.regime,
+                "buy_fee_alloc": _dec(trade.buy_fee_alloc),
                 **({"forced_liquidation": trade.forced_liquidation} if is_grid else {}),
             }
             for n, trade in enumerate(trades, start=1)
         ],
     }
+    # C1: contract version and the daily NAV grid, outside the harness' schema-1 projection
+    payload["metrics_version"] = METRICS_VERSION
+    payload["equity_daily"] = engine.metrics.equity_daily_dict()
     regime_stats = getattr(engine, "_regime_stats", None)
     if regime_stats:
         payload["regime_breakdown"] = {
@@ -3078,24 +3231,19 @@ async def main(argv: list[str] | None = None) -> None:
                 f"{'Win Rate %':<25} {train_wr:>.2f}%{'':<9} {test_wr:>.2f}%{'':<9} {test_wr - train_wr:>+.2f}%"
             )
 
-            # Profit factor
-            print(
-                f"{'Profit Factor':<25} {train_metrics.profit_factor:>.2f}{'':<12} {test_metrics.profit_factor:>.2f}{'':<12} {test_metrics.profit_factor - train_metrics.profit_factor:>+.2f}"
-            )
+            # Ratios (C1: None = undefined -> n/a, delta only when both are defined)
+            for label, attr in (
+                ("Profit Factor (net)", "profit_factor"),
+                ("Sharpe Ratio (daily)", "sharpe_ratio"),
+                ("Sortino Ratio (daily)", "sortino_ratio"),
+            ):
+                a, b = getattr(train_metrics, attr), getattr(test_metrics, attr)
+                delta = f"{b - a:>+.2f}" if a is not None and b is not None else "n/a"
+                print(f"{label:<25} {fmt(a):>6}{'':<9} {fmt(b):>6}{'':<9} {delta}")
 
-            # Sharpe ratio
-            print(
-                f"{'Sharpe Ratio':<25} {train_metrics.sharpe_ratio:>.2f}{'':<12} {test_metrics.sharpe_ratio:>.2f}{'':<12} {test_metrics.sharpe_ratio - train_metrics.sharpe_ratio:>+.2f}"
-            )
-
-            # Sortino ratio
-            print(
-                f"{'Sortino Ratio':<25} {train_metrics.sortino_ratio:>.2f}{'':<12} {test_metrics.sortino_ratio:>.2f}{'':<12} {test_metrics.sortino_ratio - train_metrics.sortino_ratio:>+.2f}"
-            )
-
-            # Max drawdown
-            train_dd = train_metrics.max_drawdown_pct
-            test_dd = test_metrics.max_drawdown_pct
+            # Max drawdown (daily NAV, relative to the running peak)
+            train_dd = train_metrics.max_drawdown_pct_daily
+            test_dd = test_metrics.max_drawdown_pct_daily
             print(
                 f"{'Max Drawdown %':<25} {train_dd:>.2f}%{'':<9} {test_dd:>.2f}%{'':<9} {test_dd - train_dd:>+.2f}%"
             )
@@ -3159,6 +3307,9 @@ async def main(argv: list[str] | None = None) -> None:
                     capital=args.capital,
                 )
                 print(f"Trades written to {args.trades_out}")
+            if args.equity_out is not None:
+                n_points = dump_equity_jsonl(engine, args.equity_out, pair=args.pair)
+                print(f"Equity written to {args.equity_out} ({n_points} points)")
 
             # Print report
             engine.print_report()

@@ -75,7 +75,14 @@ class TestP6Plumbing:
     def test_resume_refuses_other_campaign_costs(self) -> None:
         jobs = p6.build_job_list(fees="bybit", pair_costs_file="config/x.json", min_order_usdc=5)
         key = p6.make_key(jobs[0]["strategy"], jobs[0]["pair"])
-        same = {key: {"fees": "bybit", "pair_costs_file": "config/x.json", "min_order_usdc": 5.0}}
+        same = {
+            key: {
+                "fees": "bybit",
+                "pair_costs_file": "config/x.json",
+                "min_order_usdc": 5.0,
+                "metrics_version": 2,
+            }
+        }
         assert jobs[0] not in p6.filter_pending_jobs(jobs, same, force=False, fees="bybit")
         for other in (
             {"fees": "bybit", "pair_costs_file": None, "min_order_usdc": 5.0},
@@ -84,9 +91,10 @@ class TestP6Plumbing:
         ):
             with pytest.raises(p6.CampaignConfigMismatchError):
                 p6.filter_pending_jobs(jobs, {key: other}, force=False, fees="bybit")
-        assert len(
+        # C1: --force recomputes inside a homogeneous file, never over other campaign costs
+        assert len(p6.filter_pending_jobs(jobs, same, force=True, fees="bybit")) == len(jobs)
+        with pytest.raises(p6.CampaignConfigMismatchError):
             p6.filter_pending_jobs(jobs, {key: {"fees": "bybit"}}, force=True, fees="bybit")
-        ) == len(jobs)
 
 
 # ---------------------------------------------------------------------------
@@ -136,7 +144,13 @@ class TestP7Plumbing:
     def test_phase2_refuses_phase1_entries_of_other_campaign(self) -> None:
         top_k = {
             ("s", "BTC/USDC"): [
-                {"strategy": "s", "pair": "BTC/USDC", "params": {}, "fees": "bybit"}  # (None, 1.0)
+                {
+                    "strategy": "s",
+                    "pair": "BTC/USDC",
+                    "params": {},
+                    "fees": "bybit",
+                    "metrics_version": 2,
+                }  # (None, 1.0)
             ]
         }
         with pytest.raises(p7.CampaignConfigMismatchError):
@@ -148,7 +162,12 @@ class TestP7Plumbing:
 
     def test_assert_results_campaign_signature(self, tmp_path: Path) -> None:
         entries = {
-            "k": {"fees": "bybit", "pair_costs_file": "config/x.json", "min_order_usdc": 5.0}
+            "k": {
+                "fees": "bybit",
+                "pair_costs_file": "config/x.json",
+                "min_order_usdc": 5.0,
+                "metrics_version": 2,
+            }
         }
         p7._assert_results_fee_model(entries, "bybit", tmp_path / "p.json")  # fees only: fine
         p7._assert_results_fee_model(
@@ -184,7 +203,7 @@ class TestP7Plumbing:
         )
         assert p7.load_benchmark_sharpe(path) == {
             "BTC/USDC": {"buy_and_hold": 0.5, "dca_fixed": 1.5},
-            "ETH/USDC": {"buy_and_hold": 0.0, "dca_fixed": 0.0},
+            "ETH/USDC": {"buy_and_hold": None, "dca_fixed": None},  # C1: never a beatable 0
         }
 
     def test_grid_spacing_sweep_rebased_for_bybit(self) -> None:
@@ -499,7 +518,30 @@ class TestP7ReportCampaign:
             "max_drawdown_pct": 20.0,
         }
         assert details["BTC/USDC"]["dca_fixed"]["return_pct"] == -5.0
-        assert details["ETH/USDC"]["dca_fixed"]["sharpe"] == 0.0
+        assert details["ETH/USDC"]["dca_fixed"]["sharpe"] is None  # C1: undefined stays None
+        assert details["BTC/USDC"]["dca_fixed"]["max_drawdown_pct"] is None
+        # v2 benchmarks files carry max_drawdown_pct_daily only (the C1 loader reads it first)
+        v2 = tmp_path / "b2.json"
+        v2.write_text(
+            json.dumps(
+                {
+                    "metrics_version": 2,
+                    "buy_and_hold": {
+                        "BTC/USDC": {"sharpe_ratio": 0.8, "max_drawdown_pct_daily": 49.6}
+                    },
+                    "dca_fixed_15usd_weekly": {
+                        "BTC/USDC": {"sharpe_ratio": None, "max_drawdown_pct_daily": 49.7}
+                    },
+                }
+            )
+        )
+        d2 = p7.load_benchmark_details(v2)
+        assert d2["BTC/USDC"]["buy_and_hold"]["max_drawdown_pct"] == 49.6
+        assert d2["BTC/USDC"]["dca_fixed"] == {
+            "sharpe": None,
+            "return_pct": None,
+            "max_drawdown_pct": 49.7,
+        }
         # criterion 7 keeps its own loader, unchanged
         assert p7.load_benchmark_sharpe(path)["BTC/USDC"] == {"buy_and_hold": 0.5, "dca_fixed": 1.5}
 
@@ -544,6 +586,35 @@ class TestBenchmarksFees:
         assert cb.dca_fixed_weekly(candles)["ending_balance"] == 45.0  # 3 Mondays x 15
         dca = cb.dca_fixed_weekly(candles, fees=ExchangeFees.bybit_defaults())
         assert dca["ending_balance"] == pytest.approx(45 * (1 - 0.001), abs=0.01)  # rounded 2 dp
+
+    def test_dca_deposits_are_external_flows_not_returns(self) -> None:
+        """C1 / D6, expectation split in two: (a) flat prices and NO fee -> every flow-adjusted
+        return is 0 -> Sharpe undefined (None, never the 2.37 of the coins-only curve), no
+        drawdown; (b) flat prices WITH the maker fee -> each deposit after the first loses its
+        fee -> a defined negative Sharpe and a small positive drawdown (never the 100 % artefact)."""
+        candles = _daily(15)
+        free = cb.dca_fixed_weekly(candles)
+        assert free["metrics_version"] == 2
+        assert free["sharpe_ratio"] is None and free["sortino_ratio"] is None
+        assert free["max_drawdown_pct_daily"] == 0.0 and free["calmar_ratio"] is None
+        assert free["total_return_pct"] == 0.0
+        paid = cb.dca_fixed_weekly(candles, fees=ExchangeFees.bybit_defaults())
+        assert paid["sharpe_ratio"] is not None and paid["sharpe_ratio"] < 0
+        assert paid["sortino_ratio"] is not None and paid["sortino_ratio"] < 0
+        assert 0 < paid["max_drawdown_pct_daily"] < 0.2  # ~0.15 %: the 2nd and 3rd deposits' fees
+        assert paid["total_return_pct"] == pytest.approx(-0.1, abs=0.01)
+        assert "max_drawdown_pct" not in paid  # v2 contract: the daily figure only
+
+    def test_buy_and_hold_ratios_through_the_shared_module(self) -> None:
+        candles = _daily(15)
+        free = cb.buy_and_hold(candles)
+        assert free["metrics_version"] == 2 and free["sharpe_ratio"] is None
+        assert free["max_drawdown_pct_daily"] == 0.0
+        paid = cb.buy_and_hold(candles, fees=ExchangeFees.bybit_defaults())
+        # one negative return (entry cost taker + spread + slippage) then flat
+        assert paid["sharpe_ratio"] is not None and paid["sharpe_ratio"] < 0
+        assert paid["max_drawdown_pct_daily"] == pytest.approx(0.29, abs=0.01)
+        assert paid["n_daily_returns"] == 15  # anchor at the open of the first daily candle
 
     def test_parse_args(self, costs_file: Path, tmp_path: Path) -> None:
         args = cb.parse_args(["--fees", "none"])

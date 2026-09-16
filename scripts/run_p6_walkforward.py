@@ -23,6 +23,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
+from krakenbot.backtest_metrics import METRICS_VERSION, entry_metrics_version, fmt, mean_available
 from krakenbot.config.settings import FEE_MODEL_NAMES, get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.logger import get_logger
@@ -88,8 +89,9 @@ async def run_single_backtest(
     fee_model: str,
     pair_costs: dict[str, PairCosts] | None = None,
     min_order_usdc: float = 1.0,
-) -> tuple[dict, dict | None]:
-    """Run a single backtest; return (metrics dict, grid liquidation summary or None)."""
+) -> tuple[dict, dict | None, dict | None]:
+    """Run a single backtest; return (metrics dict, grid liquidation summary or None, daily
+    equity grid or None — C1)."""
     cls = GridBacktester if strategy in GRID_STRATEGIES else BacktestEngine
     engine = cls(
         settings,
@@ -105,7 +107,33 @@ async def run_single_backtest(
 
     await engine.run(pair, start, end)
     liquidation = engine.liquidation_summary() if hasattr(engine, "liquidation_summary") else None
-    return engine.metrics.to_dict(), liquidation
+    equity_daily = getattr(engine.metrics, "equity_daily_dict", lambda: None)()
+    return engine.metrics.to_dict(), liquidation, equity_daily
+
+
+def aggregate_windows(
+    window_results: list[dict], n_windows: int
+) -> tuple[dict[str, float | int | None], dict[str, int], int, float]:
+    """C1 None-aware summary of the valid windows: per-metric mean over the windows that
+    define it (``None`` when none does) with the count used, and the consistency score
+    (windows whose test Sharpe is defined and > 0)."""
+    valid = [w for w in window_results if "metrics" in w]
+    sharpes = [w["metrics"].get("sharpe_ratio") for w in valid]
+    positive = sum(1 for s in sharpes if s is not None and s > 0)
+    consistency = positive / n_windows if n_windows else 0.0
+    mean_metrics: dict[str, float | int | None] = {}
+    n_defined: dict[str, int] = {}
+    if valid:
+        for key in valid[0]["metrics"]:
+            if key == "metrics_version":
+                mean_metrics[key] = METRICS_VERSION
+                continue
+            values = [w["metrics"].get(key) for w in valid]
+            numeric = [float(v) for v in values if isinstance(v, int | float)]
+            mean, n = mean_available(numeric if numeric else [None])
+            mean_metrics[key] = round(mean, 4) if mean is not None else None
+            n_defined[key] = n
+    return mean_metrics, n_defined, positive, consistency
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -178,6 +206,16 @@ async def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
+        found = entry_metrics_version(data)
+        if found != METRICS_VERSION:  # C1: one metrics contract, never a pre-C1 survivor
+            print(
+                f"ERROR: survivor {key} carries metrics_version="
+                f"{found if found is not None else '<absent: pre-C1 file>'}, not "
+                f"{METRICS_VERSION}; regenerate the survivors from a phase-D file produced by "
+                "this code.",
+                file=sys.stderr,
+            )
+            return 2
     print(
         f"Fee model: {args.fees}; pair costs: {wanted_costs or 'model globals'}; "
         f"min order: {args.min_order_usdc} USDC"
@@ -208,7 +246,7 @@ async def main(argv: list[str] | None = None) -> int:
             for i, w in enumerate(windows):
                 try:
                     # Only run the TEST window (no re-training in P6)
-                    test_metrics, liquidation = await run_single_backtest(
+                    test_metrics, liquidation, equity_daily = await run_single_backtest(
                         settings,
                         db_manager,
                         strategy,
@@ -228,6 +266,7 @@ async def main(argv: list[str] | None = None) -> int:
                             "test_end": w["test_end"].isoformat(),
                             "metrics": test_metrics,
                             "liquidation": liquidation,
+                            "equity_daily": equity_daily,
                         }
                     )
                     logger.info(
@@ -235,7 +274,7 @@ async def main(argv: list[str] | None = None) -> int:
                         strategy=strategy,
                         pair=pair,
                         window=i,
-                        sharpe=f"{test_metrics['sharpe_ratio']:.2f}",
+                        sharpe=fmt(test_metrics.get("sharpe_ratio")),
                         return_pct=f"{test_metrics['total_return_pct']:+.1f}%",
                     )
                 except Exception as e:
@@ -255,29 +294,22 @@ async def main(argv: list[str] | None = None) -> int:
                         error=str(e),
                     )
 
-            # Aggregate
+            # Aggregate (C1: None-aware means with the number of windows used)
             valid_windows = [w for w in window_results if "metrics" in w]
-            sharpes = [w["metrics"]["sharpe_ratio"] for w in valid_windows]
-
-            positive_sharpe_count = sum(1 for s in sharpes if s > 0)
-            consistency_score = positive_sharpe_count / len(windows) if windows else 0
-
-            mean_metrics = {}
-            if valid_windows:
-                # Average across all metric keys
-                all_keys = valid_windows[0]["metrics"].keys()
-                for mk in all_keys:
-                    vals = [w["metrics"][mk] for w in valid_windows]
-                    mean_metrics[mk] = round(sum(vals) / len(vals), 4)
+            mean_metrics, n_defined, positive_sharpe_count, consistency_score = aggregate_windows(
+                window_results, len(windows)
+            )
 
             results[key] = {
                 "strategy": strategy,
                 "pair": pair,
                 "fees": args.fees,
+                "metrics_version": METRICS_VERSION,
                 "pair_costs_file": wanted_costs,
                 "min_order_usdc": args.min_order_usdc,
                 "windows": window_results,
                 "mean_metrics": mean_metrics,
+                "mean_metrics_n": n_defined,
                 "consistency_score": round(consistency_score, 2),
                 "positive_windows": positive_sharpe_count,
                 "total_windows": len(windows),
@@ -289,7 +321,7 @@ async def main(argv: list[str] | None = None) -> int:
                 strategy=strategy,
                 pair=pair,
                 consistency=f"{consistency_score:.0%}",
-                mean_sharpe=f"{mean_metrics.get('sharpe_ratio', 0):.2f}",
+                mean_sharpe=fmt(mean_metrics.get("sharpe_ratio")),
                 mean_return=f"{mean_metrics.get('total_return_pct', 0):+.1f}%",
             )
 
@@ -309,11 +341,11 @@ async def main(argv: list[str] | None = None) -> int:
 
     for _key, r in results.items():
         cs = r["consistency_score"]
-        ms = r["mean_metrics"].get("sharpe_ratio", 0)
+        ms = r["mean_metrics"].get("sharpe_ratio")
         flag = "OK" if cs >= 0.5 else "AT RISK"
         print(
             f"  {r['strategy']:40s} {r['pair']:10s} "
-            f"consistency={cs:.0%} mean_sharpe={ms:.2f} [{flag}]"
+            f"consistency={cs:.0%} mean_sharpe={fmt(ms)} [{flag}]"
         )
 
     print(f"\n  Results: {output_path}")

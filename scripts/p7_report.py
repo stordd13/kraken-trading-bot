@@ -22,6 +22,17 @@ aggregates per (strategy, pair, params_hash):
 
 Benchmarks come from the P6 v2 report (or, B4.3, from ``--benchmarks``).
 
+C1 (metrics_version 2, chantier 1 post-audit B4): the aggregation is None-aware — a metric a
+window does not define (Sharpe with no daily variance, profit factor 0/0) stays undefined and
+is never coerced to 0; means are taken over the windows that define the metric (``n_*``
+reported); criterion 2 is evaluated on the **summed** net gains / losses over the windows
+(``profit_factor_oos`` = Σ gains / Σ losses: finite, infinite without any loss -> passes, 0/0
+-> undefined -> fails); an undefined metric fails its criterion with an explicit note.
+Entries without the sums (pre-C1 files, e.g. the B4 campaign) take the **legacy v1 path**
+(``_safe_float`` coercion, mean of per-window profit factors, v1 criterion names): their
+verdicts are reproduced bit-identically (tests/test_scripts/test_p7_report.py). Mixing the two
+contracts in one report is refused.
+
 B4.3 — GO P7 rule 1 (Bruno, 2026-09-15): a configuration with at least one flagged run
 (``scripts/b4_flags.py``: grid liquidation not reconciled — inventory divergence, residual,
 or ``net_pnl != net_pnl_lot_basis``) in phase 1 or in any phase-2 window is **ineligible for
@@ -41,16 +52,31 @@ from pathlib import Path
 import sys
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from b4_flags import collect_flags, render_flags_markdown  # noqa: E402
 
+from krakenbot.backtest_metrics import (  # noqa: E402
+    METRICS_VERSION,
+    MetricsVersionError,
+    entry_metrics_version,
+    fmt,
+    mean_available,
+    profit_factor_from_sums,
+)
+
 # ---------------------------------------------------------------------------
 # Benchmarks (Sharpe ratios from P6_backtest_report_v2.md, period
 # 2023-04-01 → 2026-04-01, Binance fees, 1k USDC capital)
+#
+# C1: **legacy v1 constants** — the DCA figures are contaminated by construction (defect D6:
+# coins-only equity, deposits counted as returns) and the Sharpes are per-engine-step values.
+# They only apply to pre-C1 (v1) result files; a metrics_version 2 report REQUIRES a v2
+# ``--benchmarks`` file computed by scripts/compute_benchmarks.py through the shared module.
 # ---------------------------------------------------------------------------
 
-BENCHMARK_SHARPE: dict[str, dict[str, float]] = {
+BENCHMARK_SHARPE: dict[str, dict[str, float | None]] = {
     "BTC/USDC": {"buy_and_hold": 0.85, "dca_fixed": 2.37},
     "ETH/USDC": {"buy_and_hold": 0.40, "dca_fixed": 2.10},
     "SOL/USDC": {"buy_and_hold": 0.31, "dca_fixed": 1.93},
@@ -75,24 +101,46 @@ MIN_OVERFIT_RATIO = 0.5
 
 @dataclass
 class WalkForwardAggregate:
-    """Summary of one (strategy, pair, params) across all walk-forward windows."""
+    """Summary of one (strategy, pair, params) across all walk-forward windows.
+
+    C1 (metrics_version 2): ``mean_sharpe_*`` / ``mean_pf_oos`` are None when no window defines
+    the metric (``n_*`` = windows that do); ``profit_factor_oos`` is the ratio of the summed net
+    gains / losses over the windows (finite, ``inf`` without any loss, None for 0/0).
+    ``legacy`` marks a v1 aggregate (entries without the sums): the pre-C1 behaviour is kept
+    bit-identically for the B4 files (missing values coerced to 0, mean of per-window PFs).
+    """
 
     strategy: str
     pair: str
     params: dict[str, Any]
     params_hash: str
     n_windows: int
-    mean_sharpe_train: float
-    mean_sharpe_oos: float
+    mean_sharpe_train: float | None
+    mean_sharpe_oos: float | None
     std_sharpe_oos: float
-    mean_pf_oos: float
+    mean_pf_oos: float | None
     mean_trades_test: float
     max_drawdown_global: float
-    consistency: int  # number of windows where test Sharpe > 0
+    consistency: int  # number of windows where test Sharpe is defined and > 0
     per_window: list[dict[str, Any]] = field(default_factory=list)
+    legacy: bool = False
+    n_sharpe_train: int = 0
+    n_sharpe_oos: int = 0
+    n_pf_oos: int = 0
+    gross_profit_net_oos: float | None = None
+    gross_loss_net_oos: float | None = None
+    pf_excluded_trades_oos: int = 0  # v2: lots at unknown cost excluded from the sums (incomplete)
+
+    @property
+    def profit_factor_oos(self) -> float | None:
+        """v2: Σ gross_profit_net / Σ gross_loss_net over the windows (``inf`` without a loss,
+        None for 0/0); legacy: the v1 mean of the per-window profit factors."""
+        if self.legacy:
+            return self.mean_pf_oos
+        return profit_factor_from_sums(self.gross_profit_net_oos, self.gross_loss_net_oos)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        out: dict[str, Any] = {
             "strategy": self.strategy,
             "pair": self.pair,
             "params": self.params,
@@ -107,10 +155,18 @@ class WalkForwardAggregate:
             "consistency": self.consistency,
             "per_window": self.per_window,
         }
+        if not self.legacy:
+            out.update(_pf_fields(self))
+            out["n_sharpe_train"] = self.n_sharpe_train
+        return out
 
 
 def _safe_float(v: Any, default: float = 0.0) -> float:
-    """Coerce to float, treating None / NaN / errors as ``default``."""
+    """Coerce to float, treating None / NaN / inf / errors as ``default``.
+
+    Legacy v1 behaviour (pre-C1 files only): the coercion of an undefined value to 0 is the
+    defect D4 of the B4 audit; the v2 path uses ``_metric`` / ``mean_available`` instead.
+    """
     if v is None:
         return default
     try:
@@ -120,6 +176,71 @@ def _safe_float(v: Any, default: float = 0.0) -> float:
     if math.isnan(fv) or math.isinf(fv):
         return default
     return fv
+
+
+def _metric(block: dict[str, Any] | None, key: str) -> float | None:
+    """v2 reader: the metric as float, None when absent / null / NaN / infinite."""
+    v = (block or {}).get(key)
+    if v is None:
+        return None
+    try:
+        fv = float(v)
+    except (TypeError, ValueError):
+        return None
+    if math.isnan(fv) or math.isinf(fv):
+        return None
+    return fv
+
+
+def _has_sums(block: dict[str, Any] | None) -> bool:
+    return bool(block) and "gross_profit_net" in block and "gross_loss_net" in block  # type: ignore[operator]
+
+
+def _rank(value: float | None) -> float:
+    """Sort key: an undefined Sharpe ranks last."""
+    return value if value is not None else float("-inf")
+
+
+def _json_ratio(value: float | None) -> float | None:
+    """JSON-safe ratio: an infinite profit factor is stored as null (the sums disambiguate)."""
+    return None if value is None or math.isinf(value) else value
+
+
+def _pf_fields(agg: WalkForwardAggregate) -> dict[str, Any]:
+    """Profit-factor fields of a selection row: v1 key for legacy aggregates, the summed
+    contract (ratio, sums, counts) for v2 ones."""
+    if agg.legacy:
+        return {"mean_profit_factor": agg.mean_pf_oos}
+    return {
+        "profit_factor_oos": _json_ratio(agg.profit_factor_oos),
+        "gross_profit_net_oos": agg.gross_profit_net_oos,
+        "gross_loss_net_oos": agg.gross_loss_net_oos,
+        "pf_excluded_trades_oos": agg.pf_excluded_trades_oos,
+        "mean_pf_oos_diagnostic": agg.mean_pf_oos,
+        "n_pf_oos": agg.n_pf_oos,
+        "n_sharpe_oos": agg.n_sharpe_oos,
+    }
+
+
+def _pf_text(row: dict[str, Any]) -> str:
+    """Display of a selection row's profit factor: ratio, ∞ (sums without a loss) or n/a."""
+    if "gross_profit_net_oos" in row:
+        text = fmt(
+            profit_factor_from_sums(row.get("gross_profit_net_oos"), row.get("gross_loss_net_oos"))
+        )
+        excluded = row.get("pf_excluded_trades_oos") or 0
+        return f"{text} (incomplete: {excluded} excluded)" if excluded else text
+    return fmt(row.get("mean_profit_factor"))
+
+
+def _fmt_raw(value: Any, digits: int = 2) -> str:
+    """Display of a raw metric value of a results entry (None -> n/a, inf -> ∞)."""
+    if value is None:
+        return "n/a"
+    try:
+        return fmt(float(value), digits)
+    except (TypeError, ValueError):
+        return "n/a"
 
 
 def _mean(values: list[float]) -> float:
@@ -139,7 +260,9 @@ def aggregate_walk_forward(
 ) -> dict[tuple[str, str, str], WalkForwardAggregate]:
     """Group phase-2 windowed results by (strategy, pair, params_hash).
 
-    Skips entries with an ``error`` key (failed jobs).
+    Skips entries with an ``error`` key (failed jobs). A combo whose test windows all carry the
+    C1 sums (``gross_profit_net`` / ``gross_loss_net``) is aggregated None-aware on the summed
+    profit factor; otherwise the legacy v1 aggregation is applied unchanged.
     """
     # Group windows first
     grouped: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
@@ -162,45 +285,82 @@ def aggregate_walk_forward(
     out: dict[tuple[str, str, str], WalkForwardAggregate] = {}
     for combo, windows in grouped.items():
         strategy, pair, params_hash = combo
-        train_sharpes = [_safe_float(w.get("train", {}).get("sharpe_ratio")) for w in windows]
-        test_sharpes = [_safe_float(w.get("test", {}).get("sharpe_ratio")) for w in windows]
-        test_pfs = [_safe_float(w.get("test", {}).get("profit_factor")) for w in windows]
-        test_trades = [_safe_float(w.get("test", {}).get("total_trades")) for w in windows]
-        # max_drawdown_pct is reported as a positive number (5.4 = -5.4% drawdown)
-        test_dds = [_safe_float(w.get("test", {}).get("max_drawdown_pct")) for w in windows]
-
-        consistency = sum(1 for s in test_sharpes if s > 0)
-
+        per_window = sorted(
+            [
+                {
+                    "window_idx": w.get("window_idx"),
+                    "train_start": w.get("period", {}).get("train_start"),
+                    "train_end": w.get("period", {}).get("train_end"),
+                    "test_start": w.get("period", {}).get("test_start"),
+                    "test_end": w.get("period", {}).get("test_end"),
+                    "train_metrics": w.get("train", {}),
+                    "test_metrics": w.get("test", {}),
+                    "effective_params": w.get("effective_params"),
+                    "liquidation": w.get("liquidation"),
+                }
+                for w in windows
+            ],
+            key=lambda d: d.get("window_idx") or 0,
+        )
+        legacy = not all(_has_sums(w.get("test")) for w in windows)
+        if legacy:
+            train_sharpes = [_safe_float(w.get("train", {}).get("sharpe_ratio")) for w in windows]
+            test_sharpes = [_safe_float(w.get("test", {}).get("sharpe_ratio")) for w in windows]
+            test_pfs = [_safe_float(w.get("test", {}).get("profit_factor")) for w in windows]
+            test_trades = [_safe_float(w.get("test", {}).get("total_trades")) for w in windows]
+            # max_drawdown_pct is reported as a positive number (5.4 = -5.4% drawdown)
+            test_dds = [_safe_float(w.get("test", {}).get("max_drawdown_pct")) for w in windows]
+            out[combo] = WalkForwardAggregate(
+                strategy=strategy,
+                pair=pair,
+                params=params_by_combo[combo],
+                params_hash=params_hash,
+                n_windows=len(windows),
+                mean_sharpe_train=_mean(train_sharpes),
+                mean_sharpe_oos=_mean(test_sharpes),
+                std_sharpe_oos=_stdev(test_sharpes),
+                mean_pf_oos=_mean(test_pfs),
+                mean_trades_test=_mean(test_trades),
+                max_drawdown_global=max(test_dds) if test_dds else 0.0,
+                consistency=sum(1 for s in test_sharpes if s > 0),
+                per_window=per_window,
+                legacy=True,
+            )
+            continue
+        train_sharpes_v2 = [_metric(w.get("train"), "sharpe_ratio") for w in windows]
+        test_sharpes_v2 = [_metric(w.get("test"), "sharpe_ratio") for w in windows]
+        mean_train, n_train = mean_available(train_sharpes_v2)
+        mean_oos, n_oos = mean_available(test_sharpes_v2)
+        defined_oos = [x for x in test_sharpes_v2 if x is not None]
+        mean_pf, n_pf = mean_available([_metric(w.get("test"), "profit_factor") for w in windows])
+        gross_profit = sum(float(w["test"]["gross_profit_net"]) for w in windows)
+        gross_loss = sum(float(w["test"]["gross_loss_net"]) for w in windows)
+        excluded = sum(int(w["test"].get("pf_excluded_trades") or 0) for w in windows)
+        test_dds_v2 = [_metric(w.get("test"), "max_drawdown_pct_daily") for w in windows]
+        defined_dds = [x for x in test_dds_v2 if x is not None]
         out[combo] = WalkForwardAggregate(
             strategy=strategy,
             pair=pair,
             params=params_by_combo[combo],
             params_hash=params_hash,
             n_windows=len(windows),
-            mean_sharpe_train=_mean(train_sharpes),
-            mean_sharpe_oos=_mean(test_sharpes),
-            std_sharpe_oos=_stdev(test_sharpes),
-            mean_pf_oos=_mean(test_pfs),
-            mean_trades_test=_mean(test_trades),
-            max_drawdown_global=max(test_dds) if test_dds else 0.0,
-            consistency=consistency,
-            per_window=sorted(
-                [
-                    {
-                        "window_idx": w.get("window_idx"),
-                        "train_start": w.get("period", {}).get("train_start"),
-                        "train_end": w.get("period", {}).get("train_end"),
-                        "test_start": w.get("period", {}).get("test_start"),
-                        "test_end": w.get("period", {}).get("test_end"),
-                        "train_metrics": w.get("train", {}),
-                        "test_metrics": w.get("test", {}),
-                        "effective_params": w.get("effective_params"),
-                        "liquidation": w.get("liquidation"),
-                    }
-                    for w in windows
-                ],
-                key=lambda d: d.get("window_idx") or 0,
+            mean_sharpe_train=mean_train,
+            mean_sharpe_oos=mean_oos,
+            std_sharpe_oos=_stdev(defined_oos),
+            mean_pf_oos=mean_pf,
+            mean_trades_test=_mean(
+                [_safe_float(w.get("test", {}).get("total_trades")) for w in windows]
             ),
+            max_drawdown_global=max(defined_dds) if defined_dds else 0.0,
+            consistency=sum(1 for x in test_sharpes_v2 if x is not None and x > 0),
+            per_window=per_window,
+            legacy=False,
+            n_sharpe_train=n_train,
+            n_sharpe_oos=n_oos,
+            n_pf_oos=n_pf,
+            gross_profit_net_oos=gross_profit,
+            gross_loss_net_oos=gross_loss,
+            pf_excluded_trades_oos=excluded,
         )
     return out
 
@@ -230,7 +390,7 @@ def _extract_params_hash(key: str) -> str:
 class CriterionResult:
     name: str
     passed: bool
-    actual: float
+    actual: float | None  # None = undefined metric (C1): the criterion fails with a note
     threshold: float
     note: str = ""
 
@@ -241,7 +401,7 @@ class ConfigVerdict:
 
     aggregate: WalkForwardAggregate
     criteria: list[CriterionResult]
-    benchmark_sharpe: dict[str, float]
+    benchmark_sharpe: dict[str, float | None]
     beats_benchmark: str | None  # "buy_and_hold" | "dca_fixed" | None
 
     @property
@@ -250,7 +410,7 @@ class ConfigVerdict:
 
     def failure_reasons(self) -> list[str]:
         return [
-            f"{c.name} (actual={c.actual:.3f}, threshold={c.threshold:.3f})"
+            f"{c.name} (actual={fmt(c.actual, 3)}, threshold={c.threshold:.3f})"
             for c in self.criteria
             if not c.passed
         ]
@@ -263,7 +423,7 @@ class ConfigVerdict:
             "params_hash": self.aggregate.params_hash,
             "passed": self.passed,
             "mean_sharpe_oos": self.aggregate.mean_sharpe_oos,
-            "mean_profit_factor": self.aggregate.mean_pf_oos,
+            **_pf_fields(self.aggregate),
             "max_drawdown_global": self.aggregate.max_drawdown_global,
             "consistency": self.aggregate.consistency,
             "mean_sharpe_train": self.aggregate.mean_sharpe_train,
@@ -286,13 +446,140 @@ class ConfigVerdict:
 
 def apply_selection_criteria(
     aggregate: WalkForwardAggregate,
-    benchmarks: dict[str, dict[str, float]] = BENCHMARK_SHARPE,
+    benchmarks: dict[str, dict[str, float | None]] = BENCHMARK_SHARPE,
 ) -> ConfigVerdict:
-    """Apply the 7 selection criteria to a single walk-forward aggregate."""
+    """Apply the 7 selection criteria to a single walk-forward aggregate.
+
+    Legacy (v1) aggregates take the pre-C1 path unchanged; v2 aggregates are None-aware
+    (an undefined metric fails its criterion) and evaluate criterion 2 on the summed profit
+    factor. Thresholds are the same on both paths.
+    """
+    if aggregate.legacy:
+        return _apply_selection_criteria_v1(aggregate, benchmarks)
     a = aggregate
     bench = benchmarks.get(a.pair, {})
-    bh = bench.get("buy_and_hold", 0.0)
-    dca = bench.get("dca_fixed", 0.0)
+    bh = bench.get("buy_and_hold")
+    dca = bench.get("dca_fixed")
+    oos = a.mean_sharpe_oos
+
+    min_trades_threshold = (
+        MIN_TRADES_DCA if a.strategy in LOW_FREQUENCY_STRATEGIES else MIN_TRADES_DEFAULT
+    )
+
+    # Criterion 2: the summed profit factor (Σ net gains / Σ net losses over the windows)
+    pf = a.profit_factor_oos
+    if pf is None:
+        pf_passed, pf_actual, pf_note = False, None, "undefined (0/0: no net gain nor loss)"
+    elif math.isinf(pf):
+        pf_passed, pf_actual, pf_note = True, 999.0, "∞: no net loss over the windows"
+    else:
+        pf_passed, pf_actual, pf_note = pf > MIN_PF_OOS, pf, ""
+    if a.pf_excluded_trades_oos:
+        pf_note = (pf_note + "; " if pf_note else "") + (
+            f"incomplete: {a.pf_excluded_trades_oos} lot(s) at unknown cost excluded from the sums"
+        )
+
+    # Criterion 6: anti-overfit ratio, undefined when either Sharpe is undefined
+    overfit_ratio: float | None
+    if oos is None or a.mean_sharpe_train is None:
+        overfit_ratio = None
+    elif a.mean_sharpe_train > 0:
+        overfit_ratio = oos / a.mean_sharpe_train
+    else:
+        overfit_ratio = float("inf") if oos > 0 else 0.0
+
+    # Criterion 7: an undefined leg (or an undefined OOS Sharpe) cannot be beaten
+    beats_bh = oos is not None and bh is not None and oos > bh
+    beats_dca = oos is not None and dca is not None and oos > dca
+    beats_benchmark: str | None
+    if beats_bh and beats_dca:
+        beats_benchmark = "both"
+    elif beats_bh:
+        beats_benchmark = "buy_and_hold"
+    elif beats_dca:
+        beats_benchmark = "dca_fixed"
+    else:
+        beats_benchmark = None
+    legs = [x for x in (bh, dca) if x is not None]
+    bench_threshold = min(legs) if legs else 0.0
+    bench_note = f"Buy&Hold={fmt(bh)}, DCA={fmt(dca)}"
+    if not legs:
+        bench_note += " (no benchmark available)"
+    elif oos is None:
+        bench_note += " (OOS Sharpe undefined)"
+
+    criteria = [
+        CriterionResult(
+            name="mean_sharpe_oos > 0.4",
+            passed=oos is not None and oos > MIN_SHARPE_OOS,
+            actual=oos,
+            threshold=MIN_SHARPE_OOS,
+            note="" if oos is not None else "undefined (no window with a defined Sharpe)",
+        ),
+        CriterionResult(
+            name="profit_factor_oos > 1.3",
+            passed=pf_passed,
+            actual=pf_actual,
+            threshold=MIN_PF_OOS,
+            note=pf_note,
+        ),
+        CriterionResult(
+            name="max_drawdown_global < 30%",
+            passed=a.max_drawdown_global < MAX_DRAWDOWN_PCT,
+            actual=a.max_drawdown_global,
+            threshold=MAX_DRAWDOWN_PCT,
+        ),
+        CriterionResult(
+            name=f"mean_trades_test >= {min_trades_threshold}",
+            passed=a.mean_trades_test >= min_trades_threshold,
+            actual=a.mean_trades_test,
+            threshold=float(min_trades_threshold),
+            note="relaxed for low-freq strategy" if a.strategy in LOW_FREQUENCY_STRATEGIES else "",
+        ),
+        CriterionResult(
+            name="consistency >= 5/8 windows",
+            passed=a.consistency >= MIN_CONSISTENCY,
+            actual=float(a.consistency),
+            threshold=float(MIN_CONSISTENCY),
+        ),
+        CriterionResult(
+            name="mean_sharpe_oos / mean_sharpe_train > 0.5 (anti-overfit)",
+            passed=overfit_ratio is not None and overfit_ratio > MIN_OVERFIT_RATIO,
+            actual=(
+                None
+                if overfit_ratio is None
+                else (overfit_ratio if math.isfinite(overfit_ratio) else 999.0)
+            ),
+            threshold=MIN_OVERFIT_RATIO,
+            note="" if overfit_ratio is not None else "undefined (a Sharpe is undefined)",
+        ),
+        CriterionResult(
+            name="beats Buy&Hold OR DCA fixed",
+            passed=beats_benchmark is not None,
+            actual=oos,
+            threshold=bench_threshold,
+            note=bench_note,
+        ),
+    ]
+
+    return ConfigVerdict(
+        aggregate=a,
+        criteria=criteria,
+        benchmark_sharpe={"buy_and_hold": bh, "dca_fixed": dca},
+        beats_benchmark=beats_benchmark,
+    )
+
+
+def _apply_selection_criteria_v1(
+    a: WalkForwardAggregate,
+    benchmarks: dict[str, dict[str, float | None]],
+) -> ConfigVerdict:
+    """Pre-C1 criteria, verbatim (legacy v1 aggregates only: B4 files)."""
+    bench = benchmarks.get(a.pair, {})
+    bh = bench.get("buy_and_hold", 0.0) or 0.0
+    dca = bench.get("dca_fixed", 0.0) or 0.0
+    assert a.mean_sharpe_oos is not None and a.mean_sharpe_train is not None
+    assert a.mean_pf_oos is not None
 
     # Criterion 4: relaxed for low-frequency strategies (DCA)
     min_trades_threshold = (
@@ -402,7 +689,7 @@ def _min_trades_per_window(agg: WalkForwardAggregate) -> int:
 
 def build_selection(
     aggregates: dict[tuple[str, str, str], WalkForwardAggregate],
-    benchmarks: dict[str, dict[str, float]] = BENCHMARK_SHARPE,
+    benchmarks: dict[str, dict[str, float | None]] = BENCHMARK_SHARPE,
     ineligible: dict[tuple[str, str, str], list[dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
     """Apply selection criteria to every aggregate, return the final selection dict.
@@ -433,7 +720,7 @@ def build_selection(
     for (strategy, pair), combo_verdicts in by_combo.items():
         flagged = [v for v in combo_verdicts if _key(v) in ineligible]
         eligible = [v for v in combo_verdicts if _key(v) not in ineligible]
-        for v in sorted(flagged, key=lambda v: v.aggregate.mean_sharpe_oos, reverse=True):
+        for v in sorted(flagged, key=lambda v: _rank(v.aggregate.mean_sharpe_oos), reverse=True):
             runs = ineligible[_key(v)]
             ineligible_flagged.append(
                 {
@@ -442,7 +729,7 @@ def build_selection(
                     "params": v.aggregate.params,
                     "params_hash": v.aggregate.params_hash,
                     "mean_sharpe_oos": v.aggregate.mean_sharpe_oos,
-                    "mean_profit_factor": v.aggregate.mean_pf_oos,
+                    **_pf_fields(v.aggregate),
                     "consistency": v.aggregate.consistency,
                     "max_drawdown_global": v.aggregate.max_drawdown_global,
                     "mean_trades_test": v.aggregate.mean_trades_test,
@@ -458,8 +745,8 @@ def build_selection(
             )
         passing = [v for v in eligible if v.passed]
         if passing:
-            # Best by mean_sharpe_oos
-            best = max(passing, key=lambda v: v.aggregate.mean_sharpe_oos)
+            # Best by mean_sharpe_oos (an undefined Sharpe ranks last)
+            best = max(passing, key=lambda v: _rank(v.aggregate.mean_sharpe_oos))
             # B4.3 (GO GATE B, B.2a): the runtime-captured effective parameters of the
             # selected config — the machine-readable source for the B5 strategies.yaml.
             effective = next(
@@ -479,7 +766,7 @@ def build_selection(
                     "effective_params": effective,
                     "mean_sharpe_oos": best.aggregate.mean_sharpe_oos,
                     "std_sharpe_oos": best.aggregate.std_sharpe_oos,
-                    "mean_profit_factor": best.aggregate.mean_pf_oos,
+                    **_pf_fields(best.aggregate),
                     "consistency": best.aggregate.consistency,
                     "max_drawdown_global": best.aggregate.max_drawdown_global,
                     "mean_trades_test": best.aggregate.mean_trades_test,
@@ -487,8 +774,8 @@ def build_selection(
                     "beats_benchmark": best.beats_benchmark,
                     "rationale": (
                         f"Best of {len(passing)} passing config(s). "
-                        f"Sharpe_oos={best.aggregate.mean_sharpe_oos:.2f}, "
-                        f"PF={best.aggregate.mean_pf_oos:.2f}, "
+                        f"Sharpe_oos={fmt(best.aggregate.mean_sharpe_oos)}, "
+                        f"PF={fmt(best.aggregate.profit_factor_oos)}, "
                         f"consistency={best.aggregate.consistency}/8, "
                         f"std_oos={best.aggregate.std_sharpe_oos:.2f}, "
                         f"trades/window mean={best.aggregate.mean_trades_test:.0f} "
@@ -500,13 +787,13 @@ def build_selection(
             flagged_passing = [v for v in flagged if v.passed]
             if eligible:
                 # Best eligible failing config (by sharpe) → its failure reasons
-                best_fail = max(eligible, key=lambda v: v.aggregate.mean_sharpe_oos)
+                best_fail = max(eligible, key=lambda v: _rank(v.aggregate.mean_sharpe_oos))
                 reason = (
                     f"No eligible configuration passed all 7 criteria. "
                     f"Best eligible config failed on: {', '.join(best_fail.failure_reasons())}."
                 )
             else:
-                best_fail = max(combo_verdicts, key=lambda v: v.aggregate.mean_sharpe_oos)
+                best_fail = max(combo_verdicts, key=lambda v: _rank(v.aggregate.mean_sharpe_oos))
                 reason = (
                     f"All {len(combo_verdicts)} configuration(s) are flagged "
                     "(ineligible for paper, GO P7 rule 1)."
@@ -553,10 +840,14 @@ def generate_report(
     phase2_path: Path,
     output_md_path: Path,
     selection_json_path: Path,
-    benchmarks: dict[str, dict[str, float]] | None = None,
-    benchmark_details: dict[str, dict[str, dict[str, float]]] | None = None,
+    benchmarks: dict[str, dict[str, float | None]] | None = None,
+    benchmark_details: dict[str, dict[str, dict[str, float | None]]] | None = None,
 ) -> dict[str, Any]:
     """Produce the human report + machine selection JSON. Returns the selection dict.
+
+    C1: the two inputs must share one metrics contract (mixed / partially pre-C1 files are
+    refused with ``MetricsVersionError``); metrics_version 2 entries require ``benchmarks``
+    computed under the same contract (the v1 constants are never applied to them).
 
     ``benchmarks`` (``{pair: {"buy_and_hold": sharpe, "dca_fixed": sharpe}}``) replaces the
     P6 Binance constants for criterion 7 (B4.3: computed under the campaign fee model).
@@ -571,6 +862,24 @@ def generate_report(
         json.loads(phase2_path.read_text(encoding="utf-8")) if phase2_path.exists() else {}
     )
 
+    versions = {
+        entry_metrics_version(entry)
+        for data in (phase1_data, phase2_data)
+        for entry in data.values()
+        if isinstance(entry, dict) and "error" not in entry
+    }
+    if len(versions) > 1:
+        raise MetricsVersionError(
+            f"mixed metrics contracts in the inputs ({sorted(str(v) for v in versions)}): "
+            "metrics of two contracts cannot be aggregated (regenerate under one contract)"
+        )
+    legacy = versions != {METRICS_VERSION}
+    if not legacy and benchmarks is None:
+        raise MetricsVersionError(
+            f"metrics_version {METRICS_VERSION} results require --benchmarks (a benchmarks file "
+            "computed by scripts/compute_benchmarks.py under the same contract); the v1 "
+            "constants of p7_report.BENCHMARK_SHARPE only apply to pre-C1 files"
+        )
     bench = benchmarks if benchmarks is not None else BENCHMARK_SHARPE
     aggregates = aggregate_walk_forward(phase2_data)
     # B4.3 flag rule: name every phase-1 / phase-2 run whose grid liquidation did not reconcile;
@@ -584,7 +893,9 @@ def generate_report(
     selection_json_path.write_text(json.dumps(selection, indent=2, default=str), encoding="utf-8")
 
     # Write markdown
-    md = _render_markdown(phase1_data, phase2_data, aggregates, selection, bench, benchmark_details)
+    md = _render_markdown(
+        phase1_data, phase2_data, aggregates, selection, bench, benchmark_details, legacy=legacy
+    )
     output_md_path.parent.mkdir(parents=True, exist_ok=True)
     output_md_path.write_text(md, encoding="utf-8")
 
@@ -604,15 +915,31 @@ DCA_SHARPE_NOTE = (
 )
 
 
+DCA_SHARPE_NOTE_V2 = (
+    "**Reading rule (C1, metrics_version 2).** Every ratio is computed by the shared module "
+    "(`krakenbot.backtest_metrics`): daily resampling, Sharpe / Sortino on daily returns (sample "
+    "std), MaxDD relative to the running peak on the daily NAV, profit factor net of both legs "
+    "aggregated on the summed gains / losses (∞ without any loss, n/a for 0/0). The fixed-DCA "
+    "benchmark books its deposits as external flows: its Sharpe is now comparable and its MaxDD "
+    "is no longer the 100 % artefact. An undefined metric (n/a) fails its criterion. Every "
+    "metric is shown with the number of trades it rests on; the number of windows that define "
+    "each mean (`n_sharpe_oos`, `n_pf_oos`) is in the selection JSON. Criterion 7 is unchanged "
+    "(an OR; a missing benchmark leg cannot be beaten)."
+)
+
+
 def _render_markdown(
     phase1_data: dict[str, Any],
     phase2_data: dict[str, Any],
     aggregates: dict[tuple[str, str, str], WalkForwardAggregate],
     selection: dict[str, Any],
-    benchmarks: dict[str, dict[str, float]] = BENCHMARK_SHARPE,
-    benchmark_details: dict[str, dict[str, dict[str, float]]] | None = None,
+    benchmarks: dict[str, dict[str, float | None]] = BENCHMARK_SHARPE,
+    benchmark_details: dict[str, dict[str, dict[str, float | None]]] | None = None,
+    *,
+    legacy: bool = True,
 ) -> str:
     """Compose the P7 optimization report markdown."""
+    note = DCA_SHARPE_NOTE if legacy else DCA_SHARPE_NOTE_V2
     lines: list[str] = []
     lines.append("# P7 — Parameter Optimization Report")
     lines.append("")
@@ -635,7 +962,7 @@ def _render_markdown(
         f"- Configurations ineligible under the flag rule (GO P7 rule 1): **{n_ineligible}**"
     )
     lines.append("")
-    lines.append(DCA_SHARPE_NOTE)
+    lines.append(note)
     lines.append("")
 
     # Selection table (trade counts next to the metrics: GO P7 rule 2)
@@ -656,8 +983,8 @@ def _render_markdown(
             n = s.get("mean_trades_test", 0.0)
             lines.append(
                 f"| {s['strategy']} | {s['pair']} | "
-                f"{s['mean_sharpe_oos']:.2f} (n={n:.0f}) | {s['std_sharpe_oos']:.2f} | "
-                f"{s['mean_profit_factor']:.2f} (n={n:.0f}) | {s['consistency']}/8 | "
+                f"{fmt(s['mean_sharpe_oos'])} (n={n:.0f}) | {s['std_sharpe_oos']:.2f} | "
+                f"{_pf_text(s)} (n={n:.0f}) | {s['consistency']}/8 | "
                 f"{s['max_drawdown_global']:.1f}% | {n:.0f} / {s.get('min_trades_window', 0)} | "
                 f"{s['beats_benchmark']} | `{_format_params_inline(s['params'])}` |"
             )
@@ -675,7 +1002,7 @@ def _render_markdown(
         lines.append("|---|---|---|---|---|")
         for a in selection["abandoned"]:
             lines.append(
-                f"| {a['strategy']} | {a['pair']} | {a['best_sharpe_oos']:.2f} "
+                f"| {a['strategy']} | {a['pair']} | {fmt(a['best_sharpe_oos'])} "
                 f"(n={a.get('best_mean_trades_test', 0.0):.0f}) | {a.get('n_ineligible', 0)} | "
                 f"{a['reason']} |"
             )
@@ -702,7 +1029,7 @@ def _render_markdown(
             n = i.get("mean_trades_test", 0.0)
             lines.append(
                 f"| {i['strategy']} | {i['pair']} | `{_format_params_inline(i['params'])}` | "
-                f"{i['mean_sharpe_oos']:.2f} (n={n:.0f}) | {i['mean_profit_factor']:.2f} (n={n:.0f}) | "
+                f"{fmt(i['mean_sharpe_oos'])} (n={n:.0f}) | {_pf_text(i)} (n={n:.0f}) | "
                 f"{i['consistency']}/8 | {i['max_drawdown_global']:.1f}% | "
                 f"{'passed' if i['passed_criteria'] else 'failed'} | {i['n_flags']} | {i['reason']} |"
             )
@@ -723,10 +1050,10 @@ def _render_markdown(
             ts = e.get("test", {})
             tr = e.get("train", {})
             lines.append(
-                f"| {i} | {_safe_float(ts.get('sharpe_ratio')):.2f} | "
-                f"{_safe_float(ts.get('profit_factor')):.2f} | "
+                f"| {i} | {_fmt_raw(ts.get('sharpe_ratio'))} | "
+                f"{_fmt_raw(ts.get('profit_factor'))} | "
                 f"{int(_safe_float(ts.get('total_trades')))} | "
-                f"{_safe_float(tr.get('sharpe_ratio')):.2f} "
+                f"{_fmt_raw(tr.get('sharpe_ratio'))} "
                 f"(n={int(_safe_float(tr.get('total_trades')))}) | "
                 f"`{_format_params_inline(e.get('params') or {})}` |"
             )
@@ -746,16 +1073,16 @@ def _render_markdown(
             "Train Sharpe (n trades) | Min trades/window | Params |"
         )
         lines.append("|---|---|---|---|---|---|---|---|---|")
-        for a in sorted(aggs, key=lambda x: x.mean_sharpe_oos, reverse=True)[:5]:
+        for a in sorted(aggs, key=lambda x: _rank(x.mean_sharpe_oos), reverse=True)[:5]:
             min_trades_per_window = _min_trades_per_window(a)
             train_trades = _mean(
                 [_safe_float(w["train_metrics"].get("total_trades")) for w in a.per_window]
             )
             lines.append(
-                f"| {a.mean_sharpe_oos:.2f} | {a.std_sharpe_oos:.2f} | "
-                f"{a.mean_pf_oos:.2f} | {a.consistency}/{a.n_windows} | "
+                f"| {fmt(a.mean_sharpe_oos)} | {a.std_sharpe_oos:.2f} | "
+                f"{fmt(a.profit_factor_oos)} | {a.consistency}/{a.n_windows} | "
                 f"{a.max_drawdown_global:.1f}% | {a.mean_trades_test:.0f} | "
-                f"{a.mean_sharpe_train:.2f} (n={train_trades:.0f}) | {min_trades_per_window} | "
+                f"{fmt(a.mean_sharpe_train)} (n={train_trades:.0f}) | {min_trades_per_window} | "
                 f"`{_format_params_inline(a.params)}` |"
             )
         lines.append("")
@@ -771,7 +1098,11 @@ def _render_markdown(
     if benchmark_details:
         lines.append(
             "| Pair | Buy & Hold Sharpe | Buy & Hold Return | Buy & Hold MaxDD | "
-            "DCA fixed Return | DCA fixed MaxDD (artefact) | DCA fixed Sharpe (not comparable) |"
+            "DCA fixed Return | DCA fixed MaxDD"
+            + (" (artefact)" if legacy else " (flow-adjusted)")
+            + " | DCA fixed Sharpe"
+            + (" (not comparable)" if legacy else " (flow-adjusted)")
+            + " |"
         )
         lines.append("|---|---|---|---|---|---|---|")
         for pair in sorted(set(benchmarks) | set(benchmark_details)):
@@ -779,20 +1110,25 @@ def _render_markdown(
             bh, dca = d.get("buy_and_hold", {}), d.get("dca_fixed", {})
             fallback = benchmarks.get(pair, {})
             lines.append(
-                f"| {pair} | {_safe_float(bh.get('sharpe', fallback.get('buy_and_hold'))):.2f} | "
+                f"| {pair} | {_fmt_raw(bh.get('sharpe', fallback.get('buy_and_hold')))} | "
                 f"{_safe_float(bh.get('return_pct')):+.1f}% | "
-                f"{_safe_float(bh.get('max_drawdown_pct')):.1f}% | "
+                f"{_fmt_raw(bh.get('max_drawdown_pct'), 1)}% | "
                 f"{_safe_float(dca.get('return_pct')):+.1f}% | "
-                f"{_safe_float(dca.get('max_drawdown_pct')):.1f}% | "
-                f"{_safe_float(dca.get('sharpe', fallback.get('dca_fixed'))):.2f} |"
+                f"{_fmt_raw(dca.get('max_drawdown_pct'), 1)}% | "
+                f"{_fmt_raw(dca.get('sharpe', fallback.get('dca_fixed')))} |"
             )
     else:
-        lines.append("| Pair | Buy & Hold Sharpe | DCA fixed Sharpe (not comparable) |")
+        dca_label = (
+            "DCA fixed Sharpe (not comparable)" if legacy else "DCA fixed Sharpe (flow-adjusted)"
+        )
+        lines.append(f"| Pair | Buy & Hold Sharpe | {dca_label} |")
         lines.append("|---|---|---|")
         for pair, bench in benchmarks.items():
-            lines.append(f"| {pair} | {bench['buy_and_hold']:.2f} | {bench['dca_fixed']:.2f} |")
+            lines.append(
+                f"| {pair} | {fmt(bench.get('buy_and_hold'))} | {fmt(bench.get('dca_fixed'))} |"
+            )
     lines.append("")
-    lines.append(DCA_SHARPE_NOTE)
+    lines.append(note)
     lines.append("")
 
     # B4.3 flag rule
@@ -836,7 +1172,7 @@ def _group_phase1_by_combo(
             by_combo[(strat, pair)].append(entry)
     for combo in by_combo:
         by_combo[combo].sort(
-            key=lambda e: _safe_float(e.get("test", {}).get("sharpe_ratio")),
+            key=lambda e: _rank(_metric(e.get("test"), "sharpe_ratio")),
             reverse=True,
         )
     return by_combo

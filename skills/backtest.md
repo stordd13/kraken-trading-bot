@@ -92,7 +92,7 @@ poetry run python scripts/run_p6_backtests.py --fees bybit
 poetry run python scripts/run_p6_backtests.py --fees bybit --workers 8
 
 # Resume automatique : relancer sans --force → combos déjà faits sont skippés (même --fees exigé :
-# un fichier produit sous un autre modèle, ou sans clé `fees` (pré-B4.2), est refusé → exit 2)
+# un fichier produit sous un autre modèle, ou sans clé `fees` (pré-B4.2) ou d'un autre contrat de métriques (`metrics_version`, pré-C1), est refusé → exit 2 ; `--force` ne recalcule qu'un fichier déjà homogène)
 poetry run python scripts/run_p6_backtests.py --fees bybit
 
 # Force re-run
@@ -190,16 +190,19 @@ qui figé un SHA256 bit-à-bit de la baseline pré-P7.
 
 ### Critères de sélection (les 7, tous doivent passer)
 
-1. `mean_sharpe_oos > 0.4`
-2. `mean_profit_factor_oos > 1.3`
-3. `max_drawdown_global < 30%`
+1. `mean_sharpe_oos > 0.4` — moyenne sur les fenêtres dont le Sharpe est défini (`n_sharpe_oos` rapporté)
+2. `profit_factor_oos > 1.3` — **Σ gains nets / Σ pertes nettes sur les fenêtres** (C1) : Σ pertes = 0 et Σ gains > 0
+   → ∞, **passe** ; 0/0 → indéfini, échoue (v1 : `mean_profit_factor_oos`, moyenne des PF)
+3. `max_drawdown_global < 30%` (v2 : pire `max_drawdown_pct_daily` des fenêtres test)
 4. `mean_trades_test >= 20` (relaxé à `>= 5` pour DCA)
-5. `consistency >= 5/8` fenêtres avec Sharpe positif
-6. `mean_sharpe_oos / mean_sharpe_train > 0.5` (anti-overfit)
-7. Bat soit Buy & Hold soit DCA fixe en Sharpe (OU permissif)
+5. `consistency >= 5/8` fenêtres avec Sharpe **défini et** positif
+6. `mean_sharpe_oos / mean_sharpe_train > 0.5` (anti-overfit ; indéfini si un des deux Sharpe l'est → échoue)
+7. Bat soit Buy & Hold soit DCA fixe en Sharpe (OU permissif ; une jambe `None` n'est jamais battue)
 
-Benchmarks Sharpe extraits du rapport P6 v2 (1k USDC, fees Binance 0.075 % flat — à recalculer en B4.3
-avec `--fees bybit`) :
+Seuils inchangés par C1 ; une métrique indéfinie (`None`, jamais un faux 0) **échoue** son critère avec une note.
+
+Benchmarks Sharpe extraits du rapport P6 v2 (1k USDC, fees Binance 0.075 % flat) — **constantes v1, legacy** : DCA
+contaminé par construction (D6), n'ont plus cours pour un résultat v2 (`--benchmarks` obligatoire) :
 
 | Pair | Buy & Hold | DCA fixed |
 |---|---|---|
@@ -296,7 +299,16 @@ une divergence d'inventaire (`residual_net_proceeds`, `inventory_divergence_btc`
 référence (`results/B4_3_chantier0_gate_a.md`). Le critère de drift B5 lit ce chiffre.
 Régression iso-fees : `capture` / `compare` / `normalise-log` du même harnais (voir
 `results/B4_2_fees_engine_report.md`). Chaque entrée de résultat P6/P7 porte sa clé `fees` ; la reprise
-refuse un fichier d'un autre modèle ou sans clé (`--force` = seule échappatoire).
+refuse un fichier d'un autre modèle ou sans clé.
+
+**Contrat de métriques (C1, `metrics_version` 2, 2026-09-16)** : chaque entrée P6/P7 (et chaque `to_dict()`) porte
+`metrics_version` ; la reprise, l'amorçage de la phase 2 et la phase `report` refusent un fichier pré-C1 ou mixte
+(`MetricsVersionMismatchError`, exit 2, sans échappatoire). **`--force` impose un recalcul complet dans un fichier
+homogène** (mêmes `fees`, même contrat, mêmes coûts de campagne) : il n'agrège jamais deux contrats et ne peut pas
+écraser les JSON B4 historiques (sans `metrics_version`) — écrire dans un nouveau `--output`. Un rapport P7 sur des
+entrées v2 exige `--benchmarks` v2 (fichier de `compute_benchmarks.py` portant `metrics_version`) ; les constantes
+`p7_report.BENCHMARK_SHARPE` ne s'appliquent qu'aux fichiers v1 (chemin legacy conservé, verdicts B4 reproduits à
+l'identique par `tests/test_scripts/test_p7_report.py`).
 
 Note `.env` : les scripts chargent `.env` dans `main()` (jamais à l'import) avec un chemin explicite ;
 `get_settings()` retombe sur une résolution par fichier appelant qui devient dépendante du CWD sous
@@ -326,11 +338,50 @@ une décision de mise en paper Bybit.
 
 ## Métriques et comment les interpréter
 
+### Système de mesure unique (C1, `metrics_version` 2 — `krakenbot.backtest_metrics`)
+
+Depuis le chantier C1 (post-audit red-team B4, `results/C1_metrics_report.md`), les deux moteurs et
+`compute_benchmarks.py` calculent leurs ratios avec **`krakenbot.backtest_metrics.compute_metrics`** à partir de la
+courbe d'equity brute, de la liste des fills et des flux externes. La **simulation est inchangée** (fills, soldes,
+`equity_curve` identiques au centime sur les rejeux signal A, grid quick et grid A — `scripts/audit/c1_equity_probe.py`).
+
+| Élément | Définition (conventions figées au plan C1) |
+|---|---|
+| Grille quotidienne | instants UTC `t_k` = `start`, chaque minuit strictement entre `start` et `end`, puis `end` (bords partiels conservés, comptés comme un pas). NAV(`t_k`) = dernier point d'equity stampé ≤ `t_k` (forward-fill). **Ancre autoritaire** `(start, capital)` ; entre points de données au même stamp, le **dernier** gagne (point post-liquidation du grid). Cohérent avec l'end-stamp B4.1 : le point stampé `D 00:00` est le close de la journée D−1. |
+| Rendements | `r_k = (E_k − F_k − E_{k−1}) / E_{k−1}`, `F_k` = flux externes bucketés dans `(t_{k−1}, t_k]` (convention fin de période, exacte pour le DCA fixe : dépôt au close, converti au close). `E_{k−1} = 0` → rendement **indéfini, ignoré** (jamais 0). Moteurs : `F ≡ 0`. |
+| Indice de performance | `I_0 = 1` à l'ancre, `I_k = I_{k−1}(1 + r_k)` (pas indéfini → `I` inchangé) ; MaxDD quotidien et Calmar sont lus sur `I` : un dépôt ne peut ni créer un rendement ni masquer un drawdown. |
+| `sharpe_ratio` | `mean(r) / std(r, ddof=1) × √365` sur les rendements quotidiens ; **`None`** si < 2 rendements ou écart-type nul (jamais un faux 0). Écart-type **échantillon partout** (`p7_report._stdev` inclus). |
+| `sortino_ratio` | `mean(r) / sqrt(Σ min(r,0)² / N) × √365` (MAR 0, N = tous les rendements) ; `None` sans rendement négatif. |
+| `max_drawdown_pct_daily` | plus grande baisse **relative au pic courant** sur l'indice quotidien — **la valeur des critères de sélection et des comparaisons benchmark** (seule comparable entre familles de résolution différente). |
+| `max_drawdown_pct_engine` | même formule à la résolution du moteur (4 h / 1 j signal, 5 m grid, ancre incluse) — **diagnostic**, jamais critère inter-familles. `max_drawdown` (USDC) reste la perte monétaire max à la résolution moteur (inchangé). La clé `max_drawdown_pct` n'existe plus dans le contrat v2 (colonne DB = valeur quotidienne). |
+| `calmar_ratio` | CAGR **géométrique** (%) de `I` / `max_drawdown_pct_daily` ; `None` si drawdown nul ou durée < 1 jour. |
+| `profit_factor` | `gross_profit_net / gross_loss_net` sur la série dérivée `pnl_net_trade = pnl − buy_fee_alloc` (fee d'achat du lot imputée à la vente qui le clôture ; `t.pnl` reste net de la seule fee de vente, `net_pnl` inchangé — pas de double comptage). **`None` si pertes = 0** : les sommes exportées désambiguïsent (gains > 0 → ∞ ; 0/0 → indéfini). `pf_excluded_trades` = lots vendus à coût inconnu (liquidation d'un inventaire divergent) : exclus, aucun gain inventé, PF signalé **incomplet**. Identité `Σ pnl_net_trade == net_pnl` sur un run **réconcilié** : inventaire terminal nul, `pf_excluded_trades == 0` et aucune divergence d'inventaire (règle de flag B4.3) — un lot encore ouvert ou un fill non enregistré la rompent par construction. |
+| `n_daily_returns` | nombre de rendements quotidiens définis (à lire à côté du Sharpe). |
+| Inchangés | `total_return_pct`, `net_pnl`, `win_rate`, `average_win/loss`, comptes de trades, fees. |
+
+`BacktestTrade.buy_fee_alloc` (SELL) : moteur signal = Σ fees des achats ouverts (exact, y compris accumulation DCA) ;
+grid maker / legacy / liquidation = `cost_basis × maker/(1−maker)` (dérivation exacte du fill maker, prorata d'un lot
+clampé par construction) ; `None` avec `entry_price None`.
+
+**Limitation** : l'equity est un mark-to-market au close des bougies tradeables traitées (+ point post-liquidation) ;
+les excursions intrabar (mèches) ne sont pas capturées — un MaxDD « vrai intrabar » est impossible à reconstruire
+depuis ces données (borne pessimiste valorisée au low : hors scope).
+
+**Export** : `--trades-out` embarque `metrics_version`, `equity_daily` (`{start, end, values}` aux `t_k`) et
+`buy_fee_alloc` par trade ; `--equity-out PATH` écrit le sidecar JSONL à la résolution moteur (`timestamp, cash,
+inventory_qty, mark_price, equity, external_flow`). Les runners P6/P7 stockent `equity_daily` par segment à côté de
+`liquidation` (jamais dans `to_dict()` : les gold hashes et `compare` restent scalaires).
+
+**Effet mesuré sur les références B4.3** (simulation identique, `results/C1_metrics_report.md`) : signal A Sharpe
+0.201 → 0.454, MaxDD 2.30 → 2.28 %, PF 1.442 → 1.383 ; grid A Sharpe 0.021 → 0.367, MaxDD 19.99 → 17.97 %, PF
+1.617 → 1.499. Le Sharpe DCA fixe des benchmarks passe de 2.35 / 2.09 / 2.08 à 0.84 / 0.38 / 0.30 (≈ B&H) et son MaxDD
+de 100 % à 49.7 / 63.8 / 70.3 % : les dépôts ne sont plus des rendements.
+
 ### Métriques de qualité de la stratégie (indépendantes du capital)
 
 | Métrique | Bon | Excellent | Red flag |
 |---|---|---|---|
-| Profit Factor | > 1.5 | > 2.0 | < 1.0 (perdant) |
+| Profit Factor (net des deux jambes) | > 1.5 | > 2.0 | < 1.0 (perdant) ; `None` = 0 perte (∞) ou 0/0, lire les sommes |
 | Win Rate | > 40% | > 55% | < 25% |
 | Avg Win / Avg Loss | > 1.5 | > 2.5 | < 0.5 |
 
@@ -338,10 +389,10 @@ une décision de mise en paper Bybit.
 
 | Métrique | Seuil P6 | Note |
 |---|---|---|
-| Sharpe annualisé | > 1.0 | Avec 1k USDC et 1% risk, le Sharpe est artificiellement bas |
+| Sharpe annualisé (quotidien, C1) | > 1.0 | Avec 1k USDC et 1% risk, le Sharpe est artificiellement bas ; `None` = indéfini |
 | Sortino | > 1.5 | Comme Sharpe mais ne pénalise que la downside vol |
-| Max Drawdown | < 25% | En % du capital |
-| Calmar | > 0.5 | Return annualisé / max drawdown |
+| Max Drawdown (`max_drawdown_pct_daily`) | < 25% | En % du pic courant, NAV quotidienne |
+| Calmar | > 0.5 | CAGR géométrique / max drawdown quotidien |
 
 ### ATTENTION — Piège du sizing
 
@@ -355,9 +406,12 @@ La grid a des particularités :
 - Chaque paire maker complétée est un win par construction ; les **pertes** viennent de la **liquidation
   terminale** (B4.3) : en fin de run l'inventaire ouvert est vendu MARKET au dernier close (taker + spread +
   slippage), chaque lot compte comme un trade (perdant s'il est sous l'eau), `unrealized_pnl` porte ce P&L
-  réalisé, `total_trades = paires maker + lots liquidés`. Sur le run P6 de référence : 33 lots tous sous
-  l'eau → `win_rate` 0.969, PF inf → 1.66, `net_pnl` 336 → 129 USDC (= `ending − 1000`).
-- `profit_factor` vaut `inf` seulement si aucun lot n'est perdant (inventaire vide ou tout en profit).
+  réalisé, `total_trades = paires maker + lots liquidés`. Sur le run P6 de référence `--fees binance` (chiffres
+  v1) : 33 lots tous sous l'eau → `win_rate` 0.969, PF inf → 1.66, `net_pnl` 336 → 129 USDC (= `ending − 1000`) ;
+  sous `--fees bybit` PF 1.617 / `net_pnl` 114.21 en v1, et **1.499** en v2 (net des deux jambes, rejeu C1 grid A).
+- `profit_factor` vaut `None` seulement si aucun lot n'est perdant (inventaire vide ou tout en profit) — affiché ∞
+  (`gross_loss_net == 0`, `gross_profit_net > 0`) ; un lot liquidé à coût inconnu le rend **incomplet**
+  (`pf_excluded_trades`).
 - Le rapport sépare « Grid Pairs Completed (maker) », « Forced Liquidations », « Buy Fees » / « Sell Fees
   (incl. liquidation) » ; le dump `--trades-out` a un bloc `liquidation` (positions, prix, fees, résidu,
   divergence d'inventaire — attendus 0 sur tout run sain).
@@ -395,6 +449,12 @@ Toute stratégie doit battre au moins un des deux :
 2. **DCA fixe** (15 USDC chaque lundi)
 
 Si une stratégie ne bat ni l'un ni l'autre, elle ne sert à rien.
+
+C1 : les deux benchmarks passent par `krakenbot.backtest_metrics` (même grille quotidienne, mêmes ratios). Le DCA fixe
+tient un compte cash et enregistre chaque dépôt hebdomadaire comme **flux externe** : son Sharpe est désormais
+**comparable** (rendements ajustés des flux) et son MaxDD n'est plus l'artefact 100 %. Fichier de campagne :
+`compute_benchmarks.py … --output results/<campagne>_benchmarks.json` (porte `metrics_version` ; exigé par `--phase
+report`). Décalage connu (chantier 3) : les benchmarks chargent `< P6_END`, les moteurs `<= end` (un jour).
 
 ## Pièges courants
 

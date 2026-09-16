@@ -58,6 +58,20 @@ async def test_legacy_survivors_without_fees_return_2(
 
 
 @pytest.mark.asyncio
+async def test_pre_c1_survivors_return_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """C1: a survivor selected under another metrics contract (or none) is refused."""
+    survivors = tmp_path / "survivors.json"
+    survivors.write_text(
+        json.dumps({"k": {"strategy": "grok_supertrend_4h", "pair": "BTC/USDC", "fees": "bybit"}})
+    )
+    rc = await wf.main(["--fees", "bybit", "--survivors", str(survivors)])
+    assert rc == 2
+    assert "pre-C1" in capsys.readouterr().err
+
+
+@pytest.mark.asyncio
 async def test_missing_survivors_file_returns_1(tmp_path: Path) -> None:
     rc = await wf.main(["--fees", "bybit", "--survivors", str(tmp_path / "none.json")])
     assert rc == 1
@@ -88,3 +102,29 @@ async def test_fee_model_is_passed_to_both_engines(monkeypatch: pytest.MonkeyPat
     )
     assert [c["fee_model"] for c in _FakeEngine.calls] == ["bybit", "bybit"]
     assert {c["exchange"] for c in _FakeEngine.calls} == {wf.EXCHANGE}
+
+
+def test_aggregate_windows_is_none_aware() -> None:
+    """C1: an undefined window Sharpe is neither 0 nor positive; means use the defined windows."""
+    windows = [
+        {
+            "window": 0,
+            "metrics": {"metrics_version": 2, "sharpe_ratio": 1.0, "profit_factor": None},
+        },
+        {
+            "window": 1,
+            "metrics": {"metrics_version": 2, "sharpe_ratio": None, "profit_factor": 2.0},
+        },
+        {"window": 2, "error": "boom"},
+        {
+            "window": 3,
+            "metrics": {"metrics_version": 2, "sharpe_ratio": -0.5, "profit_factor": 1.0},
+        },
+    ]
+    mean_metrics, n_defined, positive, consistency = wf.aggregate_windows(windows, 4)
+    assert mean_metrics == {"metrics_version": 2, "sharpe_ratio": 0.25, "profit_factor": 1.5}
+    assert n_defined == {"sharpe_ratio": 2, "profit_factor": 2}
+    assert positive == 1 and consistency == 0.25
+    all_none = [{"window": 0, "metrics": {"sharpe_ratio": None}}]
+    assert wf.aggregate_windows(all_none, 1)[0] == {"sharpe_ratio": None}
+    assert wf.aggregate_windows([], 0) == ({}, {}, 0, 0.0)
