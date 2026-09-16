@@ -4,7 +4,8 @@
 > C12, C13, étapes 2/4/8). Branche `feat/c1-metrics` depuis `dev` @ `8e327b0` (moteur bit-identique au tag
 > `v2.8.0-b4-3-campaign` : `git diff v2.8.0-b4-3-campaign dev -- scripts src tests` vide).
 > Sélection paper B4 **inchangée (vide)** : ce chantier répare l'instrument, il ne rejoue aucune campagne.
-> État : **soumis à la review humaine** — les gold hashes de § 6 ne sont recalés qu'après approbation du tableau A/B.
+> État : tableau A/B **approuvé** (GO conditionnel Bruno, 2026-09-16 : invariant MaxDD engine § 4 bis vérifié,
+> migration locale appliquée § 7, hashes recalés en C7) ; branche poussée sur `origin`, merge dans `dev` = humain.
 
 ## 1. Résumé
 
@@ -225,6 +226,23 @@ creux était le pic global) ; le quotidien 2.18 / 2.20 % lisse les creux 5 m.
 Lecture grid A : 2 128 trades, 315 650 points d'equity identiques ; PF 1.617 → 1.499 (1 064 fees d'achat imputées),
 MaxDD 19.99 → 17.97 % (quotidien), Sharpe 0.021 → 0.367.
 
+### 4 bis. Invariant MaxDD engine (condition préalable au recalage, GO conditionnel)
+
+Théorème : l'ancien `max_drawdown_pct` (perte monétaire max ÷ pic global **final**) est toujours ≤ au drawdown
+relatif au pic **courant** à la même résolution (`max_drawdown_pct_engine`), le pic final étant ≥ au pic au moment du
+creux. Vérifié sur les 4 rejeux (captures `_new`, et re-captures post-correctifs pour signal A / grid quick) :
+
+| Run | ancien `max_drawdown_pct` (cassé) | nouveau `max_drawdown_pct_engine` | post-correctifs | engine ≥ ancien |
+|---|---|---|---|---|
+| signal A bybit | 2.302904 | 2.302904 | 2.302904 | ✅ (égalité : le pic au creux était le pic final) |
+| grid quick binance | 3.050866 | 3.050866 | 3.050866 | ✅ (égalité) |
+| grid quick bybit | 3.064055 | 3.064055 | 3.064055 | ✅ (égalité) |
+| grid A bybit | 19.989342 | 19.989342 | — (hashes gold inchangés post-correctifs) | ✅ (égalité) |
+
+Sur ces quatre runs le creux maximal survient sous le pic global final, d'où l'égalité ; la valeur **quotidienne**
+(`max_drawdown_pct_daily`, celle des critères) est plus basse (2.28 / 2.18 / 2.20 / 17.97 %) car elle lisse les creux
+intrajournaliers de la résolution moteur.
+
 ## 5. Benchmarks v1 → v2 (`results/B4_benchmarks.json` → `results/C1_benchmarks_v2.json`, même commande :
 `--fees bybit --pair-costs-file config/pair_costs_b4.json`)
 
@@ -306,7 +324,8 @@ rendements quotidiens (n rapporté). Bords partiels : le split à 19:12Z est con
 | all | `calmar_ratio` | 0.556933 | 0.782173 | moving | D2/C5/D1 |
 | all | `max_drawdown_pct_engine` / `gross_profit_net` / `gross_loss_net` / `pf_excluded_trades` / `n_daily_returns` | - | 3.064055 / 12.323133 / 11.668595 / 0 / 14 | new | - |
 
-**Valeurs proposées** (à recaler dans `EXPECTED_HASHES` après GO) :
+**Valeurs approuvées** (GO Bruno 2026-09-16, recalées dans `EXPECTED_HASHES`, commit C7 ; vérifiées avant et après
+les correctifs de revue) :
 
 | Modèle | Ancien (v1) | Nouveau (v2) |
 |---|---|---|
@@ -327,8 +346,34 @@ Déterminisme (`tests/test_scripts/test_run_p6_determinism.py -m "not slow"`) : 
 - Outils P6 (`run_p6_walkforward`, `filter_p6_survivors`, `generate_p6_report`) None-aware, `equity_daily` par
   fenêtre, refus d'un fichier pré-C1.
 - DB : migration `c1ae7a1c0001` (ratios NULL, colonnes `gross_profit_net`, `gross_loss_net`, `pf_excluded_trades`,
-  `metrics_version`) écrite, **non appliquée** (Docker local arrêté) ; `save_to_database` écrit NULL pour un ratio
-  indéfini ; dashboard : ∞ / n/a / incomplet dérivés des colonnes.
+  `metrics_version`) **appliquée sur la base Docker locale** le 16/09 (§ 7 bis) ; **serveur en attente** d'une
+  fenêtre services stoppés (règle 11, hors périmètre) ; `save_to_database` écrit NULL pour un ratio indéfini ;
+  dashboard : ∞ / n/a / incomplet dérivés des colonnes.
+
+### 7 bis. Migration locale — garde-fou et sortie
+
+Garde-fou anti-tunnel avant `alembic upgrade head` (le `.env` pointe sur le tunnel 5433) : `DATABASE_URL` explicite
+`postgresql+asyncpg://krakenbot:***@127.0.0.1:5432/krakenbot` ; `alembic current` → `f7a8b9c0d1e2` ;
+`SELECT count(*) FROM market_data_ohlc` → **2 768 566** rows (port 5432, container `krakenbot-db`, données Kraken)
+contre **12 466 509** rows sur le serveur via le tunnel (lecture seule, pour contraste) → cible = base locale.
+
+```
+Running upgrade f7a8b9c0d1e2 -> b4c0ffee0001, market_data_ohlc.timestamp column comment: period end, not open time
+Running upgrade b4c0ffee0001 -> c1ae7a1c0001, backtest_runs: undefined ratios stored as NULL + C1 metrics columns
+alembic current: c1ae7a1c0001 (head)
+
+    column_name     | data_type | precision | scale | is_nullable | comment
+--------------------+-----------+-----------+-------+-------------+--------------------------------------------------------------
+ max_drawdown_pct   | numeric   |        10 |     4 | NO          | Maximum drawdown percentage (C1: daily NAV, relative to the running peak)
+ sharpe_ratio       | numeric   |        10 |     4 | YES         | Sharpe ratio (daily returns); NULL when undefined
+ profit_factor      | numeric   |        10 |     4 | YES         | Profit factor net of both legs; NULL when losses == 0 (see the sums)
+ sortino_ratio      | numeric   |        10 |     4 | YES         | Sortino ratio (downside volatility); NULL when undefined
+ gross_profit_net   | numeric   |        18 |     8 | YES         | C1: sum of the net gains (buy fee imputed) behind profit_factor
+ gross_loss_net     | numeric   |        18 |     8 | YES         | C1: sum of the net losses (absolute value) behind profit_factor
+ pf_excluded_trades | integer   |        32 |     0 | YES         | C1: closed lots with an unknown cost basis, excluded from profit_factor
+ metrics_version    | integer   |        32 |     0 | YES         | C1: contract version of the ratios (krakenbot.backtest_metrics); NULL = pre-C1
+backtest_runs rows: 22 (untouched)
+```
 
 ## 8. Signalé, non traité
 
