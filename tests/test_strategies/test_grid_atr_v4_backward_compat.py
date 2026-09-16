@@ -94,9 +94,33 @@ WINDOW_END = datetime(2025, 3, 15, tzinfo=UTC)
 #   last buy: all 594.22 -> 323.78 = the pre-chantier value, train 227.76 -> 286.40); the
 #   liquidated lots' real holding time now lives in the dump's liquidation block. Every other
 #   key of the three segments is unchanged (binance and bybit).
+# - 2026-09-16 (C1 metrics, GO Bruno on the A/B table — results/C1_metrics_report.md § 4 and
+#   § 6): re-baselined once after krakenbot.backtest_metrics replaced the engines' formulas
+#   (metrics_version 2). The simulation is untouched: trades, balances and the raw equity
+#   curve are bit-identical on signal A, grid quick and grid A (scripts/audit/c1_equity_probe.py),
+#   and on this window every accounting key of the three segments (trades 38 / 6 / 45,
+#   25 W 13 L / 6 W / 37 W 8 L, net_pnl, ending, fees, holding) is identical to the v1
+#   baseline 43dcdf8d… / 818d7fa8…, reproduced from a worktree of v2.8.0-b4-3-campaign.
+#   Only the ratios move: daily-resampled Sharpe / Sortino (sample std, None when undefined),
+#   MaxDD relative to the running peak on the daily NAV (max_drawdown_pct_daily replaces
+#   max_drawdown_pct; max_drawdown_pct_engine added, equal to the old figure here), profit
+#   factor net of the buy fee (gross_profit_net / gross_loss_net, None without a loss),
+#   geometric-CAGR Calmar; plus metrics_version, pf_excluded_trades (0), n_daily_returns.
+#     binance — train: Sharpe -0.3832 -> -7.1102, MaxDD 2.8391 -> 2.5702, PF 0.3007 -> 0.2830,
+#               Calmar -28.84 -> -21.91; test (4 days, 6 winners): Sharpe 0.9691 -> 20.5960,
+#               Sortino 1.5207 -> None, MaxDD 0.0705 -> 0.0000, PF inf -> None (gains 2.0217,
+#               losses 0), Calmar 249.35 -> None; all: Sharpe 0.0209 -> 0.3520,
+#               Sortino 0.0306 -> 0.5442, MaxDD 3.0509 -> 2.1822, PF 1.2125 -> 1.1349,
+#               Calmar 1.2991 -> 1.8513.
+#     bybit   — train: Sharpe -0.3996 -> -7.3222, MaxDD 2.8681 -> 2.6414, PF 0.2902 -> 0.2672,
+#               Calmar -29.77 -> -21.90; test: Sharpe 0.9323 -> 20.5242, Sortino 1.4569 -> None,
+#               MaxDD 0.0711 -> 0.0000, PF inf -> None (gains 1.9456, losses 0),
+#               Calmar 237.90 -> None; all: Sharpe 0.0113 -> 0.1882, Sortino 0.0165 -> 0.2883,
+#               MaxDD 3.0641 -> 2.1997, PF 1.1552 -> 1.0561, Calmar 0.5569 -> 0.7822.
+#   Previous values: binance 43dcdf8d…, bybit 818d7fa8….
 EXPECTED_HASHES: dict[str, str | None] = {
-    "binance": "43dcdf8d283db5c837f9d98d5e38dbddf1717f71177d4a19d9ea36460cf39faf",
-    "bybit": "818d7fa875d5626bda6f7862739eadda5fb7e24622703a86841f00162397f39a",
+    "binance": "619cac94d128a877615a042a8f00e007048beee11d49aa0b04fda391d6a7f9f1",
+    "bybit": "ca846347817276ed3040fd341b5a2ee9e46c5aaa62b5efd7e8907c84ae8f13ec",
 }
 
 
