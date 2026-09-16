@@ -215,9 +215,12 @@ def compare_identity(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
         b = nm.get(key, nx.get(key))
         if a != b:
             v.append(f"metrics.{key}: {a!r} != {b!r} (must be identical)")
-    diff = compare_payloads(old, new, ignore=[f"metrics.{k}" for k in MOVING_KEYS])
+    # schema-1 projection: everything but the moving / added / removed metric keys (the
+    # IDENTICAL_KEYS were compared above; the trades core is compared here again)
+    contract_delta = (set(om) ^ set(nm)) | set(MOVING_KEYS) | {nk for nk, _ in MOVING_KEYS.values()}
+    diff = compare_payloads(old, new, ignore=[f"metrics.{k}" for k in sorted(contract_delta)])
     if diff is not None:
-        v.append(f"schema-1 projection (ignoring moving keys): {diff}")
+        v.append(f"schema-1 projection (ignoring moving / new / removed metric keys): {diff}")
     return v
 
 
