@@ -65,9 +65,9 @@ Attendu (septembre 2026) :
 
 | `exchange` | Rows | Rôle |
 |---|---|---|
-| `binance` | ~8,700,000 | Base de backtest (2021-01 → 2026-06, 3 paires × 7 TF). Figée : plus d'import possible depuis l'UE. |
-| `kraken` | ~1,130,000 | Legacy, à supprimer une fois Bybit validé en live. |
-| `bybit` | 0 (à venir en B3) | Données live Bybit EU (historique depuis 2025-06-11). Cible de production. |
+| `binance` | 8 712 718 (figé) | Base de backtest (2021-01 → 2026-04, 3 paires × 7 TF, end-stampée depuis B4.1). Figée : plus d'import possible depuis l'UE. |
+| `kraken` | 1 181 469 | Legacy, à supprimer une fois Bybit validé en live. |
+| `bybit` | 2 572 097 au 16/09/2026 13:42 (croît en continu) | Données live Bybit EU (historique depuis 2025-06-11 + WS + backfill). Cible de production. |
 
 **Ne JAMAIS réimporter** des données déjà présentes. Voir `skills/binance_import.md`.
 
@@ -132,7 +132,15 @@ Règle : **jamais plus de 5000 rows par execute**. Utiliser `ON CONFLICT DO NOTH
 |---|---|---|---|
 | 2026-09-07 | `~/Backups/krakenbot/krakenbot_20260907.dump` (Mac de Bruno) | 203 Mo | DB complète (format custom `pg_dump -Fc`), avant arrêt des services |
 
-Il n'y a **pas encore de backup récurrent** (item roadmap, requis avant B5).
+**Backup récurrent en place depuis le 16/09/2026** (cron serveur, `scripts/backup_db.sh`) :
+
+| Cron (UTC) | Type | Rétention | Emplacement |
+|---|---|---|---|
+| `15 4 * * *` | daily | 7 jours | `~/backups/krakenbot/krakenbot_<date>_daily.dump.gz` (serveur) |
+| `45 4 * * 0` | weekly | 28 jours | `~/backups/krakenbot/krakenbot_<date>_weekly.dump.gz` (serveur) |
+
+Le script dumpe via `docker exec krakenbot-db pg_dump -Fc` puis gzip ; log `~/backups/krakenbot/backup.log`.
+Pas encore de copie hors serveur (storage box) — item roadmap.
 
 ### Créer un backup (sur le serveur)
 
@@ -149,14 +157,23 @@ scp -P 41922 bruno@77.42.90.102:~/krakenbot_YYYYMMDD.dump ~/Backups/krakenbot/
 ### Restaurer (procédure TimescaleDB, non triviale)
 
 Un `pg_restore` naïf sur une DB TimescaleDB échoue ou laisse les hypertables incohérentes. Il faut
-encadrer la restauration avec `timescaledb_pre_restore()` / `timescaledb_post_restore()` et la même
-**version majeure** de l'extension que celle du dump.
+encadrer la restauration avec `timescaledb_pre_restore()` / `timescaledb_post_restore()` et la version
+**exacte** de l'extension TimescaleDB de la source du dump — « même version majeure » **ne suffit pas**
+(test du 16/09/2026 : catalogue interne incompatible → `COPY` en échec). Pour un restore sur un container
+jetable, épingler l'image : `timescale/timescaledb:<version>-pg16` avec `<version>` = `extversion` de la
+source (le 16/09/2026 : `2.24.0` ; le container de prod tourne sur le tag flottant `latest-pg16`, donc
+relire `extversion` avant chaque restore). Les rôles ne sont pas dans le dump : `CREATE ROLE claude_readonly;`
+avant le restore, ou `pg_restore --no-acl` (sinon ~126 erreurs `GRANT` cosmétiques).
+
+**Restore testé le 16/09/2026** : dump daily 13:42 (`krakenbot_2026-09-16_13-42_daily.dump.gz`) restauré sur
+un container jetable épinglé ; counts `binance` 8 712 718 / `kraken` 1 181 469 / `bybit` 2 572 097,
+`MAX(timestamp)` bybit = heure du dump.
 
 ```bash
 # 0. Services stoppés (sinon des INSERT arrivent pendant le restore)
 sudo systemctl stop krakenbot krakenbot-collector
 
-# 1. Version de l'extension côté cible (doit matcher celle du dump, cf. `pg_restore -l dump | grep timescaledb`)
+# 1. Version de l'extension côté cible (doit être EXACTEMENT celle de la source, cf. `pg_restore -l dump | grep timescaledb`)
 sudo docker exec krakenbot-db psql -U krakenbot krakenbot -c \
     "SELECT extversion FROM pg_extension WHERE extname='timescaledb';"
 
@@ -166,6 +183,7 @@ sudo docker cp ~/krakenbot_20260907.dump krakenbot-db:/tmp/krakenbot.dump
 # 3. Base vide avec l'extension
 sudo docker exec krakenbot-db psql -U krakenbot -d postgres -c "CREATE DATABASE krakenbot_restore;"
 sudo docker exec krakenbot-db psql -U krakenbot -d krakenbot_restore -c "CREATE EXTENSION IF NOT EXISTS timescaledb;"
+sudo docker exec krakenbot-db psql -U krakenbot -d krakenbot_restore -c "CREATE ROLE claude_readonly;"   # rôles absents du dump (ou pg_restore --no-acl)
 
 # 4. pre_restore → pg_restore → post_restore (dans la même base)
 sudo docker exec krakenbot-db psql -U krakenbot -d krakenbot_restore -c "SELECT timescaledb_pre_restore();"
@@ -177,9 +195,11 @@ sudo docker exec krakenbot-db psql -U krakenbot -d krakenbot_restore -c \
     "SELECT exchange, COUNT(*) FROM market_data_ohlc GROUP BY exchange;"
 ```
 
-Pièges : (a) mismatch de version majeure TimescaleDB → `pg_restore` échoue sur `_timescaledb_catalog` ;
-(b) oublier `post_restore()` laisse la DB en mode restore (jobs de compression/retention désactivés) ;
-(c) la mémoire : vérifier `free -h` et le swap avant, comme pour une migration.
+Pièges : (a) mismatch de version TimescaleDB, **même mineure** → `pg_restore` échoue sur `_timescaledb_catalog` /
+`COPY` (test du 16/09) ; (b) oublier `post_restore()` laisse la DB en mode restore (jobs de compression/retention
+désactivés) ; (c) la mémoire : vérifier `free -h` et le swap avant, comme pour une migration ; (d) `scripts/restore_db.sh`
+n'applique **pas** `timescaledb_pre_restore()` / `timescaledb_post_restore()` ni la création des rôles — ne pas
+l'utiliser tel quel sur une DB TimescaleDB (alignement sur ce skill prévu au chore cleanup post-C1).
 
 ## Migrations Alembic
 

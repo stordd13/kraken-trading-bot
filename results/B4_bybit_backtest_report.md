@@ -1,5 +1,57 @@
 # B4 — Rapport de backtest Bybit (fees maker/taker, données saines, moteur grid honnête) et sélection paper
 
+## ⚠️ Addendum du 16 septembre 2026 — portée des conclusions après audit de l'instrument
+
+Un audit adversarial externe (`results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md`), dont les
+constats principaux ont été vérifiés indépendamment sur le code du tag `v2.8.0-b4-3-campaign` et
+reproduits depuis les JSON de cette campagne, a établi que l'instrument de mesure utilisé par ce
+rapport comporte des défauts matériels : annualisation des Sharpe/Sortino sur des pas de temps
+hétérogènes (√365 appliqué à des rendements 5 m / 4 h / 1 j selon la famille), MaxDD rapporté au pic
+global final au lieu du pic courant, profit factor sans imputation de la fee d'achat, agrégation P7
+transformant les PF infinis en 0 puis moyennant des ratios, walk-forward dont les candidats sont
+sélectionnés sur une période chevauchant les fenêtres dites OOS, benchmark DCA comptant les dépôts
+comme des rendements. Le replay grid a par ailleurs alimenté les indicateurs 4 h avec des bougies
+5 m. La branche de renforcement « oversold » du DCA était inactive pendant les tests trimestriels,
+faute d'EMA200 prête ; par ailleurs, les configurations retenues (`bull_reduction=0.3`) réduisent
+l'achat de 15 USDC à 4,50 USDC en régime strong_bull, provoquant son rejet sous le minimum de
+5 USDC — la contribution exacte de ces rejets aux fenêtres sans achat n'est pas établie par les
+résultats archivés.
+
+**Ce qui reste établi** : les fees Bybit mesurées sur le compte ; les coûts par paire du GATE B en
+tant que calibration ; les comptes d'exécutions enregistrées par le simulateur, avec leurs anomalies
+documentées (dette 14 : doubles ventes de lots grid × SOL) ; l'identité comptable
+`net_pnl == ending − capital` sur les rejeux de référence terminant sans inventaire et sans flux
+externes ; la reproductibilité de la sélection vide sous les critères codés (P6 0/24, P7 0/35).
+
+**Ce qui doit être recalculé ou requalifié avant toute utilisation comme preuve de validation
+économique** : les mesures affectées par les défauts identifiés (Sharpe/Sortino, MaxDD %, PF) et
+toute comparaison les utilisant — dont l'application du seuil 0,4 et les comparaisons aux
+benchmarks, la règle de décision elle-même n'étant pas en cause, ni le Sharpe B&H calculé
+quotidiennement — ainsi que l'expression « dix fois sous le seuil » (§4.2-4.3) ; le statut de
+validation chronologique indépendante du walk-forward ; les interprétations causales par régime ou
+par les seuls frais (« les fees Bybit ont tué les stratégies »). Les observations descriptives
+(comptes d'exécutions, rendements comptables, lectures trimestrielles) restent citables comme
+telles, en tant que sorties du simulateur.
+
+**Corroboration C1** : les comparaisons A/B du chantier C1 sur les rejeux de référence corroborent
+les défauts de mesure sans modification des exécutions, soldes ou trajectoires d'equity — le PF du
+signal A passe notamment de 1,4420 à 1,3832 après imputation des frais d'achat
+(`results/C1_metrics_report.md`). Ces vérifications ne constituent pas un nouveau verdict de
+campagne ni une validation après correction du replay et du protocole de sélection.
+
+**Formulation qui remplace le verdict** : zéro configuration sélectionnée sous ce protocole avec cet
+instrument. Cela justifie le non-déploiement — aucune stratégie n'est validée pour le déploiement
+par cette campagne. Cela n'établit ni que les 212 configurations échoueraient sous un instrument
+correct (35 seulement ont vu le walk-forward), ni l'absence d'edge économique des familles testées.
+
+**Suites** : réparation de l'instrument de mesure (chantier C1, mergé, tag `v2.9.0-c1-metrics`),
+fidélité du replay (C2), rejeu diagnostic du grid (96 configs BTC/SOL, périmètre pré-spécifié,
+verdict « inconclusif » possible), validation chronologique (C3) avant toute sélection. Les runs de
+nouvelles familles sont gelés jusqu'au merge de C2 ; les tickets d'entrée sur papier continuent
+(`docs/CONTRAINTES_POST_B4.md`).
+
+Le corps du rapport ci-dessous est conservé tel quel comme pièce historique.
+
 > Livrable B4 (brief `agent/AGENT_B4_3_CAMPAIGN.md` § 6.3, `ROADMAP.md` § B4). Campagne exécutée sur le serveur
 > `krakenbot` (branche `feat/b4-3-campaign`, P6 @ `874fb62`, P7 @ `eb13800` / rapport @ `a59226f` ; mergée dans `dev`
 > le 2026-09-15 = `4c98b6b`, tag `v2.8.0-b4-3-campaign` @ `64ca827`), sur les

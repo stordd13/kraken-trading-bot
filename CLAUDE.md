@@ -7,10 +7,11 @@
 
 Bot de trading spot automatisé multi-pair (BTC/ETH/SOL contre USDC) sur **Bybit EU**, 8 stratégies
 orchestrées par un router avec risk management centralisé, déployé sur Hetzner (collector Bybit actif,
-trader désactivé). **B4 est close (15 sept 2026, tag `v2.8.0-b4-3-campaign`) : aucune stratégie ne survit aux
-fees Bybit (P6 0/24, P7 0/35), sélection paper vide → roadmap B5→P10 suspendue ; phase courante = R&D
-stratégies** sous `docs/CONTRAINTES_POST_B4.md`. Les backtests tournent sur les 8.7M rows Binance end-stampées
-en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts par paire mesurés (GATE B).
+trader masqué). **B4 est close (15 sept, tag `v2.8.0-b4-3-campaign`) : zéro sélection sous les critères codés — et
+l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Phase courante : chantiers C1 (métriques,
+mergé, tag `v2.9.0-c1-metrics`) → C2 (replay) → rejeu grid → C3 (validation chronologique) ; runs R&D gelés jusqu'à
+C1-C2, tickets papier sous `docs/CONTRAINTES_POST_B4.md`.** Les backtests tournent sur les 8.7M rows Binance
+end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts par paire mesurés (GATE B).
 
 ## Routage : type de tâche → fichier à lire
 
@@ -28,6 +29,9 @@ en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts 
 | Localiser un module / une fonction | `docs/CODE_MAP.md` |
 | Résultats de backtests (quoi est où, verdicts) | `results/INDEX.md` |
 | **Nouvelle idée de stratégie** (filtre d'entrée, ticket § 6 sur le papier avant tout code) | `docs/CONTRAINTES_POST_B4.md` |
+| **Audit red-team B4 / portée des conclusions** | `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` (+ addendum en tête de `results/B4_bybit_backtest_report.md`) |
+| Briefs de chantier en cours | `agent/` |
+| **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
 
 ## Règles d'or (absolues)
 
@@ -70,3 +74,7 @@ résultats P6/P7 historiques, `bybit` = cible de production. Détails : `skills/
 - Branche de travail `feat/<phase>-<sujet>` depuis `dev`, PR vers `dev`.
 - Commits atomiques, préfixes `feat|fix|refactor|docs|chore|test(scope)`.
 - Régénérer `docs/CODE_MAP.md` à chaque merge sur `dev` (méthode dans son en-tête).
+- Pendant qu'un chantier agent est actif, toute intervention humaine passe par un worktree séparé
+  (`git worktree add ~/wt-human dev`) — jamais de checkout/commit humain dans le tree d'un agent.
+- Tout agent : assert `git branch --show-current == <branche du chantier>` avant chaque commit.
+- Un bloc GO contenant des écritures git part vers exactement une session, nommée.

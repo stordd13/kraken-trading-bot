@@ -1,9 +1,12 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 15 septembre 2026, **B4 close** (merge `4c98b6b` dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7
-> sous fees Bybit → **sélection paper vide** (`results/B4_bybit_backtest_report.md`). **Roadmap B5 → P10 suspendue** ; phase
-> courante : **R&D stratégies**, filtre d'entrée `docs/CONTRAINTES_POST_B4.md`. Pour le moment il n'y a rien à trader.
+> Dernière mise à jour : 16 septembre 2026, **post-audit B4**. B4 close le 15 sept (merge `4c98b6b` dans `dev`, tag
+> `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec un instrument depuis
+> invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ; sélection paper vide.
+> **C1 (métriques) mergé** (tag `v2.9.0-c1-metrics`) ; **C2 (fidélité replay) = prochain chantier**, puis rejeu diagnostic grid et
+> C3 (validation chronologique). **Runs R&D gelés** jusqu'à C1-C2 mergés ; tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés,
+> journal `docs/RESEARCH_LOG.md` obligatoire avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
 
 ---
 
@@ -25,7 +28,7 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - Monitoring Telegram en temps réel
 - Capital initial 1k USDC, scaling progressif vers 20k USDC
 
-### État actuel (15 septembre 2026)
+### État actuel (16 septembre 2026)
 
 - ✅ P0 à P6 terminées (audit, abstraction layer, REST/WS Binance, multi-pair, backtests 24 combos)
 - ✅ P7 phase 1 terminée (30 mai 2026 : 212 jobs de grid search cross-validés, fees Binance)
@@ -58,20 +61,38 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   (`results/B4_3_gate_b_configs.md`) ; **campagne serveur `--fees bybit`** : P6 24 combos → **0 survivant** ; P7 212 configs
   + 280 fenêtres walk-forward → **0 / 35 configs** passent les 7 critères (règles GO P7 : run flaggé = config inéligible,
   Sharpe DCA non comparable, critères figés) ; grid × SOL : 48 / 48 configs flaggées (dette 14). **Sélection paper vide,
-  argumentée** : `results/B4_bybit_backtest_report.md`. **Clos le 15 sept** (GO Bruno) : mergé dans `dev`
+  argumentée** : `results/B4_bybit_backtest_report.md` — zéro sélection sous les critères codés avec un instrument depuis
+  invalidé (audit du 16/09, addendum du rapport). **Clos le 15 sept** (GO Bruno) : mergé dans `dev`
   (`4c98b6b`, `--no-ff`), CODE_MAP régénéré (`64ca827`), tag `v2.8.0-b4-3-campaign` @ `64ca827`, zip
   `~/Desktop/krakenbot-src-v2.8.0-b4-3-campaign.zip`, serveur sur `dev` en parité **sans restart** (`src/` inchangé).
   **B4 est close** ; sans stratégie sélectionnée, B5 (paper) et P8 (Telegram) **ne démarrent pas** (voir ⏸️ ci-dessous) ;
   leurs prérequis restent consignés (dette 13 : test one-off + alignement YAML ; dette 14 : tolérance grid ; backup DB
   récurrent ; `deploy.yml` à découpler).
 - ⏸️ **Roadmap B5 → P10 suspendue (sélection B4 vide)** — décision Bruno du 15 sept : pour le moment, rien à trader.
-  **Phase courante : R&D stratégies.** Toute idée (humaine, IA, article) passe le filtre `docs/CONTRAINTES_POST_B4.md`
+  **Phase courante : R&D stratégies sur le papier** (runs gelés jusqu'à C1-C2, voir ci-dessous). Toute idée (humaine, IA,
+  article) passe le filtre `docs/CONTRAINTES_POST_B4.md`
   sur le papier (ticket d'entrée § 6 : mécanisme, fréquence, mouvement capturé vs round-trip 0.39-0.48 %, résolution
   de la tension significativité/coûts, bear market, données, critère de falsification) **avant une ligne de code** ;
-  deux familles maximum par cycle de R&D ; protocole inchangé (3+ ans → cross-validation → walk-forward → paper).
-  Le serveur reste en **collecte seule** (`krakenbot-collector` actif, `krakenbot` désactivé).
+  deux familles maximum par cycle de R&D ; protocole de validation à réécrire en C3 (le walk-forward actuel n'est pas
+  chronologique, note WF § 9). Le serveur reste en **collecte seule** (`krakenbot-collector` actif, `krakenbot` masqué
+  depuis le 16 sept).
 - ⚠️ Les résultats P6/P7 (fees Binance 0.075 % flat) ne sont **pas transposables** aux fees Bybit
   (maker/taker asymétriques) : tout a été rejoué en B4 — verdict ci-dessus.
+- 🔎 **Audit red-team du 16 sept** (`results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md`) : constats vérifiés indépendamment
+  (code du tag `v2.8.0-b4-3-campaign` + reproduction des JSON de campagne), consensus à trois (Bruno, audit externe, revue
+  interne) → **instrument de mesure invalidé** : métriques (D1-D6 : unités de Sharpe, MaxDD, PF, agrégation P7, equity non
+  persistée, benchmark DCA), replay (grid 4 h nourri de bougies 5 m, EMA200 DCA jamais préenregistrée, plancher 5 USDC ×
+  `bull_reduction`) et walk-forward **non chronologique** (candidats choisis sur une période chevauchant les fenêtres OOS).
+  Portée des conclusions B4 : addendum en tête de `results/B4_bybit_backtest_report.md`. Les verdicts de sélection (vides)
+  sont inchangés.
+- ▶️ **Chantiers post-audit** : ✅ **C1 métriques mergé** dans `dev` le 16 sept (12 commits, tag `v2.9.0-c1-metrics`,
+  `results/C1_metrics_report.md`, dette 15) ; **C2 fidélité replay = prochain chantier** (dette 16) ; puis **rejeu diagnostic
+  grid** (96 configs BTC/SOL, périmètre pré-spécifié, verdict « inconclusif » possible) ; puis **C3 validation chronologique**
+  (note WF § 9) avant toute sélection. **Gel des runs R&D** jusqu'à C1-C2 mergés ; tickets papier (`docs/CONTRAINTES_POST_B4.md`
+  § 6) autorisés ; tout run futur s'inscrit d'abord dans `docs/RESEARCH_LOG.md`.
+- 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
+  prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
+  `# B5: re-enable trader`) ; **trader masqué** sur le serveur (`systemctl mask krakenbot`). Reste ouvert : test dette 13.
 
 ---
 
@@ -111,18 +132,20 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - Ubuntu LTS, accès SSH via port custom 41922 (port 22 bloqué par UFW)
 - Swap 2 GB permanent
 - Container Docker `krakenbot-db` (timescale/timescaledb:latest-pg16) bind sur `127.0.0.1:5432`
-- 2 services systemd : `krakenbot-collector.service` et `krakenbot.service` — **stoppés et désactivés**
-  (état B0.5). Le workflow `deploy.yml` régénère le `.env` serveur depuis les GitHub Secrets : template
-  Bybit depuis B2 (`EXCHANGE_NAME=bybit`, `BYBIT_*`, `SCHEDULER_PAIRS/INTERVALS`) — les secrets
-  `BYBIT_API_KEY/SECRET` et `BYBIT_TRADE_API_KEY/SECRET` doivent exister côté GitHub. ⚠️ Le workflow
-  redémarre **les deux** services et exige `krakenbot` actif : ne pas pousser sur `main` tant que le trader
-  ne doit pas tourner (B4/B5).
+- 2 services systemd : `krakenbot-collector.service` **actif** (B2, 9 sept) et `krakenbot.service` (trader)
+  **masqué** (`systemctl mask`, 16 sept) jusqu'à B5. Le workflow `deploy.yml` régénère le `.env` serveur depuis
+  les GitHub Secrets : template Bybit depuis B2 (`EXCHANGE_NAME=bybit`, `BYBIT_*`, `SCHEDULER_PAIRS/INTERVALS`) —
+  les secrets `BYBIT_API_KEY/SECRET` et `BYBIT_TRADE_API_KEY/SECRET` doivent exister côté GitHub. Depuis le
+  16 sept, le workflow est **découplé du trader** (marqueurs `# B5: re-enable trader`) : il n'installe, n'active
+  et ne redémarre que `krakenbot-collector`.
 
 ### Backup
 - Dump complet du 7 sept 2026 : `~/Backups/krakenbot/krakenbot_20260907.dump` (203 Mo, `pg_dump -Fc`).
+- Backup récurrent **en place depuis le 16 sept** : cron `scripts/backup_db.sh` (04:15 UTC daily / 04:45 dimanche
+  weekly, rotation 7 j / 28 j, `~/backups/krakenbot/` sur le serveur).
 - Procédure de restore TimescaleDB (`timescaledb_pre_restore()` / `pg_restore --no-owner` /
-  `timescaledb_post_restore()`, même version majeure d'extension) : `skills/database.md`.
-- Pas de backup récurrent : item roadmap, requis avant B5.
+  `timescaledb_post_restore()`, version d'extension **exacte**) : `skills/database.md` — restore **testé le 16 sept**
+  sur un container jetable (dump daily 13:42, counts vérifiés).
 
 ### Accès distant à la DB depuis le local
 Tunnel SSH obligatoire (`localhost:5433` → serveur `5432`), `.env` local avec
@@ -292,11 +315,16 @@ stricts (rapport v2) — d'où le grid search P7 puis le re-run B4.
 Détail : `ROADMAP.md`.
 
 - **Terminées** : P0–P6 (pivot Binance, multi-pair, backtests), P7 phase 1, B0 (audit Bybit), B0.5 (docs), B1 REST
-  Bybit, B2 WS, B3 data/collector, **B4 re-run P6 + P7 fees Bybit** (15 sept, tag `v2.8.0-b4-3-campaign`) → **0 survivant**.
+  Bybit, B2 WS, B3 data/collector, **B4 re-run P6 + P7 fees Bybit** (15 sept, tag `v2.8.0-b4-3-campaign`) → **0 survivant**
+  (zéro sélection sous les critères codés avec un instrument depuis invalidé — addendum B4), **C1 métriques** (16 sept,
+  tag `v2.9.0-c1-metrics`).
+- ▶️ **Chantiers post-audit** : C2 fidélité replay (prochain) → rejeu diagnostic grid (96 configs BTC/SOL) → C3 validation
+  chronologique ; runs R&D gelés jusqu'à C1-C2 mergés.
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
-  quand une stratégie aura passé le protocole complet (3+ ans → cross-validation → walk-forward) sous fees Bybit.
-- **Phase courante : R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles
-  max par cycle, critères écrits avant les runs ; le pipeline P6/P7 `--fees bybit` est l'outil de test).
+  quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
+- **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
+  critères écrits avant les runs, inscription à `docs/RESEARCH_LOG.md` avant tout lancement ; le pipeline P6/P7
+  `--fees bybit` redevient l'outil de test après C2).
 - **Futures** : P11 (ML signal filter), P12 (éval scalping avec fees réelles), P13 (ML vol), P14 (RL + alloc dynamique) —
   après un edge prouvé, pas avant.
 
@@ -323,8 +351,11 @@ Détail : `ROADMAP.md`.
 3. ✅ **B3** — `TaskScheduler` généralisé : client REST injecté par le collector (factory, `read_only=True`),
    backfill de gaps `krakenbot.data.backfill`, plus d'import de `scripts/` depuis `src/` ;
    `scripts/fetch_ohlc.py` et `backfill_binance_gap.py` supprimés.
-4. **Restore TimescaleDB non trivial** — procédure documentée dans `skills/database.md`.
-5. **Backup DB récurrent absent** — cron + rotation + storage box, requis avant **B5**.
+4. **Restore TimescaleDB non trivial** — procédure documentée dans `skills/database.md` ; **testée le 16/09/2026**
+   (version d'extension **exacte** requise, rôles absents du dump, `scripts/restore_db.sh` non aligné → chore cleanup
+   post-C1).
+5. ✅ **16/09/2026 — Backup DB récurrent** : cron `scripts/backup_db.sh` 04:15 daily / 04:45 weekly sur le serveur,
+   rotation 7 j / 28 j, restore prouvé sur container jetable. Reste : copie hors serveur (storage box) non incluse.
 6. **mypy `union-attr`** : 10 erreurs dans `main.py` (13 avant B0.5), 15 sur `src/` (21 avant). Le
    « ~97 » historique était périmé.
 7. **`execution/` dépend de `connectors/kraken/rest.py`** : `order_manager.py` et `risk.py` importent
@@ -385,6 +416,13 @@ Détail : `ROADMAP.md`.
     (un jour) et son « lundi » est le stamp de fin de période (close du dimanche) → chantier 3 ; (d) moteur
     signal, accumulation : `cost_basis = entry_price × crypto_balance` au **dernier** prix d'entrée, et vente grok
     sans position appariée = wallet débité sans trade (instrumenté par la divergence d'inventaire) → chantier 2.
+16. **Fidélité du replay** (audit red-team 16/09) : grid backtesté avec indicateurs 4 h nourris de bougies 5 m ; EMA200 1d
+    du DCA jamais préenregistrée (boost oversold inopérant en fenêtre trimestrielle) ; interaction
+    `bull_reduction × 15 USDC = 4.50 < plancher 5` (achats rejetés en strong_bull) ; comptage des rejets absent des
+    résultats. **Résolution : C2**.
+
+**Note WF** (audit red-team 16/09) : la sélection top-5 de P7 phase 2 utilise le Sharpe du test global (période chevauchant
+les fenêtres) — le walk-forward actuel n'est pas une validation chronologique. **Résolution : C3**.
 
 ---
 

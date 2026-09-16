@@ -1,7 +1,9 @@
 # KrakenBot — Roadmap (Septembre 2026)
 
-> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 8 septembre 2026 (B0.5).
-> Décisions de pivot : `docs/archive/PIVOT_BYBIT_PLAN.md` · audit : `results/bybit_integration_audit.md`.
+> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 16 septembre 2026 (post-audit B4, C1 mergé).
+> Décisions de pivot : `docs/archive/PIVOT_BYBIT_PLAN.md` · audit Bybit : `results/bybit_integration_audit.md` ·
+> audit red-team B4 (portée des conclusions) : `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` + addendum en tête de
+> `results/B4_bybit_backtest_report.md`.
 
 ---
 
@@ -15,11 +17,13 @@
 | P3 | `BinanceWebSocketClient` (reconnect 23 h, watchdog) | v1.7.0-binance-ws | Modèle du futur `BybitWebSocketClient` |
 | P4 | Collector + migration `exchange` + import Binance Vision (8.7M rows) | v1.8.0-binance-vision | Données = base de backtest |
 | P5 | Multi-pair refactor (registry, router par pair, confidence) | v1.9.0-multi-pair | Aucune référence à l'exchange dans router / risk / stratégies |
-| P6 | Backtests 24 combos (8 stratégies × 3 paires), fees Binance 0.075 % flat | v2.0.0-p6-validated | **0/24 aux 5 critères stricts** (`results/P6_backtest_report_v2.md`) → survivors/walk-forward vides (normal) |
+| P6 | Backtests 24 combos (8 stratégies × 3 paires), fees Binance 0.075 % flat | v2.0.0-p6-validated | **0/24 aux 5 critères stricts** (`results/P6_backtest_report_v2.md`) → survivors/walk-forward vides (normal) — métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de sélection (vides) inchangés |
 | P6.7 | Runner multiprocessing (resume, atomic save, déterminisme) | v2.1.0-p6-7-multiprocessing | Réutilisé pour B4 (`results/P6_7_multiprocessing_benchmark.md`) |
-| P7 (phase 1) | Grid search cross-validé, 212 configs, 4 stratégies, fees Binance | — (branche mergée 7 sept) | `results/P7_phase1_cross_validate.json` — machinerie OK, **classements non transposables** aux fees Bybit |
+| P7 (phase 1) | Grid search cross-validé, 212 configs, 4 stratégies, fees Binance | — (branche mergée 7 sept) | `results/P7_phase1_cross_validate.json` — machinerie OK, **classements non transposables** aux fees Bybit — métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de sélection (vides) inchangés |
 | B0 | Audit Bybit EU (endpoints, lots, spread, historique, WS, ordres, rate limits, écart de prix) | — | **GO avec réserves** (`results/bybit_integration_audit.md`) |
-| B0.5 | Refonte docs + suppression du code legacy Kraken-era | — | Cette version |
+| B0.5 | Refonte docs + suppression du code legacy Kraken-era | — | Version du 8 sept |
+| B4 | Re-run P6 (24 combos) + P7 (212 configs, 280 fenêtres WF) sur données Binance end-stampées, fees Bybit maker/taker, coûts par paire (GATE B), grid honnête (GATE A) | v2.8.0-b4-3-campaign | **0/24, 0/35, sélection paper vide** (`results/B4_bybit_backtest_report.md`) — métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de sélection (vides) inchangés |
+| C1 | Métriques fiables : module partagé `krakenbot.backtest_metrics` (`metrics_version` 2), dual MaxDD, PF net, equity export, A/B vs tag | v2.9.0-c1-metrics | Simulation inchangée au centime, gold hashes re-baselinés sur tableau A/B approuvé (`results/C1_metrics_report.md`) |
 
 Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADMAP_pre_binance_pivot.md`.
 
@@ -32,8 +36,12 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | **B1** | `BybitRestClient` (ccxt `hostname=bybit.eu`) + `BybitSettings` + `ExchangeFees.bybit_defaults()` + branche factory + tests ; fix `exchange_name` default ; fees maker/taker distincts dans `backtest.py` | 2-3 j | Round-trip d'ordre paper validé avec les vraies clés ; `scripts/audit/bybit_q1/q6/q7` relancés avec clés | ✅ 9 sept (round-trip live validé, `priceLimitRatioX` levé ; fees backtest → B4) |
 | **B2** | `BybitWebSocketClient` (v5 public kline, 10 args/subscribe, ping 20 s) + tests ; réactivation du collector | 3-4 j | Candles `exchange='bybit'` en DB en continu 24 h sans zombie | ✅ 10 sept — `v2.4.0-b2-bybit-ws`, collector Bybit en production, 24 h propres |
 | **B3** | Import historique Bybit EU (REST paginé, batch 1000) ; collector/scheduler génériques (`TaskScheduler` via factory, backfill gap) | 2 j | Data Bybit en DB (≈ 2.5M candles depuis 2025-06-11), backfill fonctionnel | ✅ 13 sept — `v2.5.0-b3-bybit-data` (merge `3ea32d9`) : historique EU importé, backfill démontré sur gaps réels, scheduler actif ; constat convention timestamp → dette B4 |
-| **B4** | Re-run P6 (24 combos) et P7 (grid search phases 1-2 + rapport) sur données Binance avec fees Bybit maker/taker + spread/slippage mesurés | 1 j run + 1 j analyse | `results/B4_bybit_backtest_report.md`, sélection paper | 📋 — **prérequis absolu avant B5** |
-| **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 |
+| **B4** | Re-run P6 (24 combos) et P7 (grid search phases 1-2 + rapport) sur données Binance avec fees Bybit maker/taker + spread/slippage mesurés | 1 j run + 1 j analyse | `results/B4_bybit_backtest_report.md`, sélection paper | ✅ 15 sept — `v2.8.0-b4-3-campaign` : 0/24, 0/35, sélection paper vide ; **métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de sélection (vides) inchangés** |
+| **C1** | Métriques fiables (module partagé, dual MaxDD, PF net, equity export, A/B vs tag) | 3-5 j | `results/C1_metrics_report.md`, gold hashes re-baselinés sur tableau A/B approuvé | ✅ 16 sept — mergé dans `dev`, tag `v2.9.0-c1-metrics` |
+| **C2** | Fidélité replay (grid 4h réels, préenregistrement EMA200 DCA, compteurs de rejets, dette 14 avec review) | 2-4 j | Rapport C2, re-baseline expliqué | 📋 après C1 |
+| **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | Rapport de rejeu ; décision candidat / dépriorisation | 📋 après C2 |
+| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole v2 documenté + outillé | 📋 avant toute sélection |
+| **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
 | P11+ | ML, scalping eval, RL | Mois | — | 🔮 |
 
@@ -93,11 +101,15 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
   qui passe est abandonnée.
 - Révision risk management (ex-P7) intégrée : max positions ~100, daily loss 5 % dynamique, risk 2 %
   sous 5k, plancher 5-10 USDC, doctrine des sorties MARKET à 0.25 %.
+- **Fait le 15 sept 2026** (`feat/b4-3-campaign`, tag `v2.8.0-b4-3-campaign`) : P6 0/24, P7 0/35, sélection paper vide
+  (`results/B4_bybit_backtest_report.md`). **Métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de
+  sélection (vides) inchangés** — réparation de l'instrument : C1 (mergé) → C2 → rejeu grid → C3.
 
 ### B5 — Paper trading Bybit (4-6 semaines, ex-P9)
 
-**Conditions de démarrage** : B4 concluant, connecteur B1-B3 déployé, alertes Telegram (P8) en place,
-backup DB récurrent en place.
+**Conditions de démarrage** : **un candidat validé sous le protocole C3** (remplace « B4 concluant »), connecteur
+B1-B3 déployé, alertes Telegram (P8) en place, backup DB récurrent en place (fait le 16/09), test dette 13, trader
+démasqué et `deploy.yml` re-couplé (marqueurs `# B5: re-enable trader`).
 
 **Ce qu'on surveille** : P&L réel vs backtesté (drift < 20 %), nombre de trades vs attendu, drawdown max,
 fills partiels sur LIMIT PostOnly (murs MM mobiles), stops déclenchés par des mèches EU absentes de
@@ -119,7 +131,7 @@ Binance, reconnexions WS.
 | 2 | 5,000 USDC | Palier 1 profitable 30j | 30 jours |
 | 3 | 20,000 USDC | Palier 2 profitable 30j ; réévaluer OKX Europe (0.08/0.10 avec X-Perps) | Continu |
 
-Stratégies actives à chaque palier : uniquement celles validées par B4 + B5. Risque de contrepartie
+Stratégies actives à chaque palier : uniquement celles validées par le protocole C3 + B5. Risque de contrepartie
 Bybit (incident cold wallet fév. 2025) : à garder en tête pour le scaling, pas un bloqueur à 1k-20k spot.
 
 ---
@@ -162,12 +174,28 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 11. **Chaque stratégie validée** sur 3+ ans de backtest + cross-validate + walk-forward + 4 semaines paper.
 12. **Scale seulement sur preuve** — 30 jours profitable avant d'augmenter le capital.
 13. **Sélection darwinienne** — activer large, garder les gagnantes, tuer les perdantes.
+14. **Instrument réparé (C1-C2) avant tout run de backtest.**
+15. **Rejeu grid = diagnostic pré-spécifié**, hors quota des 2 familles/cycle mais inscrit au journal des essais.
+16. **Protocole basse rotation** (voir `docs/CONTRAINTES_POST_B4.md`) : repères de couverture nécessaires jamais
+    suffisants, « inconclusif = pas de déploiement ».
+17. **Tout run de backtest est inscrit à `docs/RESEARCH_LOG.md` avant son lancement.**
 
 ---
 
 ## Items non bloquants
 
-- [ ] **Backup DB récurrent** : cron `pg_dump -Fc` + rotation + copie sur storage box Hetzner (requis avant B5)
+- [x] **Backup DB récurrent** (16/09) : cron `scripts/backup_db.sh` 04:15 daily / 04:45 weekly (`pg_dump -Fc`, rotation
+      7 j / 28 j) **avec test de restauration** prouvé le 16/09 sur container jetable (`skills/database.md`) — copie sur
+      storage box Hetzner restant à faire
+- [x] **Découplage `deploy.yml`** (16/09) : le workflow activait et redémarrait `krakenbot` puis exigeait qu'il tourne ;
+      neutralisé tant que le trader est off (marqueurs `# B5: re-enable trader`, collector seul) ; trader masqué sur le serveur
+- [ ] **Test dette 13** : test one-off prouvant que le chemin live/router résout les params de stratégie par instance
+      (`class:` dans `strategies.yaml`), prérequis B5
+- [x] **Cron de collecte orderbook élargie** (16/09) : horaire, bid + ask, 2 profondeurs, 24/7 (week-ends et heures US
+      inclus) — `scripts/audit/bybit_q3_orderbook.py --host eu` → `~/audit_data/` sur le serveur
+- [ ] **Chore cleanup repo post-C1** : archiver le kraken-era de `results/` vers `results/archive/`, retirer la dépendance
+      `streamlit` de `pyproject.toml`, code Kraken conditionné à la dette 7, trier les 3 stashes git anciens, aligner
+      `scripts/restore_db.sh` sur `skills/database.md` (`timescaledb_pre_restore()/post_restore()`, rôles)
 - [ ] **OKX Europe** = option au palier 20k (0.08 / 0.10 avec compte X-Perps, non vérifié sur compte)
 - [ ] Documenter les fees Bybit VIP tier quand le volume augmentera
 - [ ] Nettoyer les données kraken legacy quand Bybit est validé en live (`DELETE FROM market_data_ohlc WHERE exchange='kraken'`)
@@ -177,4 +205,4 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 - [x] Nettoyer le chemin `is_multi` mort de `BacktestEngine` avec la refonte des fees (B4.2, `refactor(backtest): remove dead is_multi and short/rollover paths`)
 - [ ] P6.8 — Optimisation backtest speedup (priorité basse) : DB locale ou cache OHLC Parquet pour éliminer
       la contention tunnel SSH ; cible 5-6× (vs 3× actuel) ; à faire avant P11 (ML)
-- [x] `.env.example` : template Bybit (B1) · [x] `deploy.yml` : `EXCHANGE_NAME` + `BYBIT_*` (B2 ; secrets GitHub à créer) · [ ] `deploy.yml` ne doit pas redémarrer `krakenbot` avant B5
+- [x] `.env.example` : template Bybit (B1) · [x] `deploy.yml` : `EXCHANGE_NAME` + `BYBIT_*` (B2 ; secrets GitHub à créer) · [x] `deploy.yml` découplé du trader (16/09, voir ci-dessus)
