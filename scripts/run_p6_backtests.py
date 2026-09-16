@@ -287,8 +287,12 @@ def filter_pending_jobs(
         if jobs
         else None
     )
+    # C1: the whole target file must match the run (fees, contract, campaign costs) whether or
+    # not a job key collides with it — a new-key job must never be appended to a pre-C1 /
+    # other-model file (review finding: the per-key check alone let a disjoint job list
+    # rewrite a historical B4 JSON as a mixed file).
+    assert_homogeneous(existing, fees=fees, wanted=wanted, path=target)
     if force:
-        assert_homogeneous(existing, fees=fees, wanted=wanted, path=target)
         return list(jobs)
     pending = []
     for job in jobs:

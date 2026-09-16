@@ -58,6 +58,20 @@ async def test_legacy_survivors_without_fees_return_2(
 
 
 @pytest.mark.asyncio
+async def test_pre_c1_survivors_return_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """C1: a survivor selected under another metrics contract (or none) is refused."""
+    survivors = tmp_path / "survivors.json"
+    survivors.write_text(
+        json.dumps({"k": {"strategy": "grok_supertrend_4h", "pair": "BTC/USDC", "fees": "bybit"}})
+    )
+    rc = await wf.main(["--fees", "bybit", "--survivors", str(survivors)])
+    assert rc == 2
+    assert "pre-C1" in capsys.readouterr().err
+
+
+@pytest.mark.asyncio
 async def test_missing_survivors_file_returns_1(tmp_path: Path) -> None:
     rc = await wf.main(["--fees", "bybit", "--survivors", str(tmp_path / "none.json")])
     assert rc == 1

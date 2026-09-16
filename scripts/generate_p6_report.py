@@ -97,6 +97,14 @@ def main(argv: list[str] | None = None) -> None:
     phase_d_path = RESULTS_DIR / args.phase_d
 
     benchmarks = load_json(RESULTS_DIR / args.benchmarks)
+    if benchmarks and benchmarks.get("metrics_version") != METRICS_VERSION:  # C1: v1 (D6) refused
+        print(
+            f"ERROR: {RESULTS_DIR / args.benchmarks} carries metrics_version="
+            f"{benchmarks.get('metrics_version', '<absent: pre-C1 file>')}, not {METRICS_VERSION}; "
+            "rerun scripts/compute_benchmarks.py under this contract.",
+            file=sys.stderr,
+        )
+        sys.exit(2)
     phase_d = load_json(phase_d_path)
     try:  # C1: one metrics contract per file, never a pre-C1 / mixed one
         require_metrics_version(phase_d, METRICS_VERSION, path=str(phase_d_path))

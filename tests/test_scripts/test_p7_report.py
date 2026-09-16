@@ -151,6 +151,29 @@ class TestAggregateWalkForwardV2:
         )
         assert next(c for c in v.criteria if c.name == "profit_factor_oos > 1.3").passed is True
 
+    def test_excluded_lots_make_the_summed_pf_incomplete(self) -> None:
+        key, value = _wf_entry_v2("s", "BTC/USDC", "h1", 1, gross_profit=10.0, gross_loss=2.0)
+        value["test"]["pf_excluded_trades"] = 2
+        agg = r.aggregate_walk_forward({key: value})[("s", "BTC/USDC", "h1")]
+        assert agg.pf_excluded_trades_oos == 2 and agg.profit_factor_oos == 5.0
+        v = r.apply_selection_criteria(
+            agg, benchmarks={"BTC/USDC": {"buy_and_hold": 0.1, "dca_fixed": 0.1}}
+        )
+        c2 = next(c for c in v.criteria if c.name == "profit_factor_oos > 1.3")
+        assert c2.passed is True and "incomplete: 2 lot(s)" in c2.note
+        assert r._pf_text(v.to_dict()) == "5.00 (incomplete: 2 excluded)"
+
+    def test_build_selection_ranks_an_undefined_sharpe_last(self) -> None:
+        undefined = _agg(pair="ETH/USDC", mean_sharpe_oos=None, params_hash="h_none")
+        defined = _agg(pair="ETH/USDC", mean_sharpe_oos=0.5, params_hash="h_ok")
+        sel = r.build_selection(
+            {("s", "ETH/USDC", "h_none"): undefined, ("s", "ETH/USDC", "h_ok"): defined}
+        )
+        assert [x["params_hash"] for x in sel["selected_for_paper"]] == ["h_ok"]
+        only_none = r.build_selection({("s", "ETH/USDC", "h_none"): undefined})
+        assert only_none["selected_for_paper"] == []
+        assert only_none["abandoned"][0]["best_sharpe_oos"] is None
+
     def test_daily_drawdown_key_and_to_dict_keys(self) -> None:
         results = dict(
             [_wf_entry_v2("s", "BTC/USDC", "h1", i, test_dd=float(i * 5)) for i in (1, 2, 3)]

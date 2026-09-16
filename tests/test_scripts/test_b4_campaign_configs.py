@@ -520,6 +520,28 @@ class TestP7ReportCampaign:
         assert details["BTC/USDC"]["dca_fixed"]["return_pct"] == -5.0
         assert details["ETH/USDC"]["dca_fixed"]["sharpe"] is None  # C1: undefined stays None
         assert details["BTC/USDC"]["dca_fixed"]["max_drawdown_pct"] is None
+        # v2 benchmarks files carry max_drawdown_pct_daily only (the C1 loader reads it first)
+        v2 = tmp_path / "b2.json"
+        v2.write_text(
+            json.dumps(
+                {
+                    "metrics_version": 2,
+                    "buy_and_hold": {
+                        "BTC/USDC": {"sharpe_ratio": 0.8, "max_drawdown_pct_daily": 49.6}
+                    },
+                    "dca_fixed_15usd_weekly": {
+                        "BTC/USDC": {"sharpe_ratio": None, "max_drawdown_pct_daily": 49.7}
+                    },
+                }
+            )
+        )
+        d2 = p7.load_benchmark_details(v2)
+        assert d2["BTC/USDC"]["buy_and_hold"]["max_drawdown_pct"] == 49.6
+        assert d2["BTC/USDC"]["dca_fixed"] == {
+            "sharpe": None,
+            "return_pct": None,
+            "max_drawdown_pct": 49.7,
+        }
         # criterion 7 keeps its own loader, unchanged
         assert p7.load_benchmark_sharpe(path)["BTC/USDC"] == {"buy_and_hold": 0.5, "dca_fixed": 1.5}
 

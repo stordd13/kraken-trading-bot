@@ -11,8 +11,9 @@ Contract (``METRICS_VERSION = 2``), see ``skills/backtest.md`` § Métriques:
   wins (the grid engine's post-liquidation point). Consistent with period-end stamped candles
   (B4.1): the point stamped ``D 00:00`` is the close of day ``D-1``.
 * **External flows** (deposits > 0, withdrawals < 0) are bucketed by the same rule (sum over
-  ``(t_{k-1}, t_k]``; a flow stamped exactly ``start`` lands in the anchor bucket and earns no
-  return) with the end-of-period convention ``r_k = (E_k - F_k - E_{k-1}) / E_{k-1}`` — exact for
+  ``(t_{k-1}, t_k]``; a flow stamped exactly ``start`` is initial capital: it is added to the
+  anchor NAV and earns no return) with the end-of-period convention
+  ``r_k = (E_k - F_k - E_{k-1}) / E_{k-1}`` — exact for
   the fixed-DCA benchmark (deposit at the close, converted at that close). ``E_{k-1} == 0`` makes
   the return **undefined** (skipped, never 0).
 * **Performance index** ``I_0 = 1`` at the anchor, ``I_k = I_{k-1} * (1 + r_k)`` (an undefined
@@ -23,10 +24,14 @@ Contract (``METRICS_VERSION = 2``), see ``skills/backtest.md`` § Métriques:
   * sqrt(365)`` (MAR 0, N = all returns); ``None`` without any negative return.
 * **Max drawdown**: relative to the running peak (anchor included), on the daily index
   (``max_drawdown_pct_daily`` — the selection / benchmark figure) and on the raw engine
-  resolution (``max_drawdown_pct_engine`` — diagnostic only, never a cross-family criterion).
+  resolution — the anchor followed by every point stamped in ``[start, end]``
+  (``max_drawdown_pct_engine`` — diagnostic only, never a cross-family criterion).
   Neither captures intrabar excursions (wicks): a true intrabar MaxDD cannot be rebuilt.
 * **Calmar** = geometric CAGR (%) of the index / ``max_drawdown_pct_daily``; ``None`` when the
-  drawdown is 0 or the span is shorter than one day.
+  drawdown is 0 or the span is shorter than one day (a total loss gives CAGR -100 %, Calmar -1).
+* The identity ``sum(pnl_net_trade) == net_pnl`` holds on a **reconciled** run: terminal
+  inventory 0, ``pf_excluded_trades == 0`` and no inventory divergence (the B4.3 flag rule); an
+  open lot at the end or a fill booked without a trade breaks it by construction.
 * **Profit factor net of both legs**: ``pnl_net_trade = pnl - buy_fee_alloc`` per SELL leg
   (``pnl`` is already net of the sell fee, ``buy_fee_alloc`` is the buy fee of the closed lot).
   A leg with an unknown cost basis (``pnl is None``) is **excluded** and counted in
@@ -158,7 +163,7 @@ def resample_daily(
     bucket_flows: list[Decimal] = []
     pi = 0  # points consumed
     fi = 0  # flows consumed
-    last = starting_balance
+    last: Decimal | None = None
     for k, t in enumerate(grid):
         while pi < len(ordered) and ordered[pi].timestamp <= t:
             if k > 0:  # the anchor is authoritative: points stamped <= start are ignored
@@ -168,7 +173,12 @@ def resample_daily(
         while fi < len(flow_list) and flow_list[fi].timestamp <= t:
             flow_sum += flow_list[fi].amount
             fi += 1
-        nav.append(starting_balance if k == 0 else last)
+        if k == 0:
+            # a flow stamped exactly at start is initial capital: part of the (authoritative)
+            # anchor, and the forward-fill starts from that anchor NAV
+            last = starting_balance + flow_sum
+        assert last is not None
+        nav.append(last)
         bucket_flows.append(flow_sum)
 
     returns: list[Decimal | None] = [None]
@@ -234,7 +244,7 @@ def max_drawdown_pct(values: Sequence[Decimal]) -> float:
 
 def cagr_pct(index_start: Decimal, index_end: Decimal, days: float) -> float | None:
     """Geometric annualised return in %, ``None`` when the span is < 1 day or the index <= 0."""
-    if days < 1 or index_start <= 0 or index_end <= 0:
+    if days < 1 or index_start <= 0 or index_end < 0:
         return None
     return (math.pow(float(index_end / index_start), ANNUALISATION_DAYS / days) - 1.0) * 100.0
 
@@ -331,8 +341,11 @@ def compute_metrics(
         points, start=start, end=end, starting_balance=starting_balance, flows=flows
     )
     returns = daily.defined_returns
+    # engine resolution: the anchor, then every observation of the run window (a point stamped
+    # at start counts here — the old money max_drawdown counted it too — but not for the daily
+    # NAV, where the anchor is authoritative)
     engine_values = [starting_balance] + [
-        p.equity for p in sorted(points, key=lambda p: p.timestamp) if p.timestamp > start
+        p.equity for p in sorted(points, key=lambda p: p.timestamp) if start <= p.timestamp <= end
     ]
     days = (daily.timestamps[-1] - daily.timestamps[0]).total_seconds() / 86400
     mdd_daily = max_drawdown_pct(daily.index)

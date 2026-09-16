@@ -80,6 +80,42 @@ def test_tools_refuse_a_pre_c1_phase_d_file(
     assert exc.value.code == 2 and "pre-C1" in capsys.readouterr().err
 
 
+def test_filter_refuses_a_pre_c1_benchmarks_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    phase_d = tmp_path / "phase_d.json"
+    phase_d.write_text(
+        json.dumps(
+            {
+                "s_BTC_USDC": {
+                    "strategy": "s",
+                    "pair": "BTC/USDC",
+                    "fees": "bybit",
+                    "metrics_version": 2,
+                    "train": dict(GOOD),
+                    "test": dict(GOOD),
+                }
+            }
+        )
+    )
+    bench = tmp_path / "bench.json"
+    bench.write_text(json.dumps({"buy_and_hold": {"BTC/USDC": {"sharpe_ratio": 2.37}}}))
+    with pytest.raises(SystemExit) as exc:
+        fs.main(
+            [
+                "--input",
+                str(phase_d),
+                "--benchmarks",
+                str(bench),
+                "--survivors",
+                str(tmp_path / "s.json"),
+                "--report",
+                str(tmp_path / "r.md"),
+            ]
+        )
+    assert exc.value.code == 2 and "pre-C1" in capsys.readouterr().err
+
+
 def test_report_helpers_display_undefined_as_na() -> None:
     assert gr._m({"sharpe_ratio": None}, "sharpe_ratio") == "n/a"
     assert gr._m({"profit_factor": float("inf")}, "profit_factor") == "∞"

@@ -129,6 +129,7 @@ class WalkForwardAggregate:
     n_pf_oos: int = 0
     gross_profit_net_oos: float | None = None
     gross_loss_net_oos: float | None = None
+    pf_excluded_trades_oos: int = 0  # v2: lots at unknown cost excluded from the sums (incomplete)
 
     @property
     def profit_factor_oos(self) -> float | None:
@@ -214,6 +215,7 @@ def _pf_fields(agg: WalkForwardAggregate) -> dict[str, Any]:
         "profit_factor_oos": _json_ratio(agg.profit_factor_oos),
         "gross_profit_net_oos": agg.gross_profit_net_oos,
         "gross_loss_net_oos": agg.gross_loss_net_oos,
+        "pf_excluded_trades_oos": agg.pf_excluded_trades_oos,
         "mean_pf_oos_diagnostic": agg.mean_pf_oos,
         "n_pf_oos": agg.n_pf_oos,
         "n_sharpe_oos": agg.n_sharpe_oos,
@@ -223,9 +225,11 @@ def _pf_fields(agg: WalkForwardAggregate) -> dict[str, Any]:
 def _pf_text(row: dict[str, Any]) -> str:
     """Display of a selection row's profit factor: ratio, ∞ (sums without a loss) or n/a."""
     if "gross_profit_net_oos" in row:
-        return fmt(
+        text = fmt(
             profit_factor_from_sums(row.get("gross_profit_net_oos"), row.get("gross_loss_net_oos"))
         )
+        excluded = row.get("pf_excluded_trades_oos") or 0
+        return f"{text} (incomplete: {excluded} excluded)" if excluded else text
     return fmt(row.get("mean_profit_factor"))
 
 
@@ -331,6 +335,7 @@ def aggregate_walk_forward(
         mean_pf, n_pf = mean_available([_metric(w.get("test"), "profit_factor") for w in windows])
         gross_profit = sum(float(w["test"]["gross_profit_net"]) for w in windows)
         gross_loss = sum(float(w["test"]["gross_loss_net"]) for w in windows)
+        excluded = sum(int(w["test"].get("pf_excluded_trades") or 0) for w in windows)
         test_dds_v2 = [_metric(w.get("test"), "max_drawdown_pct_daily") for w in windows]
         defined_dds = [x for x in test_dds_v2 if x is not None]
         out[combo] = WalkForwardAggregate(
@@ -355,6 +360,7 @@ def aggregate_walk_forward(
             n_pf_oos=n_pf,
             gross_profit_net_oos=gross_profit,
             gross_loss_net_oos=gross_loss,
+            pf_excluded_trades_oos=excluded,
         )
     return out
 
@@ -468,6 +474,10 @@ def apply_selection_criteria(
         pf_passed, pf_actual, pf_note = True, 999.0, "∞: no net loss over the windows"
     else:
         pf_passed, pf_actual, pf_note = pf > MIN_PF_OOS, pf, ""
+    if a.pf_excluded_trades_oos:
+        pf_note = (pf_note + "; " if pf_note else "") + (
+            f"incomplete: {a.pf_excluded_trades_oos} lot(s) at unknown cost excluded from the sums"
+        )
 
     # Criterion 6: anti-overfit ratio, undefined when either Sharpe is undefined
     overfit_ratio: float | None
@@ -912,7 +922,8 @@ DCA_SHARPE_NOTE_V2 = (
     "aggregated on the summed gains / losses (∞ without any loss, n/a for 0/0). The fixed-DCA "
     "benchmark books its deposits as external flows: its Sharpe is now comparable and its MaxDD "
     "is no longer the 100 % artefact. An undefined metric (n/a) fails its criterion. Every "
-    "metric is shown with the number of trades / windows it rests on. Criterion 7 is unchanged "
+    "metric is shown with the number of trades it rests on; the number of windows that define "
+    "each mean (`n_sharpe_oos`, `n_pf_oos`) is in the selection JSON. Criterion 7 is unchanged "
     "(an OR; a missing benchmark leg cannot be beaten)."
 )
 

@@ -361,6 +361,17 @@ class TestFilterPending:
         with pytest.raises(p7.FeeModelMismatchError, match="pre-B4.2"):
             p7.filter_pending_jobs(jobs, existing={key: {"ok": 1}}, force=False, fees="binance")
 
+    def test_disjoint_key_never_appended_to_a_foreign_file(self) -> None:
+        """C1 review: a pre-C1 / other-model file is refused even when no job key collides."""
+        jobs = self._build_jobs()
+        pre_c1 = {"some_other_key_p1_deadbeef": {"fees": "binance", "test": {}}}
+        with pytest.raises(p7.MetricsVersionMismatchError, match="pre-C1"):
+            p7.filter_pending_jobs(jobs, existing=pre_c1, force=False, fees="binance")
+        same = {"some_other_key_p1_deadbeef": {"fees": "binance", "metrics_version": 2}}
+        assert len(p7.filter_pending_jobs(jobs, existing=same, force=False, fees="binance")) == len(
+            jobs
+        )
+
 
 class TestFeeModelPlumbing:
     def test_missing_fees_exits_2(self, capsys: pytest.CaptureFixture[str]) -> None:

@@ -101,11 +101,12 @@ async def test_grid_completed_maker_pair_carries_the_buy_fee_and_reconciles() ->
     assert abs(pf.net_trade_pnls[0] - expected_net) <= TOL
     assert engine.metrics.profit_factor is None and engine.metrics.gross_profit_net > 0
     assert engine.metrics.profit_factor_display() == "∞"
-    # daily grid of a 45-minute run: start and end only (partial edge), one return
+    # daily grid of a 45-minute run: start and end only (partial edge), one return; the final
+    # NAV is the hand value 1000 + expected_net (cash after the round trip, inventory 0)
     assert engine.metrics.equity_daily_dict() == {
         "start": T0.isoformat(),
         "end": (T0 + 9 * STEP).isoformat(),
-        "values": [1000.0, float(engine.metrics.ending_balance)],
+        "values": [1000.0, float(Decimal("1000") + expected_net)],
     }
     assert engine.metrics.n_daily_returns == 1
     assert engine.metrics.sharpe_ratio is None  # a single return has no std
@@ -222,6 +223,21 @@ def test_signal_daily_metrics_from_the_run_dates() -> None:
     assert m.ending_balance == Decimal("1900") and m.total_return_pct == pytest.approx(90.0)
 
 
+@pytest.mark.asyncio
+async def test_open_lot_at_the_end_breaks_the_identity_by_construction() -> None:
+    """Negation of the precondition: a BUY still open at the end (inventory > 0) has its buy
+    fee subtracted in net_pnl but no closing leg — sum(pnl_net_trade) != net_pnl, and the
+    documented precondition (inventory 0) is what tells them apart."""
+    engine = _signal_engine()
+    t = datetime(2025, 3, 1, tzinfo=UTC)
+    await engine.execute_signal(_sig(SignalType.BUY, t), Decimal("50000"), is_limit_fill=True)
+    engine.calculate_final_metrics()
+    assert engine.crypto_balance > 0 and engine.metrics.pf_excluded_trades == 0
+    assert engine.metrics.net_pnl == Decimal("-0.05")  # the open lot's buy fee
+    assert net_trade_pnls(_legs(engine)).net_trade_pnls == ()  # no closing leg: nothing to sum
+    assert sum(net_trade_pnls(_legs(engine)).net_trade_pnls, Decimal("0")) != engine.metrics.net_pnl
+
+
 def test_metrics_without_run_dates_still_compute_the_profit_factor() -> None:
     engine = _signal_engine()
     assert engine.metrics.start_time is None
@@ -260,6 +276,28 @@ async def test_equity_sidecar_jsonl(tmp_path: Path) -> None:
     ]
     assert rows[-1]["inventory_qty"] == "0"  # post-liquidation point
     assert Decimal(rows[-1]["cash"]) == engine.usdc_balance
+
+
+@pytest.mark.asyncio
+async def test_save_to_database_writes_null_ratios_and_the_c1_columns() -> None:
+    """C13: an undefined ratio is stored as NULL (never 0) and the four C1 columns are filled;
+    driven through a stub session (no DB)."""
+    from unittest.mock import AsyncMock
+
+    engine = await _run(_engine("bybit"), _open_then_flat())
+    session = MagicMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    engine.db_manager = MagicMock()
+    engine.db_manager.session.return_value.__aenter__.return_value = session
+    run = await engine.save_to_database(PAIR, run_name="c1")
+    session.add.assert_called_once_with(run)
+    assert run.metrics_version == 2
+    assert run.sharpe_ratio is None and run.sortino_ratio is None  # single return: undefined
+    assert run.profit_factor == Decimal("0")  # 0 gains / losses > 0: a defined 0.0
+    assert run.gross_profit_net == Decimal("0") and run.gross_loss_net > 0
+    assert run.pf_excluded_trades == 0
+    assert run.max_drawdown_pct == Decimal(str(round(engine.metrics.max_drawdown_pct_daily, 4)))
 
 
 def test_equity_out_refused_with_cross_validate(capsys: pytest.CaptureFixture[str]) -> None:

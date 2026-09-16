@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from krakenbot.backtest_metrics import METRICS_VERSION, fmt, mean_available
+from krakenbot.backtest_metrics import METRICS_VERSION, entry_metrics_version, fmt, mean_available
 from krakenbot.config.settings import FEE_MODEL_NAMES, get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.logger import get_logger
@@ -203,6 +203,16 @@ async def main(argv: list[str] | None = None) -> int:
                 f"ERROR: survivor {key} was selected with (pair_costs_file, min_order_usdc)="
                 f"{existing_costs}, not {(wanted_costs, float(args.min_order_usdc))}; pass the "
                 "same --pair-costs-file / --min-order-usdc as the P6 run.",
+                file=sys.stderr,
+            )
+            return 2
+        found = entry_metrics_version(data)
+        if found != METRICS_VERSION:  # C1: one metrics contract, never a pre-C1 survivor
+            print(
+                f"ERROR: survivor {key} carries metrics_version="
+                f"{found if found is not None else '<absent: pre-C1 file>'}, not "
+                f"{METRICS_VERSION}; regenerate the survivors from a phase-D file produced by "
+                "this code.",
                 file=sys.stderr,
             )
             return 2

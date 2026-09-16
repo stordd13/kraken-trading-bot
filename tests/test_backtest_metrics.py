@@ -213,10 +213,16 @@ def test_8_flat_prices_with_weekly_deposits_and_no_fees_are_not_returns() -> Non
 
 
 def test_anchor_is_authoritative_over_a_data_point_at_start() -> None:
-    s = resample_daily(
-        [_pt(T0, 999), _pt(T0 + DAY, 999)], start=T0, end=T0 + DAY, starting_balance=CAPITAL
-    )
+    pts = [_pt(T0, 999), _pt(T0 + DAY, 999)]
+    s = resample_daily(pts, start=T0, end=T0 + DAY, starting_balance=CAPITAL)
     assert s.nav == (Decimal("1000"), Decimal("999"))
+    # the engine-resolution drawdown does count the point stamped at start (like the money
+    # max_drawdown of the engines); points beyond end are ignored by both series
+    m = compute_metrics(pts, [], start=T0, end=T0 + DAY, starting_balance=CAPITAL)
+    assert m.max_drawdown_pct_engine == pytest.approx(0.1)
+    late = [_pt(T0 + DAY, 1000), _pt(T0 + 2 * DAY, 500)]
+    m2 = compute_metrics(late, [], start=T0, end=T0 + DAY, starting_balance=CAPITAL)
+    assert m2.max_drawdown_pct_engine == 0.0 and m2.max_drawdown_pct_daily == 0.0
 
 
 def test_last_data_point_wins_at_an_equal_timestamp() -> None:
@@ -254,15 +260,26 @@ def test_forward_fill_on_days_without_observation() -> None:
 
 def test_flows_are_bucketed_and_summed_and_validated() -> None:
     flows = [
-        ExternalFlow(T0, Decimal("1")),  # at start -> anchor bucket, earns no return
+        ExternalFlow(T0, Decimal("1")),  # at start -> initial capital: anchor 1001, no return
         ExternalFlow(T0 + DAY + 10 * H, Decimal("5")),
         ExternalFlow(T0 + DAY + 20 * H, Decimal("5")),
     ]
     s = resample_daily(
-        [_pt(T0 + 2 * DAY, 1010)], start=T0, end=T0 + 2 * DAY, starting_balance=CAPITAL, flows=flows
+        [_pt(T0 + 2 * DAY, 1011)], start=T0, end=T0 + 2 * DAY, starting_balance=CAPITAL, flows=flows
     )
     assert s.flows == (Decimal("1"), Decimal("0"), Decimal("10"))
-    assert s.returns[2] == Decimal("0")  # (1010 - 10 - 1000) / 1000
+    assert s.nav == (Decimal("1001"), Decimal("1001"), Decimal("1011"))  # fill from the anchor
+    assert s.returns == (None, Decimal("0"), Decimal("0"))  # (1011 - 10 - 1001) / 1001
+    # a deposit at start must never surface as a return (D6 at the edge)
+    only_start = resample_daily(
+        [_pt(T0 + DAY, 1100)],
+        start=T0,
+        end=T0 + DAY,
+        starting_balance=CAPITAL,
+        flows=[ExternalFlow(T0, Decimal("100"))],
+    )
+    assert only_start.nav == (Decimal("1100"), Decimal("1100"))
+    assert only_start.returns[1] == Decimal("0")
     with pytest.raises(ValueError):
         resample_daily(
             [],
@@ -335,6 +352,11 @@ def test_calmar_uses_geometric_cagr_of_the_index() -> None:
     assert m.cagr_pct == pytest.approx(10.0)
     assert m.max_drawdown_pct_daily == 5.0
     assert m.calmar_ratio == pytest.approx(2.0)
+    # a total loss over a year: CAGR -100 %, MaxDD 100 % -> Calmar -1 (defined)
+    wipe = compute_metrics(
+        [_pt(T0 + 365 * DAY, 0)], [], start=T0, end=T0 + 365 * DAY, starting_balance=CAPITAL
+    )
+    assert wipe.cagr_pct == pytest.approx(-100.0) and wipe.calmar_ratio == pytest.approx(-1.0)
 
 
 # ---------------------------------------------------------------------------

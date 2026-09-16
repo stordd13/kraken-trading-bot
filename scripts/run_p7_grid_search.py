@@ -484,20 +484,24 @@ def filter_pending_jobs(
     result made under another fee model, another metrics contract (C1) or other campaign
     costs (``pair_costs_file`` / ``min_order_usdc``, B4.3)."""
     target = path or PHASE1_OUTPUT
+    wanted = (
+        (jobs[0].get("pair_costs_file"), float(jobs[0].get("min_order_usdc", 1.0)))
+        if jobs
+        else None
+    )
+    # C1: the whole target file must match the run (fees, contract, campaign costs) whether or
+    # not a job key collides with it — a new-key job must never be appended to a pre-C1 /
+    # other-model file (review finding: the per-key check alone let a disjoint job list
+    # rewrite a historical B4 JSON as a mixed file).
+    _assert_results_fee_model(
+        existing,
+        fees,
+        target,
+        pair_costs_file=wanted[0] if wanted else None,
+        min_order_usdc=wanted[1] if wanted else 1.0,
+        check_campaign=wanted is not None,
+    )
     if force:
-        wanted = (
-            (jobs[0].get("pair_costs_file"), float(jobs[0].get("min_order_usdc", 1.0)))
-            if jobs
-            else None
-        )
-        _assert_results_fee_model(
-            existing,
-            fees,
-            target,
-            pair_costs_file=wanted[0] if wanted else None,
-            min_order_usdc=wanted[1] if wanted else 1.0,
-            check_campaign=wanted is not None,
-        )
         return list(jobs)
     pending = []
     for job in jobs:

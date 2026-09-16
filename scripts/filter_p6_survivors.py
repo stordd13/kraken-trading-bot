@@ -168,6 +168,14 @@ def main(argv: list[str] | None = None) -> None:
     benchmarks = {}
     if benchmarks_path.exists():
         benchmarks = json.loads(benchmarks_path.read_text())
+        if benchmarks.get("metrics_version") != METRICS_VERSION:  # C1: v1 benchmarks (D6) refused
+            print(
+                f"ERROR: {benchmarks_path} carries metrics_version="
+                f"{benchmarks.get('metrics_version', '<absent: pre-C1 file>')}, not "
+                f"{METRICS_VERSION}; rerun scripts/compute_benchmarks.py under this contract.",
+                file=sys.stderr,
+            )
+            sys.exit(2)
 
     survivors: dict = {}
     all_rows: list[dict] = []

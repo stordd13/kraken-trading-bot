@@ -160,6 +160,20 @@ class TestFilterPendingJobs:
         jobs = [self._mkjob("grok_supertrend_4h", "ETH/USDC")]
         assert runner.filter_pending_jobs(jobs, {}, force=False, fees="binance") == jobs
 
+    def test_disjoint_key_never_appended_to_a_foreign_file(self) -> None:
+        """C1 review: a job whose key is absent from the file must still be refused when the
+        file holds entries of another fee model / contract — the historical B4 JSONs can never
+        become mixed files."""
+        jobs = [self._mkjob("brand_new_strategy", "ETH/USDC", fees="bybit")]
+        pre_c1 = {"grok_supertrend_4h_BTC_USDC": {"fees": "bybit", "test": {}}}
+        with pytest.raises(runner.MetricsVersionMismatchError, match="pre-C1"):
+            runner.filter_pending_jobs(jobs, pre_c1, force=False, fees="bybit")
+        other_model = {"grok_supertrend_4h_BTC_USDC": {"fees": "binance", "metrics_version": 2}}
+        with pytest.raises(runner.FeeModelMismatchError, match="fees=binance"):
+            runner.filter_pending_jobs(jobs, other_model, force=False, fees="bybit")
+        same = {"grok_supertrend_4h_BTC_USDC": {"fees": "bybit", "metrics_version": 2}}
+        assert runner.filter_pending_jobs(jobs, same, force=False, fees="bybit") == jobs
+
     def test_other_fee_model_is_refused(self) -> None:
         jobs = [self._mkjob("grok_supertrend_4h", "BTC/USDC", fees="bybit")]
         existing = {"grok_supertrend_4h_BTC_USDC": {"fees": "binance", "test": {}}}
