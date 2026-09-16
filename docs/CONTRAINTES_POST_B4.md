@@ -3,20 +3,25 @@
 > Produit du post-mortem B4 (septembre 2026). Ce document est le **filtre d'entrée** :
 > toute idée de stratégie — humaine, IA, ou tirée d'un article — doit passer le
 > ticket d'entrée (§ 6) sur le papier avant qu'une ligne de code soit écrite.
-> Contexte complet : `PROJECT_CONTEXT.md` · verdict : `results/B4_bybit_backtest_report.md`.
+> Contexte complet : `PROJECT_CONTEXT.md` · verdict : `results/B4_bybit_backtest_report.md` (portée
+> requalifiée par l'addendum du 16/09 en tête du rapport — audit
+> `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md`) · journal des essais : `docs/RESEARCH_LOG.md`.
 
 ---
 
-## 1. Le verdict B4 en trois phrases
+## 1. Le verdict B4 en trois phrases (portée requalifiée le 16/09)
 
 24 combinaisons stratégie × paire (P6) puis 212 configurations en grid search
-cross-validé et 280 fenêtres de walk-forward (P7) : **zéro survivant** aux critères,
-sur données assainies (end-stamps, look-ahead éliminé), moteur certifié (liquidation
-terminale, fees maker/taker exactes) et coûts mesurés par paire. La meilleure config
-out-of-sample de toute la campagne fait Sharpe 0.04 (grid BTC, espacement 3 %) contre
-un buy-and-hold à 0.84. La seule config brillante en cross-validation (SuperTrend ETH
-×2.0 : Sharpe 0.78, PF 3.01) tombe à −0.10 en walk-forward — tout son score venait
-d'une seule fenêtre.
+cross-validé et 280 fenêtres de walk-forward (P7) : **zéro configuration sélectionnée
+sous ce protocole avec cet instrument**, sur données assainies (end-stamps, look-ahead
+éliminé), comptabilité des fills réglée (liquidation terminale, fees maker/taker par
+site de fill) et coûts mesurés par paire. L'audit red-team du 16/09 a invalidé
+l'instrument de mesure — métriques (D1-D6, corrigées en C1), replay (à corriger en C2)
+et walk-forward non chronologique (C3) : aucune comparaison chiffrée de Sharpe, MaxDD
+ou PF n'est reprise ici tant que le rejeu sous instrument réparé n'a pas eu lieu (voir
+l'addendum en tête de `results/B4_bybit_backtest_report.md`). Ce qui reste établi :
+aucune stratégie n'est validée pour le déploiement par cette campagne ; les fees et
+coûts mesurés ; les comptes d'exécutions du simulateur, cités comme tels.
 
 ## 2. La structure de coûts (mesurée, non négociable)
 
@@ -30,7 +35,21 @@ supérieur, slippage ≥ 2 bps) :
 | Entrée LIMIT PostOnly (maker) | 0.10 % | 0.10 % | 0.10 % |
 | Sortie MARKET (taker + spread + slippage) | 0.29 % | 0.30 % | 0.38 % |
 | **Round-trip limit/market** (stop, trailing, timeout) | **0.39 %** | **0.40 %** | **0.48 %** |
-| Round-trip limit/limit (deux jambes maker) | 0.24 % | 0.25 % | 0.33 % |
+| Round-trip limit/limit (deux jambes maker, fees débitées par le moteur) | 0.20 % | 0.20 % | 0.20 % |
+
+**Fees débitées par le moteur B4** (ce que le modèle facture réellement) : limit/limit =
+0.10 % + 0.10 % = **0.20 %** sur les trois paires — les deux jambes maker sont facturées
+**sans** spread/slippage explicite ; limit/market = 0.35 % de fees + frictions mesurées
+(spread + slippage par paire) = 0.39 / 0.40 / 0.48 %. Les 0.24-0.33 % affichés ici
+jusqu'au 16/09 pour le limit/limit incluaient une hypothèse de friction maker non
+modélisée (audit § 8) ; les chiffres limit/market sont inchangés. Les totaux nominaux
+maker/taker (BTC 0,39 % / ETH 0,40 % / SOL 0,48 %) sont des sommes de taux et de
+paramètres de calibration (GATE B), pas un coût réel constant garanti par transaction.
+
+**Frictions non reproduites par le modèle** : la file d'attente, les non-exécutions,
+les remplissages partiels et la sélection adverse ne sont pas reproduits par le
+remplissage complet au toucher ; leur effet sur ces stratégies et son amplitude ne
+sont pas quantifiés par B4 (audit § 7-8).
 
 Conséquence arithmétique : un trade moyen doit capturer un mouvement nettement
 supérieur à ~0.4 % pour exister. Les mèches nocturnes EU atteignent 40 bps et le
@@ -41,8 +60,8 @@ pleine impulsion) — un stop paie le spread du moment où il se déclenche.
 
 - **Significativité** : les stratégies signal 4h génèrent 2 à 5 trades par fenêtre
   de walk-forward. À ce rythme, distinguer un edge du bruit est impossible — le
-  meilleur combo P6 (Sharpe test 0.29) reposait sur 13 trades.
-- **Coûts** : multiplier les trades multiplie les round-trips à 0.24–0.48 %.
+  meilleur combo P6 (Sharpe test 0.29, instrument v1) reposait sur 13 trades.
+- **Coûts** : multiplier les trades multiplie les round-trips à 0.20–0.48 %.
 
 Il faut plus de trades pour prouver et moins de trades pour payer. Toute proposition
 doit dire explicitement comment elle résout cette tension. Les deux issues connues :
@@ -66,17 +85,27 @@ cash). « Positif dans l'absolu » ne suffit pas : le B&H est gratuit.
 
 ## 5. Ce qui est déjà mort (ne pas re-proposer sans mécanisme nouveau)
 
+> ⚠️ Liste établie sous l'instrument v1 (addendum B4) : mémoire des essais et des
+> verdicts de sélection (vides), pas une preuve d'absence d'edge économique des
+> familles ; elles y restent tant qu'un rejeu sous instrument réparé n'a pas tranché.
+
 - **Scalping 5m/15m et mean reversion court terme** : morts sur Kraken, Binance et
   Bybit (P6 ×2, coûts ×5 vs Binance BNB) ; 24-36 % de candles 1m plates sur Bybit EU.
 - **Grid trading sur ces fees** : 0/48 configs SOL (bug de comptabilité en prime,
-  dette 14), meilleur grid BTC à Sharpe OOS 0.04 — dix fois sous le seuil.
+  dette 14) ; meilleur grid BTC sous le seuil et sous le B&H **sous l'instrument v1**
+  (l'expression « dix fois sous le seuil » est retirée, addendum B4) — le rejeu
+  diagnostic grid (96 configs BTC/SOL, ROADMAP) tranche candidat / dépriorisation.
 - **Stratégies signal 4h fine-tunées** (SuperTrend, Donchian, EMA/ADX, momentum) :
-  0/35 en walk-forward ; le tuning ne sauve pas un edge inexistant.
+  0/35 en walk-forward (instrument v1) ; le tuning n'a franchi aucun critère codé.
 - **HFT, trailing < 5 %, grid sans biais directionnel en bear** : leçons historiques.
 - Doctrine : une famille tuée deux fois ne revient qu'avec un **mécanisme**
   nouveau, pas un paramétrage nouveau.
 
 ## 6. Ticket d'entrée (obligatoire, sur le papier, avant tout code)
+
+> ⚠️ **Gel des runs** : aucun backtest de nouvelle famille avant le merge de C1-C2 — le
+> pipeline actuel est déclaré non fiable pour juger un ticket. Les tickets sur papier
+> continuent ; cap de 2 familles par cycle inchangé.
 
 Toute proposition fournit ces sept réponses :
 
@@ -108,7 +137,24 @@ Toute proposition fournit ces sept réponses :
   tester cinquante idées, c'est du data mining, et la cinquantième qui « marche »
   est fausse par construction.
 
-## 8. Annexe — prompts pour une IA externe
+## 8. Protocole basse rotation (décision 16 du `ROADMAP.md`)
+
+Repères de couverture (~25-30 round-trips sur l'ensemble de la période OU ~3 ans
+d'equity quotidienne avec exposition non triviale) = **filtres internes de couverture
+retenus par le projet, non seuils statistiques universels** : leur franchissement ne
+suffit pas à valider une stratégie ; en dessous, le projet ne prononce pas
+d'acceptation pour déploiement — verdict « inconclusif », et **inconclusif = pas de
+déploiement** ; au-dessus, l'acceptation exige un effet économique minimum, un
+benchmark d'exposition (B&H/cash à budget de risque et coûts comparables) et une borne
+d'incertitude **écrits dans le ticket avant les résultats** ; les simulations
+trimestrielles réinitialisées ne suffisent pas à valider un comportement destiné à
+porter ses positions continûment entre les trimestres (le grid paie une liquidation
+lorsqu'un inventaire reste ouvert en fin de segment ; le moteur signal ne transmet pas
+sa position au segment suivant) — la validation relève du protocole C3 (equity
+continue, sélection chronologique, bootstrap par blocs). Un mécanisme économique
+plausible soutient l'hypothèse ; il ne remplace pas la validation empirique.
+
+## 9. Annexe — prompts pour une IA externe
 
 **Passe 1 (adversariale, à faire digérer avant toute génération) :**
 « Voici le rapport final d'une campagne de backtests (B4), le contexte projet et ce
@@ -120,7 +166,7 @@ mesurer et n'avons pas mesuré ? Sois spécifique et réfère-toi aux chiffres. 
 
 **Passe 2 (générative, seulement après la passe 1) :**
 « Sous les contraintes du document (coûts § 2, tension § 3, benchmark § 4, morts
-§ 5, environnement § 7), propose au maximum 3 familles de stratégies. Chacune au
+§ 5, environnement § 7, protocole basse rotation § 8), propose au maximum 3 familles de stratégies. Chacune au
 format du ticket d'entrée § 6, les sept points remplis. Toute proposition sans
 mécanisme explicite (§ 6.1) ou sans critère de falsification (§ 6.7) sera rejetée
 sans lecture du reste. Les recombinations d'indicateurs techniques sans mécanisme
