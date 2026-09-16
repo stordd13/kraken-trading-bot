@@ -11,16 +11,22 @@ spread + slippage, per-pair override through ``--pair-costs-file``), each weekly
 a resting limit order (maker); positions are valued at the last close without an exit —
 the signal engine's convention (no end-of-run liquidation). ``--fees none`` reproduces the
 historical fee-free P6 benchmarks.
+
+Metrics (C1, ``metrics_version`` 2): both benchmarks go through ``krakenbot.backtest_metrics``
+— the same daily resampling, Sharpe / Sortino / Calmar and running-peak drawdown as the
+engines. The fixed DCA keeps a cash account and books each weekly deposit as an **external
+flow** (end-of-period convention, exact for a buy at the close): its ratios are computed on the
+flow-adjusted returns and on the performance index, so the deposits are no longer counted as
+returns (defect D6 of the B4 red-team audit) and its drawdown is no longer the 100 % artefact.
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 import json
-import math
 from pathlib import Path
 import sys
 
@@ -32,6 +38,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from backtest import PairCosts, load_pair_costs  # noqa: E402
 
+from krakenbot.backtest_metrics import (
+    METRICS_VERSION,
+    EquityPoint,
+    ExternalFlow,
+    compute_metrics,
+    fmt,
+)
 from krakenbot.config.settings import FEE_MODEL_NAMES, ExchangeFees, Settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.models.market_data import OHLCData
@@ -49,72 +62,38 @@ EXCHANGE = "binance"
 DCA_AMOUNT = Decimal("15")  # $15 per week
 
 
+def _round(value: float | None, ndigits: int) -> float | None:
+    return None if value is None else round(value, ndigits)
+
+
 def compute_risk_metrics(
-    equity_curve: list[tuple[datetime, float]],
-    starting_balance: float,
-) -> dict[str, float]:
-    """Compute Sharpe, Sortino, MaxDD, Calmar from an equity curve."""
-    if len(equity_curve) < 2:
-        return {
-            "sharpe_ratio": 0.0,
-            "sortino_ratio": 0.0,
-            "max_drawdown_pct": 0.0,
-            "calmar_ratio": 0.0,
-        }
-
-    # Returns
-    returns = []
-    for i in range(1, len(equity_curve)):
-        prev = equity_curve[i - 1][1]
-        curr = equity_curve[i][1]
-        if prev > 0:
-            returns.append((curr - prev) / prev)
-
-    # Sharpe
-    sharpe = 0.0
-    if returns:
-        avg_ret = sum(returns) / len(returns)
-        variance = sum((r - avg_ret) ** 2 for r in returns) / len(returns)
-        std_dev = math.sqrt(variance)
-        if std_dev > 0:
-            sharpe = (avg_ret / std_dev) * math.sqrt(365)
-
-    # Sortino
-    sortino = 0.0
-    if returns:
-        avg_ret = sum(returns) / len(returns)
-        neg_returns = [r for r in returns if r < 0]
-        if neg_returns:
-            ds_var = sum(r**2 for r in neg_returns) / len(returns)
-            ds_std = math.sqrt(ds_var)
-            if ds_std > 0:
-                sortino = (avg_ret / ds_std) * math.sqrt(365)
-
-    # Max drawdown
-    peak = starting_balance
-    max_dd = 0.0
-    for _ts, equity in equity_curve:
-        if equity > peak:
-            peak = equity
-        dd = (peak - equity) / peak * 100 if peak > 0 else 0
-        if dd > max_dd:
-            max_dd = dd
-
-    # Calmar
-    final = equity_curve[-1][1]
-    total_return_pct = (final - starting_balance) / starting_balance * 100
-    duration_days = (equity_curve[-1][0] - equity_curve[0][0]).total_seconds() / 86400
-    calmar = 0.0
-    if max_dd > 0 and duration_days > 0:
-        annualized = total_return_pct * (365 / duration_days)
-        calmar = annualized / max_dd
-
+    points: list[EquityPoint],
+    *,
+    start: datetime,
+    end: datetime,
+    starting_balance: Decimal,
+    flows: list[ExternalFlow] | None = None,
+) -> dict[str, float | int | None]:
+    """Sharpe, Sortino, MaxDD (daily, running peak), CAGR and Calmar through the shared C1
+    module (``None`` = undefined, never a fake 0). The anchor ``(start, starting_balance)`` is
+    the capital before the first candle; ``flows`` are the external deposits (fixed DCA)."""
+    result = compute_metrics(
+        points, [], start=start, end=end, starting_balance=starting_balance, flows=flows or []
+    )
     return {
-        "sharpe_ratio": round(sharpe, 4),
-        "sortino_ratio": round(sortino, 4),
-        "max_drawdown_pct": round(max_dd, 2),
-        "calmar_ratio": round(calmar, 4),
+        "metrics_version": METRICS_VERSION,
+        "sharpe_ratio": _round(result.sharpe_ratio, 4),
+        "sortino_ratio": _round(result.sortino_ratio, 4),
+        "max_drawdown_pct_daily": round(result.max_drawdown_pct_daily, 2),
+        "cagr_pct": _round(result.cagr_pct, 4),
+        "calmar_ratio": _round(result.calmar_ratio, 4),
+        "n_daily_returns": result.n_daily_returns,
     }
+
+
+def _anchor_time(candles: list[OHLCData]) -> datetime:
+    """Instant the capital is deployed: the open of the first (period-end stamped) candle."""
+    return candles[0].timestamp - timedelta(minutes=candles[0].interval)
 
 
 async def load_daily_candles(db_manager: DatabaseManager, pair: str) -> list[OHLCData]:
@@ -160,15 +139,18 @@ def buy_and_hold(
     entry_price = float(candles[0].open * (Decimal("1") + spread + slippage))
     amount = capital * float(Decimal("1") - fees.taker) / entry_price
 
-    equity_curve: list[tuple[datetime, float]] = []
-    for c in candles:
-        equity = amount * float(c.close)
-        equity_curve.append((c.timestamp, equity))
+    coins = Decimal(str(amount))
+    points = [EquityPoint(timestamp=c.timestamp, equity=coins * c.close) for c in candles]
 
-    final = equity_curve[-1][1]
+    final = float(points[-1].equity)
     total_return_pct = (final - capital) / capital * 100
 
-    metrics = compute_risk_metrics(equity_curve, capital)
+    metrics: dict = compute_risk_metrics(
+        points,
+        start=_anchor_time(candles),
+        end=candles[-1].timestamp,
+        starting_balance=Decimal(str(capital)),
+    )
     metrics["total_return_pct"] = round(total_return_pct, 2)
     metrics["starting_balance"] = capital
     metrics["ending_balance"] = round(final, 2)
@@ -184,13 +166,23 @@ def dca_fixed_weekly(
     *,
     fees: ExchangeFees = NO_FEES,
 ) -> dict:
-    """Simulate DCA: buy $15 every Monday at close price (resting limit: maker fee)."""
+    """Simulate DCA: buy $15 every Monday at close price (resting limit: maker fee).
+
+    C1: cash account + external flows. Each weekly deposit is booked as an ``ExternalFlow`` at
+    the candle's stamp and converted at that close (cash stays 0 afterwards), the equity is
+    ``cash + coins × close``; the ratios come from the flow-adjusted returns and the
+    performance index (starting balance 0, anchor before the first candle), so a deposit is
+    neither a return nor a way to hide a drawdown. ``total_return_pct`` stays money-weighted
+    (final equity vs invested), as before.
+    """
     if not candles:
         return {"error": "no data"}
 
+    cash = Decimal("0")
     total_invested = Decimal("0")
     total_coins = Decimal("0")
-    equity_curve: list[tuple[datetime, float]] = []
+    points: list[EquityPoint] = []
+    flows: list[ExternalFlow] = []
     buys = 0
 
     last_buy_week: int | None = None
@@ -202,25 +194,33 @@ def dca_fixed_weekly(
         week_key = iso_year * 100 + iso_week
 
         if c.timestamp.weekday() == 0 and week_key != last_buy_week:
-            # Buy at close price, maker fee taken from the notional
+            # Deposit (external flow) then buy at close price, maker fee taken from the notional
+            flows.append(ExternalFlow(timestamp=c.timestamp, amount=weekly_amount))
+            cash += weekly_amount
             coins = weekly_amount * (Decimal("1") - fees.maker) / c.close
+            cash -= weekly_amount
             total_coins += coins
             total_invested += weekly_amount
             buys += 1
             last_buy_week = week_key
 
-        # Equity = coins held × current close
-        equity = float(total_coins * c.close)
-        equity_curve.append((c.timestamp, equity))
+        # Equity = cash + coins held × current close
+        points.append(EquityPoint(timestamp=c.timestamp, equity=cash + total_coins * c.close))
 
-    if not equity_curve or total_invested == 0:
+    if not points or total_invested == 0:
         return {"error": "no trades"}
 
-    final = equity_curve[-1][1]
+    final = float(points[-1].equity)
     invested = float(total_invested)
     total_return_pct = (final - invested) / invested * 100
 
-    metrics = compute_risk_metrics(equity_curve, float(weekly_amount))
+    metrics: dict = compute_risk_metrics(
+        points,
+        start=_anchor_time(candles),
+        end=candles[-1].timestamp,
+        starting_balance=Decimal("0"),
+        flows=flows,
+    )
     metrics["total_return_pct"] = round(total_return_pct, 2)
     metrics["total_invested"] = invested
     metrics["ending_balance"] = round(final, 2)
@@ -271,6 +271,7 @@ async def run(args: argparse.Namespace) -> None:
             "end": P6_END.strftime("%Y-%m-%d"),
         },
         "fees": args.fees,
+        "metrics_version": METRICS_VERSION,
         "pair_costs": (
             {
                 p: {"spread": str(c.spread), "slippage": str(c.slippage)}
@@ -304,9 +305,9 @@ async def run(args: argparse.Namespace) -> None:
         results["buy_and_hold"][pair] = bh
         print("\n  Buy & Hold:")
         print(f"    Return: {bh.get('total_return_pct', 0):+.1f}%")
-        print(f"    Sharpe: {bh.get('sharpe_ratio', 0):.2f}")
-        print(f"    Max DD: {bh.get('max_drawdown_pct', 0):.1f}%")
-        print(f"    Calmar: {bh.get('calmar_ratio', 0):.2f}")
+        print(f"    Sharpe: {fmt(bh.get('sharpe_ratio'))}")
+        print(f"    Max DD: {fmt(bh.get('max_drawdown_pct_daily'), 1, suffix='%')}")
+        print(f"    Calmar: {fmt(bh.get('calmar_ratio'))}")
 
         # DCA
         dca = dca_fixed_weekly(candles, fees=fees)
@@ -316,8 +317,8 @@ async def run(args: argparse.Namespace) -> None:
         print(f"    Invested: ${dca.get('total_invested', 0):.0f}")
         print(f"    Final: ${dca.get('ending_balance', 0):.0f}")
         print(f"    Buys: {dca.get('num_buys', 0)}")
-        print(f"    Sharpe: {dca.get('sharpe_ratio', 0):.2f}")
-        print(f"    Max DD: {dca.get('max_drawdown_pct', 0):.1f}%")
+        print(f"    Sharpe: {fmt(dca.get('sharpe_ratio'))}")
+        print(f"    Max DD: {fmt(dca.get('max_drawdown_pct_daily'), 1, suffix='%')}")
 
     await db_manager.close_db()
 

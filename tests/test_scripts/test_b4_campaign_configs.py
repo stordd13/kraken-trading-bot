@@ -545,6 +545,35 @@ class TestBenchmarksFees:
         dca = cb.dca_fixed_weekly(candles, fees=ExchangeFees.bybit_defaults())
         assert dca["ending_balance"] == pytest.approx(45 * (1 - 0.001), abs=0.01)  # rounded 2 dp
 
+    def test_dca_deposits_are_external_flows_not_returns(self) -> None:
+        """C1 / D6, expectation split in two: (a) flat prices and NO fee -> every flow-adjusted
+        return is 0 -> Sharpe undefined (None, never the 2.37 of the coins-only curve), no
+        drawdown; (b) flat prices WITH the maker fee -> each deposit after the first loses its
+        fee -> a defined negative Sharpe and a small positive drawdown (never the 100 % artefact)."""
+        candles = _daily(15)
+        free = cb.dca_fixed_weekly(candles)
+        assert free["metrics_version"] == 2
+        assert free["sharpe_ratio"] is None and free["sortino_ratio"] is None
+        assert free["max_drawdown_pct_daily"] == 0.0 and free["calmar_ratio"] is None
+        assert free["total_return_pct"] == 0.0
+        paid = cb.dca_fixed_weekly(candles, fees=ExchangeFees.bybit_defaults())
+        assert paid["sharpe_ratio"] is not None and paid["sharpe_ratio"] < 0
+        assert paid["sortino_ratio"] is not None and paid["sortino_ratio"] < 0
+        assert 0 < paid["max_drawdown_pct_daily"] < 0.2  # ~0.15 %: the 2nd and 3rd deposits' fees
+        assert paid["total_return_pct"] == pytest.approx(-0.1, abs=0.01)
+        assert "max_drawdown_pct" not in paid  # v2 contract: the daily figure only
+
+    def test_buy_and_hold_ratios_through_the_shared_module(self) -> None:
+        candles = _daily(15)
+        free = cb.buy_and_hold(candles)
+        assert free["metrics_version"] == 2 and free["sharpe_ratio"] is None
+        assert free["max_drawdown_pct_daily"] == 0.0
+        paid = cb.buy_and_hold(candles, fees=ExchangeFees.bybit_defaults())
+        # one negative return (entry cost taker + spread + slippage) then flat
+        assert paid["sharpe_ratio"] is not None and paid["sharpe_ratio"] < 0
+        assert paid["max_drawdown_pct_daily"] == pytest.approx(0.29, abs=0.01)
+        assert paid["n_daily_returns"] == 15  # anchor at the open of the first daily candle
+
     def test_parse_args(self, costs_file: Path, tmp_path: Path) -> None:
         args = cb.parse_args(["--fees", "none"])
         assert args.fees == "none" and args.pair_costs is None
