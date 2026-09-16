@@ -215,6 +215,16 @@ Chaque résultat P6/P7 porte désormais sa clé `fees` et la reprise refuse un f
 (`--force` = seule échappatoire) : B4.3 écrit dans de nouveaux fichiers. Détails : `skills/backtest.md`,
 `results/B4_2_fees_engine_report.md`.
 
+**Métriques (C1, 2026-09-16, branche `feat/c1-metrics`)** : un seul système de mesure, `krakenbot.backtest_metrics`
+(`metrics_version` 2), partagé par les deux moteurs et `compute_benchmarks.py` — rééchantillonnage quotidien UTC avec
+ancre autoritaire, Sharpe/Sortino sur rendements quotidiens (`None` si indéfini, jamais un faux 0), MaxDD relatif au
+pic courant (`max_drawdown_pct_daily` = critères, `_engine` = diagnostic), Calmar CAGR géométrique, profit factor net
+des deux jambes (`buy_fee_alloc`, sommes exportées, lots à coût inconnu exclus), flux externes pour le DCA fixe (D6).
+Simulation inchangée au centime (rejeux signal A / grid quick / grid A, `results/C1_metrics_report.md`). Chaque
+résultat porte `metrics_version` ; mélange pré-C1 / v2 refusé, `--force` limité à un fichier homogène, JSON B4
+inécrasables ; `--equity-out` + `equity_daily`. Migration Alembic `c1ae7a1c0001` (ratios NULL + 4 colonnes) écrite,
+**à appliquer** (local, puis serveur services stoppés). Détails : `skills/backtest.md` § Métriques.
+
 Contexte historique : les backtests P6 et P7 phase 1 ont été faits avec les fees Binance BNB
 **0.075 % flat** (round-trip ~0.18 %). Les fees Kraken (0.16 / 0.26 %) sont le défaut de `ExchangeFees()` nu.
 
@@ -361,6 +371,17 @@ Détail : `ROADMAP.md`.
     n'est garanti correct que pour `EXCHANGE_NAME=bybit` ; les clients REST Binance/Kraken renvoient l'open
     time ccxt alors que la DB est end-stamped (B4.1) : un backfill y insérerait des candles décalées d'un
     intervalle sans erreur (docstring du Protocol `connectors/exchange.py`). Inchangé en B4.1.
+15. **Métriques C1 — restes** : (a) le **chemin legacy v1** de `p7_report` (coercition `_safe_float`, moyenne des
+    PF, constantes `BENCHMARK_SHARPE`) est conservé uniquement pour relire les fichiers B4 (checkpoints
+    `scripts/audit/b4_p6/p7_checkpoint.py`, verdicts reproduits à l'identique) — à retirer quand B4 sera archivé ;
+    la détection « PF inf » de ces checkpoints est aveugle sur v2 (PF `None` + `gross_loss_net == 0`) et
+    `scripts/audit/b4_3_gate_a_reconcile.py` ne lit que des captures v1 ;
+    (b) `compute_benchmarks.py` charge `< P6_END` alors que les moteurs chargent `<= end` (un jour de décalage,
+    chantier 3) et son « lundi » est le stamp de fin de période (close du dimanche, préexistant) ;
+    (c) moteur signal, stratégies d'accumulation : `cost_basis = entry_price × crypto_balance` au **dernier** prix
+    d'entrée (approximation préexistante, chantier 2) ; vente grok sans position appariée = wallet débité sans
+    trade enregistré (instrumenté par la divergence d'inventaire) ; (d) migration `c1ae7a1c0001` non appliquée
+    (Docker local arrêté le 16/09) ; le dashboard lit les nouvelles colonnes.
 
 ---
 

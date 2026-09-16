@@ -101,3 +101,5 @@ results/bench_*.json
 
 # C1 A/B captures: grid A is 5+ MB gzipped, reproducible (sha256 in results/C1_metrics_report.md)
 results/c1_ab/grid_A_*.json.gz
+# C1 equity sidecars (--equity-out): reproducible, sha256 recorded in results/C1_metrics_report.md
+results/c1_ab/*_equity.jsonl

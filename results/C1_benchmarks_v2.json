@@ -1,0 +1,113 @@
+{
+  "period": {
+    "start": "2023-04-01",
+    "end": "2026-04-01"
+  },
+  "fees": "bybit",
+  "metrics_version": 2,
+  "pair_costs": {
+    "BTC/USDC": {
+      "spread": "0.0002",
+      "slippage": "0.0002"
+    },
+    "ETH/USDC": {
+      "spread": "0.0003",
+      "slippage": "0.0002"
+    },
+    "SOL/USDC": {
+      "spread": "0.0011",
+      "slippage": "0.0002"
+    }
+  },
+  "buy_and_hold": {
+    "BTC/USDC": {
+      "metrics_version": 2,
+      "sharpe_ratio": 0.847,
+      "sortino_ratio": 1.2874,
+      "max_drawdown_pct_daily": 49.65,
+      "cagr_pct": 33.3867,
+      "calmar_ratio": 0.6724,
+      "n_daily_returns": 1096,
+      "total_return_pct": 137.51,
+      "starting_balance": 1000.0,
+      "ending_balance": 2375.09,
+      "entry_price": 28038.941092,
+      "exit_price": 66761.95,
+      "entry_fee_usdc": 2.5
+    },
+    "ETH/USDC": {
+      "metrics_version": 2,
+      "sharpe_ratio": 0.3829,
+      "sortino_ratio": 0.5764,
+      "max_drawdown_pct_daily": 63.79,
+      "cagr_pct": 4.0087,
+      "calmar_ratio": 0.0628,
+      "n_daily_returns": 1096,
+      "total_return_pct": 12.53,
+      "starting_balance": 1000.0,
+      "ending_balance": 1125.27,
+      "entry_price": 1795.57734,
+      "exit_price": 2025.57,
+      "entry_fee_usdc": 2.5
+    },
+    "SOL/USDC": {
+      "metrics_version": 2,
+      "sharpe_ratio": 0.2954,
+      "sortino_ratio": 0.438,
+      "max_drawdown_pct_daily": 70.23,
+      "cagr_pct": -9.63,
+      "calmar_ratio": -0.1371,
+      "n_daily_returns": 824,
+      "total_return_pct": -20.43,
+      "starting_balance": 1000.0,
+      "ending_balance": 795.65,
+      "entry_price": 103.454316,
+      "exit_price": 82.52,
+      "entry_fee_usdc": 2.5
+    }
+  },
+  "dca_fixed_15usd_weekly": {
+    "BTC/USDC": {
+      "metrics_version": 2,
+      "sharpe_ratio": 0.843,
+      "sortino_ratio": 1.2812,
+      "max_drawdown_pct_daily": 49.65,
+      "cagr_pct": 33.0591,
+      "calmar_ratio": 0.6658,
+      "n_daily_returns": 1093,
+      "total_return_pct": 20.91,
+      "total_invested": 2355.0,
+      "ending_balance": 2847.39,
+      "num_buys": 157,
+      "avg_cost_basis": 55216.93
+    },
+    "ETH/USDC": {
+      "metrics_version": 2,
+      "sharpe_ratio": 0.3822,
+      "sortino_ratio": 0.5753,
+      "max_drawdown_pct_daily": 63.81,
+      "cagr_pct": 3.929,
+      "calmar_ratio": 0.0616,
+      "n_daily_returns": 1093,
+      "total_return_pct": -18.25,
+      "total_invested": 2355.0,
+      "ending_balance": 1925.18,
+      "num_buys": 157,
+      "avg_cost_basis": 2477.8
+    },
+    "SOL/USDC": {
+      "metrics_version": 2,
+      "sharpe_ratio": 0.3036,
+      "sortino_ratio": 0.4502,
+      "max_drawdown_pct_daily": 70.26,
+      "cagr_pct": -9.0136,
+      "calmar_ratio": -0.1283,
+      "n_daily_returns": 820,
+      "total_return_pct": -42.94,
+      "total_invested": 1770.0,
+      "ending_balance": 1009.94,
+      "num_buys": 118,
+      "avg_cost_basis": 144.62
+    }
+  }
+}
