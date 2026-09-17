@@ -1,0 +1,265 @@
+{
+  "grok_grid_atr_adaptive_v4_BTC_USDC": {
+    "strategy": "grok_grid_atr_adaptive_v4",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "metrics_version": 2,
+    "pair_costs_file": null,
+    "pair_costs": null,
+    "min_order_usdc": 1.0,
+    "effective_params": {
+      "strategy_class": "GrokGridATRAdaptiveV4",
+      "passed_params": {
+        "pair": "BTC/USDC"
+      },
+      "params": {
+        "grid_levels": {
+          "value": 12,
+          "source": "class_default"
+        },
+        "min_spacing_pct": {
+          "value": "0.015",
+          "source": "class_default"
+        },
+        "max_spacing_pct": {
+          "value": "0.05",
+          "source": "class_default"
+        },
+        "atr_period": {
+          "value": 14,
+          "source": "class_default"
+        },
+        "atr_multiplier": {
+          "value": "4.0",
+          "source": "class_default"
+        },
+        "recalc_hours": {
+          "value": 6,
+          "source": "class_default"
+        },
+        "bias_1d": {
+          "value": "0.2",
+          "source": "class_default"
+        },
+        "pause_1w_strong_bear": {
+          "value": true,
+          "source": "class_default"
+        },
+        "bear_protection_mode": {
+          "value": null,
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "25",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "20.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": {
+      "train": {
+        "buy_fees": "0.9500",
+        "sell_fees": "1.370130686503270417563648042",
+        "net_pnl_lot_basis": "-22.92155151394069356038297058",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 3935.3846153846152,
+        "positions": 13,
+        "trades": 13,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "-2.5E-30",
+        "inventory_divergence_btc": "-2E-30",
+        "pnl": "-30.95639862507928593019920283",
+        "fees": "0.7361368455511797345107789402",
+        "gross_usdc": "294.4547382204718938043115761",
+        "timestamp": "2025-03-10T19:10:00+00:00",
+        "reference_price": "77695.99000000",
+        "price": "77664.911604000000",
+        "spread_pct": "0.0002",
+        "slippage_pct": "0.0002"
+      },
+      "test": {
+        "buy_fees": "0.1500",
+        "sell_fees": "0.1520977050824758052784446942",
+        "net_pnl_lot_basis": "1.94560737739332947316624942",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": null,
+        "positions": 0,
+        "trades": 0,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "0E-31",
+        "inventory_divergence_btc": "0E-31",
+        "pnl": "0",
+        "fees": "0",
+        "gross_usdc": "0",
+        "timestamp": null,
+        "reference_price": null,
+        "price": null,
+        "spread_pct": null,
+        "slippage_pct": null
+      },
+      "all": {
+        "buy_fees": "1.1250",
+        "sell_fees": "1.410269927635404210040800651",
+        "net_pnl_lot_basis": "0.65453780420668317747629007",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 12108.75,
+        "positions": 8,
+        "trades": 8,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "-1.0E-30",
+        "inventory_divergence_btc": "-1E-30",
+        "pnl": "-11.46859526413118843556643417",
+        "fees": "0.4720085331726035377554725961",
+        "gross_usdc": "188.8034132690414151021890384",
+        "timestamp": "2025-03-15T00:00:00+00:00",
+        "reference_price": "83995.87000000",
+        "price": "83962.271652000000",
+        "spread_pct": "0.0002",
+        "slippage_pct": "0.0002"
+      }
+    },
+    "equity_daily": {
+      "train": {
+        "start": "2025-03-01T00:00:00+00:00",
+        "end": "2025-03-10T19:12:00+00:00",
+        "values": [
+          1000.0,
+          1000.0,
+          1000.0,
+          993.53926577026,
+          997.929274843717,
+          1003.0407956364237,
+          1003.5868086756058,
+          1001.2247885961204,
+          1000.4785186662501,
+          986.9218136326061,
+          977.0784484860593
+        ]
+      },
+      "test": {
+        "start": "2025-03-10T19:12:00+00:00",
+        "end": "2025-03-15T00:00:00+00:00",
+        "values": [
+          1000.0,
+          1000.0,
+          1000.3242598485353,
+          1001.2970642545417,
+          1001.5220399335757,
+          1001.9456073773933
+        ]
+      },
+      "all": {
+        "start": "2025-03-01T00:00:00+00:00",
+        "end": "2025-03-15T00:00:00+00:00",
+        "values": [
+          1000.0,
+          1000.0,
+          1000.0,
+          993.53926577026,
+          997.929274843717,
+          1003.0407956364237,
+          1003.5868086756058,
+          1001.2247885961204,
+          1000.4785186662501,
+          986.9218136326061,
+          981.5108643171649,
+          996.9052127103569,
+          999.4723641535164,
+          992.8351711118994,
+          1000.6545378042067
+        ]
+      }
+    },
+    "period": {
+      "start": "2025-03-01T00:00:00+00:00",
+      "end": "2025-03-15T00:00:00+00:00",
+      "split": "2025-03-10T19:12:00+00:00"
+    },
+    "train": {
+      "metrics_version": 2,
+      "total_trades": 38,
+      "winning_trades": 25,
+      "losing_trades": 13,
+      "win_rate": 0.6578947368421053,
+      "total_return_pct": -2.2921551513940694,
+      "sharpe_ratio": -7.3221999462605725,
+      "sortino_ratio": -7.638120843079646,
+      "max_drawdown_pct_daily": 2.641361958964817,
+      "max_drawdown_pct_engine": 2.8681072682672513,
+      "profit_factor": 0.2672465899410341,
+      "calmar_ratio": -21.89697808579742,
+      "net_pnl": -22.921551513940692,
+      "total_fees": 2.3201306865032705,
+      "total_pnl": -21.971551513940693,
+      "unrealized_pnl": -30.956398625079284,
+      "starting_balance": 1000.0,
+      "ending_balance": 977.0784484860593,
+      "duration_days": 9.8,
+      "average_holding_time_minutes": 286.4,
+      "gross_profit_net": 8.359847111138592,
+      "gross_loss_net": 31.281398625079287,
+      "pf_excluded_trades": 0,
+      "n_daily_returns": 10
+    },
+    "test": {
+      "metrics_version": 2,
+      "total_trades": 6,
+      "winning_trades": 6,
+      "losing_trades": 0,
+      "win_rate": 1.0,
+      "total_return_pct": 0.19456073773933294,
+      "sharpe_ratio": 20.52419534452165,
+      "sortino_ratio": null,
+      "max_drawdown_pct_daily": 0.0,
+      "max_drawdown_pct_engine": 0.07116288264701458,
+      "profit_factor": null,
+      "calmar_ratio": null,
+      "net_pnl": 1.9456073773933296,
+      "total_fees": 0.3020977050824758,
+      "total_pnl": 2.0956073773933293,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1001.9456073773933,
+      "duration_days": 4.2,
+      "average_holding_time_minutes": 393.3333333333333,
+      "gross_profit_net": 1.9456073773933296,
+      "gross_loss_net": 0.0,
+      "pf_excluded_trades": 0,
+      "n_daily_returns": 5
+    },
+    "all": {
+      "metrics_version": 2,
+      "total_trades": 45,
+      "winning_trades": 37,
+      "losing_trades": 8,
+      "win_rate": 0.8222222222222222,
+      "total_return_pct": 0.06545378042066832,
+      "sharpe_ratio": 0.18815429465062689,
+      "sortino_ratio": 0.28830058364660394,
+      "max_drawdown_pct_daily": 2.1997045166001836,
+      "max_drawdown_pct_engine": 3.064055415636093,
+      "profit_factor": 1.0560939675591205,
+      "calmar_ratio": 0.7821728539140054,
+      "net_pnl": 0.6545378042066832,
+      "total_fees": 2.535269927635404,
+      "total_pnl": 1.7795378042066832,
+      "unrealized_pnl": -11.468595264131189,
+      "starting_balance": 1000.0,
+      "ending_balance": 1000.6545378042067,
+      "duration_days": 14.0,
+      "average_holding_time_minutes": 323.7837837837838,
+      "gross_profit_net": 12.32313306833787,
+      "gross_loss_net": 11.668595264131188,
+      "pf_excluded_trades": 0,
+      "n_daily_returns": 14
+    }
+  }
+}
