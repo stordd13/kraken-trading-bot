@@ -33,7 +33,18 @@ Versions métriques : **v1** = moteurs pré-C1 (défauts D1-D6 de l'audit red-te
 | 5 | 2026-09-15 | B4 — benchmarks | B&H + DCA fixe 15 USDC/semaine × 3 paires | idem 3 | `v2.8.0-b4-3-campaign` ; métriques v1 (DCA contaminé D6) | idem 3 | B&H Sharpe (quotidien) 0.84 / 0.38 / 0.30 ; DCA Sharpe 2.1-2.4 non comparable (D6) | critère P7 n° 7 ; recalcul v2 en C1 (`results/C1_benchmarks_v2.json`) | `results/B4_benchmarks.json`, `results/B4_bybit_backtest_report.md` § 5 |
 | 6 | ≤ 2026-03 | Campagnes kraken-era antérieures | — | — | — | — | — | — | non reconstruites au détail, voir `docs/archive/` (rapports : `results/archive/`) |
 
+### Chantier C2 — fidélité du replay (inscrit le 2026-09-17, avant lancement)
+
+Runs de **validation de l'instrument** (pas des essais R&D) : aucun verdict de sélection n'en découle, aucun
+langage de validation économique dans le rapport (`results/C2_replay_report.md`). Version métriques v2 partout.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 7 | 2026-09-17 | C2 étape 0 — références « avant » (5 captures `scripts/audit/c1_equity_probe.py capture --engine-root ~/wt-c1-ref`) | signal A `grok_supertrend_4h` BTC ; grid quick `grok_grid_atr_adaptive_v4` BTC (binance + bybit) ; grid A `grok_grid_atr_adaptive_v4` BTC ; DCA réf. `grok_adaptive_dca_weekly` BTC — défauts de classe (dette 13) | Binance end-stampées ; signal A et grid A 2023-04-01 → 2026-04-01 ; grid quick 2025-03-01 → 2025-03-15 ; DCA 2022-01-01 → 2022-09-28 ; `--interval 5 --capital 1000` (DCA : `--min-order-usdc 5`) | tag `v2.9.0-c1-metrics` (worktree) ; métriques v2 | bybit (grid quick aussi binance) | captures « avant » canoniques, sha256 consignés ; descriptif seulement | côté « avant » des preuves 5 et 6 de C2 | `results/C2_replay_report.md`, `results/c2_ab/` |
+| 8 | 2026-09-17 | C2 — références « après » (mêmes 5 commandes sur `feat/c2-replay`) + invariant strict | idem 7 | idem 7 | branche `feat/c2-replay` (commit consigné au rapport) ; métriques v2 ; `replay_version` 2 | idem 7 | signal A **bit-identique** en mode strict (sinon STOP) ; grid quick / grid A / DCA : écarts attribués à R1-R4, sans verdict | preuves 5 et 6 ; re-baseline des gold hashes soumis à review | `results/C2_replay_report.md` |
+| 9 | 2026-09-17 | C2 — rejeu P6 des 3 grids (`run_p6_backtests.py --limit 3`, train/test/all) | `grok_grid_atr_adaptive_v4` × BTC/ETH/SOL (3 combos, défauts de classe) | Binance end-stampées, 2023-04-01 → 2026-04-01, split 70/30 | branche `feat/c2-replay` ; métriques v2 ; `replay_version` 2 | bybit + coûts GATE B (`config/pair_costs_b4.json`), plancher 5 USDC | SOL : aucun flag `b4_flags` (divergence ≤ 1e-12, cash = lot-basis ≤ 1e-9), compteurs `unmatched_*` = 0, `warmup.sufficient=False` attendu par segment ; descriptif seulement | preuve 4 (réel) de C2 ; artefact `results/c2_replay/P6_grid_rerun.json` | `results/C2_replay_report.md` |
+
 ### Essais à venir (à inscrire avant lancement)
 
-_(vide — runs R&D gelés jusqu'au merge de C1-C2 ; prochains inscrits attendus : rejeu C2, rejeu diagnostic
-grid 96 configs BTC/SOL, protocole C3)_
+_(vide — runs R&D gelés jusqu'au merge de C1-C2 ; prochains inscrits attendus : rejeu diagnostic grid 96 configs
+BTC/SOL, protocole C3)_

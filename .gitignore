@@ -103,3 +103,7 @@ results/bench_*.json
 results/c1_ab/grid_A_*.json.gz
 # C1 equity sidecars (--equity-out): reproducible, sha256 recorded in results/C1_metrics_report.md
 results/c1_ab/*_equity.jsonl
+# C2 A/B captures (same convention): grid A 3-year captures are 5+ MB gzipped, reproducible,
+# sha256 recorded in results/C2_replay_report.md; equity sidecars likewise
+results/c2_ab/grid_A_*.json.gz
+results/c2_ab/*_equity.jsonl
