@@ -89,9 +89,9 @@ async def run_single_backtest(
     fee_model: str,
     pair_costs: dict[str, PairCosts] | None = None,
     min_order_usdc: float = 1.0,
-) -> tuple[dict, dict | None, dict | None]:
+) -> tuple[dict, dict | None, dict | None, dict]:
     """Run a single backtest; return (metrics dict, grid liquidation summary or None, daily
-    equity grid or None — C1)."""
+    equity grid or None — C1, replay blocks — C2: rejections / warmup / dca_counters)."""
     cls = GridBacktester if strategy in GRID_STRATEGIES else BacktestEngine
     engine = cls(
         settings,
@@ -108,7 +108,12 @@ async def run_single_backtest(
     await engine.run(pair, start, end)
     liquidation = engine.liquidation_summary() if hasattr(engine, "liquidation_summary") else None
     equity_daily = getattr(engine.metrics, "equity_daily_dict", lambda: None)()
-    return engine.metrics.to_dict(), liquidation, equity_daily
+    replay = {  # C2: rejections per (order, cause), warmup really fed, DCA counters (None outside DCA)
+        "rejections": getattr(engine, "rejections_summary", lambda: None)(),
+        "warmup": getattr(engine, "warmup_summary", lambda: None)(),
+        "dca_counters": getattr(engine, "dca_counters_summary", lambda: None)(),
+    }
+    return engine.metrics.to_dict(), liquidation, equity_daily, replay
 
 
 def aggregate_windows(
@@ -246,7 +251,7 @@ async def main(argv: list[str] | None = None) -> int:
             for i, w in enumerate(windows):
                 try:
                     # Only run the TEST window (no re-training in P6)
-                    test_metrics, liquidation, equity_daily = await run_single_backtest(
+                    test_metrics, liquidation, equity_daily, replay = await run_single_backtest(
                         settings,
                         db_manager,
                         strategy,
@@ -267,6 +272,7 @@ async def main(argv: list[str] | None = None) -> int:
                             "metrics": test_metrics,
                             "liquidation": liquidation,
                             "equity_daily": equity_daily,
+                            **replay,  # C2: rejections, warmup, dca_counters
                         }
                     )
                     logger.info(

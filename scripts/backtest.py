@@ -10,7 +10,7 @@ Usage:
 
 import argparse
 import asyncio
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -226,6 +226,70 @@ def capture_effective_params(
         "passed_params": {k: _jsonable(v) for k, v in passed.items()},
         "params": params,
     }
+
+
+# ---------------------------------------------------------------------------
+# C2 (R3): rejection accounting per (distinct order, cause)
+# ---------------------------------------------------------------------------
+
+
+class RejectionLedger:
+    """Rejection accounting of a replay, per **(distinct order, cause)** (C2, R3).
+
+    An order retested on several candles (a grid BUY level below the cash, a resting limit
+    checked every 5 minutes) counts **once** per cause in ``by_cause``; every attempt is
+    counted in ``events`` (debug). Order identity is the caller's: a grid level gets an ordinal
+    at its first appearance in the pending snapshot (a level object re-created at the same
+    price is a new order), a grid sell order is ``sell_pos_<lot id>``, a legacy grid order an
+    id stamped at its creation, a signal-engine pending signal ``sig#<n>``. ``prune`` forgets
+    the pairs of orders that left the pending set so that a re-created order counts anew; the
+    cumulative totals are never decremented. The five minimal causes of the brief are always
+    present (value 0 allowed); the strategy-side ``fill_anomalies`` are merged with
+    ``add_counts`` under the same cause names.
+    """
+
+    UNIT = "(order, cause)"
+    MINIMAL_CAUSES = (
+        "below_min_order",
+        "insufficient_cash",
+        "insufficient_inventory",
+        "unmatched_sell_fills",
+        "unmatched_position_id",
+    )
+
+    def __init__(self) -> None:
+        self.by_cause: dict[str, int] = dict.fromkeys(self.MINIMAL_CAUSES, 0)
+        self.events: dict[str, int] = dict.fromkeys(self.MINIMAL_CAUSES, 0)
+        self._seen: set[tuple[str, str]] = set()
+
+    def note(self, order_id: str, cause: str) -> bool:
+        """Record one rejection event; True when ``(order_id, cause)`` is new."""
+        self.events[cause] = self.events.get(cause, 0) + 1
+        key = (order_id, cause)
+        if key in self._seen:
+            return False
+        self._seen.add(key)
+        self.by_cause[cause] = self.by_cause.get(cause, 0) + 1
+        return True
+
+    def prune(self, active_order_ids: Iterable[str]) -> None:
+        """Forget the seen pairs of orders no longer pending; totals are kept as they are."""
+        active = set(active_order_ids)
+        self._seen = {key for key in self._seen if key[0] in active}
+
+    def add_counts(self, counts: Mapping[str, int]) -> None:
+        """Merge externally counted rejections (one distinct order per count)."""
+        for cause, value in counts.items():
+            self.by_cause[cause] = self.by_cause.get(cause, 0) + int(value)
+            self.events[cause] = self.events.get(cause, 0) + int(value)
+
+    def summary(self) -> dict[str, Any]:
+        """JSON-serialisable block: ``{"unit", "by_cause", "events"}`` (sorted keys)."""
+        return {
+            "unit": self.UNIT,
+            "by_cause": dict(sorted(self.by_cause.items())),
+            "events": dict(sorted(self.events.items())),
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -772,6 +836,21 @@ class BacktestEngine:
         self._requirements: list[IndicatorRequirement] = []
         self._warmup_needs: dict[str, int] = {}
         self.warmup: dict[str, dict[str, Any]] = {}
+        # C2 (R3): rejections per (order, cause); every pending signal is one order.
+        self.rejections = RejectionLedger()
+        self._order_seq = 0
+        # C2 (preuve 6): descriptive counters of the DCA replay — weekly ticks evaluated,
+        # signals by multiplier, buys executed (rejections live in ``rejections``).
+        self.dca_counters: dict[str, Any] | None = (
+            {
+                "weekly_ticks_evaluated": 0,
+                "signals_emitted": 0,
+                "by_multiplier": {},
+                "buys_executed": 0,
+            }
+            if strategy_name == "grok_adaptive_dca_weekly"
+            else None
+        )
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -1150,7 +1229,12 @@ class BacktestEngine:
         return override.spread, override.slippage
 
     async def execute_signal(
-        self, signal: TradingSignal, current_price: Decimal, *, is_limit_fill: bool = False
+        self,
+        signal: TradingSignal,
+        current_price: Decimal,
+        *,
+        is_limit_fill: bool = False,
+        order_id: str = "sig#?",
     ) -> None:
         """Execute a trading signal in the simulation.
 
@@ -1158,6 +1242,7 @@ class BacktestEngine:
             signal: Trading signal from strategy
             current_price: Current market price (open of next candle for market, limit price for limit)
             is_limit_fill: If True, skip spread/slippage and use maker fee
+            order_id: identity of the pending order for the rejection ledger (C2, R3)
         """
         if signal.signal_type == SignalType.HOLD:
             return
@@ -1191,10 +1276,12 @@ class BacktestEngine:
         ]
 
         # Override order size from strategy metadata
+        requested_amount: Decimal | None = None
         if uses_otf and signal.metadata:
             strategy_order_size = signal.metadata.get("order_size_usdc")
             if strategy_order_size is not None:
-                order_amount_override = min(self.usdc_balance, Decimal(str(strategy_order_size)))
+                requested_amount = Decimal(str(strategy_order_size))
+                order_amount_override = min(self.usdc_balance, requested_amount)
             else:
                 order_amount_override = None
         else:
@@ -1212,6 +1299,7 @@ class BacktestEngine:
                     mult = signal.metadata.get("position_size_multiplier")
                     if mult is not None:
                         base_amount *= Decimal(str(mult))
+                requested_amount = base_amount
                 order_amount = min(self.usdc_balance, base_amount)
 
             self.logger.debug(
@@ -1222,8 +1310,19 @@ class BacktestEngine:
             )
 
             if order_amount < self.min_order_usdc:  # Minimum order (exchange minOrderAmt)
+                # C2 (R3): counted once per order — the cash clamp made it fall under the
+                # floor (insufficient_cash) or the sized notional was below it (below_min_order)
+                cause = (
+                    "insufficient_cash"
+                    if requested_amount is not None and order_amount < requested_amount
+                    else "below_min_order"
+                )
+                self.rejections.note(order_id, cause)
                 self.logger.warning(
-                    "backtest_buy_skipped_min_order", order_amount=float(order_amount)
+                    "backtest_buy_skipped_min_order",
+                    order_amount=float(order_amount),
+                    cause=cause,
+                    order_id=order_id,
                 )
                 return
 
@@ -1284,6 +1383,8 @@ class BacktestEngine:
 
             # Store entry regime for future SELL trade
             self._entry_regime = entry_regime
+            if self.dca_counters is not None:
+                self.dca_counters["buys_executed"] += 1
 
             self.logger.debug(
                 "backtest_buy",
@@ -1291,6 +1392,17 @@ class BacktestEngine:
                 amount_usdc=float(order_amount),
                 crypto=float(crypto_bought),
             )
+
+        elif signal.signal_type == SignalType.BUY:
+            # C2 (R3): a BUY while a position is open (single-position strategies) was a
+            # silent no-op — it is a rejected order, counted.
+            self.rejections.note(order_id, "buy_while_in_position")
+            self.logger.warning("backtest_buy_skipped_in_position", order_id=order_id)
+
+        elif signal.signal_type == SignalType.SELL and not self.in_position:
+            # C2 (R3): a SELL with nothing to sell was a silent no-op — counted.
+            self.rejections.note(order_id, "sell_without_position")
+            self.logger.warning("backtest_sell_skipped_no_position", order_id=order_id)
 
         elif signal.signal_type == SignalType.SELL and self.in_position:
             # Apply spread + slippage to get realistic execution price
@@ -1721,23 +1833,29 @@ class BacktestEngine:
         # Signal on candle N → fill at open of candle N+1 (market) or limit price (limit)
         # This eliminates look-ahead bias: we never fill at a price we just analyzed.
         tradeable_idx = 0
-        pending: tuple[TradingSignal, str | None] | None = None  # (signal, entry_regime)
+        # (signal, entry_regime, order id) — C2 (R3): every pending signal is one order
+        pending: tuple[TradingSignal, str | None, str] | None = None
 
         for candle, interval, is_tradeable in replay_sequence:
             # PHASE 1: Execute pending signal from PREVIOUS candle using THIS candle's OHLC
             if is_tradeable and pending:
-                pending_signal, entry_regime = pending
+                pending_signal, entry_regime, order_id = pending
                 fill_price, is_limit = self._resolve_fill(pending_signal, candle)
                 if fill_price is not None:
                     saved_regime = self._current_regime
                     self._current_regime = entry_regime
-                    await self.execute_signal(pending_signal, fill_price, is_limit_fill=is_limit)
+                    await self.execute_signal(
+                        pending_signal, fill_price, is_limit_fill=is_limit, order_id=order_id
+                    )
                     self._current_regime = saved_regime
                 else:
+                    # C2 (R3): a resting limit not touched on N+1 is dropped — counted.
+                    self.rejections.note(order_id, "limit_expired")
                     self.logger.debug(
                         "limit_order_not_filled",
                         timestamp=candle.timestamp,
                         signal=pending_signal.signal_type.value,
+                        order_id=order_id,
                     )
                 pending = None
 
@@ -1804,9 +1922,25 @@ class BacktestEngine:
                     price=float(candle.close),
                 )
 
+            # C2 (preuve 6): DCA descriptive counters — Monday daily ticks evaluated,
+            # signals emitted by multiplier label.
+            if (
+                self.dca_counters is not None
+                and interval == 1440
+                and candle.timestamp.weekday() == 0
+            ):
+                self.dca_counters["weekly_ticks_evaluated"] += 1
+            if signal and self.dca_counters is not None:
+                self.dca_counters["signals_emitted"] += 1
+                label = str((signal.metadata or {}).get("multiplier_label", "unknown"))
+                self.dca_counters["by_multiplier"][label] = (
+                    self.dca_counters["by_multiplier"].get(label, 0) + 1
+                )
+
             # Queue signal for next-bar execution (no look-ahead bias)
             if signal:
-                pending = (signal, self._current_regime)
+                self._order_seq += 1
+                pending = (signal, self._current_regime, f"sig#{self._order_seq}")
 
             # Track equity curve (mark-to-market at close is fine)
             current_equity = self.usdc_balance
@@ -1844,6 +1978,18 @@ class BacktestEngine:
         )
 
         return self.metrics
+
+    def rejections_summary(self) -> dict[str, Any]:
+        """Rejections per (order, cause) of the finished run (C2, R3), JSON-serialisable."""
+        return self.rejections.summary()
+
+    def dca_counters_summary(self) -> dict[str, Any] | None:
+        """DCA descriptive counters (C2, preuve 6); None for every other strategy."""
+        if self.dca_counters is None:
+            return None
+        out = dict(self.dca_counters)
+        out["by_multiplier"] = dict(sorted(self.dca_counters["by_multiplier"].items()))
+        return out
 
     def print_report(self) -> None:
         """Print a formatted backtest report to console."""
@@ -1899,6 +2045,8 @@ class BacktestEngine:
         print(f"{'Sharpe Ratio (daily):':<30} {fmt(self.metrics.sharpe_ratio)}")
         print(f"{'Sortino Ratio (daily):':<30} {fmt(self.metrics.sortino_ratio)}")
         print(f"{'Calmar Ratio:':<30} {fmt(self.metrics.calmar_ratio)}")
+
+        _print_replay_blocks(self)
 
         # Regime breakdown
         if self._regime_stats:
@@ -2112,6 +2260,15 @@ class GridBacktester:
         # C2 (R1): the inputs the grok grid decision consumes, read on the analyzer right
         # before each 4h decision (proof harness; not exported by to_dict()).
         self.decision_trace: list[dict[str, Any]] = []
+        # C2 (R3): rejections per (order, cause). A grok buy level is identified by an ordinal
+        # stamped at its first appearance in the pending snapshot (strong reference kept so an
+        # object id is never reused: a level re-created at the same price is a new order);
+        # legacy orders carry an id stamped at creation.
+        self.rejections = RejectionLedger()
+        self._level_ordinals: dict[int, tuple[int, Any]] = {}
+        self._level_seq = 0
+        self._legacy_seq = 0
+        self._anomalies_merged = False
 
         # Grid metrics
         self.pairs_completed: int = 0
@@ -2318,16 +2475,25 @@ class GridBacktester:
         self._warmup_needs = warmup_needs(self._requirements)
         return strategy, analyzer
 
+    def _order_id_for_level(self, level: Any) -> str:
+        """Stable identity of a grok buy level: an ordinal at its first pending appearance."""
+        entry = self._level_ordinals.get(id(level))
+        if entry is None or entry[1] is not level:
+            self._level_seq += 1
+            entry = (self._level_seq, level)
+            self._level_ordinals[id(level)] = entry
+        return f"buy#{entry[0]}"
+
     def _get_grok_grid_pending_orders(self, strategy: Any) -> list[dict[str, Any]]:
         """Return pending buy levels plus paired sell targets for open positions."""
         pending_orders: list[dict[str, Any]] = []
 
-        for key, level in strategy._grid_levels.items():
+        for level in strategy._grid_levels.values():
             if level.status != "pending" or level.side != "buy":
                 continue
             pending_orders.append(
                 {
-                    "order_id": key,
+                    "order_id": self._order_id_for_level(level),
                     "side": "buy",
                     "price": level.price,
                     "amount_usdc": level.amount_usdc,
@@ -2371,6 +2537,7 @@ class GridBacktester:
         fill_price = order["price"]
         amount_usdc = order["amount_usdc"]
         if self.usdc_balance < amount_usdc:
+            self.rejections.note(order["order_id"], "insufficient_cash")
             return
 
         fee = amount_usdc * self.fees.maker
@@ -2432,6 +2599,7 @@ class GridBacktester:
             (p for p in strategy.open_positions if p.position_id == position_id), None
         )
         if matched_position is None:
+            self.rejections.note(order["order_id"], "unmatched_position_id")
             self.logger.warning(
                 "grid_sell_fill_unknown_position_id",
                 position_id=position_id,
@@ -2445,6 +2613,7 @@ class GridBacktester:
                 f"{amount_btc} BTC but the lot holds {matched_position.amount_btc} BTC"
             )
         if self.btc_held < amount_btc:
+            self.rejections.note(order["order_id"], "insufficient_inventory")
             self.logger.warning(
                 "grid_sell_fill_insufficient_inventory",
                 position_id=position_id,
@@ -2525,8 +2694,13 @@ class GridBacktester:
             level_price = level_price.quantize(Decimal("0.1"))
 
             if level_price < current_price:
+                self._legacy_seq += 1
                 self.active_buy_orders.append(
-                    {"price": level_price, "amount_usdc": self.order_amount_usdc}
+                    {
+                        "price": level_price,
+                        "amount_usdc": self.order_amount_usdc,
+                        "order_id": f"legacy_buy#{self._legacy_seq}",
+                    }
                 )
                 self.total_orders_placed += 1
             elif level_price > current_price:
@@ -2548,7 +2722,10 @@ class GridBacktester:
         amount_usdc = order["amount_usdc"]
 
         if self.usdc_balance < amount_usdc:
-            return  # Insufficient balance
+            self.rejections.note(
+                str(order.get("order_id", f"legacy_buy@{fill_price}")), "insufficient_cash"
+            )
+            return  # Insufficient balance (the order is dropped, as before: counters only)
 
         fee = amount_usdc * self.fees.maker
         net_usdc = amount_usdc - fee
@@ -2585,11 +2762,13 @@ class GridBacktester:
         if sell_price < min_profitable_sell:
             sell_price = min_profitable_sell.quantize(Decimal("0.1"))
 
+        self._legacy_seq += 1
         self.active_sell_orders.append(
             {
                 "price": sell_price,
                 "amount_btc": btc_bought,
                 "entry_price": fill_price,
+                "order_id": f"legacy_sell#{self._legacy_seq}",
             }
         )
         self.total_orders_placed += 2  # buy filled + sell placed
@@ -2601,7 +2780,10 @@ class GridBacktester:
         entry_price = order["entry_price"]
 
         if self.btc_held < amount_btc:
-            return  # Insufficient BTC
+            self.rejections.note(
+                str(order.get("order_id", f"legacy_sell@{fill_price}")), "insufficient_inventory"
+            )
+            return  # Insufficient BTC (the order is dropped, as before: counters only)
 
         gross_usdc = amount_btc * fill_price
         fee = gross_usdc * self.fees.maker
@@ -2646,7 +2828,14 @@ class GridBacktester:
         # Place paired buy at lower level
         buy_price = fill_price * (Decimal("1") - self.grid_spacing_pct / Decimal("100"))
         buy_price = buy_price.quantize(Decimal("0.1"))
-        self.active_buy_orders.append({"price": buy_price, "amount_usdc": self.order_amount_usdc})
+        self._legacy_seq += 1
+        self.active_buy_orders.append(
+            {
+                "price": buy_price,
+                "amount_usdc": self.order_amount_usdc,
+                "order_id": f"legacy_buy#{self._legacy_seq}",
+            }
+        )
         self.total_orders_placed += 1
 
     def _check_rebalance(self, current_price: Decimal) -> bool:
@@ -2737,6 +2926,9 @@ class GridBacktester:
 
             for order in filled_sells:
                 self._process_sell_fill(order, candle)
+            self.rejections.prune(
+                str(o.get("order_id", "")) for o in self.active_buy_orders + self.active_sell_orders
+            )
 
             # Check rebalance
             self._check_rebalance(current_price)
@@ -2781,6 +2973,8 @@ class GridBacktester:
                     await self._process_grok_grid_buy_fill(strategy, order, candle)
                 for order in filled_sells:
                     await self._process_grok_grid_sell_fill(strategy, order, candle)
+                # C2 (R3): an order that left the pending set counts anew if re-created
+                self.rejections.prune(self._get_grok_grid_pending_order_ids(strategy))
                 analyzer.update(payload, interval)
                 await strategy.on_ohlc(payload)
                 self._record_equity(candle)
@@ -3091,10 +3285,27 @@ class GridBacktester:
             "slippage_pct": _dec(first.slippage_pct) if first else None,
         }
 
+    def rejections_summary(self) -> dict[str, Any]:
+        """Rejections per (order, cause) of the finished run (C2, R3), JSON-serialisable —
+        engine skips plus the inner strategy's ``fill_anomalies`` (merged once)."""
+        self._merge_strategy_anomalies()
+        return self.rejections.summary()
+
+    def dca_counters_summary(self) -> dict[str, Any] | None:
+        """No DCA counters on the grid engine (API symmetry with BacktestEngine)."""
+        return None
+
+    def _merge_strategy_anomalies(self) -> None:
+        anomalies = getattr(self._strategy_obj, "fill_anomalies", None)
+        if anomalies and not self._anomalies_merged:
+            self.rejections.add_counts(anomalies)
+            self._anomalies_merged = True
+
     def _calculate_final_metrics(self) -> None:
         """Calculate final performance metrics."""
         # Liquidate the terminal inventory first so its losses are counted (B4.3).
         self._force_close_open_positions()
+        self._merge_strategy_anomalies()
 
         self.metrics.total_trades = self.pairs_completed + self.liquidated_positions
         self.metrics.total_fees = self.total_fees
@@ -3259,6 +3470,8 @@ class GridBacktester:
         print(f"{'Sharpe Ratio (daily):':<30} {fmt(self.metrics.sharpe_ratio)}")
         print(f"{'Sortino Ratio (daily):':<30} {fmt(self.metrics.sortino_ratio)}")
         print(f"{'Calmar Ratio:':<30} {fmt(self.metrics.calmar_ratio)}")
+
+        _print_replay_blocks(self)
 
         print("\n" + "=" * 80 + "\n")
 
@@ -3461,6 +3674,26 @@ def _dec(value: Any) -> str | None:
     return None if value is None else str(value)
 
 
+def _print_replay_blocks(engine: Any) -> None:
+    """Console section for the C2 replay blocks (warmup per TF, rejections, DCA counters)."""
+    print("\n" + "-" * 80)
+    print("REPLAY (C2)")
+    print("-" * 80)
+    for tf, report in engine.warmup_summary().items():
+        flag = "ok" if report["sufficient"] else "INSUFFICIENT"
+        print(
+            f"  warmup {tf:<4} required {report['required']:>4} loaded {report['loaded']:>5} "
+            f"extended {report['extended_by']:>4} stale {report['stale_by_candles']!s:>5} "
+            f"largest gap {report['largest_gap_candles']:>5}  {flag}"
+        )
+    rejections = engine.rejections_summary()
+    shown = {c: n for c, n in rejections["by_cause"].items() if n}
+    print(f"  rejections {rejections['unit']}: {shown if shown else 'none'}")
+    dca = engine.dca_counters_summary() if hasattr(engine, "dca_counters_summary") else None
+    if dca is not None:
+        print(f"  dca counters: {dca}")
+
+
 def _db_ratio(value: float | None, ndigits: int | None = None) -> Decimal | None:
     """Ratio column of ``BacktestRun``: NULL when the metric is undefined (C1)."""
     if value is None:
@@ -3573,6 +3806,11 @@ def dump_trades_json(
     payload["equity_daily"] = engine.metrics.equity_daily_dict()
     # C2 (R2): what each context series really fed the indicators with (candles, gaps).
     payload["warmup"] = engine.warmup_summary()
+    # C2 (R3): rejections per (order, cause) — both engines; DCA descriptive counters.
+    payload["rejections"] = engine.rejections_summary()
+    dca_counters = engine.dca_counters_summary()
+    if dca_counters is not None:
+        payload["dca_counters"] = dca_counters
     regime_stats = getattr(engine, "_regime_stats", None)
     if regime_stats:
         payload["regime_breakdown"] = {

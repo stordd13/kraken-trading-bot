@@ -694,6 +694,9 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
 
         liquidation: dict[str, Any] = {}
         equity_daily: dict[str, Any] = {}
+        rejections: dict[str, Any] = {}
+        warmup: dict[str, Any] = {}
+        dca_counters: dict[str, Any] = {}
         effective_params: dict[str, Any] | None = None
 
         async def _run_segment(name: str, seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
@@ -704,6 +707,13 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
                 liquidation[name] = engine.liquidation_summary()
             effective_params = getattr(engine, "effective_params", None)
             equity_daily[name] = engine.metrics.equity_daily_dict()  # C1: daily NAV grid
+            if hasattr(engine, "rejections_summary"):  # C2 (R3): per (order, cause)
+                rejections[name] = engine.rejections_summary()
+            if hasattr(engine, "warmup_summary"):  # C2 (R2): candles really fed, gaps
+                warmup[name] = engine.warmup_summary()
+            dca = engine.dca_counters_summary() if hasattr(engine, "dca_counters_summary") else None
+            if dca is not None:
+                dca_counters[name] = dca
             return engine.metrics.to_dict()
 
         worker_logger.info("worker_job_start", key=job.key)
@@ -732,6 +742,9 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
             "effective_params": effective_params,
             "liquidation": liquidation or None,
             "equity_daily": equity_daily or None,
+            "rejections": rejections or None,  # C2 (R3)
+            "warmup": warmup or None,  # C2 (R2)
+            "dca_counters": dca_counters or None,  # C2 (preuve 6)
             "params": dict(job.params),
             "phase": job.phase,
             "window_idx": job.window_idx,
