@@ -2613,7 +2613,10 @@ class GridBacktester:
                 f"replay invariant violated: sell order for lot {position_id} carries "
                 f"{amount_btc} BTC but the lot holds {matched_position.amount_btc} BTC"
             )
-        if self.btc_held < amount_btc:
+        if self.btc_held + self._INVENTORY_DUST_BTC < amount_btc:
+            # A shortfall beyond Decimal dust is a real inventory problem; a shortfall of
+            # ~1e-29 BTC is the prec-28 rounding of the running sum (B4.3 dust convention) and
+            # must not block the lot forever (it did, silently, pre-C2).
             self.rejections.note(order["order_id"], "insufficient_inventory")
             self.logger.warning(
                 "grid_sell_fill_insufficient_inventory",

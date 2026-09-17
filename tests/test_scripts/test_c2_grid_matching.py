@@ -432,3 +432,28 @@ async def test_sell_created_by_the_buy_callback_at_T_is_not_eligible_on_the_cand
     sides = [(t.side.value, t.timestamp) for t in engine.metrics.trades if not t.forced_liquidation]
     assert sides == [("buy", candles[0].timestamp), ("sell", candles[1].timestamp)]
     assert engine.pairs_completed == 1 and engine.metrics.trades[1].price == LEVEL * Decimal("1.02")
+
+
+@pytest.mark.asyncio
+async def test_engine_sells_a_lot_short_by_decimal_dust_but_rejects_a_real_shortfall() -> None:
+    """The running sum btc_held is prec-28 arithmetic: after other lots were sold it can sit
+    ~1e-29 BTC below the last lot's exact amount. That is dust, not inventory: the sale
+    proceeds (pre-C2 the guard silently blocked such a lot until the terminal liquidation).
+    A shortfall beyond the dust threshold is still a counted skip with no mutation."""
+    engine, strategy = await _engine_with_two_lots()
+    first, second = strategy.open_positions
+    candle = _engine_candle(1, "103000", "103000", "101900", "102600")
+    engine.btc_held = first.amount_btc + second.amount_btc - Decimal("1E-29")  # dust short
+    await engine._process_grok_grid_sell_fill(strategy, _sell_order(second), candle)
+    await engine._process_grok_grid_sell_fill(strategy, _sell_order(first), candle)
+    assert strategy.open_positions == [] and engine.pairs_completed == 2
+    assert abs(engine.btc_held) <= engine._INVENTORY_DUST_BTC
+    assert engine.rejections.by_cause["insufficient_inventory"] == 0
+
+    engine2, strategy2 = await _engine_with_two_lots()
+    lot = strategy2.open_positions[0]
+    engine2.btc_held = lot.amount_btc - Decimal("1E-9")  # a real shortfall (> dust)
+    before = _snapshot(engine2)
+    await engine2._process_grok_grid_sell_fill(strategy2, _sell_order(lot), candle)
+    assert _snapshot(engine2) == before and len(strategy2.open_positions) == 2
+    assert engine2.rejections.by_cause["insufficient_inventory"] == 1
