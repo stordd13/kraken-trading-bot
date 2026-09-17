@@ -28,6 +28,18 @@ Params (from strategies.yaml):
         - "1d_only" → daily strong-bear pause only (new in P7)
         The 1w/1d modes are mutually exclusive by design — combining them
         would be dominated by 1w with no statistical signal added.
+
+Sell attribution (C2, dette 14):
+    A SELL fill closes exactly the lot it designates. With a ``position_id`` the lot is
+    looked up by id and nothing else (no price fallback); without one — the nominal live
+    path, the grid emits no position id on its signals — the lot is the *unique* open
+    position whose ``sell_level`` equals the fill price. Unknown id, no candidate or several
+    candidates: the fill is logged as needing reconciliation and counted in
+    ``fill_anomalies``, the callback ends without removing any lot and without placing a
+    replacement BUY. The replay engine validates the lot before any balance mutation and
+    always passes the id; the live/paper path cannot reject an executed fill, it only
+    signals it. The former ``|sell_level - price| < 1 USD`` proximity match (the SOL
+    "double pop" of B4) is gone.
 """
 
 from __future__ import annotations
@@ -165,6 +177,14 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
         # Tracking
         self._total_grid_profit: Decimal = _ZERO
         self._completed_pairs: int = 0
+        # C2: sell fills that could not be attributed to exactly one lot (see
+        # ``on_trade_filled``); read by the replay engine into its ``rejections`` block.
+        self.fill_anomalies: dict[str, int] = {
+            "unmatched_position_id": 0,
+            "unmatched_sell_fills": 0,
+            "ambiguous_sell_fill": 0,
+            "incoherent_sell_fill": 0,
+        }
 
         # Backtest compatibility
         self._skip_db_sync: bool = False
@@ -520,14 +540,35 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
     # Signal emission
     # ------------------------------------------------------------------
 
-    async def _emit_grid_signal(self, level: GridATRLevel) -> None:
-        """Emit a TRADE_SIGNAL for a grid level (limit order)."""
+    async def _emit_grid_signal(
+        self, level: GridATRLevel, amount_btc: Decimal | None = None
+    ) -> None:
+        """Emit a TRADE_SIGNAL for a grid level (limit order).
+
+        ``amount_btc`` is set for the paired SELL of a filled lot: the execution engine
+        sizes a SELL from ``metadata["amount_btc"]`` first, so the designated lot is sold in
+        its own quantity. No ``position_id`` is emitted (C2 decision 3): the strategy's lot
+        ids and the ``open_positions`` rows do not correspond in the live topology (fallback
+        ids, no rehydration after a restart) — see ``results/C2_replay_report.md``.
+        """
         if self._current_price is None or self._current_timestamp is None:
             return
 
         spacing_pct = float(self._grid_spacing * _HUNDRED) if self._grid_spacing else 0.0
 
         signal_type = SignalType.BUY if level.side == "buy" else SignalType.SELL
+        metadata: dict[str, Any] = {
+            "order_type": "limit",
+            "limit_price": float(level.price),
+            "order_size_usdc": float(self.order_size_usdc),
+            "max_allocation_pct": float(self.max_allocation_pct),
+            "position_size_multiplier": self._position_size_multiplier,
+            "grid_level": float(level.price),
+            "grid_spacing_pct": spacing_pct,
+            "reference_price": float(self._current_price),
+        }
+        if amount_btc is not None:
+            metadata["amount_btc"] = float(amount_btc)
         signal = TradingSignal(
             signal_type=signal_type,
             pair=self.pair,
@@ -539,16 +580,7 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             ),
             strategy=self.bot_id,
             timestamp=self._current_timestamp,
-            metadata={
-                "order_type": "limit",
-                "limit_price": float(level.price),
-                "order_size_usdc": float(self.order_size_usdc),
-                "max_allocation_pct": float(self.max_allocation_pct),
-                "position_size_multiplier": self._position_size_multiplier,
-                "grid_level": float(level.price),
-                "grid_spacing_pct": spacing_pct,
-                "reference_price": float(self._current_price),
-            },
+            metadata=metadata,
         )
 
         await self.event_bus.publish(
@@ -573,8 +605,15 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
     ) -> None:
         """Handle trade fill — place paired opposite order.
 
-        BUY filled  → open position, place SELL one spacing up.
-        SELL filled → close position, place BUY one spacing down, record profit.
+        BUY filled  → open position, place SELL one spacing up (``amount_btc`` = the lot).
+        SELL filled → close **the lot the fill designates** (``_match_sell_fill``), record
+        the profit, then place a BUY one spacing down. When no lot can be attributed
+        (unknown ``position_id``, or no / several lots at the fill price without an id) the
+        fill is logged and counted in ``fill_anomalies`` and the callback ends: no lot is
+        removed and no replacement BUY is placed. Replay: the engine rejected such a fill
+        before touching any balance, so this branch never runs there. Live / paper: the
+        fill is an acquired fact; it is signalled as needing reconciliation, never attributed
+        arbitrarily.
         """
         now = self._current_timestamp or datetime.now(UTC)
         spacing = self._grid_spacing or self.min_spacing_pct
@@ -611,7 +650,7 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             self._grid_levels[f"sell_{sell_level}"] = sell_order
 
             if not self._skip_db_sync:
-                await self._emit_grid_signal(sell_order)
+                await self._emit_grid_signal(sell_order, amount_btc=pos.amount_btc)
 
             self.logger.info(
                 "grid_atr_buy_filled",
@@ -623,31 +662,28 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             )
 
         elif side == "sell":
+            matched = self._match_sell_fill(position_id, price)
+            if matched is None:
+                return  # logged and counted: no lot removed, no replacement BUY
+
+            profit = (price - matched.entry_price) * matched.amount_btc - fee
+            self._total_grid_profit += profit
+            self._completed_pairs += 1
+
+            self.logger.info(
+                "grid_atr_pair_completed",
+                position_id=matched.position_id,
+                buy_price=float(matched.entry_price),
+                sell_price=float(price),
+                profit=float(profit),
+                total_pairs=self._completed_pairs,
+                total_profit=float(self._total_grid_profit),
+            )
+
             buy_level = price * (_ONE - spacing)
             buy_level = buy_level.quantize(Decimal("0.1"))
 
-            # Find and close matching position
-            matched = None
-            for i, pos in enumerate(self._grid_positions):
-                if abs(pos.sell_level - price) < Decimal("1"):
-                    matched = self._grid_positions.pop(i)
-                    break
-
-            if matched:
-                profit = (price - matched.entry_price) * matched.amount_btc - fee
-                self._total_grid_profit += profit
-                self._completed_pairs += 1
-
-                self.logger.info(
-                    "grid_atr_pair_completed",
-                    buy_price=float(matched.entry_price),
-                    sell_price=float(price),
-                    profit=float(profit),
-                    total_pairs=self._completed_pairs,
-                    total_profit=float(self._total_grid_profit),
-                )
-
-            # Place paired BUY
+            # Place paired BUY (only after a valid attribution)
             buy_order = GridATRLevel(
                 price=buy_level,
                 side="buy",
@@ -664,6 +700,50 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
                 price=float(price),
                 buy_target=float(buy_level),
             )
+
+    def _match_sell_fill(self, position_id: int | None, price: Decimal) -> GridATRPosition | None:
+        """Pop and return the lot a SELL fill designates, or None (logged + counted).
+
+        With an id: the lot with that ``position_id``, no fallback of any kind. Without an
+        id: the unique open lot whose ``sell_level`` equals ``price`` (Decimal equality; a
+        resting limit sell fills at its own quantized level). A fill below the designated
+        lot's level is impossible for a limit sell: it is counted ``incoherent_sell_fill``
+        as a consistency check, the id still decides. Never "the closest lot".
+        """
+        if position_id is not None:
+            for i, pos in enumerate(self._grid_positions):
+                if pos.position_id == position_id:
+                    if price < pos.sell_level:
+                        self.fill_anomalies["incoherent_sell_fill"] += 1
+                        self.logger.warning(
+                            "grid_sell_fill_below_lot_level",
+                            position_id=position_id,
+                            price=str(price),
+                            sell_level=str(pos.sell_level),
+                        )
+                    return self._grid_positions.pop(i)
+            self.fill_anomalies["unmatched_position_id"] += 1
+            self.logger.warning(
+                "grid_sell_fill_unknown_position_id",
+                position_id=position_id,
+                price=str(price),
+                open_positions=[p.position_id for p in self._grid_positions],
+            )
+            return None
+
+        candidates = [i for i, pos in enumerate(self._grid_positions) if pos.sell_level == price]
+        if len(candidates) == 1:
+            return self._grid_positions.pop(candidates[0])
+        cause = "unmatched_sell_fills" if not candidates else "ambiguous_sell_fill"
+        self.fill_anomalies[cause] += 1
+        self.logger.warning(
+            "grid_sell_fill_needs_reconciliation",
+            cause=cause,
+            price=str(price),
+            candidates=[self._grid_positions[i].position_id for i in candidates],
+            open_positions=[(p.position_id, str(p.sell_level)) for p in self._grid_positions],
+        )
+        return None
 
     # ------------------------------------------------------------------
     # Backtest compatibility
@@ -716,4 +796,5 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             "completed_pairs": self._completed_pairs,
             "total_grid_profit": float(self._total_grid_profit),
             "paused": self._paused,
+            "fill_anomalies": dict(self.fill_anomalies),
         }
