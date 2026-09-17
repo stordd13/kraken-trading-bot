@@ -227,6 +227,31 @@ def capture_effective_params(
     }
 
 
+@dataclass(frozen=True)
+class ReplayEvent:
+    """One step of the grok grid replay (C2, R1): a candle with its true interval and role.
+
+    ``exec`` — trading candle (``candle_interval``): the resting grid orders are filled on its
+    high/low and the equity is marked at its close (the only role that moves balances);
+    ``ctx`` — 1w / 1d context close: the analyzer is updated; ``decision`` — 4h close: the
+    analyzer is updated then, when ``decides`` (timestamp >= start), the strategy's
+    ``_handle_ohlc`` runs. ``phase`` orders the events of one timestamp: execution first (an
+    order created with the information of this close cannot fill on a candle already over),
+    then the contexts from the slowest to the 4h decision. Orders created by the decision are
+    eligible from the next ``exec`` event only.
+    """
+
+    candle: "OHLCData"
+    interval: int
+    role: str
+    phase: int
+    decides: bool = False
+
+
+#: Same-timestamp order of the grok grid replay events (C2, R1).
+_GRID_REPLAY_PHASE: dict[str, int] = {"exec": 0, "1w": 1, "1d": 2, "4h": 3}
+
+
 @dataclass
 class BacktestTrade:
     """Record of a simulated trade during backtesting."""
@@ -1762,6 +1787,9 @@ class GridBacktester:
         # Grid state
         self.active_buy_orders: list[dict[str, Decimal]] = []  # {price, amount_usdc}
         self.active_sell_orders: list[dict[str, Any]] = []  # {price, amount_btc, entry_price}
+        # C2 (R1): the inputs the grok grid decision consumes, read on the analyzer right
+        # before each 4h decision (proof harness; not exported by to_dict()).
+        self.decision_trace: list[dict[str, Any]] = []
 
         # Grid metrics
         self.pairs_completed: int = 0
@@ -1886,28 +1914,55 @@ class GridBacktester:
         start_time: datetime,
         end_time: datetime,
         candles_trading: list[OHLCData],
-    ) -> list[tuple[OHLCData, int, bool]]:
-        """Build replay for ATR grid using 4h trigger + 1d/1w context feeds."""
+    ) -> list[ReplayEvent]:
+        """Build the grok ATR-grid replay: true 4h / 1d / 1w series, 5m execution (C2, R1).
+
+        Pre-C2 the trading candles were tagged 240 and the 4h series stopped at ``start``:
+        after the warmup the "4h" indicators were fed with 5-minute bars and the grid decided
+        on every one of them. Now the 4h series is loaded over the whole run and carries the
+        decisions (at its closes >= ``start``), 1d / 1w feed the analyzer with their true
+        interval (unchanged), and the trading candles keep their own interval: fills and
+        equity only. Same-timestamp order: ``exec`` (5m) → 1w → 1d → 4h decision.
+        ``candle_interval`` must stay below 4h, otherwise the execution series would be the 4h
+        series fed twice.
+        """
+        if self.candle_interval >= 240:
+            raise ValueError(
+                "grok grid replay: candle_interval must be shorter than 4h (240 minutes) — "
+                f"got {self.candle_interval}; decisions run on the 4h series, fills on the "
+                "trading candles"
+            )
         warmup_4h = start_time - timedelta(days=15)
         warmup_1d = start_time - timedelta(days=250)
         warmup_1w = start_time - timedelta(days=400)
 
-        candles_4h_warmup = await self._load_candles_for_interval(pair, 240, warmup_4h, start_time)
+        candles_4h = await self._load_candles_for_interval(pair, 240, warmup_4h, end_time)
         candles_1d = await self._load_candles_for_interval(pair, 1440, warmup_1d, end_time)
         candles_1w = await self._load_candles_for_interval(pair, 10080, warmup_1w, end_time)
 
-        replay_sequence: list[tuple[OHLCData, int, bool]] = []
-        for candle in candles_4h_warmup:
-            replay_sequence.append((candle, 240, False))
-        for candle in candles_1w:
-            replay_sequence.append((candle, 10080, False))
-        for candle in candles_1d:
-            replay_sequence.append((candle, 1440, False))
-        for candle in candles_trading:
-            replay_sequence.append((candle, 240, True))
-
-        replay_sequence.sort(key=lambda item: (item[0].timestamp, -item[1]))
-        return replay_sequence
+        ci = self.candle_interval
+        events: list[ReplayEvent] = [
+            ReplayEvent(c, ci, "exec", _GRID_REPLAY_PHASE["exec"]) for c in candles_trading
+        ]
+        events += [ReplayEvent(c, 10080, "ctx", _GRID_REPLAY_PHASE["1w"]) for c in candles_1w]
+        events += [ReplayEvent(c, 1440, "ctx", _GRID_REPLAY_PHASE["1d"]) for c in candles_1d]
+        events += [
+            ReplayEvent(
+                c, 240, "decision", _GRID_REPLAY_PHASE["4h"], decides=c.timestamp >= start_time
+            )
+            for c in candles_4h
+        ]
+        events.sort(key=lambda e: (e.candle.timestamp, e.phase))
+        self.logger.info(
+            "grid_replay_sequence_built",
+            trading_interval=ci,
+            candles_trading=len(candles_trading),
+            candles_4h=len(candles_4h),
+            decisions=sum(1 for e in events if e.decides),
+            candles_1d=len(candles_1d),
+            candles_1w=len(candles_1w),
+        )
+        return events
 
     async def _create_grok_grid_strategy(self):
         """Instantiate the real ATR-adaptive grid strategy for faithful replay."""
@@ -2299,66 +2354,22 @@ class GridBacktester:
             period=f"{start_time.date()} to {end_time.date()}",
         )
 
-        # For MTF grid variants, load higher timeframe context candles
-        analyzer = None
-        strategy = None
-        replay_sequence: list[tuple[OHLCData, int, bool]] = []
-
         if self.strategy_name == "grok_grid_atr_adaptive_v4":
             strategy, analyzer = await self._create_grok_grid_strategy()
             # Expose inner strategy for force-close of unrealized positions at end.
             self._strategy_obj = strategy
-            replay_sequence = await self._build_grok_grid_replay_sequence(
+            events = await self._build_grok_grid_replay_sequence(
                 pair, start_time, end_time, candles
             )
-        else:
-            replay_sequence = [(c, self.candle_interval, True) for c in candles]
+            await self._replay_grok_grid(strategy, analyzer, events)
+            self._calculate_final_metrics()
+            return self.metrics
 
-        # Replay
-        for candle, interval, is_tradeable in replay_sequence:
+        replay_sequence = [(c, self.candle_interval, True) for c in candles]
+
+        # Replay (legacy non-grok grid)
+        for candle, _interval, is_tradeable in replay_sequence:
             current_price = candle.close
-
-            if self.strategy_name == "grok_grid_atr_adaptive_v4":
-                assert analyzer is not None
-                assert strategy is not None
-
-                if is_tradeable:
-                    pending_orders = self._get_grok_grid_pending_orders(strategy)
-                    filled_buys = [
-                        order
-                        for order in pending_orders
-                        if order["side"] == "buy" and candle.low <= order["price"]
-                    ]
-                    filled_sells = [
-                        order
-                        for order in pending_orders
-                        if order["side"] == "sell" and candle.high >= order["price"]
-                    ]
-                    for order in filled_buys:
-                        await self._process_grok_grid_buy_fill(strategy, order, candle)
-                    for order in filled_sells:
-                        await self._process_grok_grid_sell_fill(strategy, order, candle)
-
-                analyzer.update(self._make_ohlc_payload(candle, interval), interval)
-
-                if not is_tradeable:
-                    continue
-
-                old_center = strategy._grid_center
-                old_spacing = strategy._grid_spacing
-                before_ids = self._get_grok_grid_pending_order_ids(strategy)
-
-                await strategy._handle_ohlc(self._make_ohlc_payload(candle, interval))
-
-                after_ids = self._get_grok_grid_pending_order_ids(strategy)
-                self.total_orders_placed += len(after_ids - before_ids)
-                if old_center is not None and (
-                    strategy._grid_center != old_center or strategy._grid_spacing != old_spacing
-                ):
-                    self.rebalance_count += 1
-
-                self._record_equity(candle)
-                continue
 
             if not is_tradeable:
                 continue
@@ -2404,6 +2415,69 @@ class GridBacktester:
         self._calculate_final_metrics()
 
         return self.metrics
+
+    async def _replay_grok_grid(
+        self, strategy: Any, analyzer: Any, events: list[ReplayEvent]
+    ) -> None:
+        """Drive the grok grid over its replay events (C2, R1).
+
+        ``exec``: snapshot the pending orders (buy levels + one sell per open lot), fill the
+        touched ones (buys then sells), feed the candle to the analyzer at its own interval,
+        update the strategy's price state (``on_ohlc``) and mark the equity — the last exec
+        close is the terminal-liquidation reference. ``ctx``: analyzer update only.
+        ``decision``: analyzer update, then — from ``start`` on — the strategy decides on the
+        4h close (``_handle_ohlc``); warmup 4h candles only feed the analyzer.
+        """
+        for event in events:
+            candle, interval = event.candle, event.interval
+            payload = self._make_ohlc_payload(candle, interval)
+
+            if event.role == "exec":
+                pending_orders = self._get_grok_grid_pending_orders(strategy)
+                filled_buys = [
+                    order
+                    for order in pending_orders
+                    if order["side"] == "buy" and candle.low <= order["price"]
+                ]
+                filled_sells = [
+                    order
+                    for order in pending_orders
+                    if order["side"] == "sell" and candle.high >= order["price"]
+                ]
+                for order in filled_buys:
+                    await self._process_grok_grid_buy_fill(strategy, order, candle)
+                for order in filled_sells:
+                    await self._process_grok_grid_sell_fill(strategy, order, candle)
+                analyzer.update(payload, interval)
+                await strategy.on_ohlc(payload)
+                self._record_equity(candle)
+                continue
+
+            analyzer.update(payload, interval)
+            if event.role != "decision" or not event.decides:
+                continue
+
+            self.decision_trace.append(
+                {
+                    "timestamp": candle.timestamp,
+                    "close": candle.close,
+                    "atr_4h": analyzer.get_atr(strategy.atr_period, "4h"),
+                    "regime_1d": analyzer.get_regime("1d"),
+                    "regime_1w": analyzer.get_regime("1w"),
+                }
+            )
+            old_center = strategy._grid_center
+            old_spacing = strategy._grid_spacing
+            before_ids = self._get_grok_grid_pending_order_ids(strategy)
+
+            await strategy._handle_ohlc(payload)
+
+            after_ids = self._get_grok_grid_pending_order_ids(strategy)
+            self.total_orders_placed += len(after_ids - before_ids)
+            if old_center is not None and (
+                strategy._grid_center != old_center or strategy._grid_spacing != old_spacing
+            ):
+                self.rebalance_count += 1
 
     async def _load_candles(
         self, pair: str, start_time: datetime, end_time: datetime
@@ -2996,6 +3070,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--equity-out applies to a single run, not to --cross-validate")
     if args.trades_out is not None and args.cross_validate:
         parser.error("--trades-out is a single-run artifact; drop it or drop --cross-validate")
+    if args.strategy in GridBacktester.GRID_STRATEGIES:
+        if args.cross_validate:
+            # C2 (N1): the cross-validate branch builds a BacktestEngine unconditionally and
+            # GridBacktester has no such mode — fail fast rather than replay a grid strategy
+            # through the signal engine.
+            parser.error(
+                f"--cross-validate has no grid mode: {args.strategy} would run through the "
+                "signal engine (use the P6 / P7 runners for train/test splits)"
+            )
+        if args.interval >= 240:
+            parser.error(
+                "--interval must be shorter than 4h for a grid strategy (decisions run on the "
+                f"4h series, fills on the trading candles); got {args.interval}"
+            )
     return args
 
 

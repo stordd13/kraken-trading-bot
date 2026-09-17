@@ -21,6 +21,7 @@ from unittest.mock import MagicMock
 import pytest
 
 _project_root = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(_project_root))
 sys.path.insert(0, str(_project_root / "scripts"))
 sys.path.insert(0, str(_project_root / "src"))
 
@@ -283,7 +284,7 @@ from test_grid_terminal_liquidation import (  # noqa: E402
     _run,
 )
 
-from tests.test_scripts.test_grid_terminal_liquidation import (
+from test_scripts.test_grid_terminal_liquidation import (
     _candle as _engine_candle,
 )
 
