@@ -268,3 +268,166 @@ def test_get_config_exposes_the_fill_anomaly_counters() -> None:
         "ambiguous_sell_fill": 0,
         "incoherent_sell_fill": 0,
     }
+
+
+# ---------------------------------------------------------------------------
+# Engine: validate before mutate, the lot's quantity, post-condition, temporal eligibility
+# ---------------------------------------------------------------------------
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from test_grid_terminal_liquidation import (  # noqa: E402
+    LEVEL,
+    ORDER,
+    _engine,
+    _flat,
+    _run,
+)
+
+from tests.test_scripts.test_grid_terminal_liquidation import (
+    _candle as _engine_candle,
+)
+
+
+def _snapshot(engine) -> tuple:  # noqa: ANN001
+    return (
+        engine.usdc_balance,
+        engine.btc_held,
+        engine.total_fees,
+        len(engine.metrics.trades),
+        engine.pairs_completed,
+        engine.metrics.total_pnl,
+    )
+
+
+async def _engine_with_two_lots():  # noqa: ANN202
+    """Real engine + real strategy: two lots bought at 100000 and 100500 (sell targets
+    102000 / 102500 with spacing 2 %), no candle replay — fills are driven by hand."""
+    engine = _engine("bybit")
+    strategy, _analyzer = await engine._create_grok_grid_strategy()
+    strategy._grid_spacing = Decimal("0.02")
+    strategy._current_timestamp = T0
+    for price in (Decimal("100000"), Decimal("100500")):
+        level = GridATRLevel(price=price, side="buy", status="pending", amount_usdc=ORDER)
+        strategy._grid_levels[f"buy_{price}"] = level
+        order = {
+            "order_id": f"buy_{price}",
+            "side": "buy",
+            "price": price,
+            "amount_usdc": ORDER,
+            "level": level,
+        }
+        await engine._process_grok_grid_buy_fill(
+            strategy, order, _engine_candle(0, "100600", "100600", "99900", "100000")
+        )
+    assert len(strategy.open_positions) == 2
+    return engine, strategy
+
+
+def _sell_order(position) -> dict:  # noqa: ANN001
+    return {
+        "order_id": f"sell_pos_{position.position_id}",
+        "side": "sell",
+        "price": position.sell_level,
+        "amount_btc": position.amount_btc,
+        "position_id": position.position_id,
+    }
+
+
+@pytest.mark.asyncio
+async def test_engine_sell_fill_closes_the_designated_lot_with_its_quantity_and_cost_basis() -> (
+    None
+):
+    engine, strategy = await _engine_with_two_lots()
+    bought = sum(t.amount_crypto for t in engine.metrics.trades)
+    first, second = strategy.open_positions
+    candle = _engine_candle(1, "103000", "103000", "101900", "102600")
+
+    await engine._process_grok_grid_sell_fill(strategy, _sell_order(second), candle)
+    # 1. the designated lot is removed, the other preserved
+    assert [p.position_id for p in strategy.open_positions] == [first.position_id]
+    sell = engine.metrics.trades[-1]
+    # 2. quantity sold == the lot's quantity
+    assert sell.amount_crypto == second.amount_btc
+    # 3. the P&L cost basis is the designated lot's
+    assert sell.pnl == sell.amount_usdc - sell.fee - second.amount_btc * second.entry_price
+    # 4. no oversell: cumulative sold <= cumulative bought, inventory reconciles
+    sold = sum(t.amount_crypto for t in engine.metrics.trades if t.side.value == "sell")
+    assert sold <= bought and engine.btc_held == bought - sold == first.amount_btc
+
+    await engine._process_grok_grid_sell_fill(strategy, _sell_order(first), candle)
+    assert strategy.open_positions == []
+    sold = sum(t.amount_crypto for t in engine.metrics.trades if t.side.value == "sell")
+    assert sold == bought and engine.btc_held == 0
+    assert engine.pairs_completed == 2 and engine.metrics.winning_trades == 2
+
+
+@pytest.mark.asyncio
+async def test_engine_rejects_an_unknown_position_id_before_any_mutation() -> None:
+    engine, strategy = await _engine_with_two_lots()
+    first, second = strategy.open_positions
+    before = _snapshot(engine)
+    ghost = dict(_sell_order(first), order_id="sell_pos_999", position_id=999)
+    await engine._process_grok_grid_sell_fill(
+        strategy, ghost, _engine_candle(1, "103000", "103000", "101900", "102600")
+    )
+    # 5. no accounting mutation at all: balances, inventory, fees, trades, pairs, pnl
+    assert _snapshot(engine) == before
+    assert [p.position_id for p in strategy.open_positions] == [
+        first.position_id,
+        second.position_id,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_engine_rejects_an_inventory_shortfall_before_any_mutation() -> None:
+    engine, strategy = await _engine_with_two_lots()
+    first, _second = strategy.open_positions
+    engine.btc_held = first.amount_btc / 2  # corrupted wallet: cannot cover the lot
+    before = _snapshot(engine)
+    await engine._process_grok_grid_sell_fill(
+        strategy, _sell_order(first), _engine_candle(1, "103000", "103000", "101900", "102600")
+    )
+    assert _snapshot(engine) == before
+    assert len(strategy.open_positions) == 2
+
+
+@pytest.mark.asyncio
+async def test_engine_raises_when_the_order_quantity_is_not_the_lots() -> None:
+    engine, strategy = await _engine_with_two_lots()
+    first, _second = strategy.open_positions
+    wrong = dict(_sell_order(first), amount_btc=first.amount_btc * 2)
+    with pytest.raises(RuntimeError, match="replay invariant"):
+        await engine._process_grok_grid_sell_fill(
+            strategy, wrong, _engine_candle(1, "103000", "103000", "101900", "102600")
+        )
+    assert len(strategy.open_positions) == 2  # nothing moved
+
+
+@pytest.mark.asyncio
+async def test_engine_raises_when_the_strategy_does_not_close_the_designated_lot() -> None:
+    engine, strategy = await _engine_with_two_lots()
+    first, _second = strategy.open_positions
+
+    async def keep_everything(**kwargs):  # noqa: ANN003, ANN202
+        return None  # a strategy that ignores the fill
+
+    strategy.on_trade_filled = keep_everything  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError, match="still open"):
+        await engine._process_grok_grid_sell_fill(
+            strategy, _sell_order(first), _engine_candle(1, "103000", "103000", "101900", "102600")
+        )
+
+
+@pytest.mark.asyncio
+async def test_sell_created_by_the_buy_callback_at_T_is_not_eligible_on_the_candle_of_T() -> None:
+    # candle 0 fills the seeded BUY at 100000 (low 99500) and its high (103000) is above the
+    # paired sell target (102000, spacing 2 %): the sell created by the callback at T must
+    # wait for the next candle; candle 1 (high 103000) fills it.
+    candles = [
+        _engine_candle(0, "100500", "103000", "99500", "100000"),
+        _engine_candle(1, "100000", "103000", "99900", "102500"),
+    ] + [_flat(i, "101000") for i in range(2, 12)]  # run() needs >= 10 candles
+    engine = await _run(_engine("bybit"), candles)
+    sides = [(t.side.value, t.timestamp) for t in engine.metrics.trades if not t.forced_liquidation]
+    assert sides == [("buy", candles[0].timestamp), ("sell", candles[1].timestamp)]
+    assert engine.pairs_completed == 1 and engine.metrics.trades[1].price == LEVEL * Decimal("1.02")

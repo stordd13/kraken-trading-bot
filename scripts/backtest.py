@@ -1965,21 +1965,16 @@ class GridBacktester:
         return {order["order_id"] for order in self._get_grok_grid_pending_orders(strategy)}
 
     def _mark_grok_grid_level_filled(self, strategy: Any, side: str, price: Decimal) -> None:
-        """Mark a matching grid level as filled when a simulated fill occurs."""
-        if side == "buy":
-            level = strategy._grid_levels.get(f"buy_{price}")
-            if level is not None:
-                level.status = "filled"
-            return
+        """Mark the grid level of a simulated fill as filled — exact key on both sides.
 
-        for level in strategy._grid_levels.values():
-            if (
-                level.side == side
-                and level.status == "pending"
-                and abs(level.price - price) < Decimal("1")
-            ):
-                level.status = "filled"
-                break
+        C2 (R4): the former SELL branch matched ``|level.price - price| < 1`` USD, a second
+        price-proximity matcher next to the strategy's; levels are keyed ``f"{side}_{price}"``
+        by the strategy itself, so the exact key is the only correct lookup. Status only —
+        pending SELL orders are derived from the open lots, never from these levels.
+        """
+        level = strategy._grid_levels.get(f"{side}_{price}")
+        if level is not None:
+            level.status = "filled"
 
     async def _process_grok_grid_buy_fill(
         self, strategy: Any, order: dict[str, Any], candle: OHLCData
@@ -2032,10 +2027,43 @@ class GridBacktester:
     async def _process_grok_grid_sell_fill(
         self, strategy: Any, order: dict[str, Any], candle: OHLCData
     ) -> None:
-        """Process a grok ATR-grid SELL fill through the real strategy lifecycle."""
+        """Process a grok ATR-grid SELL fill: validate the designated lot, then settle (C2, R4).
+
+        The lot is looked up by ``position_id`` in the strategy's open positions **before** any
+        balance mutation: an unknown id or an inventory shortfall is a skip — nothing moves,
+        no trade is booked (pre-C2 the wallet was debited first and the fill then dropped
+        silently: an orphan accounting write, dette 15(d)). The quantity sold is the lot's.
+        After the settlement the strategy must have closed that very lot (it matches by id
+        since C2): anything else is a replay-invariant violation and raises.
+        """
         fill_price = order["price"]
         amount_btc = order["amount_btc"]
+        position_id = order["position_id"]
+
+        matched_position = next(
+            (p for p in strategy.open_positions if p.position_id == position_id), None
+        )
+        if matched_position is None:
+            self.logger.warning(
+                "grid_sell_fill_unknown_position_id",
+                position_id=position_id,
+                price=float(fill_price),
+                timestamp=candle.timestamp,
+            )
+            return
+        if matched_position.amount_btc != amount_btc:
+            raise RuntimeError(
+                f"replay invariant violated: sell order for lot {position_id} carries "
+                f"{amount_btc} BTC but the lot holds {matched_position.amount_btc} BTC"
+            )
         if self.btc_held < amount_btc:
+            self.logger.warning(
+                "grid_sell_fill_insufficient_inventory",
+                position_id=position_id,
+                amount_btc=float(amount_btc),
+                btc_held=float(self.btc_held),
+                timestamp=candle.timestamp,
+            )
             return
 
         gross_usdc = amount_btc * fill_price
@@ -2045,14 +2073,6 @@ class GridBacktester:
         self.usdc_balance += net_usdc
         self.total_fees += fee
         self._mark_grok_grid_level_filled(strategy, "sell", fill_price)
-
-        matched_position = None
-        for position in strategy.open_positions:
-            if position.position_id == order["position_id"]:
-                matched_position = position
-                break
-        if matched_position is None:
-            return
 
         cost_basis = matched_position.amount_btc * matched_position.entry_price
         pnl = net_usdc - cost_basis
@@ -2092,8 +2112,13 @@ class GridBacktester:
             price=fill_price,
             fee=fee,
             reference_price=None,
-            position_id=order["position_id"],
+            position_id=position_id,
         )
+        if any(p.position_id == position_id for p in strategy.open_positions):
+            raise RuntimeError(
+                f"replay invariant violated: lot {position_id} is still open after its sell "
+                f"fill at {fill_price} ({candle.timestamp.isoformat()})"
+            )
         self.total_orders_placed += 1
 
     def _initialize_grid(self, current_price: Decimal) -> None:
