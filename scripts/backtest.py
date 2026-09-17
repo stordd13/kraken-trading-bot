@@ -10,7 +10,7 @@ Usage:
 
 import argparse
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -21,7 +21,7 @@ import re
 from typing import Any
 
 from dotenv import load_dotenv
-from sqlalchemy import select, text
+from sqlalchemy import desc, select, text
 
 from krakenbot.backtest_metrics import (
     METRICS_VERSION,
@@ -35,6 +35,7 @@ from krakenbot.config.settings import FEE_MODEL_NAMES, ExchangeFees, Settings, g
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import EventBus
 from krakenbot.core.logger import get_logger
+from krakenbot.indicators.multi_timeframe import INTERVAL_TO_TF, MACD_PARAMS
 from krakenbot.models.base import TradeSide
 from krakenbot.models.market_data import OHLCData
 from krakenbot.models.trades import BacktestRun, Trade, TradeStatus
@@ -225,6 +226,265 @@ def capture_effective_params(
         "passed_params": {k: _jsonable(v) for k, v in passed.items()},
         "params": params,
     }
+
+
+# ---------------------------------------------------------------------------
+# C2 (R2): indicator requirements at effective params, pre-registration, candle-based warmup
+# ---------------------------------------------------------------------------
+
+#: Analyzer buckets created at MultiTimeframeAnalyzer.__init__ (never lazy): their periods.
+_ANALYZER_FIXED_ATR = 14
+_ANALYZER_FIXED_RSI = 14
+_ANALYZER_FIXED_ADX = 14
+_ANALYZER_FIXED_BB = 20
+_ANALYZER_REGIME_EMA_SLOW = 50  # get_regime reads the fixed ema_fast(20)/ema_slow(50) pair
+#: Backward extension of a calendar warmup window, in multiples of the required history.
+_WARMUP_EXTENSION_FACTOR = 3
+#: Largest internal gap (missing candles) a warmup history may carry and still be sufficient.
+_WARMUP_GAP_TOLERANCE = 1
+
+
+@dataclass(frozen=True)
+class IndicatorRequirement:
+    """An indicator a strategy reads on its analyzer, with the parameters it passes (C2, R2).
+
+    ``kind`` ∈ ema | atr | rsi | supertrend | donchian | adx | macd | bb | regime; ``params``
+    are the exact values of the strategy's call site (so the lazy key is identical: e.g.
+    ``(st_atr_period, float(st_multiplier))`` for SuperTrend). ``candles`` is the readiness
+    count of the indicator class (ready ≠ converged: EMA / ATR / RSI / ADX / SuperTrend seed
+    on their first ``period`` candles and stay history-dependent afterwards).
+    """
+
+    kind: str
+    tf: str
+    params: tuple[Any, ...] = ()
+
+    @property
+    def candles(self) -> int:
+        if self.kind in ("ema", "atr", "supertrend"):
+            return int(self.params[0])
+        if self.kind == "rsi":
+            return int(self.params[0]) + 1
+        if self.kind == "donchian":
+            return max(int(self.params[0]), int(self.params[1]))
+        if self.kind == "adx":
+            return 2 * _ANALYZER_FIXED_ADX
+        if self.kind == "macd":
+            # MACD values from candle `slow` on, signal EMA after `signal` of them
+            _fast, slow, signal = MACD_PARAMS[self.tf]
+            return slow + signal - 1
+        if self.kind == "bb":
+            return _ANALYZER_FIXED_BB
+        if self.kind == "regime":
+            return _ANALYZER_REGIME_EMA_SLOW
+        raise ValueError(f"unknown indicator kind {self.kind!r}")
+
+    @property
+    def lazy(self) -> bool:
+        """Created by the analyzer on the first ``get_*`` call (the call returns None)."""
+        if self.kind in ("ema", "supertrend", "donchian"):
+            return True
+        if self.kind == "atr":
+            return int(self.params[0]) != _ANALYZER_FIXED_ATR
+        if self.kind == "rsi":
+            return int(self.params[0]) != _ANALYZER_FIXED_RSI
+        return False
+
+    def preregister(self, analyzer: Any) -> None:
+        """Create the indicator in the analyzer before any warmup candle flows (no-op if fixed)."""
+        if not self.lazy:
+            return
+        if self.kind == "ema":
+            analyzer.get_ema(int(self.params[0]), self.tf)
+        elif self.kind == "atr":
+            analyzer.get_atr(int(self.params[0]), self.tf)
+        elif self.kind == "rsi":
+            analyzer.get_rsi(int(self.params[0]), self.tf)
+        elif self.kind == "supertrend":
+            analyzer.get_supertrend(
+                self.tf, atr_period=int(self.params[0]), multiplier=self.params[1]
+            )
+        elif self.kind == "donchian":
+            analyzer.get_donchian(
+                self.tf, period_upper=int(self.params[0]), period_lower=int(self.params[1])
+            )
+
+
+def indicator_requirements(strategy_name: str, strategy: Any) -> list[IndicatorRequirement]:
+    """Every analyzer read of a strategy, at the parameters the instance actually runs with.
+
+    Built from the instance attributes (not from ``effective_params``, which stringifies
+    Decimals and cannot see a parameter stored under another attribute name); the table is
+    checked against the strategy sources by ``tests/test_scripts/test_c2_warmup_requirements.py``
+    (every ``analyzer.get_*`` call site is covered). ``regime`` stands for ``get_regime(tf)``,
+    which reads the analyzer's fixed EMA 20 / 50 of that timeframe.
+    """
+    R = IndicatorRequirement
+    if strategy_name == "grok_supertrend_4h":
+        return [
+            R("supertrend", "4h", (int(strategy.st_atr_period), float(strategy.st_multiplier))),
+            R("atr", "4h", (14,)),
+            R("regime", "1d"),
+        ]
+    if strategy_name == "grok_ema_adx_atr":
+        return [
+            R("ema", "4h", (int(strategy.ema_fast_period),)),
+            R("ema", "4h", (int(strategy.ema_slow_period),)),
+            R("adx", "4h"),
+            R("atr", "4h", (14,)),
+            R("regime", "1d"),
+        ]
+    if strategy_name == "grok_donchian_breakout_4h":
+        return [
+            R(
+                "donchian",
+                "4h",
+                (int(strategy.donchian_upper_period), int(strategy.donchian_lower_period)),
+            ),
+            R("atr", "4h", (14,)),
+            R("regime", "1d"),
+            R("adx", "1d"),
+        ]
+    if strategy_name == "grok_adaptive_dca_weekly":
+        return [
+            R("rsi", "1d", (14,)),
+            R("ema", "1d", (200,)),
+            R("regime", "1w"),
+            R("regime", "1d"),
+        ]
+    if strategy_name == "grok_grid_atr_adaptive_v4":
+        return [
+            R("atr", "4h", (int(strategy.atr_period),)),
+            R("regime", "1d"),
+            R("regime", "1w"),
+        ]
+    if strategy_name == "gemini_scalping_volatilite":
+        return [
+            R("atr", "5m", (14,)),
+            R("rsi", "5m", (int(strategy.rsi_period),)),
+            R("macd", "5m"),
+            R("regime", "1h"),
+        ]
+    if strategy_name == "gemini_retour_moyenne":
+        return [
+            R("bb", "15m"),
+            R("atr", "15m", (14,)),
+            R("rsi", "15m", (14,)),
+            R("adx", "1h"),
+        ]
+    if strategy_name == "gemini_suivi_tendance_momentum":
+        return [
+            R("atr", "4h", (14,)),
+            R("ema", "4h", (20,)),
+            R("regime", "1d"),
+            R("ema", "1d", (50,)),
+            R("ema", "1d", (200,)),
+            R("adx", "1d"),
+        ]
+    return []
+
+
+def preregister_indicators(analyzer: Any, requirements: list[IndicatorRequirement]) -> None:
+    """Create every lazy indicator of ``requirements`` before the warmup data flows (C2, R2).
+
+    Pre-C2 the engines registered a hardcoded list (EMA 20/50 4h, SuperTrend (10, 3.0),
+    Donchian (20, 10)); a variant swept by P7 — SuperTrend (8, 2.0), Donchian (15, 10) — or
+    the DCA's EMA 200 1d was created on its first read after the warmup and stayed silent
+    for its whole period (B4 constat, results/C2_replay_report.md).
+    """
+    for req in requirements:
+        req.preregister(analyzer)
+
+
+def warmup_needs(requirements: list[IndicatorRequirement]) -> dict[str, int]:
+    """Candles required per timeframe for every requirement to be ready at ``start``."""
+    needs: dict[str, int] = {}
+    for req in requirements:
+        needs[req.tf] = max(needs.get(req.tf, 0), req.candles)
+    return needs
+
+
+async def load_context_series(
+    load_window: Callable[[int, datetime, datetime], Awaitable[list[OHLCData]]],
+    load_before: Callable[[int, datetime, int, datetime], Awaitable[list[OHLCData]]],
+    *,
+    interval: int,
+    window_start: datetime,
+    start: datetime,
+    end: datetime,
+    required: int,
+) -> tuple[list[OHLCData], dict[str, Any]]:
+    """Load one context series with a candle-sized warmup and report what was really loaded.
+
+    Monotone rule (C2, R2): the calendar window ``[window_start, end]`` is loaded as before;
+    when fewer than ``required`` candles are stamped ``<= start`` the history is extended
+    backwards by count (never reduced) down to a floor of ``required × interval × 3`` before
+    ``window_start``. The report states what the indicators will really see: candles loaded
+    at or before ``start``, extension, candles missing between the last one and ``start``
+    (``stale_by_candles``), the largest gap inside the history — and ``sufficient`` only when
+    the count is met, the history reaches ``start`` and no gap exceeds one candle. Nothing is
+    ever bridged silently: a hole is reported, never certified.
+    """
+    candles = await load_window(interval, window_start, end)
+    history = [c for c in candles if c.timestamp <= start]
+    loaded = len(history)
+    extended_by = 0
+    if required > loaded:
+        floor = window_start - timedelta(minutes=interval * required * _WARMUP_EXTENSION_FACTOR)
+        extra = await load_before(interval, window_start, required - loaded, floor)
+        candles = extra + candles
+        history = extra + history
+        extended_by = len(extra)
+        loaded += extended_by
+    step = timedelta(minutes=interval)
+    stamps = [c.timestamp for c in history]
+    largest_gap = 0
+    for earlier, later in zip(stamps, stamps[1:], strict=False):
+        largest_gap = max(largest_gap, int((later - earlier) / step) - 1)
+    stale = None if not stamps else max(0, int((start - stamps[-1]) / step) - 1)
+    sufficient = loaded >= required and stale == 0 and largest_gap <= _WARMUP_GAP_TOLERANCE
+    report = {
+        "interval": interval,
+        "required": required,
+        "loaded": loaded,
+        "extended_by": extended_by,
+        "stale_by_candles": stale,
+        "largest_gap_candles": largest_gap,
+        "sufficient": sufficient,
+        "first": stamps[0].isoformat() if stamps else None,
+        "last": stamps[-1].isoformat() if stamps else None,
+    }
+    return candles, report
+
+
+async def _load_candles_before(
+    db_manager: DatabaseManager,
+    pair: str,
+    interval: int,
+    before: datetime,
+    limit: int,
+    floor: datetime,
+    exchange: str,
+) -> list[OHLCData]:
+    """The ``limit`` most recent candles stamped in ``[floor, before)``, oldest first (C2, R2)."""
+    if limit <= 0:
+        return []
+    async with db_manager.read_session() as session:
+        await session.execute(text("SET LOCAL plan_cache_mode = force_custom_plan"))
+        stmt = (
+            select(OHLCData)
+            .where(OHLCData.pair == pair)
+            .where(OHLCData.interval == interval)
+            .where(OHLCData.exchange == exchange)
+            .where(OHLCData.timestamp < before)
+            .where(OHLCData.timestamp >= floor)
+            .order_by(desc(OHLCData.timestamp))
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+        rows = list(result.scalars().all())
+    rows.reverse()
+    return rows
 
 
 @dataclass(frozen=True)
@@ -507,6 +767,11 @@ class BacktestEngine:
         self.min_order_usdc = Decimal(str(min_order_usdc))
         # Runtime snapshot of the strategy's effective parameters (set by run(), B4.3 GATE B).
         self.effective_params: dict[str, Any] | None = None
+        # C2 (R2): indicator requirements at effective params, warmup needs (candles per TF)
+        # and the per-TF report of what was really loaded (see load_context_series).
+        self._requirements: list[IndicatorRequirement] = []
+        self._warmup_needs: dict[str, int] = {}
+        self.warmup: dict[str, dict[str, Any]] = {}
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -633,6 +898,43 @@ class BacktestEngine:
             exchange=self.exchange,
         )
 
+    async def _load_candles_before(
+        self, pair: str, interval: int, before: datetime, limit: int, floor: datetime
+    ) -> list[OHLCData]:
+        """The ``limit`` candles right before ``before`` (not older than ``floor``), C2 R2."""
+        return await _load_candles_before(
+            self.db_manager, pair, interval, before, limit, floor, self.exchange
+        )
+
+    async def _load_context_series(
+        self,
+        pair: str,
+        tf: str,
+        interval: int,
+        window_start: datetime,
+        start: datetime,
+        end: datetime,
+    ) -> list[OHLCData]:
+        """One context series sized in candles (C2, R2); its report lands in ``self.warmup``."""
+        candles, report = await load_context_series(
+            lambda i, s, e: self._load_candles_for_interval(pair, i, s, e),
+            lambda i, b, n, f: self._load_candles_before(pair, i, b, n, f),
+            interval=interval,
+            window_start=window_start,
+            start=start,
+            end=end,
+            required=self._warmup_needs.get(tf, 0),
+        )
+        self.warmup[tf] = report
+        return candles
+
+    def warmup_summary(self) -> dict[str, dict[str, Any]]:
+        """Per-timeframe warmup report (C2, R2): required / loaded / extended / stale / gaps."""
+        return {
+            tf: dict(report)
+            for tf, report in sorted(self.warmup.items(), key=lambda kv: kv[1]["interval"])
+        }
+
     async def _build_replay_sequence(
         self,
         pair: str,
@@ -646,6 +948,10 @@ class BacktestEngine:
         merges them with the trading candles, and sorts chronologically.
         Higher timeframes are processed first on timestamp ties so the
         analyzer is updated before the trigger timeframe generates signals.
+        C2 (R2): every context series is sized in candles from the strategy's indicator
+        requirements (``load_context_series``: calendar window kept as a floor, backward
+        extension by count, per-TF report in ``self.warmup``), and a candle present both as
+        warmup and as trading candle (the one stamped exactly ``start``) is fed once.
 
         Args:
             pair: Trading pair.
@@ -657,34 +963,47 @@ class BacktestEngine:
             List of (candle, interval, is_tradeable) tuples.
         """
         ci = self.candle_interval  # Trading interval (e.g., 5, 1, 15)
+        tf_ci = INTERVAL_TO_TF.get(ci, f"{ci}m")
 
-        # Warmup periods before start_time
+        # Warmup periods before start_time (calendar floors; extended by candle count, R2)
         warmup_1h = start_time - timedelta(days=3)  # ~72 candles (> 50 warmup)
         warmup_15m = start_time - timedelta(hours=10)  # ~40 candles (> 20 warmup)
         warmup_trading = start_time - timedelta(hours=3)  # ~36 candles (> 20 warmup)
-        warmup_4h = start_time - timedelta(days=15)  # ~90 candles (> 52 for Ichimoku)
-        warmup_1d = start_time - timedelta(days=250)  # ~250 candles for EMA(200, "1d") warmup
+        warmup_4h = start_time - timedelta(days=15)  # ~90 candles
+        warmup_1d = start_time - timedelta(days=250)  # ~250 calendar days (holes reported)
         warmup_1w = start_time - timedelta(days=400)  # ~57 candles
 
         # Load higher timeframe data (full range: warmup + backtest period)
         candles_1h: list[OHLCData] = []
         candles_15m: list[OHLCData] = []
         if self.strategy_name in self._NEEDS_1H:
-            candles_1h = await self._load_candles_for_interval(pair, 60, warmup_1h, end_time)
+            candles_1h = await self._load_context_series(
+                pair, "1h", 60, warmup_1h, start_time, end_time
+            )
         if self.strategy_name in self._NEEDS_15M:
-            candles_15m = await self._load_candles_for_interval(pair, 15, warmup_15m, end_time)
-        candles_warmup = await self._load_candles_for_interval(pair, ci, warmup_trading, start_time)
+            candles_15m = await self._load_context_series(
+                pair, "15m", 15, warmup_15m, start_time, end_time
+            )
+        candles_warmup = await self._load_context_series(
+            pair, tf_ci, ci, warmup_trading, start_time, start_time
+        )
 
         # Load 4h, 1d, 1w if the strategy needs them
         candles_4h: list[OHLCData] = []
         candles_1d: list[OHLCData] = []
         candles_1w: list[OHLCData] = []
         if self.strategy_name in self._NEEDS_4H:
-            candles_4h = await self._load_candles_for_interval(pair, 240, warmup_4h, end_time)
+            candles_4h = await self._load_context_series(
+                pair, "4h", 240, warmup_4h, start_time, end_time
+            )
         if self.strategy_name in self._NEEDS_1D:
-            candles_1d = await self._load_candles_for_interval(pair, 1440, warmup_1d, end_time)
+            candles_1d = await self._load_context_series(
+                pair, "1d", 1440, warmup_1d, start_time, end_time
+            )
         if self.strategy_name in self._NEEDS_1W:
-            candles_1w = await self._load_candles_for_interval(pair, 10080, warmup_1w, end_time)
+            candles_1w = await self._load_context_series(
+                pair, "1w", 10080, warmup_1w, start_time, end_time
+            )
 
         self.logger.info(
             "mtf_data_loaded",
@@ -733,6 +1052,18 @@ class BacktestEngine:
         if not is_4h_trigger and not is_daily_trigger:
             for c in candles_trading:
                 sequence.append((c, ci, True))
+
+        # C2 (R2): a candle present twice at the same (timestamp, interval) — the trading
+        # candle stamped exactly ``start`` is in the warmup AND in the trading range — is fed
+        # once; the tradeable version wins. No-op for the 4h / 1d triggers (their trading
+        # candles are never appended).
+        merged: dict[tuple[datetime, int], tuple[OHLCData, int, bool]] = {}
+        for item in sequence:
+            key = (item[0].timestamp, item[1])
+            previous = merged.get(key)
+            if previous is None or (item[2] and not previous[2]):
+                merged[key] = item
+        sequence = list(merged.values())
 
         # Sort: timestamp ASC, then higher timeframes first
         interval_order = {10080: 0, 1440: 1, 240: 2, 60: 3, 15: 4, ci: 5}
@@ -1359,28 +1690,15 @@ class BacktestEngine:
             self.strategy, strategy_params, self._params_override
         )
 
-        # Pre-register lazy indicators so they exist before warmup data flows.
-        # Without this, the first get_*() call returns None because the indicator
-        # was just created and has no data yet.
+        # C2 (R2): pre-register every lazy indicator the strategy reads, at the parameters
+        # the instance really runs with, before any warmup candle flows (a lazy indicator
+        # created on its first read after the warmup stays silent for its whole period), and
+        # size the warmup of each context series in candles from the same requirements.
         bt_analyzer = getattr(self.strategy, "analyzer", None)
+        self._requirements = indicator_requirements(self.strategy_name, self.strategy)
         if bt_analyzer is not None:
-            # EMAs used by regime calculation and strategies
-            _LAZY_EMAS = {
-                "grok_supertrend_4h": [(20, "4h"), (50, "4h")],
-                "grok_ema_adx_atr": [(27, "4h"), (125, "4h")],
-                "gemini_suivi_tendance_momentum": [(20, "4h"), (50, "4h")],
-                "grok_donchian_breakout_4h": [(20, "4h"), (50, "4h")],
-            }
-            for period, tf in _LAZY_EMAS.get(self.strategy_name, []):
-                bt_analyzer.get_ema(period, tf)
-
-            # SuperTrend
-            if self.strategy_name == "grok_supertrend_4h":
-                bt_analyzer.get_supertrend("4h", atr_period=10, multiplier=3.0)
-
-            # Donchian
-            if self.strategy_name == "grok_donchian_breakout_4h":
-                bt_analyzer.get_donchian("4h", period_upper=20, period_lower=10)
+            preregister_indicators(bt_analyzer, self._requirements)
+        self._warmup_needs = warmup_needs(self._requirements)
 
         # Build replay sequence (with MTF warmup for strategies using MultiTimeframeAnalyzer)
         needs_mtf = self.strategy_name in [
@@ -1765,6 +2083,10 @@ class GridBacktester:
         self._pair: str | None = None
         self.min_order_usdc = Decimal(str(min_order_usdc))
         self.effective_params: dict[str, Any] | None = None
+        # C2 (R2): see BacktestEngine — requirements, warmup needs (candles) and reports.
+        self._requirements: list[IndicatorRequirement] = []
+        self._warmup_needs: dict[str, int] = {}
+        self.warmup: dict[str, dict[str, Any]] = {}
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -1936,9 +2258,15 @@ class GridBacktester:
         warmup_1d = start_time - timedelta(days=250)
         warmup_1w = start_time - timedelta(days=400)
 
-        candles_4h = await self._load_candles_for_interval(pair, 240, warmup_4h, end_time)
-        candles_1d = await self._load_candles_for_interval(pair, 1440, warmup_1d, end_time)
-        candles_1w = await self._load_candles_for_interval(pair, 10080, warmup_1w, end_time)
+        candles_4h = await self._load_context_series(
+            pair, "4h", 240, warmup_4h, start_time, end_time
+        )
+        candles_1d = await self._load_context_series(
+            pair, "1d", 1440, warmup_1d, start_time, end_time
+        )
+        candles_1w = await self._load_context_series(
+            pair, "1w", 10080, warmup_1w, start_time, end_time
+        )
 
         ci = self.candle_interval
         events: list[ReplayEvent] = [
@@ -1983,6 +2311,11 @@ class GridBacktester:
         self.effective_params = capture_effective_params(
             strategy, self._strategy_params, self._params_override
         )
+        # C2 (R2): the grid had no pre-registration at all — it worked only because its ATR
+        # period defaults to the analyzer's fixed 14 bucket and its regimes use fixed EMAs.
+        self._requirements = indicator_requirements(self.strategy_name, strategy)
+        preregister_indicators(analyzer, self._requirements)
+        self._warmup_needs = warmup_needs(self._requirements)
         return strategy, analyzer
 
     def _get_grok_grid_pending_orders(self, strategy: Any) -> list[dict[str, Any]]:
@@ -2504,6 +2837,43 @@ class GridBacktester:
             end_time,
             exchange=self.exchange,
         )
+
+    async def _load_candles_before(
+        self, pair: str, interval: int, before: datetime, limit: int, floor: datetime
+    ) -> list[OHLCData]:
+        """The ``limit`` candles right before ``before`` (not older than ``floor``), C2 R2."""
+        return await _load_candles_before(
+            self.db_manager, pair, interval, before, limit, floor, self.exchange
+        )
+
+    async def _load_context_series(
+        self,
+        pair: str,
+        tf: str,
+        interval: int,
+        window_start: datetime,
+        start: datetime,
+        end: datetime,
+    ) -> list[OHLCData]:
+        """One context series sized in candles (C2, R2); its report lands in ``self.warmup``."""
+        candles, report = await load_context_series(
+            lambda i, s, e: self._load_candles_for_interval(pair, i, s, e),
+            lambda i, b, n, f: self._load_candles_before(pair, i, b, n, f),
+            interval=interval,
+            window_start=window_start,
+            start=start,
+            end=end,
+            required=self._warmup_needs.get(tf, 0),
+        )
+        self.warmup[tf] = report
+        return candles
+
+    def warmup_summary(self) -> dict[str, dict[str, Any]]:
+        """Per-timeframe warmup report (C2, R2): required / loaded / extended / stale / gaps."""
+        return {
+            tf: dict(report)
+            for tf, report in sorted(self.warmup.items(), key=lambda kv: kv[1]["interval"])
+        }
 
     def _liquidate_lot(
         self,
@@ -3201,6 +3571,8 @@ def dump_trades_json(
     # C1: contract version and the daily NAV grid, outside the harness' schema-1 projection
     payload["metrics_version"] = METRICS_VERSION
     payload["equity_daily"] = engine.metrics.equity_daily_dict()
+    # C2 (R2): what each context series really fed the indicators with (candles, gaps).
+    payload["warmup"] = engine.warmup_summary()
     regime_stats = getattr(engine, "_regime_stats", None)
     if regime_stats:
         payload["regime_breakdown"] = {
