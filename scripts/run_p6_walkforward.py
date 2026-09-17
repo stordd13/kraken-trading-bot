@@ -27,6 +27,7 @@ from krakenbot.backtest_metrics import METRICS_VERSION, entry_metrics_version, f
 from krakenbot.config.settings import FEE_MODEL_NAMES, get_settings
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.logger import get_logger
+from krakenbot.replay_contract import REPLAY_VERSION, entry_replay_version
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from backtest import BacktestEngine, GridBacktester, PairCosts, load_pair_costs
@@ -221,6 +222,16 @@ async def main(argv: list[str] | None = None) -> int:
                 file=sys.stderr,
             )
             return 2
+        found_replay = entry_replay_version(data)
+        if found_replay != REPLAY_VERSION:  # C2: one replay contract, never a pre-C2 survivor
+            print(
+                f"ERROR: survivor {key} carries replay_version="
+                f"{found_replay if found_replay is not None else '<absent: pre-C2 file>'}, not "
+                f"{REPLAY_VERSION}; regenerate the survivors from a phase-D file produced by "
+                "this code.",
+                file=sys.stderr,
+            )
+            return 2
     print(
         f"Fee model: {args.fees}; pair costs: {wanted_costs or 'model globals'}; "
         f"min order: {args.min_order_usdc} USDC"
@@ -311,6 +322,7 @@ async def main(argv: list[str] | None = None) -> int:
                 "pair": pair,
                 "fees": args.fees,
                 "metrics_version": METRICS_VERSION,
+                "replay_version": REPLAY_VERSION,  # C2
                 "pair_costs_file": wanted_costs,
                 "min_order_usdc": args.min_order_usdc,
                 "windows": window_results,

@@ -39,6 +39,7 @@ from krakenbot.indicators.multi_timeframe import INTERVAL_TO_TF, MACD_PARAMS
 from krakenbot.models.base import TradeSide
 from krakenbot.models.market_data import OHLCData
 from krakenbot.models.trades import BacktestRun, Trade, TradeStatus
+from krakenbot.replay_contract import REPLAY_VERSION
 from krakenbot.strategies.base import SignalType, TradingSignal
 
 
@@ -3709,6 +3710,7 @@ def dump_equity_jsonl(engine: Any, path: Path, *, pair: str) -> int:
     captured. Returns the number of points written."""
     header = {
         "metrics_version": METRICS_VERSION,
+        "replay_version": REPLAY_VERSION,  # C2: what the engines simulate
         "engine": type(engine).__name__,
         "strategy": engine.strategy_name,
         "pair": pair,
@@ -3803,6 +3805,7 @@ def dump_trades_json(
     }
     # C1: contract version and the daily NAV grid, outside the harness' schema-1 projection
     payload["metrics_version"] = METRICS_VERSION
+    payload["replay_version"] = REPLAY_VERSION  # C2: replay contract, top level only
     payload["equity_daily"] = engine.metrics.equity_daily_dict()
     # C2 (R2): what each context series really fed the indicators with (candles, gaps).
     payload["warmup"] = engine.warmup_summary()

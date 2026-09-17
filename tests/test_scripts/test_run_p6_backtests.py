@@ -121,6 +121,7 @@ class TestFilterPendingJobs:
                 "strategy": "grok_supertrend_4h",
                 "fees": "binance",
                 "metrics_version": 2,
+                "replay_version": 2,
                 "test": {},
             }
         }
@@ -140,6 +141,7 @@ class TestFilterPendingJobs:
                 "strategy": "grok_supertrend_4h",
                 "fees": "binance",
                 "metrics_version": 2,
+                "replay_version": 2,
                 "test": {},
             }
         }
@@ -168,10 +170,22 @@ class TestFilterPendingJobs:
         pre_c1 = {"grok_supertrend_4h_BTC_USDC": {"fees": "bybit", "test": {}}}
         with pytest.raises(runner.MetricsVersionMismatchError, match="pre-C1"):
             runner.filter_pending_jobs(jobs, pre_c1, force=False, fees="bybit")
-        other_model = {"grok_supertrend_4h_BTC_USDC": {"fees": "binance", "metrics_version": 2}}
+        other_model = {
+            "grok_supertrend_4h_BTC_USDC": {
+                "fees": "binance",
+                "metrics_version": 2,
+                "replay_version": 2,
+            }
+        }
         with pytest.raises(runner.FeeModelMismatchError, match="fees=binance"):
             runner.filter_pending_jobs(jobs, other_model, force=False, fees="bybit")
-        same = {"grok_supertrend_4h_BTC_USDC": {"fees": "bybit", "metrics_version": 2}}
+        same = {
+            "grok_supertrend_4h_BTC_USDC": {
+                "fees": "bybit",
+                "metrics_version": 2,
+                "replay_version": 2,
+            }
+        }
         assert runner.filter_pending_jobs(jobs, same, force=False, fees="bybit") == jobs
 
     def test_other_fee_model_is_refused(self) -> None:
@@ -362,6 +376,7 @@ class TestRunSerial:
                     "pair": job["pair"],
                     "fees": job.get("fees"),
                     "metrics_version": 2,
+                    "replay_version": 2,
                 },
                 "duration_sec": 0.1,
             }
@@ -409,6 +424,7 @@ class TestRunSerial:
                     "pair": job["pair"],
                     "fees": job.get("fees"),
                     "metrics_version": 2,
+                    "replay_version": 2,
                 },
                 "duration_sec": 0.1,
             }
@@ -526,6 +542,7 @@ class TestMainSerial:
                     "pair": job["pair"],
                     "fees": job.get("fees"),
                     "metrics_version": 2,
+                    "replay_version": 2,
                 },
                 "duration_sec": 0.01,
             }
@@ -594,6 +611,7 @@ class TestMainSerial:
                         "pair": "BTC/USDC",
                         "fees": "binance",
                         "metrics_version": 2,
+                        "replay_version": 2,
                         "train": {},
                         "test": {},
                         "all": {},
@@ -614,6 +632,7 @@ class TestMainSerial:
                     "pair": job["pair"],
                     "fees": job.get("fees"),
                     "metrics_version": 2,
+                    "replay_version": 2,
                 },
                 "duration_sec": 0.01,
             }

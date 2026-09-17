@@ -58,6 +58,7 @@ from krakenbot.backtest_metrics import (
 )
 from krakenbot.config.settings import FEE_MODEL_NAMES
 from krakenbot.core.logger import get_logger
+from krakenbot.replay_contract import REPLAY_VERSION, ReplayVersionError, entry_replay_version
 
 try:
     from scripts import p7_grids
@@ -363,6 +364,12 @@ def build_phase2_jobs(
                     f"min_order_usdc)={_campaign_signature(entry)}; it cannot seed a walk-forward "
                     f"requested with {wanted}"
                 )
+            if entry_replay_version(entry) != REPLAY_VERSION:  # C2: one replay contract
+                raise ReplayVersionMismatchError(
+                    f"phase-1 entry {strategy} {pair} was produced with replay_version="
+                    f"{entry_replay_version(entry) or '<absent: pre-C2 file>'}; it cannot seed "
+                    f"a replay_version {REPLAY_VERSION} walk-forward (regenerate phase 1)"
+                )
             params = entry.get("params") or {}
             for window in windows:
                 out.append(
@@ -421,6 +428,19 @@ def _metrics_version_message(key: str, found: int | None, path: Path) -> str:
     )
 
 
+class ReplayVersionMismatchError(FeeModelMismatchError):
+    """A results file entry was produced under another replay contract (or none, pre-C2)."""
+
+
+def _replay_version_message(key: str, found: int | None, path: Path) -> str:
+    shown = "<absent: pre-C2 file>" if found is None else str(found)
+    return (
+        f"Resume refused for {key}: {path} holds a result produced with replay_version="
+        f"{shown} but this code writes replay_version={REPLAY_VERSION}. Results of two replay "
+        f"contracts simulate two different strategies and cannot be mixed: {_FRESH_OUTPUT}"
+    )
+
+
 def load_existing_results(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
@@ -470,6 +490,10 @@ def _check_entry(
     found = entry_metrics_version(entry)
     if found != METRICS_VERSION:
         raise MetricsVersionMismatchError(_metrics_version_message(key, found, path))
+    # C2: the replay contract, checked last (fees -> campaign -> metrics -> replay)
+    found_replay = entry_replay_version(entry)
+    if found_replay != REPLAY_VERSION:
+        raise ReplayVersionMismatchError(_replay_version_message(key, found_replay, path))
 
 
 def filter_pending_jobs(
@@ -732,6 +756,7 @@ async def _async_run_job(job_dict: dict[str, Any]) -> dict[str, Any]:
             "exchange": job.exchange,
             "fees": job.fees,
             "metrics_version": METRICS_VERSION,  # C1: contract of the metric dicts below
+            "replay_version": REPLAY_VERSION,  # C2: contract of the replay (top level only)
             "pair_costs_file": job.pair_costs_file,
             "pair_costs": (
                 {"spread": str(applied.spread), "slippage": str(applied.slippage)}
@@ -825,6 +850,7 @@ def _apply_result(
             "exchange": job.get("exchange"),
             "fees": job.get("fees"),
             "metrics_version": METRICS_VERSION,
+            "replay_version": REPLAY_VERSION,
             "pair_costs_file": job.get("pair_costs_file"),
             "min_order_usdc": job.get("min_order_usdc", 1.0),
             "params": job["params"],
@@ -1187,7 +1213,7 @@ def _run_report_phase(
         _assert_benchmarks_version(benchmarks_path)
         benchmarks = load_benchmark_sharpe(benchmarks_path)
         benchmark_details = load_benchmark_details(benchmarks_path)
-    except MetricsVersionError as exc:
+    except (MetricsVersionError, ReplayVersionError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     print(
@@ -1205,7 +1231,7 @@ def _run_report_phase(
             benchmarks=benchmarks,
             benchmark_details=benchmark_details,
         )
-    except MetricsVersionError as exc:
+    except (MetricsVersionError, ReplayVersionError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
     n_selected = len(selection["selected_for_paper"])

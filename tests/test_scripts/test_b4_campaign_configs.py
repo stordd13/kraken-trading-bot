@@ -81,6 +81,7 @@ class TestP6Plumbing:
                 "pair_costs_file": "config/x.json",
                 "min_order_usdc": 5.0,
                 "metrics_version": 2,
+                "replay_version": 2,
             }
         }
         assert jobs[0] not in p6.filter_pending_jobs(jobs, same, force=False, fees="bybit")
@@ -150,6 +151,7 @@ class TestP7Plumbing:
                     "params": {},
                     "fees": "bybit",
                     "metrics_version": 2,
+                    "replay_version": 2,
                 }  # (None, 1.0)
             ]
         }
@@ -167,6 +169,7 @@ class TestP7Plumbing:
                 "pair_costs_file": "config/x.json",
                 "min_order_usdc": 5.0,
                 "metrics_version": 2,
+                "replay_version": 2,
             }
         }
         p7._assert_results_fee_model(entries, "bybit", tmp_path / "p.json")  # fees only: fine
@@ -526,6 +529,7 @@ class TestP7ReportCampaign:
             json.dumps(
                 {
                     "metrics_version": 2,
+                    "replay_version": 2,
                     "buy_and_hold": {
                         "BTC/USDC": {"sharpe_ratio": 0.8, "max_drawdown_pct_daily": 49.6}
                     },

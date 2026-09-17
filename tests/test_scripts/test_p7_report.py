@@ -76,6 +76,7 @@ def _wf_entry_v2(
     """Phase-2 entry under the C1 contract (metrics_version 2, sums, daily MaxDD)."""
     key, value = _wf_entry(strategy, pair, params_hash, window_idx, test_trades=test_trades)
     value["metrics_version"] = 2
+    value["replay_version"] = 2  # C2: entry-level replay contract
     value["train"] = {"metrics_version": 2, "sharpe_ratio": train_sharpe, "total_trades": 50}
     value["test"] = {
         "metrics_version": 2,

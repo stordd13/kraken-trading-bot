@@ -246,6 +246,7 @@ class TestBuildPhase2Jobs:
                     "params": {"a": 1},
                     "fees": "binance",
                     "metrics_version": 2,
+                    "replay_version": 2,
                 },
                 {
                     "strategy": "s",
@@ -253,6 +254,7 @@ class TestBuildPhase2Jobs:
                     "params": {"a": 2},
                     "fees": "binance",
                     "metrics_version": 2,
+                    "replay_version": 2,
                 },
             ]
         }
@@ -274,6 +276,7 @@ class TestBuildPhase2Jobs:
                     "params": {"a": i},
                     "fees": "binance",
                     "metrics_version": 2,
+                    "replay_version": 2,
                 }
                 for i in range(3)
             ]
@@ -309,7 +312,14 @@ class TestFilterPending:
         )
         pending = p7.filter_pending_jobs(
             jobs,
-            existing={existing_key: {"ok": 1, "fees": "binance", "metrics_version": 2}},
+            existing={
+                existing_key: {
+                    "ok": 1,
+                    "fees": "binance",
+                    "metrics_version": 2,
+                    "replay_version": 2,
+                }
+            },
             force=False,
             fees="binance",
         )
@@ -333,6 +343,7 @@ class TestFilterPending:
                 "ok": 1,
                 "fees": "binance",
                 "metrics_version": 2,
+                "replay_version": 2,
             }
             for j in jobs
         }
@@ -367,7 +378,13 @@ class TestFilterPending:
         pre_c1 = {"some_other_key_p1_deadbeef": {"fees": "binance", "test": {}}}
         with pytest.raises(p7.MetricsVersionMismatchError, match="pre-C1"):
             p7.filter_pending_jobs(jobs, existing=pre_c1, force=False, fees="binance")
-        same = {"some_other_key_p1_deadbeef": {"fees": "binance", "metrics_version": 2}}
+        same = {
+            "some_other_key_p1_deadbeef": {
+                "fees": "binance",
+                "metrics_version": 2,
+                "replay_version": 2,
+            }
+        }
         assert len(p7.filter_pending_jobs(jobs, existing=same, force=False, fees="binance")) == len(
             jobs
         )
@@ -423,7 +440,12 @@ class TestFeeModelPlumbing:
     def test_assert_results_fee_model(self, tmp_path: Path) -> None:
         path = tmp_path / "phase1.json"
         p7._assert_results_fee_model(
-            {"k": {"fees": "bybit", "metrics_version": 2}, "e": {"error": "x"}}, "bybit", path
+            {
+                "k": {"fees": "bybit", "metrics_version": 2, "replay_version": 2},
+                "e": {"error": "x"},
+            },
+            "bybit",
+            path,
         )
         with pytest.raises(p7.FeeModelMismatchError):
             p7._assert_results_fee_model({"k": {"fees": "binance"}}, "bybit", path)
