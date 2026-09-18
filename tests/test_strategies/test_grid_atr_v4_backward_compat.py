@@ -7,7 +7,8 @@ strategies.yaml params MUST produce a bit-identical metrics hash to the
 
 The baseline was captured on branch ``feat/p7-parameter-optimization``
 BEFORE the introduction of ``bear_protection_mode``, re-baselined in B4.2 on
-the re-stamped Binance data and again in B4.3 after the grid engine fixes
+the re-stamped Binance data, in B4.3 after the grid engine fixes, in C1 (metrics
+contract) and in C2 (replay fidelity: the grid now decides on the real 4h series)
 (see ``EXPECTED_HASHES``: one hash per fee model, binance and bybit). Any code
 change that shifts a trade timestamp, fee calc, fill price, liquidation or
 PnL aggregation will break these hashes — which is the intent.
@@ -118,9 +119,35 @@ WINDOW_END = datetime(2025, 3, 15, tzinfo=UTC)
 #               Calmar 237.90 -> None; all: Sharpe 0.0113 -> 0.1882, Sortino 0.0165 -> 0.2883,
 #               MaxDD 3.0641 -> 2.1997, PF 1.1552 -> 1.0561, Calmar 0.5569 -> 0.7822.
 #   Previous values: binance 43dcdf8d…, bybit 818d7fa8….
+# - 2026-09-17 (C2 replay fidelity, GO Bruno gate 2 on the re-baseline table —
+#   results/C2_replay_report.md § 7, the four hashes recomputed independently at the review;
+#   verified unchanged after the commit-12 diagnostic fixes): re-baselined once after the
+#   replay corrections R1-R4. The grid now decides on the REAL 4h series (one decision per 4h
+#   close, ATR 14 on 4h candles, 1d / 1w regimes fed from their own series) and executes on the
+#   5m candles (limit fills at the touch, an order placed at T eligible from T + 5m,
+#   same-timestamp order exec -> 1w -> 1d -> 4h); lazy indicators are pre-registered at the
+#   effective parameters with a candle-sized warmup; sell fills are matched by position_id and
+#   validated before any balance mutation. The measurement (metrics_version 2) is untouched
+#   and the signal engine is bit-identical on the SuperTrend reference (compare-ab --strict).
+#   On this window the strategy simulated is no longer the one that decided on 5m candles
+#   tagged 4h (4 033 ticks -> 85 decisions, ATR "4h" ~279 -> ~2 194 USD, spacing at the 1.5 %
+#   floor -> at the 5 % cap, recalc effective 8h), so the accounting keys move by design:
+#     binance — train: 38 trades (25 W / 13 L, 13 liquidated) -> 2 (2 W, 0 liquidated),
+#               net_pnl -21.99 -> 2.42, ending 978.01 -> 1002.42, fees 1.41 -> 0.08,
+#               MaxDD 2.57 -> 0.00 %; test: 6 trades -> 0 (no level touched in the 4.2-day
+#               test segment), net_pnl 2.02 -> 0.00; all: 45 trades (37 W / 8 L = 8 open
+#               lots liquidated) -> 2 (2 W, 0 liquidated), net_pnl 1.52 -> 2.42,
+#               ending 1001.52 -> 1002.42, PF 1.1349 -> None (no loss), MaxDD 2.18 -> 0.00 %.
+#     bybit   — train: net_pnl -22.92 -> 2.40, ending 977.08 -> 1002.40, fees 2.32 -> 0.10;
+#               test: 1.95 -> 0.00; all: 45 -> 2 trades, net_pnl 0.65 -> 2.40,
+#               ending 1000.65 -> 1002.40, PF 1.0561 -> None.
+#   Inventory divergence 0 on every segment, no rejection, warmup sufficient on 4h / 1d / 1w
+#   (results/c2_replay/gold_window_{binance,bybit}_{ref,c2}.json: the tag runner reproduces
+#   the previous hashes, the branch runner produces these).
+#   Previous values: binance 619cac94…, bybit ca846347….
 EXPECTED_HASHES: dict[str, str | None] = {
-    "binance": "619cac94d128a877615a042a8f00e007048beee11d49aa0b04fda391d6a7f9f1",
-    "bybit": "ca846347817276ed3040fd341b5a2ee9e46c5aaa62b5efd7e8907c84ae8f13ec",
+    "binance": "5fb528dfb4c22e6fb5b0dfc2d1b8f7a80a5bedbbb332e18d85dee4581084345a",
+    "bybit": "e9f0d3508c353d30f42fbeee3910ee4be643caca61d6b73edbdae73e6530cc54",
 }
 
 
