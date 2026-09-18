@@ -489,6 +489,14 @@ async def load_context_series(
     (``stale_by_candles``), the largest gap inside the history — and ``sufficient`` only when
     the count is met, the history reaches ``start`` and no gap exceeds one candle. Nothing is
     ever bridged silently: a hole is reported, never certified.
+
+    Staleness contract. Candles are stamped at their period end (B4.1), so a candle stamped
+    exactly ``start`` is closed at ``start`` and **expected** in the history. ``stale_by_candles``
+    counts the stamps ``last + k × interval`` (k ≥ 1) that fall at or before ``start`` and were
+    not loaded: 0 when the last loaded candle is the one stamped ``start``, or when ``start`` is
+    not aligned on the timeframe and the next stamp falls after it (nothing is missing yet);
+    1 when exactly the candle stamped ``start`` is missing; None when nothing was loaded.
+    ``loaded``, ``required`` and the extension floor do not depend on it.
     """
     candles = await load_window(interval, window_start, end)
     history = [c for c in candles if c.timestamp <= start]
@@ -506,7 +514,8 @@ async def load_context_series(
     largest_gap = 0
     for earlier, later in zip(stamps, stamps[1:], strict=False):
         largest_gap = max(largest_gap, int((later - earlier) / step) - 1)
-    stale = None if not stamps else max(0, int((start - stamps[-1]) / step) - 1)
+    # Expected stamps in (last, start]: `start` itself counts (closed candle, see docstring).
+    stale = None if not stamps else int((start - stamps[-1]) / step)
     sufficient = loaded >= required and stale == 0 and largest_gap <= _WARMUP_GAP_TOLERANCE
     report = {
         "interval": interval,

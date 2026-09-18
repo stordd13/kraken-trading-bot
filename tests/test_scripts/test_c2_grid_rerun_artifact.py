@@ -14,6 +14,7 @@ then the counters at zero. A negative test removes the liquidation block: the pr
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timedelta
 from decimal import Decimal
 import json
 from pathlib import Path
@@ -71,14 +72,54 @@ def test_grid_rerun_entry_is_present_valid_and_reconciled(pair: str) -> None:
     _assert_reconciled(_load(), f"grok_grid_atr_adaptive_v4_{pair}")
 
 
+def _segment_start(entry: dict, segment: str) -> datetime:
+    period = entry["period"]
+    return datetime.fromisoformat(period["split" if segment == "test" else "start"])
+
+
 def test_sol_warmup_is_reported_insufficient_per_segment_not_bridged() -> None:
-    """SOL starts 2023-04-01 inside its 455-day hole: the 4h history before start does not
-    reach start — reported, never certified (observed values in the C2 report)."""
+    """SOL starts 2023-04-01 inside its 455-day hole: on train and all every timeframe is
+    insufficient — the 4h history does not reach start, the 1d / 1w histories stop inside
+    the hole, stale by exactly the stamps expected between their last candle and start (the
+    candle stamped start included: commit 12 contract) — reported, never certified. The
+    observed values (loaded / stale) live in the C2 report § 3.4, not here."""
     entry = _load()["grok_grid_atr_adaptive_v4_SOL_USDC"]
     for segment in ("train", "all"):
-        report = entry["warmup"][segment]["4h"]
-        assert report["sufficient"] is False
-        assert report["stale_by_candles"] is None or report["stale_by_candles"] > 0
+        start = _segment_start(entry, segment)
+        for tf in ("4h", "1d", "1w"):
+            report = entry["warmup"][segment][tf]
+            assert report["sufficient"] is False, f"{segment}/{tf}"
+            if report["last"] is None:
+                assert report["loaded"] == 0 and report["stale_by_candles"] is None
+                continue
+            last = datetime.fromisoformat(report["last"])
+            expected = int((start - last) / timedelta(minutes=report["interval"]))
+            assert report["stale_by_candles"] == expected > 0, f"{segment}/{tf}"
+    assert entry["warmup"]["test"]["4h"]["sufficient"] is True  # the test segment is clean
+
+
+def test_every_warmup_block_reports_the_staleness_contract() -> None:
+    """On every pair / segment / timeframe: ``stale_by_candles`` == the number of stamps
+    ``last + k × interval`` (k >= 1) at or before the segment start (0 when the last loaded
+    candle is the one stamped start, or when start is not aligned on the timeframe **and the
+    next stamp after last falls past start** — a non-aligned start is not stale-free by
+    itself: the SOL 1w history starts on a Saturday and is stale by 25)."""
+    for key, entry in _load().items():
+        for segment in SEGMENTS:
+            start = _segment_start(entry, segment)
+            for tf, report in entry["warmup"][segment].items():
+                if report["last"] is None:
+                    assert report["stale_by_candles"] is None, f"{key}/{segment}/{tf}"
+                    continue
+                last = datetime.fromisoformat(report["last"])
+                assert last <= start
+                expected = int((start - last) / timedelta(minutes=report["interval"]))
+                assert report["stale_by_candles"] == expected, f"{key}/{segment}/{tf}"
+                assert report["sufficient"] == (
+                    report["loaded"] >= report["required"]
+                    and expected == 0
+                    and report["largest_gap_candles"] <= 1
+                ), f"{key}/{segment}/{tf}"
 
 
 def test_the_proof_fails_when_the_liquidation_block_is_missing_or_the_job_errored() -> None:

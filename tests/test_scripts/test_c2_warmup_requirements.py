@@ -443,6 +443,60 @@ async def test_internal_gap_above_tolerance_is_insufficient_one_missing_candle_i
 
 
 @pytest.mark.asyncio
+async def test_staleness_aligned_start_counts_the_candle_stamped_start_as_expected() -> None:
+    """Contract (C2 review, commit 12): candles are stamped at their period end, so the candle
+    stamped exactly ``start`` is closed and expected. A history ending on it is not stale; the
+    same history without it is stale by exactly one candle (and insufficient); two candles
+    short, stale by two. ``loaded`` / ``required`` / the extension floor are untouched."""
+    start = T0
+    window_start = start - timedelta(hours=4 * 90)
+    ending_at_start = _series(window_start, 91, 240)  # 90 before + the one stamped start
+    kw: dict[str, Any] = {
+        "interval": 240,
+        "window_start": window_start,
+        "start": start,
+        "end": start,
+        "required": 14,
+    }
+    _, report, _ = await _load(ending_at_start, [], **kw)
+    assert report["stale_by_candles"] == 0 and report["sufficient"] is True
+    assert report["last"] == start.isoformat()
+
+    _, report, calls = await _load(ending_at_start[:-1], [], **kw)
+    assert report["stale_by_candles"] == 1  # only the candle stamped start is missing
+    assert report["sufficient"] is False
+    assert report["loaded"] == 90 and report["extended_by"] == 0
+    assert [c[0] for c in calls] == ["window"]  # the count is met: no extension attempted
+
+    _, report, _ = await _load(ending_at_start[:-2], [], **kw)
+    assert report["stale_by_candles"] == 2 and report["sufficient"] is False
+
+
+@pytest.mark.asyncio
+async def test_staleness_non_aligned_start_expects_nothing_after_the_last_closed_candle() -> None:
+    """A 1d series and a start at 04:48 (the P6 test-segment shape): the last daily candle
+    stamped at or before ``start`` closes the history — nothing is missing, not stale; drop
+    that candle and exactly one is missing (start - last = 1.2 days -> 1)."""
+    start = T0 + timedelta(hours=4, minutes=48)
+    window_start = T0 - timedelta(days=250)
+    daily = _series(window_start, 251, 1440)  # ..., T0 - 1d, T0 (<= start); nothing at start
+    kw: dict[str, Any] = {
+        "interval": 1440,
+        "window_start": window_start,
+        "start": start,
+        "end": start,
+        "required": 50,
+    }
+    _, report, _ = await _load(daily, [], **kw)
+    assert report["last"] == T0.isoformat()
+    assert report["stale_by_candles"] == 0 and report["sufficient"] is True
+
+    _, report, _ = await _load(daily[:-1], [], **kw)
+    assert report["last"] == (T0 - timedelta(days=1)).isoformat()
+    assert report["stale_by_candles"] == 1 and report["sufficient"] is False
+
+
+@pytest.mark.asyncio
 async def test_no_history_at_all_is_reported_not_invented() -> None:
     _, report, _ = await _load(
         [], [], interval=1440, window_start=T0 - timedelta(days=250), start=T0, end=T0, required=50

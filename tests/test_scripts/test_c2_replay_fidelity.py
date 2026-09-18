@@ -203,24 +203,27 @@ async def test_grid_decision_inputs_match_independent_recomputation() -> None:
     assert {t["timestamp"] for t in trace} == {
         c.timestamp for c in data.series[240] if c.timestamp >= START
     }
-    # the engine loaded the 4h series from this window start (calendar floor, no extension)
-    window_start_4h = START - timedelta(days=15)
-    loaded_4h = [c for c in data.series[240] if c.timestamp >= window_start_4h]
+    # Recompute on the bounds the engine REALLY loaded (its warmup report, like the DB test):
+    # EMA / ATR seed on their first candles, so the reference must start where the fed
+    # history starts — never on the test's own idea of the calendar window.
+    first = {tf: datetime.fromisoformat(engine.warmup[tf]["first"]) for tf in ("4h", "1d", "1w")}
+    loaded = {
+        tf: [c for c in data.series[interval] if first[tf] <= c.timestamp <= END]
+        for tf, interval in (("4h", 240), ("1d", 1440), ("1w", 10080))
+    }
+    for tf, series in loaded.items():
+        assert series[0].timestamp == first[tf] and engine.warmup[tf]["extended_by"] == 0, tf
+    assert first["4h"] == START - timedelta(days=15)  # the calendar floor, no extension here
     for entry in trace[::3] + [trace[-1]]:
         T = entry["timestamp"]
-        closed_4h = [c for c in loaded_4h if c.timestamp <= T]
-        closed_1d = [
-            c for c in data.series[1440] if START - timedelta(days=300) <= c.timestamp <= T
-        ]
-        closed_1w = [
-            c for c in data.series[10080] if START - timedelta(weeks=60) <= c.timestamp <= T
-        ]
-        expected_atr = _atr_wilder(closed_4h, 14)
+        closed = {tf: [c for c in series if c.timestamp <= T] for tf, series in loaded.items()}
+        expected_atr = _atr_wilder(closed["4h"], 14)
         assert expected_atr is not None and _rel_close(entry["atr_4h"], expected_atr), T
-        assert entry["regime_1d"] == _regime(closed_1d) is not None, T
-        assert entry["regime_1w"] == _regime(closed_1w) is not None, T
+        assert entry["regime_1d"] == _regime(closed["1d"]) is not None, T
+        assert entry["regime_1w"] == _regime(closed["1w"]) is not None, T
         # no look-ahead: the next 4h candle changes the ATR the decision saw
-        nxt = [c for c in loaded_4h if c.timestamp > T][:1]
+        closed_4h = closed["4h"]
+        nxt = [c for c in loaded["4h"] if c.timestamp > T][:1]
         if nxt:
             assert not _rel_close(entry["atr_4h"], _atr_wilder(closed_4h + nxt, 14))
     # the grid placed orders on those decisions; regimes were non-trivial inputs
