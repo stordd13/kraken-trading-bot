@@ -27,15 +27,25 @@
 |---|---|---|
 | `combo0.xml` … `combo23.xml` (+ `comboN.log`) | `nice -n 5 poetry run pytest -p no:cacheprovider -q --durations=0 --junitxml=combo$N.xml "tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo$N]"` pour `N` de 0 à 23 | agrégat **tests=24 failures=0 errors=0 skipped=0** |
 | `run24.log` | journal du pilote `run24.sh` (boucle sur les 24 combos, horodatage et durée de chacun) | `ALL 24 DONE` |
-| `suite_run1_teardown_incident.xml` | `nice -n 5 poetry run pytest -q -p no:cacheprovider --junitxml=suite.xml --ignore=tests/test_scripts/test_run_p6_determinism.py` | **tests=1521 failures=0 errors=3 skipped=6** — voir l'incident ci-dessous |
+| `suite_run1_teardown_incident.xml` | `nice -n 5 poetry run pytest -q -p no:cacheprovider --junitxml=suite.xml --ignore=tests/test_scripts/test_run_p6_determinism.py` | **tests=1521 failures=0 errors=3 skipped=6** — voir l'incident ci-dessous (le nom du fichier est une étiquette posée avant analyse : une seule des trois erreurs est au teardown) |
 | `rest_suite.log` | journal du même passage, avec `ruff check`, `ruff format --check` et `mypy src/` | ruff propre, mypy 65 (64 avec `--ignore-missing-imports`) |
 
-**L'incident, étiqueté et conservé.** Ce tout premier passage serveur de la suite a rendu 3 **erreurs de teardown** —
-pas des échecs de test : un callback DNS de `pycares` / `aiodns` retombe sur une boucle asyncio déjà fermée
-(`RuntimeError: Event loop is closed`), chemin de bibliothèque que C2 ne touche pas, et pytest les rattache au teardown
-en cours (trois tests de `tests/test_main.py`). **Non reproductible** : trois relances immédiates de la même suite ont
-rendu `1 514 passés, 6 skippés, 0 erreur`, et le fichier incriminé passe seul (18 tests). Le fichier n'est pas effacé,
-il est nommé pour ce qu'il montre ; le passage vert au SHA livré est archivé dans `run2_f585e8b/suite.xml`.
+**L'incident, conservé et décrit tel que le XML le montre.** Ce tout premier passage serveur de la suite a rendu 3
+erreurs de **nettoyage asynchrone**, aucune n'étant un échec de test — mais la répartition n'est pas celle que le nom du
+fichier laisse croire, et elle est consignée ici telle qu'elle est :
+
+| Test (`tests/test_main.py`) | Phase | Signal porté par le XML |
+|---|---|---|
+| `TestKrakenBotStart::test_start_subscribes_1m_when_router_crash_protector_is_configured` | **teardown** | callback `_addrinfo_cb` de `pycares` / `aiodns` retombant sur une boucle fermée (`RuntimeError: Event loop is closed`) |
+| `TestKrakenBotStop::test_stop_handles_component_errors` | **setup** | `ResourceWarning: Unclosed client session` (`aiohttp`) remontée en `PytestUnraisableExceptionWarning` |
+| `TestKrakenBotStats::test_log_stats_collects_all_component_stats` | **setup** | `ExceptionGroup` de plusieurs avertissements non levables |
+
+Conséquence à ne pas masquer : une erreur **au setup** signifie que le corps du test **n'a pas tourné**. Sur ce passage,
+deux tests n'ont donc pas été exécutés — ils l'ont été dans les passages suivants. Cause commune : des objets asynchrones
+(`aiohttp`, résolveur DNS) survivant à la fin du test qui les a créés, chemin de bibliothèque que C2 ne touche pas.
+**Non reproductible** : trois relances immédiates de la même suite ont rendu `1 514 passés, 6 skippés, 0 erreur`, et le
+fichier incriminé passe seul (18 tests). Le fichier n'est pas effacé — son nom reste tel qu'il a été posé, cette table
+dit ce qu'il contient réellement ; le passage vert au SHA livré est archivé dans `run2_f585e8b/suite.xml`.
 
 ## `run2_f585e8b/` — rejeu au SHA livré
 
@@ -48,8 +58,9 @@ d'invariance de `results/C2_replay_report.md` § 8) · fenêtre 2026-09-19 12:11
 | `run24b.log` | journal du pilote | `ALL 24 DONE` |
 | `suite.xml` | `poetry run pytest -q -p no:cacheprovider --junitxml=suite.xml --ignore=tests/test_scripts/test_run_p6_determinism.py` | **tests=1520 failures=0 errors=0 skipped=6** (1 514 passés) |
 | `short.xml` | `poetry run pytest -q -p no:cacheprovider --junitxml=short.xml -k "not full" tests/test_scripts/test_run_p6_determinism.py` | **tests=6 failures=0 errors=0 skipped=0** (les 6 de la fenêtre courte) |
+| `checks_f585e8b.log` | journal horodaté des vérifications au SHA livré, **chaque commande imprimée avant son bloc** : suite hors déterminisme, 6 tests courts, gold hashes, `ruff check` + `format --check`, `mypy src/` avec et sans `--ignore-missing-imports` | 1 514 passés / 6 skippés · 6 passés · 2 passés · ruff propre · mypy 65 puis 64 |
 
-Au même SHA et dans le même passage : `test_grid_atr_v4_backward_compat.py` **2 passés**, `ruff check` propre
+Au même SHA (journal `checks_f585e8b.log`) : `test_grid_atr_v4_backward_compat.py` **2 passés**, `ruff check` propre
 (les 2 fichiers non formatés sont la dette 10, préexistante et intacte sur la branche), `mypy src/` **65** dont la 65e
 est `src/krakenbot/ml/features/feature_store.py:32 — Library stubs not installed for "pandas" [import-untyped]`,
 c'est-à-dire exactement le delta avec `--ignore-missing-imports` (64).
@@ -67,3 +78,6 @@ La règle `*.log` du `.gitignore` avait **silencieusement écarté** ces journau
 les XML étaient suivis. Une exception ciblée
 (`!results/c2_replay/determinism_server/**/*.log`) les rend suivis, vérifiée par `git check-ignore -v` sur chaque
 fichier puis par `git ls-files`. Rien ici n'est laissé hors versionnement.
+
+Empreintes reproductibles, par lot (sha256 de la concaténation des fichiers du répertoire, triés par nom) :
+`run1_835ffe2/` (51 fichiers) `6b1125c3d11c3ff4` · `run2_f585e8b/` (52 fichiers) `bcc5a18cb2b7f105`.

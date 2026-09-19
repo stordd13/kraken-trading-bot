@@ -5,9 +5,9 @@
 > **Ce rapport ne porte aucun verdict économique** : les écarts avant/après sont attribués aux correctifs R1-R4 ;
 > le verdict appartient au rejeu diagnostic grid (phase suivante) sous protocole C3.
 >
-> État : **C2 implémenté, porte pré-merge complète et verte, non mergé / non taggé**. Gate R4 et gate 2 (gold hashes)
-> passés ; les 24 tests de déterminisme full-range rejoués **sur le serveur** au SHA figé `835ffe2` — 24 passés, 0 skip
-> (§ 8). Aucun merge, aucun tag : ils sont tranchés avec Bruno.
+> État : **C2 implémenté, porte pré-merge complète et verte au SHA livré**. Gate R4 et gate 2 (gold hashes) passés ;
+> **30/30** tests de déterminisme — 6 courts + les 24 full-range rejoués **sur le serveur** — au SHA `f585e8b`, suite
+> 1 514 passés / 6 skippés, gold hashes, ruff, mypy 65 (§ 8). Merge et tag : voir l'en-tête de `PROJECT_CONTEXT.md`.
 
 ## 0. Étape 0 — baselines et références « avant » (tag `v2.9.0-c1-metrics`)
 
@@ -464,8 +464,7 @@ ont été vérifiés **sans effet sur les quatre hashes** : la fenêtre gold a �
 
 ## 8. Porte pré-merge
 
-Tunnel SSH vérifié **avant** la suite (`nc` sur 5433 + connexion applicative réelle). Exécutée sur l'arbre final de la
-branche (14 commits).
+Tunnel SSH vérifié **avant** la suite (`nc` sur 5433 + connexion applicative réelle).
 
 | Contrôle | Résultat |
 |---|---|
@@ -536,7 +535,7 @@ hash serait un bug de déterminisme à instruire, jamais une relance jusqu'à ce
 | Fenêtre | 2026-09-19 10:39:50Z → 11:50:04Z (70 min) |
 | Agrégat JUnit (24 fichiers) | `tests=24 failures=0 errors=0 skipped=0` |
 | Durées | grids 188-238 s ; gemini 236-407 s ; signaux grok 39-56 s |
-| Artefacts | `results/c2_replay/determinism_server/` (24 XML + `run24.log` + `rest_suite.log`), sha256(16) du lot `85f04b72fa3ba6d8` |
+| Artefacts | `results/c2_replay/determinism_server/run1_835ffe2/` — 51 fichiers (24 XML de combo + 24 journaux de combo + `run24.log` + `rest_suite.log` + `suite_run1_teardown_incident.xml`), sha256(16) du lot `6b1125c3d11c3ff4` (concaténation des fichiers triés par nom) |
 
 Comparaison utile : le même premier combo (grid BTC) tournait 41 min **puis échouait** via le tunnel ; il passe en
 **238 s** en accès local. Le test court de contrôle passe en 3.2 s contre 137 s via le tunnel.
@@ -546,7 +545,9 @@ a été **intégralement rejoué** au SHA `f585e8bb676ad194753305da86db953d425de
 0 erreur, 0 skip**, plus, au même SHA et dans le même passage, la suite hors déterminisme (**1 514 passés, 6 skippés,
 0 erreur**), les **6** tests de déterminisme de la fenêtre courte, les 2 gold hashes, `ruff check` propre et
 `mypy src/` = 65. Soit **30/30** tests de déterminisme au SHA livré. Preuves complètes, par rejeu et par commande, sous
-`results/c2_replay/determinism_server/` (`README.md` = manifeste : SHA testé et commande exacte de chaque fichier).
+`results/c2_replay/determinism_server/` (`README.md` = manifeste : SHA testé et commande exacte de chaque fichier ;
+empreintes de lot `run1_835ffe2/` 51 fichiers `6b1125c3d11c3ff4`, `run2_f585e8b/` 52 fichiers `bcc5a18cb2b7f105`), dont
+le journal `checks_f585e8b.log` qui imprime chaque commande avant son bloc.
 
 **Vérification d'invariance du livrable.** Le commit d'archivage de ces preuves ne touche aucun code :
 
@@ -563,10 +564,16 @@ l'exception `.gitignore` qui rend leurs journaux suivis.
 13 sept), **aucun zombie**, aucun processus résiduel. Continuité des bougies 1 m sur la fenêtre du rejeu, par paire :
 **73 lignes, 0 trou, plus grand écart 1.0 min** pour BTC, ETH et SOL — le collector n'a rien manqué.
 
-**Un incident de suite, non reproductible, consigné.** Le tout premier passage serveur de la suite (hors déterminisme) a
-rendu `1 512 passés, 6 skippés, 3 erreurs` ; les trois sont des **erreurs de teardown**, pas des échecs de test :
-un callback DNS de `pycares` / `aiodns` retombe sur une boucle asyncio déjà fermée (`RuntimeError: Event loop is
-closed`), chemin de bibliothèque que C2 ne touche pas, et pytest les rattache au teardown en cours. Trois relances
-successives sur la branche donnent **1 514 passés, 6 skippés, 0 erreur**, identiques au chiffre local ; le fichier
-incriminé passe seul (18 tests). Non reproductible, attribué à la fragilité de nettoyage asynchrone déjà connue de la
-suite (famille des désordres d'ordonnancement corrigés en B4.2) — signalé, non traité ici.
+**Un incident de suite, non reproductible, décrit tel que le XML le montre.** Le tout premier passage serveur de la
+suite (hors déterminisme) a rendu `1 512 passés, 6 skippés, 3 erreurs`. Aucune des trois n'est un échec de test, mais la
+répartition n'est pas uniforme et il faut le dire : **une seule est au teardown** (callback `_addrinfo_cb` de
+`pycares` / `aiodns` retombant sur une boucle asyncio fermée, `RuntimeError: Event loop is closed`), les **deux autres
+sont au setup** — `ResourceWarning: Unclosed client session` d'`aiohttp` remontée en `PytestUnraisableExceptionWarning`,
+et un `ExceptionGroup` de plusieurs avertissements non levables. Conséquence à ne pas masquer : une erreur au setup
+signifie que **le corps du test n'a pas tourné** — deux tests de `tests/test_main.py` n'ont donc pas été exécutés sur ce
+passage. Cause commune : des objets asynchrones survivant au test qui les a créés, chemin de bibliothèque que C2 ne
+touche pas. **Non reproductible** : trois relances successives donnent **1 514 passés, 6 skippés, 0 erreur** — identique
+au chiffre local et à celui du SHA livré — et le fichier incriminé passe seul (18 tests). Rattaché à la fragilité de
+nettoyage asynchrone déjà connue de la suite (famille des désordres d'ordonnancement corrigés en B4.2) ; l'artefact est
+conservé sous un nom qui l'annonce, avec sa table de répartition dans
+`results/c2_replay/determinism_server/README.md` — signalé, non traité ici.

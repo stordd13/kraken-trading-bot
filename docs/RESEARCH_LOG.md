@@ -69,6 +69,15 @@ isolé au SHA `835ffe21f031834a0a168daf409c4d6d09bc08d8`, base en accès local. 
 échouaient sur des erreurs de connexion sans jamais produire d'écart de hash. Collector vérifié après le lot (actif, 0
 redémarrage, aucun zombie) et continuité 1 m intacte sur la fenêtre (73 lignes par paire, 0 trou).
 
+**Second rejeu, au SHA livré** (2026-09-19, 12:11:42Z → 13:24:43Z) : l'archivage des preuves du premier lot déplaçant le
+SHA, les 24 tests ont été **intégralement rejoués** au SHA `f585e8bb676ad194753305da86db953d425de97c` — de nouveau
+**24 passés, 0 échec, 0 skip** — avec, au même passage et au même SHA, la suite hors déterminisme (**1 514 passés,
+6 skippés, 0 erreur**), les **6** tests de déterminisme de la fenêtre courte, les 2 gold hashes, `ruff check` propre et
+`mypy src/` = 65. Soit **30/30** au SHA livré. Innocuité revérifiée : collector actif, `NRestarts=0`, aucun zombie,
+continuité 1 m intacte (72 lignes par paire, 0 trou). Artefacts : `results/c2_replay/determinism_server/run2_f585e8b/`.
+Une vérification d'invariance (`git diff --stat f585e8b..HEAD -- src scripts tests config pyproject.toml poetry.lock`,
+sortie vide) établit que le commit d'archivage ne touche aucun code, donc qu'aucun rejeu supplémentaire n'est requis.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(vide — runs R&D gelés jusqu'au merge de C1-C2 ; prochains inscrits attendus : rejeu diagnostic grid 96 configs

@@ -87,7 +87,9 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   sont inchangés.
 - ▶️ **Chantiers post-audit** : ✅ **C1 métriques mergé** dans `dev` le 16 sept (12 commits, tag `v2.9.0-c1-metrics`,
   `results/C1_metrics_report.md`, dette 15) ; 🧪 **C2 fidélité replay : implémenté, validation pré-merge incomplète, non mergé / non taggé** (branche `feat/c2-replay` ;
-  les 24 tests de déterminisme full-range restent à rejouer sur le serveur au SHA figé — `results/C2_replay_report.md` § 8 ;
+  porte pré-merge verte au SHA livré : **30/30** tests de déterminisme (les 24 full-range rejoués sur le serveur, sans
+  tunnel), suite 1 514 passés / 6 skippés, gold hashes, ruff, mypy 65 — preuves sous `results/c2_replay/determinism_server/`,
+  détail `results/C2_replay_report.md` § 8 ;
   `results/C2_replay_report.md` : grid rejoué sur les vraies séries 4 h / 1 d / 1 w, préenregistrement aux params effectifs,
   warmup en bougies, rejets comptés, ventes grid appariées par id, `replay_version` 2 ; dettes 14 et 16 résolues, 17 et 18
   créées, dette 13 élargie) ; puis **rejeu diagnostic
