@@ -5,9 +5,9 @@
 > **Ce rapport ne porte aucun verdict économique** : les écarts avant/après sont attribués aux correctifs R1-R4 ;
 > le verdict appartient au rejeu diagnostic grid (phase suivante) sous protocole C3.
 >
-> État : **C2 implémenté, validation pré-merge incomplète, non mergé / non taggé**. Gate R4 et gate 2 (gold hashes) passés ;
-> porte pré-merge verte sauf les **24 tests de déterminisme full-range**, à rejouer sur le serveur au SHA figé (§ 8).
-> Aucun merge : la PR vers `dev` et le tag sont tranchés avec Bruno.
+> État : **C2 implémenté, porte pré-merge complète et verte, non mergé / non taggé**. Gate R4 et gate 2 (gold hashes)
+> passés ; les 24 tests de déterminisme full-range rejoués **sur le serveur** au SHA figé `835ffe2` — 24 passés, 0 skip
+> (§ 8). Aucun merge, aucun tag : ils sont tranchés avec Bruno.
 
 ## 0. Étape 0 — baselines et références « avant » (tag `v2.9.0-c1-metrics`)
 
@@ -471,7 +471,7 @@ branche (14 commits).
 |---|---|
 | `pytest -q` (tout sauf le fichier de déterminisme) | **1 514 passés, 6 skippés**, exit 0 (10 min 26 s) — les 6 skips sont les skips historiques, aucun n'est lié au tunnel |
 | `pytest -v` `test_run_p6_determinism.py` — les **6** tests de la fenêtre courte (3 sériel↔sériel, 3 parallèle↔sériel) | **6 passés** (plus lent : 414 s) |
-| `pytest` — les **24** `-m slow` full-range (3 ans, chaque combo rejoué en sériel puis en parallèle) | **bloqués par le tunnel** — aucun verdict de déterminisme obtenu, **aucun échec de hash** non plus (détail ci-dessous) |
+| `pytest` — les **24** `-m slow` full-range (3 ans, chaque combo rejoué en sériel puis en parallèle) | **24 passés, 0 échec, 0 erreur, 0 skip** — rejoués **sur le serveur**, sans tunnel, au SHA figé `835ffe2` ; rapports JUnit et journaux sous `results/c2_replay/determinism_server/` |
 | `test_grid_atr_v4_backward_compat.py` (gold hashes recalés) | **2 passés** avec tunnel (116 s), inclus dans les 1 514 |
 | `ruff check` (fichiers suivis) | **All checks passed** |
 | `ruff format --check` (fichiers suivis) | 2 fichiers non conformes : `scripts/p6_5_diagnose_dca.py`, `scripts/p6_5_diagnose_filters.py` — **dette 10 préexistante**, non touchés par C2 (`git diff a07eb73..HEAD` vide sur ces deux fichiers) |
@@ -517,6 +517,38 @@ porte de comparaison de hash.
 
 **Suite décidée (Bruno, 2026-09-19)** : pas de dérogation — les 6 tests courts ne remplacent pas les 24 (aucun combo
 grid, aucun DCA, et ils ne couvrent pas la reproductibilité multiprocessus du nouvel ordonnancement sur la fenêtre de
-campagne). Le lot est rejoué **sur le serveur**, sans tunnel, en checkout isolé et au SHA figé de la branche ; preuves
-attendues : rapport JUnit et journaux montrant **24 passés, 0 skip** à ce SHA. Un écart de hash y serait un bug de
-déterminisme du nouveau moteur — il serait instruit, jamais relancé jusqu'à passer.
+campagne). Le lot est rejoué **sur le serveur**, sans tunnel, en checkout isolé et au SHA figé de la branche.
+
+### Rejeu serveur des 24 — résultat
+
+Checkout isolé `~/c2-determinism/repo` (clone du SHA `835ffe21f031834a0a168daf409c4d6d09bc08d8`, **détaché**), venv
+propre à ce répertoire (`.venv` local, dépendances du `poetry.lock`), `.env` copié depuis l'arbre du service **sans le
+modifier**, base en accès **local** (aucun tunnel, aucun port 5433 dans cette configuration). Aucun merge, aucun
+déploiement, aucun `systemctl`, aucun `workflow_dispatch` : le service n'a pas été touché. Parallélisme laissé à ce que
+le test impose (`--workers 2`, dans le plafond fixé) et processus en `nice -n 5`, sur une machine à 4 cœurs.
+
+Une invocation `pytest` par combo, un rapport JUnit par combo, **arrêt immédiat prévu au premier échec** (un écart de
+hash serait un bug de déterminisme à instruire, jamais une relance jusqu'à ce que ça passe) — l'arrêt n'a pas servi.
+
+| | |
+|---|---|
+| SHA testé | `835ffe21f031834a0a168daf409c4d6d09bc08d8` |
+| Fenêtre | 2026-09-19 10:39:50Z → 11:50:04Z (70 min) |
+| Agrégat JUnit (24 fichiers) | `tests=24 failures=0 errors=0 skipped=0` |
+| Durées | grids 188-238 s ; gemini 236-407 s ; signaux grok 39-56 s |
+| Artefacts | `results/c2_replay/determinism_server/` (24 XML + `run24.log` + `rest_suite.log`), sha256(16) du lot `85f04b72fa3ba6d8` |
+
+Comparaison utile : le même premier combo (grid BTC) tournait 41 min **puis échouait** via le tunnel ; il passe en
+**238 s** en accès local. Le test court de contrôle passe en 3.2 s contre 137 s via le tunnel.
+
+**Innocuité vérifiée après le lot** : `krakenbot-collector` **actif**, `NRestarts=0` (actif sans interruption depuis le
+13 sept), **aucun zombie**, aucun processus résiduel. Continuité des bougies 1 m sur la fenêtre du rejeu, par paire :
+**73 lignes, 0 trou, plus grand écart 1.0 min** pour BTC, ETH et SOL — le collector n'a rien manqué.
+
+**Un incident de suite, non reproductible, consigné.** Le tout premier passage serveur de la suite (hors déterminisme) a
+rendu `1 512 passés, 6 skippés, 3 erreurs` ; les trois sont des **erreurs de teardown**, pas des échecs de test :
+un callback DNS de `pycares` / `aiodns` retombe sur une boucle asyncio déjà fermée (`RuntimeError: Event loop is
+closed`), chemin de bibliothèque que C2 ne touche pas, et pytest les rattache au teardown en cours. Trois relances
+successives sur la branche donnent **1 514 passés, 6 skippés, 0 erreur**, identiques au chiffre local ; le fichier
+incriminé passe seul (18 tests). Non reproductible, attribué à la fragilité de nettoyage asynchrone déjà connue de la
+suite (famille des désordres d'ordonnancement corrigés en B4.2) — signalé, non traité ici.

@@ -59,6 +59,16 @@ relances : consigné, pas justifié.
 | 9 | SOL réconcilié sur les 3 segments (divergence ≤ 1.1e-27, `net_pnl` = lot-basis, `unmatched_*` = 0), aucun rejet sur les 9 segments ; `warmup.sufficient=False` sur SOL train / all (4 h vide, 1 d / 1 w périmés) et BTC / ETH train / all (trou de 164 j dans les fenêtres 1 d / 1 w) — observé, jamais comblé | § 3.4 |
 | 10 | Comptabilité des 9 segments **inchangée au bit près** (trades, `net_pnl`, `ending_balance`, fees, `liquidation`, `rejections` identiques à l'artefact du commit 9) ; **4 valeurs de staleness** bougent — SOL train et all, 1 d 182 → 183 et 1 w 24 → 25 — les 23 autres blocs identiques, `sufficient` inchangé ; gold hashes vérifiés inchangés par le correctif (binance `5fb528df…`, bybit `e9f0d350…`) ; nouvel artefact sha256 16 `5e3c6631730ee6cd` | § 3.4 |
 
+### Porte pré-merge C2 — rejeu de déterminisme sur serveur (2026-09-19)
+
+Hors quota d'essais (vérification d'instrument, aucun verdict de sélection). Les 24 tests
+`test_determinism_parallel_vs_serial_full` (24 combos = 8 stratégies × 3 paires, 2023-04-01 → 2026-04-01, chaque combo
+rejoué en sériel puis dans un pool de 2 workers, comparaison de hash) ont été rejoués **sur le serveur**, en checkout
+isolé au SHA `835ffe21f031834a0a168daf409c4d6d09bc08d8`, base en accès local. Résultat : **24 passés, 0 échec, 0 skip**
+(agrégat JUnit `results/c2_replay/determinism_server/`). Motif du déplacement : via le tunnel SSH, les mêmes tests
+échouaient sur des erreurs de connexion sans jamais produire d'écart de hash. Collector vérifié après le lot (actif, 0
+redémarrage, aucun zombie) et continuité 1 m intacte sur la fenêtre (73 lignes par paire, 0 trou).
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(vide — runs R&D gelés jusqu'au merge de C1-C2 ; prochains inscrits attendus : rejeu diagnostic grid 96 configs
