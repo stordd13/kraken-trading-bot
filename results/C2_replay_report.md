@@ -5,9 +5,10 @@
 > **Ce rapport ne porte aucun verdict économique** : les écarts avant/après sont attribués aux correctifs R1-R4 ;
 > le verdict appartient au rejeu diagnostic grid (phase suivante) sous protocole C3.
 >
-> État : **C2 implémenté, porte pré-merge complète et verte au SHA livré**. Gate R4 et gate 2 (gold hashes) passés ;
-> **30/30** tests de déterminisme — 6 courts + les 24 full-range rejoués **sur le serveur** — au SHA `f585e8b`, suite
-> 1 514 passés / 6 skippés, gold hashes, ruff, mypy 65 (§ 8). Merge et tag : voir l'en-tête de `PROJECT_CONTEXT.md`.
+> État : **clos, mergé dans `dev` (`--no-ff`) le 19 septembre 2026, tag `v2.10.0-c2-replay`**. Gate R4 et gate 2
+> (gold hashes) passés ; porte pré-merge verte au SHA livré : **30/30** tests de déterminisme — 6 courts + les 24
+> full-range rejoués **sur le serveur**, preuves sous `results/c2_replay/determinism_server/` — suite 1 514 passés /
+> 6 skippés, gold hashes, ruff, mypy 65 (§ 8).
 
 ## 0. Étape 0 — baselines et références « avant » (tag `v2.9.0-c1-metrics`)
 

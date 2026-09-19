@@ -1,6 +1,6 @@
 # KrakenBot — Roadmap (Septembre 2026)
 
-> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 16 septembre 2026 (post-audit B4, C1 mergé).
+> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 19 septembre 2026 (post-audit B4, C1 et C2 mergés).
 > Décisions de pivot : `docs/archive/PIVOT_BYBIT_PLAN.md` · audit Bybit : `results/bybit_integration_audit.md` ·
 > audit red-team B4 (portée des conclusions) : `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` + addendum en tête de
 > `results/B4_bybit_backtest_report.md`.
@@ -23,6 +23,7 @@
 | B0 | Audit Bybit EU (endpoints, lots, spread, historique, WS, ordres, rate limits, écart de prix) | — | **GO avec réserves** (`results/bybit_integration_audit.md`) |
 | B0.5 | Refonte docs + suppression du code legacy Kraken-era | — | Version du 8 sept |
 | B4 | Re-run P6 (24 combos) + P7 (212 configs, 280 fenêtres WF) sur données Binance end-stampées, fees Bybit maker/taker, coûts par paire (GATE B), grid honnête (GATE A) | v2.8.0-b4-3-campaign | **0/24, 0/35, sélection paper vide** (`results/B4_bybit_backtest_report.md`) — métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de sélection (vides) inchangés |
+| C2 | Fidélité du replay : grid rejoué sur les vraies séries 4 h / 1 d / 1 w, préenregistrement lazy aux params effectifs + warmup en bougies, compteurs de rejets, ventes grid appariées par `position_id` (dette 14), `replay_version` 2 | v2.10.0-c2-replay | Signal bit-identique en mode strict, gold hashes grid re-baselinés sur tableau approuvé, 30/30 tests de déterminisme au SHA livré (`results/C2_replay_report.md`) |
 | C1 | Métriques fiables : module partagé `krakenbot.backtest_metrics` (`metrics_version` 2), dual MaxDD, PF net, equity export, A/B vs tag | v2.9.0-c1-metrics | Simulation inchangée au centime, gold hashes re-baselinés sur tableau A/B approuvé (`results/C1_metrics_report.md`) |
 
 Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADMAP_pre_binance_pivot.md`.
@@ -38,8 +39,8 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | **B3** | Import historique Bybit EU (REST paginé, batch 1000) ; collector/scheduler génériques (`TaskScheduler` via factory, backfill gap) | 2 j | Data Bybit en DB (≈ 2.5M candles depuis 2025-06-11), backfill fonctionnel | ✅ 13 sept — `v2.5.0-b3-bybit-data` (merge `3ea32d9`) : historique EU importé, backfill démontré sur gaps réels, scheduler actif ; constat convention timestamp → dette B4 |
 | **B4** | Re-run P6 (24 combos) et P7 (grid search phases 1-2 + rapport) sur données Binance avec fees Bybit maker/taker + spread/slippage mesurés | 1 j run + 1 j analyse | `results/B4_bybit_backtest_report.md`, sélection paper | ✅ 15 sept — `v2.8.0-b4-3-campaign` : 0/24, 0/35, sélection paper vide ; **métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de sélection (vides) inchangés** |
 | **C1** | Métriques fiables (module partagé, dual MaxDD, PF net, equity export, A/B vs tag) | 3-5 j | `results/C1_metrics_report.md`, gold hashes re-baselinés sur tableau A/B approuvé | ✅ 16 sept — mergé dans `dev`, tag `v2.9.0-c1-metrics` |
-| **C2** | Fidélité replay (grid 4h réels, préenregistrement EMA200 DCA, compteurs de rejets, dette 14 avec review) | 2-4 j | Rapport C2, re-baseline expliqué | 📋 après C1 |
-| **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | Rapport de rejeu ; décision candidat / dépriorisation | 📋 après C2 |
+| **C2** | Fidélité replay (grid 4h réels, préenregistrement EMA200 DCA, compteurs de rejets, dette 14 avec review) | 2-4 j | `results/C2_replay_report.md`, gold hashes grid re-baselinés sur tableau approuvé, preuves de déterminisme `results/c2_replay/determinism_server/` | ✅ 19 sept — mergé dans `dev`, tag `v2.10.0-c2-replay` |
+| **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | Rapport de rejeu ; décision candidat / dépriorisation | 📋 **phase courante** (instrument réparé : C1 + C2 mergés) |
 | **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole v2 documenté + outillé | 📋 avant toute sélection |
 | **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
@@ -103,7 +104,7 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
   sous 5k, plancher 5-10 USDC, doctrine des sorties MARKET à 0.25 %.
 - **Fait le 15 sept 2026** (`feat/b4-3-campaign`, tag `v2.8.0-b4-3-campaign`) : P6 0/24, P7 0/35, sélection paper vide
   (`results/B4_bybit_backtest_report.md`). **Métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de
-  sélection (vides) inchangés** — réparation de l'instrument : C1 (mergé) → C2 → rejeu grid → C3.
+  sélection (vides) inchangés** — réparation de l'instrument : C1 et C2 **mergés** → rejeu grid (phase courante) → C3.
 
 ### B5 — Paper trading Bybit (4-6 semaines, ex-P9)
 

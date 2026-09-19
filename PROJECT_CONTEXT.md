@@ -86,15 +86,16 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   Portée des conclusions B4 : addendum en tête de `results/B4_bybit_backtest_report.md`. Les verdicts de sélection (vides)
   sont inchangés.
 - ▶️ **Chantiers post-audit** : ✅ **C1 métriques mergé** dans `dev` le 16 sept (12 commits, tag `v2.9.0-c1-metrics`,
-  `results/C1_metrics_report.md`, dette 15) ; 🧪 **C2 fidélité replay : implémenté, validation pré-merge incomplète, non mergé / non taggé** (branche `feat/c2-replay` ;
+  `results/C1_metrics_report.md`, dette 15) ; ✅ **C2 fidélité replay mergé le 19 sept** dans `dev` (`--no-ff`), tag **`v2.10.0-c2-replay`** ;
   porte pré-merge verte au SHA livré : **30/30** tests de déterminisme (les 24 full-range rejoués sur le serveur, sans
   tunnel), suite 1 514 passés / 6 skippés, gold hashes, ruff, mypy 65 — preuves sous `results/c2_replay/determinism_server/`,
   détail `results/C2_replay_report.md` § 8 ;
   `results/C2_replay_report.md` : grid rejoué sur les vraies séries 4 h / 1 d / 1 w, préenregistrement aux params effectifs,
   warmup en bougies, rejets comptés, ventes grid appariées par id, `replay_version` 2 ; dettes 14 et 16 résolues, 17 et 18
-  créées, dette 13 élargie) ; puis **rejeu diagnostic
-  grid** (96 configs BTC/SOL, périmètre pré-spécifié, verdict « inconclusif » possible) ; puis **C3 validation chronologique**
-  (note WF § 9) avant toute sélection. **Gel des runs R&D** jusqu'à C1-C2 mergés ; tickets papier (`docs/CONTRAINTES_POST_B4.md`
+  créées, dette 13 élargie). **Phase courante : rejeu diagnostic
+  grid** (96 configs BTC/SOL, périmètre pré-spécifié, verdict « inconclusif » possible), puis **C3 validation chronologique**
+  (note WF § 9) avant toute sélection. Le **gel des runs R&D** posé jusqu'au merge de C1-C2 est **levé pour ce rejeu**,
+  l'instrument étant réparé et mergé ; tout run s'inscrit d'abord dans `docs/RESEARCH_LOG.md` ; tickets papier (`docs/CONTRAINTES_POST_B4.md`
   § 6) autorisés ; tout run futur s'inscrit d'abord dans `docs/RESEARCH_LOG.md`.
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
@@ -324,8 +325,8 @@ Détail : `ROADMAP.md`.
   Bybit, B2 WS, B3 data/collector, **B4 re-run P6 + P7 fees Bybit** (15 sept, tag `v2.8.0-b4-3-campaign`) → **0 survivant**
   (zéro sélection sous les critères codés avec un instrument depuis invalidé — addendum B4), **C1 métriques** (16 sept,
   tag `v2.9.0-c1-metrics`).
-- ▶️ **Chantiers post-audit** : C2 fidélité replay (prochain) → rejeu diagnostic grid (96 configs BTC/SOL) → C3 validation
-  chronologique ; runs R&D gelés jusqu'à C1-C2 mergés.
+- ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`) et C2 (mergé, `v2.10.0-c2-replay`) → **rejeu diagnostic
+  grid** (96 configs BTC/SOL, phase courante) → C3 validation chronologique.
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
