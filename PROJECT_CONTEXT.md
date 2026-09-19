@@ -86,7 +86,8 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   Portée des conclusions B4 : addendum en tête de `results/B4_bybit_backtest_report.md`. Les verdicts de sélection (vides)
   sont inchangés.
 - ▶️ **Chantiers post-audit** : ✅ **C1 métriques mergé** dans `dev` le 16 sept (12 commits, tag `v2.9.0-c1-metrics`,
-  `results/C1_metrics_report.md`, dette 15) ; ✅ **C2 fidélité replay livré les 17-18 sept** (branche `feat/c2-replay`, **non mergée** — PR vers `dev` et tag tranchés avec Bruno,
+  `results/C1_metrics_report.md`, dette 15) ; 🧪 **C2 fidélité replay : implémenté, validation pré-merge incomplète, non mergé / non taggé** (branche `feat/c2-replay` ;
+  les 24 tests de déterminisme full-range restent à rejouer sur le serveur au SHA figé — `results/C2_replay_report.md` § 8 ;
   `results/C2_replay_report.md` : grid rejoué sur les vraies séries 4 h / 1 d / 1 w, préenregistrement aux params effectifs,
   warmup en bougies, rejets comptés, ventes grid appariées par id, `replay_version` 2 ; dettes 14 et 16 résolues, 17 et 18
   créées, dette 13 élargie) ; puis **rejeu diagnostic
@@ -406,8 +407,11 @@ Détail : `ROADMAP.md`.
     SELL apparié du grid émet `amount_btc` seul, **jamais `position_id`** ; le chemin sans id (lot unique au prix exact,
     sinon réconciliation signalée) reste le chemin nominal en live. Le test one-off devient : **restart avec rows OPEN
     périmées, puis réhydratation des lots depuis `open_positions` ou closer par id** — l'équivalence lot ↔ row n'est
-    démontrée qu'à ce moment. **Prérequis B5 explicite : le grid est inéligible au paper tant que cette démonstration
-    n'est pas faite** (`results/C2_replay_report.md` § 5).
+    démontrée qu'à ce moment. **Prérequis B5 explicite : le grid est inéligible au paper tant que (a) cette démonstration
+    n'est pas faite et (b) la réconciliation de démarrage n'est pas corrigée** — `_reconcile_positions_with_exchange`
+    (`main.py:804`) solde les rows OPEN les plus anciennes en FIFO à `pnl = 0`, sans filtre `bot_id` : au redémarrage la
+    comptabilité de positions du grid est **activement fausse** (P&L réalisé perdu, row fermée ≠ lot vendu, rows d'une
+    autre stratégie atteignables), pas seulement exposée à un risque (`results/C2_replay_report.md` § 5).
 14. ✅ **C2 (2026-09-17) — Tolérance de fermeture absolue du grid** (`grok_grid_atr_adaptive_v4.py`, `_match_sell_fill` avant C2 : `|sell_level − prix| < 1` USD)
     contre appariement moteur par `position_id` → « mauvais pop » : sur SOL (~180 USD) des cibles SELL à moins de 1 USD
     sont fréquentes et **40 lots ont été vendus deux fois** sur le run P6 B4 (3 runs flaggés, divergence d'inventaire

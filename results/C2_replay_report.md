@@ -5,8 +5,8 @@
 > **Ce rapport ne porte aucun verdict économique** : les écarts avant/après sont attribués aux correctifs R1-R4 ;
 > le verdict appartient au rejeu diagnostic grid (phase suivante) sous protocole C3.
 >
-> État : **livré, un point ouvert** — 14 commits (`f849b4b` → docs), gate R4 et gate 2 (gold hashes) passés, porte pré-merge exécutée (§ 8)
-> avec un seul point non conclu : les 24 tests de déterminisme full-range, bloqués par l'instabilité du tunnel SSH (§ 8).
+> État : **C2 implémenté, validation pré-merge incomplète, non mergé / non taggé**. Gate R4 et gate 2 (gold hashes) passés ;
+> porte pré-merge verte sauf les **24 tests de déterminisme full-range**, à rejouer sur le serveur au SHA figé (§ 8).
 > Aucun merge : la PR vers `dev` et le tag sont tranchés avec Bruno.
 
 ## 0. Étape 0 — baselines et références « avant » (tag `v2.9.0-c1-metrics`)
@@ -118,18 +118,22 @@ Captures « après » sur la branche (commit `16078d1`, moteur = `508adae`) ; sh
 
 | Clé | quick binance avant → après | quick bybit avant → après | grid A bybit avant → après | Attribution |
 |---|---|---|---|---|
-| trades (fills) / paires maker / lots liquidés | 90 / 37 / 8 → 4 / 2 / 0 | 90 / 37 / 8 → 4 / 2 / 0 | 2 128 / 1 031 / 33 → 114 / 53 / 4 | **R1** : décisions sur les 85 clôtures 4 h de la fenêtre quick (4 033 ticks 5 m avant), `atr_4h` ≈ 2 194 (vrai 4 h) contre ≈ 279 (bougies 5 m) → espacement au plafond 5 % au lieu du plancher 1,5 %, recalc effectif 8 h ; bien moins de niveaux touchés |
-| `net_pnl` | 1.520 → 2.421 | 0.655 → 2.395 | 114.21 → 45.72 | R1 |
-| `total_fees` | 1.689 → 0.077 | 2.535 → 0.102 | 54.24 → 3.02 | R1 (volume de fills) |
-| `unrealized_pnl` (liquidation terminale) | −11.12 → 0 | −11.47 → 0 | −228.12 → −15.31 | R1 (inventaire terminal 8 → 0 lots ; 33 → 4) |
-| `average_holding_time_minutes` | 324 → 1 418 | 324 → 1 418 | 1 435 → 5 777 | R1 (espacement) |
+| trades (fills) / paires maker / lots liquidés | 90 / 37 / 8 → 4 / 2 / 0 | 90 / 37 / 8 → 4 / 2 / 0 | 2 128 / 1 031 / 33 → 114 / 53 / 4 | quick : **R1** ; grid A : **R1 + R2** (voir la ligne `warmup`) : décisions sur les 85 clôtures 4 h de la fenêtre quick (4 033 ticks 5 m avant), `atr_4h` ≈ 2 194 (vrai 4 h) contre ≈ 279 (bougies 5 m) → espacement au plafond 5 % au lieu du plancher 1,5 %, recalc effectif 8 h ; bien moins de niveaux touchés |
+| `net_pnl` | 1.520 → 2.421 | 0.655 → 2.395 | 114.21 → 45.72 | quick : R1 ; grid A : **R1 + R2** |
+| `total_fees` | 1.689 → 0.077 | 2.535 → 0.102 | 54.24 → 3.02 | volume de fills — quick : R1 ; grid A : R1 + R2 |
+| `unrealized_pnl` (liquidation terminale) | −11.12 → 0 | −11.47 → 0 | −228.12 → −15.31 | inventaire terminal 8 → 0 lots ; 33 → 4 — quick : R1 ; grid A : R1 + R2 |
+| `average_holding_time_minutes` | 324 → 1 418 | 324 → 1 418 | 1 435 → 5 777 | espacement — quick : R1 ; grid A : R1 + R2 |
 | `sharpe_ratio` / `max_drawdown_pct_daily` / `profit_factor` / `calmar_ratio` | 0.352 / 2.18 / 1.135 / 1.85 → 9.17 / 0.00 / n/a (0 perte) / n/a | 0.188 / 2.20 / 1.056 / 0.78 → 9.16 / 0.00 / n/a / n/a | 0.367 / 17.97 / 1.499 / 0.204 → 0.931 / 2.04 / 3.967 / 0.734 | conséquences des lignes précédentes (2 gains sans perte sur 14 jours : Sharpe non significatif, `n_daily_returns` 14) |
 | `liquidation.inventory_divergence_btc` / `residual_net_proceeds` | 0 / 0 → 0 / 0 | −1e-30 / 0 → 0 / 0 | −4e-30 / 0 → 0 / 0 | **R4** : aucun double pop sur BTC avant comme après (les cibles à 0.1 USD ne se chevauchent pas à ~90 000 USD) |
 | `rejections` (C2) | — → aucun | — → aucun | — → aucun | R3 : aucun rejet sur ces runs BTC |
-| `warmup` (C2, par TF : chargé/requis, staleness, plus grand trou, suffisant) | 4 h 91/14 0 0 ✓ · 1 d 251/50 0 0 ✓ · 1 w 56/50 0 1 ✓ | idem | 4 h 91/14 0 0 ✓ · **1 d 88/50 0 163 ✗** · **1 w 50/50 0 23 ✗** | R2, avec un effet de décision : sur grid A le trou BTC 2022-09-29 → 2023-03-12 tombe dans les fenêtres de 250 / 400 j. En 1 d, 88 bougies sans extension (`extended_by` 0). En **1 w, le comptage n'est atteint que par l'extension bornée : `extended_by` 19**, historique remonté au 2021-10-18 — alors que la fenêtre calendaire du tag (`start` − 400 j = 2022-02-25) n'en fournit qu'environ 34, **sous les 50 requises par l'EMA 50 du régime 1 w**. Le régime hebdomadaire du run « avant » n'était donc pas amorcé, celui du run « après » l'est : **la ligne grid A n'est pas purement R1**, son entrée « régime 1 w » change aussi sous R2. `sufficient=False` reste **signalé** (trou de 23 bougies) — observation, pas de correction |
+| `warmup` (C2, par TF : chargé/requis, staleness, plus grand trou, suffisant) | 4 h 91/14 0 0 ✓ · 1 d 251/50 0 0 ✓ · 1 w 56/50 0 1 ✓ | idem | 4 h 91/14 0 0 ✓ · **1 d 88/50 0 163 ✗** · **1 w 50/50 0 23 ✗** | R2, avec un effet de décision : sur grid A le trou BTC 2022-09-29 → 2023-03-12 tombe dans les fenêtres de 250 / 400 j. En 1 d, 88 bougies sans extension (`extended_by` 0). En **1 w, le comptage n'est atteint que par l'extension bornée : `extended_by` 19**, historique remonté au 2021-10-18 — alors que la fenêtre calendaire du tag (`start` − 400 j = 2022-02-25) n'en fournit que **31** (50 − 19), **sous les 50 requises par l'EMA 50 du régime 1 w**. Le régime hebdomadaire du run « avant » n'était donc pas amorcé, celui du run « après » l'est : **la ligne grid A n'est pas purement R1**, son entrée « régime 1 w » change aussi sous R2. `sufficient=False` reste **signalé** (trou de 23 bougies) — observation, pas de correction |
 
-Aucun verdict : ces chiffres décrivent la stratégie **spécifiée** (décisions aux clôtures 4 h, ATR 4 h réel) telle que le
-replay la simule désormais ; le verdict appartient au rejeu diagnostic grid (phase suivante, protocole C3).
+**Lecture de l'attribution.** Sur la fenêtre quick (2025-03-01, hors trou), les trois TF sont chargés sans extension :
+l'écart y est **R1 seul**. Sur grid A, deux entrées de décision changent à la fois — la cadence et l'ATR (R1) **et** le
+régime 1 w, indisponible avant C2 faute de bougies (R2). Les deux causes ne sont pas séparables sur ce run : il faudrait
+un rejeu à extension désactivée pour les isoler, ce qui n'est pas fait ici. Aucun verdict : ces chiffres décrivent la
+stratégie **spécifiée** telle que le replay la simule désormais ; le verdict appartient au rejeu diagnostic grid
+(phase suivante, protocole C3).
 
 ### 3.4 Rejeu P6 des trois grids (BTC / ETH / SOL, train / test / all) — preuve 4 (réel)
 
@@ -185,7 +189,22 @@ préenregistrée, était muette 200 jours à partir du premier lundi ≥ `start`
 oversold était inatteignable par construction — sur les **40 rejeux trimestriels du walk-forward** (les 5 configs DCA
 retenues par la phase 1 × 8 fenêtres ; les 48 configs de la grille n'ont vu, elles, que le split 70/30 de la phase 1).
 `grok_ema_adx_atr` (hors P7) n'a jamais eu son **EMA 125** prête en 90 bougies de warmup — l'EMA 27 l'était, mais la paire
-étant exigée ensemble, la branche d'entrée restait muette. Ce qui est **testé** ici, ce sont les deux cardinalités
+étant exigée ensemble, la branche d'entrée restait muette.
+
+**Le régime hebdomadaire du grid n'était pas amorcé non plus, et cela dépasse le cas de grid A.** Avant C2, la fenêtre
+1 w du grid était calendaire (`start` − 400 j) sans extension par comptage. Pour tout segment commençant au 2023-04-01,
+le trou de données tombe dedans : la fenêtre ne fournit que **31** bougies hebdomadaires sur BTC et ETH, **29** sur SOL,
+là où `get_regime("1w")` exige les **50** de son EMA lente. Or `get_regime` renvoie `None` tant que ses EMA ne sont pas
+prêtes (`indicators/multi_timeframe.py:750-771`), et le grid ne met en pause que sur l'égalité stricte
+`regime_1w == "strong_bear"` (`grok_grid_atr_adaptive_v4.py:383-384`). Conséquence mesurable sur la campagne B4 : sur les
+segments **train et all des trois paires**, la protection `pause_1w_strong_bear` — active par défaut de classe, donc dans
+tous les runs P6 — **ne pouvait pas se déclencher** pendant les 19 premières clôtures hebdomadaires (21 sur SOL), soit
+environ les 4 à 5 premiers mois du segment ; elle ne redevenait possible qu'une fois 50 bougies accumulées en cours de
+rejeu. Les segments `test` (démarrage 2025-05-07, hors trou) ne sont pas concernés : 55 bougies chargées, régime
+disponible dès `start`. Le même raisonnement vaut pour les configs P7 portant `bear_protection_mode` à `1w_only` ou
+combiné. Chiffres lus sur les blocs `warmup` du rejeu (`extended_by` 19 / 19 / 21 ; `loaded − extended_by` = ce que la
+fenêtre calendaire seule fournissait). Constat de portée au même titre que le préenregistrement SuperTrend / Donchian :
+**aucune correction rétroactive, et aucun verdict** sur ce que les runs B4 auraient donné autrement. Ce qui est **testé** ici, ce sont les deux cardinalités
 (19/20 et 3/4) par `test_p7_variants_created_their_indicators_lazily_before_c2` ; les durées de mutisme et les cas DCA /
 `grok_ema_adx_atr` sont des constats de lecture du code pré-C2. Constat de portée pour l'invalidation B4 ; aucune
 correction rétroactive.
@@ -204,7 +223,18 @@ P&L fabriqué) ou, hors router, produirait des rows OPEN dupliquées (`MultipleR
 `order_manager._position_profit_targets` est indexé par int sans `bot_id`. Décision (Bruno, revue du plan) : le SELL apparié
 émet `amount_btc` seul, **pas** `position_id` ; le chemin sans id reste le chemin nominal en live (lot unique au prix exact,
 sinon réconciliation signalée). Démonstration reportée au **test dette 13 élargi** (restart avec rows OPEN périmées,
-réhydratation ou closer par id) ; **prérequis B5 : le grid est inéligible au paper tant que ce n'est pas démontré**.
+réhydratation ou closer par id).
+
+**Ce n'est pas seulement un risque : au redémarrage, la comptabilité de positions du grid est activement fausse.**
+`_reconcile_positions_with_exchange` (`main.py:804`, appelée `:526`) compare le solde BTC de l'exchange à la somme des
+rows OPEN et, en cas de déficit, ferme les **plus anciennes en FIFO** avec `pnl = 0`. Trois conséquences, par lecture du
+code : (1) les lots grid réellement vendus pendant l'arrêt sont soldés à **P&L nul** — le résultat réalisé n'est pas
+retardé, il est **perdu** ; (2) la fermeture est faite par ancienneté, pas par identité, donc la row fermée n'est
+généralement pas celle qui a été vendue, et le `entry_price` restant en base ne correspond plus à l'inventaire ; (3) la
+requête **ne filtre pas `bot_id`** : elle balaie toutes les rows OPEN en `spot`, donc le déficit d'une stratégie peut
+fermer les rows d'une autre. **Prérequis B5, explicite : le grid est inéligible au paper tant que (a) l'appariement lot
+↔ row n'est pas démontré au restart et (b) cette réconciliation FIFO n'est pas corrigée** (filtre `bot_id` au minimum,
+fermeture par identité et P&L réel visés).
 
 ## 6. Découvertes annexes (signalées, non traitées)
 
@@ -221,8 +251,9 @@ réhydratation ou closer par id) ; **prérequis B5 : le grid est inéligible au 
   seul passe en 7 min) ; (b) le tunnel SSH tombe sous charge soutenue et fait échouer les rejeux full-range sur des erreurs
   de connexion. Détail et parade au § 8.
 - `_reconcile_positions_with_exchange` (`main.py:804`, chemin live) ferme les rows OPEN les plus anciennes en **FIFO** avec
-  `pnl = 0`, **sans filtre `bot_id`** : une stratégie peut voir fermer les rows d'une autre. Consigné avec la dette 13
-  élargie (§ 5), non traité ici.
+  `pnl = 0`, **sans filtre `bot_id`**. Ce n'est pas une simple découverte annexe : elle rend la comptabilité de positions
+  du grid **activement fausse au redémarrage** (P&L réalisé perdu, row fermée ≠ lot vendu, rows d'une autre stratégie
+  atteignables). Traitée comme **prérequis B5** et rattachée à la dette 13 élargie (§ 5) ; non corrigée ici.
 
 ## 7. Gold hashes (re-baseline — gate 2 passé, recalage au commit `652c188`)
 
@@ -469,18 +500,23 @@ comparaison de hash. Relance ensuite **combo par combo** (attente du tunnel avan
 immédiat du lot si un échec n'était **pas** une erreur de connexion) : combo0 a épuisé ses trois tentatives, chacune
 échouant en quelques secondes sur le même motif, combo1 de même.
 
-**Ce que ce n'est pas.** Ce n'est pas une régression C2 : les 3 tests *parallèle ↔ sériel* de la fenêtre courte, qui
-exercent exactement le même chemin (runner, pool `multiprocessing`, comparaison de hash), **passent**. Ce n'est pas le
-serveur : au même moment, charge 0.00, 5.9 Go disponibles, Postgres à **12 connexions sur 50**, aucun `too many clients`
-dans ses journaux. Ce n'est pas un manque de capacité de la liaison en général : le même tunnel a porté, le même jour,
-la suite de 1 514 tests, le rejeu P6 des 3 grids (16 min, 3 workers), les quatre rejeux de la fenêtre gold et la preuve 1
-sur données réelles. Le motif propre à ces 24 tests est la **charge multi-processus soutenue sur 40 à 80 min** : le
-client SSH d'`autossh` est réengendré pendant ces runs et les connexions en cours sont réinitialisées
-(`ConnectionResetError` reproduit à la main pendant la fenêtre d'instabilité).
+**Observations concomitantes, sans conclusion de cause.** Aucune des mesures ci-dessous n'établit le mécanisme du
+blocage ; elles sont consignées telles quelles. (1) Les 3 tests *parallèle ↔ sériel* de la fenêtre courte, qui empruntent
+le même runner, le même pool `multiprocessing` et la même comparaison de hash, passent — mais sur une fenêtre de deux
+semaines, sans combo grid ni DCA. (2) Au moment des échecs, le serveur mesure une charge de 0.00 et 5.9 Go disponibles,
+Postgres 12 connexions sur 50, sans `too many clients` dans ses journaux. (3) Le même tunnel a porté le même jour la
+suite de 1 514 tests, le rejeu P6 des 3 grids (16 min, 3 workers), les quatre rejeux de la fenêtre gold et la preuve 1
+sur données réelles. (4) Pendant les tentatives, le client SSH d'`autossh` apparaît réengendré et une connexion ouverte
+à la main est retombée sur `ConnectionResetError`.
 
-**Décision laissée à Bruno** (elle touche l'infrastructure, pas le chantier) : (a) rejouer le lot quand la liaison est
-stable, le script de relance par combo étant prêt et s'arrêtant net sur un vrai écart de déterminisme ; (b) rejouer le
-lot **sur le serveur**, sans tunnel — ce qui suppose de pousser la branche, donc un accord explicite ; (c) acter que la
-couverture *parallèle ↔ sériel* est assurée par les 6 tests de la fenêtre courte et traiter les 24 full-range comme une
-vérification d'infrastructure hors périmètre C2. **En l'état, la porte pré-merge est verte sur tout le reste et ce point
-est le seul ouvert.**
+**Hypothèses non départagées** : saturation ou expiration côté liaison sous charge multi-processus prolongée (40 à
+80 min) ; interaction entre le `ServerAliveInterval` du tunnel et un lien saturé ; limite de canaux ou de descripteurs
+côté client SSH ; cause réseau extérieure. Départager demanderait une instrumentation du tunnel qui sort du périmètre de
+ce chantier. **Ce qui est établi, et seulement cela** : les 24 échecs portent tous une erreur de connexion et aucun ne
+porte de comparaison de hash.
+
+**Suite décidée (Bruno, 2026-09-19)** : pas de dérogation — les 6 tests courts ne remplacent pas les 24 (aucun combo
+grid, aucun DCA, et ils ne couvrent pas la reproductibilité multiprocessus du nouvel ordonnancement sur la fenêtre de
+campagne). Le lot est rejoué **sur le serveur**, sans tunnel, en checkout isolé et au SHA figé de la branche ; preuves
+attendues : rapport JUnit et journaux montrant **24 passés, 0 skip** à ce SHA. Un écart de hash y serait un bug de
+déterminisme du nouveau moteur — il serait instruit, jamais relancé jusqu'à passer.
