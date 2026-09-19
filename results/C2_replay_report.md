@@ -78,7 +78,7 @@ simulation et gold hashes inchangés (§ 7), seules les valeurs de staleness SOL
 | 4 appariement (réel) | `test_c2_grid_rerun_artifact.py` sur `results/c2_replay/P6_grid_rerun.json` : présence / validité (entrée sans `error`, 3 segments, champs comptables, bloc `liquidation`, valeurs parsables, `replay_version` 2) → tolérances `b4_flags` → compteurs `unmatched_*` = 0 → SOL train / all `sufficient=False` sur les 3 TF avec staleness == contrat (stamps attendus entre `last` et le début du segment) → contrat de staleness vérifié sur les 27 blocs `warmup` (9 segments × 3 TF) ; tests négatifs (bloc `liquidation` supprimé, entrée en erreur) rouges — **vert** ; observations § 3.4 |
 | 5 invariant | `compare-ab --strict` signal A tag vs branche : **`STRICT IDENTITY OK`** (exit 0) — 92 trades, 6 577 points d'equity, `net_pnl` 19.314423, toutes clés de métriques, `buy_fee_alloc`, soldes, fees identiques ; capture `results/c2_ab/signal_A_bybit_c2.json` (sha256 16 `a62c0c87aba2caa5`), prise au commit `c4b57e5` — les commits suivants ne touchent pas le chemin du moteur signal (`508adae` = inventaire grid ; `a9a71f6` = comptage de staleness, dont la valeur est 0 sur les trois TF de cette fenêtre, `last` == `start`) ; test négatif du mode strict dans `test_c1_equity_probe.py` |
 | 6 avant/après | § 3 |
-| 7 suite | État intermédiaire (commits 1-11) : `pytest -q -k "not determinism"` = 1 502 passés, seuls les 2 gold hashes grid rouges — attendu jusqu'au recalage, comme prévu au plan. **État final** (14 commits) : voir § 8 — suite complète, ruff, mypy et 6 des 30 tests de déterminisme **verts** ; les 24 full-range restent bloqués par le tunnel (aucun écart de hash observé) |
+| 7 suite | État intermédiaire (commits 1-11) : `pytest -q -k "not determinism"` = 1 502 passés, seuls les 2 gold hashes grid rouges — attendu jusqu'au recalage, comme prévu au plan. **État final** : § 8 — suite complète (1 514 passés / 6 skippés), **30/30** tests de déterminisme (6 courts + 24 full-range rejoués sur le serveur), gold hashes, ruff et mypy — **tout vert au SHA livré** |
 
 ## 3. Avant / après (sans verdict)
 
@@ -490,7 +490,7 @@ elle est **antérieure à C2** et n'est pas traitée ici. Conséquence pour la r
 Les 24 erreurs `ruff check` visibles sur un `ruff check .` nu proviennent de `results/red_team_b4_20260916/`
 (reproductions de l'audit externe, **non suivies par git**, hors périmètre de la branche).
 
-### Les 24 tests full-range : bloqués par l'environnement, décision à prendre
+### Les 24 tests full-range : pourquoi ils ont été déplacés sur le serveur
 
 **Ce qui s'est passé, mesuré.** Premier passage d'un bloc : le test grid BTC tourne 41 min puis s'interrompt sur
 `ConnectionDoesNotExistError` (« connection was closed ») ; les 23 suivants ne peuvent plus ouvrir de connexion
@@ -540,6 +540,24 @@ hash serait un bug de déterminisme à instruire, jamais une relance jusqu'à ce
 
 Comparaison utile : le même premier combo (grid BTC) tournait 41 min **puis échouait** via le tunnel ; il passe en
 **238 s** en accès local. Le test court de contrôle passe en 3.2 s contre 137 s via le tunnel.
+
+**Second rejeu, au SHA livré.** Le premier lot validait `835ffe2` ; l'archivage de ses preuves déplaçant le SHA, le lot
+a été **intégralement rejoué** au SHA `f585e8bb676ad194753305da86db953d425de97c` : de nouveau **24 passés, 0 échec,
+0 erreur, 0 skip**, plus, au même SHA et dans le même passage, la suite hors déterminisme (**1 514 passés, 6 skippés,
+0 erreur**), les **6** tests de déterminisme de la fenêtre courte, les 2 gold hashes, `ruff check` propre et
+`mypy src/` = 65. Soit **30/30** tests de déterminisme au SHA livré. Preuves complètes, par rejeu et par commande, sous
+`results/c2_replay/determinism_server/` (`README.md` = manifeste : SHA testé et commande exacte de chaque fichier).
+
+**Vérification d'invariance du livrable.** Le commit d'archivage de ces preuves ne touche aucun code :
+
+```
+git diff --stat f585e8b..HEAD -- src scripts tests config pyproject.toml poetry.lock
+(sortie vide)
+```
+
+Tant que cette sortie est vide, le SHA livré est validé par les rejeux de `f585e8b` et **aucun rejeu supplémentaire
+n'est requis**. Les seules différences entre `f585e8b` et le commit mergé sont les artefacts de preuve, ce fichier et
+l'exception `.gitignore` qui rend leurs journaux suivis.
 
 **Innocuité vérifiée après le lot** : `krakenbot-collector` **actif**, `NRestarts=0` (actif sans interruption depuis le
 13 sept), **aucun zombie**, aucun processus résiduel. Continuité des bougies 1 m sur la fenêtre du rejeu, par paire :

@@ -107,3 +107,6 @@ results/c1_ab/*_equity.jsonl
 # sha256 recorded in results/C2_replay_report.md; equity sidecars likewise
 results/c2_ab/grid_A_*.json.gz
 results/c2_ab/*_equity.jsonl
+# C2 pre-merge gate evidence: these are proof artifacts of the server determinism reruns,
+# not runtime logs — the blanket `*.log` rule above would silently drop them (it did once).
+!results/c2_replay/determinism_server/**/*.log
