@@ -19,6 +19,7 @@ from scripts import generate_p6_report as gr
 
 GOOD = {
     "metrics_version": 2,
+    "replay_version": 2,
     "sharpe_ratio": 1.2,
     "sortino_ratio": 1.6,
     "max_drawdown_pct_daily": 10.0,
@@ -92,6 +93,7 @@ def test_filter_refuses_a_pre_c1_benchmarks_file(
                     "pair": "BTC/USDC",
                     "fees": "bybit",
                     "metrics_version": 2,
+                    "replay_version": 2,
                     "train": dict(GOOD),
                     "test": dict(GOOD),
                 }

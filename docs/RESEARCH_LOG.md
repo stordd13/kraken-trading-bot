@@ -33,7 +33,52 @@ Versions métriques : **v1** = moteurs pré-C1 (défauts D1-D6 de l'audit red-te
 | 5 | 2026-09-15 | B4 — benchmarks | B&H + DCA fixe 15 USDC/semaine × 3 paires | idem 3 | `v2.8.0-b4-3-campaign` ; métriques v1 (DCA contaminé D6) | idem 3 | B&H Sharpe (quotidien) 0.84 / 0.38 / 0.30 ; DCA Sharpe 2.1-2.4 non comparable (D6) | critère P7 n° 7 ; recalcul v2 en C1 (`results/C1_benchmarks_v2.json`) | `results/B4_benchmarks.json`, `results/B4_bybit_backtest_report.md` § 5 |
 | 6 | ≤ 2026-03 | Campagnes kraken-era antérieures | — | — | — | — | — | — | non reconstruites au détail, voir `docs/archive/` (rapports : `results/archive/`) |
 
+### Chantier C2 — fidélité du replay (inscrit le 2026-09-17, avant lancement)
+
+Runs de **validation de l'instrument** (pas des essais R&D) : aucun verdict de sélection n'en découle, aucun
+langage de validation économique dans le rapport (`results/C2_replay_report.md`). Version métriques v2 partout.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 7 | 2026-09-17 | C2 étape 0 — références « avant » (5 captures `scripts/audit/c1_equity_probe.py capture --engine-root ~/wt-c1-ref`) | signal A `grok_supertrend_4h` BTC ; grid quick `grok_grid_atr_adaptive_v4` BTC (binance + bybit) ; grid A `grok_grid_atr_adaptive_v4` BTC ; DCA réf. `grok_adaptive_dca_weekly` BTC — défauts de classe (dette 13) | Binance end-stampées ; signal A et grid A 2023-04-01 → 2026-04-01 ; grid quick 2025-03-01 → 2025-03-15 ; DCA 2022-01-01 → 2022-09-28 ; `--interval 5 --capital 1000` (DCA : `--min-order-usdc 5`) | tag `v2.9.0-c1-metrics` (worktree) ; métriques v2 | bybit (grid quick aussi binance) | captures « avant » canoniques, sha256 consignés ; descriptif seulement | côté « avant » des preuves 5 et 6 de C2 | `results/C2_replay_report.md`, `results/c2_ab/` |
+| 8 | 2026-09-17 | C2 — références « après » (mêmes 5 commandes sur `feat/c2-replay`) + invariant strict | idem 7 | idem 7 | branche `feat/c2-replay` (commit consigné au rapport) ; métriques v2 ; `replay_version` 2 | idem 7 | signal A **bit-identique** en mode strict (sinon STOP) ; grid quick / grid A / DCA : écarts attribués à R1-R4, sans verdict | preuves 5 et 6 ; re-baseline des gold hashes soumis à review | `results/C2_replay_report.md` |
+| 9 | 2026-09-17 | C2 — rejeu P6 des 3 grids (`run_p6_backtests.py --limit 3`, train/test/all) | `grok_grid_atr_adaptive_v4` × BTC/ETH/SOL (3 combos, défauts de classe) | Binance end-stampées, 2023-04-01 → 2026-04-01, split 70/30 | branche `feat/c2-replay` ; métriques v2 ; `replay_version` 2 | bybit + coûts GATE B (`config/pair_costs_b4.json`), plancher 5 USDC | SOL : aucun flag `b4_flags` (divergence ≤ 1e-12, cash = lot-basis ≤ 1e-9), compteurs `unmatched_*` = 0, `warmup.sufficient=False` attendu par segment ; descriptif seulement | preuve 4 (réel) de C2 ; artefact `results/c2_replay/P6_grid_rerun.json` | `results/C2_replay_report.md` |
+| 10 | 2026-09-17 | C2 — rejeu P6 des 3 grids **relancé** après le commit 12 (correctifs diagnostic de la revue du gate 2 : staleness sans `-1`, preuve 1 sur les bornes chargées) — même recette que l'entrée 9, nouvel artefact au même chemin (sha256 au rapport) | idem 9 | idem 9 | branche `feat/c2-replay` (commit 12) ; métriques v2 ; `replay_version` 2 | idem 9 | idem 9, plus : blocs `warmup` aux valeurs exactes du contrat (SOL train / all : 1 d périmé de 183 bougies, 1 w de 25) ; simulation et gold hashes inchangés (changement purement diagnostic) | commit 12 (artefact), puis recalage des gold hashes (commit 13) | `results/C2_replay_report.md` § 3.4 |
+
+Écart consigné, mesuré : le run 10 a démarré à **10:52:56 UTC** et cette ligne a été écrite **après** son lancement, le
+run étant déjà en cours (il s'est terminé à 11:08:54 UTC, 16 min). C'est une relance d'un run déjà inscrit en 9, avec un
+moteur dont seule la sortie diagnostique change — la règle « inscrit avant lancement » vaut néanmoins aussi pour les
+relances : consigné, pas justifié.
+
+### Issues des entrées 7-10 (C2, inscrites après les runs, sans verdict économique)
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 7 | 5 captures « avant » posées (sha256 au rapport § 0), `source_fingerprints` identiques au tag | `results/C2_replay_report.md` § 0 |
+| 8 | signal A **bit-identique** en mode strict (`STRICT IDENTITY OK`, exit 0) ; grid quick ×2, grid A, DCA : écarts attribués R1 / R2 (grid : 4 033 ticks 5 m → 85 décisions 4 h, ATR 4 h réel → espacement 5 %, recalc 8 h ; DCA : EMA 200 prête à `start`, branche oversold active, 39 lundis / 39 signaux / 36 achats / 3 `limit_expired` mesurés) ; re-baseline des gold hashes approuvée au gate 2 | § 3, § 7 |
+| 9 | SOL réconcilié sur les 3 segments (divergence ≤ 1.1e-27, `net_pnl` = lot-basis, `unmatched_*` = 0), aucun rejet sur les 9 segments ; `warmup.sufficient=False` sur SOL train / all (4 h vide, 1 d / 1 w périmés) et BTC / ETH train / all (trou de 164 j dans les fenêtres 1 d / 1 w) — observé, jamais comblé | § 3.4 |
+| 10 | Comptabilité des 9 segments **inchangée au bit près** (trades, `net_pnl`, `ending_balance`, fees, `liquidation`, `rejections` identiques à l'artefact du commit 9) ; **4 valeurs de staleness** bougent — SOL train et all, 1 d 182 → 183 et 1 w 24 → 25 — les 23 autres blocs identiques, `sufficient` inchangé ; gold hashes vérifiés inchangés par le correctif (binance `5fb528df…`, bybit `e9f0d350…`) ; nouvel artefact sha256 16 `5e3c6631730ee6cd` | § 3.4 |
+
+### Porte pré-merge C2 — rejeu de déterminisme sur serveur (2026-09-19)
+
+Hors quota d'essais (vérification d'instrument, aucun verdict de sélection). Les 24 tests
+`test_determinism_parallel_vs_serial_full` (24 combos = 8 stratégies × 3 paires, 2023-04-01 → 2026-04-01, chaque combo
+rejoué en sériel puis dans un pool de 2 workers, comparaison de hash) ont été rejoués **sur le serveur**, en checkout
+isolé au SHA `835ffe21f031834a0a168daf409c4d6d09bc08d8`, base en accès local. Résultat : **24 passés, 0 échec, 0 skip**
+(agrégat JUnit `results/c2_replay/determinism_server/`). Motif du déplacement : via le tunnel SSH, les mêmes tests
+échouaient sur des erreurs de connexion sans jamais produire d'écart de hash. Collector vérifié après le lot (actif, 0
+redémarrage, aucun zombie) et continuité 1 m intacte sur la fenêtre (73 lignes par paire, 0 trou).
+
+**Second rejeu, au SHA livré** (2026-09-19, 12:11:42Z → 13:24:43Z) : l'archivage des preuves du premier lot déplaçant le
+SHA, les 24 tests ont été **intégralement rejoués** au SHA `f585e8bb676ad194753305da86db953d425de97c` — de nouveau
+**24 passés, 0 échec, 0 skip** — avec, au même passage et au même SHA, la suite hors déterminisme (**1 514 passés,
+6 skippés, 0 erreur**), les **6** tests de déterminisme de la fenêtre courte, les 2 gold hashes, `ruff check` propre et
+`mypy src/` = 65. Soit **30/30** au SHA livré. Innocuité revérifiée : collector actif, `NRestarts=0`, aucun zombie,
+continuité 1 m intacte (72 lignes par paire, 0 trou). Artefacts : `results/c2_replay/determinism_server/run2_f585e8b/`.
+Une vérification d'invariance (`git diff --stat f585e8b..HEAD -- src scripts tests config pyproject.toml poetry.lock`,
+sortie vide) établit que le commit d'archivage ne touche aucun code, donc qu'aucun rejeu supplémentaire n'est requis.
+
 ### Essais à venir (à inscrire avant lancement)
 
-_(vide — runs R&D gelés jusqu'au merge de C1-C2 ; prochains inscrits attendus : rejeu C2, rejeu diagnostic
-grid 96 configs BTC/SOL, protocole C3)_
+_(vide — runs R&D gelés jusqu'au merge de C1-C2 ; prochains inscrits attendus : rejeu diagnostic grid 96 configs
+BTC/SOL, protocole C3)_

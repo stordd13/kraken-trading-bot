@@ -255,7 +255,8 @@ poetry run python scripts/backtest.py --strategy grok_supertrend_4h --pair BTC/U
   liquidation terminale du grid (B4.3) ; sans fichier, les valeurs globales du modèle s'appliquent
 - `--min-order-usdc N` : plancher de notionnel d'un BUY du moteur signal (rejet `minOrderAmt` simulé : un ordre
   dimensionné en dessous est sauté) ; défaut 1 = comportement historique, campagne B4 = 5 (Bybit)
-- `--cross-validate` : split 70% train / 30% test temporel
+- `--cross-validate` : split 70% train / 30% test temporel (moteur signal seulement : refusé avec une stratégie grid)
+- `--interval` : bougie d'exécution ; décoratif pour un trigger 4 h / 1 d du moteur signal, **< 240 obligatoire pour le grid** (voir « Replay »)
 - `--save` : sauvegarde les résultats dans `backtest_runs` en DB
 
 ### Deux modes
@@ -335,6 +336,86 @@ une décision de mise en paper Bybit.
 ## Modèle d'exécution
 
 **Next-bar** : signal sur candle N → exécution à l'open de candle N+1. Ceci évite le look-ahead bias.
+
+## Replay (C2, `replay_version` 2 — ce que les moteurs simulent)
+
+Source : `results/C2_replay_report.md` (2026-09-17). Le contrat de replay est **distinct** du contrat de métriques
+(`metrics_version`, section suivante) : C1 a réparé la mesure, C2 ce qui est simulé.
+
+**Rôles des bougies (grid, chemin grok).** Chaque bougie du rejeu a un rôle : `exec` (bougie `--interval`, 5 m en
+campagne : fills des ordres limit au touch du low / high, `on_ohlc` prix, point d'equity), `ctx` (1 w et 1 d :
+`analyzer.update` seul, jamais de décision), `decision` (4 h : `analyzer.update` puis `_handle_ohlc` si
+`timestamp ≥ start`, sinon warmup = update seul). Les 4 h / 1 d / 1 w sont les **vraies séries** de la DB sur
+`[warmup, end]` — plus des bougies 5 m retaguées 240. À timestamp égal, ordre `exec` → 1 w → 1 d → 4 h
+(`_GRID_REPLAY_PHASE`) : un ordre préexistant touché à T est rempli **avant** le recalc de T ; un ordre issu de la
+décision de T n'est éligible qu'à partir de T + 5 m (snapshot des ordres pendants avant les fills). Equity et prix de
+liquidation terminale ne bougent que sur `exec`. Conséquence documentée : `recalc_hours = 6` évalué aux clôtures 4 h ⇒
+cadence effective **8 h**, identique au live. `GridBacktester.decision_trace` (ts, close, ATR 4 h, régimes 1 d / 1 w lus
+juste avant chaque décision) sert aux preuves d'indicateurs.
+
+**Moteur signal** : inchangé (next-bar sur la bougie trigger de la stratégie). Pour un trigger 4 h / 1 d, les bougies
+**tradeables** sont les 4 h / 1 d elles-mêmes : les bougies de trading à `--interval` ne sont pas ajoutées à la séquence.
+Les bougies de warmup à cet intervalle (avant `start`) **y sont**, en alimentation seule — `--interval` ne crée donc
+aucune décision pour ces stratégies mais fixe la série de warmup à l'intervalle de trading. **Grid : `--interval` < 240 obligatoire** — sinon la série
+d'exécution serait la série 4 h nourrie deux fois (`parser.error` CLI, `ValueError` moteur). **`--cross-validate` × grid
+refusé** (`parser.error`) : ce mode n'existe pas pour le grid.
+
+**Warmup en bougies (R2).** `indicator_requirements(name, strategy)` lit les **attributs effectifs** de l'instance
+(`st_atr_period`, `st_multiplier`, `ema_fast_period`, `donchian_upper_period`, `atr_period`, `rsi_period`…) et
+`preregister_indicators` crée chaque indicateur lazy sous sa clé exacte **avant** que le warmup coule (les deux moteurs).
+Besoin par TF = max des readiness (EMA p, ATR p, RSI p + 1, ADX 2 × 14, Donchian max(u, l), SuperTrend p, MACD
+slow + signal − 1, BB 20, régime = EMA 50 du TF) ; prêt ≠ convergé (EMA / ATR / RSI / ADX / SuperTrend restent
+dépendants de leur amorçage). Règle **monotone** : la fenêtre calendaire historique est chargée telle quelle ; si
+`count(bougies ≤ start) < besoin`, extension en arrière par comptage, **bornée** à `besoin × interval × 3` avant la
+fenêtre ; jamais de réduction. Bloc exporté `warmup = {tf: {interval, required, loaded, extended_by, stale_by_candles,
+largest_gap_candles, sufficient, first, last}}` avec `sufficient = loaded ≥ required ∧ stale_by_candles = 0 ∧
+largest_gap_candles ≤ 1`. **Contrat de staleness** : les stamps sont en fin de période (B4.1), la bougie stampée
+exactement `start` est donc clôturée et **attendue** ; `stale_by_candles` = nombre de stamps `last + k × interval`
+(k ≥ 1) ≤ `start` non chargés — 0 si la dernière chargée est celle de `start` ou si `start` n'est pas aligné sur le TF
+et que le stamp suivant tombe après ; 1 si seule la bougie de `start` manque ; `None` si rien n'est chargé. Un trou
+n'est **jamais comblé** ni « certifié » : il est signalé (`sufficient=False`) — ex. SOL au 2023-04-01 dans son trou de
+455 j (4 h vide, 1 d / 1 w périmés), BTC / ETH avec le trou de 164 j dans leurs fenêtres 1 d / 1 w. La bougie stampée
+`start`, présente à la fois comme warmup et comme bougie tradeable (triggers 5 m / 15 m), est nourrie une fois.
+
+**Appariement des ventes grid (R4, dette 14).** Le moteur passe toujours `position_id` ; la stratégie ferme le lot par id
+sans repli de prix (sans id — chemin nominal live — : lot unique dont `sell_level == prix`, égalité Decimal ; inconnu /
+absent / ambigu → journalisé + compté dans `fill_anomalies`, callback terminé sans retirer de lot ni créer de BUY de
+remplacement). Moteur : le lot est validé **avant** toute mutation des soldes — id inconnu dans `open_positions` ou inventaire
+insuffisant au-delà de `1e-12` BTC → **rejet compté**, aucune mutation ; quantité de l'ordre ≠ quantité du lot, ou lot
+encore ouvert après le callback → **`RuntimeError`** (invariant de replay violé, pas un rejet : le job passe en `error`).
+Plus aucune tolérance absolue `< 1 USD`, nulle part.
+
+**Rejets (R3).** Bloc `rejections = {"unit": "(order, cause)", "by_cause": {...}, "events": {...}}` sur les deux moteurs —
+dump `--trades-out` (top-level), entrées P6 / P7 / walk-forward (par segment, à côté de `liquidation` et `equity_daily`),
+captures probe ; **jamais dans `to_dict()`** (gold hashes et `compare` restent scalaires). Clés minimales, toujours
+présentes (0 admis) : `below_min_order`, `insufficient_cash`, `insufficient_inventory`, `unmatched_sell_fills`,
+`unmatched_position_id` ; extensions : `ambiguous_sell_fill`, `incoherent_sell_fill`, `buy_while_in_position`,
+`sell_without_position`, `limit_expired`. `by_cause` compte les **ordres distincts** — identité stable pour la durée de vie de l'objet : un niveau grid reçoit son
+ordinal `buy#n` à sa **première apparition** dans les ordres pendants (clé `id(level)` avec référence forte, un niveau
+recréé au même prix est un nouvel ordre), un SELL grid est `sell_pos_<pid>`, les ordres legacy et signal reçoivent le leur
+à la **création** (`legacy_*`, `sig#n`) — ; `events` le brut (un niveau grid sans cash retesté 10 bougies = 1 / 10). Le DCA
+exporte en plus `dca_counters` (lundis évalués, signaux par multiplicateur, achats exécutés).
+
+**Provenance.** `replay_version` 2 (`krakenbot.replay_contract`, pré-C2 = clé absente) au **top-level** de chaque entrée
+P6 / P7 / walk-forward, dump, capture, sidecar — jamais dans `to_dict()`. Les runners refusent un fichier pré-C2 ou mixte : `ReplayVersionMismatchError`
+(sous-classe de `FeeModelMismatchError`) dans `run_p6_backtests.py` et `run_p7_grid_search.py`, `ReplayVersionError`
+(du module de contrat) dans `generate_p6_report.py` et `filter_p6_survivors.py` — exit 2 dans les deux cas ; contrôle en
+dernier : fees → campagne → `metrics_version` → `replay_version` ;
+`--force` ne recalcule qu'un fichier homogène : les JSON B4 et C1 sont **inécrasables**, écrire dans un nouveau
+`--output`. Le chemin legacy v1 de `p7_report` (fichiers B4) reste intact. Hors périmètre : la table `backtest_runs` (`--save`, dashboard) porte
+`metrics_version` depuis C1 mais **aucune colonne `replay_version`** (pas de migration en C2) : une row post-C2 y est
+indiscernable d'une row pré-C2.
+
+**Invariant de tout chantier moteur** : `scripts/audit/c1_equity_probe.py compare-ab --strict OLD NEW` (toute clé de OLD
+identique dans NEW, additions limitées à `replay_version` / `rejections` / `warmup` / `dca_counters`, métadonnées
+tolérées `git_head` / `engine_file` / `source_fingerprints`) — signal A SuperTrend est resté bit-identique tag ↔ C2 ;
+les gold hashes grid (`tests/test_strategies/test_grid_atr_v4_backward_compat.py`) ont été re-baselinés sur tableau
+approuvé (rapport § 7), car la stratégie simulée a changé par conception.
+
+**Limites connues (dette 17)** : côté grid, les ordres limit sont remplis au **touch** du low / high de la bougie
+d'exécution, sans file d'attente ni fill partiel ; côté moteur signal, l'exécution reste next-bar à l'open de N+1 ;
+l'equity est valorisée au close (mèches non capturées) ; cost basis d'accumulation au dernier prix d'entrée (moteur
+signal).
 
 ## Métriques et comment les interpréter
 

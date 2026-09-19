@@ -226,20 +226,20 @@ def test_grid_backtester_loads_inner_router_params_for_grok_grid_atr_v4():
 
 @pytest.mark.asyncio
 async def test_build_grok_grid_replay_sequence_uses_only_4h_1d_1w():
-    """Faithful ATR-grid replay should only load 4h trigger plus 1d/1w context."""
+    """Faithful ATR-grid replay loads the 4h decision series plus the 1d/1w context (C2, R1)."""
     backtester = GridBacktester(
         _build_grid_settings(),
         MagicMock(),
         fee_model="kraken",
         strategy_name="grok_grid_atr_adaptive_v4",
-        candle_interval=240,
+        candle_interval=5,  # C2 (R1): the grid replay refuses a trading interval >= 4h
     )
     start_time = datetime.now(UTC) - timedelta(days=30)
     end_time = datetime.now(UTC)
-    loaded_intervals: list[int] = []
+    loaded: list[tuple[int, datetime, datetime]] = []
 
     async def fake_load(pair: str, interval: int, start: datetime, end: datetime):  # noqa: ARG001
-        loaded_intervals.append(interval)
+        loaded.append((interval, start, end))
         return []
 
     backtester._load_candles_for_interval = fake_load  # type: ignore[method-assign]
@@ -249,7 +249,9 @@ async def test_build_grok_grid_replay_sequence_uses_only_4h_1d_1w():
     )
 
     assert sequence == []
-    assert loaded_intervals == [240, 1440, 10080]
+    assert [interval for interval, _, _ in loaded] == [240, 1440, 10080]
+    # C2 (R1): the 4h decision series is loaded over the whole run, no longer up to start
+    assert all(end == end_time for _, _, end in loaded)
 
 
 @pytest.mark.asyncio

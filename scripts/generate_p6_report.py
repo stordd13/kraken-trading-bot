@@ -31,6 +31,7 @@ from krakenbot.backtest_metrics import (  # noqa: E402
     fmt,
     require_metrics_version,
 )
+from krakenbot.replay_contract import ReplayVersionError, require_replay_version  # noqa: E402
 
 
 def _m(block: dict | None, key: str, digits: int = 2) -> str:
@@ -109,6 +110,11 @@ def main(argv: list[str] | None = None) -> None:
     try:  # C1: one metrics contract per file, never a pre-C1 / mixed one
         require_metrics_version(phase_d, METRICS_VERSION, path=str(phase_d_path))
     except MetricsVersionError as exc:
+        print(f"ERROR: {exc}", file=sys.stderr)
+        sys.exit(2)
+    try:  # C2: one replay contract per file, never a pre-C2 / mixed one
+        require_replay_version(phase_d, path=str(phase_d_path))
+    except ReplayVersionError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         sys.exit(2)
     survivors = load_json(RESULTS_DIR / args.survivors)

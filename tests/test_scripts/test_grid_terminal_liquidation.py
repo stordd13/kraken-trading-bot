@@ -128,6 +128,8 @@ async def _run(engine: GridBacktester, candles: list[OHLCData]) -> GridBackteste
     engine._create_grok_grid_strategy = AsyncMock(return_value=(strategy, MagicMock()))  # type: ignore[method-assign]
     engine._load_candles = AsyncMock(return_value=candles)  # type: ignore[method-assign]
     engine._load_candles_for_interval = AsyncMock(return_value=[])  # type: ignore[method-assign]
+    # C2 (R2): the candle-count extension of the warmup is a DB read too (no context here)
+    engine._load_candles_before = AsyncMock(return_value=[])  # type: ignore[method-assign]
     await engine.run(PAIR, candles[0].timestamp, candles[-1].timestamp)
     return engine
 

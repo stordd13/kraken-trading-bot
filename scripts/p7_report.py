@@ -65,6 +65,7 @@ from krakenbot.backtest_metrics import (  # noqa: E402
     mean_available,
     profit_factor_from_sums,
 )
+from krakenbot.replay_contract import require_replay_version  # noqa: E402
 
 # ---------------------------------------------------------------------------
 # Benchmarks (Sharpe ratios from P6_backtest_report_v2.md, period
@@ -874,6 +875,11 @@ def generate_report(
             "metrics of two contracts cannot be aggregated (regenerate under one contract)"
         )
     legacy = versions != {METRICS_VERSION}
+    if not legacy:
+        # C2: a metrics_version 2 report must also be one replay contract (the v1 legacy
+        # path — frozen B4 files, no version key at all — is deliberately untouched).
+        for data, label in ((phase1_data, str(phase1_path)), (phase2_data, str(phase2_path))):
+            require_replay_version(data, path=label)
     if not legacy and benchmarks is None:
         raise MetricsVersionError(
             f"metrics_version {METRICS_VERSION} results require --benchmarks (a benchmarks file "

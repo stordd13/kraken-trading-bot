@@ -1,0 +1,439 @@
+{
+  "grok_grid_atr_adaptive_v4_BTC_USDC": {
+    "strategy": "grok_grid_atr_adaptive_v4",
+    "pair": "BTC/USDC",
+    "exchange": "binance",
+    "fees": "bybit",
+    "metrics_version": 2,
+    "replay_version": 2,
+    "pair_costs_file": null,
+    "pair_costs": null,
+    "min_order_usdc": 1.0,
+    "effective_params": {
+      "strategy_class": "GrokGridATRAdaptiveV4",
+      "passed_params": {
+        "pair": "BTC/USDC"
+      },
+      "params": {
+        "grid_levels": {
+          "value": 12,
+          "source": "class_default"
+        },
+        "min_spacing_pct": {
+          "value": "0.015",
+          "source": "class_default"
+        },
+        "max_spacing_pct": {
+          "value": "0.05",
+          "source": "class_default"
+        },
+        "atr_period": {
+          "value": 14,
+          "source": "class_default"
+        },
+        "atr_multiplier": {
+          "value": "4.0",
+          "source": "class_default"
+        },
+        "recalc_hours": {
+          "value": 6,
+          "source": "class_default"
+        },
+        "bias_1d": {
+          "value": "0.2",
+          "source": "class_default"
+        },
+        "pause_1w_strong_bear": {
+          "value": true,
+          "source": "class_default"
+        },
+        "bear_protection_mode": {
+          "value": null,
+          "source": "class_default"
+        },
+        "order_size_usdc": {
+          "value": "25",
+          "source": "class_default"
+        },
+        "max_allocation_pct": {
+          "value": "20.0",
+          "source": "class_default"
+        },
+        "pair": {
+          "value": "BTC/USDC",
+          "source": "passed"
+        }
+      }
+    },
+    "liquidation": {
+      "train": {
+        "buy_fees": "0.0500",
+        "sell_fees": "0.0524474956236479322294149151",
+        "net_pnl_lot_basis": "2.39504812802428429718550022",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": null,
+        "positions": 0,
+        "trades": 0,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "0E-31",
+        "inventory_divergence_btc": "0E-31",
+        "pnl": "0",
+        "fees": "0",
+        "gross_usdc": "0",
+        "timestamp": null,
+        "reference_price": null,
+        "price": null,
+        "spread_pct": null,
+        "slippage_pct": null
+      },
+      "test": {
+        "buy_fees": "0",
+        "sell_fees": "0",
+        "net_pnl_lot_basis": "0",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": null,
+        "positions": 0,
+        "trades": 0,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "0",
+        "inventory_divergence_btc": "0",
+        "pnl": "0",
+        "fees": "0",
+        "gross_usdc": "0",
+        "timestamp": null,
+        "reference_price": null,
+        "price": null,
+        "spread_pct": null,
+        "slippage_pct": null
+      },
+      "all": {
+        "buy_fees": "0.0500",
+        "sell_fees": "0.0524474956236479322294149151",
+        "net_pnl_lot_basis": "2.39504812802428429718550022",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": null,
+        "positions": 0,
+        "trades": 0,
+        "residual_trade_btc": "0",
+        "dust_written_off_btc": "0E-31",
+        "inventory_divergence_btc": "0E-31",
+        "pnl": "0",
+        "fees": "0",
+        "gross_usdc": "0",
+        "timestamp": null,
+        "reference_price": null,
+        "price": null,
+        "spread_pct": null,
+        "slippage_pct": null
+      }
+    },
+    "equity_daily": {
+      "train": {
+        "start": "2025-03-01T00:00:00+00:00",
+        "end": "2025-03-10T19:12:00+00:00",
+        "values": [
+          1000.0,
+          1000.0,
+          1000.0,
+          1000.1701178721946,
+          1000.4924027001704,
+          1001.1975131170101,
+          1001.1975131170101,
+          1002.3950481280243,
+          1002.3950481280243,
+          1002.3950481280243,
+          1002.3950481280243
+        ]
+      },
+      "test": {
+        "start": "2025-03-10T19:12:00+00:00",
+        "end": "2025-03-15T00:00:00+00:00",
+        "values": [
+          1000.0,
+          1000.0,
+          1000.0,
+          1000.0,
+          1000.0,
+          1000.0
+        ]
+      },
+      "all": {
+        "start": "2025-03-01T00:00:00+00:00",
+        "end": "2025-03-15T00:00:00+00:00",
+        "values": [
+          1000.0,
+          1000.0,
+          1000.0,
+          1000.1701178721946,
+          1000.4924027001704,
+          1001.1975131170101,
+          1001.1975131170101,
+          1002.3950481280243,
+          1002.3950481280243,
+          1002.3950481280243,
+          1002.3950481280243,
+          1002.3950481280243,
+          1002.3950481280243,
+          1002.3950481280243,
+          1002.3950481280243
+        ]
+      }
+    },
+    "rejections": {
+      "train": {
+        "unit": "(order, cause)",
+        "by_cause": {
+          "ambiguous_sell_fill": 0,
+          "below_min_order": 0,
+          "incoherent_sell_fill": 0,
+          "insufficient_cash": 0,
+          "insufficient_inventory": 0,
+          "unmatched_position_id": 0,
+          "unmatched_sell_fills": 0
+        },
+        "events": {
+          "ambiguous_sell_fill": 0,
+          "below_min_order": 0,
+          "incoherent_sell_fill": 0,
+          "insufficient_cash": 0,
+          "insufficient_inventory": 0,
+          "unmatched_position_id": 0,
+          "unmatched_sell_fills": 0
+        }
+      },
+      "test": {
+        "unit": "(order, cause)",
+        "by_cause": {
+          "ambiguous_sell_fill": 0,
+          "below_min_order": 0,
+          "incoherent_sell_fill": 0,
+          "insufficient_cash": 0,
+          "insufficient_inventory": 0,
+          "unmatched_position_id": 0,
+          "unmatched_sell_fills": 0
+        },
+        "events": {
+          "ambiguous_sell_fill": 0,
+          "below_min_order": 0,
+          "incoherent_sell_fill": 0,
+          "insufficient_cash": 0,
+          "insufficient_inventory": 0,
+          "unmatched_position_id": 0,
+          "unmatched_sell_fills": 0
+        }
+      },
+      "all": {
+        "unit": "(order, cause)",
+        "by_cause": {
+          "ambiguous_sell_fill": 0,
+          "below_min_order": 0,
+          "incoherent_sell_fill": 0,
+          "insufficient_cash": 0,
+          "insufficient_inventory": 0,
+          "unmatched_position_id": 0,
+          "unmatched_sell_fills": 0
+        },
+        "events": {
+          "ambiguous_sell_fill": 0,
+          "below_min_order": 0,
+          "incoherent_sell_fill": 0,
+          "insufficient_cash": 0,
+          "insufficient_inventory": 0,
+          "unmatched_position_id": 0,
+          "unmatched_sell_fills": 0
+        }
+      }
+    },
+    "warmup": {
+      "train": {
+        "4h": {
+          "interval": 240,
+          "required": 14,
+          "loaded": 91,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 0,
+          "sufficient": true,
+          "first": "2025-02-14T00:00:00+00:00",
+          "last": "2025-03-01T00:00:00+00:00"
+        },
+        "1d": {
+          "interval": 1440,
+          "required": 50,
+          "loaded": 251,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 0,
+          "sufficient": true,
+          "first": "2024-06-24T00:00:00+00:00",
+          "last": "2025-03-01T00:00:00+00:00"
+        },
+        "1w": {
+          "interval": 10080,
+          "required": 50,
+          "loaded": 56,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 1,
+          "sufficient": true,
+          "first": "2024-01-29T00:00:00+00:00",
+          "last": "2025-02-24T00:00:00+00:00"
+        }
+      },
+      "test": {
+        "4h": {
+          "interval": 240,
+          "required": 14,
+          "loaded": 90,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 0,
+          "sufficient": true,
+          "first": "2025-02-23T20:00:00+00:00",
+          "last": "2025-03-10T16:00:00+00:00"
+        },
+        "1d": {
+          "interval": 1440,
+          "required": 50,
+          "loaded": 250,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 0,
+          "sufficient": true,
+          "first": "2024-07-04T00:00:00+00:00",
+          "last": "2025-03-10T00:00:00+00:00"
+        },
+        "1w": {
+          "interval": 10080,
+          "required": 50,
+          "loaded": 56,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 1,
+          "sufficient": true,
+          "first": "2024-02-05T00:00:00+00:00",
+          "last": "2025-03-10T00:00:00+00:00"
+        }
+      },
+      "all": {
+        "4h": {
+          "interval": 240,
+          "required": 14,
+          "loaded": 91,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 0,
+          "sufficient": true,
+          "first": "2025-02-14T00:00:00+00:00",
+          "last": "2025-03-01T00:00:00+00:00"
+        },
+        "1d": {
+          "interval": 1440,
+          "required": 50,
+          "loaded": 251,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 0,
+          "sufficient": true,
+          "first": "2024-06-24T00:00:00+00:00",
+          "last": "2025-03-01T00:00:00+00:00"
+        },
+        "1w": {
+          "interval": 10080,
+          "required": 50,
+          "loaded": 56,
+          "extended_by": 0,
+          "stale_by_candles": 0,
+          "largest_gap_candles": 1,
+          "sufficient": true,
+          "first": "2024-01-29T00:00:00+00:00",
+          "last": "2025-02-24T00:00:00+00:00"
+        }
+      }
+    },
+    "dca_counters": null,
+    "period": {
+      "start": "2025-03-01T00:00:00+00:00",
+      "end": "2025-03-15T00:00:00+00:00",
+      "split": "2025-03-10T19:12:00+00:00"
+    },
+    "train": {
+      "metrics_version": 2,
+      "total_trades": 2,
+      "winning_trades": 2,
+      "losing_trades": 0,
+      "win_rate": 1.0,
+      "total_return_pct": 0.23950481280242844,
+      "sharpe_ratio": 11.247047634514768,
+      "sortino_ratio": null,
+      "max_drawdown_pct_daily": 0.0,
+      "max_drawdown_pct_engine": 0.1479102088609839,
+      "profit_factor": null,
+      "calmar_ratio": null,
+      "net_pnl": 2.395048128024284,
+      "total_fees": 0.10244749562364794,
+      "total_pnl": 2.4450481280242844,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1002.3950481280243,
+      "duration_days": 9.8,
+      "average_holding_time_minutes": 1417.5,
+      "gross_profit_net": 2.395048128024284,
+      "gross_loss_net": 0.0,
+      "pf_excluded_trades": 0,
+      "n_daily_returns": 10
+    },
+    "test": {
+      "metrics_version": 2,
+      "total_trades": 0,
+      "winning_trades": 0,
+      "losing_trades": 0,
+      "win_rate": 0.0,
+      "total_return_pct": 0.0,
+      "sharpe_ratio": null,
+      "sortino_ratio": null,
+      "max_drawdown_pct_daily": 0.0,
+      "max_drawdown_pct_engine": 0.0,
+      "profit_factor": null,
+      "calmar_ratio": null,
+      "net_pnl": 0.0,
+      "total_fees": 0.0,
+      "total_pnl": 0.0,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1000.0,
+      "duration_days": 4.2,
+      "average_holding_time_minutes": 0.0,
+      "gross_profit_net": 0.0,
+      "gross_loss_net": 0.0,
+      "pf_excluded_trades": 0,
+      "n_daily_returns": 5
+    },
+    "all": {
+      "metrics_version": 2,
+      "total_trades": 2,
+      "winning_trades": 2,
+      "losing_trades": 0,
+      "win_rate": 1.0,
+      "total_return_pct": 0.23950481280242844,
+      "sharpe_ratio": 9.164218147956896,
+      "sortino_ratio": null,
+      "max_drawdown_pct_daily": 0.0,
+      "max_drawdown_pct_engine": 0.1479102088609839,
+      "profit_factor": null,
+      "calmar_ratio": null,
+      "net_pnl": 2.395048128024284,
+      "total_fees": 0.10244749562364794,
+      "total_pnl": 2.4450481280242844,
+      "unrealized_pnl": 0.0,
+      "starting_balance": 1000.0,
+      "ending_balance": 1002.3950481280243,
+      "duration_days": 14.0,
+      "average_holding_time_minutes": 1417.5,
+      "gross_profit_net": 2.395048128024284,
+      "gross_loss_net": 0.0,
+      "pf_excluded_trades": 0,
+      "n_daily_returns": 14
+    }
+  }
+}

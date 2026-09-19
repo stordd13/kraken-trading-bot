@@ -37,6 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from krakenbot.backtest_metrics import METRICS_VERSION, entry_metrics_version
 from krakenbot.config.settings import FEE_MODEL_NAMES
 from krakenbot.core.logger import get_logger
+from krakenbot.replay_contract import REPLAY_VERSION, entry_replay_version
 
 logger = get_logger().bind(component="p6_backtests")
 
@@ -219,6 +220,19 @@ def _metrics_version_message(key: str, found: int | None, path: Path) -> str:
     )
 
 
+class ReplayVersionMismatchError(FeeModelMismatchError):
+    """A results file entry was produced under another replay contract (or none, pre-C2)."""
+
+
+def _replay_version_message(key: str, found: int | None, path: Path) -> str:
+    shown = "<absent: pre-C2 file>" if found is None else str(found)
+    return (
+        f"Resume refused for {key}: {path} holds a result produced with replay_version="
+        f"{shown} but this code writes replay_version={REPLAY_VERSION}. Results of two replay "
+        f"contracts simulate two different strategies and cannot be mixed: {_FRESH_OUTPUT}"
+    )
+
+
 def _campaign_signature(entry: dict[str, Any]) -> tuple[str | None, float]:
     """(pair_costs_file, min_order_usdc) of a result entry; pre-B4.3 entries = (None, 1.0)."""
     return (entry.get("pair_costs_file"), float(entry.get("min_order_usdc", 1.0)))
@@ -252,6 +266,10 @@ def _check_entry(
     found = entry_metrics_version(entry)
     if found != METRICS_VERSION:
         raise MetricsVersionMismatchError(_metrics_version_message(key, found, path))
+    # C2: the replay contract, checked last (fees -> campaign -> metrics -> replay)
+    found_replay = entry_replay_version(entry)
+    if found_replay != REPLAY_VERSION:
+        raise ReplayVersionMismatchError(_replay_version_message(key, found_replay, path))
 
 
 def assert_homogeneous(
@@ -476,6 +494,9 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
 
         liquidation: dict[str, Any] = {}
         equity_daily: dict[str, Any] = {}
+        rejections: dict[str, Any] = {}
+        warmup: dict[str, Any] = {}
+        dca_counters: dict[str, Any] = {}
         effective_params: dict[str, Any] | None = None
 
         async def _run_segment(name: str, seg_start: datetime, seg_end: datetime) -> dict[str, Any]:
@@ -486,6 +507,13 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
                 liquidation[name] = engine.liquidation_summary()
             effective_params = getattr(engine, "effective_params", None)
             equity_daily[name] = engine.metrics.equity_daily_dict()  # C1: daily NAV grid
+            if hasattr(engine, "rejections_summary"):  # C2 (R3): per (order, cause)
+                rejections[name] = engine.rejections_summary()
+            if hasattr(engine, "warmup_summary"):  # C2 (R2): candles really fed, gaps
+                warmup[name] = engine.warmup_summary()
+            dca = engine.dca_counters_summary() if hasattr(engine, "dca_counters_summary") else None
+            if dca is not None:
+                dca_counters[name] = dca
             return engine.metrics.to_dict()
 
         worker_logger.info("worker_job_start", key=job.key)
@@ -501,6 +529,7 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
             "exchange": job.exchange,
             "fees": job.fees,
             "metrics_version": METRICS_VERSION,  # C1: contract of the metric dicts below
+            "replay_version": REPLAY_VERSION,  # C2: contract of the replay (top level only)
             # B4.3 campaign configs, recorded for the resume check and the report
             "pair_costs_file": job.pair_costs_file,
             "pair_costs": (
@@ -512,6 +541,9 @@ async def _async_run_cross_validated(job_dict: dict[str, Any]) -> dict[str, Any]
             "effective_params": effective_params,
             "liquidation": liquidation or None,
             "equity_daily": equity_daily or None,
+            "rejections": rejections or None,  # C2 (R3)
+            "warmup": warmup or None,  # C2 (R2)
+            "dca_counters": dca_counters or None,  # C2 (preuve 6)
             "period": {
                 "start": start.isoformat(),
                 "end": end.isoformat(),
@@ -587,6 +619,7 @@ def _apply_result(
             "exchange": job.get("exchange"),
             "fees": job.get("fees"),
             "metrics_version": METRICS_VERSION,
+            "replay_version": REPLAY_VERSION,
             "pair_costs_file": job.get("pair_costs_file"),
             "min_order_usdc": job.get("min_order_usdc", 1.0),
             "error": result["error"],

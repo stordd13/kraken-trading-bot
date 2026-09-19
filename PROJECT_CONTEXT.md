@@ -86,7 +86,13 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   Portée des conclusions B4 : addendum en tête de `results/B4_bybit_backtest_report.md`. Les verdicts de sélection (vides)
   sont inchangés.
 - ▶️ **Chantiers post-audit** : ✅ **C1 métriques mergé** dans `dev` le 16 sept (12 commits, tag `v2.9.0-c1-metrics`,
-  `results/C1_metrics_report.md`, dette 15) ; **C2 fidélité replay = prochain chantier** (dette 16) ; puis **rejeu diagnostic
+  `results/C1_metrics_report.md`, dette 15) ; 🧪 **C2 fidélité replay : implémenté, validation pré-merge incomplète, non mergé / non taggé** (branche `feat/c2-replay` ;
+  porte pré-merge verte au SHA livré : **30/30** tests de déterminisme (les 24 full-range rejoués sur le serveur, sans
+  tunnel), suite 1 514 passés / 6 skippés, gold hashes, ruff, mypy 65 — preuves sous `results/c2_replay/determinism_server/`,
+  détail `results/C2_replay_report.md` § 8 ;
+  `results/C2_replay_report.md` : grid rejoué sur les vraies séries 4 h / 1 d / 1 w, préenregistrement aux params effectifs,
+  warmup en bougies, rejets comptés, ventes grid appariées par id, `replay_version` 2 ; dettes 14 et 16 résolues, 17 et 18
+  créées, dette 13 élargie) ; puis **rejeu diagnostic
   grid** (96 configs BTC/SOL, périmètre pré-spécifié, verdict « inconclusif » possible) ; puis **C3 validation chronologique**
   (note WF § 9) avant toute sélection. **Gel des runs R&D** jusqu'à C1-C2 mergés ; tickets papier (`docs/CONTRAINTES_POST_B4.md`
   § 6) autorisés ; tout run futur s'inscrit d'abord dans `docs/RESEARCH_LOG.md`.
@@ -345,9 +351,9 @@ Détail : `ROADMAP.md`.
    (`results/B4_2_fees_engine_report.md`). ✅ **B4.3 chantier 0 (2026-09-14)** : liquidation terminale du
    grid atteignable sur le chemin grok (MARKET au dernier close, taker + spread + slippage, soldes réglés,
    trades `forced_liquidation`), `net_pnl` compte chaque fee une fois dans les deux moteurs
-   (`results/B4_3_chantier0_gate_a.md`). Reste : sorties limit marketables facturées maker ; « mauvais pop »
-   de la stratégie grid (fermeture par proximité de prix vs id) instrumenté (`inventory_divergence_btc`), non
-   corrigé (fichier protégé).
+   (`results/B4_3_chantier0_gate_a.md`). Reste : sorties limit marketables facturées maker. Le « mauvais pop »
+   de la stratégie grid (fermeture par proximité de prix vs id), instrumenté en B4.3 (`inventory_divergence_btc`),
+   est **résolu en C2** (dette 14).
 3. ✅ **B3** — `TaskScheduler` généralisé : client REST injecté par le collector (factory, `read_only=True`),
    backfill de gaps `krakenbot.data.backfill`, plus d'import de `scripts/` depuis `src/` ;
    `scripts/fetch_ohlc.py` et `backfill_binance_gap.py` supprimés.
@@ -392,13 +398,39 @@ Détail : `ROADMAP.md`.
     résultat, `B4_P7_final_selection.json`) et alignent `strategies.yaml` en B5 ; **fix de la résolution post-B4**, après
     cet alignement (il change toutes les métriques grok). **Prérequis B5** : test one-off prouvant que le chemin
     live/router résout bien par instance (`class:`) — consigné, non fait.
-14. **Tolérance de fermeture absolue du grid** (`grok_grid_atr_adaptive_v4.py`, ~:631 : `|sell_level − prix| < 1` USD)
+    **Élargie en C2 (2026-09-17, décision 3 de la revue du plan)** — non-correspondance des identifiants lots grid ↔
+    `OpenPosition` : le compteur de lots de la stratégie repart à 1 à chaque démarrage sans réhydratation depuis
+    `open_positions` ; les rows grid reçoivent un id de repli `max+1` sur toutes les rows du bot (le router protégé saute
+    `_assign_runtime_position_id`) et **restent OPEN** (aucun closer par id pour le grid) ; une émission naïve de
+    `position_id` fermerait une row périmée après restart (mauvais `entry_price`, P&L fabriqué) ou, hors router, produirait
+    des rows OPEN dupliquées ; `order_manager._position_profit_targets` est indexé par int sans `bot_id` ; au démarrage suivant,
+    `_reconcile_positions_with_exchange` (`main.py:804`) ferme les rows OPEN les plus **anciennes en FIFO** avec `pnl = 0`
+    et **sans filtre `bot_id`** — le P&L réel du lot est perdu et les rows d'une autre stratégie peuvent être fermées. En conséquence le
+    SELL apparié du grid émet `amount_btc` seul, **jamais `position_id`** ; le chemin sans id (lot unique au prix exact,
+    sinon réconciliation signalée) reste le chemin nominal en live. Le test one-off devient : **restart avec rows OPEN
+    périmées, puis réhydratation des lots depuis `open_positions` ou closer par id** — l'équivalence lot ↔ row n'est
+    démontrée qu'à ce moment. **Prérequis B5 explicite : le grid est inéligible au paper tant que (a) cette démonstration
+    n'est pas faite et (b) la réconciliation de démarrage n'est pas corrigée** — `_reconcile_positions_with_exchange`
+    (`main.py:804`) solde les rows OPEN les plus anciennes en FIFO à `pnl = 0`, sans filtre `bot_id` : au redémarrage la
+    comptabilité de positions du grid est **activement fausse** (P&L réalisé perdu, row fermée ≠ lot vendu, rows d'une
+    autre stratégie atteignables), pas seulement exposée à un risque (`results/C2_replay_report.md` § 5).
+14. ✅ **C2 (2026-09-17) — Tolérance de fermeture absolue du grid** (`grok_grid_atr_adaptive_v4.py`, `_match_sell_fill` avant C2 : `|sell_level − prix| < 1` USD)
     contre appariement moteur par `position_id` → « mauvais pop » : sur SOL (~180 USD) des cibles SELL à moins de 1 USD
     sont fréquentes et **40 lots ont été vendus deux fois** sur le run P6 B4 (3 runs flaggés, divergence d'inventaire
     jusqu'à −0.033 SOL, lot-basis +1.2 % trop optimiste ; `net_pnl` cash exact) ; jamais sur BTC, quasi jamais sur ETH.
     **Règle GO P7 n° 1** : toute config flaggée est inéligible à la sélection paper ; une candidature grid × SOL exige
     d'abord ce fix (tolérance **relative**, en % du prix ou fraction du spacing) dans la stratégie protégée, review
     humaine, puis re-run. Source : `results/B4_P6_checkpoint.md`, `results/B4_bybit_backtest_report.md` § 6.
+    **Résolution C2** (supersède la « tolérance relative ») : appariement **par `position_id`** dans la stratégie
+    (`_match_sell_fill`, aucun repli de prix ; sans id : lot unique dont `sell_level == prix`, égalité Decimal ; inconnu /
+    absent / ambigu → journalisé + compté dans `fill_anomalies`, callback terminé sans retirer de lot ni créer de BUY de
+    remplacement) ; moteur : lot validé **avant** toute mutation — id inconnu ou inventaire insuffisant
+    au-delà de la poussière → rejet compté sans mutation ; quantité de l'ordre ≠ quantité du lot, ou lot encore ouvert
+    après le callback → `RuntimeError` (invariant de replay, job en `error`) ; diff R4 validé au gate humain (`a7a5e10`).
+    Rejeu P6 des 3 grids (`results/c2_replay/P6_grid_rerun.json`) : SOL réconcilié sur les 3 segments (divergence
+    d'inventaire = poussière Decimal, `net_pnl` = lot-basis, 0 `unmatched`). Reste, en live : un SELL limit peut être
+    rempli à un prix **meilleur** que sa limite → égalité exacte en défaut → `unmatched_sell_fills` légitime → réconciliation
+    signalée, jamais attribuée (dette 13 élargie).
 12. **`fetch_ohlcv` end-stamped pour Bybit seulement** : le backfill générique (`krakenbot.data.backfill`)
     n'est garanti correct que pour `EXCHANGE_NAME=bybit` ; les clients REST Binance/Kraken renvoient l'open
     time ccxt alors que la DB est end-stamped (B4.1) : un backfill y insérerait des candles décalées d'un
@@ -413,13 +445,34 @@ Détail : `ROADMAP.md`.
     `scripts/audit/b4_p6/p7_checkpoint.py`, verdicts reproduits à l'identique) — à retirer quand B4 sera archivé ;
     la détection « PF inf » de ces checkpoints est aveugle sur v2 et `scripts/audit/b4_3_gate_a_reconcile.py` ne
     lit que des captures v1 ; (c) `compute_benchmarks.py` charge `< P6_END` alors que les moteurs chargent `<= end`
-    (un jour) et son « lundi » est le stamp de fin de période (close du dimanche) → chantier 3 ; (d) moteur
-    signal, accumulation : `cost_basis = entry_price × crypto_balance` au **dernier** prix d'entrée, et vente grok
-    sans position appariée = wallet débité sans trade (instrumenté par la divergence d'inventaire) → chantier 2.
-16. **Fidélité du replay** (audit red-team 16/09) : grid backtesté avec indicateurs 4 h nourris de bougies 5 m ; EMA200 1d
-    du DCA jamais préenregistrée (boost oversold inopérant en fenêtre trimestrielle) ; interaction
+    (un jour) et son « lundi » est le stamp de fin de période (close du dimanche) → chantier 3 ; (d) scindée en C2 :
+    la vente grok sans position appariée (wallet débité sans trade) est **résolue** (R4 : rejet compté avant toute
+    mutation) ; le cost basis au **dernier** prix d'entrée en accumulation (moteur signal) passe en **dette 17**.
+16. ✅ **C2 (2026-09-17) — Fidélité du replay** (audit red-team 16/09) : grid backtesté avec indicateurs 4 h nourris de
+    bougies 5 m ; EMA200 1d du DCA jamais préenregistrée (boost oversold inopérant en fenêtre trimestrielle) ; interaction
     `bull_reduction × 15 USDC = 4.50 < plancher 5` (achats rejetés en strong_bull) ; comptage des rejets absent des
-    résultats. **Résolution : C2**.
+    résultats. **Résolu** (`results/C2_replay_report.md`, `skills/backtest.md` § Replay) : R1 grid rejoué sur les vraies
+    séries 4 h / 1 d / 1 w (décision aux clôtures 4 h, exécution 5 m, ordre tranché à timestamp égal, `--interval` < 240,
+    `--cross-validate` × grid refusé) ; R2 préenregistrement lazy aux paramètres **effectifs** des 8 stratégies + warmup en
+    bougies (bloc `warmup` : chargé / requis / extension bornée / staleness / trous, `sufficient` — un trou est signalé,
+    jamais comblé) ; R3 bloc `rejections` par (ordre, cause) sur les deux moteurs + `dca_counters` ; R4 = dette 14 ;
+    provenance `replay_version` 2 (fichiers pré-C2 refusés par les runners, B4 / C1 inécrasables). Invariant : signal A
+    (SuperTrend) bit-identique tag ↔ branche en mode strict ; gold hashes grid re-baselinés sur tableau approuvé. Constat
+    rétroactif : 19/20 configs SuperTrend et 3/4 Donchian de P7 créaient leur indicateur après le warmup (muettes 1-3 jours
+    par segment), EMA 200 DCA muette 200 jours. **Reste** : la table `backtest_runs` (`--save`, dashboard) porte
+    `metrics_version` depuis C1 mais **aucune colonne `replay_version`** (pas de migration en C2) — une row post-C2 y est
+    indiscernable d'une row pré-C2.
+17. **Exécution du moteur signal et benchmarks — hors C2** (constats C1/C2, 2026-09-17) : (a) accumulation :
+    `cost_basis = entry_price × crypto_balance` au **dernier** prix d'entrée (multi-achats sans moyenne pondérée) ;
+    (b) benchmarks décalés (`compute_benchmarks.py` charge `< P6_END` alors que les moteurs chargent `<= end`, « lundi » =
+    stamp de fin de période) → **C3** ; (c) exécution intrabar du grid : les fills limit sont déclenchés au touch du
+    low / high de la bougie d'exécution, sans file d'attente ni fill partiel (le moteur signal, lui, reste next-bar à
+    l'open de N+1) ; l'equity est valorisée au close, les mèches ne sont pas capturées (`skills/backtest.md`).
+18. **Double alimentation de l'analyzer par les 3 stratégies gemini** (constat C2) : `backtest.py` appelle
+    `analyzer.update` sur chaque bougie **et** leur `on_ohlc` le rappelle → période effective des indicateurs ~divisée par
+    deux en replay. La preuve 2 de C2 prend pour référence « le flux réellement reçu » (mécanique du replay prouvée, pas la
+    justesse de leurs indicateurs). **Blocage explicite de P12** (réévaluation scalping / mean reversion avec fees réelles) :
+    invalide par construction tant que ce n'est pas corrigé.
 
 **Note WF** (audit red-team 16/09) : la sélection top-5 de P7 phase 2 utilise le Sharpe du test global (période chevauchant
 les fenêtres) — le walk-forward actuel n'est pas une validation chronologique. **Résolution : C3**.

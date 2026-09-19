@@ -10,7 +10,7 @@ Usage:
 
 import argparse
 import asyncio
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -21,7 +21,7 @@ import re
 from typing import Any
 
 from dotenv import load_dotenv
-from sqlalchemy import select, text
+from sqlalchemy import desc, select, text
 
 from krakenbot.backtest_metrics import (
     METRICS_VERSION,
@@ -35,9 +35,11 @@ from krakenbot.config.settings import FEE_MODEL_NAMES, ExchangeFees, Settings, g
 from krakenbot.core.database import DatabaseManager
 from krakenbot.core.event_bus import EventBus
 from krakenbot.core.logger import get_logger
+from krakenbot.indicators.multi_timeframe import INTERVAL_TO_TF, MACD_PARAMS
 from krakenbot.models.base import TradeSide
 from krakenbot.models.market_data import OHLCData
 from krakenbot.models.trades import BacktestRun, Trade, TradeStatus
+from krakenbot.replay_contract import REPLAY_VERSION
 from krakenbot.strategies.base import SignalType, TradingSignal
 
 
@@ -225,6 +227,363 @@ def capture_effective_params(
         "passed_params": {k: _jsonable(v) for k, v in passed.items()},
         "params": params,
     }
+
+
+# ---------------------------------------------------------------------------
+# C2 (R3): rejection accounting per (distinct order, cause)
+# ---------------------------------------------------------------------------
+
+
+class RejectionLedger:
+    """Rejection accounting of a replay, per **(distinct order, cause)** (C2, R3).
+
+    An order retested on several candles (a grid BUY level below the cash, a resting limit
+    checked every 5 minutes) counts **once** per cause in ``by_cause``; every attempt is
+    counted in ``events`` (debug). Order identity is the caller's: a grid level gets an ordinal
+    at its first appearance in the pending snapshot (a level object re-created at the same
+    price is a new order), a grid sell order is ``sell_pos_<lot id>``, a legacy grid order an
+    id stamped at its creation, a signal-engine pending signal ``sig#<n>``. ``prune`` forgets
+    the pairs of orders that left the pending set so that a re-created order counts anew; the
+    cumulative totals are never decremented. The five minimal causes of the brief are always
+    present (value 0 allowed); the strategy-side ``fill_anomalies`` are merged with
+    ``add_counts`` under the same cause names.
+    """
+
+    UNIT = "(order, cause)"
+    MINIMAL_CAUSES = (
+        "below_min_order",
+        "insufficient_cash",
+        "insufficient_inventory",
+        "unmatched_sell_fills",
+        "unmatched_position_id",
+    )
+
+    def __init__(self) -> None:
+        self.by_cause: dict[str, int] = dict.fromkeys(self.MINIMAL_CAUSES, 0)
+        self.events: dict[str, int] = dict.fromkeys(self.MINIMAL_CAUSES, 0)
+        self._seen: set[tuple[str, str]] = set()
+
+    def note(self, order_id: str, cause: str) -> bool:
+        """Record one rejection event; True when ``(order_id, cause)`` is new."""
+        self.events[cause] = self.events.get(cause, 0) + 1
+        key = (order_id, cause)
+        if key in self._seen:
+            return False
+        self._seen.add(key)
+        self.by_cause[cause] = self.by_cause.get(cause, 0) + 1
+        return True
+
+    def prune(self, active_order_ids: Iterable[str]) -> None:
+        """Forget the seen pairs of orders no longer pending; totals are kept as they are."""
+        active = set(active_order_ids)
+        self._seen = {key for key in self._seen if key[0] in active}
+
+    def add_counts(self, counts: Mapping[str, int]) -> None:
+        """Merge externally counted rejections (one distinct order per count)."""
+        for cause, value in counts.items():
+            self.by_cause[cause] = self.by_cause.get(cause, 0) + int(value)
+            self.events[cause] = self.events.get(cause, 0) + int(value)
+
+    def summary(self) -> dict[str, Any]:
+        """JSON-serialisable block: ``{"unit", "by_cause", "events"}`` (sorted keys)."""
+        return {
+            "unit": self.UNIT,
+            "by_cause": dict(sorted(self.by_cause.items())),
+            "events": dict(sorted(self.events.items())),
+        }
+
+
+# ---------------------------------------------------------------------------
+# C2 (R2): indicator requirements at effective params, pre-registration, candle-based warmup
+# ---------------------------------------------------------------------------
+
+#: Analyzer buckets created at MultiTimeframeAnalyzer.__init__ (never lazy): their periods.
+_ANALYZER_FIXED_ATR = 14
+_ANALYZER_FIXED_RSI = 14
+_ANALYZER_FIXED_ADX = 14
+_ANALYZER_FIXED_BB = 20
+_ANALYZER_REGIME_EMA_SLOW = 50  # get_regime reads the fixed ema_fast(20)/ema_slow(50) pair
+#: Backward extension of a calendar warmup window, in multiples of the required history.
+_WARMUP_EXTENSION_FACTOR = 3
+#: Largest internal gap (missing candles) a warmup history may carry and still be sufficient.
+_WARMUP_GAP_TOLERANCE = 1
+
+
+@dataclass(frozen=True)
+class IndicatorRequirement:
+    """An indicator a strategy reads on its analyzer, with the parameters it passes (C2, R2).
+
+    ``kind`` ∈ ema | atr | rsi | supertrend | donchian | adx | macd | bb | regime; ``params``
+    are the exact values of the strategy's call site (so the lazy key is identical: e.g.
+    ``(st_atr_period, float(st_multiplier))`` for SuperTrend). ``candles`` is the readiness
+    count of the indicator class (ready ≠ converged: EMA / ATR / RSI / ADX / SuperTrend seed
+    on their first ``period`` candles and stay history-dependent afterwards).
+    """
+
+    kind: str
+    tf: str
+    params: tuple[Any, ...] = ()
+
+    @property
+    def candles(self) -> int:
+        if self.kind in ("ema", "atr", "supertrend"):
+            return int(self.params[0])
+        if self.kind == "rsi":
+            return int(self.params[0]) + 1
+        if self.kind == "donchian":
+            return max(int(self.params[0]), int(self.params[1]))
+        if self.kind == "adx":
+            return 2 * _ANALYZER_FIXED_ADX
+        if self.kind == "macd":
+            # MACD values from candle `slow` on, signal EMA after `signal` of them
+            _fast, slow, signal = MACD_PARAMS[self.tf]
+            return slow + signal - 1
+        if self.kind == "bb":
+            return _ANALYZER_FIXED_BB
+        if self.kind == "regime":
+            return _ANALYZER_REGIME_EMA_SLOW
+        raise ValueError(f"unknown indicator kind {self.kind!r}")
+
+    @property
+    def lazy(self) -> bool:
+        """Created by the analyzer on the first ``get_*`` call (the call returns None)."""
+        if self.kind in ("ema", "supertrend", "donchian"):
+            return True
+        if self.kind == "atr":
+            return int(self.params[0]) != _ANALYZER_FIXED_ATR
+        if self.kind == "rsi":
+            return int(self.params[0]) != _ANALYZER_FIXED_RSI
+        return False
+
+    def preregister(self, analyzer: Any) -> None:
+        """Create the indicator in the analyzer before any warmup candle flows (no-op if fixed)."""
+        if not self.lazy:
+            return
+        if self.kind == "ema":
+            analyzer.get_ema(int(self.params[0]), self.tf)
+        elif self.kind == "atr":
+            analyzer.get_atr(int(self.params[0]), self.tf)
+        elif self.kind == "rsi":
+            analyzer.get_rsi(int(self.params[0]), self.tf)
+        elif self.kind == "supertrend":
+            analyzer.get_supertrend(
+                self.tf, atr_period=int(self.params[0]), multiplier=self.params[1]
+            )
+        elif self.kind == "donchian":
+            analyzer.get_donchian(
+                self.tf, period_upper=int(self.params[0]), period_lower=int(self.params[1])
+            )
+
+
+def indicator_requirements(strategy_name: str, strategy: Any) -> list[IndicatorRequirement]:
+    """Every analyzer read of a strategy, at the parameters the instance actually runs with.
+
+    Built from the instance attributes (not from ``effective_params``, which stringifies
+    Decimals and cannot see a parameter stored under another attribute name); the table is
+    checked against the strategy sources by ``tests/test_scripts/test_c2_warmup_requirements.py``
+    (every ``analyzer.get_*`` call site is covered). ``regime`` stands for ``get_regime(tf)``,
+    which reads the analyzer's fixed EMA 20 / 50 of that timeframe.
+    """
+    R = IndicatorRequirement
+    if strategy_name == "grok_supertrend_4h":
+        return [
+            R("supertrend", "4h", (int(strategy.st_atr_period), float(strategy.st_multiplier))),
+            R("atr", "4h", (14,)),
+            R("regime", "1d"),
+        ]
+    if strategy_name == "grok_ema_adx_atr":
+        return [
+            R("ema", "4h", (int(strategy.ema_fast_period),)),
+            R("ema", "4h", (int(strategy.ema_slow_period),)),
+            R("adx", "4h"),
+            R("atr", "4h", (14,)),
+            R("regime", "1d"),
+        ]
+    if strategy_name == "grok_donchian_breakout_4h":
+        return [
+            R(
+                "donchian",
+                "4h",
+                (int(strategy.donchian_upper_period), int(strategy.donchian_lower_period)),
+            ),
+            R("atr", "4h", (14,)),
+            R("regime", "1d"),
+            R("adx", "1d"),
+        ]
+    if strategy_name == "grok_adaptive_dca_weekly":
+        return [
+            R("rsi", "1d", (14,)),
+            R("ema", "1d", (200,)),
+            R("regime", "1w"),
+            R("regime", "1d"),
+        ]
+    if strategy_name == "grok_grid_atr_adaptive_v4":
+        return [
+            R("atr", "4h", (int(strategy.atr_period),)),
+            R("regime", "1d"),
+            R("regime", "1w"),
+        ]
+    if strategy_name == "gemini_scalping_volatilite":
+        return [
+            R("atr", "5m", (14,)),
+            R("rsi", "5m", (int(strategy.rsi_period),)),
+            R("macd", "5m"),
+            R("regime", "1h"),
+        ]
+    if strategy_name == "gemini_retour_moyenne":
+        return [
+            R("bb", "15m"),
+            R("atr", "15m", (14,)),
+            R("rsi", "15m", (14,)),
+            R("adx", "1h"),
+        ]
+    if strategy_name == "gemini_suivi_tendance_momentum":
+        return [
+            R("atr", "4h", (14,)),
+            R("ema", "4h", (20,)),
+            R("regime", "1d"),
+            R("ema", "1d", (50,)),
+            R("ema", "1d", (200,)),
+            R("adx", "1d"),
+        ]
+    return []
+
+
+def preregister_indicators(analyzer: Any, requirements: list[IndicatorRequirement]) -> None:
+    """Create every lazy indicator of ``requirements`` before the warmup data flows (C2, R2).
+
+    Pre-C2 the engines registered a hardcoded list (EMA 20/50 4h, SuperTrend (10, 3.0),
+    Donchian (20, 10)); a variant swept by P7 — SuperTrend (8, 2.0), Donchian (15, 10) — or
+    the DCA's EMA 200 1d was created on its first read after the warmup and stayed silent
+    for its whole period (B4 constat, results/C2_replay_report.md).
+    """
+    for req in requirements:
+        req.preregister(analyzer)
+
+
+def warmup_needs(requirements: list[IndicatorRequirement]) -> dict[str, int]:
+    """Candles required per timeframe for every requirement to be ready at ``start``."""
+    needs: dict[str, int] = {}
+    for req in requirements:
+        needs[req.tf] = max(needs.get(req.tf, 0), req.candles)
+    return needs
+
+
+async def load_context_series(
+    load_window: Callable[[int, datetime, datetime], Awaitable[list[OHLCData]]],
+    load_before: Callable[[int, datetime, int, datetime], Awaitable[list[OHLCData]]],
+    *,
+    interval: int,
+    window_start: datetime,
+    start: datetime,
+    end: datetime,
+    required: int,
+) -> tuple[list[OHLCData], dict[str, Any]]:
+    """Load one context series with a candle-sized warmup and report what was really loaded.
+
+    Monotone rule (C2, R2): the calendar window ``[window_start, end]`` is loaded as before;
+    when fewer than ``required`` candles are stamped ``<= start`` the history is extended
+    backwards by count (never reduced) down to a floor of ``required × interval × 3`` before
+    ``window_start``. The report states what the indicators will really see: candles loaded
+    at or before ``start``, extension, candles missing between the last one and ``start``
+    (``stale_by_candles``), the largest gap inside the history — and ``sufficient`` only when
+    the count is met, the history reaches ``start`` and no gap exceeds one candle. Nothing is
+    ever bridged silently: a hole is reported, never certified.
+
+    Staleness contract. Candles are stamped at their period end (B4.1), so a candle stamped
+    exactly ``start`` is closed at ``start`` and **expected** in the history. ``stale_by_candles``
+    counts the stamps ``last + k × interval`` (k ≥ 1) that fall at or before ``start`` and were
+    not loaded: 0 when the last loaded candle is the one stamped ``start``, or when ``start`` is
+    not aligned on the timeframe and the next stamp falls after it (nothing is missing yet);
+    1 when exactly the candle stamped ``start`` is missing; None when nothing was loaded.
+    ``loaded``, ``required`` and the extension floor do not depend on it.
+    """
+    candles = await load_window(interval, window_start, end)
+    history = [c for c in candles if c.timestamp <= start]
+    loaded = len(history)
+    extended_by = 0
+    if required > loaded:
+        floor = window_start - timedelta(minutes=interval * required * _WARMUP_EXTENSION_FACTOR)
+        extra = await load_before(interval, window_start, required - loaded, floor)
+        candles = extra + candles
+        history = extra + history
+        extended_by = len(extra)
+        loaded += extended_by
+    step = timedelta(minutes=interval)
+    stamps = [c.timestamp for c in history]
+    largest_gap = 0
+    for earlier, later in zip(stamps, stamps[1:], strict=False):
+        largest_gap = max(largest_gap, int((later - earlier) / step) - 1)
+    # Expected stamps in (last, start]: `start` itself counts (closed candle, see docstring).
+    stale = None if not stamps else int((start - stamps[-1]) / step)
+    sufficient = loaded >= required and stale == 0 and largest_gap <= _WARMUP_GAP_TOLERANCE
+    report = {
+        "interval": interval,
+        "required": required,
+        "loaded": loaded,
+        "extended_by": extended_by,
+        "stale_by_candles": stale,
+        "largest_gap_candles": largest_gap,
+        "sufficient": sufficient,
+        "first": stamps[0].isoformat() if stamps else None,
+        "last": stamps[-1].isoformat() if stamps else None,
+    }
+    return candles, report
+
+
+async def _load_candles_before(
+    db_manager: DatabaseManager,
+    pair: str,
+    interval: int,
+    before: datetime,
+    limit: int,
+    floor: datetime,
+    exchange: str,
+) -> list[OHLCData]:
+    """The ``limit`` most recent candles stamped in ``[floor, before)``, oldest first (C2, R2)."""
+    if limit <= 0:
+        return []
+    async with db_manager.read_session() as session:
+        await session.execute(text("SET LOCAL plan_cache_mode = force_custom_plan"))
+        stmt = (
+            select(OHLCData)
+            .where(OHLCData.pair == pair)
+            .where(OHLCData.interval == interval)
+            .where(OHLCData.exchange == exchange)
+            .where(OHLCData.timestamp < before)
+            .where(OHLCData.timestamp >= floor)
+            .order_by(desc(OHLCData.timestamp))
+            .limit(limit)
+        )
+        result = await session.execute(stmt)
+        rows = list(result.scalars().all())
+    rows.reverse()
+    return rows
+
+
+@dataclass(frozen=True)
+class ReplayEvent:
+    """One step of the grok grid replay (C2, R1): a candle with its true interval and role.
+
+    ``exec`` — trading candle (``candle_interval``): the resting grid orders are filled on its
+    high/low and the equity is marked at its close (the only role that moves balances);
+    ``ctx`` — 1w / 1d context close: the analyzer is updated; ``decision`` — 4h close: the
+    analyzer is updated then, when ``decides`` (timestamp >= start), the strategy's
+    ``_handle_ohlc`` runs. ``phase`` orders the events of one timestamp: execution first (an
+    order created with the information of this close cannot fill on a candle already over),
+    then the contexts from the slowest to the 4h decision. Orders created by the decision are
+    eligible from the next ``exec`` event only.
+    """
+
+    candle: "OHLCData"
+    interval: int
+    role: str
+    phase: int
+    decides: bool = False
+
+
+#: Same-timestamp order of the grok grid replay events (C2, R1).
+_GRID_REPLAY_PHASE: dict[str, int] = {"exec": 0, "1w": 1, "1d": 2, "4h": 3}
 
 
 @dataclass
@@ -482,6 +841,26 @@ class BacktestEngine:
         self.min_order_usdc = Decimal(str(min_order_usdc))
         # Runtime snapshot of the strategy's effective parameters (set by run(), B4.3 GATE B).
         self.effective_params: dict[str, Any] | None = None
+        # C2 (R2): indicator requirements at effective params, warmup needs (candles per TF)
+        # and the per-TF report of what was really loaded (see load_context_series).
+        self._requirements: list[IndicatorRequirement] = []
+        self._warmup_needs: dict[str, int] = {}
+        self.warmup: dict[str, dict[str, Any]] = {}
+        # C2 (R3): rejections per (order, cause); every pending signal is one order.
+        self.rejections = RejectionLedger()
+        self._order_seq = 0
+        # C2 (preuve 6): descriptive counters of the DCA replay — weekly ticks evaluated,
+        # signals by multiplier, buys executed (rejections live in ``rejections``).
+        self.dca_counters: dict[str, Any] | None = (
+            {
+                "weekly_ticks_evaluated": 0,
+                "signals_emitted": 0,
+                "by_multiplier": {},
+                "buys_executed": 0,
+            }
+            if strategy_name == "grok_adaptive_dca_weekly"
+            else None
+        )
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -608,6 +987,43 @@ class BacktestEngine:
             exchange=self.exchange,
         )
 
+    async def _load_candles_before(
+        self, pair: str, interval: int, before: datetime, limit: int, floor: datetime
+    ) -> list[OHLCData]:
+        """The ``limit`` candles right before ``before`` (not older than ``floor``), C2 R2."""
+        return await _load_candles_before(
+            self.db_manager, pair, interval, before, limit, floor, self.exchange
+        )
+
+    async def _load_context_series(
+        self,
+        pair: str,
+        tf: str,
+        interval: int,
+        window_start: datetime,
+        start: datetime,
+        end: datetime,
+    ) -> list[OHLCData]:
+        """One context series sized in candles (C2, R2); its report lands in ``self.warmup``."""
+        candles, report = await load_context_series(
+            lambda i, s, e: self._load_candles_for_interval(pair, i, s, e),
+            lambda i, b, n, f: self._load_candles_before(pair, i, b, n, f),
+            interval=interval,
+            window_start=window_start,
+            start=start,
+            end=end,
+            required=self._warmup_needs.get(tf, 0),
+        )
+        self.warmup[tf] = report
+        return candles
+
+    def warmup_summary(self) -> dict[str, dict[str, Any]]:
+        """Per-timeframe warmup report (C2, R2): required / loaded / extended / stale / gaps."""
+        return {
+            tf: dict(report)
+            for tf, report in sorted(self.warmup.items(), key=lambda kv: kv[1]["interval"])
+        }
+
     async def _build_replay_sequence(
         self,
         pair: str,
@@ -621,6 +1037,10 @@ class BacktestEngine:
         merges them with the trading candles, and sorts chronologically.
         Higher timeframes are processed first on timestamp ties so the
         analyzer is updated before the trigger timeframe generates signals.
+        C2 (R2): every context series is sized in candles from the strategy's indicator
+        requirements (``load_context_series``: calendar window kept as a floor, backward
+        extension by count, per-TF report in ``self.warmup``), and a candle present both as
+        warmup and as trading candle (the one stamped exactly ``start``) is fed once.
 
         Args:
             pair: Trading pair.
@@ -632,34 +1052,47 @@ class BacktestEngine:
             List of (candle, interval, is_tradeable) tuples.
         """
         ci = self.candle_interval  # Trading interval (e.g., 5, 1, 15)
+        tf_ci = INTERVAL_TO_TF.get(ci, f"{ci}m")
 
-        # Warmup periods before start_time
+        # Warmup periods before start_time (calendar floors; extended by candle count, R2)
         warmup_1h = start_time - timedelta(days=3)  # ~72 candles (> 50 warmup)
         warmup_15m = start_time - timedelta(hours=10)  # ~40 candles (> 20 warmup)
         warmup_trading = start_time - timedelta(hours=3)  # ~36 candles (> 20 warmup)
-        warmup_4h = start_time - timedelta(days=15)  # ~90 candles (> 52 for Ichimoku)
-        warmup_1d = start_time - timedelta(days=250)  # ~250 candles for EMA(200, "1d") warmup
+        warmup_4h = start_time - timedelta(days=15)  # ~90 candles
+        warmup_1d = start_time - timedelta(days=250)  # ~250 calendar days (holes reported)
         warmup_1w = start_time - timedelta(days=400)  # ~57 candles
 
         # Load higher timeframe data (full range: warmup + backtest period)
         candles_1h: list[OHLCData] = []
         candles_15m: list[OHLCData] = []
         if self.strategy_name in self._NEEDS_1H:
-            candles_1h = await self._load_candles_for_interval(pair, 60, warmup_1h, end_time)
+            candles_1h = await self._load_context_series(
+                pair, "1h", 60, warmup_1h, start_time, end_time
+            )
         if self.strategy_name in self._NEEDS_15M:
-            candles_15m = await self._load_candles_for_interval(pair, 15, warmup_15m, end_time)
-        candles_warmup = await self._load_candles_for_interval(pair, ci, warmup_trading, start_time)
+            candles_15m = await self._load_context_series(
+                pair, "15m", 15, warmup_15m, start_time, end_time
+            )
+        candles_warmup = await self._load_context_series(
+            pair, tf_ci, ci, warmup_trading, start_time, start_time
+        )
 
         # Load 4h, 1d, 1w if the strategy needs them
         candles_4h: list[OHLCData] = []
         candles_1d: list[OHLCData] = []
         candles_1w: list[OHLCData] = []
         if self.strategy_name in self._NEEDS_4H:
-            candles_4h = await self._load_candles_for_interval(pair, 240, warmup_4h, end_time)
+            candles_4h = await self._load_context_series(
+                pair, "4h", 240, warmup_4h, start_time, end_time
+            )
         if self.strategy_name in self._NEEDS_1D:
-            candles_1d = await self._load_candles_for_interval(pair, 1440, warmup_1d, end_time)
+            candles_1d = await self._load_context_series(
+                pair, "1d", 1440, warmup_1d, start_time, end_time
+            )
         if self.strategy_name in self._NEEDS_1W:
-            candles_1w = await self._load_candles_for_interval(pair, 10080, warmup_1w, end_time)
+            candles_1w = await self._load_context_series(
+                pair, "1w", 10080, warmup_1w, start_time, end_time
+            )
 
         self.logger.info(
             "mtf_data_loaded",
@@ -708,6 +1141,18 @@ class BacktestEngine:
         if not is_4h_trigger and not is_daily_trigger:
             for c in candles_trading:
                 sequence.append((c, ci, True))
+
+        # C2 (R2): a candle present twice at the same (timestamp, interval) — the trading
+        # candle stamped exactly ``start`` is in the warmup AND in the trading range — is fed
+        # once; the tradeable version wins. No-op for the 4h / 1d triggers (their trading
+        # candles are never appended).
+        merged: dict[tuple[datetime, int], tuple[OHLCData, int, bool]] = {}
+        for item in sequence:
+            key = (item[0].timestamp, item[1])
+            previous = merged.get(key)
+            if previous is None or (item[2] and not previous[2]):
+                merged[key] = item
+        sequence = list(merged.values())
 
         # Sort: timestamp ASC, then higher timeframes first
         interval_order = {10080: 0, 1440: 1, 240: 2, 60: 3, 15: 4, ci: 5}
@@ -794,7 +1239,12 @@ class BacktestEngine:
         return override.spread, override.slippage
 
     async def execute_signal(
-        self, signal: TradingSignal, current_price: Decimal, *, is_limit_fill: bool = False
+        self,
+        signal: TradingSignal,
+        current_price: Decimal,
+        *,
+        is_limit_fill: bool = False,
+        order_id: str = "sig#?",
     ) -> None:
         """Execute a trading signal in the simulation.
 
@@ -802,6 +1252,7 @@ class BacktestEngine:
             signal: Trading signal from strategy
             current_price: Current market price (open of next candle for market, limit price for limit)
             is_limit_fill: If True, skip spread/slippage and use maker fee
+            order_id: identity of the pending order for the rejection ledger (C2, R3)
         """
         if signal.signal_type == SignalType.HOLD:
             return
@@ -835,10 +1286,12 @@ class BacktestEngine:
         ]
 
         # Override order size from strategy metadata
+        requested_amount: Decimal | None = None
         if uses_otf and signal.metadata:
             strategy_order_size = signal.metadata.get("order_size_usdc")
             if strategy_order_size is not None:
-                order_amount_override = min(self.usdc_balance, Decimal(str(strategy_order_size)))
+                requested_amount = Decimal(str(strategy_order_size))
+                order_amount_override = min(self.usdc_balance, requested_amount)
             else:
                 order_amount_override = None
         else:
@@ -856,6 +1309,7 @@ class BacktestEngine:
                     mult = signal.metadata.get("position_size_multiplier")
                     if mult is not None:
                         base_amount *= Decimal(str(mult))
+                requested_amount = base_amount
                 order_amount = min(self.usdc_balance, base_amount)
 
             self.logger.debug(
@@ -866,8 +1320,19 @@ class BacktestEngine:
             )
 
             if order_amount < self.min_order_usdc:  # Minimum order (exchange minOrderAmt)
+                # C2 (R3): counted once per order — the cash clamp made it fall under the
+                # floor (insufficient_cash) or the sized notional was below it (below_min_order)
+                cause = (
+                    "insufficient_cash"
+                    if requested_amount is not None and order_amount < requested_amount
+                    else "below_min_order"
+                )
+                self.rejections.note(order_id, cause)
                 self.logger.warning(
-                    "backtest_buy_skipped_min_order", order_amount=float(order_amount)
+                    "backtest_buy_skipped_min_order",
+                    order_amount=float(order_amount),
+                    cause=cause,
+                    order_id=order_id,
                 )
                 return
 
@@ -928,6 +1393,8 @@ class BacktestEngine:
 
             # Store entry regime for future SELL trade
             self._entry_regime = entry_regime
+            if self.dca_counters is not None:
+                self.dca_counters["buys_executed"] += 1
 
             self.logger.debug(
                 "backtest_buy",
@@ -935,6 +1402,17 @@ class BacktestEngine:
                 amount_usdc=float(order_amount),
                 crypto=float(crypto_bought),
             )
+
+        elif signal.signal_type == SignalType.BUY:
+            # C2 (R3): a BUY while a position is open (single-position strategies) was a
+            # silent no-op — it is a rejected order, counted.
+            self.rejections.note(order_id, "buy_while_in_position")
+            self.logger.warning("backtest_buy_skipped_in_position", order_id=order_id)
+
+        elif signal.signal_type == SignalType.SELL and not self.in_position:
+            # C2 (R3): a SELL with nothing to sell was a silent no-op — counted.
+            self.rejections.note(order_id, "sell_without_position")
+            self.logger.warning("backtest_sell_skipped_no_position", order_id=order_id)
 
         elif signal.signal_type == SignalType.SELL and self.in_position:
             # Apply spread + slippage to get realistic execution price
@@ -1334,28 +1812,15 @@ class BacktestEngine:
             self.strategy, strategy_params, self._params_override
         )
 
-        # Pre-register lazy indicators so they exist before warmup data flows.
-        # Without this, the first get_*() call returns None because the indicator
-        # was just created and has no data yet.
+        # C2 (R2): pre-register every lazy indicator the strategy reads, at the parameters
+        # the instance really runs with, before any warmup candle flows (a lazy indicator
+        # created on its first read after the warmup stays silent for its whole period), and
+        # size the warmup of each context series in candles from the same requirements.
         bt_analyzer = getattr(self.strategy, "analyzer", None)
+        self._requirements = indicator_requirements(self.strategy_name, self.strategy)
         if bt_analyzer is not None:
-            # EMAs used by regime calculation and strategies
-            _LAZY_EMAS = {
-                "grok_supertrend_4h": [(20, "4h"), (50, "4h")],
-                "grok_ema_adx_atr": [(27, "4h"), (125, "4h")],
-                "gemini_suivi_tendance_momentum": [(20, "4h"), (50, "4h")],
-                "grok_donchian_breakout_4h": [(20, "4h"), (50, "4h")],
-            }
-            for period, tf in _LAZY_EMAS.get(self.strategy_name, []):
-                bt_analyzer.get_ema(period, tf)
-
-            # SuperTrend
-            if self.strategy_name == "grok_supertrend_4h":
-                bt_analyzer.get_supertrend("4h", atr_period=10, multiplier=3.0)
-
-            # Donchian
-            if self.strategy_name == "grok_donchian_breakout_4h":
-                bt_analyzer.get_donchian("4h", period_upper=20, period_lower=10)
+            preregister_indicators(bt_analyzer, self._requirements)
+        self._warmup_needs = warmup_needs(self._requirements)
 
         # Build replay sequence (with MTF warmup for strategies using MultiTimeframeAnalyzer)
         needs_mtf = self.strategy_name in [
@@ -1378,23 +1843,29 @@ class BacktestEngine:
         # Signal on candle N → fill at open of candle N+1 (market) or limit price (limit)
         # This eliminates look-ahead bias: we never fill at a price we just analyzed.
         tradeable_idx = 0
-        pending: tuple[TradingSignal, str | None] | None = None  # (signal, entry_regime)
+        # (signal, entry_regime, order id) — C2 (R3): every pending signal is one order
+        pending: tuple[TradingSignal, str | None, str] | None = None
 
         for candle, interval, is_tradeable in replay_sequence:
             # PHASE 1: Execute pending signal from PREVIOUS candle using THIS candle's OHLC
             if is_tradeable and pending:
-                pending_signal, entry_regime = pending
+                pending_signal, entry_regime, order_id = pending
                 fill_price, is_limit = self._resolve_fill(pending_signal, candle)
                 if fill_price is not None:
                     saved_regime = self._current_regime
                     self._current_regime = entry_regime
-                    await self.execute_signal(pending_signal, fill_price, is_limit_fill=is_limit)
+                    await self.execute_signal(
+                        pending_signal, fill_price, is_limit_fill=is_limit, order_id=order_id
+                    )
                     self._current_regime = saved_regime
                 else:
+                    # C2 (R3): a resting limit not touched on N+1 is dropped — counted.
+                    self.rejections.note(order_id, "limit_expired")
                     self.logger.debug(
                         "limit_order_not_filled",
                         timestamp=candle.timestamp,
                         signal=pending_signal.signal_type.value,
+                        order_id=order_id,
                     )
                 pending = None
 
@@ -1461,9 +1932,25 @@ class BacktestEngine:
                     price=float(candle.close),
                 )
 
+            # C2 (preuve 6): DCA descriptive counters — Monday daily ticks evaluated,
+            # signals emitted by multiplier label.
+            if (
+                self.dca_counters is not None
+                and interval == 1440
+                and candle.timestamp.weekday() == 0
+            ):
+                self.dca_counters["weekly_ticks_evaluated"] += 1
+            if signal and self.dca_counters is not None:
+                self.dca_counters["signals_emitted"] += 1
+                label = str((signal.metadata or {}).get("multiplier_label", "unknown"))
+                self.dca_counters["by_multiplier"][label] = (
+                    self.dca_counters["by_multiplier"].get(label, 0) + 1
+                )
+
             # Queue signal for next-bar execution (no look-ahead bias)
             if signal:
-                pending = (signal, self._current_regime)
+                self._order_seq += 1
+                pending = (signal, self._current_regime, f"sig#{self._order_seq}")
 
             # Track equity curve (mark-to-market at close is fine)
             current_equity = self.usdc_balance
@@ -1501,6 +1988,18 @@ class BacktestEngine:
         )
 
         return self.metrics
+
+    def rejections_summary(self) -> dict[str, Any]:
+        """Rejections per (order, cause) of the finished run (C2, R3), JSON-serialisable."""
+        return self.rejections.summary()
+
+    def dca_counters_summary(self) -> dict[str, Any] | None:
+        """DCA descriptive counters (C2, preuve 6); None for every other strategy."""
+        if self.dca_counters is None:
+            return None
+        out = dict(self.dca_counters)
+        out["by_multiplier"] = dict(sorted(self.dca_counters["by_multiplier"].items()))
+        return out
 
     def print_report(self) -> None:
         """Print a formatted backtest report to console."""
@@ -1556,6 +2055,8 @@ class BacktestEngine:
         print(f"{'Sharpe Ratio (daily):':<30} {fmt(self.metrics.sharpe_ratio)}")
         print(f"{'Sortino Ratio (daily):':<30} {fmt(self.metrics.sortino_ratio)}")
         print(f"{'Calmar Ratio:':<30} {fmt(self.metrics.calmar_ratio)}")
+
+        _print_replay_blocks(self)
 
         # Regime breakdown
         if self._regime_stats:
@@ -1740,6 +2241,10 @@ class GridBacktester:
         self._pair: str | None = None
         self.min_order_usdc = Decimal(str(min_order_usdc))
         self.effective_params: dict[str, Any] | None = None
+        # C2 (R2): see BacktestEngine — requirements, warmup needs (candles) and reports.
+        self._requirements: list[IndicatorRequirement] = []
+        self._warmup_needs: dict[str, int] = {}
+        self.warmup: dict[str, dict[str, Any]] = {}
 
         # Simulation state
         self.usdc_balance = Decimal(str(starting_capital))
@@ -1762,6 +2267,18 @@ class GridBacktester:
         # Grid state
         self.active_buy_orders: list[dict[str, Decimal]] = []  # {price, amount_usdc}
         self.active_sell_orders: list[dict[str, Any]] = []  # {price, amount_btc, entry_price}
+        # C2 (R1): the inputs the grok grid decision consumes, read on the analyzer right
+        # before each 4h decision (proof harness; not exported by to_dict()).
+        self.decision_trace: list[dict[str, Any]] = []
+        # C2 (R3): rejections per (order, cause). A grok buy level is identified by an ordinal
+        # stamped at its first appearance in the pending snapshot (strong reference kept so an
+        # object id is never reused: a level re-created at the same price is a new order);
+        # legacy orders carry an id stamped at creation.
+        self.rejections = RejectionLedger()
+        self._level_ordinals: dict[int, tuple[int, Any]] = {}
+        self._level_seq = 0
+        self._legacy_seq = 0
+        self._anomalies_merged = False
 
         # Grid metrics
         self.pairs_completed: int = 0
@@ -1886,28 +2403,61 @@ class GridBacktester:
         start_time: datetime,
         end_time: datetime,
         candles_trading: list[OHLCData],
-    ) -> list[tuple[OHLCData, int, bool]]:
-        """Build replay for ATR grid using 4h trigger + 1d/1w context feeds."""
+    ) -> list[ReplayEvent]:
+        """Build the grok ATR-grid replay: true 4h / 1d / 1w series, 5m execution (C2, R1).
+
+        Pre-C2 the trading candles were tagged 240 and the 4h series stopped at ``start``:
+        after the warmup the "4h" indicators were fed with 5-minute bars and the grid decided
+        on every one of them. Now the 4h series is loaded over the whole run and carries the
+        decisions (at its closes >= ``start``), 1d / 1w feed the analyzer with their true
+        interval (unchanged), and the trading candles keep their own interval: fills and
+        equity only. Same-timestamp order: ``exec`` (5m) → 1w → 1d → 4h decision.
+        ``candle_interval`` must stay below 4h, otherwise the execution series would be the 4h
+        series fed twice.
+        """
+        if self.candle_interval >= 240:
+            raise ValueError(
+                "grok grid replay: candle_interval must be shorter than 4h (240 minutes) — "
+                f"got {self.candle_interval}; decisions run on the 4h series, fills on the "
+                "trading candles"
+            )
         warmup_4h = start_time - timedelta(days=15)
         warmup_1d = start_time - timedelta(days=250)
         warmup_1w = start_time - timedelta(days=400)
 
-        candles_4h_warmup = await self._load_candles_for_interval(pair, 240, warmup_4h, start_time)
-        candles_1d = await self._load_candles_for_interval(pair, 1440, warmup_1d, end_time)
-        candles_1w = await self._load_candles_for_interval(pair, 10080, warmup_1w, end_time)
+        candles_4h = await self._load_context_series(
+            pair, "4h", 240, warmup_4h, start_time, end_time
+        )
+        candles_1d = await self._load_context_series(
+            pair, "1d", 1440, warmup_1d, start_time, end_time
+        )
+        candles_1w = await self._load_context_series(
+            pair, "1w", 10080, warmup_1w, start_time, end_time
+        )
 
-        replay_sequence: list[tuple[OHLCData, int, bool]] = []
-        for candle in candles_4h_warmup:
-            replay_sequence.append((candle, 240, False))
-        for candle in candles_1w:
-            replay_sequence.append((candle, 10080, False))
-        for candle in candles_1d:
-            replay_sequence.append((candle, 1440, False))
-        for candle in candles_trading:
-            replay_sequence.append((candle, 240, True))
-
-        replay_sequence.sort(key=lambda item: (item[0].timestamp, -item[1]))
-        return replay_sequence
+        ci = self.candle_interval
+        events: list[ReplayEvent] = [
+            ReplayEvent(c, ci, "exec", _GRID_REPLAY_PHASE["exec"]) for c in candles_trading
+        ]
+        events += [ReplayEvent(c, 10080, "ctx", _GRID_REPLAY_PHASE["1w"]) for c in candles_1w]
+        events += [ReplayEvent(c, 1440, "ctx", _GRID_REPLAY_PHASE["1d"]) for c in candles_1d]
+        events += [
+            ReplayEvent(
+                c, 240, "decision", _GRID_REPLAY_PHASE["4h"], decides=c.timestamp >= start_time
+            )
+            for c in candles_4h
+        ]
+        events.sort(key=lambda e: (e.candle.timestamp, e.phase))
+        self.logger.info(
+            "grid_replay_sequence_built",
+            trading_interval=ci,
+            candles_trading=len(candles_trading),
+            candles_4h=len(candles_4h),
+            decisions=sum(1 for e in events if e.decides),
+            candles_1d=len(candles_1d),
+            candles_1w=len(candles_1w),
+        )
+        return events
 
     async def _create_grok_grid_strategy(self):
         """Instantiate the real ATR-adaptive grid strategy for faithful replay."""
@@ -1928,18 +2478,32 @@ class GridBacktester:
         self.effective_params = capture_effective_params(
             strategy, self._strategy_params, self._params_override
         )
+        # C2 (R2): the grid had no pre-registration at all — it worked only because its ATR
+        # period defaults to the analyzer's fixed 14 bucket and its regimes use fixed EMAs.
+        self._requirements = indicator_requirements(self.strategy_name, strategy)
+        preregister_indicators(analyzer, self._requirements)
+        self._warmup_needs = warmup_needs(self._requirements)
         return strategy, analyzer
+
+    def _order_id_for_level(self, level: Any) -> str:
+        """Stable identity of a grok buy level: an ordinal at its first pending appearance."""
+        entry = self._level_ordinals.get(id(level))
+        if entry is None or entry[1] is not level:
+            self._level_seq += 1
+            entry = (self._level_seq, level)
+            self._level_ordinals[id(level)] = entry
+        return f"buy#{entry[0]}"
 
     def _get_grok_grid_pending_orders(self, strategy: Any) -> list[dict[str, Any]]:
         """Return pending buy levels plus paired sell targets for open positions."""
         pending_orders: list[dict[str, Any]] = []
 
-        for key, level in strategy._grid_levels.items():
+        for level in strategy._grid_levels.values():
             if level.status != "pending" or level.side != "buy":
                 continue
             pending_orders.append(
                 {
-                    "order_id": key,
+                    "order_id": self._order_id_for_level(level),
                     "side": "buy",
                     "price": level.price,
                     "amount_usdc": level.amount_usdc,
@@ -1965,21 +2529,16 @@ class GridBacktester:
         return {order["order_id"] for order in self._get_grok_grid_pending_orders(strategy)}
 
     def _mark_grok_grid_level_filled(self, strategy: Any, side: str, price: Decimal) -> None:
-        """Mark a matching grid level as filled when a simulated fill occurs."""
-        if side == "buy":
-            level = strategy._grid_levels.get(f"buy_{price}")
-            if level is not None:
-                level.status = "filled"
-            return
+        """Mark the grid level of a simulated fill as filled — exact key on both sides.
 
-        for level in strategy._grid_levels.values():
-            if (
-                level.side == side
-                and level.status == "pending"
-                and abs(level.price - price) < Decimal("1")
-            ):
-                level.status = "filled"
-                break
+        C2 (R4): the former SELL branch matched ``|level.price - price| < 1`` USD, a second
+        price-proximity matcher next to the strategy's; levels are keyed ``f"{side}_{price}"``
+        by the strategy itself, so the exact key is the only correct lookup. Status only —
+        pending SELL orders are derived from the open lots, never from these levels.
+        """
+        level = strategy._grid_levels.get(f"{side}_{price}")
+        if level is not None:
+            level.status = "filled"
 
     async def _process_grok_grid_buy_fill(
         self, strategy: Any, order: dict[str, Any], candle: OHLCData
@@ -1988,6 +2547,7 @@ class GridBacktester:
         fill_price = order["price"]
         amount_usdc = order["amount_usdc"]
         if self.usdc_balance < amount_usdc:
+            self.rejections.note(order["order_id"], "insufficient_cash")
             return
 
         fee = amount_usdc * self.fees.maker
@@ -2032,10 +2592,48 @@ class GridBacktester:
     async def _process_grok_grid_sell_fill(
         self, strategy: Any, order: dict[str, Any], candle: OHLCData
     ) -> None:
-        """Process a grok ATR-grid SELL fill through the real strategy lifecycle."""
+        """Process a grok ATR-grid SELL fill: validate the designated lot, then settle (C2, R4).
+
+        The lot is looked up by ``position_id`` in the strategy's open positions **before** any
+        balance mutation: an unknown id or an inventory shortfall is a skip — nothing moves,
+        no trade is booked (pre-C2 the wallet was debited first and the fill then dropped
+        silently: an orphan accounting write, dette 15(d)). The quantity sold is the lot's.
+        After the settlement the strategy must have closed that very lot (it matches by id
+        since C2): anything else is a replay-invariant violation and raises.
+        """
         fill_price = order["price"]
         amount_btc = order["amount_btc"]
-        if self.btc_held < amount_btc:
+        position_id = order["position_id"]
+
+        matched_position = next(
+            (p for p in strategy.open_positions if p.position_id == position_id), None
+        )
+        if matched_position is None:
+            self.rejections.note(order["order_id"], "unmatched_position_id")
+            self.logger.warning(
+                "grid_sell_fill_unknown_position_id",
+                position_id=position_id,
+                price=float(fill_price),
+                timestamp=candle.timestamp,
+            )
+            return
+        if matched_position.amount_btc != amount_btc:
+            raise RuntimeError(
+                f"replay invariant violated: sell order for lot {position_id} carries "
+                f"{amount_btc} BTC but the lot holds {matched_position.amount_btc} BTC"
+            )
+        if self.btc_held + self._INVENTORY_DUST_BTC < amount_btc:
+            # A shortfall beyond Decimal dust is a real inventory problem; a shortfall of
+            # ~1e-29 BTC is the prec-28 rounding of the running sum (B4.3 dust convention) and
+            # must not block the lot forever (it did, silently, pre-C2).
+            self.rejections.note(order["order_id"], "insufficient_inventory")
+            self.logger.warning(
+                "grid_sell_fill_insufficient_inventory",
+                position_id=position_id,
+                amount_btc=float(amount_btc),
+                btc_held=float(self.btc_held),
+                timestamp=candle.timestamp,
+            )
             return
 
         gross_usdc = amount_btc * fill_price
@@ -2045,14 +2643,6 @@ class GridBacktester:
         self.usdc_balance += net_usdc
         self.total_fees += fee
         self._mark_grok_grid_level_filled(strategy, "sell", fill_price)
-
-        matched_position = None
-        for position in strategy.open_positions:
-            if position.position_id == order["position_id"]:
-                matched_position = position
-                break
-        if matched_position is None:
-            return
 
         cost_basis = matched_position.amount_btc * matched_position.entry_price
         pnl = net_usdc - cost_basis
@@ -2092,8 +2682,13 @@ class GridBacktester:
             price=fill_price,
             fee=fee,
             reference_price=None,
-            position_id=order["position_id"],
+            position_id=position_id,
         )
+        if any(p.position_id == position_id for p in strategy.open_positions):
+            raise RuntimeError(
+                f"replay invariant violated: lot {position_id} is still open after its sell "
+                f"fill at {fill_price} ({candle.timestamp.isoformat()})"
+            )
         self.total_orders_placed += 1
 
     def _initialize_grid(self, current_price: Decimal) -> None:
@@ -2112,8 +2707,13 @@ class GridBacktester:
             level_price = level_price.quantize(Decimal("0.1"))
 
             if level_price < current_price:
+                self._legacy_seq += 1
                 self.active_buy_orders.append(
-                    {"price": level_price, "amount_usdc": self.order_amount_usdc}
+                    {
+                        "price": level_price,
+                        "amount_usdc": self.order_amount_usdc,
+                        "order_id": f"legacy_buy#{self._legacy_seq}",
+                    }
                 )
                 self.total_orders_placed += 1
             elif level_price > current_price:
@@ -2135,7 +2735,10 @@ class GridBacktester:
         amount_usdc = order["amount_usdc"]
 
         if self.usdc_balance < amount_usdc:
-            return  # Insufficient balance
+            self.rejections.note(
+                str(order.get("order_id", f"legacy_buy@{fill_price}")), "insufficient_cash"
+            )
+            return  # Insufficient balance (the order is dropped, as before: counters only)
 
         fee = amount_usdc * self.fees.maker
         net_usdc = amount_usdc - fee
@@ -2172,11 +2775,13 @@ class GridBacktester:
         if sell_price < min_profitable_sell:
             sell_price = min_profitable_sell.quantize(Decimal("0.1"))
 
+        self._legacy_seq += 1
         self.active_sell_orders.append(
             {
                 "price": sell_price,
                 "amount_btc": btc_bought,
                 "entry_price": fill_price,
+                "order_id": f"legacy_sell#{self._legacy_seq}",
             }
         )
         self.total_orders_placed += 2  # buy filled + sell placed
@@ -2188,7 +2793,10 @@ class GridBacktester:
         entry_price = order["entry_price"]
 
         if self.btc_held < amount_btc:
-            return  # Insufficient BTC
+            self.rejections.note(
+                str(order.get("order_id", f"legacy_sell@{fill_price}")), "insufficient_inventory"
+            )
+            return  # Insufficient BTC (the order is dropped, as before: counters only)
 
         gross_usdc = amount_btc * fill_price
         fee = gross_usdc * self.fees.maker
@@ -2233,7 +2841,14 @@ class GridBacktester:
         # Place paired buy at lower level
         buy_price = fill_price * (Decimal("1") - self.grid_spacing_pct / Decimal("100"))
         buy_price = buy_price.quantize(Decimal("0.1"))
-        self.active_buy_orders.append({"price": buy_price, "amount_usdc": self.order_amount_usdc})
+        self._legacy_seq += 1
+        self.active_buy_orders.append(
+            {
+                "price": buy_price,
+                "amount_usdc": self.order_amount_usdc,
+                "order_id": f"legacy_buy#{self._legacy_seq}",
+            }
+        )
         self.total_orders_placed += 1
 
     def _check_rebalance(self, current_price: Decimal) -> bool:
@@ -2274,66 +2889,22 @@ class GridBacktester:
             period=f"{start_time.date()} to {end_time.date()}",
         )
 
-        # For MTF grid variants, load higher timeframe context candles
-        analyzer = None
-        strategy = None
-        replay_sequence: list[tuple[OHLCData, int, bool]] = []
-
         if self.strategy_name == "grok_grid_atr_adaptive_v4":
             strategy, analyzer = await self._create_grok_grid_strategy()
             # Expose inner strategy for force-close of unrealized positions at end.
             self._strategy_obj = strategy
-            replay_sequence = await self._build_grok_grid_replay_sequence(
+            events = await self._build_grok_grid_replay_sequence(
                 pair, start_time, end_time, candles
             )
-        else:
-            replay_sequence = [(c, self.candle_interval, True) for c in candles]
+            await self._replay_grok_grid(strategy, analyzer, events)
+            self._calculate_final_metrics()
+            return self.metrics
 
-        # Replay
-        for candle, interval, is_tradeable in replay_sequence:
+        replay_sequence = [(c, self.candle_interval, True) for c in candles]
+
+        # Replay (legacy non-grok grid)
+        for candle, _interval, is_tradeable in replay_sequence:
             current_price = candle.close
-
-            if self.strategy_name == "grok_grid_atr_adaptive_v4":
-                assert analyzer is not None
-                assert strategy is not None
-
-                if is_tradeable:
-                    pending_orders = self._get_grok_grid_pending_orders(strategy)
-                    filled_buys = [
-                        order
-                        for order in pending_orders
-                        if order["side"] == "buy" and candle.low <= order["price"]
-                    ]
-                    filled_sells = [
-                        order
-                        for order in pending_orders
-                        if order["side"] == "sell" and candle.high >= order["price"]
-                    ]
-                    for order in filled_buys:
-                        await self._process_grok_grid_buy_fill(strategy, order, candle)
-                    for order in filled_sells:
-                        await self._process_grok_grid_sell_fill(strategy, order, candle)
-
-                analyzer.update(self._make_ohlc_payload(candle, interval), interval)
-
-                if not is_tradeable:
-                    continue
-
-                old_center = strategy._grid_center
-                old_spacing = strategy._grid_spacing
-                before_ids = self._get_grok_grid_pending_order_ids(strategy)
-
-                await strategy._handle_ohlc(self._make_ohlc_payload(candle, interval))
-
-                after_ids = self._get_grok_grid_pending_order_ids(strategy)
-                self.total_orders_placed += len(after_ids - before_ids)
-                if old_center is not None and (
-                    strategy._grid_center != old_center or strategy._grid_spacing != old_spacing
-                ):
-                    self.rebalance_count += 1
-
-                self._record_equity(candle)
-                continue
 
             if not is_tradeable:
                 continue
@@ -2368,6 +2939,9 @@ class GridBacktester:
 
             for order in filled_sells:
                 self._process_sell_fill(order, candle)
+            self.rejections.prune(
+                str(o.get("order_id", "")) for o in self.active_buy_orders + self.active_sell_orders
+            )
 
             # Check rebalance
             self._check_rebalance(current_price)
@@ -2379,6 +2953,71 @@ class GridBacktester:
         self._calculate_final_metrics()
 
         return self.metrics
+
+    async def _replay_grok_grid(
+        self, strategy: Any, analyzer: Any, events: list[ReplayEvent]
+    ) -> None:
+        """Drive the grok grid over its replay events (C2, R1).
+
+        ``exec``: snapshot the pending orders (buy levels + one sell per open lot), fill the
+        touched ones (buys then sells), feed the candle to the analyzer at its own interval,
+        update the strategy's price state (``on_ohlc``) and mark the equity — the last exec
+        close is the terminal-liquidation reference. ``ctx``: analyzer update only.
+        ``decision``: analyzer update, then — from ``start`` on — the strategy decides on the
+        4h close (``_handle_ohlc``); warmup 4h candles only feed the analyzer.
+        """
+        for event in events:
+            candle, interval = event.candle, event.interval
+            payload = self._make_ohlc_payload(candle, interval)
+
+            if event.role == "exec":
+                pending_orders = self._get_grok_grid_pending_orders(strategy)
+                filled_buys = [
+                    order
+                    for order in pending_orders
+                    if order["side"] == "buy" and candle.low <= order["price"]
+                ]
+                filled_sells = [
+                    order
+                    for order in pending_orders
+                    if order["side"] == "sell" and candle.high >= order["price"]
+                ]
+                for order in filled_buys:
+                    await self._process_grok_grid_buy_fill(strategy, order, candle)
+                for order in filled_sells:
+                    await self._process_grok_grid_sell_fill(strategy, order, candle)
+                # C2 (R3): an order that left the pending set counts anew if re-created
+                self.rejections.prune(self._get_grok_grid_pending_order_ids(strategy))
+                analyzer.update(payload, interval)
+                await strategy.on_ohlc(payload)
+                self._record_equity(candle)
+                continue
+
+            analyzer.update(payload, interval)
+            if event.role != "decision" or not event.decides:
+                continue
+
+            self.decision_trace.append(
+                {
+                    "timestamp": candle.timestamp,
+                    "close": candle.close,
+                    "atr_4h": analyzer.get_atr(strategy.atr_period, "4h"),
+                    "regime_1d": analyzer.get_regime("1d"),
+                    "regime_1w": analyzer.get_regime("1w"),
+                }
+            )
+            old_center = strategy._grid_center
+            old_spacing = strategy._grid_spacing
+            before_ids = self._get_grok_grid_pending_order_ids(strategy)
+
+            await strategy._handle_ohlc(payload)
+
+            after_ids = self._get_grok_grid_pending_order_ids(strategy)
+            self.total_orders_placed += len(after_ids - before_ids)
+            if old_center is not None and (
+                strategy._grid_center != old_center or strategy._grid_spacing != old_spacing
+            ):
+                self.rebalance_count += 1
 
     async def _load_candles(
         self, pair: str, start_time: datetime, end_time: datetime
@@ -2405,6 +3044,43 @@ class GridBacktester:
             end_time,
             exchange=self.exchange,
         )
+
+    async def _load_candles_before(
+        self, pair: str, interval: int, before: datetime, limit: int, floor: datetime
+    ) -> list[OHLCData]:
+        """The ``limit`` candles right before ``before`` (not older than ``floor``), C2 R2."""
+        return await _load_candles_before(
+            self.db_manager, pair, interval, before, limit, floor, self.exchange
+        )
+
+    async def _load_context_series(
+        self,
+        pair: str,
+        tf: str,
+        interval: int,
+        window_start: datetime,
+        start: datetime,
+        end: datetime,
+    ) -> list[OHLCData]:
+        """One context series sized in candles (C2, R2); its report lands in ``self.warmup``."""
+        candles, report = await load_context_series(
+            lambda i, s, e: self._load_candles_for_interval(pair, i, s, e),
+            lambda i, b, n, f: self._load_candles_before(pair, i, b, n, f),
+            interval=interval,
+            window_start=window_start,
+            start=start,
+            end=end,
+            required=self._warmup_needs.get(tf, 0),
+        )
+        self.warmup[tf] = report
+        return candles
+
+    def warmup_summary(self) -> dict[str, dict[str, Any]]:
+        """Per-timeframe warmup report (C2, R2): required / loaded / extended / stale / gaps."""
+        return {
+            tf: dict(report)
+            for tf, report in sorted(self.warmup.items(), key=lambda kv: kv[1]["interval"])
+        }
 
     def _liquidate_lot(
         self,
@@ -2483,9 +3159,11 @@ class GridBacktester:
         tagged ``forced_liquidation``; one final equity point is appended so ending
         balance, return, drawdown and Sharpe all carry the liquidation cost.
 
-        Inventory reconciliation: the strategy closes positions by price proximity while
-        the engine debits by position id, so ``sum(lots)`` can diverge from ``btc_held``
-        (phantom lot). A lot exceeding the BTC actually held by more than
+        Inventory reconciliation: pre-C2 the strategy closed positions by price proximity
+        while the engine debited by position id, so ``sum(lots)`` could diverge from
+        ``btc_held`` (phantom lot, dette 14). Since C2 both sides match by id and the
+        divergence is Decimal dust on a healthy run, but the reconciliation below stays:
+        it is what surfaces a divergence if one ever reappears. A lot exceeding the BTC actually held by more than
         ``_INVENTORY_DUST_BTC`` is clamped; BTC held without any lot is liquidated as one
         trade with unknown cost basis (``pnl`` None); |residual| <= dust is written off.
         The signed divergence and the written-off dust are surfaced on the engine.
@@ -2525,7 +3203,8 @@ class GridBacktester:
         booked = 0
         for amount_btc, entry_price, entry_time in lots:
             if amount_btc - self.btc_held > self._INVENTORY_DUST_BTC:
-                # Phantom lot (strategy closed another lot by proximity): clamp to what is held.
+                # Phantom lot (pre-C2: the strategy had closed another lot by proximity).
+                # Clamp to what is really held rather than overdraw the inventory.
                 amount_btc = max(self.btc_held, Decimal("0"))
             if amount_btc <= 0:
                 continue
@@ -2622,10 +3301,27 @@ class GridBacktester:
             "slippage_pct": _dec(first.slippage_pct) if first else None,
         }
 
+    def rejections_summary(self) -> dict[str, Any]:
+        """Rejections per (order, cause) of the finished run (C2, R3), JSON-serialisable —
+        engine skips plus the inner strategy's ``fill_anomalies`` (merged once)."""
+        self._merge_strategy_anomalies()
+        return self.rejections.summary()
+
+    def dca_counters_summary(self) -> dict[str, Any] | None:
+        """No DCA counters on the grid engine (API symmetry with BacktestEngine)."""
+        return None
+
+    def _merge_strategy_anomalies(self) -> None:
+        anomalies = getattr(self._strategy_obj, "fill_anomalies", None)
+        if anomalies and not self._anomalies_merged:
+            self.rejections.add_counts(anomalies)
+            self._anomalies_merged = True
+
     def _calculate_final_metrics(self) -> None:
         """Calculate final performance metrics."""
         # Liquidate the terminal inventory first so its losses are counted (B4.3).
         self._force_close_open_positions()
+        self._merge_strategy_anomalies()
 
         self.metrics.total_trades = self.pairs_completed + self.liquidated_positions
         self.metrics.total_fees = self.total_fees
@@ -2790,6 +3486,8 @@ class GridBacktester:
         print(f"{'Sharpe Ratio (daily):':<30} {fmt(self.metrics.sharpe_ratio)}")
         print(f"{'Sortino Ratio (daily):':<30} {fmt(self.metrics.sortino_ratio)}")
         print(f"{'Calmar Ratio:':<30} {fmt(self.metrics.calmar_ratio)}")
+
+        _print_replay_blocks(self)
 
         print("\n" + "=" * 80 + "\n")
 
@@ -2971,11 +3669,45 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         parser.error("--equity-out applies to a single run, not to --cross-validate")
     if args.trades_out is not None and args.cross_validate:
         parser.error("--trades-out is a single-run artifact; drop it or drop --cross-validate")
+    if args.strategy in GridBacktester.GRID_STRATEGIES:
+        if args.cross_validate:
+            # C2 (N1): the cross-validate branch builds a BacktestEngine unconditionally and
+            # GridBacktester has no such mode — fail fast rather than replay a grid strategy
+            # through the signal engine.
+            parser.error(
+                f"--cross-validate has no grid mode: {args.strategy} would run through the "
+                "signal engine (use the P6 / P7 runners for train/test splits)"
+            )
+        if args.interval >= 240:
+            parser.error(
+                "--interval must be shorter than 4h for a grid strategy (decisions run on the "
+                f"4h series, fills on the trading candles); got {args.interval}"
+            )
     return args
 
 
 def _dec(value: Any) -> str | None:
     return None if value is None else str(value)
+
+
+def _print_replay_blocks(engine: Any) -> None:
+    """Console section for the C2 replay blocks (warmup per TF, rejections, DCA counters)."""
+    print("\n" + "-" * 80)
+    print("REPLAY (C2)")
+    print("-" * 80)
+    for tf, report in engine.warmup_summary().items():
+        flag = "ok" if report["sufficient"] else "INSUFFICIENT"
+        print(
+            f"  warmup {tf:<4} required {report['required']:>4} loaded {report['loaded']:>5} "
+            f"extended {report['extended_by']:>4} stale {report['stale_by_candles']!s:>5} "
+            f"largest gap {report['largest_gap_candles']:>5}  {flag}"
+        )
+    rejections = engine.rejections_summary()
+    shown = {c: n for c, n in rejections["by_cause"].items() if n}
+    print(f"  rejections {rejections['unit']}: {shown if shown else 'none'}")
+    dca = engine.dca_counters_summary() if hasattr(engine, "dca_counters_summary") else None
+    if dca is not None:
+        print(f"  dca counters: {dca}")
 
 
 def _db_ratio(value: float | None, ndigits: int | None = None) -> Decimal | None:
@@ -2993,6 +3725,7 @@ def dump_equity_jsonl(engine: Any, path: Path, *, pair: str) -> int:
     captured. Returns the number of points written."""
     header = {
         "metrics_version": METRICS_VERSION,
+        "replay_version": REPLAY_VERSION,  # C2: what the engines simulate
         "engine": type(engine).__name__,
         "strategy": engine.strategy_name,
         "pair": pair,
@@ -3087,7 +3820,15 @@ def dump_trades_json(
     }
     # C1: contract version and the daily NAV grid, outside the harness' schema-1 projection
     payload["metrics_version"] = METRICS_VERSION
+    payload["replay_version"] = REPLAY_VERSION  # C2: replay contract, top level only
     payload["equity_daily"] = engine.metrics.equity_daily_dict()
+    # C2 (R2): what each context series really fed the indicators with (candles, gaps).
+    payload["warmup"] = engine.warmup_summary()
+    # C2 (R3): rejections per (order, cause) — both engines; DCA descriptive counters.
+    payload["rejections"] = engine.rejections_summary()
+    dca_counters = engine.dca_counters_summary()
+    if dca_counters is not None:
+        payload["dca_counters"] = dca_counters
     regime_stats = getattr(engine, "_regime_stats", None)
     if regime_stats:
         payload["regime_breakdown"] = {

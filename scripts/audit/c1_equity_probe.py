@@ -18,6 +18,15 @@ Sub-commands
                 identical, keys expected to move (with the defect / convention that explains
                 the move), keys added or removed by the new contract. ``--markdown`` writes the
                 table. Exit 1 on any identity violation.
+``compare-ab --strict`` (C2) the master confinement invariant: **everything** in the old
+                capture must be byte-identical in the new one — every trade field (including
+                the C1 ``buy_fee_alloc``), balances, equity curve, every metric key (identical
+                *and* moving ones), Decimal extras, the grid / liquidation / regime blocks, the
+                fee model, pair costs and min order. Only ``STRICT_ALLOWED_META`` may differ
+                (``git_head``, ``engine_file``, ``source_fingerprints``: where the engines ran
+                from) and only ``STRICT_ALLOWED_ADDITIONS`` may appear in the new capture
+                (``replay_version``, ``rejections``, ``warmup``, ``dca_counters``: blocks a
+                pre-C2 engine does not export). A key that disappears is a violation.
 
 Usage (repo root, tunnel up)::
 
@@ -54,9 +63,15 @@ from b4_2_reference_capture import (  # noqa: E402
     capture_payload,
     compare_payloads,
     dumps_canonical,
+    first_difference,
 )
 
-PROBE_VERSION = 1
+PROBE_VERSION = 1  # payload superset since C2: new blocks are optional (absent = pre-C2 engine)
+
+#: Strict mode (C2): top-level metadata keys allowed to differ between two captures.
+STRICT_ALLOWED_META = ("git_head", "engine_file", "source_fingerprints")
+#: Strict mode (C2): top-level keys a post-C2 capture may add over a pre-C2 one.
+STRICT_ALLOWED_ADDITIONS = ("replay_version", "rejections", "warmup", "dca_counters")
 
 #: Pre-C1 ``BacktestTrade`` fields: the identity is asserted on exactly this set (fields added
 #: by C1, e.g. ``buy_fee_alloc``, are reported as "new", never compared).
@@ -156,7 +171,35 @@ def build_probe_payload(engine: Any, base: dict[str, Any], engine_file: str) -> 
     }
     if is_grid and hasattr(engine, "liquidation_summary"):
         payload["liquidation"] = engine.liquidation_summary()
+    # C2 blocks — present only when the engine exports them (a pre-C2 engine does not).
+    if callable(getattr(engine, "rejections_summary", None)):
+        payload["rejections"] = engine.rejections_summary()
+    if callable(getattr(engine, "warmup_summary", None)):
+        payload["warmup"] = engine.warmup_summary()
+    if callable(getattr(engine, "dca_counters_summary", None)):
+        dca = engine.dca_counters_summary()
+        if dca is not None:
+            payload["dca_counters"] = dca
     return payload
+
+
+def source_fingerprints(engine: Any, engine_file: str) -> dict[str, dict[str, str]]:
+    """sha256 of the engine module and of the strategy module actually loaded (C2): the
+    ``--engine-root`` capture swaps ``scripts/backtest.py`` only, ``krakenbot`` stays the
+    current tree's — the fingerprints make that visible in the capture."""
+    import inspect
+
+    out: dict[str, dict[str, str]] = {}
+    strategy = getattr(engine, "_strategy_obj", None) or getattr(engine, "strategy", None)
+    for label, file in (
+        ("backtest", engine_file),
+        ("strategy", inspect.getfile(type(strategy)) if strategy is not None else None),
+    ):
+        if file is None:
+            continue
+        digest = hashlib.sha256(Path(file).read_bytes()).hexdigest()
+        out[label] = {"path": str(Path(file).resolve()), "sha256": digest}
+    return out
 
 
 def write_capture(path: Path, payload: dict[str, Any]) -> str:
@@ -221,6 +264,31 @@ def compare_identity(old: dict[str, Any], new: dict[str, Any]) -> list[str]:
     diff = compare_payloads(old, new, ignore=[f"metrics.{k}" for k in sorted(contract_delta)])
     if diff is not None:
         v.append(f"schema-1 projection (ignoring moving / new / removed metric keys): {diff}")
+    return v
+
+
+def compare_strict(
+    old: dict[str, Any],
+    new: dict[str, Any],
+    *,
+    allowed_meta: tuple[str, ...] = STRICT_ALLOWED_META,
+    allowed_additions: tuple[str, ...] = STRICT_ALLOWED_ADDITIONS,
+) -> list[str]:
+    """Violations of the strict (C2) identity: every key of ``old`` byte-identical in ``new``
+    (canonical JSON of each top-level block, deep), additions limited to ``allowed_additions``,
+    ``allowed_meta`` ignored on both sides, a disappeared key is a violation."""
+    v: list[str] = []
+    o = {k: val for k, val in old.items() if k not in allowed_meta}
+    n = {k: val for k, val in new.items() if k not in allowed_meta}
+    for key in sorted(set(n) - set(o)):
+        if key not in allowed_additions:
+            v.append(f"new top-level key {key!r} is not an allowed addition")
+    for key in sorted(set(o) - set(n)):
+        v.append(f"key {key!r} disappeared from the new capture")
+    for key in sorted(set(o) & set(n)):
+        diff = first_difference(o[key], n[key], path=f"$.{key}")
+        if diff is not None:
+            v.append(diff)
     return v
 
 
@@ -357,7 +425,13 @@ async def run_capture(args: argparse.Namespace) -> dict[str, Any]:
     base["min_order_usdc"] = args.min_order_usdc
     engine_root = Path(args.engine_root).resolve() if args.engine_root else _PROJECT_ROOT
     base["git_head"] = _git_head(engine_root)
-    return build_probe_payload(engine, base, str(Path(backtest.__file__).resolve()))
+    engine_file = str(Path(backtest.__file__).resolve())
+    payload = build_probe_payload(engine, base, engine_file)
+    payload["source_fingerprints"] = source_fingerprints(engine, engine_file)
+    replay_version = getattr(backtest, "REPLAY_VERSION", None)
+    if replay_version is not None:
+        payload["replay_version"] = replay_version
+    return payload
 
 
 # ---------------------------------------------------------------------------
@@ -387,6 +461,14 @@ def build_parser() -> argparse.ArgumentParser:
     cmp_.add_argument("old", type=Path)
     cmp_.add_argument("new", type=Path)
     cmp_.add_argument("--markdown", type=Path, default=None)
+    cmp_.add_argument(
+        "--strict",
+        action="store_true",
+        help="C2 master invariant: every key of OLD byte-identical in NEW (metrics identical "
+        "and moving, all trade fields, balances, equity, liquidation, fees); only "
+        f"{', '.join(STRICT_ALLOWED_META)} may differ and only "
+        f"{', '.join(STRICT_ALLOWED_ADDITIONS)} may be added.",
+    )
     return parser
 
 
@@ -410,15 +492,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "compare-ab":
         old, new = load_capture(args.old), load_capture(args.new)
         violations = compare_identity(old, new)
+        if args.strict:
+            violations = violations + [f"strict: {item}" for item in compare_strict(old, new)]
         md = render_markdown(old, new, violations)
         if args.markdown is not None:
             args.markdown.parent.mkdir(parents=True, exist_ok=True)
             args.markdown.write_text(md, encoding="utf-8")
         print(md)
+        label = "STRICT IDENTITY" if args.strict else "IDENTITY"
         if violations:
-            print(f"{len(violations)} identity violation(s)", file=sys.stderr)
+            print(f"{len(violations)} {label.lower()} violation(s)", file=sys.stderr)
             return 1
-        print("IDENTITY OK", file=sys.stderr)
+        print(f"{label} OK", file=sys.stderr)
         return 0
     return 2
 
