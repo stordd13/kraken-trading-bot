@@ -3159,9 +3159,11 @@ class GridBacktester:
         tagged ``forced_liquidation``; one final equity point is appended so ending
         balance, return, drawdown and Sharpe all carry the liquidation cost.
 
-        Inventory reconciliation: the strategy closes positions by price proximity while
-        the engine debits by position id, so ``sum(lots)`` can diverge from ``btc_held``
-        (phantom lot). A lot exceeding the BTC actually held by more than
+        Inventory reconciliation: pre-C2 the strategy closed positions by price proximity
+        while the engine debited by position id, so ``sum(lots)`` could diverge from
+        ``btc_held`` (phantom lot, dette 14). Since C2 both sides match by id and the
+        divergence is Decimal dust on a healthy run, but the reconciliation below stays:
+        it is what surfaces a divergence if one ever reappears. A lot exceeding the BTC actually held by more than
         ``_INVENTORY_DUST_BTC`` is clamped; BTC held without any lot is liquidated as one
         trade with unknown cost basis (``pnl`` None); |residual| <= dust is written off.
         The signed divergence and the written-off dust are surfaced on the engine.
@@ -3201,7 +3203,8 @@ class GridBacktester:
         booked = 0
         for amount_btc, entry_price, entry_time in lots:
             if amount_btc - self.btc_held > self._INVENTORY_DUST_BTC:
-                # Phantom lot (strategy closed another lot by proximity): clamp to what is held.
+                # Phantom lot (pre-C2: the strategy had closed another lot by proximity).
+                # Clamp to what is really held rather than overdraw the inventory.
                 amount_btc = max(self.btc_held, Decimal("0"))
             if amount_btc <= 0:
                 continue

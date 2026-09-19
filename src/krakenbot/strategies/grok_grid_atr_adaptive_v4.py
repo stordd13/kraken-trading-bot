@@ -709,6 +709,17 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
         resting limit sell fills at its own quantized level). A fill below the designated
         lot's level is impossible for a limit sell: it is counted ``incoherent_sell_fill``
         as a consistency check, the id still decides. Never "the closest lot".
+
+        Live caveat of the no-id path (C2): an exchange may fill a limit sell at a price
+        **better** than its limit (price improvement, and a marketable order crossing a
+        wider book). The reported fill price is then above ``sell_level`` and the exact
+        equality finds no candidate: the fill is counted ``unmatched_sell_fills`` and
+        logged as needing reconciliation. That outcome is **legitimate**, not a bug — the
+        lot is real and still open, and attributing it by proximity is exactly the B4
+        "double pop". Reconciliation belongs to the widened debt 13 (rehydrating the lots
+        from ``open_positions``, or closing by id): until it exists, a price-improved live
+        fill leaves a counted anomaly for a human to settle. In replay the engine always
+        passes the id, so this path never runs there.
         """
         if position_id is not None:
             for i, pos in enumerate(self._grid_positions):
