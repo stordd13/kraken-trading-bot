@@ -144,6 +144,23 @@ avec huit tests négatifs paramétrés (quatre blocs × {null, absent}) et une l
 corrigé, ils redonnent **EXPLOITABLE, exit 0, aucun échec**
 (`validation_campaign_revalidated.json`). Le verdict n'est pas remis en cause.
 
+**Reproduire cette revalidation : depuis le SHA `5a443da`, pas depuis l'arbre courant.** L'artefact
+`validation_campaign_revalidated.json` est vert **au SHA `5a443da`**, celui du correctif. Lancé sur l'arbre
+d'aujourd'hui, le même validateur rend `NOT EXPLOITABLE (exit 2) — failed: I-A.14`, avec le motif exact
+« code diff against `9897803` is not empty: pyproject.toml ». **C'est le contrôle d'intégrité qui fonctionne**, pas
+une régression : `pyproject.toml` est sous contrôle I-A.14, et il a changé depuis — l'exclusion `ruff` motivée du
+répertoire de l'audit red-team, commit `89af58f`, postérieure et étrangère à la campagne. La reproduction se fait
+donc ainsi, et le contrôle n'est **pas** assoupli pour la rendre commode :
+
+```
+git worktree add /tmp/wt-reval 5a443da && cd /tmp/wt-reval
+poetry run python scripts/audit/rejeu_validate_campaign.py results/rejeu_grid_20260919/P7_phase1_grid.json \
+    --data-coverage results/rejeu_grid_20260919/data_coverage.json \
+    --benchmark results/rejeu_grid_20260919/benchmark.json --output /tmp/reval.json
+```
+
+Le même raisonnement vaut pour `validation_campaign.json`, vert au SHA de campagne `0120ce8`.
+
 La **validité des analyses** (§ I-B) passe elle aussi : sept assertions sur sept, dont la reproductibilité
 **bit à bit** des `LB_j` — `effect.json` et un second passage complet, indépendant, sont **identiques champ par
 champ** hors horodatage, sur les 96 blocs `LB` comparés.
@@ -408,9 +425,14 @@ franchissent `net_pnl ≥ 10 × total_fees` n'est parmi les 16 qui passent G1 �
 les 8 portent toutes `atr_multiplier` 3,0 et échouent toutes d'abord sur G2. Son maintien descriptif a donc
 effectivement changé le verdict.
 
-**Et G3 aurait filtré sur l'axe balayé, pas sur l'économie** — même pathologie que celle identifiée au § C.2 pour
-le seuil de couverture. La chaîne est mécanique : multiplicateur large → grille espacée → peu de cycles → peu de
-frais → ratio `net_pnl / total_fees` élevé. Mesurée sur les 48 configs BTC, elle est monotone sur l'axe :
+**Le défaut exact de G3 comme gate : son classement peut courir en sens inverse du rendement absolu.** Un
+paramètre balayé a parfaitement le droit de modifier l'économie — ce n'est pas le reproche. Le reproche est que
+`net_pnl / total_fees` porte les frais au dénominateur, et que les frais tombent quand l'activité tombe : le ratio
+récompense donc l'inactivité, alors que le rendement absolu l'exige. **Les deux classements peuvent donc s'ordonner
+en sens inverse, et cela se dérive du design seul, avant tout résultat.** La mesure montre que c'est ce qui s'est
+produit : les 8 configs qui franchissent G3 rendent **4,84 % à 5,56 %**, contre une médiane de **7,17 %** au bas du
+balayage, qu'elles auraient éliminé. La chaîne est mécanique — multiplicateur large → grille espacée → peu de
+cycles → peu de frais → ratio élevé — et monotone sur l'axe, sur les 48 configs BTC :
 
 | `atr_multiplier` | cycles (médiane) | `total_fees` (médiane) | `net_pnl / total_fees` (médiane) | rendement (médiane) | franchissent G3 |
 |---|---|---|---|---|---|
@@ -419,14 +441,19 @@ frais → ratio `net_pnl / total_fees` élevé. Mesurée sur les 48 configs BTC,
 | 2,5 | 123,5 | 6,90 | 8,92 | 5,537 % | 0 / 12 |
 | 3,0 | 89,5 | 5,05 | **10,89** | 4,944 % | **8 / 12** |
 
-Corrélation de rang entre cycles et `net_pnl / total_fees` : **−0,715** (n = 48). Et le rendement **décroît**
-monotonement avec le multiplicateur : le ratio que G3 teste sélectionne donc les configurations qui **rapportent le
-moins**. Un gate assis sur ce ratio n'aurait pas mesuré une marge de friction, il aurait mesuré la largeur de la
-grille — c'est-à-dire directement l'un des trois paramètres balayés.
+Corrélation de rang de Spearman entre cycles et `net_pnl / total_fees` : **−0,714** (n = 48, rangs moyens pour les
+6 ex æquo sur les cycles). Le rendement décroît sur le même axe, si bien que le classement par le ratio et le
+classement par le rendement absolu sont, ici, presque exactement opposés.
 
-L'asymétrie avec le § C.2 mérite d'être notée : le seuil de couverture, s'il avait mordu, aurait amputé la moitié
-**large** du balayage ; G3 ampute la moitié **serrée**. Directions opposées, défaut identique — un filtre corrélé à
-un axe balayé plutôt qu'à la quantité qu'il prétend borner.
+Le motif du retrait de G3 des gates reste celui qui a été donné avant les résultats : **10 × frais n'était pas une
+borne démontrée** des frictions inconnues. Ce qui précède ne le remplace pas, il l'éclaire après coup.
+
+L'asymétrie avec le § C.2 mérite d'être notée : les deux filtres sont monotones le long du **même** axe balayé,
+mais en sens contraires — le seuil de couverture, s'il avait mordu, aurait amputé la moitié **large** du balayage ;
+G3 ampute la moitié **serrée**.
+
+*Analyse descriptive produite après les résultats, sur des champs déjà publiés dans `effect.json` : aucune nouvelle
+simulation, aucun changement du verdict.*
 
 **Sharpe.** Une configuration dépasse ponctuellement le B&H, **0,855 contre 0,8493**. Cela aurait satisfait le
 critère de comparaison du § 4, mais ne suffit pas à établir un verdict `candidat` : aucune configuration ne
