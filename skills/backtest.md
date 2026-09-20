@@ -406,6 +406,16 @@ dernier : fees → campagne → `metrics_version` → `replay_version` ;
 `metrics_version` depuis C1 mais **aucune colonne `replay_version`** (pas de migration en C2) : une row post-C2 y est
 indiscernable d'une row pré-C2.
 
+**Contrôles de présence : tests négatifs obligatoires (doctrine, 2026-09-20).** Trois fois dans ce projet, un
+contrôle de présence a laissé passer une absence au lieu de la signaler : `b4_flags.collect_flags` saute
+silencieusement toute entrée portant `"error"` (B4.3) ; `b4_flags.flag_segment` renvoie `[]` sur un bloc
+`liquidation` faux, donc « muet » ne distingue pas « réconcilié » de « absent » (C2) ; et `rejeu_validate_campaign`
+acceptait un sous-bloc **présent mais `null`** (`liquidation.all = null`), parce que le contrôle parent portait sur
+le **jeu de clés** — correct sur `{"train": {...}, "test": {...}, "all": None}` — et que les assertions suivantes
+sautent un segment non-dict : 15/15 sur un artefact amputé d'un segment entier (rejeu grid). **Règle** : tout
+contrôle de présence obligatoire porte des **tests négatifs couvrant la clé absente ET la valeur `null`**, en plus
+des tests de type et de contenu. Un contrôle de présence sans ces deux tests n'est pas un contrôle.
+
 **Invariant de tout chantier moteur** : `scripts/audit/c1_equity_probe.py compare-ab --strict OLD NEW` (toute clé de OLD
 identique dans NEW, additions limitées à `replay_version` / `rejections` / `warmup` / `dca_counters`, métadonnées
 tolérées `git_head` / `engine_file` / `source_fingerprints`) — signal A SuperTrend est resté bit-identique tag ↔ C2 ;

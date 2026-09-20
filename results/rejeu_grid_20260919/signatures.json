@@ -1,0 +1,1311 @@
+{
+  "b4_retro": {
+    "file": "results/B4_P7_phase1_cross_validate.json",
+    "pairs": {
+      "BTC/USDC": {
+        "n_classes_exact": 45,
+        "n_configs": 48
+      },
+      "SOL/USDC": {
+        "n_classes_exact": 48,
+        "n_configs": 48
+      }
+    },
+    "reference": {
+      "BTC/USDC": 45,
+      "SOL/USDC": 48
+    }
+  },
+  "base_sha": "9897803f48a6537a248f5a41c53a1ea5522d46a0",
+  "caveat": "L'égalité de signature est une indiscernabilité sur les sorties exportées. Le journal des transactions n'est pas exporté : ce n'est jamais une preuve d'identité des ordres, ni une preuve que le clamp a saturé.",
+  "fields_excluded": [
+    "params (label of the config, not its output)",
+    "effective_params (label of the config, not its output)",
+    "period (identical by construction)",
+    "warmup (identical per pair, cf. I-A.8)"
+  ],
+  "fields_included": [
+    "train (the 24 metric keys)",
+    "test (the 24 metric keys)",
+    "all (the 24 metric keys)",
+    "equity_daily[seg].values (complete, all three segments)",
+    "liquidation[seg] minus timestamp and reference_price",
+    "rejections[seg].by_cause"
+  ],
+  "generated_at": "2026-09-20T11:52:14+00:00",
+  "pairs": {
+    "BTC/USDC": {
+      "classes_exact": [
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0901f763"
+          ],
+          "sig": "0df6105a41b2d8c6a9c79d496d057f6ffb412f10b5bc1c8559ac39546c20e380"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0d72b529"
+          ],
+          "sig": "dadb4a4491fe945192354b4afb8616a4fa5ef0a7e5812627d77d4ba04e3bb0a8"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0fb41630"
+          ],
+          "sig": "4a64840a98a922b78467b81dc3e160c46f38521d14c0136096f135186a948640"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_1d8e270c"
+          ],
+          "sig": "3b0eca8bec6e3a73a8274cd2337ac3611e229e08537a89c4838e3cbd9caf4767"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_21f01bb0"
+          ],
+          "sig": "7c54674140a1167484f0b9d931fe9e6904416655624b9dffadf955804336805e"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_29877aa9"
+          ],
+          "sig": "3f5b94012507c01e1583853fc3d81adff149c7b1d87790bba579e3a8141ed202"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_2ff9a937"
+          ],
+          "sig": "1d91c2e5d37c9a8ba43572b1f63cd0de15b9c61a21b95dc940ac1e5c9baee520"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_329c44ea"
+          ],
+          "sig": "0e59dc47541137b4c947e2c8ea72995019137315ff559c232fa73dde9f1f3871"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_3e5bec51"
+          ],
+          "sig": "c8725e47e58a71c1849af1326c07f7106764b63b2890e2f01d8ab5d067116882"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_40171b3b"
+          ],
+          "sig": "c0be26cacbcd439230f857f7b3a19084ec1d82e39e20b2ed8086565b3c9a4d66"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_405106c0"
+          ],
+          "sig": "d96facca7c38e5378f4300568442f71bd30ad7a9cce7eb77154e276b3b138a5b"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_4426de63"
+          ],
+          "sig": "88980e6f57863dab63cce1b3e32e9563ffda0ce4e2c873ea36463833f0734e82"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_50614027"
+          ],
+          "sig": "13428a79747c5450259f054e2c1975e9151566cfa8c3598227a0a4b1b75adf20"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_523e4cce"
+          ],
+          "sig": "2a204cd033d8ccaae0d7b232624df04d14895ba3006ea36511fa5d134445759d"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_536293bc"
+          ],
+          "sig": "e4dca291493054bfa1a1da250d032120307f4bae814dde064b7de5fa4318fe7b"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5958d056"
+          ],
+          "sig": "643e4ad9fcdb7b90340eef40c4b0d9e6f5c0ec6ea2f901dc4ffbda92d6ca732e"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5d0ca827"
+          ],
+          "sig": "46e3f048cfed57742ee48bc32916aa19b1589da415d1c174931dbb196e0054b6"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_60c43197"
+          ],
+          "sig": "ae920bd601471027f8b4fc2cc9d1023c9d6dd5ebd48839af2e695d07d4614ae1"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_65dd3337"
+          ],
+          "sig": "f3234eca8decdf395d420bf49572742b8ab280a024da2fea29764b018018403d"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_6c789021"
+          ],
+          "sig": "075dc534326deffa03eed3900ea47ac1c9fadb6938f554d8e2480be1f0bd8c9a"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_73d535d6"
+          ],
+          "sig": "ddc9bc05beb9d2dee1c2d5bf11b5c88a8cda8a34ee832418d33700575303e609"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_8140f17e"
+          ],
+          "sig": "e1996f37a394b67632ec40f674211bc1e95a718a3d11155c6301dd23dee0977e"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_81ece5a1"
+          ],
+          "sig": "f6934c6fb1e36e8d4e202d6aa454aa9c23f08fe85ecba4c94e851adaad3e8332"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_825bb9fa"
+          ],
+          "sig": "a6ebe906831d9e17a98f16eef4d5274f01d950e270e6deffeac357b7bb9782b4"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_94f303d3"
+          ],
+          "sig": "89959bd18294dd05d39548a006acfd2358992cb3ba42c31883ecac5370710b65"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_96dee4d6"
+          ],
+          "sig": "466bcfbe9ae7fa35dea212f5ba55e45abc2f247f9890eeab267d8797b33d1623"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9d3bf21b"
+          ],
+          "sig": "22da985b3f63d03944640531db622f02d20a14c29e44dc6642e4aace741647bd"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9ff78fb7"
+          ],
+          "sig": "c86ce5c4ad2ac7c006f8f406910e5559c961147c7b884797643dfaa940d088f2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a1120e8e"
+          ],
+          "sig": "b8d5a3615301d4d889bfba16de7014dbdb50ed4d380314c29179f371f71ee0f7"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a591b9bf"
+          ],
+          "sig": "949fc238adc08b43d6eaccf3b382fffec610ef6445cc6dd1b7c70a61039416b2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a8ea28c2"
+          ],
+          "sig": "7eb2a00c8eb77da81a3a066fa4e55dd9f30a3a7aaa5ca511909f43f61d78c1f2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_aeeddd0c"
+          ],
+          "sig": "5eab27bd90fad55088ef3ded883471d9f1a56559f86be74a156a1eb300ce7c5e"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b054321f"
+          ],
+          "sig": "632a5eca731e0270a74e529b80f17d96f9e98784e10be7bd12ff47c8f696c4e4"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b0f6090d"
+          ],
+          "sig": "b5761f175a83fb56ea984b0b7b588673e5e1390001774add4322bf503c54edfc"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba527153"
+          ],
+          "sig": "65421d1ae5745362d5c1612134a3b319bed038d3d8412360c0958dd0013900bd"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba542585"
+          ],
+          "sig": "a4d8818d831cc56f438af591aafebb71ce5d70a1939a28ec22a6502482ec9dcb"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_bbc1cdde"
+          ],
+          "sig": "f9c9e8c0369b0c178dcc9f8cf8c4200922843b5eaa7853859ad381941f27cfb0"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_c943880f"
+          ],
+          "sig": "b3ac0da4135a984ba8e420b9753e36600366cd819a41dfc6f4791ee5299410db"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_cc468133"
+          ],
+          "sig": "80bb3513bb2f0796d52df58da33c77b470c17f9880d6ecadc6bc4e2c6a3d1ce7"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d0b8a32d"
+          ],
+          "sig": "782cefecee95997409c832374ada0cade5177509ba3284d184487dec3d7abe8f"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d2882bfe"
+          ],
+          "sig": "695289d8439d039db7d96fb34a2679e99f08fe0f0246064859fa9f8395096ed2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d8dca2b8"
+          ],
+          "sig": "42b8a7750e315d697029c6c908e1053e8366640ea7bc08a42b61d5b11084f4f2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_de24a942"
+          ],
+          "sig": "3d2cf665ad15a617801dafc26f71d1d56acd725939fb668cf252a938e0140bd6"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_df1cc242"
+          ],
+          "sig": "3bd6aa42469fcf92d4365cd95af953bc01e0df5ce6529366616e72ee0e3723b7"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e26ac6cb"
+          ],
+          "sig": "60554656e235b5281640e1806febd66e4a542819f224ff077e230f80f420136e"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e5086996"
+          ],
+          "sig": "dd71047ab45788d5d82d880fb8ceffa3e8c9a5d40a40c2aadf3cfea6b1e33b08"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_eb5fc5f9"
+          ],
+          "sig": "4dd8cc45649450f6ea82fd9f2bee10173d9985e0ea01655fd4284ad1dd632127"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_f423629b"
+          ],
+          "sig": "c2b1e622b41fd90606d33a1ec2a56b5e50a618333572ed650a6e24469ec7f5c7"
+        }
+      ],
+      "classes_tolerant": [
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0901f763"
+          ],
+          "sig": "902976c079820739e6b02eaba5f3f2f11cf74985790a98a485e2352bcc28695f"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0d72b529"
+          ],
+          "sig": "1d04a9f8f161c71bfd0856ead1fdcf5dec76d047527b1190f3d5b0cab4a643d3"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0fb41630"
+          ],
+          "sig": "348b94e5ca653c772b8e6e3781a0b492cf05fc5b6c638f3fc96a0b533609c4cb"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_1d8e270c"
+          ],
+          "sig": "339de6e6bbe85a89aec8dded63e0dddb15a074174b3d94c2245df56cc2d49ca8"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_21f01bb0"
+          ],
+          "sig": "b9cec2ece9b3047533e6c530505491b3f28befaa84d99c25dba962109b3704cb"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_29877aa9"
+          ],
+          "sig": "05a6f51fcfe3993cfdf9ffe1e3aba786f1032a8fa1f2492702cd833aacfa2e4a"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_2ff9a937"
+          ],
+          "sig": "47777258bd7d2f8ba4c3a27fcc7b7eef6a0ac1a0ec5a34b65e98e208ab760278"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_329c44ea"
+          ],
+          "sig": "640b27ea466b0f06e27f48f8ee300b759e648b8cb03aa196d7c645c6f0c19d39"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_3e5bec51"
+          ],
+          "sig": "5ee8aea965ac83bde8d921cbef1befcb30d9e1237715e3563b83881778f6b4d8"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_40171b3b"
+          ],
+          "sig": "f425596b1dc0e7a0528f1be3d735cdfa7f1e694a9855f7a8ef6e6786494928e0"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_405106c0"
+          ],
+          "sig": "7cc5c5a02f860f45fd93942941d83ff9eaacc92d56dd7c774729d4dab6aa527f"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_4426de63"
+          ],
+          "sig": "8c4a68379ab5e1211e346e90f78d3f1ef397eec6595061aabf5a0866725c20be"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_50614027"
+          ],
+          "sig": "051fa8cc5a09e50a0cb720371d0a25d7e7d2a16b8f36b908ec71309ba4682804"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_523e4cce"
+          ],
+          "sig": "783fdcfcf3925de4f9ddb610d9d0c2f76cf5ade288056f0d7243a00329e5ee37"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_536293bc"
+          ],
+          "sig": "cf6cac9a8d51667e92c25acd35d37998ca0829328b73cc321930845994b3e1ba"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5958d056"
+          ],
+          "sig": "bef7e4edcf9b8570ecda6b61352102cde750c35b9b9df008f31b859d74ff4332"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5d0ca827"
+          ],
+          "sig": "5a648e6840e19e1992f05331c51de0695c148e8920457c29e64c06f2ffa1cfea"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_60c43197"
+          ],
+          "sig": "5764a4a13fb88fb8cb32058c29887f2dfa4d85db3b90f9a1d97dca2121d10881"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_65dd3337"
+          ],
+          "sig": "c6621e87a7ea352e183410b4d81f99c2203af791f58b9e8634063260618228ce"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_6c789021"
+          ],
+          "sig": "f8e8db4adc69284ec5339faee1c029176d3d1ffaf35dfbf3a51b788b6cc150d6"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_73d535d6"
+          ],
+          "sig": "56024f318dda9be0eb91ee57ed451c88c2a8ea8092b25068268990a9899acc40"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_8140f17e"
+          ],
+          "sig": "ab5ddf4354bd6657271724853d1cd90a6565805a05b84679800e078e6bce1f60"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_81ece5a1"
+          ],
+          "sig": "68169563a94ded602d965f7032a2d9510f2a448e4404b135b6b541f0f88aa51e"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_825bb9fa"
+          ],
+          "sig": "f94006ee95223092d864733ab073e2eb98ee2d509f2e3b0e6ead25425208a5f3"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_94f303d3"
+          ],
+          "sig": "9b17796bb5cdf730a1780d65c705f06f1cb36073b134d885bac8de5f2e79d1f7"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_96dee4d6"
+          ],
+          "sig": "e544b53973aa8f9f659f178a193c5840f6a0c883730cdea68f43d6c42cfdc340"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9d3bf21b"
+          ],
+          "sig": "6a27cfd5c7f3de018e6299afa1ecc27bb096edf4c60538d1fd79f879c6f0d29a"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9ff78fb7"
+          ],
+          "sig": "a7f9bdcb6d46e716ebb146d4e26bbebe46d684a391e08d748fbca89a868a9682"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a1120e8e"
+          ],
+          "sig": "64e9eb208a0ca753fc598776f3b97ba7b0914465a33a5245e83cbbe9c0ed0af2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a591b9bf"
+          ],
+          "sig": "00a4afe1d319be7ec3bd1ca0b7f20af32802559bb4e4b87250ad1d38306d8a0e"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a8ea28c2"
+          ],
+          "sig": "9c15170db799f71935ff0349025f41a058fbce7e44262680090aff1571b148ff"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_aeeddd0c"
+          ],
+          "sig": "5e4ec9175e0dbe2d8f09ee8f54e13a72ff13d6746e64976be4c68d1399f99521"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b054321f"
+          ],
+          "sig": "24880bf67e84ddef4714efa2a68b0a1003ac9c5d7e6af4245bd9adb9d20a0983"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b0f6090d"
+          ],
+          "sig": "455289f93994e4ad69beae88fe1b7681140440b294f6f8df63b46621fc9510ee"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba527153"
+          ],
+          "sig": "0fb53668b07463051e440a5254dfcc2a6f58c4bcb1b3a716f3c37c8c818010b6"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba542585"
+          ],
+          "sig": "8780ab8716792f250460f3a6667863fef0f9d7f29f2f66e6ea5c3ae4333377a2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_bbc1cdde"
+          ],
+          "sig": "8ad112fe558a0d34f7be87c426d83d5265c978b3c6a5053096f9ca52a6fa7b58"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_c943880f"
+          ],
+          "sig": "f7adf38178503c34dc39261a5de1043e8b0464154addf222b64677e7582d8c09"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_cc468133"
+          ],
+          "sig": "d0bdca70cce4565ff37910be891cbd37a2b144bf000b2fb5f2d7adf5e5ed8d66"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d0b8a32d"
+          ],
+          "sig": "eb85d40b7e39d523e620aa331c0039695ec9728c192fd0cdd0cb3d09d5b00951"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d2882bfe"
+          ],
+          "sig": "3b5fae558bb469c09008e285930982ef9fb1795433842f554d0ccb693262bf52"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d8dca2b8"
+          ],
+          "sig": "fa42351aa2786df363679fa05239b13dfba0c3c1c9f07cfcab0483fb2b14e4a6"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_de24a942"
+          ],
+          "sig": "7c2b318a64f3a3ab25034adb05b2730b257f81a46348527352bdb279038cd7b2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_df1cc242"
+          ],
+          "sig": "e928acec4e05d5471130ffad7406ed7c44077824a49e7aebc39cf3be0225d4d6"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e26ac6cb"
+          ],
+          "sig": "5d165a765ce0d66627b2f19e3ea22184ad6edb31379d4c60a30cd35e69a423aa"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e5086996"
+          ],
+          "sig": "c43380f1aa547c756c05963d3eba25b519c62e599f49a3527f04656754b7aca9"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_eb5fc5f9"
+          ],
+          "sig": "b85f482aff11a707becaa40243316b6affa56a2cf097b5868c5f08dbf66ef852"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_BTC_USDC_p1_f423629b"
+          ],
+          "sig": "cfe4ffb919a48b5c4c8367a9d598df5c86900cba64d4dda8468915a34f334d06"
+        }
+      ],
+      "first_differences": [
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0901f763",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0d72b529",
+          "path": "$.equity_daily.all[255]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0d72b529",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0fb41630",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0fb41630",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_1d8e270c",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_1d8e270c",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_21f01bb0",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_21f01bb0",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_29877aa9",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_29877aa9",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_2ff9a937",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_2ff9a937",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_329c44ea",
+          "path": "$.equity_daily.all[66]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_329c44ea",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_3e5bec51",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_3e5bec51",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_40171b3b",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_40171b3b",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_405106c0",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_405106c0",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_4426de63",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_4426de63",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_50614027",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_50614027",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_523e4cce",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_523e4cce",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_536293bc",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_536293bc",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5958d056",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5958d056",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5d0ca827",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5d0ca827",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_60c43197",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_60c43197",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_65dd3337",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_65dd3337",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_6c789021",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_6c789021",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_73d535d6",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_73d535d6",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_8140f17e",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_8140f17e",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_81ece5a1",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_81ece5a1",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_825bb9fa",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_825bb9fa",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_94f303d3",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_94f303d3",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_96dee4d6",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_96dee4d6",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9d3bf21b",
+          "path": "$.equity_daily.all[255]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9d3bf21b",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9ff78fb7",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9ff78fb7",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a1120e8e",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a1120e8e",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a591b9bf",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a591b9bf",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a8ea28c2",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a8ea28c2",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_aeeddd0c",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_aeeddd0c",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b054321f",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b054321f",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b0f6090d",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b0f6090d",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba527153",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba527153",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba542585",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba542585",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_bbc1cdde",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_bbc1cdde",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_c943880f",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_c943880f",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_cc468133",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_cc468133",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d0b8a32d",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d0b8a32d",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d2882bfe",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d2882bfe",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d8dca2b8",
+          "path": "$.equity_daily.all[3]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d8dca2b8",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_de24a942",
+          "path": "$.equity_daily.all[255]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_de24a942",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_df1cc242",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_df1cc242",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e26ac6cb",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e26ac6cb",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e5086996",
+          "path": "$.equity_daily.all[255]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e5086996",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_eb5fc5f9",
+          "path": "$.equity_daily.all[19]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_eb5fc5f9",
+          "b": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_f423629b",
+          "path": "$.equity_daily.all[19]"
+        }
+      ],
+      "n_classes_exact": 48,
+      "n_classes_tolerant": 48,
+      "n_configs": 48
+    },
+    "SOL/USDC": {
+      "classes_exact": [
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0901f763",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0d72b529",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_cc468133",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_e26ac6cb"
+          ],
+          "sig": "88f01185847d6667f37d3422ae69838816bf26ed466b769afa1c5d4b8914c005"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0fb41630"
+          ],
+          "sig": "114273989bde4a935869e3835a15e6eb3e4644dc0472c5ea0a9493002bbea37a"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_1d8e270c",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_3e5bec51",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_94f303d3"
+          ],
+          "sig": "56516be43de105ecca6341cbbff6a26a932cb23274ad1ae6772bd6fc05305393"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_21f01bb0",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_2ff9a937",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_50614027",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_6c789021"
+          ],
+          "sig": "828f910195385bfb2dffac6f9807cd72412911b361a1163bd4819a46ae7da1c5"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_29877aa9"
+          ],
+          "sig": "81475975e9a6efa3e608bb318ceca92836f7bb22991889609ecfb9ac67f810b5"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_329c44ea",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_9ff78fb7",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_b0f6090d",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_bbc1cdde"
+          ],
+          "sig": "b0b437c30f5b4d91f1262b40f96ce411e4db4a3c23ecce10145310bee1898682"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_40171b3b",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_8140f17e",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d0b8a32d",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_eb5fc5f9"
+          ],
+          "sig": "9d4209c63868590cce092b5f50d9e723e8f2a70bd8d920bfe172d0e41c8555bf"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_405106c0",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_b054321f",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_ba527153"
+          ],
+          "sig": "da04e7cc8028f3d9ab1f83dba1b958c827f905cd640d17ee4b40aa7bba590a46"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_4426de63",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_96dee4d6",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_de24a942",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_f423629b"
+          ],
+          "sig": "2dd18a0436e7704db080803fe964efbc36bab8d7cbac85ab2c5bf2482e8832d1"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_523e4cce",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_5958d056",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a1120e8e",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_c943880f"
+          ],
+          "sig": "a50e48dcb5794b7313a62db4f633cbc12d594e8ca591f4b49ed5c0cfeab20c14"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_536293bc",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_81ece5a1"
+          ],
+          "sig": "2099a14ca13c3e9ffba6bb72bec492f63e8c14d8fa61ba17c68fbdd436c00198"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_5d0ca827",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d8dca2b8",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_e5086996"
+          ],
+          "sig": "18b3837fb86915cd16ede0d712c9fb2164bcfd867e494e578f1e12508878c184"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_60c43197"
+          ],
+          "sig": "8317a77590dd9bf05c4f936480c330f08b57bb22c76232b983047dee1979682f"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_65dd3337"
+          ],
+          "sig": "41b884d78ce1132ac11b82b7f4100cd0a6b360907ae8ca251d02abb7b17132c5"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_73d535d6"
+          ],
+          "sig": "1fea73bf81e368c8088c43b06bfe5b6ba84a1e211c851c2c761017a1ebfb2fb4"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_825bb9fa"
+          ],
+          "sig": "6f7c048098141872f1ccef00f675867f1c01e8c69fb2513125c0e2ef9a5d7680"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_9d3bf21b"
+          ],
+          "sig": "3fc7990b303f017ec646ffe415d8f8f9332af94568b1879d525af8e557261366"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a591b9bf"
+          ],
+          "sig": "bcac60d54be96ffdc639295eb06b9bbaf2f938be7a369dcace93adad1c3b01b4"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a8ea28c2"
+          ],
+          "sig": "fbed876de212001834c0a4f54a578314a9c2f51f6ff0b3a9831c68ce542dbf8e"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_aeeddd0c"
+          ],
+          "sig": "b3338d1cb9285ef02daf8566ecf3462058851a1ac63335b5c681ce93f92f841c"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_ba542585"
+          ],
+          "sig": "bf5056c091451a9540751998529a87ca6b874f1b7acc74a1e382537b9093f11c"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d2882bfe"
+          ],
+          "sig": "f8be97c41f7db3a10ca3757815465f7256f8961f03f5dafc71e4a7fb0b6d291d"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_df1cc242"
+          ],
+          "sig": "634c32697ee5d1e11e5ac79817c2849d4092bf6c7e0341d990d1feb039291365"
+        }
+      ],
+      "classes_tolerant": [
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0901f763",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0d72b529",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_cc468133",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_e26ac6cb"
+          ],
+          "sig": "b37f8dd03f7ee2338495739a1022d8a51c8b02fcff5b05eb08fb7a9f9acbea3c"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0fb41630"
+          ],
+          "sig": "98916cfd95d02e77302716a0f57fb82af0cfa5ee2d3a6747ea55a0a4a450e0ff"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_1d8e270c",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_3e5bec51",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_94f303d3"
+          ],
+          "sig": "9166a07daa1d30d6cb147e916b1139680b0b27554debc11a53b53aff447d79fe"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_21f01bb0",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_2ff9a937",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_50614027",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_6c789021"
+          ],
+          "sig": "e6a1b25c5a1368c0764eda86a969e3c1e8b8c2db5800196bab0c407104ade313"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_29877aa9"
+          ],
+          "sig": "4cae97a0c32ca91a2a53956cf1dbc55b46acd47adf8efb3cfc2ed9755ae2ac5c"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_329c44ea",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_9ff78fb7",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_b0f6090d",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_bbc1cdde"
+          ],
+          "sig": "df3d8e5326c5a55d7d0d821b1cdf35f194bc42f965b091b1bdeac90f6ef25e70"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_40171b3b",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_8140f17e",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d0b8a32d",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_eb5fc5f9"
+          ],
+          "sig": "5a05ed6b5bae11abc99240d9b908895df635a4ef96cdb300a8fea3f7c274047d"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_405106c0",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_b054321f",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_ba527153"
+          ],
+          "sig": "70bad19a79577ad124d58760d2d056d4a3b18d79ad705299f0395f3fab0605dc"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_4426de63",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_96dee4d6",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_de24a942",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_f423629b"
+          ],
+          "sig": "92eb1a1b569af09758ee0a6d9482297bd6e871a316ba2c153fe9be00b487b7fd"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_523e4cce",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_5958d056",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a1120e8e",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_c943880f"
+          ],
+          "sig": "441c38418a59906cc28e496f7d4aa3cf0836f4a0e5e7fda122084c1426751ec2"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_536293bc",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_81ece5a1"
+          ],
+          "sig": "c2ae0c2e4e26b9a4b1c5bb58379d8dee5febdb71cd275dc4071c1ba34ed3852b"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_5d0ca827",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d8dca2b8",
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_e5086996"
+          ],
+          "sig": "68eac45c819ff828071cb0084cfd2bc2bfc4f9971145c42c5c275000f8acd737"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_60c43197"
+          ],
+          "sig": "8951e26990e6450b8d50530af4e229a380728f7adc49858b9126ab9921c7ae52"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_65dd3337"
+          ],
+          "sig": "ac1969f77763b044989b4d59d601f775a85cb4010284e862f8fa2ee94347307d"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_73d535d6"
+          ],
+          "sig": "fbf44ea79ed282e8ce4c3f57a48c089ea88f5693941f10529a6139759bd42335"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_825bb9fa"
+          ],
+          "sig": "ae4ad89a3487490288bb325e41c180f9492b7691015459fb236d7509fef89b3b"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_9d3bf21b"
+          ],
+          "sig": "6f79b7df1da6e41170995c8cbf82ff2b047efc83dd843d9163985948704348a3"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a591b9bf"
+          ],
+          "sig": "5326ff2e11df36a323732c8cc556cef35c35936e69e76d0f4980e3839d1fa26b"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a8ea28c2"
+          ],
+          "sig": "069c01326c676abbb8f1408ee06c6f437f19b4331be13ef40b19ce6887ebe036"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_aeeddd0c"
+          ],
+          "sig": "ff2f1983254d02934bb42f291666857a0e97593e102d831f00b6d82d73f5a1c9"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_ba542585"
+          ],
+          "sig": "515d388094b94026b62a50c88c56bfa4dcfbf025e24a913c0b33c7c2b0e919e0"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d2882bfe"
+          ],
+          "sig": "c2b985fce1077ad1723788dc90a305c3a3f6e23c276566d1b1e030e4f5cd22ee"
+        },
+        {
+          "members": [
+            "grok_grid_atr_adaptive_v4_SOL_USDC_p1_df1cc242"
+          ],
+          "sig": "633a7b7464b4eade75813d706b9760284626546186c4e0525698cc4cf7c02e64"
+        }
+      ],
+      "first_differences": [
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0901f763",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0fb41630",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0fb41630",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_1d8e270c",
+          "path": "$.equity_daily.all[293]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_1d8e270c",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_21f01bb0",
+          "path": "$.equity_daily.all[319]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_21f01bb0",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_29877aa9",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_29877aa9",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_329c44ea",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_329c44ea",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_40171b3b",
+          "path": "$.equity_daily.all[434]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_40171b3b",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_405106c0",
+          "path": "$.equity_daily.all[319]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_405106c0",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_4426de63",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_4426de63",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_523e4cce",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_523e4cce",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_536293bc",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_536293bc",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_5d0ca827",
+          "path": "$.equity_daily.all[367]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_5d0ca827",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_60c43197",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_60c43197",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_65dd3337",
+          "path": "$.equity_daily.all[293]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_65dd3337",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_73d535d6",
+          "path": "$.equity_daily.all[1024]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_73d535d6",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_825bb9fa",
+          "path": "$.equity_daily.all[396]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_825bb9fa",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_9d3bf21b",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_9d3bf21b",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a591b9bf",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a591b9bf",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a8ea28c2",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a8ea28c2",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_aeeddd0c",
+          "path": "$.equity_daily.all[277]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_aeeddd0c",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_ba542585",
+          "path": "$.equity_daily.all[429]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_ba542585",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d2882bfe",
+          "path": "$.equity_daily.all[396]"
+        },
+        {
+          "a": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d2882bfe",
+          "b": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_df1cc242",
+          "path": "$.equity_daily.all[293]"
+        }
+      ],
+      "n_classes_exact": 23,
+      "n_classes_tolerant": 23,
+      "n_configs": 48
+    }
+  },
+  "prespec": {
+    "path": "docs/rejeu_grid_prespec.md",
+    "sha256": "20079aff60a551526bfec0ae399803e83e6dd69c821ab6b20af4d856ba9f3691"
+  }
+}

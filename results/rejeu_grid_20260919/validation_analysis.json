@@ -1,0 +1,73 @@
+{
+  "assertions": [
+    {
+      "detail": "ok",
+      "id": "I-B.1",
+      "name": "effect.json records B, L, seeds, numpy, |J_calc| and the λ mode",
+      "ok": true,
+      "skipped": false
+    },
+    {
+      "detail": "seeds rebuilt in-script from SEED_BASE 20260919",
+      "id": "I-B.2",
+      "name": "frozen bootstrap parameters: B, block lengths, seeds",
+      "ok": true,
+      "skipped": false
+    },
+    {
+      "detail": "0 degenerate replication(s) recorded, 0 config(s) over the cap",
+      "id": "I-B.3",
+      "name": "degenerate replications counted and the § F.7 rule applied",
+      "ok": true,
+      "skipped": false
+    },
+    {
+      "detail": "ineligible configs by first failing gate: D_NOT_ADMISSIBLE x48",
+      "id": "I-B.4",
+      "name": "first failing gate of every ineligible config",
+      "ok": true,
+      "skipped": false
+    },
+    {
+      "detail": "96 LB block(s) compared against the --rerun artifact",
+      "id": "I-B.5",
+      "name": "a rerun on the same inputs reproduces LB_j bit for bit",
+      "ok": true,
+      "skipped": false
+    },
+    {
+      "detail": "2 pair block(s); § G.5: degeneracy never changes a verdict",
+      "id": "I-B.6",
+      "name": "signatures.json present or explicitly not producible",
+      "ok": true,
+      "skipped": false
+    },
+    {
+      "detail": "§ G.5: the clamp never changes a verdict, in any direction",
+      "id": "I-B.7",
+      "name": "clamp.json present or explicitly not producible",
+      "ok": true,
+      "skipped": false
+    }
+  ],
+  "base_sha": "9897803f48a6537a248f5a41c53a1ea5522d46a0",
+  "exit_code": 0,
+  "failed": [],
+  "generated_at": "2026-09-20T11:52:14+00:00",
+  "inputs_sha256": {
+    "benchmark": "74751a808e217825ea70d390c2c88092a75e608e99562db20a4731bdc6536e5d",
+    "calibration": "0a3b89c42511b709eb7c7933d0c6f955f94dd4285a2f3f7ad3bdfb3fdbf8fbea",
+    "campaign": "08d981e493402f37a8649a47090293a8f64358b61d8558d4978f13e1ff6436c6",
+    "clamp": "1b87508829c687133c4f17761ec3c292306fdfbe7c5c6e16d40c3ee57d697725",
+    "coverage": "0a843a7ec095c77e657132aaacee1b64459f52788cc48b11cffa9edec7d0b816",
+    "effect": "80260d5d7d5a94844874bd506df054e3be0bc57bf74c021d52de79768e796059",
+    "rerun": "80260d5d7d5a94844874bd506df054e3be0bc57bf74c021d52de79768e796059",
+    "signatures": "14e065f550cde6377950694cd9c9885d40e94571e033760ba501bcb2518b9ba7",
+    "validation_campaign": "5d61343ce1f68ed6fdfab6d1a1c7febf99a92a7cc45a70b84e96e37ee68228fc"
+  },
+  "ok": true,
+  "prespec": {
+    "path": "docs/rejeu_grid_prespec.md",
+    "sha256": "20079aff60a551526bfec0ae399803e83e6dd69c821ab6b20af4d856ba9f3691"
+  }
+}

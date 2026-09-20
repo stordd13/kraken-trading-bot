@@ -1,12 +1,15 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 16 septembre 2026, **post-audit B4**. B4 close le 15 sept (merge `4c98b6b` dans `dev`, tag
-> `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec un instrument depuis
-> invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ; sélection paper vide.
-> **C1 (métriques) mergé** (tag `v2.9.0-c1-metrics`) ; **C2 (fidélité replay) = prochain chantier**, puis rejeu diagnostic grid et
-> C3 (validation chronologique). **Runs R&D gelés** jusqu'à C1-C2 mergés ; tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés,
-> journal `docs/RESEARCH_LOG.md` obligatoire avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
+> Dernière mise à jour : 20 septembre 2026, **après le rejeu diagnostic grid**. B4 close le 15 sept (merge `4c98b6b`
+> dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec
+> un instrument depuis invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ;
+> sélection paper vide. Instrument réparé : **C1 métriques** (tag `v2.9.0-c1-metrics`) et **C2 fidélité replay** (tag
+> `v2.10.0-c2-replay`) mergés. **Rejeu diagnostic grid clos le 20 sept** → **`inconclusif (F_CANNOT_SEPARATE)`** : la
+> famille grid n'est **ni validée ni dépriorisée** sous instrument réparé — pas de déploiement, pas de tuning
+> supplémentaire, périmètre non élargi (`results/rejeu_grid_report.md`). **Phase courante : C3**, validation
+> chronologique. Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal `docs/RESEARCH_LOG.md` obligatoire
+> avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
 
 ---
 
@@ -92,11 +95,16 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   détail `results/C2_replay_report.md` § 8 ;
   `results/C2_replay_report.md` : grid rejoué sur les vraies séries 4 h / 1 d / 1 w, préenregistrement aux params effectifs,
   warmup en bougies, rejets comptés, ventes grid appariées par id, `replay_version` 2 ; dettes 14 et 16 résolues, 17 et 18
-  créées, dette 13 élargie). **Phase courante : rejeu diagnostic
-  grid** (96 configs BTC/SOL, périmètre pré-spécifié, verdict « inconclusif » possible), puis **C3 validation chronologique**
-  (note WF § 9) avant toute sélection. Le **gel des runs R&D** posé jusqu'au merge de C1-C2 est **levé pour ce rejeu**,
-  l'instrument étant réparé et mergé ; tout run s'inscrit d'abord dans `docs/RESEARCH_LOG.md` ; tickets papier (`docs/CONTRAINTES_POST_B4.md`
-  § 6) autorisés ; tout run futur s'inscrit d'abord dans `docs/RESEARCH_LOG.md`.
+  créées, dette 13 élargie) ; ✅ **rejeu diagnostic grid clos le 20 sept** (96 configs BTC/SOL, périmètre pré-spécifié
+  gelé avant lancement) → **verdict `inconclusif (F_CANNOT_SEPARATE)`** : sur BTC/USDC, seule paire votante, 16 configs
+  sur 48 passent les gates ponctuels mais **aucune ne tient les six bornes simultanées** ; SOL/USDC est **descriptif**
+  (825 jours de données, benchmark non constructible, warmup W2). La famille grid est donc **ni validée ni dépriorisée**
+  sous instrument réparé — pas de déploiement, **pas de tuning supplémentaire**, périmètre non élargi
+  (`results/rejeu_grid_report.md`, `docs/rejeu_grid_prespec.md`). **Phase courante : C3, validation chronologique**
+  (note WF § 9) — equity continue, sélection sur le passé seul — avant toute sélection ; C3 devra aussi reprendre
+  l'amorçage des portes de régime (warmup 1 d/1 w de BTC `sufficient=False` par lacune interne, et `bias_1d` fait vivre
+  `regime_1d` dans tous les modes). Tickets papier (`docs/CONTRAINTES_POST_B4.md` § 6) autorisés ; tout run s'inscrit
+  d'abord dans `docs/RESEARCH_LOG.md`.
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
   `# B5: re-enable trader`) ; **trader masqué** sur le serveur (`systemctl mask krakenbot`). Reste ouvert : test dette 13.
@@ -253,7 +261,8 @@ des deux jambes (`buy_fee_alloc`, sommes exportées, lots à coût inconnu exclu
 Simulation inchangée au centime (rejeux signal A / grid quick / grid A, `results/C1_metrics_report.md`). Chaque
 résultat porte `metrics_version` ; mélange pré-C1 / v2 refusé, `--force` limité à un fichier homogène, JSON B4
 inécrasables ; `--equity-out` + `equity_daily`. Migration Alembic `c1ae7a1c0001` (ratios NULL + 4 colonnes)
-**appliquée en local** (Docker, 16/09) ; **serveur en attente** d'une fenêtre services stoppés (règle 11). Détails :
+**appliquée en local** (Docker, 16/09) **et sur le serveur** (vérifiée read-only le 20/09 :
+`SELECT version_num FROM alembic_version` → `c1ae7a1c0001`). Détails :
 `skills/backtest.md` § Métriques, `results/C1_metrics_report.md`.
 
 Contexte historique : les backtests P6 et P7 phase 1 ont été faits avec les fees Binance BNB
@@ -325,8 +334,9 @@ Détail : `ROADMAP.md`.
   Bybit, B2 WS, B3 data/collector, **B4 re-run P6 + P7 fees Bybit** (15 sept, tag `v2.8.0-b4-3-campaign`) → **0 survivant**
   (zéro sélection sous les critères codés avec un instrument depuis invalidé — addendum B4), **C1 métriques** (16 sept,
   tag `v2.9.0-c1-metrics`).
-- ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`) et C2 (mergé, `v2.10.0-c2-replay`) → **rejeu diagnostic
-  grid** (96 configs BTC/SOL, phase courante) → C3 validation chronologique.
+- ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`), C2 (mergé, `v2.10.0-c2-replay`) et **rejeu
+  diagnostic grid** (clos le 20 sept, verdict `inconclusif (F_CANNOT_SEPARATE)` — famille grid ni validée ni
+  dépriorisée) → **C3 validation chronologique, phase courante**.
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
@@ -440,8 +450,8 @@ Détail : `ROADMAP.md`.
     Sharpe, D2 MaxDD au pic final, D3 PF sans fee d'achat, D4 agrégation P7 `None`/`inf` → 0, D5 equity non
     persistée, D6 dépôts DCA comptés comme rendements) sont **résolus** par `krakenbot.backtest_metrics`
     (`metrics_version` 2) — simulation identique au centime, `results/C1_metrics_report.md`. **Reste** :
-    (a) migration `c1ae7a1c0001` **à appliquer sur le serveur** (fenêtre services stoppés, règle 11) — appliquée en
-    local le 16/09 ; (b) le **chemin legacy v1** de `p7_report` (coercition `_safe_float`, moyenne des PF,
+    (a) ✅ migration `c1ae7a1c0001` **appliquée sur le serveur** (constat du 20/09, vérification read-only) —
+    la doc la disait en attente, elle était en retard ; (b) le **chemin legacy v1** de `p7_report` (coercition `_safe_float`, moyenne des PF,
     constantes `BENCHMARK_SHARPE`) n'est conservé que pour relire les fichiers B4 (checkpoints
     `scripts/audit/b4_p6/p7_checkpoint.py`, verdicts reproduits à l'identique) — à retirer quand B4 sera archivé ;
     la détection « PF inf » de ces checkpoints est aveugle sur v2 et `scripts/audit/b4_3_gate_a_reconcile.py` ne
