@@ -1,0 +1,38 @@
+{
+  "base_sha": "9897803f48a6537a248f5a41c53a1ea5522d46a0",
+  "family_verdict": "inconclusif",
+  "generated_at": "2026-09-20T11:52:14+00:00",
+  "inputs_sha256": {
+    "benchmark": "74751a808e217825ea70d390c2c88092a75e608e99562db20a4731bdc6536e5d",
+    "clamp": "1b87508829c687133c4f17761ec3c292306fdfbe7c5c6e16d40c3ee57d697725",
+    "data_coverage": "0a843a7ec095c77e657132aaacee1b64459f52788cc48b11cffa9edec7d0b816",
+    "effect": "80260d5d7d5a94844874bd506df054e3be0bc57bf74c021d52de79768e796059",
+    "signatures": "14e065f550cde6377950694cd9c9885d40e94571e033760ba501bcb2518b9ba7",
+    "validation_analysis": "97350db6c71f3562b386c8c6022a93b5ad9e9fde27300ce8e1e982eae0da8562",
+    "validation_campaign": "5d61343ce1f68ed6fdfab6d1a1c7febf99a92a7cc45a70b84e96e37ee68228fc"
+  },
+  "pairs": {
+    "BTC/USDC": {
+      "n_candidat": 0,
+      "n_eligible": 48,
+      "n_passing_gates": 16,
+      "reason": "F_CANNOT_SEPARATE",
+      "representative": null,
+      "verdict": "inconclusif"
+    },
+    "SOL/USDC": {
+      "n_candidat": 0,
+      "n_eligible": 0,
+      "n_passing_gates": 0,
+      "reason": "D_NOT_ADMISSIBLE",
+      "representative": null,
+      "verdict": "descriptif"
+    }
+  },
+  "prespec": {
+    "path": "docs/rejeu_grid_prespec.md",
+    "sha256": "20079aff60a551526bfec0ae399803e83e6dd69c821ab6b20af4d856ba9f3691"
+  },
+  "reason": "F_CANNOT_SEPARATE",
+  "verdict_string": "REJEU_GRID_20260919 | famille=inconclusif | raison=F_CANNOT_SEPARATE | BTC/USDC=inconclusif | SOL/USDC=descriptif | representant=- | prespec=20079aff60a55152 | campagne=08d981e493402f37"
+}
