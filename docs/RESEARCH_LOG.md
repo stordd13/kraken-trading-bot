@@ -112,8 +112,8 @@ avant le run, sans aucune reprise. Collector intact (actif, `NRestarts=0`, 59 bo
 | 11 | **Verdict `inconclusif` (`F_CANNOT_SEPARATE`)**, émis par `scripts/audit/rejeu_verdict.py` et cité tel quel dans le rapport. BTC/USDC vote, SOL/USDC est descriptif par trois routes indépendantes (couverture 825 j, benchmark non constructible, warmup W2) | `results/rejeu_grid_report.md`, `results/rejeu_grid_20260919/verdict.json` |
 | 11 | Validité de campagne : **15/15 assertions**, `b4_flags` muet après les assertions de présence, zéro rejet sur les sept causes, diff de contrôle vide | `validation_campaign.json` |
 | 11 | Couverture : **aucune config tronquée** — 77 cycles au minimum sur BTC (médiane 144,5), 168 sur SOL, contre un seuil de 25. Le choix 25 plutôt que 30 n'a rien tranché | `effect.json` |
-| 11 | Gates ponctuels BTC : G1 48/48, G2 18/48, G4 31/48 → **16/48** passent les trois. G3 descriptif : 8/48 seulement, il aurait été la contrainte mordante s'il était resté un gate | `effect.json` |
-| 11 | Borne d'incertitude : **aucune des 48 configs ne tient `LB_j > 0`** sur les six combinaisons ; `q_FWE` ≈ 5,9-6,25 pp/an contre un meilleur Δ̂ de +1,92. Le meilleur Δ̂ est **sous son propre `se` mono-config** (2,56-2,79) : ce n'est pas la multiplicité qui décide | `effect.json` |
+| 11 | Gates ponctuels BTC : G1 48/48, G2 18/48, G4 31/48 → **16/48** passent les trois. G3 descriptif : 8/48 le franchissent, **aucune n'est parmi les 16** — l'ajouter comme gate obligatoire, toutes autres règles inchangées, aurait laissé zéro config et conduit à `dépriorisation` | `effect.json` |
+| 11 | Borne d'incertitude : **aucune des 48 configs ne tient `LB_j > 0`** sur les six combinaisons ; les `q_FWE` ≈ 5,9-6,25 pp/an sont les **seuils critiques observés de cette procédure**, pas une limite générale de détection. Les erreurs-types sont élevées relativement aux effets observés (meilleur Δ̂ +1,92 contre un `se` mono-config de 2,56-2,79) ; la procédure pré-spécifiée ne sépare aucun effet de zéro ; la contribution propre de la correction de multiplicité **n'a pas été isolée** | `effect.json` |
 | 11 | Clamp mesuré : plafond de 5 % saturé **sur SOL seulement** (82 % puis 95 % des clôtures 4 h à m = 2,5 et 3,0) et **pas sur BTC** (espacement intérieur 78-91 % du temps). D'où 23 classes d'indiscernabilité sur SOL contre **48/48 distinctes sur BTC** | `clamp.json`, `signatures.json` |
 | 11 | Lecture rétroactive B4 : 48 → 45 classes (BTC) et 48 → 48 (SOL), **en accord** avec la référence pré-enregistrée avant le run | `signatures.json` |
 | 11 | Attendu déclaré au § K.1 **partiellement falsifié** : 18 configs BTC franchissent le plancher de 6 % (jusqu'à 10,32 %), la référence post-C2 à multiplicateur 4,0 — hors balayage — n'était pas représentative | `effect.json`, `docs/rejeu_grid_prespec.md` § K.1 |
@@ -131,6 +131,11 @@ qui devra aussi reprendre l'amorçage des portes de régime (warmup 1 d/1 w de B
 
 Validité des analyses (§ I-B) : **7/7**, dont la reproductibilité **bit à bit** des `LB_j` — un second passage
 complet et indépendant de `rejeu_effect` donne un artefact **identique champ par champ** hors horodatage.
+
+Correctif postérieur du validateur : `rejeu_validate_campaign.py` acceptait un sous-bloc présent mais `null`
+(faux vert, commit `5a443da`, huit tests négatifs et doctrine dans `skills/backtest.md`). Les artefacts
+livrés n'en contiennent aucun ; re-validés avec le validateur corrigé, ils redonnent **EXPLOITABLE,
+exit 0** (`validation_campaign_revalidated.json`) — le verdict n'est pas remis en cause.
 
 ### Essais à venir (à inscrire avant lancement)
 

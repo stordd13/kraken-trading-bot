@@ -135,6 +135,15 @@ Les **quinze assertions** de la validité de campagne passent, dans l'ordre gel�
 **Verdict de validité : EXPLOITABLE** (exit 0, aucune assertion en échec).
 Compteurs de rejets : **zéro sur les sept causes**, sur les 96 configs et les trois segments.
 
+**Correctif du validateur, postérieur à la campagne.** `rejeu_validate_campaign.py` acceptait un sous-bloc
+**présent mais `null`** (`liquidation.all = null`, et de même pour `warmup` et `rejections`) : le contrôle parent
+porte sur le jeu de clés, correct sur `{"train": {...}, "test": {...}, "all": None}`, et les assertions suivantes
+sautent un segment non-dict — le faux vert exact que ce contrôle existe pour attraper. Corrigé (commit `5a443da`),
+avec huit tests négatifs paramétrés (quatre blocs × {null, absent}) et une ligne de doctrine dans
+`skills/backtest.md`. **Les artefacts livrés ne contiennent aucun sous-bloc null** : re-validés avec le validateur
+corrigé, ils redonnent **EXPLOITABLE, exit 0, aucun échec**
+(`validation_campaign_revalidated.json`). Le verdict n'est pas remis en cause.
+
 La **validité des analyses** (§ I-B) passe elle aussi : sept assertions sur sept, dont la reproductibilité
 **bit à bit** des `LB_j` — `effect.json` et un second passage complet, indépendant, sont **identiques champ par
 champ** hors horodatage, sur les 96 blocs `LB` comparés.
@@ -293,20 +302,25 @@ Les quatre meilleures configs par Δ̂_dd parmi celles qui passent les trois gat
 
 Trois lectures obligatoires, écrites ici parce qu'elles pèsent sur l'interprétation :
 
-1. **Ce n'est pas la correction de multiplicité qui décide.** Le meilleur Δ̂ (+1,92 pp/an) est **inférieur à son
-   propre `se` mono-config** (2,56 à 2,79 selon L). Même sans aucune correction familiale, il ne se séparerait pas
-   de zéro. Le `q_FWE` de ≈ 6 pp/an n'est donc pas ce qui produit le négatif : il le rend seulement plus net.
-2. **La résolution atteinte par ce design est mesurée, pas extrapolée.** La pré-spécification interdisait
-   explicitement d'écrire d'avance une borne du type « ce design ne peut pas détecter sous X » à partir du SE
-   mono-config de la calibration. Mesurée après coup, la résolution familiale est de l'ordre de **6 pp/an** sur
-   l'appariement drawdown : il aurait fallu un effet trois fois supérieur au meilleur observé pour conclure.
+1. **Les erreurs-types sont élevées relativement aux effets observés.** Le meilleur Δ̂ (+1,92 pp/an) est inférieur
+   à son propre `se` mono-config (2,56 à 2,79 selon L). **La procédure pré-spécifiée ne sépare aucun effet de
+   zéro.** La **contribution propre de la correction de multiplicité n'a pas été isolée** : Δ̂ < `se` ne démontre
+   pas qu'un test sans correction échouerait, en particulier sous une distribution asymétrique à queues lourdes
+   (kurtosis mesurée 98,9 sur la courbe de référence), et aucune analyse supplémentaire n'a été conduite après les
+   résultats pour l'établir.
+2. **Les `q_FWE` d'environ 6 pp/an sont les seuils critiques observés de cette procédure**, sur cette fenêtre, avec
+   ces 48 essais et ces courbes — **pas une limite générale de détection**. La pré-spécification interdisait
+   d'écrire d'avance une borne de ce type à partir du SE mono-config de la calibration ; elle n'autorise pas
+   davantage à la transformer après coup en propriété du problème.
 3. **La correction est conservatrice pour les petites échelles.** `max se / min se` sur les 48 configs vaut
    **5,35 > 3** : le max-T non studentisé pénalise davantage les configs de faible volatilité que les autres. C'est
    le renoncement annoncé au § F.4, ici mesuré.
 
 Éléments rapportés, décisionnels nulle part : `se` par config ; **jackknife de queue** — sur la meilleure config,
-Δ̂_dd passe de +1,917 à **+2,068** quand on retire le plus grand et le plus petit log-rendement quotidien, donc
-l'effet **ne repose pas sur une date unique** ; β̂ de 0,040 à 0,067 (faible chargement sur le benchmark) ;
+Δ̂_dd passe de +1,917 à **+2,068** sous suppression **conjointe** du plus grand et du plus petit log-rendement
+quotidien. La valeur est rapportée telle quelle : une suppression conjointe ne permet pas de conclure sur la
+dépendance à une date unique, les deux contributions pouvant se compenser, et aucune analyse leave-one-out n'a été
+ajoutée après les résultats ; β̂ de 0,040 à 0,067 (faible chargement sur le benchmark) ;
 **zéro réplication dégénérée** sur les 48 configs et les 10 000 réplications. Aucun intervalle de confiance par
 configuration n'est publié comme intervalle d'inférence.
 
@@ -372,9 +386,10 @@ satisfaite**. Mais `C` est vide : aucune de ces 16 ne tient `LB_j > 0` dans les 
 Non pas un balayage plus large — il est explicitement exclu — mais les trois choses que ce rejeu a mesurées comme
 manquantes :
 
-1. **De la résolution.** La résolution familiale atteinte est de l'ordre de **6 pp/an** ; le meilleur effet observé
-   est de **+1,9 pp/an** et se situe **sous son propre `se` mono-config**. Une fenêtre de trois ans à ce niveau de
-   volatilité quotidienne ne peut pas séparer un effet de cette taille, quelle que soit la méthode.
+1. **De la précision.** Les seuils critiques observés de cette procédure valent environ **6 pp/an** (appariement
+   drawdown) pour un meilleur effet de **+1,9 pp/an**, lui-même sous son propre `se` mono-config. Sur cette
+   fenêtre et avec ces courbes, les erreurs-types sont élevées relativement aux effets observés ; ce constat porte
+   sur la procédure pré-spécifiée, pas sur ce qu'une autre méthode pourrait ou ne pourrait pas établir.
 2. **De l'equity continue et une sélection chronologique** — c'est le protocole C3, et il reste un prérequis.
 3. **Un amorçage propre des portes de régime** : le warmup 1 d/1 w de BTC est `sufficient=False` par lacune interne
    (163 et 23 bougies), et `bias_1d` fait vivre `regime_1d` dans **tous** les modes, donc **tout** résultat BTC de
@@ -382,21 +397,22 @@ manquantes :
 
 ## 10. Portée, ce que la règle gelée a coûté, renoncements
 
-### 10.1 Trois décisions gelées qui ont changé le résultat — et il faut le dire
+### 10.1 Effet observé des choix de pré-spécification
 
-1. **G3 sorti des gates décisionnels.** Seules **8 configs BTC sur 48** ont `net_pnl ≥ 10 × total_fees` (le ratio va
-   de 1,8 à 11,2). Si G3 était resté un gate, il aurait été **la contrainte mordante** et aurait éliminé 40 configs
-   sur 48, dont la meilleure au sens de Δ (ratio 7,25). La décision de le rendre descriptif — parce que 10 × frais
-   n'est pas une borne démontrée de frictions inconnues et que les non-exécutions ne se résument pas à un
-   multiplicateur de frais — n'est donc pas cosmétique : elle change matériellement l'ensemble évalué.
-2. **Le Sharpe rendu non décisionnel.** La meilleure config BTC atteint un Sharpe de **0,855 contre 0,8493 pour le
-   B&H reconstruit**. Sous la première limbe du § 4 lue littéralement, une config « bat le B&H au Sharpe » — sur un
-   rendement de +10,3 % contre +138,3 %, soit **7,5 % du mouvement de l'actif**. C'est exactement la lecture que la
-   pré-spécification a écartée d'avance, pour une raison de magnitude et non d'artefact. Le chiffre est ici,
-   descriptif, pour qui veut appliquer le § 4 littéralement.
-3. **Le seuil de couverture à 25 plutôt que 30.** Sans effet : le minimum observé est de **77 cycles** sur BTC et
-   168 sur SOL. Un seuil à 30 aurait produit la même table. L'argument d'endogénéité qui a fait choisir 25 reste
-   valide en tant qu'argument sur la structure de l'expérience, mais **il n'a rien tranché dans ce rejeu**.
+Consigné sans jugement de valeur : ce que la règle gelée a produit, et ce qu'une autre règle aurait produit sur
+**les mêmes artefacts**, toutes les autres règles inchangées.
+
+**G3.** Son ajout comme gate obligatoire, toutes les autres règles inchangées, aurait laissé **zéro configuration
+passant les gates ponctuels** et conduit à `dépriorisation`. Vérifié sur les artefacts : **aucune des 8 configs qui
+franchissent `net_pnl ≥ 10 × total_fees` n'est parmi les 16 qui passent G1 ∧ G2 ∧ G4** — l'intersection est vide,
+les 8 portent toutes `atr_multiplier` 3,0 et échouent toutes d'abord sur G2. Son maintien descriptif a donc
+effectivement changé le verdict.
+
+**Sharpe.** Une configuration dépasse ponctuellement le B&H, **0,855 contre 0,8493**. Cela aurait satisfait le
+critère de comparaison du § 4, mais ne suffit pas à établir un verdict `candidat` : aucune configuration ne
+satisfait les six bornes exigées.
+
+**Couverture.** Choisir 25 plutôt que 30 cycles n'a eu **aucun effet** ; le minimum observé est **77**.
 
 ### 10.2 L'attendu déclaré est partiellement falsifié — consigné comme tel
 
@@ -420,12 +436,19 @@ avant.
   proposé : G3 est descriptif et sa limite est imprimée avec lui.
 - **`rf = 0` est une convention.** Le blend détient `(1 − λ)` en cash et la config une fraction cash différente,
   variable et **non exportée** ; aucune ligne de sensibilité `rf > 0` n'est publiée, faute d'historique de cash côté
-  grid. Avec λ entre 0,015 et 0,082, la config et son comparateur sont tous deux très majoritairement en cash : un
-  `rf > 0` déplacerait Δ d'une quantité non quantifiée ici, et pas nécessairement dans le même sens pour les deux.
+  grid. On connaît l'allocation du **comparateur** (λ entre 0,015 et 0,082, donc très majoritairement en cash) ; on ne
+  connaît **pas** celle de la configuration — le λ apparié ne mesure pas le cash du grid, qui n'est pas exporté et
+  que le § J de la pré-spécification déclare non mesurable. Un `rf > 0` déplacerait donc Δ d'une quantité non
+  quantifiable ici.
 - **L'exposition n'est pas mesurée.** Ni cash, ni inventaire, ni notionnel ne sont exportés ; la voie « ~3 ans
   d'equity à exposition non triviale » du § 8 a été écartée d'avance pour cette raison, et la mesure le confirme :
   sur SOL, la NAV est **plate sur les 277 premiers jours** (le trou de données, forward-fillé sans marqueur) et
   `n_daily_returns` vaut quand même 1096 — 277 de ces rendements sont des zéros fabriqués.
+- **Le verdict de famille repose sur une seule paire.** BTC/USDC est la seule votante ; SOL/USDC est descriptive.
+  **ETH/USDC est hors du périmètre de ce diagnostic** (comme en P7) : celui-ci ne permet **aucune conclusion de
+  candidature ni de dépriorisation** pour cette paire. Le rejeu de référence C2
+  (`results/c2_replay/P6_grid_rerun.json`, un seul jeu de paramètres par paire) **ne remplace pas un balayage** et
+  ne comble pas ce trou.
 - **La dégénérescence réduit l'information sur les paramètres, pas la lisibilité du résultat.** Elle ne change
   aucun verdict (§ G.5), et elle est ici **spécifique à SOL** : 23 classes contre 48 sur BTC.
 
