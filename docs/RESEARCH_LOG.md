@@ -100,7 +100,39 @@ benchmark SOL n'est **pas constructible** (première bougie quotidienne 272 jour
 |---|---|---|---|---|---|---|---|---|---|
 | 11 | 2026-09-20 | Rejeu diagnostic grid — P7 **phase 1 uniquement** (ni phase 2, ni `--report`, ni `--selection`) | `grok_grid_atr_adaptive_v4` × **BTC/USDC et SOL/USDC**, `GRID_ATR_GRID` inchangée (`min_spacing_pct` 4 × `atr_multiplier` 4 × `bear_protection_mode` 3) = **96 configs**, défauts de classe (dette 13 non fixée : `max_spacing_pct` 0.05 non balayé, lots 25 USDC, `bias_1d` 0.2, `max_allocation_pct` non appliqué) | Binance **end-stampées**, 2023-04-01 → 2026-04-01 ; segment `all` **seul décisionnel**, `train`/`test` descriptifs et jamais concaténés (288 simulations ≠ 288 observations) | branche `feat/rejeu-grid-diag` @ `aa17ed0`, depuis `dev` @ tag `v2.10.0-c2-replay` (`9897803`) ; métriques **v2** ; `replay_version` **2** | bybit maker 0.10 % / taker 0.25 % + coûts GATE B par paire (`config/pair_costs_b4.json` : BTC 2/2 bps, SOL 11/2 bps), `--min-order-usdc 5` (inerte sur le grid, valeur de provenance) | **candidat / dépriorisation / inconclusif**, par la règle gelée : couverture ≥ **25 cycles achevés** (`total_trades − liquidation.positions`) ; plancher économique **`total_return_pct(all) ≥ 6 %`** (convention de poursuite de recherche, pas un seuil de déploiement) ; **Δ CAGR > 0** contre un blend **statique** cash + λ·B&H apparié par recherche sur le drawdown quotidien **et** sur la volatilité ; **borne simultanée `LB_j > 0` sur les six combinaisons** (L ∈ {10, 21, 42} × appariement), λ ré-estimé dans chaque réplication ; Sharpe et `net_pnl/total_fees` **descriptifs, jamais décisionnels** ; SOL descriptif | selon le verdict : travail de **mécanisme** (§ 5 / § 6 des contraintes) puis C3 — ou clôture de la famille grid, toute reprise exigeant un mécanisme nouveau (clause de clôture § K.2) | `results/rejeu_grid_report.md`, `docs/rejeu_grid_prespec.md`, artefacts `results/rejeu_grid_20260919/` |
 
+### Issue de l'entrée 11 (rejeu diagnostic grid, inscrite après le run)
+
+Campagne lancée le 2026-09-20 à 10:52:58 UTC au SHA `0120ce8`, terminée à 11:50:20 UTC : **96 jobs, 96 réussis,
+0 échec, 57,4 min**, 3 workers, checkout isolé serveur, base locale — dans la limite murale externe de 6 h déclarée
+avant le run, sans aucune reprise. Collector intact (actif, `NRestarts=0`, 59 bougies 1 m par paire sur la fenêtre,
+**0 trou**, écart maximal 1,00 min).
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 11 | **Verdict `inconclusif` (`F_CANNOT_SEPARATE`)**, émis par `scripts/audit/rejeu_verdict.py` et cité tel quel dans le rapport. BTC/USDC vote, SOL/USDC est descriptif par trois routes indépendantes (couverture 825 j, benchmark non constructible, warmup W2) | `results/rejeu_grid_report.md`, `results/rejeu_grid_20260919/verdict.json` |
+| 11 | Validité de campagne : **15/15 assertions**, `b4_flags` muet après les assertions de présence, zéro rejet sur les sept causes, diff de contrôle vide | `validation_campaign.json` |
+| 11 | Couverture : **aucune config tronquée** — 77 cycles au minimum sur BTC (médiane 144,5), 168 sur SOL, contre un seuil de 25. Le choix 25 plutôt que 30 n'a rien tranché | `effect.json` |
+| 11 | Gates ponctuels BTC : G1 48/48, G2 18/48, G4 31/48 → **16/48** passent les trois. G3 descriptif : 8/48 seulement, il aurait été la contrainte mordante s'il était resté un gate | `effect.json` |
+| 11 | Borne d'incertitude : **aucune des 48 configs ne tient `LB_j > 0`** sur les six combinaisons ; `q_FWE` ≈ 5,9-6,25 pp/an contre un meilleur Δ̂ de +1,92. Le meilleur Δ̂ est **sous son propre `se` mono-config** (2,56-2,79) : ce n'est pas la multiplicité qui décide | `effect.json` |
+| 11 | Clamp mesuré : plafond de 5 % saturé **sur SOL seulement** (82 % puis 95 % des clôtures 4 h à m = 2,5 et 3,0) et **pas sur BTC** (espacement intérieur 78-91 % du temps). D'où 23 classes d'indiscernabilité sur SOL contre **48/48 distinctes sur BTC** | `clamp.json`, `signatures.json` |
+| 11 | Lecture rétroactive B4 : 48 → 45 classes (BTC) et 48 → 48 (SOL), **en accord** avec la référence pré-enregistrée avant le run | `signatures.json` |
+| 11 | Attendu déclaré au § K.1 **partiellement falsifié** : 18 configs BTC franchissent le plancher de 6 % (jusqu'à 10,32 %), la référence post-C2 à multiplicateur 4,0 — hors balayage — n'était pas représentative | `effect.json`, `docs/rejeu_grid_prespec.md` § K.1 |
+
+Chaîne de verdict, citée telle quelle :
+
+```
+REJEU_GRID_20260919 | famille=inconclusif | raison=F_CANNOT_SEPARATE | BTC/USDC=inconclusif | SOL/USDC=descriptif | representant=- | prespec=20079aff60a55152 | campagne=08d981e493402f37
+```
+
+Conséquence gelée : **pas de déploiement et pas de tuning supplémentaire** ; la raison est écrite et le
+périmètre **n'est pas élargi** pour chercher une autre réponse. La clause de clôture du § K.2 ne s'applique
+pas — elle ne vaut que pour une `dépriorisation`. Suite : **C3** (equity continue, sélection chronologique),
+qui devra aussi reprendre l'amorçage des portes de régime (warmup 1 d/1 w de BTC `sufficient=False`).
+
+Validité des analyses (§ I-B) : **7/7**, dont la reproductibilité **bit à bit** des `LB_j` — un second passage
+complet et indépendant de `rejeu_effect` donne un artefact **identique champ par champ** hors horodatage.
+
 ### Essais à venir (à inscrire avant lancement)
 
-_(prochain inscrit attendu : **protocole C3** — validation chronologique, equity continue, sélection sur le passé seul.
-Le rejeu diagnostic grid est inscrit ci-dessus, entrée 11.)_
+_(prochain inscrit attendu : **protocole C3** — validation chronologique, equity continue, sélection sur le passé
+seul. Le rejeu diagnostic grid est clos : entrée 11 et son issue ci-dessus.)_
