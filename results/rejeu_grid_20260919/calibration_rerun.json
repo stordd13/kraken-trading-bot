@@ -1,0 +1,56 @@
+{
+  "B": 10000,
+  "base_sha": "9897803f48a6537a248f5a41c53a1ea5522d46a0",
+  "generated_at": "2026-09-20T10:40:33+00:00",
+  "lambda_mode_planned": "reestimated",
+  "mdd_vectorised": {
+    "max_relative_residual": 1.5663575897114277e-14,
+    "n_series": 1003,
+    "speedup": 192.84291448620698,
+    "time_decimal_sec": 3.2910868630278856,
+    "time_numpy_sec": 0.01706615393050015,
+    "verified": true
+  },
+  "numpy_version": "2.4.1",
+  "observed": {
+    "cagr_pct": 1.5000444617400355,
+    "delta_dd": 1.0416294241649693,
+    "delta_sigma": 0.8594311196783222,
+    "lambda_dd": 0.01,
+    "lambda_sigma": 0.014,
+    "nnz": 388,
+    "sigma_daily": 0.0008447905765966621
+  },
+  "pair": "BTC/USDC",
+  "prespec": {
+    "path": "docs/rejeu_grid_prespec.md",
+    "sha256": "20079aff60a551526bfec0ae399803e83e6dd69c821ab6b20af4d856ba9f3691"
+  },
+  "reestimation_budget_sec": 7200.0,
+  "reestimation_cost_sec": {
+    "10": 148.6742198728025,
+    "21": 116.57344729802571,
+    "42": 119.09856997313909
+  },
+  "reference_disclosure": "Référence divulguée comme quasi-membre de la famille balayée : min_spacing_pct 0.015 est le minimum balayé et bear_protection_mode nul laisse pause_1w_strong_bear = True, soit le bras comportemental 1w_only ; seul atr_multiplier 4.0 est hors balayage. Aucun seuil de la pré-spécification n'en est dérivé.",
+  "se_delta_single_config": {
+    "10": {
+      "dd": 0.9763266000244396,
+      "sigma": 0.8721767767573804
+    },
+    "21": {
+      "dd": 0.9787711273142563,
+      "sigma": 0.8861493357023112
+    },
+    "42": {
+      "dd": 1.0017933188479249,
+      "sigma": 0.9243941443158553
+    }
+  },
+  "seeds": {
+    "10": 2537310591,
+    "21": 3555527900,
+    "42": 685985828
+  },
+  "source": "results/c2_replay/P6_grid_rerun.json"
+}
