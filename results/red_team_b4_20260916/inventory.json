@@ -1,0 +1,477 @@
+{
+  "zip_comment": "8e327b000a2813b93070dd26506d4df9b1bfc257",
+  "archive_files": 364,
+  "archive_markdown": 66,
+  "local_markdown": 77,
+  "archive_changed_vs_repo": [],
+  "archive_missing_in_repo": [],
+  "local_md": [
+    {
+      "path": ".pytest_cache/README.md",
+      "bytes": 302,
+      "lines": 8
+    },
+    {
+      "path": "CLAUDE.md",
+      "bytes": 4847,
+      "lines": 72
+    },
+    {
+      "path": "PROJECT_CONTEXT.md",
+      "bytes": 26874,
+      "lines": 389
+    },
+    {
+      "path": "README.md",
+      "bytes": 6694,
+      "lines": 153
+    },
+    {
+      "path": "ROADMAP.md",
+      "bytes": 13165,
+      "lines": 180
+    },
+    {
+      "path": "agent/AGENTS.md",
+      "bytes": 10865,
+      "lines": 266
+    },
+    {
+      "path": "agent/AGENT_B05_DOCS_CLEANUP.md",
+      "bytes": 11511,
+      "lines": 208
+    },
+    {
+      "path": "agent/AGENT_B0_BYBIT_AUDIT.md",
+      "bytes": 6191,
+      "lines": 120
+    },
+    {
+      "path": "agent/AGENT_B1_BYBIT_REST.md",
+      "bytes": 6842,
+      "lines": 119
+    },
+    {
+      "path": "agent/AGENT_B2_BYBIT_WS.md",
+      "bytes": 6990,
+      "lines": 123
+    },
+    {
+      "path": "agent/AGENT_B3_BYBIT_DATA_v2.md",
+      "bytes": 13383,
+      "lines": 196
+    },
+    {
+      "path": "agent/AGENT_B4_1_TIMESTAMP_AUDIT_RESTAMP.md",
+      "bytes": 12290,
+      "lines": 199
+    },
+    {
+      "path": "agent/AGENT_B4_2_FEES_ENGINE.md",
+      "bytes": 10818,
+      "lines": 182
+    },
+    {
+      "path": "agent/AGENT_B4_3_CAMPAIGN.md",
+      "bytes": 9660,
+      "lines": 172
+    },
+    {
+      "path": "agent/AGENT_P6_7_MULTIPROCESSING.md",
+      "bytes": 10008,
+      "lines": 273
+    },
+    {
+      "path": "agent/AGENT_P7_PARAMETER_OPTIMIZATION.md",
+      "bytes": 13093,
+      "lines": 356
+    },
+    {
+      "path": "config/pair_costs_b4.README.md",
+      "bytes": 1609,
+      "lines": 18
+    },
+    {
+      "path": "docs/CODE_MAP.md",
+      "bytes": 34864,
+      "lines": 156
+    },
+    {
+      "path": "docs/CONTRAINTES_POST_B4.md",
+      "bytes": 7262,
+      "lines": 127
+    },
+    {
+      "path": "docs/architecture.md",
+      "bytes": 3677,
+      "lines": 69
+    },
+    {
+      "path": "docs/archive/AGENTS.md",
+      "bytes": 831,
+      "lines": 31
+    },
+    {
+      "path": "docs/archive/CODEX.md",
+      "bytes": 3160,
+      "lines": 167
+    },
+    {
+      "path": "docs/archive/KRAKENBOT_CONTEXT.md",
+      "bytes": 5389,
+      "lines": 113
+    },
+    {
+      "path": "docs/archive/PIVOT_BYBIT_PLAN.md",
+      "bytes": 5350,
+      "lines": 89
+    },
+    {
+      "path": "docs/archive/PLAN_ML_DL_v6.md",
+      "bytes": 10288,
+      "lines": 252
+    },
+    {
+      "path": "docs/archive/ROADMAP_pre_binance_pivot.md",
+      "bytes": 7595,
+      "lines": 222
+    },
+    {
+      "path": "docs/archive/TODO.md",
+      "bytes": 4028,
+      "lines": 75
+    },
+    {
+      "path": "docs/archive/kraken_futures.md",
+      "bytes": 2584,
+      "lines": 87
+    },
+    {
+      "path": "docs/archive/krakenbot-etat-complet-feb2026.md",
+      "bytes": 24068,
+      "lines": 548
+    },
+    {
+      "path": "docs/cicd_secrets.md",
+      "bytes": 1382,
+      "lines": 53
+    },
+    {
+      "path": "docs/fast-cash-v1.md",
+      "bytes": 2682,
+      "lines": 118
+    },
+    {
+      "path": "results/B3_bybit_data_report.md",
+      "bytes": 30493,
+      "lines": 378
+    },
+    {
+      "path": "results/B4_1_timestamp_restamp_report.md",
+      "bytes": 50780,
+      "lines": 546
+    },
+    {
+      "path": "results/B4_2_fees_engine_report.md",
+      "bytes": 29762,
+      "lines": 338
+    },
+    {
+      "path": "results/B4_3_chantier0_gate_a.md",
+      "bytes": 33548,
+      "lines": 332
+    },
+    {
+      "path": "results/B4_3_gate_b_configs.md",
+      "bytes": 25005,
+      "lines": 238
+    },
+    {
+      "path": "results/B4_P6_backtest_report.md",
+      "bytes": 8252,
+      "lines": 160
+    },
+    {
+      "path": "results/B4_P6_checkpoint.md",
+      "bytes": 7691,
+      "lines": 64
+    },
+    {
+      "path": "results/B4_P6_phase_e_filtering.md",
+      "bytes": 4263,
+      "lines": 58
+    },
+    {
+      "path": "results/B4_P7_checkpoint.md",
+      "bytes": 8910,
+      "lines": 58
+    },
+    {
+      "path": "results/B4_P7_optimization_report.md",
+      "bytes": 83002,
+      "lines": 409
+    },
+    {
+      "path": "results/B4_bybit_backtest_report.md",
+      "bytes": 37516,
+      "lines": 369
+    },
+    {
+      "path": "results/INDEX.md",
+      "bytes": 15622,
+      "lines": 94
+    },
+    {
+      "path": "results/P6_7_multiprocessing_benchmark.md",
+      "bytes": 11449,
+      "lines": 234
+    },
+    {
+      "path": "results/P6_backtest_report_v2.md",
+      "bytes": 7178,
+      "lines": 148
+    },
+    {
+      "path": "results/P6_data_coverage.md",
+      "bytes": 3375,
+      "lines": 76
+    },
+    {
+      "path": "results/archive/P6_5_diagnostic_dca.md",
+      "bytes": 2629,
+      "lines": 62
+    },
+    {
+      "path": "results/archive/P6_5_diagnostic_gemini.md",
+      "bytes": 4204,
+      "lines": 100
+    },
+    {
+      "path": "results/archive/P6_5_diagnostic_grok_trend.md",
+      "bytes": 2902,
+      "lines": 62
+    },
+    {
+      "path": "results/archive/P6_5_grid_fix_verification.md",
+      "bytes": 3993,
+      "lines": 82
+    },
+    {
+      "path": "results/archive/P6_backtest_report.md",
+      "bytes": 7158,
+      "lines": 148
+    },
+    {
+      "path": "results/archive/P6_phase_e_filtering.md",
+      "bytes": 3369,
+      "lines": 50
+    },
+    {
+      "path": "results/archive/audit_p0_results.md",
+      "bytes": 6775,
+      "lines": 151
+    },
+    {
+      "path": "results/archive/backtest_multipair_results.md",
+      "bytes": 10971,
+      "lines": 271
+    },
+    {
+      "path": "results/archive/backtest_new_strategies_results.md",
+      "bytes": 5217,
+      "lines": 96
+    },
+    {
+      "path": "results/archive/backtest_phase1a_results.md",
+      "bytes": 12347,
+      "lines": 241
+    },
+    {
+      "path": "results/archive/binance_integration_audit.md",
+      "bytes": 56600,
+      "lines": 1300
+    },
+    {
+      "path": "results/archive/cicd_fix_results.md",
+      "bytes": 2278,
+      "lines": 62
+    },
+    {
+      "path": "results/archive/cleanup_report.md",
+      "bytes": 6427,
+      "lines": 142
+    },
+    {
+      "path": "results/archive/consolidation_results.md",
+      "bytes": 6278,
+      "lines": 137
+    },
+    {
+      "path": "results/archive/dca_fix_results.md",
+      "bytes": 4578,
+      "lines": 107
+    },
+    {
+      "path": "results/archive/fix_dca_cleanup_results.md",
+      "bytes": 7204,
+      "lines": 150
+    },
+    {
+      "path": "results/archive/kraken_futures_audit.md",
+      "bytes": 2260,
+      "lines": 64
+    },
+    {
+      "path": "results/archive/kraken_futures_integration_results.md",
+      "bytes": 2793,
+      "lines": 72
+    },
+    {
+      "path": "results/archive/lint_report.md",
+      "bytes": 4000,
+      "lines": 86
+    },
+    {
+      "path": "results/archive/paper_trading_debug.md",
+      "bytes": 4188,
+      "lines": 119
+    },
+    {
+      "path": "results/archive/telegram_alerts_results.md",
+      "bytes": 2047,
+      "lines": 64
+    },
+    {
+      "path": "results/archive/test_report.md",
+      "bytes": 4934,
+      "lines": 88
+    },
+    {
+      "path": "results/bybit_integration_audit.md",
+      "bytes": 66838,
+      "lines": 727
+    },
+    {
+      "path": "skills/backtest.md",
+      "bytes": 23286,
+      "lines": 407
+    },
+    {
+      "path": "skills/binance_import.md",
+      "bytes": 5883,
+      "lines": 150
+    },
+    {
+      "path": "skills/bybit.md",
+      "bytes": 26101,
+      "lines": 328
+    },
+    {
+      "path": "skills/database.md",
+      "bytes": 9673,
+      "lines": 246
+    },
+    {
+      "path": "skills/deployment.md",
+      "bytes": 8002,
+      "lines": 177
+    },
+    {
+      "path": "skills/new_strategy.md",
+      "bytes": 6610,
+      "lines": 174
+    },
+    {
+      "path": "skills/risk_management.md",
+      "bytes": 5460,
+      "lines": 129
+    },
+    {
+      "path": "skills/troubleshooting.md",
+      "bytes": 7191,
+      "lines": 167
+    }
+  ],
+  "audit_date": "2026-09-16",
+  "reading_coverage": [
+    ".pytest_cache/README.md",
+    "CLAUDE.md",
+    "PROJECT_CONTEXT.md",
+    "README.md",
+    "ROADMAP.md",
+    "agent/AGENTS.md",
+    "agent/AGENT_B05_DOCS_CLEANUP.md",
+    "agent/AGENT_B0_BYBIT_AUDIT.md",
+    "agent/AGENT_B1_BYBIT_REST.md",
+    "agent/AGENT_B2_BYBIT_WS.md",
+    "agent/AGENT_B3_BYBIT_DATA_v2.md",
+    "agent/AGENT_B4_1_TIMESTAMP_AUDIT_RESTAMP.md",
+    "agent/AGENT_B4_2_FEES_ENGINE.md",
+    "agent/AGENT_B4_3_CAMPAIGN.md",
+    "agent/AGENT_P6_7_MULTIPROCESSING.md",
+    "agent/AGENT_P7_PARAMETER_OPTIMIZATION.md",
+    "config/pair_costs_b4.README.md",
+    "docs/CODE_MAP.md",
+    "docs/CONTRAINTES_POST_B4.md",
+    "docs/architecture.md",
+    "docs/archive/AGENTS.md",
+    "docs/archive/CODEX.md",
+    "docs/archive/KRAKENBOT_CONTEXT.md",
+    "docs/archive/PIVOT_BYBIT_PLAN.md",
+    "docs/archive/PLAN_ML_DL_v6.md",
+    "docs/archive/ROADMAP_pre_binance_pivot.md",
+    "docs/archive/TODO.md",
+    "docs/archive/kraken_futures.md",
+    "docs/archive/krakenbot-etat-complet-feb2026.md",
+    "docs/cicd_secrets.md",
+    "docs/fast-cash-v1.md",
+    "results/B3_bybit_data_report.md",
+    "results/B4_1_timestamp_restamp_report.md",
+    "results/B4_2_fees_engine_report.md",
+    "results/B4_3_chantier0_gate_a.md",
+    "results/B4_3_gate_b_configs.md",
+    "results/B4_P6_backtest_report.md",
+    "results/B4_P6_checkpoint.md",
+    "results/B4_P6_phase_e_filtering.md",
+    "results/B4_P7_checkpoint.md",
+    "results/B4_P7_optimization_report.md",
+    "results/B4_bybit_backtest_report.md",
+    "results/INDEX.md",
+    "results/P6_7_multiprocessing_benchmark.md",
+    "results/P6_backtest_report_v2.md",
+    "results/P6_data_coverage.md",
+    "results/archive/P6_5_diagnostic_dca.md",
+    "results/archive/P6_5_diagnostic_gemini.md",
+    "results/archive/P6_5_diagnostic_grok_trend.md",
+    "results/archive/P6_5_grid_fix_verification.md",
+    "results/archive/P6_backtest_report.md",
+    "results/archive/P6_phase_e_filtering.md",
+    "results/archive/audit_p0_results.md",
+    "results/archive/backtest_multipair_results.md",
+    "results/archive/backtest_new_strategies_results.md",
+    "results/archive/backtest_phase1a_results.md",
+    "results/archive/binance_integration_audit.md",
+    "results/archive/cicd_fix_results.md",
+    "results/archive/cleanup_report.md",
+    "results/archive/consolidation_results.md",
+    "results/archive/dca_fix_results.md",
+    "results/archive/fix_dca_cleanup_results.md",
+    "results/archive/kraken_futures_audit.md",
+    "results/archive/kraken_futures_integration_results.md",
+    "results/archive/lint_report.md",
+    "results/archive/paper_trading_debug.md",
+    "results/archive/telegram_alerts_results.md",
+    "results/archive/test_report.md",
+    "results/bybit_integration_audit.md",
+    "skills/backtest.md",
+    "skills/binance_import.md",
+    "skills/bybit.md",
+    "skills/database.md",
+    "skills/deployment.md",
+    "skills/new_strategy.md",
+    "skills/risk_management.md",
+    "skills/troubleshooting.md"
+  ],
+  "scope_note": "Inventory before creation of audit artifacts; 76 project Markdown documents plus pytest cache README. All archive members identical to local files.",
+  "archive_sha256": "12657b3b01508c75b3fc778a2fdf6368a3e9c8fab365b87d9cfabb47b55e9d2a"
+}

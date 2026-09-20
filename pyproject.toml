@@ -141,7 +141,13 @@ exclude_lines = [
 target-version = "py311"
 line-length = 100
 # Notebooks are exploratory artefacts, not linted (CI only checks src/).
-extend-exclude = ["notebooks"]
+# results/red_team_b4_20260916/*.py : pièces à conviction d'un audit daté (red-team B4 du
+# 2026-09-16), versionnées telles que l'auditeur les a écrites. Les reformater — imports triés,
+# `import ast, json, math` scindé, symboles inutilisés retirés — altérerait la preuve : ces deux
+# scripts reproduisent les défauts de mesure D1-D6 en exécutant des corps de méthode archivés, et
+# leur valeur probante tient à leur identité littérale avec ce qui a été soumis. Exclusion, donc,
+# et non correction. Ils sont read-only, hors `src/`, hors CI, et importés par rien.
+extend-exclude = ["notebooks", "results/red_team_b4_20260916"]
 
 [tool.ruff.lint]
 select = [
