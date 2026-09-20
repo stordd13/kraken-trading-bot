@@ -408,6 +408,26 @@ franchissent `net_pnl ≥ 10 × total_fees` n'est parmi les 16 qui passent G1 �
 les 8 portent toutes `atr_multiplier` 3,0 et échouent toutes d'abord sur G2. Son maintien descriptif a donc
 effectivement changé le verdict.
 
+**Et G3 aurait filtré sur l'axe balayé, pas sur l'économie** — même pathologie que celle identifiée au § C.2 pour
+le seuil de couverture. La chaîne est mécanique : multiplicateur large → grille espacée → peu de cycles → peu de
+frais → ratio `net_pnl / total_fees` élevé. Mesurée sur les 48 configs BTC, elle est monotone sur l'axe :
+
+| `atr_multiplier` | cycles (médiane) | `total_fees` (médiane) | `net_pnl / total_fees` (médiane) | rendement (médiane) | franchissent G3 |
+|---|---|---|---|---|---|
+| 1,5 | 285,5 | 15,50 | 4,87 | 7,166 % | 0 / 12 |
+| 2,0 | 189,5 | 10,51 | 5,82 | 6,098 % | 0 / 12 |
+| 2,5 | 123,5 | 6,90 | 8,92 | 5,537 % | 0 / 12 |
+| 3,0 | 89,5 | 5,05 | **10,89** | 4,944 % | **8 / 12** |
+
+Corrélation de rang entre cycles et `net_pnl / total_fees` : **−0,715** (n = 48). Et le rendement **décroît**
+monotonement avec le multiplicateur : le ratio que G3 teste sélectionne donc les configurations qui **rapportent le
+moins**. Un gate assis sur ce ratio n'aurait pas mesuré une marge de friction, il aurait mesuré la largeur de la
+grille — c'est-à-dire directement l'un des trois paramètres balayés.
+
+L'asymétrie avec le § C.2 mérite d'être notée : le seuil de couverture, s'il avait mordu, aurait amputé la moitié
+**large** du balayage ; G3 ampute la moitié **serrée**. Directions opposées, défaut identique — un filtre corrélé à
+un axe balayé plutôt qu'à la quantité qu'il prétend borner.
+
 **Sharpe.** Une configuration dépasse ponctuellement le B&H, **0,855 contre 0,8493**. Cela aurait satisfait le
 critère de comparaison du § 4, mais ne suffit pas à établir un verdict `candidat` : aucune configuration ne
 satisfait les six bornes exigées.
