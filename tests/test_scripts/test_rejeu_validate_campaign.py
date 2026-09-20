@@ -464,6 +464,45 @@ def test_missing_liquidation_block_fails_at_ia8_not_silently(
     assert _row(payload, "I-A.13")["skipped"] is True
 
 
+@pytest.mark.parametrize("block", ["liquidation", "warmup", "rejections", "equity_daily"])
+def test_a_null_sub_block_fails_at_ia8(
+    tmp_path: Path, campaign: dict[str, Any], block: str
+) -> None:
+    """A sub-block PRESENT but ``null`` is a violation, never a reason to skip.
+
+    Regression test for a real defect found after the campaign: the parent-level key check
+    passes on ``{"train": {...}, "test": {...}, "all": None}`` — the key set is right — and
+    I-A.11 / I-A.12 skip a non-dict segment while ``b4_flags.flag_segment`` returns ``[]`` on a
+    falsy liquidation block. A ``null`` sub-block therefore travelled all the way to I-A.13 and
+    came out "b4_flags mute": 15/15 on an artifact missing a whole segment of a block.
+    """
+    key = _first_key(campaign)
+    campaign[key][block]["all"] = None
+
+    # the two silent paths the presence assertion has to get in front of
+    assert b4_flags.flag_segment(None, campaign[key]["all"]) == []
+    assert b4_flags.collect_flags(campaign) == []
+
+    payload = _validate(_write(tmp_path / "out", campaign))
+    assert payload["failed"][0] == "I-A.8", "a null sub-block must fail the presence assertion"
+    assert block in _row(payload, "I-A.8")["detail"]
+    assert _row(payload, "I-A.13")["skipped"] is True
+
+
+@pytest.mark.parametrize("block", ["liquidation", "warmup", "rejections", "equity_daily"])
+def test_an_absent_sub_block_fails_at_ia8(
+    tmp_path: Path, campaign: dict[str, Any], block: str
+) -> None:
+    """The sibling case of the null sub-block: the segment key removed entirely."""
+    key = _first_key(campaign)
+    del campaign[key][block]["all"]
+
+    payload = _validate(_write(tmp_path / "out", campaign))
+    assert payload["failed"][0] == "I-A.8"
+    assert block in _row(payload, "I-A.8")["detail"]
+    assert _row(payload, "I-A.13")["skipped"] is True
+
+
 # ---------------------------------------------------------------------------
 # 4. A flat segment is legitimate and must NOT kill the run
 # ---------------------------------------------------------------------------

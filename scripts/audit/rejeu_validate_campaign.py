@@ -821,41 +821,58 @@ def a08_blocks_present(ctx: Context) -> Outcome:
                 problems.append(f"{key}: {name} segments {sorted(block)} != {sorted(rc.SEGMENTS)}")
             blocks[name] = block
         for segment in rc.SEGMENTS:
-            # each block is checked independently: an absent liquidation segment (already
-            # reported above) must never mask a malformed warmup or rejections block
-            liquidation = blocks.get("liquidation", {}).get(segment)
-            if liquidation is None:
-                pass
-            elif not isinstance(liquidation, dict) or set(liquidation) != LIQUIDATION_KEYS:
-                shown = sorted(liquidation) if isinstance(liquidation, dict) else liquidation
+            # Each block is checked independently: a parent block already reported as absent or
+            # malformed must not mask a malformed sibling — hence the ``in blocks`` guard, which
+            # skips ONLY the block that already produced a problem.
+            #
+            # A sub-block that is PRESENT but ``null`` is a violation, never a reason to skip.
+            # The parent-level key check above passes on ``{"train": {...}, "test": {...},
+            # "all": None}`` (the key set is right), and I-A.11 / I-A.12 skip a non-dict segment
+            # while ``b4_flags.flag_segment`` returns ``[]`` on a falsy liquidation block: a
+            # ``null`` sub-block would therefore travel all the way to I-A.13 and come out
+            # "b4_flags mute". That is the exact false green this assertion exists to catch.
+            if "liquidation" in blocks:
+                liquidation = blocks["liquidation"].get(segment)
+                if not isinstance(liquidation, dict) or set(liquidation) != LIQUIDATION_KEYS:
+                    shown = sorted(liquidation) if isinstance(liquidation, dict) else liquidation
+                    problems.append(
+                        f"{key}/{segment}: liquidation keys {shown!r} != the "
+                        f"{len(LIQUIDATION_KEYS)} frozen keys"
+                    )
+            if "warmup" in blocks:
+                warmup = blocks["warmup"].get(segment)
+                if not isinstance(warmup, dict) or set(warmup) != set(WARMUP_TIMEFRAMES):
+                    shown = sorted(warmup) if isinstance(warmup, dict) else warmup
+                    problems.append(f"{key}/{segment}: warmup timeframes {shown!r}")
+                else:
+                    for timeframe in WARMUP_TIMEFRAMES:
+                        fields = warmup[timeframe]
+                        if not isinstance(fields, dict) or set(fields) != WARMUP_FIELDS:
+                            shown = sorted(fields) if isinstance(fields, dict) else fields
+                            problems.append(
+                                f"{key}/{segment}/{timeframe}: warmup fields {shown!r}"
+                            )
+            if "rejections" in blocks:
+                rejections = blocks["rejections"].get(segment)
+                if not isinstance(rejections, dict) or set(rejections) != REJECTION_KEYS:
+                    shown = sorted(rejections) if isinstance(rejections, dict) else rejections
+                    problems.append(f"{key}/{segment}: rejections keys {shown!r}")
+                else:
+                    for name in ("by_cause", "events"):
+                        causes = rejections[name]
+                        if not isinstance(causes, dict) or set(causes) != REJECTION_CAUSES:
+                            shown = sorted(causes) if isinstance(causes, dict) else causes
+                            problems.append(
+                                f"{key}/{segment}: rejections.{name} causes {shown!r}"
+                            )
+            if "equity_daily" in blocks and not isinstance(
+                blocks["equity_daily"].get(segment), dict
+            ):
+                # I-A.9 owns the content of the grid; presence and non-nullity belong here.
                 problems.append(
-                    f"{key}/{segment}: liquidation keys {shown!r} != the {len(LIQUIDATION_KEYS)} "
-                    "frozen keys"
+                    f"{key}/{segment}: equity_daily is "
+                    f"{blocks['equity_daily'].get(segment)!r}, not a block"
                 )
-            warmup = blocks.get("warmup", {}).get(segment)
-            if warmup is None:
-                pass
-            elif not isinstance(warmup, dict) or set(warmup) != set(WARMUP_TIMEFRAMES):
-                shown = sorted(warmup) if isinstance(warmup, dict) else warmup
-                problems.append(f"{key}/{segment}: warmup timeframes {shown!r}")
-            else:
-                for timeframe in WARMUP_TIMEFRAMES:
-                    fields = warmup[timeframe]
-                    if not isinstance(fields, dict) or set(fields) != WARMUP_FIELDS:
-                        shown = sorted(fields) if isinstance(fields, dict) else fields
-                        problems.append(f"{key}/{segment}/{timeframe}: warmup fields {shown!r}")
-            rejections = blocks.get("rejections", {}).get(segment)
-            if rejections is None:
-                pass
-            elif not isinstance(rejections, dict) or set(rejections) != REJECTION_KEYS:
-                shown = sorted(rejections) if isinstance(rejections, dict) else rejections
-                problems.append(f"{key}/{segment}: rejections keys {shown!r}")
-            else:
-                for name in ("by_cause", "events"):
-                    causes = rejections[name]
-                    if not isinstance(causes, dict) or set(causes) != REJECTION_CAUSES:
-                        shown = sorted(causes) if isinstance(causes, dict) else causes
-                        problems.append(f"{key}/{segment}: rejections.{name} causes {shown!r}")
         warmup_block = blocks.get("warmup")
         if isinstance(warmup_block, dict) and warmup_block:
             pair = str(entry.get("pair"))
