@@ -1,0 +1,68 @@
+{
+  "BacktestEngine": {
+    "5": {
+      "max_drawdown_pct": 15.0,
+      "sharpe_ratio": 9.962783027431106,
+      "sortino_ratio": 54.65996611386654
+    },
+    "240": {
+      "max_drawdown_pct": 15.0,
+      "sharpe_ratio": 9.962783027431106,
+      "sortino_ratio": 54.65996611386654
+    },
+    "1440": {
+      "max_drawdown_pct": 15.0,
+      "sharpe_ratio": 9.962783027431106,
+      "sortino_ratio": 54.65996611386654
+    }
+  },
+  "GridBacktester": {
+    "5": {
+      "max_drawdown_pct": 15.0,
+      "sharpe_ratio": 9.962783027431106,
+      "sortino_ratio": 54.65996611386654
+    },
+    "240": {
+      "max_drawdown_pct": 15.0,
+      "sharpe_ratio": 9.962783027431106,
+      "sortino_ratio": 54.65996611386654
+    },
+    "1440": {
+      "max_drawdown_pct": 15.0,
+      "sharpe_ratio": 9.962783027431106,
+      "sortino_ratio": 54.65996611386654
+    }
+  },
+  "synthetic_true_max_drawdown_pct": 30,
+  "annualization_factors_diagnostic": {
+    "5m": 16.97056274847714,
+    "4h": 2.449489742783178,
+    "1d": 1
+  },
+  "bybit_signal_reference": {
+    "pair": "BTC/USDC",
+    "period": {
+      "end": "2026-04-01T00:00:00+00:00",
+      "start": "2023-04-01T00:00:00+00:00"
+    },
+    "roundtrips": 46,
+    "pf_as_stored": 1.441960161120876,
+    "pf_excluding_buy_fees": 1.441960161120876,
+    "pf_net_all_fees": 1.3831784504079525,
+    "net_pnl": 19.314423426761564,
+    "cost_sensitivity_fixed_trades": {
+      "0.5": {
+        "net_pnl": 19.77847193084855,
+        "return_pct": 1.9778471930848551
+      },
+      "1": {
+        "net_pnl": 19.314423426761564,
+        "return_pct": 1.9314423426761564
+      },
+      "1.5": {
+        "net_pnl": 18.850374922674575,
+        "return_pct": 1.8850374922674578
+      }
+    }
+  }
+}
