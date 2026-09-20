@@ -125,7 +125,7 @@ le bruit de poussière vit, et `Decimal("0")` contre `Decimal("0E-30")` scindera
 
 ```
 canon(x) :  float                     -> repr(float(x))                          # aller-retour le plus court
-            int / bool                -> repr(x)                                 # 0, 0.0 et "0" ne collisionnent jamais
+            int / bool                -> repr(x)                                 # "0" — image distincte du float "0.0"
             None                      -> "null"
             str parsable en Decimal   -> format(Decimal(x).normalize(), "f")     # "0E-30" -> "0"
             autre str                 -> la chaîne verbatim
@@ -134,7 +134,20 @@ sig = sha256(json.dumps(obj, sort_keys=True, separators=(",", ":"),
                         ensure_ascii=False, allow_nan=False).encode("utf-8")).hexdigest()
 ```
 
-`allow_nan=False` : tout NaN/Inf lève → échec de validité (§ I-A.9), jamais une scission de classe silencieuse.
+Tout NaN/Inf **lève** → échec de validité (§ I-A.9), jamais une scission de classe silencieuse.
+
+**Corrections d'implémentation faites avant tout lancement** (aucune sortie de simulation n'existait ; la règle
+opératoire et tous les seuils sont inchangés, seuls le code et un commentaire faux le sont) :
+
+1. Le commentaire « 0, 0.0 et "0" ne collisionnent jamais » était **faux tel qu'écrit** : `canon(0)` et
+   `canon("0")` valent tous deux `"0"` ; seul le float garde `"0.0"`. Le commentaire est corrigé. La collision
+   est sans effet ici : un même chemin JSON ne change jamais de type d'un run à l'autre (le runner écrit les
+   entiers en entiers et les Decimal en chaînes), et deux chemins distincts ne se confondent pas.
+2. `allow_nan=False` **ne pouvait pas se déclencher** : `canon` transforme déjà le float en chaîne avant que
+   `json.dumps` ne s'exécute, si bien qu'un NaN produisait une signature au lieu de lever — exactement la
+   scission silencieuse que cette clause interdit. La garde est désormais **dans `canon` / `canon_tolerant`
+   eux-mêmes** (`NonFiniteValueError`), y compris sur la route Decimal-chaîne (`Decimal("NaN")` parse).
+   Le défaut a été trouvé par le test `test_a_nan_raises_instead_of_splitting_silently`.
 
 Deux tiers, tous deux rapportés, **l'exact étant le nombre de record** :
 - `sig_exact` — comme ci-dessus ;
