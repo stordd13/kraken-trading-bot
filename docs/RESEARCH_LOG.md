@@ -78,7 +78,29 @@ continuité 1 m intacte (72 lignes par paire, 0 trou). Artefacts : `results/c2_r
 Une vérification d'invariance (`git diff --stat f585e8b..HEAD -- src scripts tests config pyproject.toml poetry.lock`,
 sortie vide) établit que le commit d'archivage ne touche aucun code, donc qu'aucun rejeu supplémentaire n'est requis.
 
+### Rejeu diagnostic grid — 96 configs BTC/SOL (inscrit le 2026-09-20, avant lancement)
+
+Diagnostic **pré-spécifié** (décision 15 du `ROADMAP.md`) : hors quota des deux familles par cycle, mais inscrit ici
+comme tout run. Les métriques, les seuils, la règle d'agrégation, la méthode d'incertitude et la définition
+opératoire des trois verdicts sont gelés **avant** le lancement dans `docs/rejeu_grid_prespec.md` (commit `4ecd985`,
+amendé en `aa17ed0` sur deux corrections d'implémentation sans effet sur un seuil ni sur une règle de décision) et
+ne bougent plus. Le rejeu **ne peut rien sélectionner** : toute sélection relève de C3. Le verdict « inconclusif »
+est pleinement admissible, et un négatif propre est un résultat attendu et déclaré d'avance (§ K.1 de la pré-spec).
+
+Trois mesures de **pré-campagne** ont été produites et committées avant le lancement, sur le serveur en checkout
+isolé, base en accès local : couverture réelle des données (`data_coverage.json`), benchmark d'exposition
+reconstruit aux bornes moteur (`benchmark.json`), résolution pré-enregistrée et vérification d'équivalence du MaxDD
+vectorisé (`calibration.json`). Leurs deux conséquences étaient prévues par la pré-spec et sont confirmées par la
+mesure : **BTC/USDC admissible** (1 096 jours couverts sur 1 096, trou 0) et **SOL/USDC inadmissible**
+(825 jours, trou de 271 jours en fenêtre, première bougie 2023-12-28) — et, par une seconde route indépendante, le
+benchmark SOL n'est **pas constructible** (première bougie quotidienne 272 jours après l'ancre). SOL est donc
+**descriptif** : il ne peut produire ni « candidat » ni « dépriorisation », et reste dans le diagnostic technique.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 11 | 2026-09-20 | Rejeu diagnostic grid — P7 **phase 1 uniquement** (ni phase 2, ni `--report`, ni `--selection`) | `grok_grid_atr_adaptive_v4` × **BTC/USDC et SOL/USDC**, `GRID_ATR_GRID` inchangée (`min_spacing_pct` 4 × `atr_multiplier` 4 × `bear_protection_mode` 3) = **96 configs**, défauts de classe (dette 13 non fixée : `max_spacing_pct` 0.05 non balayé, lots 25 USDC, `bias_1d` 0.2, `max_allocation_pct` non appliqué) | Binance **end-stampées**, 2023-04-01 → 2026-04-01 ; segment `all` **seul décisionnel**, `train`/`test` descriptifs et jamais concaténés (288 simulations ≠ 288 observations) | branche `feat/rejeu-grid-diag` @ `aa17ed0`, depuis `dev` @ tag `v2.10.0-c2-replay` (`9897803`) ; métriques **v2** ; `replay_version` **2** | bybit maker 0.10 % / taker 0.25 % + coûts GATE B par paire (`config/pair_costs_b4.json` : BTC 2/2 bps, SOL 11/2 bps), `--min-order-usdc 5` (inerte sur le grid, valeur de provenance) | **candidat / dépriorisation / inconclusif**, par la règle gelée : couverture ≥ **25 cycles achevés** (`total_trades − liquidation.positions`) ; plancher économique **`total_return_pct(all) ≥ 6 %`** (convention de poursuite de recherche, pas un seuil de déploiement) ; **Δ CAGR > 0** contre un blend **statique** cash + λ·B&H apparié par recherche sur le drawdown quotidien **et** sur la volatilité ; **borne simultanée `LB_j > 0` sur les six combinaisons** (L ∈ {10, 21, 42} × appariement), λ ré-estimé dans chaque réplication ; Sharpe et `net_pnl/total_fees` **descriptifs, jamais décisionnels** ; SOL descriptif | selon le verdict : travail de **mécanisme** (§ 5 / § 6 des contraintes) puis C3 — ou clôture de la famille grid, toute reprise exigeant un mécanisme nouveau (clause de clôture § K.2) | `results/rejeu_grid_report.md`, `docs/rejeu_grid_prespec.md`, artefacts `results/rejeu_grid_20260919/` |
+
 ### Essais à venir (à inscrire avant lancement)
 
-_(vide — runs R&D gelés jusqu'au merge de C1-C2 ; prochains inscrits attendus : rejeu diagnostic grid 96 configs
-BTC/SOL, protocole C3)_
+_(prochain inscrit attendu : **protocole C3** — validation chronologique, equity continue, sélection sur le passé seul.
+Le rejeu diagnostic grid est inscrit ci-dessus, entrée 11.)_
