@@ -25,10 +25,11 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import hashlib
 import math
 from pathlib import Path
+import statistics
 import sys
 from typing import Any
 
@@ -40,6 +41,10 @@ sys.path.insert(0, str(_ROOT / "scripts"))
 sys.path.insert(0, str(_ROOT / "scripts" / "audit"))
 
 import rejeu_common as rc  # noqa: E402
+
+from krakenbot.backtest_metrics import daily_grid, max_drawdown_pct  # noqa: E402
+
+__all_reexports__ = (daily_grid, max_drawdown_pct)
 
 # Réexports génériques — canonicalisation et entrées-sorties. Le contrat de `canon` / `sig` est
 # adopté explicitement par le § A.1 bis du protocole, pas hérité en silence.
@@ -195,9 +200,46 @@ class EntryRefusedError(MissingEvidenceError):
         self.reason = reason
 
 
-#: Champs externes **réellement optionnels** — la seule liste blanche que le scan de source accepte
-#: pour un ``.get(...)`` dans ``c3_*.py``. Tout autre champ est obligatoire et passe par ``require_*``.
-OPTIONAL_FIELDS: frozenset[str] = frozenset({"estimability"})
+#: Champs externes **réellement optionnels** (absents **ou** nuls → ``None``) — la seule liste blanche
+#: que le scan de source accepte pour un ``.get(...)`` ou un ``optional_*(...)`` dans ``c3_*.py``.
+#: Tout autre champ est obligatoire et passe par ``require_*``. Chaque entrée dit pourquoi :
+#: ``estimability`` (déclaration recoupée, § A.13) ; ``liquidation`` et ``dca_counters`` (le runner
+#: exporte ``null`` pour le moteur signal et hors DCA, `run_p7_grid_search.py:768-772` — D6 tranche,
+#: § A.8) ; ``lots`` (sous-clé de ``liquidation``, exigence C3b, preuve par lot de D6) ;
+#: ``flat_start_proof`` et ``first_fill_at`` (§ B.2 et § B.6, non vérifiables sous les artefacts
+#: actuels) ; ``decision_timeframes`` (surcharge par candidat de la déclaration par stratégie).
+OPTIONAL_FIELDS: frozenset[str] = frozenset(
+    {
+        "estimability",
+        "liquidation",
+        "dca_counters",
+        "lots",
+        "flat_start_proof",
+        "first_fill_at",
+        "decision_timeframes",
+    }
+)
+
+#: Champs **présents mais nullables** (la clé doit exister ; ``null`` est une valeur documentée) — la
+#: seule liste que le scan accepte pour un ``nullable_*(...)``. Origine de chaque ``null`` :
+#: ``stale_by_candles``, ``first``, ``last`` — rien chargé (`backtest.py:508-528`) ; ``timestamp``,
+#: ``reference_price``, ``price``, ``spread_pct``, ``slippage_pct``, ``avg_holding_minutes`` — aucune
+#: liquidation forcée (`backtest.py:3296-3300`) ; ``entry_price``, ``pnl`` — lot à coût inconnu.
+NULLABLE_FIELDS: frozenset[str] = frozenset(
+    {
+        "stale_by_candles",
+        "first",
+        "last",
+        "timestamp",
+        "reference_price",
+        "price",
+        "spread_pct",
+        "slippage_pct",
+        "avg_holding_minutes",
+        "entry_price",
+        "pnl",
+    }
+)
 
 
 def _require(obj: Any, key: str, *, where: str) -> Any:
@@ -258,6 +300,137 @@ def require_str(obj: Any, key: str, *, where: str, allowed: Sequence[str] | None
     if allowed is not None and value not in allowed:
         raise MissingEvidenceError(f"{where}.{key}: {value!r} hors liste close {sorted(allowed)}")
     return value
+
+
+def require_decimal(obj: Any, key: str, *, where: str) -> Decimal:
+    """Un montant exporté en **chaîne Decimal** (`_dec = str(Decimal)`, `backtest.py:3689`), fini.
+
+    Un ``int`` est accepté (JSON ne distingue pas ``1000`` de ``"1000"`` dans un manifeste) ; un
+    ``float`` aussi, converti par ``str`` comme le fait le projet ; un booléen jamais.
+    """
+    value = _require(obj, key, where=where)
+    if isinstance(value, bool) or not isinstance(value, (str, int, float, Decimal)):
+        raise MissingEvidenceError(f"{where}.{key}: Decimal attendu, reçu {type(value).__name__}")
+    try:
+        number = Decimal(str(value))
+    except InvalidOperation as exc:
+        raise MissingEvidenceError(f"{where}.{key}: {value!r} n'est pas un Decimal") from exc
+    if not number.is_finite():
+        raise InvalidValueError(f"{where}.{key}: valeur non finie ({value!r})")
+    return number
+
+
+def require_sequence(obj: Any, key: str, *, where: str, min_len: int = 0) -> Sequence[Any]:
+    """Une liste JSON (jamais une chaîne, jamais un bloc), d'au moins ``min_len`` éléments."""
+    value = _require(obj, key, where=where)
+    if isinstance(value, (str, bytes, Mapping)) or not isinstance(value, Sequence):
+        raise MissingEvidenceError(f"{where}.{key}: suite attendue, reçu {type(value).__name__}")
+    if len(value) < min_len:
+        raise MissingEvidenceError(f"{where}.{key}: {len(value)} éléments, minimum {min_len}")
+    return value
+
+
+def parse_datetime(value: Any, *, where: str) -> datetime:
+    """Un instant ISO 8601 **avec fuseau** (UTC pour tous les timestamps du projet), rendu en UTC."""
+    if not isinstance(value, str):
+        raise MissingEvidenceError(f"{where}: instant ISO attendu, reçu {type(value).__name__}")
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise MissingEvidenceError(f"{where}: {value!r} n'est pas un instant ISO") from exc
+    if parsed.tzinfo is None:
+        raise MissingEvidenceError(f"{where}: {value!r} sans fuseau horaire")
+    return parsed.astimezone(UTC)
+
+
+def require_datetime(obj: Any, key: str, *, where: str) -> datetime:
+    return parse_datetime(_require(obj, key, where=where), where=f"{where}.{key}")
+
+
+def _optional(obj: Any, key: str, *, where: str, must_exist: bool) -> Any:
+    """Le seul point de lecture d'un champ optionnel ou nullable — jamais un ``.get`` ailleurs."""
+    if not isinstance(obj, Mapping):
+        raise MissingEvidenceError(f"{where}: bloc attendu, reçu {type(obj).__name__}")
+    if key not in obj:
+        if must_exist:
+            raise MissingEvidenceError(f"{where}.{key}: clé absente (nullable, jamais absente)")
+        return None
+    return obj[key]
+
+
+def optional_mapping(obj: Any, key: str, *, where: str) -> Mapping[str, Any] | None:
+    """Bloc **optionnel** (``OPTIONAL_FIELDS``) : absent ou ``null`` → ``None`` ; mal typé → erreur."""
+    value = _optional(obj, key, where=where, must_exist=False)
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise MissingEvidenceError(f"{where}.{key}: bloc attendu, reçu {type(value).__name__}")
+    return value
+
+
+def optional_sequence(obj: Any, key: str, *, where: str) -> Sequence[Any] | None:
+    value = _optional(obj, key, where=where, must_exist=False)
+    if value is None:
+        return None
+    if isinstance(value, (str, bytes, Mapping)) or not isinstance(value, Sequence):
+        raise MissingEvidenceError(f"{where}.{key}: suite attendue, reçu {type(value).__name__}")
+    return value
+
+
+def optional_str(obj: Any, key: str, *, where: str) -> str | None:
+    value = _optional(obj, key, where=where, must_exist=False)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise MissingEvidenceError(f"{where}.{key}: chaîne attendue, reçu {type(value).__name__}")
+    return value
+
+
+def nullable_int(obj: Any, key: str, *, where: str, minimum: int | None = None) -> int | None:
+    """Entier **nullable** (``NULLABLE_FIELDS``) : la clé doit exister, ``null`` est une valeur."""
+    value = _optional(obj, key, where=where, must_exist=True)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise MissingEvidenceError(f"{where}.{key}: entier attendu, reçu {type(value).__name__}")
+    if minimum is not None and value < minimum:
+        raise InvalidValueError(f"{where}.{key}: {value} < minimum {minimum}")
+    return int(value)
+
+
+def nullable_float(obj: Any, key: str, *, where: str) -> float | None:
+    value = _optional(obj, key, where=where, must_exist=True)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+        raise MissingEvidenceError(f"{where}.{key}: nombre attendu, reçu {type(value).__name__}")
+    number = float(value)
+    if not math.isfinite(number):
+        raise InvalidValueError(f"{where}.{key}: valeur non finie ({value!r})")
+    return number
+
+
+def nullable_decimal(obj: Any, key: str, *, where: str) -> Decimal | None:
+    value = _optional(obj, key, where=where, must_exist=True)
+    if value is None:
+        return None
+    return require_decimal(obj, key, where=where)
+
+
+def nullable_str(obj: Any, key: str, *, where: str) -> str | None:
+    value = _optional(obj, key, where=where, must_exist=True)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise MissingEvidenceError(f"{where}.{key}: chaîne attendue, reçu {type(value).__name__}")
+    return value
+
+
+def nullable_datetime(obj: Any, key: str, *, where: str) -> datetime | None:
+    value = _optional(obj, key, where=where, must_exist=True)
+    if value is None:
+        return None
+    return parse_datetime(value, where=f"{where}.{key}")
 
 
 def require_finite_series(
@@ -615,7 +788,7 @@ def file_sha256(path: Path) -> str:
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
-def artifact_header(now: datetime, inputs: dict[str, Path] | None = None) -> dict[str, Any]:
+def artifact_header(now: datetime, inputs: Mapping[str, Path] | None = None) -> dict[str, Any]:
     """En-tête commun : `generated_at`, `protocole`, `inputs_sha256`."""
     header: dict[str, Any] = {
         "generated_at": now.isoformat(),
@@ -624,3 +797,515 @@ def artifact_header(now: datetime, inputs: dict[str, Path] | None = None) -> dic
     if inputs:
         header["inputs_sha256"] = {k: file_sha256(v) for k, v in sorted(inputs.items())}
     return header
+
+
+def envelope(
+    step: str,
+    now: datetime,
+    inputs: Mapping[str, Path],
+    *,
+    exit_code: int,
+    violations: Sequence[str] = (),
+) -> dict[str, Any]:
+    """L'enveloppe commune à tout artefact `c3_*` : en-tête, étape, `ok`, `exit_code`, `invalide`.
+
+    `invalide` vaut **vrai si et seulement si** l'artefact est le diagnostic d'une violation
+    (code 1) : il porte les violations et aucun résultat citable. Un refus (code 2) n'est pas
+    « invalide », il est un refus — seul `c3_entry` en écrit un (§ I.1 l.1558 : rien n'est publié
+    au-delà de la validation).
+    """
+    payload: dict[str, Any] = dict(artifact_header(now, inputs))
+    payload.update(
+        {
+            "step": step,
+            "ok": exit_code == 0,
+            "exit_code": exit_code,
+            "invalide": exit_code == 1,
+            "violations": list(violations),
+        }
+    )
+    return payload
+
+
+def check_inputs_match(
+    artifact: Mapping[str, Any], inputs: Mapping[str, Path], *, where: str
+) -> list[str]:
+    """Empreintes d'un artefact amont contre les fichiers réellement fournis — discordances.
+
+    Elles **détectent une discordance** ; elles ne prouvent pas que l'invocation courante a réussi.
+    """
+    recorded = require_mapping(artifact, "inputs_sha256", where=where)
+    out: list[str] = []
+    for name, path in sorted(inputs.items()):
+        stated = require_str(recorded, name, where=f"{where}.inputs_sha256")
+        actual = file_sha256(path)
+        if stated != actual:
+            out.append(
+                f"{where}.inputs_sha256.{name}: enregistré {stated[:16]}, fichier {actual[:16]}"
+            )
+    return out
+
+
+def require_upstream_ok(artifact: Mapping[str, Any], *, where: str) -> None:
+    """Un artefact amont n'est consommable que s'il enregistre lui-même son succès (code 0)."""
+    ok = require_bool(artifact, "ok", where=where)
+    invalide = require_bool(artifact, "invalide", where=where)
+    code = require_int(artifact, "exit_code", where=where)
+    if invalide or not ok or code != 0:
+        raise EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"{where}: artefact amont en échec (ok={ok}, invalide={invalide}, exit_code={code})",
+        )
+
+
+def parse_now(value: str | None) -> datetime:
+    """`--now` injectable (§ L.4) : ISO UTC, ou l'instant courant. Lève `ValueError` si illisible."""
+    if value is None:
+        return datetime.now(UTC)
+    parsed = datetime.fromisoformat(value)
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+# ---------------------------------------------------------------------------
+# Vocabulaires clos du manifeste et de la continuité
+# ---------------------------------------------------------------------------
+
+ENGINES: tuple[str, ...] = ("grid", "signal")
+#: § C.4 — seul `prefix` est décisionnel ; `reestimated` est descriptif.
+LAMBDA_MODES: tuple[str, ...] = ("prefix", "reestimated")
+LAMBDA_MODE_DECISIONAL = "prefix"
+#: § C.4 — étiquette obligatoire à côté de tout λ.
+LAMBDA_LABEL = (
+    "un appariement sur un risque réalisé est une comparaison rétrospective, "
+    "jamais une allocation validée pour l'avenir"
+)
+#: § A.11 — clause verbatim, citée dans tout rapport qui s'abstient.
+ABSTENTION_CLAUSE = (
+    "Aucune clause n'est relâchée, aucun ancrage n'est déplacé, aucune fenêtre n'est élargie, "
+    "aucun univers n'est étendu, aucun candidat n'est repêché. Un périmètre qui se révèle mal "
+    "choisi est un résultat."
+)
+CONTINUITY_STATES: tuple[str, ...] = ("VERIFIED", "DECLARED", "NOT_VERIFIABLE", "FAILED")
+#: Les quatre séries que D1 couvre (§ A.8), en minutes.
+D1_INTERVALS: tuple[int, ...] = (5, 240, 1440, 10080)
+WEEK_MINUTES = 10_080
+#: Contrat C2 de l'export `warmup` (`backtest.py:309`, `:519`) — recopié pour **recouper** la valeur
+#: déclarée de `sufficient`, jamais pour décider ; non décisionnel, hors registre.
+WARMUP_GAP_TOLERANCE = 1
+
+
+# ---------------------------------------------------------------------------
+# Manifeste (§ A.5, § A.6) — typage strict ; les valeurs gelées sont assertées par c3_anchor
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Candidate:
+    strategy: str
+    pair: str
+    params: Mapping[str, Any]
+    identity: str
+    decision_timeframes: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class Manifest:
+    raw: Mapping[str, Any]
+    window_start: datetime
+    window_end: datetime
+    anchor_fraction: float
+    prefix_segment: str
+    exchange: str
+    exec_interval: int
+    timeframes: Mapping[str, int]
+    fee_model: str
+    taker: Decimal
+    pair_costs_file: str
+    pair_costs: Mapping[str, tuple[Decimal, Decimal]]
+    min_order_usdc: float
+    provenance: str
+    candidates: tuple[Candidate, ...]
+    engines: Mapping[str, str]
+    thresholds: Mapping[str, Mapping[str, Any]]
+    lambda_mode: str
+    seed: int
+    bootstrap_b: int
+    block_lengths: tuple[int, ...]
+    bound_level: float
+    variant_id: str
+    parent_is_root: bool
+    parent_variant_key: str | None
+    research_log_entry: str
+    protocol_sha256: str
+
+    @property
+    def capital(self) -> Decimal:
+        return Decimal(str(self.thresholds["CAPITAL"]["value"]))
+
+    @property
+    def pairs(self) -> tuple[str, ...]:
+        return tuple(sorted({c.pair for c in self.candidates}))
+
+    def anchor(self) -> datetime:
+        return anchor_of(self.window_start, self.window_end, self.anchor_fraction)
+
+
+def load_manifest(raw: Any) -> Manifest:
+    """Typage strict du manifeste — chaque champ par l'accesseur, chaque liste close vérifiée.
+
+    Ce que cette fonction **ne fait pas** : asserter les valeurs gelées (fraction d'ancrage,
+    paramètres d'incertitude, seuils, sha256 du protocole). C'est le rôle de `c3_anchor`, étape 1.
+    """
+    where = "manifest"
+    if not isinstance(raw, Mapping):
+        raise MissingEvidenceError(f"{where}: bloc attendu, reçu {type(raw).__name__}")
+    window = require_mapping(raw, "window", where=where)
+    start = require_datetime(window, "start", where=f"{where}.window")
+    end = require_datetime(window, "end", where=f"{where}.window")
+    if end <= start:
+        raise MissingEvidenceError(
+            f"{where}.window: fin {end.isoformat()} <= début {start.isoformat()}"
+        )
+    fraction = require_float(raw, "anchor_fraction", where=where)
+    prefix = require_str(raw, "prefix_segment", where=where)
+    data = require_mapping(raw, "data", where=where)
+    exchange = require_str(data, "exchange", where=f"{where}.data")
+    exec_interval = require_int(data, "exec_interval", where=f"{where}.data", minimum=1)
+    tf_block = require_mapping(data, "timeframes", where=f"{where}.data")
+    timeframes = {
+        label: require_int(tf_block, label, where=f"{where}.data.timeframes", minimum=1)
+        for label in tf_block
+    }
+    if not timeframes:
+        raise MissingEvidenceError(f"{where}.data.timeframes: aucune série déclarée")
+    fees = require_mapping(raw, "fees", where=where)
+    fee_model = require_str(fees, "model", where=f"{where}.fees")
+    taker = require_decimal(fees, "taker", where=f"{where}.fees")
+    pair_costs_file = require_str(fees, "pair_costs_file", where=f"{where}.fees")
+    costs_block = require_mapping(fees, "pair_costs", where=f"{where}.fees")
+    pair_costs: dict[str, tuple[Decimal, Decimal]] = {}
+    for pair in costs_block:
+        block = require_mapping(costs_block, pair, where=f"{where}.fees.pair_costs")
+        pair_costs[pair] = (
+            require_decimal(block, "spread", where=f"{where}.fees.pair_costs.{pair}"),
+            require_decimal(block, "slippage", where=f"{where}.fees.pair_costs.{pair}"),
+        )
+    min_order = require_float(raw, "min_order_usdc", where=where)
+    universe = require_mapping(raw, "universe", where=where)
+    provenance = require_str(universe, "provenance", where=f"{where}.universe", allowed=PROVENANCES)
+    strategies_block = require_mapping(raw, "strategies", where=where)
+    engines: dict[str, str] = {}
+    strategy_tfs: dict[str, tuple[str, ...]] = {}
+    for name in strategies_block:
+        block = require_mapping(strategies_block, name, where=f"{where}.strategies")
+        engines[name] = require_str(
+            block, "engine", where=f"{where}.strategies.{name}", allowed=ENGINES
+        )
+        tfs = require_sequence(
+            block, "decision_timeframes", where=f"{where}.strategies.{name}", min_len=1
+        )
+        strategy_tfs[name] = _timeframe_labels(
+            tfs, timeframes, where=f"{where}.strategies.{name}.decision_timeframes"
+        )
+    raw_candidates = require_sequence(universe, "candidates", where=f"{where}.universe", min_len=1)
+    candidates: list[Candidate] = []
+    seen: set[str] = set()
+    for i, item in enumerate(raw_candidates):
+        cwhere = f"{where}.universe.candidates[{i}]"
+        if not isinstance(item, Mapping):
+            raise MissingEvidenceError(f"{cwhere}: bloc attendu, reçu {type(item).__name__}")
+        strategy = require_str(item, "strategy", where=cwhere)
+        pair = require_str(item, "pair", where=cwhere)
+        params = require_mapping(item, "params", where=cwhere)
+        if strategy not in engines:
+            raise MissingEvidenceError(
+                f"{cwhere}.strategy: {strategy!r} absent de manifest.strategies"
+            )
+        if pair not in pair_costs:
+            raise MissingEvidenceError(
+                f"{cwhere}.pair: {pair!r} sans coûts déclarés dans manifest.fees.pair_costs"
+            )
+        override = optional_sequence(item, "decision_timeframes", where=cwhere)
+        tfs = (
+            strategy_tfs[strategy]
+            if override is None
+            else _timeframe_labels(override, timeframes, where=f"{cwhere}.decision_timeframes")
+        )
+        identity = candidate_identity(strategy, pair, params)
+        if identity in seen:
+            raise EntryRefusedError(
+                "R0_INVALID_RUN", f"{cwhere}: identité canonique dupliquée {identity[:16]} (§ A.2)"
+            )
+        seen.add(identity)
+        candidates.append(Candidate(strategy, pair, params, identity, tfs))
+    rule = require_mapping(raw, "selection_rule", where=where)
+    require_str(rule, "text", where=f"{where}.selection_rule")
+    thresholds_block = require_mapping(rule, "thresholds", where=f"{where}.selection_rule")
+    thresholds: dict[str, Mapping[str, Any]] = {}
+    for name in thresholds_block:
+        block = require_mapping(thresholds_block, name, where=f"{where}.selection_rule.thresholds")
+        _require(block, "value", where=f"{where}.selection_rule.thresholds.{name}")
+        require_str(block, "class", where=f"{where}.selection_rule.thresholds.{name}")
+        require_str(block, "section", where=f"{where}.selection_rule.thresholds.{name}")
+        thresholds[name] = block
+    if "CAPITAL" not in thresholds:
+        raise MissingEvidenceError(f"{where}.selection_rule.thresholds: CAPITAL absent (§ 0.5)")
+    benchmark = require_mapping(raw, "benchmark", where=where)
+    require_str(benchmark, "definition", where=f"{where}.benchmark")
+    lambda_mode = require_str(
+        benchmark, "lambda_mode", where=f"{where}.benchmark", allowed=LAMBDA_MODES
+    )
+    gates = require_mapping(raw, "gates_Q", where=where)
+    for gate in ("Q1", "Q2", "Q3"):
+        require_str(gates, gate, where=f"{where}.gates_Q")
+    uncertainty = require_mapping(raw, "uncertainty", where=where)
+    seed = require_int(uncertainty, "seed", where=f"{where}.uncertainty", minimum=0)
+    bootstrap_b = require_int(uncertainty, "B", where=f"{where}.uncertainty")
+    lengths = require_sequence(
+        uncertainty, "block_lengths", where=f"{where}.uncertainty", min_len=1
+    )
+    block_lengths: list[int] = []
+    for i, item in enumerate(lengths):
+        if isinstance(item, bool) or not isinstance(item, int):
+            raise MissingEvidenceError(
+                f"{where}.uncertainty.block_lengths[{i}]: entier attendu, reçu {item!r}"
+            )
+        block_lengths.append(item)
+    bound_level = require_float(uncertainty, "bound_level", where=f"{where}.uncertainty")
+    variant_id = require_str(raw, "variant_id", where=where)
+    if not variant_id:
+        raise MissingEvidenceError(f"{where}.variant_id: chaîne vide")
+    parent = require_mapping(raw, "parent", where=where)
+    is_root = require_bool(parent, "is_root", where=f"{where}.parent")
+    parent_key = None if is_root else require_str(parent, "variant_key", where=f"{where}.parent")
+    research_log_entry = require_str(raw, "research_log_entry", where=where)
+    protocol_sha = require_str(raw, "protocol_sha256", where=where)
+    return Manifest(
+        raw=raw,
+        window_start=start,
+        window_end=end,
+        anchor_fraction=fraction,
+        prefix_segment=prefix,
+        exchange=exchange,
+        exec_interval=exec_interval,
+        timeframes=timeframes,
+        fee_model=fee_model,
+        taker=taker,
+        pair_costs_file=pair_costs_file,
+        pair_costs=pair_costs,
+        min_order_usdc=min_order,
+        provenance=provenance,
+        candidates=tuple(candidates),
+        engines=engines,
+        thresholds=thresholds,
+        lambda_mode=lambda_mode,
+        seed=seed,
+        bootstrap_b=bootstrap_b,
+        block_lengths=tuple(block_lengths),
+        bound_level=bound_level,
+        variant_id=variant_id,
+        parent_is_root=is_root,
+        parent_variant_key=parent_key,
+        research_log_entry=research_log_entry,
+        protocol_sha256=protocol_sha,
+    )
+
+
+def _timeframe_labels(
+    items: Sequence[Any], timeframes: Mapping[str, int], *, where: str
+) -> tuple[str, ...]:
+    labels: list[str] = []
+    for i, item in enumerate(items):
+        if not isinstance(item, str):
+            raise MissingEvidenceError(f"{where}[{i}]: chaîne attendue, reçu {type(item).__name__}")
+        if item not in timeframes:
+            raise MissingEvidenceError(
+                f"{where}[{i}]: {item!r} hors des séries déclarées {sorted(timeframes)}"
+            )
+        labels.append(item)
+    if len(set(labels)) != len(labels):
+        raise MissingEvidenceError(f"{where}: doublon")
+    return tuple(labels)
+
+
+# ---------------------------------------------------------------------------
+# § A.7 — la projection d'ancrage π_T, liste blanche exhaustive
+# ---------------------------------------------------------------------------
+
+#: Champs de premier niveau retenus par π_T — identité et contrats (§ A.7). Toute autre clé de
+#: premier niveau est écartée sans être lue, ni hachée, ni rapportée.
+PREFIX_WHITELIST_IDENTITY: tuple[str, ...] = ("strategy", "pair", "params", "effective_params")
+PREFIX_WHITELIST_CONTRACTS: tuple[str, ...] = (
+    "metrics_version",
+    "replay_version",
+    "exchange",
+    "fees",
+    "pair_costs",
+    "pair_costs_file",
+    "min_order_usdc",
+)
+
+
+def project_prefix(entry: Mapping[str, Any], prefix: str, *, where: str) -> dict[str, Any]:
+    """π_T(O) pour une observation : ne retient que la liste blanche du § A.7, et rien d'autre.
+
+    Les bornes retenues sont **les seules bornes du segment de préfixe** ; les blocs de segment
+    retenus sont ceux du préfixe, **entiers** ; `liquidation` et `dca_counters` sont optionnels
+    (`OPTIONAL_FIELDS`) et projetés à `null` quand le runner les a exportés `null`.
+    """
+    identity = {key: _require(entry, key, where=where) for key in PREFIX_WHITELIST_IDENTITY}
+    contracts = {key: _require(entry, key, where=where) for key in PREFIX_WHITELIST_CONTRACTS}
+    period = require_mapping(entry, "period", where=where)
+    bounds = {
+        "start": _require(period, f"{prefix}_start", where=f"{where}.period"),
+        "end": _require(period, f"{prefix}_end", where=f"{where}.period"),
+    }
+    metrics = require_mapping(entry, prefix, where=where)
+    equity = require_mapping(
+        require_mapping(entry, "equity_daily", where=where), prefix, where=f"{where}.equity_daily"
+    )
+    liquidation_block = optional_mapping(entry, "liquidation", where=where)
+    liquidation = (
+        None
+        if liquidation_block is None
+        else require_mapping(liquidation_block, prefix, where=f"{where}.liquidation")
+    )
+    warmup = require_mapping(
+        require_mapping(entry, "warmup", where=where), prefix, where=f"{where}.warmup"
+    )
+    rejections = require_mapping(
+        require_mapping(entry, "rejections", where=where), prefix, where=f"{where}.rejections"
+    )
+    dca_block = optional_mapping(entry, "dca_counters", where=where)
+    dca = (
+        None
+        if dca_block is None
+        else require_mapping(dca_block, prefix, where=f"{where}.dca_counters")
+    )
+    return {
+        "identity": identity,
+        "contracts": contracts,
+        "bounds": bounds,
+        "metrics": metrics,
+        "equity_daily": equity,
+        "liquidation": liquidation,
+        "warmup": warmup,
+        "rejections": rejections,
+        "dca_counters": dca,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Recalculs depuis la trajectoire quotidienne (§ A.8 D4, § A.9, § F.2 c) et amorçage (§ B.5)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class DailyRecompute:
+    """Ce que la trajectoire quotidienne exportée permet de recalculer — et ce qu'elle interdit."""
+
+    n_points: int
+    returns: tuple[float, ...]
+    undefined_returns: int
+    domain_ok: bool
+    cagr_pct: float | None
+    mdd_daily: float
+    sigma_daily: float | None
+    alert_days: tuple[int, ...]
+
+
+def recompute_daily(values: Sequence[float], *, days: float) -> DailyRecompute:
+    """Rendements, CAGR § F.2 (c), MDD quotidien sur l'index Decimal, σ échantillon (ddof 1).
+
+    L'appelant a validé la finitude (`require_finite_series`) : un `NaN` fourni est une violation,
+    pas un cas de ce calcul. Ici, un dénominateur `<= 0` rend le rendement **indéfini** et
+    `domain_ok` faux — c'est D4 (portée candidat), parce que le rendement est **dérivé** d'une NAV
+    fournie ; le § F.7 (violation) porte sur des rendements **fournis**. Le MDD suit l'algorithme du
+    moteur (`backtest_metrics.max_drawdown_pct` sur l'index) ; la NAV exportée est un `float`, donc
+    ce recalcul ne restitue pas la précision Decimal du moteur : l'écart est rapporté, non classé.
+    """
+    vals = [float(v) for v in values]
+    returns: list[float] = []
+    alerts: list[int] = []
+    undefined = 0
+    index: list[Decimal] = [Decimal(1)]
+    for k in range(1, len(vals)):
+        prev, cur = vals[k - 1], vals[k]
+        if prev > 0:
+            r = cur / prev - 1.0
+            returns.append(r)
+            if r <= -0.5:
+                alerts.append(k)
+            dprev, dcur = Decimal(str(prev)), Decimal(str(cur))
+            index.append(index[-1] * (Decimal(1) + (dcur - dprev) / dprev))
+        else:
+            undefined += 1
+            index.append(index[-1])
+    domain_ok = len(vals) >= 2 and all(v > 0 for v in vals)
+    cagr = cagr_pct(returns, days) if domain_ok and returns else None
+    sigma = statistics.stdev(returns) if len(returns) > 1 else None
+    return DailyRecompute(
+        n_points=len(vals),
+        returns=tuple(returns),
+        undefined_returns=undefined,
+        domain_ok=domain_ok,
+        cagr_pct=cagr,
+        mdd_daily=max_drawdown_pct(index),
+        sigma_daily=sigma,
+        alert_days=tuple(alerts),
+    )
+
+
+def warmup_sufficient(block: Mapping[str, Any], *, where: str) -> tuple[bool, bool]:
+    """`(recalculé, déclaré)` de `sufficient` — règle C2 (`backtest.py:519`), recoupée, jamais recopiée."""
+    required = require_int(block, "required", where=where, minimum=0)
+    loaded = require_int(block, "loaded", where=where, minimum=0)
+    stale = nullable_int(block, "stale_by_candles", where=where, minimum=0)
+    gap = require_int(block, "largest_gap_candles", where=where, minimum=0)
+    declared = require_bool(block, "sufficient", where=where)
+    recomputed = loaded >= required and stale == 0 and gap <= WARMUP_GAP_TOLERANCE
+    return recomputed, declared
+
+
+# ---------------------------------------------------------------------------
+# § A.8 D1 — dénominateurs par timeframe, recalculés depuis les bornes (jamais lus)
+# ---------------------------------------------------------------------------
+
+
+def full_days_in(start: datetime, end: datetime) -> int:
+    """Jours civils **entiers** `[d 00:00, d+1 00:00]` inclus dans `[start, end]` — l'unité de D1
+    pour 5 min, 4 h et 1 j ; un jour de bord partiel n'est pas une unité (il ne peut atteindre ni
+    144 bougies ni 6 estampilles)."""
+    first = start.replace(hour=0, minute=0, second=0, microsecond=0)
+    if first < start:
+        first += timedelta(days=1)
+    count = 0
+    day = first
+    while day + timedelta(days=1) <= end:
+        count += 1
+        day += timedelta(days=1)
+    return count
+
+
+def weekly_stamps_in(start: datetime, end: datetime) -> int:
+    """Estampilles hebdomadaires (lundi 00:00, fin de période) dans `(start, end]` — l'unité de D1
+    pour 1 w : des **périodes**, jamais des jours (§ A.8)."""
+    stamp = first_stamp_strictly_after(start, WEEK_MINUTES)
+    count = 0
+    while stamp <= end:
+        count += 1
+        stamp += timedelta(days=7)
+    return count
+
+
+def expected_units(start: datetime, end: datetime, interval: int) -> int:
+    return weekly_stamps_in(start, end) if interval == WEEK_MINUTES else full_days_in(start, end)
+
+
+def coverage_unit(interval: int) -> str:
+    return "week" if interval == WEEK_MINUTES else "day"
+
+
+def max_gap_days(prefix_days: float) -> float:
+    """`min(31 j, 3 % des jours du préfixe)` (§ A.8 D1)."""
+    return min(float(MAX_GAP_DAYS_ABS), MAX_GAP_RATIO * prefix_days)
