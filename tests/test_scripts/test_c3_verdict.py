@@ -20,6 +20,7 @@ les **conséquences** des règles, ce qu'un index de symboles ne peut pas faire 
 # ruff: noqa: E402
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 import sys
 from typing import Any
@@ -273,3 +274,224 @@ def test_toutes_les_raisons_de_la_liste_close_sont_connues_du_module() -> None:
     assert set(cc.REASON_SCOPE) == set(cc.REASON_PRIORITY)
     assert set(cv.BLOCKING_RUN_REASONS) <= set(cc.REASON_PRIORITY)
     assert "F_CANNOT_SEPARATE" not in cv.BLOCKING_RUN_REASONS
+
+
+# ---------------------------------------------------------------------------
+# Entrées adverses — un module qui refuse de mauvais artefacts se teste avec de
+# mauvais artefacts. Quatre verdicts faux reproduits, puis la garde généralisée.
+# ---------------------------------------------------------------------------
+
+
+def _sound() -> dict[str, dict[str, Any]]:
+    """Le témoin sain : il doit rendre `validé`, sans quoi les contre-tests ne prouvent rien."""
+    return _artifacts(
+        returns_config=_varying(7),
+        returns_bench=[0.0] * N_DAYS,
+        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+    )
+
+
+def test_le_temoin_sain_rend_bien_valide() -> None:
+    assert cv.decide(_sound(), violations=[]).issue == cc.ISSUE_VALIDE
+
+
+def test_provenance_supprimee_refuse_l_entree_au_lieu_de_valider() -> None:
+    """Défaut reproduit : une provenance absente ne bloquait rien et rendait `validé`."""
+    artifacts = _sound()
+    artifacts["anchor"] = {}
+    with pytest.raises(cc.MissingEvidenceError, match="universe_provenance"):
+        cv.decide(artifacts, violations=[])
+
+
+def test_bloc_de_continuite_vide_refuse_l_entree_au_lieu_de_valider() -> None:
+    """Défaut reproduit : les contrôles ne bloquaient que sur `False` exactement."""
+    artifacts = _sound()
+    artifacts["continuity"] = {}
+    with pytest.raises(cc.MissingEvidenceError, match="warmup_anchor_ok"):
+        cv.decide(artifacts, violations=[])
+
+
+def test_bornes_infinies_refusent_l_entree_au_lieu_de_valider() -> None:
+    """Défaut reproduit : `float('inf') > 0` est vrai, donc `+inf` franchissait le plancher."""
+    artifacts = _sound()
+    artifacts["evaluation"]["bounds"] = {k: float("inf") for k in artifacts["evaluation"]["bounds"]}
+    with pytest.raises(cc.MissingEvidenceError, match="non finie"):
+        cv.decide(artifacts, violations=[])
+
+
+def test_estimabilite_declaree_contredite_par_les_series_est_une_violation() -> None:
+    """Défaut reproduit : le statut déclaré était cru, et une inactive repartait en `réfuté`."""
+    flat = [0.0] * N_DAYS
+    artifacts = _artifacts(
+        returns_config=flat,
+        returns_bench=_varying(11),
+        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
+    )
+    artifacts["evaluation"]["estimability"] = {"ok": True, "E1": True, "E2": True}
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+
+    assert decision.issue == cc.ISSUE_INCONCLUSIF
+    assert decision.reason == "F_NOT_ESTIMABLE"
+    assert decision.issue != cc.ISSUE_REFUTE
+    assert violations, "un statut déclaré contredit par les séries doit être une violation"
+    assert any("E1" in v for v in violations)
+    assert decision.estimability is not None
+    assert decision.estimability["E1"] is False, "le statut recalculé fait foi"
+
+
+def test_metrique_non_finie_refuse_l_entree_au_lieu_de_refuter() -> None:
+    """Toute comparaison avec un `NaN` est fausse : sans garde, il produisait un `réfuté` muet."""
+    artifacts = _sound()
+    artifacts["evaluation"]["metrics"]["net_pnl"] = float("nan")
+    with pytest.raises(cc.MissingEvidenceError, match="non finie"):
+        cv.decide(artifacts, violations=[])
+
+
+#: Chemin d'une preuve obligatoire, décrit comme une suite de clés.
+MANDATORY: tuple[tuple[str, ...], ...] = (
+    ("entry", "ok"),
+    ("anchor", "universe_provenance"),
+    ("selection", "status"),
+    ("selection", "retained"),
+    ("selection", "retained", "identity"),
+    ("continuity", "warmup_anchor_ok"),
+    ("continuity", "benchmark_comparable"),
+    ("continuity", "stamp_same_daily_cell"),
+    ("evaluation", "returns_config"),
+    ("evaluation", "delta_stars"),
+    ("evaluation", "metrics"),
+    ("evaluation", "metrics", "net_pnl"),
+    ("evaluation", "metrics", "cagr_pct"),
+    ("evaluation", "metrics", "delta_dd"),
+    ("evaluation", "bounds"),
+)
+
+
+def _mutate(artifacts: dict[str, Any], path: tuple[str, ...], mode: str) -> dict[str, Any]:
+    node: Any = artifacts
+    for key in path[:-1]:
+        node = node[key]
+    if mode == "absente":
+        node.pop(path[-1])
+    else:
+        node[path[-1]] = None
+    return artifacts
+
+
+@pytest.mark.parametrize("path", MANDATORY, ids=[".".join(p) for p in MANDATORY])
+@pytest.mark.parametrize("mode", ["absente", "nulle"])
+def test_chaque_preuve_obligatoire_absente_ou_nulle_refuse_l_entree(
+    path: tuple[str, ...], mode: str
+) -> None:
+    """Doctrine des contrôles de présence : la clé absente **et** la valeur `null`, pour chacune."""
+    artifacts = _mutate(_sound(), path, mode)
+    with pytest.raises(cc.MissingEvidenceError):
+        cv.decide(artifacts, violations=[])
+
+
+@pytest.mark.parametrize(
+    ("path", "value"),
+    [
+        (("entry", "ok"), 1),
+        (("continuity", "warmup_anchor_ok"), 1),
+        (("anchor", "universe_provenance"), "propre"),
+        (("selection", "status"), "OK"),
+        (("evaluation", "metrics", "net_pnl"), "42"),
+        (("evaluation", "returns_config"), 0.01),
+        (("evaluation", "delta_stars"), {"a": 1}),
+    ],
+    ids=["entry.ok=int", "continuity=int", "provenance hors liste", "statut hors liste",
+         "metrique=str", "serie=scalaire", "serie=mapping"],
+)
+def test_chaque_preuve_obligatoire_mal_typee_refuse_l_entree(
+    path: tuple[str, ...], value: Any
+) -> None:
+    """Un entier n'est pas un booléen, et une valeur hors liste close n'est pas une valeur."""
+    artifacts = _sound()
+    node: Any = artifacts
+    for key in path[:-1]:
+        node = node[key]
+    node[path[-1]] = value
+    with pytest.raises(cc.MissingEvidenceError):
+        cv.decide(artifacts, violations=[])
+
+
+def test_serie_contenant_un_non_fini_refuse_l_entree() -> None:
+    artifacts = _sound()
+    artifacts["evaluation"]["delta_stars"][3] = float("nan")
+    with pytest.raises(cc.MissingEvidenceError, match=r"delta_stars\[3\]"):
+        cv.decide(artifacts, violations=[])
+
+
+def test_bornes_incompletes_refusent_l_entree() -> None:
+    artifacts = _sound()
+    keys = sorted(artifacts["evaluation"]["bounds"])
+    artifacts["evaluation"]["bounds"].pop(keys[0])
+    with pytest.raises(cc.MissingEvidenceError, match="exactement"):
+        cv.decide(artifacts, violations=[])
+
+
+# ---------------------------------------------------------------------------
+# Les mêmes cas par la CLI : code de sortie conforme au § I.1, aucun artefact écrit
+# ---------------------------------------------------------------------------
+
+
+def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]:
+    argv: list[str] = []
+    for name in ("entry", "anchor", "selection", "continuity", "evaluation"):
+        path = tmp_path / f"{name}.json"
+        cc.write_json(path, artifacts[name])
+        argv += [f"--{name}", str(path)]
+    argv += ["--output", str(tmp_path / "verdict.json"), "--now", "2026-09-21T00:00:00+00:00"]
+    return argv
+
+
+def test_cli_temoin_sain_sort_0_et_ecrit_la_chaine(tmp_path: Path) -> None:
+    argv = _write_cli_inputs(tmp_path, _sound())
+    assert cv.main(argv) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_VALIDE
+    assert payload["verdict_string"].startswith("C3_C3A | verdict=validé")
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda a: a.__setitem__("anchor", {}), id="provenance supprimée"),
+        pytest.param(lambda a: a.__setitem__("continuity", {}), id="continuité vide"),
+        pytest.param(
+            lambda a: a["evaluation"].__setitem__(
+                "bounds", {k: float("inf") for k in a["evaluation"]["bounds"]}
+            ),
+            id="bornes infinies",
+        ),
+        pytest.param(
+            lambda a: a["evaluation"]["metrics"].__setitem__("net_pnl", float("nan")),
+            id="métrique NaN",
+        ),
+    ],
+)
+def test_cli_refuse_l_entree_avec_exit_2_et_n_ecrit_rien(tmp_path: Path, mutate: Any) -> None:
+    """§ I.1 : entrée refusée → code 2, la chaîne s'arrête, aucun verdict n'est produit."""
+    artifacts = _sound()
+    mutate(artifacts)
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 2
+    assert not (tmp_path / "verdict.json").exists(), "aucun artefact ne doit être écrit"
+
+
+def test_cli_estimabilite_contredite_sort_1_et_ecrit_le_verdict(tmp_path: Path) -> None:
+    """Une violation n'est pas une entrée invalide : code 1, et l'artefact est écrit pour la relire."""
+    flat = [0.0] * N_DAYS
+    artifacts = _artifacts(
+        returns_config=flat,
+        returns_bench=_varying(11),
+        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
+    )
+    artifacts["evaluation"]["estimability"] = {"ok": True, "E1": True, "E2": True}
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF
+    assert payload["raison"] == "F_NOT_ESTIMABLE"

@@ -71,124 +71,164 @@ class Decision:
     retained: str | None
     selection_status: str | None
     provenance: str | None
-    gates: dict[str, bool | None] = field(default_factory=dict)
+    gates: dict[str, bool] = field(default_factory=dict)
     bounds_positive: bool | None = None
     estimability: dict[str, Any] | None = field(default=None)
 
 
-def _gate_results(evaluation: Mapping[str, Any]) -> dict[str, bool | None]:
+def _gate_results(evaluation: Mapping[str, Any]) -> dict[str, bool]:
     """`Q1`, `Q2`, `Q3` du § F.8, évaluées sur la fenêtre d'évaluation.
 
     `Q1` et `Q2` lisent le **résultat propre** de la configuration ; seule `Q3` lit le comparateur.
     Les seuils viennent du § A.10 via ``c3_common`` ; les redire ici les ferait diverger (§ 0.7).
+    Les trois métriques sont **obligatoires et finies** : une métrique absente ou `NaN` est une
+    erreur d'entrée, pas une porte en échec.
     """
-    metrics = evaluation.get("metrics") or {}
-    out: dict[str, bool | None] = {}
-    net_pnl = metrics.get("net_pnl")
-    cagr = metrics.get("cagr_pct")
-    delta = metrics.get("delta_dd")
-    out["Q1"] = None if net_pnl is None else float(net_pnl) > cc.FLOOR_NET_PNL
-    out["Q2"] = None if cagr is None else float(cagr) >= cc.FLOOR_CAGR_PCT
-    out["Q3"] = None if delta is None else float(delta) > cc.FLOOR_DELTA_DD
-    return out
+    metrics = cc.require_mapping(evaluation, "metrics", where="evaluation")
+    where = "evaluation.metrics"
+    return {
+        "Q1": cc.require_float(metrics, "net_pnl", where=where) > cc.FLOOR_NET_PNL,
+        "Q2": cc.require_float(metrics, "cagr_pct", where=where) >= cc.FLOOR_CAGR_PCT,
+        "Q3": cc.require_float(metrics, "delta_dd", where=where) > cc.FLOOR_DELTA_DD,
+    }
 
 
-def _bounds_all_positive(evaluation: Mapping[str, Any]) -> bool | None:
-    """Les six combinaisons `L × appariement` du § F.2 (h), toutes strictement positives."""
-    bounds = evaluation.get("bounds")
-    if not isinstance(bounds, Mapping) or not bounds:
-        return None
+def _bounds_all_positive(evaluation: Mapping[str, Any]) -> bool:
+    """Les six combinaisons `L × appariement` du § F.2 (h), toutes **finies** et strictement positives.
+
+    La finitude est vérifiée **avant** la comparaison : sans elle, `+inf` franchirait le plancher et
+    un `NaN` le ferait échouer silencieusement.
+    """
+    bounds = cc.require_mapping(evaluation, "bounds", where="evaluation")
     expected = {f"{length}:{matching}" for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS}
-    if set(bounds) != expected:
-        return None
-    return all(float(v) > 0.0 for v in bounds.values())
+    missing = expected - set(bounds)
+    extra = set(bounds) - expected
+    if missing or extra:
+        raise cc.MissingEvidenceError(
+            f"evaluation.bounds: attendu exactement {len(expected)} combinaisons ; "
+            f"manquantes={sorted(missing)} en trop={sorted(extra)}"
+        )
+    values = [cc.require_float(bounds, key, where="evaluation.bounds") for key in sorted(expected)]
+    return all(v > 0.0 for v in values)
 
 
-def _estimability_of(evaluation: Mapping[str, Any]) -> tuple[bool, dict[str, Any]]:
-    """§ A.13, recalculé depuis les séries quand elles sont présentes, jamais recopié."""
-    block = evaluation.get("estimability")
-    if isinstance(block, Mapping) and "ok" in block:
-        return bool(block["ok"]), dict(block)
-    returns = evaluation.get("returns_config")
-    deltas = evaluation.get("delta_stars")
-    if returns is None or deltas is None:
-        return False, {"ok": False, "raison": "estimabilité non fournie et non recalculable"}
-    est = cc.estimability(returns, deltas, int(evaluation.get("discarded", 0)))
+def _estimability_of(
+    evaluation: Mapping[str, Any], *, violations: list[str]
+) -> tuple[bool, dict[str, Any]]:
+    """§ A.13, **recalculé depuis les séries**, puis recoupé contre toute valeur déclarée.
+
+    Le statut déclaré n'est **jamais** recopié : il est recalculé et comparé, et un désaccord est une
+    **violation**. Croire une déclaration que les séries contredisent transformerait l'estimabilité
+    en champ décoratif — une configuration inactive déclarée estimable repartirait en `réfuté`.
+    """
+    returns = cc.require_finite_series(evaluation, "returns_config", where="evaluation")
+    deltas = cc.require_finite_series(evaluation, "delta_stars", where="evaluation")
+    discarded = cc.require_int(evaluation, "discarded", where="evaluation", default=0)
+    if discarded < 0:
+        raise cc.MissingEvidenceError("evaluation.discarded: compte négatif")
+
+    est = cc.estimability(returns, deltas, discarded)
     payload = est.to_dict()
-    payload["B_effectif"] = len(list(deltas))
+    payload["B_effectif"] = len(deltas)
+
+    declared = evaluation.get("estimability")
+    if declared is not None:
+        if not isinstance(declared, Mapping):
+            raise cc.MissingEvidenceError("evaluation.estimability: bloc attendu")
+        for key, recomputed in (("E1", est.e1), ("E2", est.e2), ("ok", est.ok)):
+            if key in declared and bool(declared[key]) != recomputed:
+                violations.append(
+                    f"estimabilité {key} déclarée {declared[key]!r}, recalculée {recomputed!r} "
+                    "— le statut recalculé fait foi"
+                )
+        payload["declared"] = dict(declared)
     return est.ok, payload
 
 
 def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str]) -> Decision:
-    """L'issue du § H, et rien d'autre. Fonction pure des artefacts fournis."""
-    entry = artifacts.get("entry") or {}
-    anchor = artifacts.get("anchor") or {}
-    selection = artifacts.get("selection") or {}
-    continuity = artifacts.get("continuity") or {}
-    evaluation = artifacts.get("evaluation") or {}
+    """L'issue du § H, et rien d'autre. Fonction pure des artefacts fournis.
 
-    provenance = anchor.get("universe_provenance") or selection.get("universe_provenance")
-    if provenance is not None and provenance not in cc.PROVENANCES:
-        violations.append(f"provenance hors liste close : {provenance!r}")
-    retained = (selection.get("retained") or {}).get("identity")
-    selection_status = selection.get("status")
+    Lève ``MissingEvidenceError`` dès qu'une preuve obligatoire est absente, nulle, mal typée ou non
+    finie : c'est une **erreur d'entrée** (§ I.1, code 2), pas un verdict. Aucun verdict économique
+    n'est prononcé sur une preuve manquante.
+    """
+    entry = cc.require_mapping(artifacts, "entry", where="artefacts")
+    if not cc.require_bool(entry, "ok", where="entry"):
+        return Decision(
+            issue=cc.ISSUE_INCONCLUSIF,
+            reason="R0_INVALID_RUN",
+            retained=None,
+            selection_status=None,
+            provenance=None,
+        )
+
+    anchor = cc.require_mapping(artifacts, "anchor", where="artefacts")
+    provenance = cc.require_str(
+        anchor, "universe_provenance", where="anchor", allowed=cc.PROVENANCES
+    )
+    selection = cc.require_mapping(artifacts, "selection", where="artefacts")
+    selection_status = cc.require_str(
+        selection, "status", where="selection", allowed=cc.STATUS_SELECTION
+    )
 
     reasons: list[str] = []
-
-    if not entry.get("ok", False):
-        reasons.append("R0_INVALID_RUN")
-    if provenance is not None and not cc.PROVENANCE_CAN_SUPPORT_VALIDE.get(provenance, False):
+    if not cc.PROVENANCE_CAN_SUPPORT_VALIDE[provenance]:
         reasons.append("P_PROVENANCE")
+
     if selection_status == "ABSTENTION":
-        abstention = selection.get("reason")
-        if abstention not in ("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR"):
-            violations.append(f"abstention sans raison valide : {abstention!r}")
-        else:
-            reasons.append(abstention)
+        reasons.append(
+            cc.require_str(
+                selection,
+                "reason",
+                where="selection",
+                allowed=("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR"),
+            )
+        )
+        return Decision(
+            issue=cc.ISSUE_INCONCLUSIF,
+            reason=cc.worst_reason(*reasons),
+            retained=None,
+            selection_status=selection_status,
+            provenance=provenance,
+        )
+
+    retained = cc.require_str(
+        cc.require_mapping(selection, "retained", where="selection"),
+        "identity",
+        where="selection.retained",
+    )
+
+    # § B — les contrôles obligatoires de continuité, présents et typés. Une clé absente ou nulle
+    # est une erreur d'entrée, jamais un contrôle réputé satisfait.
+    continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
     for key, reason in (
         ("warmup_anchor_ok", "D_WARMUP_ANCHOR"),
         ("benchmark_comparable", "E_NO_BENCHMARK"),
         ("stamp_same_daily_cell", "E_STAMP_MISMATCH"),
     ):
-        value = continuity.get(key)
-        if value is False:
+        if not cc.require_bool(continuity, key, where="continuity"):
             reasons.append(reason)
 
-    gates: dict[str, bool | None] = {}
-    bounds_positive: bool | None = None
-    estimability_payload: dict[str, Any] | None = None
+    evaluation = cc.require_mapping(artifacts, "evaluation", where="artefacts")
 
-    blocked = any(r in BLOCKING_RUN_REASONS for r in reasons) or "P_PROVENANCE" in reasons
-    if not blocked and retained is None:
-        violations.append("aucune configuration retenue alors qu'aucune raison ne l'explique")
-        blocked = True
+    # § H.0 — l'estimabilité est préalable au verdict économique, et elle est **recalculée**.
+    estimable, estimability_payload = _estimability_of(evaluation, violations=violations)
+    if not estimable:
+        reasons.append("F_NOT_ESTIMABLE")
 
-    if not blocked:
-        # § H.0 — l'estimabilité est préalable au verdict économique, avant toute lecture des Q.
-        estimable, estimability_payload = _estimability_of(evaluation)
-        if not estimable:
-            reasons.append("F_NOT_ESTIMABLE")
-            blocked = True
-
-    if not blocked:
-        gates = _gate_results(evaluation)
-        if any(v is None for v in gates.values()):
-            violations.append("portes Q incomplètes sur une évaluation par ailleurs exploitable")
-            reasons.append("F_NOT_ESTIMABLE")
-            blocked = True
-
-    if blocked:
+    if reasons:
         return Decision(
             issue=cc.ISSUE_INCONCLUSIF,
             reason=cc.worst_reason(*reasons),
             retained=retained,
             selection_status=selection_status,
             provenance=provenance,
-            gates=gates,
-            bounds_positive=bounds_positive,
+            gates={},
+            bounds_positive=None,
             estimability=estimability_payload,
         )
 
+    gates = _gate_results(evaluation)
     if not all(gates.values()):
         return Decision(
             issue=cc.ISSUE_REFUTE,
@@ -202,16 +242,15 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
         )
 
     bounds_positive = _bounds_all_positive(evaluation)
-    if bounds_positive is not True:
-        reasons.append("F_CANNOT_SEPARATE")
+    if not bounds_positive:
         return Decision(
             issue=cc.ISSUE_INCONCLUSIF,
-            reason=cc.worst_reason(*reasons),
+            reason="F_CANNOT_SEPARATE",
             retained=retained,
             selection_status=selection_status,
             provenance=provenance,
             gates=gates,
-            bounds_positive=bounds_positive,
+            bounds_positive=False,
             estimability=estimability_payload,
         )
 
@@ -317,7 +356,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
 
     violations: list[str] = []
-    decision = decide(artifacts, violations=violations)
+    try:
+        decision = decide(artifacts, violations=violations)
+    except cc.MissingEvidenceError as exc:
+        # § I.1 — preuve obligatoire absente, nulle, mal typée ou non finie : erreur d'entrée.
+        # Aucun artefact n'est écrit, aucun verdict n'est prononcé.
+        print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
+        return 2
     payload = build_payload(artifacts, decision, campaign=args.campaign, now=now)
     digest = cc.write_json(args.output, payload)
     print("\n".join(render_lines(payload)))

@@ -22,7 +22,7 @@ Exit codes des scripts qui l'importent : 0 ok, 1 violation, 2 usage ou entrée i
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -132,6 +132,105 @@ FORBIDDEN_REJEU_NAMES: tuple[str, ...] = (
     "N_CONFIGS_PER_PAIR", "N_CONFIGS_TOTAL", "BASE_SHA", "REASON_PRIORITY",
     "SEED_BASE", "DEGENERATE_MAX", "ALPHA", "CLASS_DEFAULTS", "STRATEGY", "PAIRS",
 )
+
+# ---------------------------------------------------------------------------
+# Accesseur strict — un contrôle de présence qui ne passe pas sur une absence
+# ---------------------------------------------------------------------------
+#
+# Quatre fois dans ce projet, un contrôle de présence a laissé passer une absence au lieu de la
+# signaler. `skills/backtest.md` § « Contrôles de présence » en fait une doctrine ; ce bloc en est
+# la forme exécutable, **écrite une fois et utilisée par tous les modules `c3_*`**, précisément pour
+# qu'aucun d'eux ne réécrive à la main une logique de présence qui oublierait `None`, un type faux
+# ou un non-fini.
+#
+# Règle : une preuve obligatoire absente, **nulle**, **mal typée** ou **non finie** est une **erreur
+# d'entrée** (§ I.1, code 2). Ce n'est jamais un `False` implicite, et jamais une valeur par défaut.
+
+
+class MissingEvidenceError(ValueError):
+    """Preuve obligatoire absente, nulle, mal typée ou non finie — erreur d'entrée (§ I.1)."""
+
+
+def _require(obj: Any, key: str, *, where: str) -> Any:
+    if not isinstance(obj, Mapping):
+        raise MissingEvidenceError(f"{where}: bloc attendu, reçu {type(obj).__name__}")
+    if key not in obj:
+        raise MissingEvidenceError(f"{where}.{key}: clé absente")
+    value = obj[key]
+    if value is None:
+        raise MissingEvidenceError(f"{where}.{key}: valeur nulle")
+    return value
+
+
+def require_mapping(obj: Any, key: str, *, where: str) -> Mapping[str, Any]:
+    value = _require(obj, key, where=where)
+    if not isinstance(value, Mapping):
+        raise MissingEvidenceError(f"{where}.{key}: bloc attendu, reçu {type(value).__name__}")
+    return value
+
+
+def require_bool(obj: Any, key: str, *, where: str) -> bool:
+    """Un booléen, et **pas** un entier : `1` n'est pas une preuve satisfaite."""
+    value = _require(obj, key, where=where)
+    if not isinstance(value, bool):
+        raise MissingEvidenceError(f"{where}.{key}: booléen attendu, reçu {type(value).__name__}")
+    return value
+
+
+def require_float(obj: Any, key: str, *, where: str) -> float:
+    """Un nombre **fini**. Un `NaN` ou un infini lève, il ne participe à aucune comparaison.
+
+    Sans cette garde, un `NaN` rendrait **fausse** toute comparaison qui le lit, donc produirait
+    silencieusement un verdict négatif ; et `+inf` franchirait n'importe quel plancher.
+    """
+    value = _require(obj, key, where=where)
+    if isinstance(value, bool) or not isinstance(value, (int, float, Decimal)):
+        raise MissingEvidenceError(f"{where}.{key}: nombre attendu, reçu {type(value).__name__}")
+    number = float(value)
+    if not math.isfinite(number):
+        raise MissingEvidenceError(f"{where}.{key}: valeur non finie ({value!r})")
+    return number
+
+
+def require_int(obj: Any, key: str, *, where: str, default: int | None = None) -> int:
+    if default is not None and (not isinstance(obj, Mapping) or key not in obj):
+        return default
+    value = _require(obj, key, where=where)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise MissingEvidenceError(f"{where}.{key}: entier attendu, reçu {type(value).__name__}")
+    return int(value)
+
+
+def require_str(
+    obj: Any, key: str, *, where: str, allowed: Sequence[str] | None = None
+) -> str:
+    value = _require(obj, key, where=where)
+    if not isinstance(value, str):
+        raise MissingEvidenceError(f"{where}.{key}: chaîne attendue, reçu {type(value).__name__}")
+    if allowed is not None and value not in allowed:
+        raise MissingEvidenceError(
+            f"{where}.{key}: {value!r} hors liste close {sorted(allowed)}"
+        )
+    return value
+
+
+def require_finite_series(obj: Any, key: str, *, where: str, min_len: int = 1) -> list[float]:
+    """Une suite non vide de nombres **tous finis** — chaque élément passe la même garde."""
+    value = _require(obj, key, where=where)
+    if isinstance(value, (str, bytes, Mapping)) or not isinstance(value, Sequence):
+        raise MissingEvidenceError(f"{where}.{key}: suite attendue, reçu {type(value).__name__}")
+    if len(value) < min_len:
+        raise MissingEvidenceError(f"{where}.{key}: {len(value)} éléments, minimum {min_len}")
+    out: list[float] = []
+    for i, item in enumerate(value):
+        if item is None or isinstance(item, bool) or not isinstance(item, (int, float, Decimal)):
+            raise MissingEvidenceError(f"{where}.{key}[{i}]: nombre attendu, reçu {item!r}")
+        number = float(item)
+        if not math.isfinite(number):
+            raise MissingEvidenceError(f"{where}.{key}[{i}]: valeur non finie ({item!r})")
+        out.append(number)
+    return out
+
 
 # ---------------------------------------------------------------------------
 # § H — issues, et § I.1 — raisons en ordre de priorité (liste close)
