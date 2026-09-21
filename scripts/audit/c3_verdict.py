@@ -122,10 +122,22 @@ def _estimability_of(
     est strictement typé** — une chaîne ``"false"`` est une erreur de type, pas un ``True``.
 
     Le compteur ``discarded`` et le total ``B`` sont **obligatoires** : un compteur absent n'est pas
-    zéro. ``B_effectif`` est recalculé comme ``len(delta_stars)`` ; ``B != B_effectif + discarded``
-    est un désaccord recalculé / enregistré, donc une violation. Une suite ``delta_stars`` **vide mais
-    documentée** (toutes les réplications écartées) n'est pas une erreur d'entrée : elle mène à
-    ``F_NOT_ESTIMABLE`` par le § F.2 (e).
+    zéro. Deux contrôles sur ``B``, dans cet ordre :
+
+    1. **contrat** — ``B`` est un paramètre de la procédure d'incertitude que le manifeste déclare
+       (§ A.6) et que D5 asserte « égal à ce qui est déclaré » ; la valeur gelée est ``BOOTSTRAP_B``
+       (§ F.2 b). Un ``B`` différent est un **contrat d'instrument rompu** : ``R0_INVALID_RUN``, code 2,
+       rien n'est publié (§ I.1, ligne 2). Il est évalué **avant** la cohérence des compteurs, parce
+       que « ``R0_INVALID_RUN`` est évalué avant toute autre chose » (§ H) — un ``B`` hors contrat
+       **et** contredit par ses compteurs sort donc en refus de contrat, pas en violation. Précédent :
+       ``rejeu_validate_analysis.b02_frozen_parameters``.
+    2. **cohérence** — ``B_effectif`` est recalculé comme ``len(delta_stars)`` ;
+       ``B != B_effectif + discarded`` est un désaccord recalculé / enregistré, donc une violation
+       (§ I.1, ligne 15).
+
+    Une suite ``delta_stars`` **vide mais documentée** (toutes les réplications écartées) n'est pas une
+    erreur d'entrée : elle mène à ``F_NOT_ESTIMABLE`` par le § F.2 (e), comme tout ``discarded`` au-delà
+    de ``DISCARDED_MAX`` avec un compte cohérent.
     """
     returns = cc.require_finite_series(
         evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
@@ -133,6 +145,12 @@ def _estimability_of(
     deltas = cc.require_finite_series(evaluation, "delta_stars", where="evaluation", min_len=0)
     discarded = cc.require_int(evaluation, "discarded", where="evaluation", minimum=0)
     total = cc.require_int(evaluation, "B", where="evaluation", minimum=1)
+    if total != cc.BOOTSTRAP_B:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"evaluation.B = {total} ; la valeur gelée du § F.2 (b) est {cc.BOOTSTRAP_B} "
+            "— contrat d'instrument rompu, aucun verdict",
+        )
     b_effectif = len(deltas)
     if total != b_effectif + discarded:
         violations.append(

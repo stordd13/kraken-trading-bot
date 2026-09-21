@@ -21,6 +21,7 @@ les **conséquences** des règles, ce qu'un index de symboles ne peut pas faire 
 from __future__ import annotations
 
 from collections.abc import Mapping
+from functools import cache
 from pathlib import Path
 import sys
 from typing import Any
@@ -38,17 +39,39 @@ import c3_common as cc
 import c3_verdict as cv
 
 N_DAYS = 329  # longueur de la fenêtre d'évaluation de l'ancrage déclaré, en jours
-B_TEST = 400  # réplications : assez pour que la distribution vive, assez peu pour être rapide
 SEED = 20260921
+#: Petit échantillon réservé aux tests de **primitives numériques** (`cc.estimability`, `_bootstrap`
+#: seul). Un artefact qui le porterait **n'est pas un artefact C3 conforme** : le contrat § F.2 (b)
+#: fixe `B = BOOTSTRAP_B`, et tout chemin `decide()` / `main()` de ce fichier tourne à cette valeur.
+B_SMALL_PRIMITIVE = 400
 
 
-def _bootstrap(returns_config, returns_bench, *, block_length: int = 21, b: int = B_TEST):
-    """Le vrai chemin numérique du § F.2 : indices appariés, `Δ*`, réplications écartées."""
-    n = len(returns_config)
+@cache
+def _bootstrap_cached(
+    cfg: tuple[float, ...], bch: tuple[float, ...], block_length: int, b: int
+) -> tuple[np.ndarray, int]:
+    n = len(cfg)
     rng = np.random.default_rng([SEED, 0, block_length])
     starts = cc.block_start_indices(rng, n, block_length, b)
     idx = cc.block_indices(starts, block_length, n)
-    return cc.paired_delta_stars(returns_config, returns_bench, idx, float(N_DAYS))
+    return cc.paired_delta_stars(cfg, bch, idx, float(N_DAYS))
+
+
+def _bootstrap(
+    returns_config, returns_bench, *, block_length: int = 21, b: int = cc.BOOTSTRAP_B
+) -> tuple[np.ndarray, int]:
+    """Le vrai chemin numérique du § F.2 : indices appariés, `Δ*`, réplications écartées.
+
+    `B` vaut ``BOOTSTRAP_B`` par défaut — les fixtures verdict-complet sont **conformes au contrat**.
+    Mémoïsé par séries : les mêmes 10 000 réplications servent à tous les tests d'un même témoin.
+    """
+    deltas, discarded = _bootstrap_cached(
+        tuple(float(x) for x in returns_config),
+        tuple(float(x) for x in returns_bench),
+        block_length,
+        b,
+    )
+    return deltas.copy(), discarded
 
 
 def _artifacts(
@@ -81,7 +104,7 @@ def _artifacts(
             "returns_config": list(returns_config),
             "delta_stars": [float(x) for x in deltas],
             "discarded": discarded,
-            "B": B_TEST,
+            "B": cc.BOOTSTRAP_B,
             "metrics": metrics,
             "bounds": bounds,
         },
@@ -184,12 +207,16 @@ def test_comparateur_cash_et_strategie_perdante_donne_refute_pas_inconclusif() -
 
 
 def test_deux_trajectoires_variables_identiques_declenchent_E2() -> None:
-    """§ A.13 E2 : `Δ*` constant **sans** qu'aucun des deux côtés soit déterministe."""
+    """§ A.13 E2 : `Δ*` constant **sans** qu'aucun des deux côtés soit déterministe.
+
+    Test de **primitive** (`cc.estimability` seule) : le petit échantillon suffit à exhiber la
+    distribution constante ; il **ne représente pas un artefact C3 conforme** (§ F.2 b).
+    """
     same = _varying(3)
-    deltas, discarded = _bootstrap(same, same)
+    deltas, discarded = _bootstrap(same, same, b=B_SMALL_PRIMITIVE)
 
     assert discarded == 0
-    assert len(deltas) == B_TEST
+    assert len(deltas) == B_SMALL_PRIMITIVE
     # Les CAGR bougent d'une réplication à l'autre — aucune des deux séries n'est déterministe.
     assert float(np.std(same)) > 0.0
     # Et pourtant leur différence est **exactement** nulle, sans tolérance : l'appariement des
@@ -205,15 +232,14 @@ def test_deux_trajectoires_variables_identiques_declenchent_E2() -> None:
 
 
 def test_trajectoires_identiques_donnent_inconclusif_et_jamais_refute() -> None:
-    """La conséquence sur l'issue, pas seulement sur le contrôle."""
+    """La conséquence sur l'issue, pas seulement sur le contrôle — à `B = BOOTSTRAP_B`."""
     same = _varying(3)
-    deltas, discarded = _bootstrap(same, same)
     artifacts = _artifacts(
         returns_config=same,
         returns_bench=same,
         metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": 0.0},
     )
-    artifacts["evaluation"]["delta_stars"] = [float(x) for x in deltas]
+    assert len(artifacts["evaluation"]["delta_stars"]) == cc.BOOTSTRAP_B
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
 
@@ -603,7 +629,7 @@ def test_discarded_absent_est_une_erreur_d_entree_et_non_zero() -> None:
 def test_discarded_incoherent_avec_B_est_une_violation() -> None:
     """`B` déclaré, `B_effectif` recalculé : un désaccord est une violation (§ I.1, ligne 15)."""
     artifacts = _sound()
-    artifacts["evaluation"]["discarded"] = 11  # B_effectif 400 + 11 != B 400
+    artifacts["evaluation"]["discarded"] = 11  # B_effectif 10 000 + 11 != B 10 000
     violations: list[str] = []
     cv.decide(artifacts, violations=violations)
     assert any("B déclaré" in v for v in violations)
@@ -640,6 +666,102 @@ def test_rendement_juste_au_dessus_de_moins_un_est_accepte() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Chantier 0 (a) — les deux contrôles sur `B` : le contrat (§ F.2 b, R0) **avant** la cohérence
+# des compteurs (§ I.1 l.15). Matrice complète, en appel direct et par la CLI.
+# ---------------------------------------------------------------------------
+
+
+def _with_replications(a: dict[str, Any], *, b: int, n_deltas: int, discarded: int) -> None:
+    """Déclare `B`, garde `n_deltas` réplications de la suite générée, déclare `discarded`.
+
+    Tronquer la suite est la forme documentée d'un échec numérique (§ F.2 e) : les réplications
+    écartées ne sont pas remplacées, elles sont comptées.
+    """
+    a["evaluation"]["B"] = b
+    a["evaluation"]["delta_stars"] = a["evaluation"]["delta_stars"][:n_deltas]
+    a["evaluation"]["discarded"] = discarded
+
+
+#: (B, len(delta_stars), discarded, code CLI, issue attendue, raison attendue)
+MATRIX_B = [
+    pytest.param(10_000, 9_990, 10, 0, cc.ISSUE_VALIDE, None, id="10000/9990/10 -> 0 témoin sain"),
+    pytest.param(
+        10_000,
+        9_989,
+        11,
+        0,
+        cc.ISSUE_INCONCLUSIF,
+        "F_NOT_ESTIMABLE",
+        id="10000/9989/11 -> 0 F_NOT_ESTIMABLE, compte cohérent",
+    ),
+    pytest.param(10_000, 10_000, 11, 1, None, None, id="10000/10000/11 -> 1 compte contradictoire"),
+    pytest.param(
+        400, 395, 5, 2, None, "R0_INVALID_RUN", id="400/395/5 -> 2 cohérent mais hors contrat"
+    ),
+    pytest.param(
+        400, 400, 5, 2, None, "R0_INVALID_RUN", id="400/400/5 -> 2 R0 évalué avant la cohérence"
+    ),
+]
+
+
+@pytest.mark.parametrize(("b", "n_deltas", "discarded", "code", "issue", "reason"), MATRIX_B)
+def test_matrice_B_en_appel_direct(
+    b: int, n_deltas: int, discarded: int, code: int, issue: Any, reason: Any
+) -> None:
+    artifacts = _sound()
+    _with_replications(artifacts, b=b, n_deltas=n_deltas, discarded=discarded)
+    assert len(artifacts["evaluation"]["delta_stars"]) == n_deltas
+    violations: list[str] = []
+    if code == 2:
+        with pytest.raises(cc.EntryRefusedError) as info:
+            cv.decide(artifacts, violations=violations)
+        assert info.value.reason == reason
+        assert "F.2" in str(info.value)
+        # L'issue interdite : un `B` hors contrat n'est ni un verdict, ni une violation.
+        assert violations == [], (
+            "R0 est évalué avant la cohérence : aucune violation n'est produite"
+        )
+        return
+    decision = cv.decide(artifacts, violations=violations)
+    if code == 1:
+        assert violations and any("B déclaré" in v for v in violations)
+        return
+    assert violations == []
+    assert decision.issue == issue
+    assert decision.reason == reason
+    est = decision.estimability
+    assert est is not None
+    assert (est["B"], est["B_effectif"], est["discarded"]) == (b, n_deltas, discarded)
+
+
+@pytest.mark.parametrize(("b", "n_deltas", "discarded", "code", "issue", "reason"), MATRIX_B)
+def test_matrice_B_par_la_cli(
+    tmp_path: Path, b: int, n_deltas: int, discarded: int, code: int, issue: Any, reason: Any
+) -> None:
+    artifacts = _sound()
+    _with_replications(artifacts, b=b, n_deltas=n_deltas, discarded=discarded)
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == code
+    out = tmp_path / "verdict.json"
+    if code == 2:
+        assert not out.exists(), "code 2 : rien n'est écrit"
+        return
+    payload = cc.read_json(out)
+    if code == 1:
+        assert payload["invalide"] is True
+        assert payload["verdict"] is None
+        assert payload["verdict_string"] is None
+        assert any("B déclaré" in v for v in payload["violations"])
+        return
+    assert payload["invalide"] is False
+    assert payload["verdict"] == issue
+    assert payload["raison"] == reason
+    assert payload["estimabilite"]["B"] == b
+    assert payload["estimabilite"]["B_effectif"] == n_deltas
+    assert payload["estimabilite"]["discarded"] == discarded
+
+
+# ---------------------------------------------------------------------------
 # Item 3 — la table I.1, ligne à ligne. C'est ce test qui empêchera la prochaine divergence.
 # ---------------------------------------------------------------------------
 
@@ -653,7 +775,7 @@ def _abstention(reason: str) -> Any:
 
 def _all_discarded(a: dict[str, Any]) -> None:
     a["evaluation"]["delta_stars"] = []
-    a["evaluation"]["discarded"] = B_TEST
+    a["evaluation"]["discarded"] = cc.BOOTSTRAP_B
 
 
 #: (ligne, fixture, issue attendue, raison attendue, code CLI attendu, artefact écrit ?, chaîne citable ?)
