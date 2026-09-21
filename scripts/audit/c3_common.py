@@ -124,13 +124,34 @@ RETURN_DOMAIN_FLOOR = -1.0  # log1p n'existe pas en deçà ; § A.8 D4, contrain
 
 # Noms du rejeu qu'aucune source `c3_*` ne doit importer (§ 0.5, antériorité).
 FORBIDDEN_REJEU_NAMES: tuple[str, ...] = (
-    "WINDOW_START", "WINDOW_END", "WINDOW_DAYS", "TRAIN_RATIO",
-    "SEGMENT_POINTS", "SEGMENT_RETURNS", "SEGMENTS",
-    "CYCLES_MIN", "NNZ_MIN", "COVERAGE_MIN_DAYS", "MAX_GAP_DAYS",
-    "DAY_5M_COMPLETE_MIN", "FIRST_COVERED_DAY_MAX", "LAST_COVERED_DAY_MIN",
-    "G2_MIN_RETURN_PCT", "G3_FEE_MULTIPLE", "MIN_RETURN_DOMAIN", "FF_DAYS_MAX",
-    "N_CONFIGS_PER_PAIR", "N_CONFIGS_TOTAL", "BASE_SHA", "REASON_PRIORITY",
-    "SEED_BASE", "DEGENERATE_MAX", "ALPHA", "CLASS_DEFAULTS", "STRATEGY", "PAIRS",
+    "WINDOW_START",
+    "WINDOW_END",
+    "WINDOW_DAYS",
+    "TRAIN_RATIO",
+    "SEGMENT_POINTS",
+    "SEGMENT_RETURNS",
+    "SEGMENTS",
+    "CYCLES_MIN",
+    "NNZ_MIN",
+    "COVERAGE_MIN_DAYS",
+    "MAX_GAP_DAYS",
+    "DAY_5M_COMPLETE_MIN",
+    "FIRST_COVERED_DAY_MAX",
+    "LAST_COVERED_DAY_MIN",
+    "G2_MIN_RETURN_PCT",
+    "G3_FEE_MULTIPLE",
+    "MIN_RETURN_DOMAIN",
+    "FF_DAYS_MAX",
+    "N_CONFIGS_PER_PAIR",
+    "N_CONFIGS_TOTAL",
+    "BASE_SHA",
+    "REASON_PRIORITY",
+    "SEED_BASE",
+    "DEGENERATE_MAX",
+    "ALPHA",
+    "CLASS_DEFAULTS",
+    "STRATEGY",
+    "PAIRS",
 )
 
 # ---------------------------------------------------------------------------
@@ -148,7 +169,33 @@ FORBIDDEN_REJEU_NAMES: tuple[str, ...] = (
 
 
 class MissingEvidenceError(ValueError):
-    """Preuve obligatoire absente, nulle, mal typée ou non finie — erreur d'entrée (§ I.1)."""
+    """Preuve obligatoire **absente, nulle, mal typée ou hors liste close** — erreur d'entrée.
+
+    Code 2 (§ I.1, ligne 2) : la chaîne s'arrête, rien n'est publié. Une valeur **non finie** ou
+    **hors domaine** n'est pas de cette classe : c'est un échec de validité, voir ``InvalidValueError``.
+    """
+
+
+class InvalidValueError(ValueError):
+    """Valeur **non finie** (`NaN`, `±inf`) ou **hors domaine** (rendement `<= -1`) dans une preuve.
+
+    § F.7 la renvoie à la **ligne 15 du § I.1 : code 1, violation**, pas un résultat. Elle n'est
+    volontairement **pas** une sous-classe de ``MissingEvidenceError`` : la CLI doit distinguer une
+    donnée absente (2, rien d'écrit) d'un échec de validité documenté (1, artefact diagnostic).
+    """
+
+
+class EntryRefusedError(MissingEvidenceError):
+    """Refus d'entrée porteur d'une **raison** de la liste close (§ I.1, lignes 2 et 5) — code 2."""
+
+    def __init__(self, reason: str, message: str) -> None:
+        super().__init__(f"{reason}: {message}")
+        self.reason = reason
+
+
+#: Champs externes **réellement optionnels** — la seule liste blanche que le scan de source accepte
+#: pour un ``.get(...)`` dans ``c3_*.py``. Tout autre champ est obligatoire et passe par ``require_*``.
+OPTIONAL_FIELDS: frozenset[str] = frozenset({"estimability"})
 
 
 def _require(obj: Any, key: str, *, where: str) -> Any:
@@ -188,34 +235,43 @@ def require_float(obj: Any, key: str, *, where: str) -> float:
         raise MissingEvidenceError(f"{where}.{key}: nombre attendu, reçu {type(value).__name__}")
     number = float(value)
     if not math.isfinite(number):
-        raise MissingEvidenceError(f"{where}.{key}: valeur non finie ({value!r})")
+        raise InvalidValueError(f"{where}.{key}: valeur non finie ({value!r})")
     return number
 
 
-def require_int(obj: Any, key: str, *, where: str, default: int | None = None) -> int:
-    if default is not None and (not isinstance(obj, Mapping) or key not in obj):
-        return default
+def require_int(obj: Any, key: str, *, where: str, minimum: int | None = None) -> int:
+    """Un entier **obligatoire** — aucun défaut possible : un compteur absent n'est pas zéro."""
     value = _require(obj, key, where=where)
     if isinstance(value, bool) or not isinstance(value, int):
         raise MissingEvidenceError(f"{where}.{key}: entier attendu, reçu {type(value).__name__}")
+    if minimum is not None and value < minimum:
+        raise InvalidValueError(f"{where}.{key}: {value} < minimum {minimum}")
     return int(value)
 
 
-def require_str(
-    obj: Any, key: str, *, where: str, allowed: Sequence[str] | None = None
-) -> str:
+def require_str(obj: Any, key: str, *, where: str, allowed: Sequence[str] | None = None) -> str:
     value = _require(obj, key, where=where)
     if not isinstance(value, str):
         raise MissingEvidenceError(f"{where}.{key}: chaîne attendue, reçu {type(value).__name__}")
     if allowed is not None and value not in allowed:
-        raise MissingEvidenceError(
-            f"{where}.{key}: {value!r} hors liste close {sorted(allowed)}"
-        )
+        raise MissingEvidenceError(f"{where}.{key}: {value!r} hors liste close {sorted(allowed)}")
     return value
 
 
-def require_finite_series(obj: Any, key: str, *, where: str, min_len: int = 1) -> list[float]:
-    """Une suite non vide de nombres **tous finis** — chaque élément passe la même garde."""
+def require_finite_series(
+    obj: Any,
+    key: str,
+    *,
+    where: str,
+    min_len: int = 1,
+    domain_floor: float | None = None,
+) -> list[float]:
+    """Une suite de nombres **tous finis**, chaque élément passant la même garde.
+
+    ``min_len=0`` autorise une suite **vide documentée** (toutes les réplications écartées, § F.2 e) ;
+    l'absence de la clé reste une erreur d'entrée. ``domain_floor`` ajoute la garde de domaine du
+    § A.8 D4 — un rendement `<= -1` rend `log1p` indéfini — **en plus** de la finitude, jamais à sa place.
+    """
     value = _require(obj, key, where=where)
     if isinstance(value, (str, bytes, Mapping)) or not isinstance(value, Sequence):
         raise MissingEvidenceError(f"{where}.{key}: suite attendue, reçu {type(value).__name__}")
@@ -227,7 +283,11 @@ def require_finite_series(obj: Any, key: str, *, where: str, min_len: int = 1) -
             raise MissingEvidenceError(f"{where}.{key}[{i}]: nombre attendu, reçu {item!r}")
         number = float(item)
         if not math.isfinite(number):
-            raise MissingEvidenceError(f"{where}.{key}[{i}]: valeur non finie ({item!r})")
+            raise InvalidValueError(f"{where}.{key}[{i}]: valeur non finie ({item!r})")
+        if domain_floor is not None and number <= domain_floor:
+            raise InvalidValueError(
+                f"{where}.{key}[{i}]: {number} hors domaine (doit être > {domain_floor})"
+            )
         out.append(number)
     return out
 
@@ -292,11 +352,16 @@ CLAUSE_ORDER: tuple[str, ...] = ("D1", "D2", "D3", "D4", "D5", "D6")
 
 # Statuts (§ H) — trois vocabulaires clos, qui ne se confondent pas avec les raisons.
 STATUS_CANDIDATE: tuple[str, ...] = (
-    "ADMISSIBLE", "NOT_ESTIMABLE", "NON_ADMISSIBLE", "HORS_USAGE_DÉCISIONNEL",
+    "ADMISSIBLE",
+    "NOT_ESTIMABLE",
+    "NON_ADMISSIBLE",
+    "HORS_USAGE_DÉCISIONNEL",
 )
 STATUS_PAIR: tuple[str, ...] = ("VOTANTE", "DESCRIPTIF")
 STATUS_SELECTION: tuple[str, ...] = (
-    "SÉLECTION_VALIDE", "SÉLECTION_DESCRIPTIVE", "ABSTENTION",
+    "SÉLECTION_VALIDE",
+    "SÉLECTION_DESCRIPTIVE",
+    "ABSTENTION",
 )
 
 PROVENANCE_CLEAN = "clean"

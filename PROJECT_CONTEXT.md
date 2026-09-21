@@ -115,7 +115,7 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 | Objet | État | Référence |
 |---|---|---|
 | `docs/protocole_c3.md` | **GELÉ** le 21 sept | commit **`d931293`**, branche `feat/c3a-protocole` |
-| `scripts/audit/c3_common.py` · `c3_verdict.py` (+ 62 tests) | livrés, **noyau corrigé** | commit **`075f740`** |
+| `scripts/audit/c3_common.py` · `c3_verdict.py` et leurs tests | **correctifs livrés** (`075f740`), **revue ayant identifié des défauts restants** — corrigés dans le commit de reprise, **en attente du GO d'Astra** avant bascule | `075f740` puis commit de reprise |
 | `c3_anchor` · `c3_entry` · `c3_benchmark` · `c3_select` · `c3_continuity` | **n'existent pas** | liste fermée du § L.4 du protocole |
 | Test de chronologie forte et son contrôle négatif | **non écrits** | § A.12 du protocole |
 

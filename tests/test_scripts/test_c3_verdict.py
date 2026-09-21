@@ -62,9 +62,7 @@ def _artifacts(
     deltas, discarded = _bootstrap(returns_config, returns_bench)
     if bounds is None:
         bounds = {
-            f"{length}:{matching}": 1.0
-            for length in cc.BLOCK_LENGTHS
-            for matching in cc.MATCHINGS
+            f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
         }
     return {
         "entry": {"ok": True, "reason": None},
@@ -83,6 +81,7 @@ def _artifacts(
             "returns_config": list(returns_config),
             "delta_stars": [float(x) for x in deltas],
             "discarded": discarded,
+            "B": B_TEST,
             "metrics": metrics,
             "bounds": bounds,
         },
@@ -265,7 +264,14 @@ def test_le_parseur_n_expose_que_des_chemins_et_un_horodatage() -> None:
     """§ 0.6 : aucun paramètre libre, aucune entrée humaine qui déplacerait une issue."""
     actions = {a.dest for a in cv.build_parser()._actions} - {"help"}
     assert actions == {
-        "entry", "anchor", "selection", "continuity", "evaluation", "campaign", "output", "now",
+        "entry",
+        "anchor",
+        "selection",
+        "continuity",
+        "evaluation",
+        "campaign",
+        "output",
+        "now",
     }
 
 
@@ -315,7 +321,7 @@ def test_bornes_infinies_refusent_l_entree_au_lieu_de_valider() -> None:
     """Défaut reproduit : `float('inf') > 0` est vrai, donc `+inf` franchissait le plancher."""
     artifacts = _sound()
     artifacts["evaluation"]["bounds"] = {k: float("inf") for k in artifacts["evaluation"]["bounds"]}
-    with pytest.raises(cc.MissingEvidenceError, match="non finie"):
+    with pytest.raises(cc.InvalidValueError, match="non finie"):
         cv.decide(artifacts, violations=[])
 
 
@@ -344,7 +350,7 @@ def test_metrique_non_finie_refuse_l_entree_au_lieu_de_refuter() -> None:
     """Toute comparaison avec un `NaN` est fausse : sans garde, il produisait un `réfuté` muet."""
     artifacts = _sound()
     artifacts["evaluation"]["metrics"]["net_pnl"] = float("nan")
-    with pytest.raises(cc.MissingEvidenceError, match="non finie"):
+    with pytest.raises(cc.InvalidValueError, match="non finie"):
         cv.decide(artifacts, violations=[])
 
 
@@ -360,6 +366,8 @@ MANDATORY: tuple[tuple[str, ...], ...] = (
     ("continuity", "stamp_same_daily_cell"),
     ("evaluation", "returns_config"),
     ("evaluation", "delta_stars"),
+    ("evaluation", "discarded"),
+    ("evaluation", "B"),
     ("evaluation", "metrics"),
     ("evaluation", "metrics", "net_pnl"),
     ("evaluation", "metrics", "cagr_pct"),
@@ -401,8 +409,15 @@ def test_chaque_preuve_obligatoire_absente_ou_nulle_refuse_l_entree(
         (("evaluation", "returns_config"), 0.01),
         (("evaluation", "delta_stars"), {"a": 1}),
     ],
-    ids=["entry.ok=int", "continuity=int", "provenance hors liste", "statut hors liste",
-         "metrique=str", "serie=scalaire", "serie=mapping"],
+    ids=[
+        "entry.ok=int",
+        "continuity=int",
+        "provenance hors liste",
+        "statut hors liste",
+        "metrique=str",
+        "serie=scalaire",
+        "serie=mapping",
+    ],
 )
 def test_chaque_preuve_obligatoire_mal_typee_refuse_l_entree(
     path: tuple[str, ...], value: Any
@@ -420,7 +435,7 @@ def test_chaque_preuve_obligatoire_mal_typee_refuse_l_entree(
 def test_serie_contenant_un_non_fini_refuse_l_entree() -> None:
     artifacts = _sound()
     artifacts["evaluation"]["delta_stars"][3] = float("nan")
-    with pytest.raises(cc.MissingEvidenceError, match=r"delta_stars\[3\]"):
+    with pytest.raises(cc.InvalidValueError, match=r"delta_stars\[3\]"):
         cv.decide(artifacts, violations=[])
 
 
@@ -460,6 +475,25 @@ def test_cli_temoin_sain_sort_0_et_ecrit_la_chaine(tmp_path: Path) -> None:
     [
         pytest.param(lambda a: a.__setitem__("anchor", {}), id="provenance supprimée"),
         pytest.param(lambda a: a.__setitem__("continuity", {}), id="continuité vide"),
+        pytest.param(lambda a: a["evaluation"].pop("discarded"), id="discarded absent"),
+        pytest.param(
+            lambda a: a["evaluation"].__setitem__("estimability", {"E1": "false"}),
+            id="déclaration en chaîne 'false'",
+        ),
+    ],
+)
+def test_cli_refuse_l_entree_avec_exit_2_et_n_ecrit_rien(tmp_path: Path, mutate: Any) -> None:
+    """§ I.1 : preuve absente, nulle ou mal typée → code 2, la chaîne s'arrête, rien n'est écrit."""
+    artifacts = _sound()
+    mutate(artifacts)
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 2
+    assert not (tmp_path / "verdict.json").exists(), "aucun artefact ne doit être écrit"
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
         pytest.param(
             lambda a: a["evaluation"].__setitem__(
                 "bounds", {k: float("inf") for k in a["evaluation"]["bounds"]}
@@ -470,28 +504,332 @@ def test_cli_temoin_sain_sort_0_et_ecrit_la_chaine(tmp_path: Path) -> None:
             lambda a: a["evaluation"]["metrics"].__setitem__("net_pnl", float("nan")),
             id="métrique NaN",
         ),
+        pytest.param(
+            lambda a: a["evaluation"]["returns_config"].__setitem__(5, -1.0),
+            id="rendement exactement -1",
+        ),
+        pytest.param(lambda a: a["evaluation"].__setitem__("discarded", 11), id="B incohérent"),
     ],
 )
-def test_cli_refuse_l_entree_avec_exit_2_et_n_ecrit_rien(tmp_path: Path, mutate: Any) -> None:
-    """§ I.1 : entrée refusée → code 2, la chaîne s'arrête, aucun verdict n'est produit."""
+def test_cli_violation_sort_1_avec_un_diagnostic_sans_verdict(tmp_path: Path, mutate: Any) -> None:
+    """§ F.7 → § I.1 ligne 15 : non-finitude, domaine ou compte incohérent = violation, code 1.
+
+    Un artefact **diagnostic** est écrit — explicitement invalide, porteur des violations — mais il ne
+    contient **ni verdict, ni raison, ni chaîne citable**.
+    """
     artifacts = _sound()
     mutate(artifacts)
     argv = _write_cli_inputs(tmp_path, artifacts)
-    assert cv.main(argv) == 2
-    assert not (tmp_path / "verdict.json").exists(), "aucun artefact ne doit être écrit"
+    assert cv.main(argv) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True
+    assert payload["violations"], (
+        "les violations doivent être dans l'artefact, pas seulement sur stderr"
+    )
+    assert payload["verdict"] is None
+    assert payload["raison"] is None
+    assert payload["verdict_string"] is None
 
 
-def test_cli_estimabilite_contredite_sort_1_et_ecrit_le_verdict(tmp_path: Path) -> None:
-    """Une violation n'est pas une entrée invalide : code 1, et l'artefact est écrit pour la relire."""
+def test_cli_estimabilite_contredite_sort_1_sans_publier_de_verdict(tmp_path: Path) -> None:
+    """Défaut reproduit : exit 1 mais `verdict=validé` et une chaîne citable étaient écrits.
+
+    Une violation doit **empêcher la publication** du verdict normal. L'artefact diagnostic garde ce
+    que le calcul avait produit, mais sous une clé qui dit qu'il a été invalidé.
+    """
+    artifacts = _sound()  # réellement estimable
+    artifacts["evaluation"]["estimability"] = {"E1": False, "E2": False, "ok": False}
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True
+    assert payload["verdict"] is None
+    assert payload["verdict_string"] is None
+    assert any("E1" in v for v in payload["violations"])
+    assert payload["diagnostic"]["issue_calculee_puis_invalidee"] == cc.ISSUE_VALIDE
+
+
+# ---------------------------------------------------------------------------
+# Item 1 — la contradiction déclaré / recalculé, dans les deux sens
+# ---------------------------------------------------------------------------
+
+
+def test_contradiction_declare_estimable_recalcule_non_estimable_est_une_violation() -> None:
     flat = [0.0] * N_DAYS
     artifacts = _artifacts(
         returns_config=flat,
         returns_bench=_varying(11),
         metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
     )
+    artifacts["evaluation"]["estimability"] = {"ok": True, "E1": True}
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert decision.reason == "F_NOT_ESTIMABLE", "le recalcul fait foi"
+    assert len(violations) == 2 and all("recalculée" in v for v in violations)
+
+
+def test_contradiction_declare_non_estimable_recalcule_estimable_est_une_violation() -> None:
+    artifacts = _sound()
+    artifacts["evaluation"]["estimability"] = {"ok": False, "E1": False, "E2": False}
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert decision.issue == cc.ISSUE_VALIDE, (
+        "le calcul continue, mais il sera invalidé à la sortie"
+    )
+    assert len(violations) == 3
+
+
+def test_declaration_coherente_ne_produit_aucune_violation() -> None:
+    artifacts = _sound()
     artifacts["evaluation"]["estimability"] = {"ok": True, "E1": True, "E2": True}
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert violations == []
+
+
+# ---------------------------------------------------------------------------
+# Item 2 — contournements de l'accesseur strict, reproduits
+# ---------------------------------------------------------------------------
+
+
+def test_discarded_absent_est_une_erreur_d_entree_et_non_zero() -> None:
+    """Défaut reproduit : `discarded` absent valait 0, donc `validé` là où 11 donnait `inconclusif`."""
+    artifacts = _sound()
+    artifacts["evaluation"].pop("discarded")
+    with pytest.raises(cc.MissingEvidenceError, match="discarded"):
+        cv.decide(artifacts, violations=[])
+
+
+def test_discarded_incoherent_avec_B_est_une_violation() -> None:
+    """`B` déclaré, `B_effectif` recalculé : un désaccord est une violation (§ I.1, ligne 15)."""
+    artifacts = _sound()
+    artifacts["evaluation"]["discarded"] = 11  # B_effectif 400 + 11 != B 400
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any("B déclaré" in v for v in violations)
+
+
+def test_B_absent_est_une_erreur_d_entree() -> None:
+    artifacts = _sound()
+    artifacts["evaluation"].pop("B")
+    with pytest.raises(cc.MissingEvidenceError, match=r"evaluation\.B"):
+        cv.decide(artifacts, violations=[])
+
+
+@pytest.mark.parametrize("value", ["false", "true", 0, 1, "", None])
+def test_declaration_presente_mal_typee_est_une_erreur_de_type(value: Any) -> None:
+    """Défaut reproduit : `bool("false")` valait `True`. Un booléen est un booléen."""
+    artifacts = _sound()
+    artifacts["evaluation"]["estimability"] = {"E1": value}
+    with pytest.raises(cc.MissingEvidenceError):
+        cv.decide(artifacts, violations=[])
+
+
+def test_rendement_exactement_moins_un_est_hors_domaine() -> None:
+    """Défaut reproduit : `-1.0` est fini, donc passait ; `log1p(-1)` est pourtant indéfini."""
+    artifacts = _sound()
+    artifacts["evaluation"]["returns_config"][5] = -1.0
+    with pytest.raises(cc.InvalidValueError, match="hors domaine"):
+        cv.decide(artifacts, violations=[])
+
+
+def test_rendement_juste_au_dessus_de_moins_un_est_accepte() -> None:
+    artifacts = _sound()
+    artifacts["evaluation"]["returns_config"][5] = -0.999999
+    cv.decide(artifacts, violations=[])  # ne lève pas
+
+
+# ---------------------------------------------------------------------------
+# Item 3 — la table I.1, ligne à ligne. C'est ce test qui empêchera la prochaine divergence.
+# ---------------------------------------------------------------------------
+
+
+def _abstention(reason: str) -> Any:
+    def mutate(a: dict[str, Any]) -> None:
+        a["selection"] = {"status": "ABSTENTION", "reason": reason}
+
+    return mutate
+
+
+def _all_discarded(a: dict[str, Any]) -> None:
+    a["evaluation"]["delta_stars"] = []
+    a["evaluation"]["discarded"] = B_TEST
+
+
+#: (ligne, fixture, issue attendue, raison attendue, code CLI attendu, artefact écrit ?, chaîne citable ?)
+TABLE_I1 = [
+    pytest.param(1, lambda a: None, cc.ISSUE_VALIDE, None, 0, True, True, id="L1 entrée conforme"),
+    pytest.param(
+        2,
+        lambda a: a.__setitem__("entry", {"ok": False}),
+        None,
+        "R0_INVALID_RUN",
+        2,
+        False,
+        False,
+        id="L2 contrat rompu R0",
+    ),
+    pytest.param(
+        7,
+        lambda a: a.__setitem__("anchor", {"universe_provenance": "contaminated"}),
+        cc.ISSUE_INCONCLUSIF,
+        "P_PROVENANCE",
+        0,
+        True,
+        True,
+        id="L7 provenance",
+    ),
+    pytest.param(
+        8,
+        _abstention("A_NO_ADMISSIBLE_CANDIDATE"),
+        cc.ISSUE_INCONCLUSIF,
+        "A_NO_ADMISSIBLE_CANDIDATE",
+        0,
+        True,
+        True,
+        id="L8 ensemble vide",
+    ),
+    pytest.param(
+        9,
+        _abstention("A_BELOW_FLOOR"),
+        cc.ISSUE_INCONCLUSIF,
+        "A_BELOW_FLOOR",
+        0,
+        True,
+        True,
+        id="L9 aucun survivant",
+    ),
+    pytest.param(
+        10,
+        lambda a: a["continuity"].__setitem__("benchmark_comparable", False),
+        cc.ISSUE_INCONCLUSIF,
+        "E_NO_BENCHMARK",
+        0,
+        True,
+        True,
+        id="L10 benchmark",
+    ),
+    pytest.param(
+        11,
+        lambda a: a["continuity"].__setitem__("stamp_same_daily_cell", False),
+        cc.ISSUE_INCONCLUSIF,
+        "E_STAMP_MISMATCH",
+        0,
+        True,
+        True,
+        id="L11 estampille",
+    ),
+    pytest.param(
+        12,
+        lambda a: a["continuity"].__setitem__("warmup_anchor_ok", False),
+        cc.ISSUE_INCONCLUSIF,
+        "D_WARMUP_ANCHOR",
+        0,
+        True,
+        True,
+        id="L12 warmup ancrage",
+    ),
+    pytest.param(
+        13,
+        _all_discarded,
+        cc.ISSUE_INCONCLUSIF,
+        "F_NOT_ESTIMABLE",
+        0,
+        True,
+        True,
+        id="L13 estimabilité (toutes réplications écartées, compte cohérent)",
+    ),
+    pytest.param(
+        14,
+        lambda a: a["evaluation"].__setitem__(
+            "bounds", dict.fromkeys(a["evaluation"]["bounds"], -0.5)
+        ),
+        cc.ISSUE_INCONCLUSIF,
+        "F_CANNOT_SEPARATE",
+        0,
+        True,
+        True,
+        id="L14 borne",
+    ),
+    pytest.param(
+        15,
+        lambda a: a["evaluation"].__setitem__("estimability", {"ok": False}),
+        None,
+        None,
+        1,
+        True,
+        False,
+        id="L15 violation : déclaré ≠ recalculé",
+    ),
+    pytest.param(
+        15,
+        lambda a: a["evaluation"]["metrics"].__setitem__("cagr_pct", float("inf")),
+        None,
+        None,
+        1,
+        True,
+        False,
+        id="L15 violation : non-finitude",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("line", "mutate", "issue", "reason", "code", "written", "citable"), TABLE_I1
+)
+def test_table_I1_ligne_a_ligne(
+    tmp_path: Path,
+    line: int,
+    mutate: Any,
+    issue: Any,
+    reason: Any,
+    code: int,
+    written: bool,
+    citable: bool,
+) -> None:
+    """Chaque ligne de la table du § I.1 exerçable par `c3_verdict`, en appel direct ET par la CLI."""
+    artifacts = _sound()
+    mutate(artifacts)
+
+    # Appel direct.
+    violations: list[str] = []
+    if line == 2:
+        with pytest.raises(cc.EntryRefusedError) as info:
+            cv.decide(artifacts, violations=violations)
+        assert info.value.reason == "R0_INVALID_RUN"
+    elif line == 15 and issue is None and reason is None:
+        try:
+            cv.decide(artifacts, violations=violations)
+        except cc.InvalidValueError as exc:
+            violations.append(str(exc))
+        assert violations, "la ligne 15 est une violation"
+    else:
+        decision = cv.decide(artifacts, violations=violations)
+        assert violations == []
+        assert decision.issue == issue
+        assert decision.reason == reason
+
+    # CLI : code de sortie, artefact, chaîne.
     argv = _write_cli_inputs(tmp_path, artifacts)
-    assert cv.main(argv) == 1
-    payload = cc.read_json(tmp_path / "verdict.json")
-    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF
-    assert payload["raison"] == "F_NOT_ESTIMABLE"
+    assert cv.main(argv) == code
+    out = tmp_path / "verdict.json"
+    assert out.exists() is written
+    if written:
+        payload = cc.read_json(out)
+        assert (payload["verdict_string"] is not None) is citable
+        assert payload["invalide"] is (not citable)
+
+
+def test_table_I1_lignes_3_a_6_sont_hors_perimetre_de_c3_verdict() -> None:
+    """Les lignes 3 à 6 sont de portée candidat : elles s'exercent dans `c3_select`, pas ici.
+
+    Elles sont énumérées pour que la table reste complète et que nul ne les croie couvertes.
+    """
+    candidate_scope = [r for r, s in cc.REASON_SCOPE.items() if s == "candidat"]
+    assert set(candidate_scope) == {
+        "D_WARMUP_PREFIX",
+        "R1_NOT_NORMALISED",
+        "D_NOT_ADMISSIBLE",
+        "C_COVERAGE",
+    }
+    assert not any(r in cv.BLOCKING_RUN_REASONS for r in candidate_scope)

@@ -118,29 +118,43 @@ def _estimability_of(
     """§ A.13, **recalculé depuis les séries**, puis recoupé contre toute valeur déclarée.
 
     Le statut déclaré n'est **jamais** recopié : il est recalculé et comparé, et un désaccord est une
-    **violation**. Croire une déclaration que les séries contredisent transformerait l'estimabilité
-    en champ décoratif — une configuration inactive déclarée estimable repartirait en `réfuté`.
+    **violation** (§ I.1, ligne 15). Le bloc déclaré est optionnel ; **s'il est présent, chaque champ
+    est strictement typé** — une chaîne ``"false"`` est une erreur de type, pas un ``True``.
+
+    Le compteur ``discarded`` et le total ``B`` sont **obligatoires** : un compteur absent n'est pas
+    zéro. ``B_effectif`` est recalculé comme ``len(delta_stars)`` ; ``B != B_effectif + discarded``
+    est un désaccord recalculé / enregistré, donc une violation. Une suite ``delta_stars`` **vide mais
+    documentée** (toutes les réplications écartées) n'est pas une erreur d'entrée : elle mène à
+    ``F_NOT_ESTIMABLE`` par le § F.2 (e).
     """
-    returns = cc.require_finite_series(evaluation, "returns_config", where="evaluation")
-    deltas = cc.require_finite_series(evaluation, "delta_stars", where="evaluation")
-    discarded = cc.require_int(evaluation, "discarded", where="evaluation", default=0)
-    if discarded < 0:
-        raise cc.MissingEvidenceError("evaluation.discarded: compte négatif")
+    returns = cc.require_finite_series(
+        evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
+    )
+    deltas = cc.require_finite_series(evaluation, "delta_stars", where="evaluation", min_len=0)
+    discarded = cc.require_int(evaluation, "discarded", where="evaluation", minimum=0)
+    total = cc.require_int(evaluation, "B", where="evaluation", minimum=1)
+    b_effectif = len(deltas)
+    if total != b_effectif + discarded:
+        violations.append(
+            f"réplications : B déclaré {total}, recalculé B_effectif {b_effectif} + écartées "
+            f"{discarded} = {b_effectif + discarded} — le compte recalculé fait foi"
+        )
 
     est = cc.estimability(returns, deltas, discarded)
     payload = est.to_dict()
-    payload["B_effectif"] = len(deltas)
+    payload["B"] = total
+    payload["B_effectif"] = b_effectif
 
-    declared = evaluation.get("estimability")
-    if declared is not None:
-        if not isinstance(declared, Mapping):
-            raise cc.MissingEvidenceError("evaluation.estimability: bloc attendu")
+    if "estimability" in evaluation and evaluation["estimability"] is not None:
+        declared = cc.require_mapping(evaluation, "estimability", where="evaluation")
         for key, recomputed in (("E1", est.e1), ("E2", est.e2), ("ok", est.ok)):
-            if key in declared and bool(declared[key]) != recomputed:
-                violations.append(
-                    f"estimabilité {key} déclarée {declared[key]!r}, recalculée {recomputed!r} "
-                    "— le statut recalculé fait foi"
-                )
+            if key in declared:
+                stated = cc.require_bool(declared, key, where="evaluation.estimability")
+                if stated != recomputed:
+                    violations.append(
+                        f"estimabilité {key} déclarée {stated!r}, recalculée {recomputed!r} "
+                        "— le statut recalculé fait foi"
+                    )
         payload["declared"] = dict(declared)
     return est.ok, payload
 
@@ -154,13 +168,8 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     """
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
     if not cc.require_bool(entry, "ok", where="entry"):
-        return Decision(
-            issue=cc.ISSUE_INCONCLUSIF,
-            reason="R0_INVALID_RUN",
-            retained=None,
-            selection_status=None,
-            provenance=None,
-        )
+        # § I.1, ligne 2 : contrat rompu -> code 2, la chaîne s'arrête, rien n'est publié.
+        raise cc.EntryRefusedError("R0_INVALID_RUN", "la validité d'entrée (§ I-A) a échoué")
 
     anchor = cc.require_mapping(artifacts, "anchor", where="artefacts")
     provenance = cc.require_str(
@@ -283,11 +292,14 @@ def build_verdict_string(campaign: str, decision: Decision, protocol_sha: str) -
 def build_payload(
     artifacts: Mapping[str, Mapping[str, Any]], decision: Decision, *, campaign: str, now: datetime
 ) -> dict[str, Any]:
+    """L'artefact **normal** : un verdict et sa chaîne citable. Jamais construit si une violation existe."""
     descriptor = cc.protocol_descriptor()
     payload: dict[str, Any] = dict(cc.artifact_header(now))
     payload.update(
         {
             "campagne": campaign,
+            "invalide": False,
+            "violations": [],
             "verdict": decision.issue,
             "raison": decision.reason,
             "selection": decision.retained,
@@ -302,18 +314,50 @@ def build_payload(
     return payload
 
 
+def build_diagnostic_payload(
+    violations: Sequence[str], *, campaign: str, now: datetime, partial: Decision | None
+) -> dict[str, Any]:
+    """L'artefact **diagnostic** d'une violation (§ I.1, ligne 15) : explicitement invalide.
+
+    Il porte les violations et, à titre de diagnostic, ce que le calcul avait produit avant d'être
+    invalidé — mais **aucun verdict, aucune raison, aucune chaîne citable**. Un rapport ne peut pas le
+    citer comme un résultat, parce qu'il n'en contient pas.
+    """
+    payload: dict[str, Any] = dict(cc.artifact_header(now))
+    payload.update(
+        {
+            "campagne": campaign,
+            "invalide": True,
+            "violations": list(violations),
+            "verdict": None,
+            "raison": None,
+            "verdict_string": None,
+            "diagnostic": None
+            if partial is None
+            else {
+                "issue_calculee_puis_invalidee": partial.issue,
+                "portes_Q": partial.gates,
+                "estimabilite": partial.estimability,
+            },
+        }
+    )
+    return payload
+
+
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
+    if payload["invalide"]:
+        out = ["ARTEFACT INVALIDE — aucun verdict, aucune chaîne citable"]
+        out += [f"  violation : {v}" for v in payload["violations"]]
+        return out
     out = [payload["verdict_string"], ""]
-    est = payload.get("estimabilite") or {}
-    if est:
+    est = payload["estimabilite"]
+    if est is not None:
         out.append(
-            "estimabilité : E1={E1} E2={E2} nnz={nonzero_ratio:.3f} "
-            "distincts={distinct_delta_stars} écartées={discarded}".format(
-                E1=est.get("E1"), E2=est.get("E2"), nonzero_ratio=est.get("nonzero_ratio", 0.0),
-                distinct_delta_stars=est.get("distinct_delta_stars"), discarded=est.get("discarded"),
-            )
+            f"estimabilité : E1={est['E1']} E2={est['E2']} nnz={est['nonzero_ratio']:.3f} "
+            f"distincts={est['distinct_delta_stars']} B={est['B']} B_effectif={est['B_effectif']} "
+            f"écartées={est['discarded']}"
         )
-    gates = payload.get("portes_Q") or {}
+    gates = payload["portes_Q"]
     if gates:
         out.append("portes Q : " + " ".join(f"{k}={v}" for k, v in sorted(gates.items())))
     return out
@@ -356,20 +400,39 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 2
 
     violations: list[str] = []
+    decision: Decision | None = None
     try:
         decision = decide(artifacts, violations=violations)
+    except cc.EntryRefusedError as exc:
+        # § I.1, ligne 2 — contrat rompu : code 2, la chaîne s'arrête, rien n'est publié.
+        print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
+        return 2
     except cc.MissingEvidenceError as exc:
-        # § I.1 — preuve obligatoire absente, nulle, mal typée ou non finie : erreur d'entrée.
-        # Aucun artefact n'est écrit, aucun verdict n'est prononcé.
+        # § I.1 — preuve obligatoire absente, nulle, mal typée ou hors liste close : code 2.
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
         return 2
+    except cc.InvalidValueError as exc:
+        # § F.7 -> § I.1, ligne 15 — non-finitude ou domaine : violation, code 1, diagnostic écrit.
+        violations.append(str(exc))
+
+    if violations:
+        # § I.1, ligne 15 — une violation n'est pas un résultat : aucun verdict normal n'est publié.
+        payload = build_diagnostic_payload(
+            violations, campaign=args.campaign, now=now, partial=decision
+        )
+        digest = cc.write_json(args.output, payload)
+        print("\n".join(render_lines(payload)))
+        print(f"written {args.output} sha256 {digest}")
+        for violation in violations:
+            print(f"VIOLATION {violation}", file=sys.stderr)
+        return 1
+
+    assert decision is not None
     payload = build_payload(artifacts, decision, campaign=args.campaign, now=now)
     digest = cc.write_json(args.output, payload)
     print("\n".join(render_lines(payload)))
     print(f"written {args.output} sha256 {digest}")
-    for violation in violations:
-        print(f"VIOLATION {violation}", file=sys.stderr)
-    return 1 if violations else 0
+    return 0
 
 
 if __name__ == "__main__":

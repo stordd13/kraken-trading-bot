@@ -104,7 +104,7 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
   sous 5k, plancher 5-10 USDC, doctrine des sorties MARKET à 0.25 %.
 - **Fait le 15 sept 2026** (`feat/b4-3-campaign`, tag `v2.8.0-b4-3-campaign`) : P6 0/24, P7 0/35, sélection paper vide
   (`results/B4_bybit_backtest_report.md`). **Métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de
-  sélection (vides) inchangés** — réparation de l'instrument : C1 et C2 **mergés** → rejeu grid (phase courante) → C3.
+  sélection (vides) inchangés** — réparation de l'instrument : C1 et C2 **mergés** → rejeu grid (**clos le 20 sept**, `inconclusif`) → C3 (en cours).
 
 <!-- C3A-INTERIM:début — bloc d'état intermédiaire. À REMPLACER EN BLOC à la clôture de C3a, jamais à compléter (§ 0.7 du protocole, appliqué entre fichiers). -->
 
@@ -112,7 +112,7 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
 
 | Lot | État | Ce qui existe |
 |---|---|---|
-| **C3a** | 🔄 en cours | `docs/protocole_c3.md` gelé (`d931293`) ; `scripts/audit/c3_common.py` + `c3_verdict.py` et leurs 62 tests (`075f740`) |
+| **C3a** | 🔄 en cours | `docs/protocole_c3.md` gelé (`d931293`) ; `scripts/audit/c3_common.py` + `c3_verdict.py` et leurs tests (`075f740`, puis correction de revue en attente du GO d'Astra) |
 | | | **Manquent** : `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select`, `c3_continuity`, et les tests dont la chronologie forte |
 | **C3b** | 📋 ouvert | Exécution continue, preuve de départ à plat, dette 19, dette 15(c), benchmark post-ancrage et bootstrap par blocs, tests d'intégration |
 
