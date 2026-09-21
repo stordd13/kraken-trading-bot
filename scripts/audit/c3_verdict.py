@@ -7,8 +7,11 @@ les mêmes artefacts obtiennent **la même chaîne**. C'est le contrat de falsif
 Ce qu'il fait, dans l'ordre gelé :
 
 * § I.1 — les raisons de niveau run sont collectées, et la chaîne porte **la première de la liste de
-  priorité du § H qui s'applique**. La portée d'une raison n'est jamais redite ici : elle vient de
-  ``c3_common.REASON_SCOPE``, qui transcrit la table du § I.1.
+  priorité du § H qui s'applique**. La portée d'une raison n'est ni redite ici ni transcrite dans une
+  table raison → portée : elle se lit dans la **ligne du § I.1 qui s'applique** — une même raison
+  peut être de portée candidat ou run selon la ligne (`F_NOT_ESTIMABLE`, lignes 6 et 13). Ce script
+  n'émet que des raisons de niveau run ; l'ordre de son code suffit à dire que `F_CANNOT_SEPARATE`
+  se constate **après** que les portes ont été franchies.
 * **§ H.0 — la préséance de l'estimabilité sur le verdict économique.** Tant que `E1` et `E2` ne
   sont pas satisfaites, **ni ``validé`` ni ``réfuté``** ne peuvent être prononcés, quel que soit le
   résultat des portes `Q1`, `Q2`, `Q3` : l'issue est ``inconclusif (F_NOT_ESTIMABLE)``.
@@ -24,6 +27,7 @@ Usage::
 
     poetry run python scripts/audit/c3_verdict.py \\
         --entry results/c3a_entry_validation/entry.json \\
+        --anchor results/c3/anchor.json \\
         --selection results/c3/selection.json \\
         --continuity results/c3/continuity.json \\
         --evaluation results/c3/evaluation.json \\
@@ -49,18 +53,6 @@ sys.path.insert(0, str(_ROOT / "scripts" / "audit"))
 
 import c3_common as cc  # noqa: E402
 
-#: Raisons de niveau run qui rendent l'évaluation économique impossible (§ I.1, lignes 2 et 8 à 14).
-#: `F_CANNOT_SEPARATE` n'y figure pas : elle se constate **après** que les portes ont été franchies.
-BLOCKING_RUN_REASONS: tuple[str, ...] = (
-    "R0_INVALID_RUN",
-    "A_NO_ADMISSIBLE_CANDIDATE",
-    "A_BELOW_FLOOR",
-    "D_WARMUP_ANCHOR",
-    "E_NO_BENCHMARK",
-    "E_STAMP_MISMATCH",
-    "F_NOT_ESTIMABLE",
-)
-
 
 @dataclass(frozen=True)
 class Decision:
@@ -81,8 +73,8 @@ def _gate_results(evaluation: Mapping[str, Any]) -> dict[str, bool]:
 
     `Q1` et `Q2` lisent le **résultat propre** de la configuration ; seule `Q3` lit le comparateur.
     Les seuils viennent du § A.10 via ``c3_common`` ; les redire ici les ferait diverger (§ 0.7).
-    Les trois métriques sont **obligatoires et finies** : une métrique absente ou `NaN` est une
-    erreur d'entrée, pas une porte en échec.
+    Les trois métriques sont **obligatoires et finies**, et jamais une porte en échec : absente,
+    nulle ou mal typée → erreur d'entrée (code 2) ; `NaN` ou infinie → violation (code 1, § I.1 l.15).
     """
     metrics = cc.require_mapping(evaluation, "metrics", where="evaluation")
     where = "evaluation.metrics"
@@ -180,9 +172,11 @@ def _estimability_of(
 def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str]) -> Decision:
     """L'issue du § H, et rien d'autre. Fonction pure des artefacts fournis.
 
-    Lève ``MissingEvidenceError`` dès qu'une preuve obligatoire est absente, nulle, mal typée ou non
-    finie : c'est une **erreur d'entrée** (§ I.1, code 2), pas un verdict. Aucun verdict économique
-    n'est prononcé sur une preuve manquante.
+    Lève ``MissingEvidenceError`` dès qu'une preuve obligatoire est absente, nulle, mal typée ou hors
+    liste close — **erreur d'entrée** (§ I.1 ligne 2, code 2), pas un verdict — et
+    ``InvalidValueError`` sur une valeur non finie ou hors domaine — **violation** (§ I.1 ligne 15,
+    code 1), pas un verdict non plus. Aucun verdict économique n'est prononcé sur une preuve manquante
+    ou invalide.
     """
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
     if not cc.require_bool(entry, "ok", where="entry"):

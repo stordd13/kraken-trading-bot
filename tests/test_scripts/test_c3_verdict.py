@@ -303,9 +303,11 @@ def test_le_parseur_n_expose_que_des_chemins_et_un_horodatage() -> None:
 
 def test_toutes_les_raisons_de_la_liste_close_sont_connues_du_module() -> None:
     """La liste close du § H est celle de `c3_common`, et le verdict n'en invente aucune."""
-    assert set(cc.REASON_SCOPE) == set(cc.REASON_PRIORITY)
-    assert set(cv.BLOCKING_RUN_REASONS) <= set(cc.REASON_PRIORITY)
-    assert "F_CANNOT_SEPARATE" not in cv.BLOCKING_RUN_REASONS
+    assert set(cc.CANDIDATE_REASONS) <= set(cc.REASON_PRIORITY)
+    assert set(cc.CLAUSE_REASON.values()) <= set(cc.REASON_PRIORITY)
+    # Aucune table raison -> portée unique ne doit réapparaître : la portée se lit dans I.1.
+    assert not hasattr(cc, "REASON_SCOPE")
+    assert not hasattr(cv, "BLOCKING_RUN_REASONS")
 
 
 # ---------------------------------------------------------------------------
@@ -942,16 +944,24 @@ def test_table_I1_ligne_a_ligne(
         assert payload["invalide"] is (not citable)
 
 
-def test_table_I1_lignes_3_a_6_sont_hors_perimetre_de_c3_verdict() -> None:
-    """Les lignes 3 à 6 sont de portée candidat : elles s'exercent dans `c3_select`, pas ici.
+def test_les_raisons_de_portee_candidat_sont_enumerees_sans_portee_exclusive() -> None:
+    """Lignes 3 à 6 d'I.1 : leurs raisons sont énumérées — **pas** une table raison → portée.
 
-    Elles sont énumérées pour que la table reste complète et que nul ne les croie couvertes.
+    `F_NOT_ESTIMABLE` y figure (ligne 6, D4) **et** est de portée run (ligne 13) : c'est la seule
+    de l'énumération que `decide()` émet, et il l'émet en portée run. Les lignes 3 à 6 elles-mêmes
+    s'exercent dans `c3_select` / `c3_entry`, pas ici ; elles sont énumérées pour que nul ne les
+    croie couvertes.
     """
-    candidate_scope = [r for r, s in cc.REASON_SCOPE.items() if s == "candidat"]
-    assert set(candidate_scope) == {
+    assert set(cc.CANDIDATE_REASONS) == {
         "D_WARMUP_PREFIX",
         "R1_NOT_NORMALISED",
         "D_NOT_ADMISSIBLE",
         "C_COVERAGE",
+        "F_NOT_ESTIMABLE",
     }
-    assert not any(r in cv.BLOCKING_RUN_REASONS for r in candidate_scope)
+    # L'union des raisons des lignes 3 à 6 (clauses D1, D2, D3, D4, D6) est exactement cette liste.
+    lines_3_to_6 = {cc.CLAUSE_REASON[c] for c in ("D1", "D2", "D3", "D4", "D6")}
+    assert lines_3_to_6 == set(cc.CANDIDATE_REASONS)
+    # Ce que `decide()` émet (table I.1 paramétrée) n'en recoupe que `F_NOT_ESTIMABLE`, en portée run.
+    emitted = {row.values[3] for row in TABLE_I1 if row.values[3] is not None}
+    assert emitted & set(cc.CANDIDATE_REASONS) == {"F_NOT_ESTIMABLE"}

@@ -164,8 +164,10 @@ FORBIDDEN_REJEU_NAMES: tuple[str, ...] = (
 # qu'aucun d'eux ne réécrive à la main une logique de présence qui oublierait `None`, un type faux
 # ou un non-fini.
 #
-# Règle : une preuve obligatoire absente, **nulle**, **mal typée** ou **non finie** est une **erreur
-# d'entrée** (§ I.1, code 2). Ce n'est jamais un `False` implicite, et jamais une valeur par défaut.
+# Règle : une preuve obligatoire **absente**, **nulle**, **mal typée** ou **hors liste close** est une
+# **erreur d'entrée** (§ I.1 ligne 2, code 2, rien n'est écrit) ; une preuve **non finie** ou **hors
+# domaine** est une **violation** (§ I.1 ligne 15, code 1, artefact diagnostic invalide — § F.7,
+# § F.2 e). Ce n'est jamais un `False` implicite, et jamais une valeur par défaut.
 
 
 class MissingEvidenceError(ValueError):
@@ -319,22 +321,18 @@ REASON_PRIORITY: tuple[str, ...] = (
     "C_COVERAGE",
 )
 
-#: Portées du § I.1. Une raison de portée « candidat » n'est jamais portée par la chaîne.
-REASON_SCOPE: dict[str, str] = {
-    "R0_INVALID_RUN": "run",
-    "P_PROVENANCE": "run",
-    "D_WARMUP_PREFIX": "candidat",  # promue en « artefact » par PROMOTABLE_CLAUSES (§ I.1)
-    "A_NO_ADMISSIBLE_CANDIDATE": "run",
-    "A_BELOW_FLOOR": "run",
-    "D_WARMUP_ANCHOR": "run",
-    "E_NO_BENCHMARK": "run",
-    "E_STAMP_MISMATCH": "run",
-    "F_NOT_ESTIMABLE": "run",
-    "F_CANNOT_SEPARATE": "run",
-    "R1_NOT_NORMALISED": "candidat",
-    "D_NOT_ADMISSIBLE": "candidat",
-    "C_COVERAGE": "candidat",
-}
+#: Raisons **pouvant concerner un candidat** (§ I.1, lignes 3 à 6). C'est une énumération, **pas une
+#: table raison → portée** : la portée se lit dans la ligne du § I.1 qui s'applique, et une même
+#: raison en a plusieurs — `D_WARMUP_PREFIX` est de portée candidat (ligne 4) **ou** artefact
+#: (ligne 5), `F_NOT_ESTIMABLE` de portée candidat (ligne 6, D4) **ou** run (ligne 13). Un dict
+#: raison → portée unique était faux par construction ; il a été retiré.
+CANDIDATE_REASONS: tuple[str, ...] = (
+    "D_WARMUP_PREFIX",
+    "R1_NOT_NORMALISED",
+    "D_NOT_ADMISSIBLE",
+    "C_COVERAGE",
+    "F_NOT_ESTIMABLE",
+)
 
 #: § I.1 — liste close des clauses promouvables en refus d'artefact. **D2 seule.**
 PROMOTABLE_CLAUSES: tuple[str, ...] = ("D2",)
