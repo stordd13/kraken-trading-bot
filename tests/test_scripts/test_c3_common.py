@@ -571,13 +571,17 @@ def base_asset(pair: str) -> str:
 def nav_path(
     pair: str, index: int, n_points: int = N_PREFIX_POINTS, *, drift: float | None = None
 ) -> list[float]:
-    """Une trajectoire déterministe, en dents de scie, distincte par (paire, candidat), jamais ruinée."""
+    """Une trajectoire déterministe, distincte par (paire, candidat), jamais ruinée : dérive
+    douce, bruit faible (bien sous la volatilité du B&H) et un repli de ~4 % sur vingt jours —
+    un drawdown qui s'apparie sur la grille de λ au pas 0,001."""
     seed = (sum(ord(ch) for ch in pair) * 7 + index * 13) % 97
     step_drift = 0.0004 + 0.0002 * index if drift is None else drift
+    dip_start = 200 + 17 * index
     values = [1000.0]
     for k in range(1, n_points):
-        wobble = ((k * 31 + seed) % 23 - 11) / 1000.0  # ±1,1 % par jour
-        values.append(round(values[-1] * (1.0 + step_drift + wobble), 6))
+        wobble = ((k * 31 + seed) % 23 - 11) / 4000.0
+        dip = -0.002 if dip_start <= k < dip_start + 20 else 0.0
+        values.append(round(values[-1] * (1.0 + step_drift + wobble + dip), 6))
     return values
 
 
@@ -909,7 +913,13 @@ def candles(
         base = 30000.0 if pair.startswith("BTC") else 150.0
         daily = []
         for k, stamp in enumerate(grid[1:-1], start=1):
-            close = base * scale * (1.0 + 0.0003 * k + (((k * 17) % 29) - 14) / 2000.0)
+            # Un actif qui monte lentement, oscille largement (drawdowns réels de ~25 %) et bruite
+            # chaque jour : le B&H plein notionnel est plus risqué que tout candidat synthétique.
+            close = (
+                base
+                * scale
+                * (1.0 + 0.0003 * k + 0.15 * math.sin(k / 60.0) + (((k * 17) % 29) - 14) / 1000.0)
+            )
             daily.append({"t": stamp.isoformat(), "close": f"{close:.8f}"})
         exec_rows = [
             {
