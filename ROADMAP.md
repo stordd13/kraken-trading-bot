@@ -112,7 +112,7 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
 
 | Lot | État | Ce qui existe |
 |---|---|---|
-| **C3a** | 🔄 en cours | `docs/protocole_c3.md` gelé (`d931293`) ; `scripts/audit/c3_common.py` + `c3_verdict.py` et leurs tests (`075f740`, puis correction de revue en attente du GO d'Astra) |
+| **C3a** | 🔄 en cours | `docs/protocole_c3.md` gelé (`d931293`) ; `scripts/audit/c3_common.py` + `c3_verdict.py` et leurs tests (`075f740`, correction de revue `e358df9`, en attente du GO d'Astra) |
 | | | **Manquent** : `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select`, `c3_continuity`, et les tests dont la chronologie forte |
 | **C3b** | 📋 ouvert | Exécution continue, preuve de départ à plat, dette 19, dette 15(c), benchmark post-ancrage et bootstrap par blocs, tests d'intégration |
 
