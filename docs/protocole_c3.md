@@ -1,7 +1,10 @@
 # Protocole de validation chronologique — C3, version 2
 
-> **Statut : SOUMIS AU GATE 2.** Ce document est **gelé au GO humain, et à cet instant précis**. Une fois gelé,
-> **rien des § 0 à L ne peut être relu, repondéré, réinterprété ou élargi** — ni pendant l'écriture de
+> **Statut : GELÉ.** GO humain donné le **2026-09-21**, sur cette révision, après les deux corrections
+> documentaires qui la constituent. **À partir d'ici, l'outillage suit ce document ; le document ne suit pas
+> l'outillage.** Si une fixture révèle une incohérence du protocole, **on s'arrête et on la signale** — on ne
+> corrige pas le document en silence pour faire passer un test. Une fois gelé,
+> **rien des § 0 à M ne peut être relu, repondéré, réinterprété ou élargi** — ni pendant l'écriture de
 > l'outillage, ni au contact des données. Toute modification postérieure au GO est un **amendement daté**, qui
 > décrit ce qui a changé et pourquoi, et qui **crée une nouvelle variante** au sens du § A.6.
 >
@@ -17,33 +20,30 @@
 > et ses tests. **C3b** livre l'intégration et la vérification de l'exécution continue. Aucun des deux ne
 > sélectionne quoi que ce soit pour le paper.
 
-## Amendements — troisième soumission au gate 2
+## Amendements — révision de gel
 
-Ce qui a **réellement** changé dans cette révision. Aucun code n'existe encore ; l'arrêt dur avant outillage est
-maintenu.
+Ce qui a **réellement** changé dans cette révision, celle sur laquelle le GO a été donné. Aucun code n'existait
+au moment de la soumission.
 
-**Trois des quatre défauts de la révision précédente étaient le défaut que j'avais moi-même diagnostiqué** :
-ajouter un énoncé sans supprimer celui qu'il remplaçait. Le § 0.7 l'interdisait déjà ; je l'ai enfreint dans la
-révision qui l'introduisait. Les énoncés remplacés sont **supprimés** cette fois, pas complétés.
+**Deux corrections, toutes deux issues d'une lecture de l'index que je n'avais pas faite.** Mon index affichait
+`E1` et `E2` avec **zéro site de référence**, et j'ai écrit « aucune anomalie ». Une colonne de références vide
+signifie qu'**aucune règle n'applique la porte** — et c'était précisément la cause du premier défaut.
 
 | # | Section | Ce qui a changé |
 |---|---|---|
-| 1 | **§ C.3, corrigée** | La version précédente écrivait que les deux côtés « exécutent à la même bougie, au même prix de marché ». **Faux, et cela réécrivait les moteurs par mégarde** : le moteur signal remplit au marché à l'**open** de N+1, ou à son **prix limite** si la bougie le touche **[v]** `scripts/backtest.py:1216-1231` ; le grid attend ses franchissements. **L'égalité fictive est supprimée.** Ce qui est synchronisé est la **contrainte** — mêmes observations à `T`, même résolution, aucun fill à `T` ni avant — pas l'événement. Le benchmark reçoit sa **propre convention d'achat**, justifiée. Et **l'instant du prix est déclaré séparément de l'estampille** : à `T = 04:48`, la bougie estampillée `04:50` **ouvre à `04:45`**, donc avant `T` ; seule sa clôture est postérieure. L'exigence porte sur l'**instant du prix** |
-| 2 | **§ A.13, réécrite ; § A.8, corrigée** | **E1 n'impose plus aucune activité au comparateur** : un comparateur `λ = 0` est du cash déterministe, et l'exiger actif rendait **toute** comparaison à `λ = 0` inconclusive. Le seuil de 10 % est déclaré **convention reprise du précédent, non dérivée**. **E2 était faux tel qu'écrit** : une trajectoire plate ne rend pas `Δ*` constant si l'autre varie — la largeur nulle exige **deux** côtés déterministes. **E3 est supprimée**, absorbée par le § F.2 (e). Et l'affirmation qu'un candidat inactif franchirait `Q1`/`Q2` grâce à la baisse du comparateur est **retirée** : ces portes lisent son **propre** résultat |
-| 3 | **§ F.8 nouvelle ; § H, § I.1** | **`Q1`, `Q2`, `Q3` étaient référencés cinq fois et définis nulle part** — leur définition avait disparu à la réécriture du § F.2. Restaurés **à un seul endroit**. Le § H **classait lui-même** les raisons et interdisait la chaîne à `D_WARMUP_ANCHOR`, `E_NO_BENCHMARK`, `E_STAMP_MISMATCH` et `F_NOT_ESTIMABLE`, que la table du § I.1 donne de niveau run : **ce classement est supprimé**, la table est seule source. La **promotion est bornée à D2** par liste close ; D1, D3, D4 et D6 gardent l'**abstention** quand elles vident l'ensemble, et la distinction est posée en **convention**, sans la déduire d'une opposition données/candidats qui ne tient pas |
-| 4 | **§ F.2 (e) réécrite ; § F.7** | Deux règles se contredisaient sur les non-finitudes. Désormais : **entrée invalide** = erreur d'entrée, aucun bootstrap lancé ; **échec numérique pendant le tirage** = réplication **écartée, comptée, non remplacée**, quantile calculé sur les retenues, et **`B_effectif` publié** à côté de `B`. Le § F.7 ne traite plus que les entrées et **renvoie** pour le reste |
-| 5 | **Seuils** | L'inventaire omettait **144 bougies sur 288** pour qu'une journée 5 min compte comme couverte, repris du précédent. Il est déclaré, classé, **avec sa limite écrite** : un motif d'une bougie manquante sur deux affiche 100 % de jours couverts malgré 50 % de bougies absentes. Et l'arithmétique hebdomadaire est corrigée : une semaine manquante pèse **≈ 7 fois** un jour manquant (`1/110` contre `1/767`), **pas cent fois** |
-| 6 | **§ M, nouvelle** | Index des symboles normatifs produit par `rg`, avec la table des seuils et leur site unique — **et ce que l'index ne prouve pas** |
-| 7 | **§ B.5, § C.5** | Deux reformulations restantes converties en renvois (portée de `D_WARMUP_ANCHOR`, borne de couverture du benchmark) |
+| A | **§ H.0, nouvelle ; § F.8 et § A.8 corrigés** | Le § F.8 affirmait encore qu'une configuration plate donne **légitimement** `réfuté` et que le § A.13 ne couvrait pas ce cas, alors qu'`E1` l'écarte. **La préséance de l'estimabilité sur le verdict économique est énoncée une seule fois, au § H.0** : tant qu'`E1` et `E2` ne sont pas satisfaites, ni `validé` ni `réfuté` ne peuvent être prononcés, et l'issue est `inconclusif (F_NOT_ESTIMABLE)`. Le § H.1 rend cette exigence explicite **pour `validé` aussi**, et le renvoi des portes `Q` pointe désormais sur le **§ F.8**, leur site de définition, et non sur le § F.2 |
+| B | **§ A.13, E2** | L'explication d'E2 transformait une condition **suffisante** en condition **nécessaire**. Contre-exemple : deux trajectoires **variables et identiques** sous rééchantillonnage apparié donnent des `CAGR` qui bougent et une **différence toujours nulle**. La condition opérationnelle d'E2 est **inchangée** ; seule son explication est corrigée, ici et dans ses occurrences du § A.8 et de l'en-tête |
+| C | **§ M** | Index régénéré — `E1` et `E2` portent maintenant des sites de référence — et **la règle de lecture ajoutée** : un symbole sans site de référence est une porte que rien n'applique |
 
-**Révisions antérieures, pour mémoire.** Deuxième soumission : principe d'écriture du § 0.7 ; table unique des
-codes de sortie ; séparation décision/exécution du benchmark ; procédure numérique figée et borne pivotale ;
-séquence filtrer-puis-classer ; artefact de couverture ; portée du `réfuté` bornée au triplet ; preuve initiale
-exigée de C3b ; porte pré-merge du § L.5.
+**Aucun seuil introduit, aucun seuil modifié.** `E1` et `E2` gardent leurs valeurs ; seule leur articulation avec
+les issues est écrite.
 
-**Seuils introduits par cette révision** : aucun. Les deux de `§ A.13` existaient déjà ; `E3` a disparu. Le
-**144 sur 288** n'est pas nouveau dans la règle — il y était depuis la deuxième soumission — mais il est
-**nouvellement déclaré** dans l'inventaire, ce qui était l'omission signalée.
+**Révisions antérieures, pour mémoire.** Troisième soumission : convention d'exécution du benchmark séparée de
+celle des moteurs, instant du prix distingué de l'estampille ; `E1` exemptant le comparateur ; `Q1`-`Q3`
+restaurés au § F.8 ; entrées invalides séparées des échecs numériques avec `B_effectif` publié ; seuil 144/288
+déclaré ; arithmétique hebdomadaire corrigée ; § M créé. Deuxième soumission : § 0.7 ; table unique des codes de
+sortie ; procédure numérique figée et borne pivotale ; séquence filtrer-puis-classer ; artefact de couverture ;
+portée du `réfuté` bornée au triplet ; preuve initiale exigée de C3b ; porte pré-merge du § L.5.
 
 ---
 
@@ -472,9 +472,11 @@ résultat** de la période qu'on prétend ne pas avoir regardée, et il rouvrira
 > faible activité produise une borne large, et l'issue n'est pas automatique.
 >
 > **La correction de la correction.** La révision suivante avançait qu'une trajectoire constante rend `Δ*`
-> constant. **C'est faux aussi** : `Δ* = CAGR(config) − CAGR(comparateur)`, et si la configuration est plate
-> pendant que le comparateur varie, `Δ*` **varie** avec le rééchantillonnage du comparateur. Une largeur nulle
-> exige que **les deux** côtés soient déterministes.
+> constant. **C'est faux aussi** : si la configuration est plate pendant que le comparateur varie, `Δ*`
+> **varie**. La révision d'après ajoutait qu'une largeur nulle « exige que les deux côtés soient
+> déterministes » — **faux également**, et dans l'autre sens : c'est une condition **suffisante**, pas
+> **nécessaire**. Deux trajectoires **variables et identiques** sous rééchantillonnage apparié donnent aussi un
+> `Δ*` constamment nul. L'énoncé exact est au **§ A.13, E2**.
 >
 > Elle ajoutait qu'un candidat inactif pourrait franchir `Q1` et `Q2` grâce à la baisse de son comparateur.
 > **Faux également** : `Q1` et `Q2` portent sur **son propre résultat** — `net_pnl` et rendement géométrique de
@@ -694,10 +696,18 @@ comptant moins d'une dizaine de pour cent de jours informatifs fait dépendre la
 du tirage d'un ou deux amas. Le gate peut le retenir, l'ajuster ou le supprimer ; il ne doit pas le lire comme
 un résultat.
 
-**E2 — ce qu'il attrape vraiment.** `Δ* = CAGR(config) − CAGR(comparateur)`. Sa distribution est de largeur
-nulle **seulement si les deux côtés sont déterministes** au rééchantillonnage — par exemple une configuration
-plate comparée à du cash. Une configuration plate face à un comparateur variable **ne déclenche pas E2** : son
-`Δ*` varie. E2 est donc un garde-fou étroit, et **c'est délibéré** : il refuse une borne sans information, il
+**E2 — ce qu'il attrape.** `Δ* = CAGR(config) − CAGR(comparateur)`. **E2 détecte une distribution
+rééchantillonnée de `Δ*` constante, quelle qu'en soit la cause.** Deux causes au moins la produisent :
+
+- **deux trajectoires déterministes** — par exemple une configuration plate comparée à du cash ;
+- **deux trajectoires variables identiques** sous rééchantillonnage **apparié** : leurs `CAGR` changent d'une
+  réplication à l'autre, mais leur **différence vaut toujours zéro**, puisque les mêmes indices de blocs sont
+  appliqués aux deux séries (§ F.2 a).
+
+E2 ne présume donc **aucune** cause, et il n'exige pas que les deux côtés soient déterministes. *(La rédaction
+précédente l'affirmait : elle transformait une condition **suffisante** en condition **nécessaire**. La
+condition opérationnelle d'E2 n'a pas changé ; seule son explication était fausse.)* E2 est un garde-fou étroit,
+et **c'est délibéré** : il refuse une borne sans information, il
 ne juge pas l'activité.
 
 **Ce contrôle n'est pas un repêchage** (§ A.11, section d'origine de cette interdiction). Un repêchage
@@ -1350,9 +1360,17 @@ ferait diverger. Seuls les domaines de mesure changent.
 | `Q3` | l'**écart** au comparateur apparié | — |
 
 Conséquence directe : une configuration restée **plate** après l'ancrage échoue `Q1` et `Q2` **par son propre
-résultat**, quelle que soit la trajectoire du comparateur. La conclusion `réfuté` qui en découle est
-**légitime** — elle n'a produit aucun effet économique sur la fenêtre — et elle ne dépend d'aucune baisse du
-comparateur. Le § A.13 ne couvre donc pas ce cas : il ne couvre qu'un bootstrap dégénéré.
+résultat**, quelle que soit la trajectoire du comparateur.
+
+**Mais l'échec de ces portes ne suffit pas à produire `réfuté`.** Une telle configuration échoue **aussi** E1
+(§ A.13) : moins de 10 % de jours à rendement non nul. **L'estimabilité est préalable au verdict économique**,
+et la préséance est énoncée **une seule fois, au § H** (§ 0.7). L'issue d'une configuration inactive est donc
+**`inconclusif (F_NOT_ESTIMABLE)`**, jamais `réfuté`.
+
+*(La rédaction précédente affirmait ici l'inverse — « la conclusion `réfuté` est légitime », « le § A.13 ne
+couvre pas ce cas ». Elle contredisait E1, qu'aucune règle de verdict ne citait alors. C'est cette absence de
+citation qui rendait la contradiction invisible : un symbole normatif sans site de référence est une porte que
+rien n'applique.)*
 
 ---
 
@@ -1387,17 +1405,40 @@ une décision non écrite. La configuration retenue est nommée **porteuse du r�
 
 ## § H. Les issues — conditions nécessaires et suffisantes
 
+### H.0 La préséance de l'estimabilité sur le verdict économique
+
+**C'est la section d'origine de cette préséance (§ 0.7). Aucun autre passage ne la redit ; tous y renvoient.**
+
+> **Les conditions d'estimabilité du § A.13 sont préalables à tout verdict économique.** Tant que `E1` et `E2`
+> ne sont pas satisfaites, **ni `validé` ni `réfuté` ne peuvent être prononcés**, quel que soit le résultat des
+> portes `Q1`, `Q2`, `Q3`. L'issue est alors **`inconclusif (F_NOT_ESTIMABLE)`**.
+>
+> **L'échec des portes ponctuelles ne produit `réfuté` qu'après satisfaction des conditions d'estimabilité.**
+
+*Pourquoi cette préséance existe.* Une porte économique compare un résultat à un seuil. Si la fenêtre ne porte
+pas de quoi estimer ce résultat, la comparaison a lieu mais **ne signifie rien** : on conclurait sur une absence
+d'observation. Le cas concret est celui d'une configuration restée **inactive** après l'ancrage — elle échoue
+`Q1` et `Q2` par son propre résultat (§ F.8), **et** elle échoue `E1`. La préséance tranche : l'issue est
+`inconclusif`, pas `réfuté`.
+
+*Ce que cette préséance n'est pas.* Ce n'est pas un repêchage (§ A.11) : elle **retire** une issue, elle n'en
+fabrique aucune, et aucun candidat de substitution n'est sélectionné.
+
+### H.1 Les trois issues
+
 **`validé`** ⟺ le run est exploitable au sens du § I **et** l'univers est de provenance `clean` **et**
-**la configuration retenue au sens du § A.9** — pas « une configuration », **celle-là** — franchit
-P1 ∧ P2 ∧ P3 sur le préfixe, franchit `Q1 ∧ Q2 ∧ Q3` sur la fenêtre d'évaluation (§ F.2), **et** sa borne
-d'incertitude post-ancrage est strictement positive dans **les six** combinaisons `L × appariement` (§ F.2).
+**les conditions d'estimabilité du § A.13 sont satisfaites** (§ H.0) **et** **la configuration retenue au sens
+du § A.10** — pas « une configuration », **celle-là** — franchit P1 ∧ P2 ∧ P3 sur le préfixe, franchit
+`Q1 ∧ Q2 ∧ Q3` sur la fenêtre d'évaluation (**§ F.8**), **et** sa borne d'incertitude post-ancrage est
+strictement positive dans **les six** combinaisons `L × appariement` (§ F.2).
 
 > **Pourquoi « celle-là » et pas « une ».** Un énoncé existentiel autoriserait à évaluer tous les candidats
 > après l'ancrage et à déclarer `validé` si l'un survit : c'est **exactement** la fuite du § 0.2 (a), sous un
 > autre nom. **Une seule configuration est évaluée après l'ancrage : celle que la sélection a retenue.**
 
 **`réfuté`** ⟺ le run est exploitable, **l'univers est de provenance `clean`**, une configuration a été retenue,
-et son évaluation post-ancrage échoue à `Q1`, `Q2` ou `Q3`, **l'estimabilité du § A.13 étant acquise**.
+**les conditions d'estimabilité du § A.13 sont satisfaites** (§ H.0), et son évaluation post-ancrage échoue à
+`Q1`, `Q2` ou `Q3` (**§ F.8**).
 Portée : *l'effet mesuré sur cette fenêtre est sous le minimum déclaré ; ce n'est pas une affirmation que
 l'effet vrai est nul.* **Ce qu'un `réfuté` clôt exactement est au § K.1, section d'origine** — et ce n'est
 jamais une famille.
@@ -1694,38 +1735,44 @@ elle doit être **écrite**, pas sous-entendue.
 ## § M. Index des symboles normatifs
 
 Produit par `rg` sur ce fichier, à la révision soumise. **Chaque symbole a exactement un site de définition.**
-L'index sert à repérer une définition **absente** ou **multiple** ; il est régénéré à chaque révision et
-recollé ici.
+L'index sert à repérer une définition **absente** ou **multiple**, et **un symbole que rien n'applique**. Il est
+régénéré à chaque révision et recollé ici.
+
+> **Règle de lecture, et elle a déjà servi.** **Un symbole normatif dont la colonne « sites de référence » est
+> vide est une porte que rien n'applique.** Ce n'est pas un détail de présentation, c'est un défaut : la
+> révision précédente affichait `E1` et `E2` sans aucun site de référence, et cette colonne vide **était** la
+> contradiction qui laissait le § F.8 conclure `réfuté` sur une configuration qu'`E1` écartait. J'ai lu cet
+> index et écrit « aucune anomalie ». **La colonne vide est une anomalie.**
 
 | Symbole | Site de définition | Sites de référence |
 |---|---|---|
-| `Q1` | § F.8 | § A.8, § F.5, § H |
-| `Q2` | § F.8 | § A.8, § F.5, § H |
-| `Q3` | § F.8 | § A.8, § F.5, § H |
-| `P1` | § A.10 | § A.11, § G.1, § H, § I.1 |
-| `P2` | § A.10 | § A.11, § H |
-| `P3` | § A.10 | § A.11, § G.1, § H, § I.1 |
-| `D1` | § A.8 | § A.7, § A.10, § A.11, § C.5, § G.1, § H, § I.1, § J |
-| `D2` | § A.8 | § 0.5, § B.5, § D.3, § H, § I.1 |
-| `D3` | § A.8 | § D.3, § H, § I.1, § J |
+| `Q1` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
+| `Q2` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
+| `Q3` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
+| `P1` | § A.10 | § A.11, § G.1, § H.1, § I.1 |
+| `P2` | § A.10 | § A.11, § H.1 |
+| `P3` | § A.10 | § A.11, § G.1, § H.1, § I.1 |
+| `D1` | § A.8 | § A.7, § A.10, § A.11, § C.5, § G.1, § H.1, § I.1, § J |
+| `D2` | § A.8 | § 0.5, § B.5, § D.3, § H.1, § I.1 |
+| `D3` | § A.8 | § D.3, § H.1, § I.1, § J |
 | `D4` | § A.8 | § I.1 |
-| `D5` | § A.8 | § A.6, § D.3, § H, § I.1, § I.2 |
-| `D6` | § A.8 | § A.10, § A.11, § G.1, § H, § I.1 |
-| `E1` | § A.13 | — |
-| `E2` | § A.13 | — |
-| `R0_INVALID_RUN` | § I.1 | § H |
-| `P_PROVENANCE` | § I.1 | § H |
-| `D_WARMUP_PREFIX` | § I.1 | § B.5, § D.3, § H |
-| `A_NO_ADMISSIBLE_CANDIDATE` | § I.1 | § A.11, § H |
-| `A_BELOW_FLOOR` | § I.1 | § A.11, § H |
-| `D_WARMUP_ANCHOR` | § I.1 | § B.5, § H |
-| `E_NO_BENCHMARK` | § I.1 | § C.5, § H |
-| `E_STAMP_MISMATCH` | § I.1 | § B.4, § H |
-| `F_NOT_ESTIMABLE` | § I.1 | § A.13, § F.2, § H |
-| `F_CANNOT_SEPARATE` | § I.1 | § F.5, § H |
-| `R1_NOT_NORMALISED` | § I.1 | § A.8, § H |
-| `D_NOT_ADMISSIBLE` | § I.1 | § H |
-| `C_COVERAGE` | § I.1 | § A.8, § H |
+| `D5` | § A.8 | § A.6, § D.3, § H.1, § I.1, § I.2 |
+| `D6` | § A.8 | § A.10, § A.11, § G.1, § H.1, § I.1 |
+| `E1` | § A.13 | § F.8, § H.0 |
+| `E2` | § A.13 | § A.8, § H.0 |
+| `R0_INVALID_RUN` | § I.1 | § H.1 |
+| `P_PROVENANCE` | § I.1 | § H.1 |
+| `D_WARMUP_PREFIX` | § I.1 | § B.5, § D.3, § H.1 |
+| `A_NO_ADMISSIBLE_CANDIDATE` | § I.1 | § A.11, § H.1 |
+| `A_BELOW_FLOOR` | § I.1 | § A.11, § H.1 |
+| `D_WARMUP_ANCHOR` | § I.1 | § B.5, § H.1 |
+| `E_NO_BENCHMARK` | § I.1 | § C.5, § H.1 |
+| `E_STAMP_MISMATCH` | § I.1 | § B.4, § H.1 |
+| `F_NOT_ESTIMABLE` | § I.1 | § A.13, § F.2, § F.8, § H.0, § H.1 |
+| `F_CANNOT_SEPARATE` | § I.1 | § F.5, § H.1 |
+| `R1_NOT_NORMALISED` | § I.1 | § A.8, § H.1 |
+| `D_NOT_ADMISSIBLE` | § I.1 | § H.1 |
+| `C_COVERAGE` | § I.1 | § A.8, § H.1 |
 
 **Seuils, et leur site unique.** Chaque valeur est définie une fois, avec sa classe (§ 0.5) :
 
