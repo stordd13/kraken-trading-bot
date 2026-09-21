@@ -168,6 +168,8 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "entry_price",
             "pnl",
             "refusal",
+            "retained",
+            "reason",
         }
     )
     assert not (cc.OPTIONAL_FIELDS & cc.NULLABLE_FIELDS), (

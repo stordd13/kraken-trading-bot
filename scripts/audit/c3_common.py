@@ -229,7 +229,9 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
 #: ``stale_by_candles``, ``first``, ``last`` — rien chargé (`backtest.py:508-528`) ; ``timestamp``,
 #: ``reference_price``, ``price``, ``spread_pct``, ``slippage_pct``, ``avg_holding_minutes`` — aucune
 #: liquidation forcée (`backtest.py:3296-3300`) ; ``entry_price``, ``pnl`` — lot à coût inconnu ;
-#: ``refusal`` — `entry.json` : ``null`` quand l'entrée est conforme, un bloc quand elle est refusée.
+#: ``refusal`` — `entry.json` : ``null`` quand l'entrée est conforme, un bloc quand elle est refusée ;
+#: ``retained`` — `selection.json` : ``null`` en abstention, un bloc quand une configuration est retenue ;
+#: ``reason`` — `benchmark.pairs[].reason` et `selection.reason` : ``null`` quand rien n'est à signaler.
 NULLABLE_FIELDS: frozenset[str] = frozenset(
     {
         "stale_by_candles",
@@ -244,6 +246,8 @@ NULLABLE_FIELDS: frozenset[str] = frozenset(
         "entry_price",
         "pnl",
         "refusal",
+        "retained",
+        "reason",
     }
 )
 

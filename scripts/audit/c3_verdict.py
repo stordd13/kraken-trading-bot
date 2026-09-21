@@ -208,12 +208,34 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     selection_status = cc.require_str(
         selection, "status", where="selection", allowed=cc.STATUS_SELECTION
     )
+    # Le statut de sélection est **dérivable** de la provenance et du résultat (table de
+    # `c3_select`) : il est recalculé ici et recoupé au déclaré — un désaccord est une violation.
+    selection_provenance = cc.require_str(
+        selection, "provenance", where="selection", allowed=cc.PROVENANCES
+    )
+    if selection_provenance != provenance:
+        violations.append(
+            f"selection.provenance {selection_provenance!r} != anchor.universe_provenance "
+            f"{provenance!r} — le manifeste n'a qu'une provenance"
+        )
+    retained_block = cc.nullable_mapping(selection, "retained", where="selection")
+    if retained_block is None:
+        derived_status = "ABSTENTION"
+    elif cc.PROVENANCE_CAN_SUPPORT_VALIDE[provenance]:
+        derived_status = "SÉLECTION_VALIDE"
+    else:
+        derived_status = "SÉLECTION_DESCRIPTIVE"
+    if derived_status != selection_status:
+        violations.append(
+            f"selection.status déclaré {selection_status!r}, dérivé {derived_status!r} de "
+            f"(provenance {provenance!r}, retenu {retained_block is not None}) — le statut dérivé fait foi"
+        )
 
     reasons: list[str] = []
     if not cc.PROVENANCE_CAN_SUPPORT_VALIDE[provenance]:
         reasons.append("P_PROVENANCE")
 
-    if selection_status == "ABSTENTION":
+    if retained_block is None:
         reasons.append(
             cc.require_str(
                 selection,
@@ -230,11 +252,7 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
             provenance=provenance,
         )
 
-    retained = cc.require_str(
-        cc.require_mapping(selection, "retained", where="selection"),
-        "identity",
-        where="selection.retained",
-    )
+    retained = cc.require_str(retained_block, "identity", where="selection.retained")
 
     # § B — les contrôles obligatoires de continuité, présents et typés. Une clé absente ou nulle
     # est une erreur d'entrée, jamais un contrôle réputé satisfait.

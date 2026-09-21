@@ -91,8 +91,11 @@ def _artifacts(
         "entry": {"ok": True, "refusal": None},
         "anchor": {"universe_provenance": provenance},
         "selection": {
-            "status": "SÉLECTION_VALIDE",
+            "status": "SÉLECTION_VALIDE"
+            if provenance == cc.PROVENANCE_CLEAN
+            else "SÉLECTION_DESCRIPTIVE",
             "reason": None,
+            "provenance": provenance,
             "retained": {"identity": cc.candidate_identity("s", "BTC/USDC", {"a": 1})},
         },
         "continuity": {
@@ -460,12 +463,77 @@ def test_refusal_absent_est_une_erreur_d_entree_null_est_la_valeur_conforme() ->
     assert cv.decide(artifacts, violations=[]).issue == cc.ISSUE_VALIDE
 
 
+# ---------------------------------------------------------------------------
+# Le statut de sélection : dérivé de (provenance, retenu) et recoupé — jamais recopié
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("provenance", "declared"),
+    [
+        (cc.PROVENANCE_CLEAN, "SÉLECTION_DESCRIPTIVE"),
+        (cc.PROVENANCE_CONTAMINATED, "SÉLECTION_VALIDE"),
+        (cc.PROVENANCE_UNKNOWN, "SÉLECTION_VALIDE"),
+        (cc.PROVENANCE_CLEAN, "ABSTENTION"),
+    ],
+    ids=[
+        "clean déclaré descriptif",
+        "contaminated déclaré valide",
+        "unknown déclaré valide",
+        "retenu déclaré abstention",
+    ],
+)
+def test_statut_de_selection_declare_contredit_par_la_derivation_est_une_violation(
+    tmp_path: Path, provenance: str, declared: str
+) -> None:
+    artifacts = _artifacts(
+        returns_config=_varying(7),
+        returns_bench=[0.0] * N_DAYS,
+        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        provenance=provenance,
+    )
+    artifacts["selection"]["status"] = declared
+    if declared == "ABSTENTION":
+        artifacts["selection"]["reason"] = "A_BELOW_FLOOR"
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any("selection.status déclaré" in v for v in violations)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+
+
+def test_abstention_sans_retenu_declaree_valide_est_une_violation() -> None:
+    artifacts = _sound()
+    artifacts["selection"]["retained"] = None
+    artifacts["selection"]["reason"] = "A_NO_ADMISSIBLE_CANDIDATE"
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "A_NO_ADMISSIBLE_CANDIDATE"
+    assert any("dérivé 'ABSTENTION'" in v for v in violations)
+
+
+def test_provenance_de_la_selection_differente_de_l_ancrage_est_une_violation() -> None:
+    artifacts = _sound()
+    artifacts["selection"]["provenance"] = cc.PROVENANCE_UNKNOWN
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any("selection.provenance" in v for v in violations)
+
+
+def test_retained_absent_est_une_erreur_d_entree_null_est_l_abstention() -> None:
+    artifacts = _sound()
+    artifacts["selection"].pop("retained")
+    with pytest.raises(cc.MissingEvidenceError, match="jamais absente"):
+        cv.decide(artifacts, violations=[])
+
+
 #: Chemin d'une preuve obligatoire, décrit comme une suite de clés.
 MANDATORY: tuple[tuple[str, ...], ...] = (
     ("entry", "ok"),
     ("anchor", "universe_provenance"),
     ("selection", "status"),
-    ("selection", "retained"),
+    ("selection", "provenance"),
     ("selection", "retained", "identity"),
     ("continuity", "warmup_anchor_ok"),
     ("continuity", "benchmark_comparable"),
@@ -898,7 +966,12 @@ def test_matrice_B_par_la_cli(
 
 def _abstention(reason: str) -> Any:
     def mutate(a: dict[str, Any]) -> None:
-        a["selection"] = {"status": "ABSTENTION", "reason": reason}
+        a["selection"] = {
+            "status": "ABSTENTION",
+            "reason": reason,
+            "provenance": a["anchor"]["universe_provenance"],
+            "retained": None,
+        }
 
     return mutate
 
@@ -923,7 +996,11 @@ TABLE_I1 = [
     ),
     pytest.param(
         7,
-        lambda a: a.__setitem__("anchor", {"universe_provenance": "contaminated"}),
+        lambda a: (
+            a.__setitem__("anchor", {"universe_provenance": "contaminated"}),
+            a["selection"].__setitem__("provenance", "contaminated"),
+            a["selection"].__setitem__("status", "SÉLECTION_DESCRIPTIVE"),
+        ),
         cc.ISSUE_INCONCLUSIF,
         "P_PROVENANCE",
         0,
