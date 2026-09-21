@@ -1,4 +1,4 @@
-# Note de passation — KrakenBot, C3a en cours (2026-09-20)
+# Note de passation — KrakenBot, C3a en cours (rédigée le 2026-09-20, actualisée le 2026-09-21)
 
 > Usage : (1) coller en ouverture de la nouvelle conversation Claude du Project ; (2) la dernière
 > section sert de base au brief de reprise du nouvel agent, **après** cadrage 4 questions.
@@ -7,18 +7,23 @@
 
 ## 1. Avant d'ouvrir la nouvelle conversation (à faire par Bruno)
 
-1. **Recharger les fichiers du Project depuis la branche `feat/c3a-protocole` au commit `a9be714`**
-   — pas depuis `dev`, ni depuis `~/wt-human` qui est sur `dev` (ex. `git show
-   feat/c3a-protocole:CLAUDE.md > CLAUDE.md`). Les versions actuelles du Project datent du 16/09 et
+1. **Recharger les fichiers du Project depuis la tête de `feat/c3a-protocole`** (au minimum
+   `371f59b`, qui épingle `e358df9` dans les blocs `C3A-INTERIM` ; `e358df9` seul ne les porte pas)
+   — pas depuis `dev`, ni depuis `~/wt-human`, détachée sur `57051cc` = `dev`. **Exporter vers un dossier
+   dédié hors de tout checkout**, pour ne jamais écraser un fichier suivi : `mkdir -p ~/c3a_upload &&
+   git show feat/c3a-protocole:CLAUDE.md > ~/c3a_upload/CLAUDE.md`, etc. Les versions actuelles du Project datent du 16/09 et
    croient que C2 est le prochain chantier. Recharger `CLAUDE.md`, `PROJECT_CONTEXT.md`,
    `ROADMAP.md` (ils portent l'état courant dans un bloc `C3A-INTERIM`), et **ajouter
    `docs/protocole_c3.md`** et `agent/c3a_protocole_chronologique_v2.md`.
    `skills/backtest.md`, `results/INDEX.md` et `docs/CODE_MAP.md` sont **volontairement en retard**
    (mis à jour au commit de clôture de C3a, parce qu'ils décrivent un outillage et des artefacts qui
    n'existent pas encore) : l'état courant est porté par les blocs `C3A-INTERIM` et le protocole.
-2. **Uploader un zip frais du repo** au commit `a9be714` pour pouvoir revérifier le code.
-3. **Faire revoir `075f740` et `a9be714` ensemble par Astra** avant de lancer le nouvel agent (pas
-   encore fait ; `a9be714` est documentaire, la revue porte sur les trois blocs `C3A-INTERIM`).
+2. **Uploader un zip frais du repo** à la tête de `feat/c3a-protocole` (nom `krakenbot-src-<git describe>.zip`, commentaire = SHA), pour pouvoir revérifier le code.
+3. **État vérifié au `e358df9`. Corrections du noyau revues par Astra ; GO pour reprendre les cinq
+   modules restants. C3a reste incomplet, aucune sélection autorisée.** Ce GO valide le point de
+   reprise, pas la chaîne C3a : sa chronologie et sa conformité au manifeste restent à vérifier avec
+   les modules suivants. Le contrôle AST est une protection supplémentaire, pas une preuve de ces
+   propriétés.
 
 ## 2. État du projet en une page
 
@@ -56,11 +61,16 @@ Branche `feat/c3a-protocole`, créée depuis `dev` @ `57051cc`. Historique :
 | `8e01ee2`, `0b50494` | Révisions (contradictions, benchmark, procédure numérique, index des symboles) |
 | `d931293` | Deux dernières corrections — **protocole GELÉ** (`docs/protocole_c3.md`) |
 | `f63c45e` | Premier outillage (3 fichiers de la liste fermée) + 3 fixtures de conséquences |
-| `075f740` | **Noyau `c3_verdict` corrigé** + accesseur strict unique dans `c3_common` |
+| `075f740` | Correctifs du noyau `c3_verdict` + accesseur strict dans `c3_common` — **la revue Astra du 21/09 a identifié des défauts restants** (§ 8) |
 | `a9be714` | Mise à jour documentaire intermédiaire : blocs `C3A-INTERIM` dans `CLAUDE.md` (routage vers le protocole), `PROJECT_CONTEXT.md` (état C3a, dette 19, note WF non résolue), `ROADMAP.md` (C3a en cours, C3b ouvert) |
+| `e358df9` | **Noyau corrigé, revu par Astra, GO** : aucune publication sur violation (artefact diagnostic invalide, verdict/raison/chaîne à `null`) ; accesseur strict imposé (`discarded` et `B` obligatoires, `B_effectif` recalculé, `require_bool`, domaine r > −1) ; codes de sortie alignés sur I.1 avec test paramétré (lignes 1-2 et 7-15 ; 3-6 = portée `c3_select`, à couvrir) ; scan de source sur l'AST contre `bool(` et `.get(` hors `OPTIONAL_FIELDS` ; blocs `C3A-INTERIM` actualisés |
+| `371f59b` | Blocs `C3A-INTERIM` de `PROJECT_CONTEXT.md` et `ROADMAP.md` : le « commit de reprise » épinglé à `e358df9` |
+| `5ee4b1f` + suivant | Cette note de passation (première version, puis actualisation au 21/09) |
 
-État au `075f740` : 1871 tests verts hors module de déterminisme, `mypy src/` = 64 (baseline),
-ruff vert, diff de contrôle vide, protocole intact depuis le gel.
+État au `e358df9` : 1931 tests verts hors module de déterminisme (dont 122 C3), `mypy src/` = 64
+(baseline), ruff vert, diff de contrôle vide, protocole intact depuis le gel (`d931293`).
+Note technique acquise : `math.log1p(-1.0)` lève une exception en Python (pas `-inf`) — la garde de
+domaine est nécessaire, pas seulement prudente.
 
 **Reste en C3a** : `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select`, `c3_continuity` et leurs
 tests — dont le **test de chronologie forte avec son contrôle négatif** — puis docs de clôture
@@ -94,9 +104,9 @@ ou diff de contrôle documenté vide sur tous les chemins qu'ils exercent.
   pas les données vierges. B5 peut porter une évaluation prospective, sans être ni l'unique
   dispositif possible ni une preuve indépendante automatique ; quatre semaines de paper ne sont
   pas une preuve économique à basse rotation.
-- **Artefact du rejeu** : refusé par l'outil, motif `D_WARMUP_PREFIX`, sortie sous
-  `results/c3a_entry_validation/` avec hash source — « cet artefact ne satisfait pas les conditions
-  d'entrée C3 », jamais un verdict sur la famille grid.
+- **Artefact du rejeu** : **sera** refusé par `c3_entry` (pas encore écrit), motif
+  `D_WARMUP_PREFIX`, sortie prévue sous `results/c3a_entry_validation/` avec hash source — « cet
+  artefact ne satisfait pas les conditions d'entrée C3 », jamais un verdict sur la famille grid.
 
 ## 5. Dettes ouvertes à connaître
 
@@ -120,11 +130,12 @@ ou diff de contrôle documenté vide sur tous les chemins qu'ils exercent.
 
 | Motif | Occurrences | Contre-mesure acquise |
 |---|---|---|
-| Contrôle de présence qui passe sur une absence | 4 (`collect_flags` sur `"error"`, `flag_segment` sur bloc absent, sous-blocs `null` du validateur rejeu, `c3_verdict`) | Accesseur strict unique dans `c3_common` (absent, `null`, mauvais type, non-fini) ; tests négatifs clé absente **et** `null` |
-| Règle énoncée à deux endroits, énoncés divergents | 4 paires au gate 2 de C3a | § 0.7 source unique ; index des symboles par `rg` ; **un symbole sans site de référence = une porte que rien n'applique** |
+| Contrôle de présence ou de type qui passe sur une donnée invalide | 5 (`collect_flags` sur `"error"`, `flag_segment` sur bloc absent, sous-blocs `null` du validateur rejeu, `c3_verdict` avant l'accesseur, puis **accesseur contourné** : `.get(clé, défaut)` sur `discarded`, `bool("false")` sur des statuts) | Accesseur strict unique dans `c3_common` **effectivement utilisé** — gardé par le test de scan de source (pas de `bool(…)` sur donnée externe, pas de `.get(clé, défaut)` sur champ obligatoire) ; contrôle du domaine en plus de la finitude (r > −1) ; tests clé absente **et** `null` |
+| Règle énoncée à deux endroits, énoncés divergents | 4 paires au gate 2 de C3a | § 0.7 source unique ; index des symboles par `rg` ; un symbole sans site de référence est un **signal d'alerte à vérifier** (une règle peut s'appliquer par renvoi de section sans nommer le symbole) |
 | La prose décrit une correction que l'artefact ne porte pas | ≥ 4 (journaux gitignorés, teardown vs setup, « one rule now governs », « énoncés remplacés supprimés ») | Revoir l'artefact, jamais le résumé |
-| Généralisation qui dépasse le contre-exemple | G3 (5 formulations fausses), E2 « seulement si », indicateur de longueur, principe de promotion données/candidats | Décrire ce qu'un contrôle **détecte** ; poser une convention comme convention |
-| Faire confiance à un drapeau déclaré au lieu de recalculer | `c3_verdict` estimabilité | Recalculer, recouper, désaccord = violation |
+| Généralisation qui dépasse le contre-exemple | G3 (5 formulations fausses), E2 « seulement si », indicateur de longueur, principe de promotion données/candidats, et **trois règles de la première version de cette note** (quota de tests adverses, « tout statut est recalculé », « symbole sans référence = porte inappliquée ») | Décrire ce qu'un contrôle **détecte** ; poser une convention comme convention |
+| Faire confiance à un drapeau déclaré au lieu de recalculer | `c3_verdict` estimabilité | Recalculer ce qui est dérivable des preuves, recouper, désaccord = violation |
+| Publier un résultat malgré une violation détectée | `c3_verdict` : verdict `validé` écrit et affiché avant le traitement des violations, violations sur stderr seulement | Une violation empêche la publication du verdict ; artefact diagnostic explicitement invalide, sans chaîne citable |
 | Régression d'une correction acquise | filtrer/classer et portée du verdict négatif revenus du rejeu | Vérifier explicitement l'héritage des corrections antérieures |
 
 Note de calibration : les corrections qui tiennent sont les concrètes (contradiction pointée,
@@ -139,13 +150,35 @@ régulièrement introduit une généralisation non fondée.
 - Toute découverte annexe se signale, ne se traite pas. Une fixture qui révèle une incohérence du
   protocole gelé ⇒ arrêt et signalement, jamais de correction silencieuse du document.
 
-## 8. Points à vérifier en ouvrant
+## 8. Défauts du noyau identifiés par la revue Astra du 21/09 — **corrigés au `e358df9`, GO obtenu**
 
-1. Revue Astra de `075f740` (accesseur strict, estimabilité recalculée, finitude, 62 tests).
-2. Sémantique de sortie : une preuve manquante → exit 2 sans artefact ; une violation → exit 1
-   **avec** artefact écrit. Vérifier que cet artefact est **sans ambiguïté marqué comme violation**
-   et ne contient aucune chaîne de verdict citable comme résultat.
-3. Que la table I.1 du protocole gelé dise exactement cette sémantique (sinon : arrêt et signalement).
+(Conservé comme historique : ce sont les classes de défauts que les cinq modules restants doivent
+éviter dès l'écriture.)
+
+1. **Publication malgré violation** : estimabilité déclarée fausse sur une fixture estimable →
+   exit 1 mais `verdict=validé` écrit dans le JSON, violations sur stderr seulement
+   (`c3_verdict.py` ~:366 : construction, écriture et affichage précèdent le traitement des
+   violations). Correction : une violation empêche la publication du verdict normal ; artefact
+   diagnostic explicitement invalide, violations incluses, sans chaîne citable. Contradiction testée
+   dans les deux sens.
+2. **Accesseur contourné** (~:124) : `discarded` absent devient zéro (9 989 retenues : `inconclusif`
+   avec `discarded=11`, `validé` sans la clé) ; statuts déclarés passés par `bool(…)` (`"false"` →
+   `validé`, exit 0) ; rendement à exactement −1 accepté (finitude vérifiée, pas le domaine r > −1).
+   Correction : compteur obligatoire et cohérent avec les réplications ; typage strict des
+   déclarations présentes ; contrôle du domaine ; test de scan de source contre `bool(…)` sur donnée
+   externe et `.get(clé, défaut)` sur champ obligatoire.
+3. **Codes de sortie divergents de la table I.1** (~:1512 du protocole) : `entry.ok=False` → exit 0
+   et verdict (au lieu de `R0_INVALID_RUN`, exit 2, arrêt) ; métrique NaN → exit 2 (le § F.7 renvoie
+   à la ligne 15 du § I.1, code 1) ; toutes réplications écartées avec compte explicite → exit 2 (le
+   § F.2(e) prévoit `F_NOT_ESTIMABLE`). Correction : test paramétré ligne à ligne sur I.1,
+   distinguant donnée absente et échec numérique documenté.
+4. **Docs** : blocs `C3A-INTERIM` → « correctifs livrés, revue ayant identifié des défauts
+   restants », puis actualiser après correction ; `ROADMAP.md` ~:107 appelle encore le rejeu
+   « phase courante ».
+
+GO d'Astra obtenu le 21/09 sur `e358df9`. Reste à couvrir par les modules suivants : les lignes 3
+à 6 de la table I.1 (portée `c3_select`), explicitement énumérées comme non couvertes par le test
+paramétré actuel.
 
 ## 9. Brouillon d'addendum de reprise pour le nouvel agent (à confirmer par cadrage 4 questions)
 
@@ -157,7 +190,8 @@ toute modification du protocole, des moteurs, des seuils, toute campagne, toute 
 
 > **Reprise de C3a.** Lire, dans l'ordre : `agent/c3a_protocole_chronologique_v2.md` (brief), puis
 > `docs/protocole_c3.md` (**gelé** au `d931293` — c'est la spécification, on ne la modifie pas),
-> puis le code au `075f740` (`scripts/audit/c3_common.py`, `c3_verdict.py` et leurs tests).
+> puis le code au `e358df9` (`scripts/audit/c3_common.py`, `c3_verdict.py`, le test de scan AST
+> et `OPTIONAL_FIELDS`, le test paramétré I.1 et leurs fixtures).
 > Branche `feat/c3a-protocole`, assert de branche avant chaque commit, un seul acteur git.
 >
 > **À construire** : `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select`, `c3_continuity` et leurs
@@ -169,19 +203,25 @@ toute modification du protocole, des moteurs, des seuils, toute campagne, toute 
 > **Règles acquises, non négociables :**
 > - Tout accès à un champ obligatoire passe par **l'accesseur strict de `c3_common`** — aucune
 >   logique de présence réécrite à la main.
-> - Tout statut est **recalculé**, jamais recopié d'une valeur déclarée ; un désaccord est une violation.
-> - Finitude vérifiée **avant** toute comparaison (NaN, ±inf).
-> - Les tests d'un module qui refuse des artefacts sont **majoritairement adverses** (drapeaux
->   contradictoires, clés absentes, `null`, types faux, non-finis) ; chaque fichier contient un
->   **témoin sain** ; chaque test asserte **l'issue interdite** autant que l'issue attendue.
-> - Codes de sortie conformes à la table I.1 du protocole ; un artefact écrit sur violation est
->   marqué sans ambiguïté comme violation.
+> - Tout statut **dérivable des preuves disponibles** est recalculé, jamais recopié ; un désaccord
+>   est une violation. Les déclarations non dérivables (la provenance notamment) sont exigées
+>   explicites et strictement typées.
+> - Finitude **et domaine** vérifiés avant toute comparaison (NaN, ±inf, rendement ≤ −1).
+> - Aucun `bool(…)` sur une donnée externe, aucun `.get(clé, défaut)` sur un champ obligatoire dans
+>   `c3_*.py` — gardé par le test de scan de source.
+> - Les tests couvrent **chaque classe d'erreur** (déclarations contradictoires dans les deux sens,
+>   clés absentes, `null`, types faux dont chaînes `"false"`, non-finis, hors domaine) et contiennent
+>   un **témoin sain** — sans quota. Chaque test asserte **l'issue interdite** autant que l'issue attendue.
+> - Codes de sortie conformes à la table I.1, **vérifiés par un test paramétré ligne à ligne** — le
+>   test actuel couvre 1-2 et 7-15 ; **les lignes 3 à 6 sont dans le done de `c3_select`**. Une
+>   violation **empêche la publication du verdict** : un artefact diagnostic reste possible,
+>   explicitement invalide, sans chaîne de résultat citable.
 > - Si une fixture révèle une incohérence du protocole gelé : **arrêt et signalement**, jamais de
 >   modification du document pour faire passer un test.
 > - Aucune modification de moteur, de runner, de seuil ; diff de contrôle vide hors la liste fermée.
 > - Ton rapport décrit ce que les artefacts contiennent, pas ce que tu as voulu y mettre.
 > - Les blocs `<!-- C3A-INTERIM:début -->` … `<!-- C3A-INTERIM:fin -->` de `CLAUDE.md`,
->   `PROJECT_CONTEXT.md` et `ROADMAP.md` (commit `a9be714`) sont à **remplacer en bloc** à la
+>   `PROJECT_CONTEXT.md` et `ROADMAP.md` (posés en `a9be714`, actualisés en `371f59b`) sont à **remplacer en bloc** à la
 >   clôture, marqueurs compris — jamais complétés par un second énoncé d'état. À la clôture aussi :
 >   `skills/backtest.md` (section protocole), `results/INDEX.md` (dont `results/c3a_entry_validation/`)
 >   et `docs/CODE_MAP.md` (lignes `c3_*.py`, plus le rattrapage des `rejeu_*.py` et de
