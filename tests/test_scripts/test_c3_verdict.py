@@ -673,48 +673,87 @@ def test_rendement_juste_au_dessus_de_moins_un_est_accepte() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _with_replications(a: dict[str, Any], *, b: int, n_deltas: int, discarded: int) -> None:
+def _with_replications(
+    a: dict[str, Any], *, b: int, n_deltas: int, discarded: int, nan_in_deltas: bool = False
+) -> None:
     """Déclare `B`, garde `n_deltas` réplications de la suite générée, déclare `discarded`.
 
     Tronquer la suite est la forme documentée d'un échec numérique (§ F.2 e) : les réplications
-    écartées ne sont pas remplacées, elles sont comptées.
+    écartées ne sont pas remplacées, elles sont comptées. `nan_in_deltas` glisse un non-fini dans la
+    suite : seul, il vaut une violation (code 1) ; **avec un `B` hors contrat, c'est R0 qui prime**.
     """
     a["evaluation"]["B"] = b
     a["evaluation"]["delta_stars"] = a["evaluation"]["delta_stars"][:n_deltas]
     a["evaluation"]["discarded"] = discarded
+    if nan_in_deltas:
+        a["evaluation"]["delta_stars"][3] = float("nan")
 
 
-#: (B, len(delta_stars), discarded, code CLI, issue attendue, raison attendue)
+#: (B, len(delta_stars), discarded, non-fini dans delta_stars, code CLI, issue, raison)
 MATRIX_B = [
-    pytest.param(10_000, 9_990, 10, 0, cc.ISSUE_VALIDE, None, id="10000/9990/10 -> 0 témoin sain"),
+    pytest.param(
+        10_000, 9_990, 10, False, 0, cc.ISSUE_VALIDE, None, id="10000/9990/10 -> 0 témoin sain"
+    ),
     pytest.param(
         10_000,
         9_989,
         11,
+        False,
         0,
         cc.ISSUE_INCONCLUSIF,
         "F_NOT_ESTIMABLE",
         id="10000/9989/11 -> 0 F_NOT_ESTIMABLE, compte cohérent",
     ),
-    pytest.param(10_000, 10_000, 11, 1, None, None, id="10000/10000/11 -> 1 compte contradictoire"),
     pytest.param(
-        400, 395, 5, 2, None, "R0_INVALID_RUN", id="400/395/5 -> 2 cohérent mais hors contrat"
+        10_000, 10_000, 11, False, 1, None, None, id="10000/10000/11 -> 1 compte contradictoire"
     ),
     pytest.param(
-        400, 400, 5, 2, None, "R0_INVALID_RUN", id="400/400/5 -> 2 R0 évalué avant la cohérence"
+        400,
+        395,
+        5,
+        False,
+        2,
+        None,
+        "R0_INVALID_RUN",
+        id="400/395/5 -> 2 cohérent mais hors contrat",
+    ),
+    pytest.param(
+        400,
+        400,
+        5,
+        False,
+        2,
+        None,
+        "R0_INVALID_RUN",
+        id="400/400/5 -> 2 R0 évalué avant la cohérence",
+    ),
+    pytest.param(
+        400,
+        400,
+        5,
+        True,
+        2,
+        None,
+        "R0_INVALID_RUN",
+        id="400 + NaN dans delta_stars -> 2 R0 évalué avant tout parsing",
     ),
 ]
 
 
-@pytest.mark.parametrize(("b", "n_deltas", "discarded", "code", "issue", "reason"), MATRIX_B)
+@pytest.mark.parametrize(
+    ("b", "n_deltas", "discarded", "nan_in_deltas", "code", "issue", "reason"), MATRIX_B
+)
 def test_matrice_B_en_appel_direct(
-    b: int, n_deltas: int, discarded: int, code: int, issue: Any, reason: Any
+    b: int, n_deltas: int, discarded: int, nan_in_deltas: bool, code: int, issue: Any, reason: Any
 ) -> None:
     artifacts = _sound()
-    _with_replications(artifacts, b=b, n_deltas=n_deltas, discarded=discarded)
+    _with_replications(
+        artifacts, b=b, n_deltas=n_deltas, discarded=discarded, nan_in_deltas=nan_in_deltas
+    )
     assert len(artifacts["evaluation"]["delta_stars"]) == n_deltas
     violations: list[str] = []
     if code == 2:
+        # `EntryRefusedError`, et pas `InvalidValueError` : le contrat est lu avant les séries.
         with pytest.raises(cc.EntryRefusedError) as info:
             cv.decide(artifacts, violations=violations)
         assert info.value.reason == reason
@@ -736,12 +775,23 @@ def test_matrice_B_en_appel_direct(
     assert (est["B"], est["B_effectif"], est["discarded"]) == (b, n_deltas, discarded)
 
 
-@pytest.mark.parametrize(("b", "n_deltas", "discarded", "code", "issue", "reason"), MATRIX_B)
+@pytest.mark.parametrize(
+    ("b", "n_deltas", "discarded", "nan_in_deltas", "code", "issue", "reason"), MATRIX_B
+)
 def test_matrice_B_par_la_cli(
-    tmp_path: Path, b: int, n_deltas: int, discarded: int, code: int, issue: Any, reason: Any
+    tmp_path: Path,
+    b: int,
+    n_deltas: int,
+    discarded: int,
+    nan_in_deltas: bool,
+    code: int,
+    issue: Any,
+    reason: Any,
 ) -> None:
     artifacts = _sound()
-    _with_replications(artifacts, b=b, n_deltas=n_deltas, discarded=discarded)
+    _with_replications(
+        artifacts, b=b, n_deltas=n_deltas, discarded=discarded, nan_in_deltas=nan_in_deltas
+    )
     argv = _write_cli_inputs(tmp_path, artifacts)
     assert cv.main(argv) == code
     out = tmp_path / "verdict.json"

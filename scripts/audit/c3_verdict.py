@@ -116,13 +116,14 @@ def _estimability_of(
     Le compteur ``discarded`` et le total ``B`` sont **obligatoires** : un compteur absent n'est pas
     zéro. Deux contrôles sur ``B``, dans cet ordre :
 
-    1. **contrat** — ``B`` est un paramètre de la procédure d'incertitude que le manifeste déclare
-       (§ A.6) et que D5 asserte « égal à ce qui est déclaré » ; la valeur gelée est ``BOOTSTRAP_B``
-       (§ F.2 b). Un ``B`` différent est un **contrat d'instrument rompu** : ``R0_INVALID_RUN``, code 2,
-       rien n'est publié (§ I.1, ligne 2). Il est évalué **avant** la cohérence des compteurs, parce
-       que « ``R0_INVALID_RUN`` est évalué avant toute autre chose » (§ H) — un ``B`` hors contrat
-       **et** contredit par ses compteurs sort donc en refus de contrat, pas en violation. Précédent :
-       ``rejeu_validate_analysis.b02_frozen_parameters``.
+    1. **contrat, en tête de fonction, avant tout parsing** — ``B`` est un paramètre de la procédure
+       d'incertitude que le manifeste déclare (§ A.6) et que D5 asserte « égal à ce qui est déclaré » ;
+       la valeur gelée est ``BOOTSTRAP_B`` (§ F.2 b). Un ``B`` différent est un **contrat d'instrument
+       rompu** : ``R0_INVALID_RUN``, code 2, rien n'est publié (§ I.1, ligne 2). « ``R0_INVALID_RUN``
+       est évalué avant toute autre chose » (§ H) vaut aussi contre les erreurs de parsing des séries :
+       un ``B`` hors contrat accompagné d'un compteur contradictoire **ou** d'un non-fini dans
+       ``delta_stars`` sort en refus de contrat (2, rien d'écrit), jamais en violation (1) par accident
+       d'ordre de lecture. Précédent : ``rejeu_validate_analysis.b02_frozen_parameters``.
     2. **cohérence** — ``B_effectif`` est recalculé comme ``len(delta_stars)`` ;
        ``B != B_effectif + discarded`` est un désaccord recalculé / enregistré, donc une violation
        (§ I.1, ligne 15).
@@ -131,18 +132,18 @@ def _estimability_of(
     erreur d'entrée : elle mène à ``F_NOT_ESTIMABLE`` par le § F.2 (e), comme tout ``discarded`` au-delà
     de ``DISCARDED_MAX`` avec un compte cohérent.
     """
-    returns = cc.require_finite_series(
-        evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
-    )
-    deltas = cc.require_finite_series(evaluation, "delta_stars", where="evaluation", min_len=0)
-    discarded = cc.require_int(evaluation, "discarded", where="evaluation", minimum=0)
-    total = cc.require_int(evaluation, "B", where="evaluation", minimum=1)
+    total = cc.require_int(evaluation, "B", where="evaluation")
     if total != cc.BOOTSTRAP_B:
         raise cc.EntryRefusedError(
             "R0_INVALID_RUN",
             f"evaluation.B = {total} ; la valeur gelée du § F.2 (b) est {cc.BOOTSTRAP_B} "
             "— contrat d'instrument rompu, aucun verdict",
         )
+    returns = cc.require_finite_series(
+        evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
+    )
+    deltas = cc.require_finite_series(evaluation, "delta_stars", where="evaluation", min_len=0)
+    discarded = cc.require_int(evaluation, "discarded", where="evaluation", minimum=0)
     b_effectif = len(deltas)
     if total != b_effectif + discarded:
         violations.append(
