@@ -41,7 +41,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | **C1** | Métriques fiables (module partagé, dual MaxDD, PF net, equity export, A/B vs tag) | 3-5 j | `results/C1_metrics_report.md`, gold hashes re-baselinés sur tableau A/B approuvé | ✅ 16 sept — mergé dans `dev`, tag `v2.9.0-c1-metrics` |
 | **C2** | Fidélité replay (grid 4h réels, préenregistrement EMA200 DCA, compteurs de rejets, dette 14 avec review) | 2-4 j | `results/C2_replay_report.md`, gold hashes grid re-baselinés sur tableau approuvé, preuves de déterminisme `results/c2_replay/determinism_server/` | ✅ 19 sept — mergé dans `dev`, tag `v2.10.0-c2-replay` |
 | **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | `results/rejeu_grid_report.md`, pré-spécification gelée `docs/rejeu_grid_prespec.md`, artefacts `results/rejeu_grid_20260919/` | ✅ 20 sept — **`inconclusif (F_CANNOT_SEPARATE)`** : 16 configs BTC passent les gates ponctuels, aucune ne tient les six bornes simultanées ; SOL descriptif (données insuffisantes). Ni candidat, ni dépriorisation : **pas de déploiement, pas de tuning supplémentaire**, périmètre non élargi. Suite → C3 |
-| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole v2 documenté + outillé | 📋 avant toute sélection |
+| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole v2 documenté + outillé | 🔄 **C3a en cours** — protocole **gelé** (`docs/protocole_c3.md`, `d931293`), outillage **partiel** ; **C3b ouvert** (exécution continue, benchmarks synchronisés, tests d'intégration). Détail : bloc C3A-INTERIM de `PROJECT_CONTEXT.md` |
 | **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
 | P11+ | ML, scalping eval, RL | Mois | — | 🔮 |
@@ -105,6 +105,21 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
 - **Fait le 15 sept 2026** (`feat/b4-3-campaign`, tag `v2.8.0-b4-3-campaign`) : P6 0/24, P7 0/35, sélection paper vide
   (`results/B4_bybit_backtest_report.md`). **Métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de
   sélection (vides) inchangés** — réparation de l'instrument : C1 et C2 **mergés** → rejeu grid (phase courante) → C3.
+
+<!-- C3A-INTERIM:début — bloc d'état intermédiaire. À REMPLACER EN BLOC à la clôture de C3a, jamais à compléter (§ 0.7 du protocole, appliqué entre fichiers). -->
+
+**C3a — état au 2026-09-21, intermédiaire.** Le **protocole est gelé** ; l'**outillage ne l'est pas**.
+
+| Lot | État | Ce qui existe |
+|---|---|---|
+| **C3a** | 🔄 en cours | `docs/protocole_c3.md` gelé (`d931293`) ; `scripts/audit/c3_common.py` + `c3_verdict.py` et leurs 62 tests (`075f740`) |
+| | | **Manquent** : `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select`, `c3_continuity`, et les tests dont la chronologie forte |
+| **C3b** | 📋 ouvert | Exécution continue, preuve de départ à plat, dette 19, dette 15(c), benchmark post-ancrage et bootstrap par blocs, tests d'intégration |
+
+**Conséquence opérationnelle : aucune sélection n'est possible aujourd'hui**, la chaîne d'outillage
+étant incomplète. Les conditions de démarrage de B5 sont inchangées.
+
+<!-- C3A-INTERIM:fin -->
 
 ### B5 — Paper trading Bybit (4-6 semaines, ex-P9)
 

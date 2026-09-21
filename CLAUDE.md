@@ -30,8 +30,22 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | Résultats de backtests (quoi est où, verdicts) | `results/INDEX.md` |
 | **Nouvelle idée de stratégie** (filtre d'entrée, ticket § 6 sur le papier avant tout code) | `docs/CONTRAINTES_POST_B4.md` |
 | **Audit red-team B4 / portée des conclusions** | `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` (+ addendum en tête de `results/B4_bybit_backtest_report.md`) |
+| **Comment une configuration est sélectionnée** (protocole gelé — spécification de TOUTE sélection future) | `docs/protocole_c3.md` |
+| **Brief du chantier C3a** (périmètre, gates, décisions figées) | `agent/c3a_protocole_chronologique_v2.md` |
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
+
+<!-- C3A-INTERIM:début — bloc d'état intermédiaire. À REMPLACER EN BLOC à la clôture de C3a, jamais à compléter (§ 0.7 du protocole, appliqué entre fichiers). -->
+
+> **C3a en cours — état au 2026-09-21.** `docs/protocole_c3.md` est **gelé** au commit `d931293`
+> (branche `feat/c3a-protocole`) : il spécifie l'ancrage, l'admissibilité, le classement, le contrat
+> de continuité, le benchmark, la procédure d'incertitude et les trois issues. **Aucune sélection ne
+> se fait hors de ce document**, et il ne se modifie que par amendement daté. L'outillage
+> `scripts/audit/c3_*.py` est **partiel** : `c3_common` et `c3_verdict` existent, `c3_anchor`,
+> `c3_entry`, `c3_benchmark`, `c3_select` et `c3_continuity` **n'existent pas encore**. Ne pas
+> lancer de sélection tant que la chaîne est incomplète.
+
+<!-- C3A-INTERIM:fin -->
 
 ## Règles d'or (absolues)
 

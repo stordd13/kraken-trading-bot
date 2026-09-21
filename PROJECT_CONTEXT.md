@@ -105,6 +105,42 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   l'amorçage des portes de régime (warmup 1 d/1 w de BTC `sufficient=False` par lacune interne, et `bias_1d` fait vivre
   `regime_1d` dans tous les modes). Tickets papier (`docs/CONTRAINTES_POST_B4.md` § 6) autorisés ; tout run s'inscrit
   d'abord dans `docs/RESEARCH_LOG.md`.
+<!-- C3A-INTERIM:début — bloc d'état intermédiaire. À REMPLACER EN BLOC à la clôture de C3a, jamais à compléter (§ 0.7 du protocole, appliqué entre fichiers). -->
+
+### C3a — état intermédiaire au 2026-09-21
+
+**Le protocole est gelé ; l'outillage ne l'est pas.** Ce bloc décrit un chantier **en cours** et sera
+**remplacé en bloc** à la clôture de C3a — il ne se complète pas.
+
+| Objet | État | Référence |
+|---|---|---|
+| `docs/protocole_c3.md` | **GELÉ** le 21 sept | commit **`d931293`**, branche `feat/c3a-protocole` |
+| `scripts/audit/c3_common.py` · `c3_verdict.py` (+ 62 tests) | livrés, **noyau corrigé** | commit **`075f740`** |
+| `c3_anchor` · `c3_entry` · `c3_benchmark` · `c3_select` · `c3_continuity` | **n'existent pas** | liste fermée du § L.4 du protocole |
+| Test de chronologie forte et son contrôle négatif | **non écrits** | § A.12 du protocole |
+
+**Ce que le protocole gelé fixe** : la règle d'ancrage (fraction 0,70 de la fenêtre déclarée au
+manifeste, soit `2025-05-07T04:48Z`, **sans arrondi**), la projection sur liste blanche, les clauses
+d'admissibilité D1-D6, la séquence **filtrer puis classer**, le contrat de continuité, la
+séparation **décision / exécution** des deux côtés du benchmark, la procédure d'incertitude (borne
+**pivotale**, six combinaisons `L × appariement`), la **préséance de l'estimabilité** sur tout
+verdict économique, et les trois issues avec leur liste close de raisons.
+
+**Conséquences opérationnelles, aujourd'hui :**
+
+- **Aucune sélection n'est possible** — la chaîne d'outillage est incomplète.
+- **Aucune modification du protocole** hors amendement daté : si une fixture révèle une incohérence,
+  **on s'arrête et on la signale**, on ne corrige pas le document pour faire passer un test.
+- L'artefact du rejeu (`results/rejeu_grid_20260919/`) est **non recevable** en entrée C3, par un
+  motif technique unique (`D_WARMUP_PREFIX`, amorçage du préfixe défaillant sur les deux paires) ;
+  contamination de l'univers, inadmissibilité de SOL et gel du diagnostic sont des **limitations de
+  portée distinctes**, pas des motifs de refus.
+- L'amorçage des portes de régime reste **l'entrée obligatoire de C3** que le rejeu avait nommée :
+  la clause D2 du protocole l'exige au début du préfixe, et elle écarte aujourd'hui, de façon
+  déterministe, tout candidat dont une porte lit le 1 d ou le 1 w sur BTC et SOL pour cette fenêtre.
+
+<!-- C3A-INTERIM:fin -->
+
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
   `# B5: re-enable trader`) ; **trader masqué** sur le serveur (`systemctl mask krakenbot`). Reste ouvert : test dette 13.
@@ -485,8 +521,32 @@ Détail : `ROADMAP.md`.
     justesse de leurs indicateurs). **Blocage explicite de P12** (réévaluation scalping / mean reversion avec fees réelles) :
     invalide par construction tant que ce n'est pas corrigé.
 
-**Note WF** (audit red-team 16/09) : la sélection top-5 de P7 phase 2 utilise le Sharpe du test global (période chevauchant
-les fenêtres) — le walk-forward actuel n'est pas une validation chronologique. **Résolution : C3**.
+19. **Liquidation terminale absente du moteur signal** (constat C3a, 2026-09-21) : `GridBacktester` liquide
+    l'inventaire terminal au MARCHÉ en payant taker + spread + slippage et ajoute un point d'equity final
+    (`backtest.py:3149-3260`), mais **`BacktestEngine` n'a aucune liquidation** — aucune occurrence de
+    `liquidat` / `force_close` dans les lignes 787-2186, et `ending_balance = equity_curve[-1][1]`
+    (`:1555-1561`) valorise l'inventaire résiduel au dernier close **sans fee, sans spread, sans slippage**.
+    B4.3 GATE A a corrigé le grid et laissé le signal. **`unrealized_pnl` ne le détecte pas** : il n'est écrit
+    qu'à `:3267`, dans `GridBacktester` uniquement, et le moteur signal exporte toujours `0.0` (défaut `:636`).
+    Détecteur utilisable : l'identité de fin à plat `|net_pnl − (ending − starting)| ≤ 1e-6`, **nécessaire mais
+    pas suffisante** pour un inventaire nul — son compte de ruptures est une **borne inférieure**. Mesuré :
+    **166 segments sur 636** en P7 phase 1 B4 et **116 sur 560** en phase 2 la rompent, **aucun du moteur
+    grid** (phase 1 : DCA 144, SuperTrend 22 ; phase 2 : SuperTrend 67, DCA 37, Donchian 12). Cas extrême,
+    `grok_adaptive_dca_weekly` BTC segment `all` : 101 achats, **zéro vente**, `net_pnl = −0,9975`,
+    `ending_balance = 1716,84`, **`total_return_pct = +71,68 %` entièrement latent et sans coût de sortie**.
+    **Aucun verdict économique directionnel** n'est fondé sur un artefact dont la liquidation terminale n'est
+    pas normalisée (§ B.3 du protocole) — la direction de l'effet n'est pas universelle, puisque normaliser
+    déplace le MaxDD, donc `λ`, donc le rendement du comparateur apparié. **Prérequis C3b**, et **pas un simple
+    transport de champs** : le dump `--equity-out` n'écrit que des états **postérieurs** au traitement d'une
+    bougie, et à l'ancrage déclaré **aucun point n'existe à `T`** ; C3b doit **spécifier une preuve de départ à
+    plat**.
+
+**Note WF** (audit red-team 16/09, reformulée le 21 sept — **non déclarée résolue**) : la sélection top-5 de
+P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7
+**n'est pas** une validation chronologique. **État réel** : la **voie C3 chronologique est spécifiée** — le
+protocole `docs/protocole_c3.md` est **gelé** (`d931293`) — et son **outillage est en cours** (bloc C3A-INTERIM
+ci-dessus). **L'ancienne phase 2 P7 est conservée pour reproduction et reste impropre à une nouvelle validation
+chronologique** : les runners ne sont pas modifiés, la fuite de sélection y est donc toujours présente.
 
 ---
 
