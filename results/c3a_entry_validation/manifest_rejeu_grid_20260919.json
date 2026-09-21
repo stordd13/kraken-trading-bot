@@ -1,0 +1,1063 @@
+{
+  "anchor_fraction": 0.7,
+  "benchmark": {
+    "definition": "§ C.3/C.4 : B&H plein notionnel reconstruit (entrée au close de la première bougie d'exécution strictement après la borne, liquidation au close de la dernière ≤ T, taker+spread+slippage sur les deux jambes), blend statique (1−λ)·C + λ·NAV_bh apparié en drawdown quotidien (λ_dd) et en σ quotidien (λ_σ)",
+    "lambda_mode": "prefix"
+  },
+  "data": {
+    "exchange": "binance",
+    "exec_interval": 5,
+    "timeframes": {
+      "1d": 1440,
+      "1w": 10080,
+      "4h": 240,
+      "5m": 5
+    }
+  },
+  "fees": {
+    "model": "bybit",
+    "pair_costs": {
+      "BTC/USDC": {
+        "slippage": "0.0002",
+        "spread": "0.0002"
+      },
+      "SOL/USDC": {
+        "slippage": "0.0002",
+        "spread": "0.0011"
+      }
+    },
+    "pair_costs_file": "config/pair_costs_b4.json",
+    "taker": "0.0025"
+  },
+  "gates_Q": {
+    "Q1": "net_pnl(fenêtre d'évaluation) > 0",
+    "Q2": "rendement géométrique de la fenêtre d'évaluation >= 2,0 %/an",
+    "Q3": "Δ^dd post-ancrage > 0"
+  },
+  "min_order_usdc": 5.0,
+  "parent": {
+    "is_root": true
+  },
+  "prefix_segment": "train",
+  "protocol_sha256": "9b62915069e59e9b0f35120c60a77f48a72b278aa9102b3096dfcb8dc25e23c2",
+  "research_log_entry": "docs/RESEARCH_LOG.md — « Rejeu diagnostic grid — 96 configs BTC/SOL (inscrit le 2026-09-20, avant lancement) » ; la validation d'entrée C3a n'est pas un run de recherche (§ 0.6 : aucun rejeu technique prévu)",
+  "run_scope": "ce run établit le refus D2 seul ; le manifeste est dérivé des clés de l'artefact qu'il encadre, donc ses assertions D5 ne prouvent rien d'indépendant ; provenance `contaminated` = qualification du rapport gelé results/rejeu_grid_report.md § 10.3 ; aucun classement, aucun verdict économique sur la famille grid (§ D.3)",
+  "selection_rule": {
+    "text": "§ A.10 : filtrer D1-D6, filtrer P1∧P2∧P3, classer les survivants par Δ^dd (§ A.9), retenir le premier",
+    "thresholds": {
+      "ANCHOR_FRACTION": {
+        "class": "préférence économique",
+        "section": "§ A.3",
+        "value": 0.7
+      },
+      "BLOCK_LENGTHS": {
+        "class": "qualité des données",
+        "section": "§ F.2 (b)",
+        "value": [
+          10,
+          21,
+          42
+        ]
+      },
+      "BLOCK_LENGTH_HEADLINE": {
+        "class": "qualité des données",
+        "section": "§ F.2 (b)",
+        "value": 21
+      },
+      "BOOTSTRAP_B": {
+        "class": "qualité des données",
+        "section": "§ F.2 (b)",
+        "value": 10000
+      },
+      "BOUND_LEVEL": {
+        "class": "préférence méthodologique déclarée",
+        "section": "§ F.2 (d)",
+        "value": 0.95
+      },
+      "CAPITAL": {
+        "class": "contrat",
+        "section": "§ 0.5",
+        "value": "1000"
+      },
+      "COVERAGE_MIN_RATIO": {
+        "class": "qualité des données",
+        "section": "§ A.8 D1",
+        "value": 0.97
+      },
+      "CYCLES_MIN": {
+        "class": "préférence économique",
+        "section": "§ A.8 D3",
+        "value": 25
+      },
+      "DAY_5M_EXPECTED": {
+        "class": "contrat",
+        "section": "§ A.8 D1",
+        "value": 288
+      },
+      "DAY_5M_MIN_CANDLES": {
+        "class": "qualité des données",
+        "section": "§ A.8 D1",
+        "value": 144
+      },
+      "DISCARDED_MAX": {
+        "class": "qualité des données",
+        "section": "§ F.2 (e)",
+        "value": 10
+      },
+      "E1_NONZERO_RATIO": {
+        "class": "qualité des données",
+        "section": "§ A.13 E1",
+        "value": 0.1
+      },
+      "E2_MIN_DISTINCT": {
+        "class": "garde-fou méthodologique",
+        "section": "§ A.13 E2",
+        "value": 2
+      },
+      "FLOOR_CAGR_PCT": {
+        "class": "préférence économique",
+        "section": "§ A.10 P2",
+        "value": 2.0
+      },
+      "FLOOR_DELTA_DD": {
+        "class": "préférence économique",
+        "section": "§ A.10 P3",
+        "value": 0.0
+      },
+      "FLOOR_NET_PNL": {
+        "class": "préférence économique",
+        "section": "§ A.10 P1",
+        "value": 0.0
+      },
+      "LAMBDA_COARSE_STEP": {
+        "class": "qualité des données",
+        "section": "§ F.2 (g)",
+        "value": "0.005"
+      },
+      "LAMBDA_FINE_STEP": {
+        "class": "qualité des données",
+        "section": "§ F.2 (g)",
+        "value": "0.001"
+      },
+      "LAMBDA_REFINE_HALFWIDTH": {
+        "class": "qualité des données",
+        "section": "§ F.2 (g)",
+        "value": "0.005"
+      },
+      "LAMBDA_RESIDUAL_MAX": {
+        "class": "qualité des données",
+        "section": "§ 0.5",
+        "value": 0.1
+      },
+      "MAX_GAP_DAYS_ABS": {
+        "class": "qualité des données",
+        "section": "§ A.8 D1",
+        "value": 31
+      },
+      "MAX_GAP_RATIO": {
+        "class": "qualité des données",
+        "section": "§ A.8 D1",
+        "value": 0.03
+      },
+      "RISK_FREE": {
+        "class": "préférence économique",
+        "section": "§ 0.5",
+        "value": "0"
+      }
+    }
+  },
+  "strategies": {
+    "grok_grid_atr_adaptive_v4": {
+      "decision_timeframes": [
+        "4h",
+        "1d",
+        "1w"
+      ],
+      "engine": "grid"
+    }
+  },
+  "uncertainty": {
+    "B": 10000,
+    "block_lengths": [
+      10,
+      21,
+      42
+    ],
+    "bound_level": 0.95,
+    "seed": 20260921
+  },
+  "universe": {
+    "candidates": [
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "BTC/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.015
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.02
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.025
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 1.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 2.5,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "none",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1w_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      },
+      {
+        "pair": "SOL/USDC",
+        "params": {
+          "atr_multiplier": 3.0,
+          "bear_protection_mode": "1d_only",
+          "min_spacing_pct": 0.03
+        },
+        "strategy": "grok_grid_atr_adaptive_v4"
+      }
+    ],
+    "provenance": "contaminated"
+  },
+  "variant_id": "c3a-entry-rejeu-grid-20260919",
+  "window": {
+    "end": "2026-04-01T00:00:00+00:00",
+    "start": "2023-04-01T00:00:00+00:00"
+  }
+}

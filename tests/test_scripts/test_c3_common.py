@@ -150,6 +150,8 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "flat_start_proof",
             "first_fill_at",
             "decision_timeframes",
+            "exec_interval",
+            "run_scope",
         }
     )
     assert cc.NULLABLE_FIELDS == frozenset(
@@ -165,6 +167,7 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "avg_holding_minutes",
             "entry_price",
             "pnl",
+            "refusal",
         }
     )
     assert not (cc.OPTIONAL_FIELDS & cc.NULLABLE_FIELDS), (
@@ -417,7 +420,7 @@ def test_require_str_refuse_hors_liste_close() -> None:
 # segments futurs bien formés que π_T doit écarter sans les lire.
 # ---------------------------------------------------------------------------
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
@@ -545,3 +548,417 @@ def anchor_argv(
         "--now",
         NOW,
     ]
+
+
+# ---------------------------------------------------------------------------
+# Observations, couverture et bougies synthétiques — le monde complet d'un run C3a
+# ---------------------------------------------------------------------------
+
+N_PREFIX_POINTS = len(cc.daily_grid(WINDOW_START, ANCHOR))  # 769 : début, 767 minuits, T
+PREFIX_DAYS = (ANCHOR - WINDOW_START).total_seconds() / 86400.0  # 767.2
+LAST_EXEC_STAMP = cc.last_stamp_at_or_before(ANCHOR, EXEC_INTERVAL)  # 04:45
+FIRST_EXEC_STAMP = cc.first_stamp_strictly_after(WINDOW_START, EXEC_INTERVAL)  # 00:05
+SEGMENT_FUTURE = ("test", "all")
+
+
+def base_asset(pair: str) -> str:
+    """Les clés `*_btc` du bloc `liquidation` sont littérales pour toutes les paires (convention
+    `btc_held` du moteur) : la fixture reproduit l'export réel, pas une lecture « par actif »."""
+    del pair
+    return "btc"
+
+
+def nav_path(
+    pair: str, index: int, n_points: int = N_PREFIX_POINTS, *, drift: float | None = None
+) -> list[float]:
+    """Une trajectoire déterministe, en dents de scie, distincte par (paire, candidat), jamais ruinée."""
+    seed = (sum(ord(ch) for ch in pair) * 7 + index * 13) % 97
+    step_drift = 0.0004 + 0.0002 * index if drift is None else drift
+    values = [1000.0]
+    for k in range(1, n_points):
+        wobble = ((k * 31 + seed) % 23 - 11) / 1000.0  # ±1,1 % par jour
+        values.append(round(values[-1] * (1.0 + step_drift + wobble), 6))
+    return values
+
+
+def warmup_block(
+    interval: int, *, required: int, loaded: int, gap: int = 0, stale: int | None = 0
+) -> dict[str, Any]:
+    sufficient = loaded >= required and stale == 0 and gap <= cc.WARMUP_GAP_TOLERANCE
+    return {
+        "interval": interval,
+        "required": required,
+        "loaded": loaded,
+        "extended_by": 0,
+        "stale_by_candles": stale,
+        "largest_gap_candles": gap,
+        "sufficient": sufficient,
+        "first": None
+        if loaded == 0
+        else (WINDOW_START - timedelta(minutes=interval * loaded)).isoformat(),
+        "last": None if loaded == 0 else WINDOW_START.isoformat(),
+    }
+
+
+def warmup_segment(*, sufficient: bool = True) -> dict[str, dict[str, Any]]:
+    if sufficient:
+        return {
+            "4h": warmup_block(240, required=14, loaded=91),
+            "1d": warmup_block(1440, required=50, loaded=91),
+            "1w": warmup_block(10080, required=50, loaded=57),
+        }
+    return {
+        "4h": warmup_block(240, required=14, loaded=91),
+        "1d": warmup_block(1440, required=50, loaded=88, gap=163),
+        "1w": warmup_block(10080, required=50, loaded=50, gap=23),
+    }
+
+
+def rejections_segment() -> dict[str, Any]:
+    causes = (
+        "ambiguous_sell_fill",
+        "below_min_order",
+        "incoherent_sell_fill",
+        "insufficient_cash",
+        "insufficient_inventory",
+        "unmatched_position_id",
+        "unmatched_sell_fills",
+    )
+    return {
+        "unit": "(order, cause)",
+        "by_cause": dict.fromkeys(causes, 0),
+        "events": dict.fromkeys(causes, 0),
+    }
+
+
+def liquidation_segment(
+    pair: str,
+    *,
+    reference_price: str,
+    positions: int = 2,
+    lots: bool = True,
+    timestamp: datetime = LAST_EXEC_STAMP,
+) -> dict[str, Any]:
+    """Un bloc `liquidation` grid conforme, avec sa preuve par lot (§ 6.5) — poussière ≠ divergence
+    volontairement (contre-exemple 2 : ce n'est pas une identité du moteur)."""
+    spread, slippage = (Decimal(x) for x in PAIR_COSTS[pair])
+    taker = Decimal(TAKER)
+    reference = Decimal(reference_price)
+    price = reference * (Decimal(1) - spread - slippage)
+    lot_rows: list[dict[str, Any]] = []
+    fees = Decimal(0)
+    gross_total = Decimal(0)
+    amount_total = Decimal(0)
+    for i in range(positions):
+        amount = Decimal("0.00025925") + Decimal(i) * Decimal("0.00001")
+        gross = amount * price
+        fee = gross * taker
+        fees += fee
+        gross_total += gross
+        amount_total += amount
+        lot_rows.append(
+            {
+                f"amount_{base_asset(pair)}": str(amount),
+                "gross_usdc": str(gross),
+                "fee": str(fee),
+                "entry_price": str(reference * Decimal("0.98")),
+                "pnl": str(gross - fee - amount * reference * Decimal("0.98")),
+            }
+        )
+    block: dict[str, Any] = {
+        "buy_fees": "1.7250",
+        "sell_fees": "1.862219181251586203286056939",
+        "net_pnl_lot_basis": "61.92250504972200892203442513",
+        "residual_net_proceeds": "0",
+        "avg_holding_minutes": 122180.0 if positions else None,
+        "positions": positions,
+        "trades": positions,
+        f"residual_trade_{base_asset(pair)}": "0",
+        f"dust_written_off_{base_asset(pair)}": "7E-28",
+        f"inventory_divergence_{base_asset(pair)}": "1E-27",
+        "pnl": "-1.11608608129261557311025728",
+        "fees": str(fees),
+        "gross_usdc": str(gross_total),
+        "timestamp": timestamp.isoformat() if positions else None,
+        "reference_price": str(reference) if positions else None,
+        "price": str(price) if positions else None,
+        "spread_pct": str(spread) if positions else None,
+        "slippage_pct": str(slippage) if positions else None,
+    }
+    if lots:
+        block["lots"] = lot_rows
+    return block
+
+
+def metrics_block(
+    values: list[float], *, days: float, cycles: int = 40, positions: int = 2
+) -> dict[str, Any]:
+    """Un bloc de métriques cohérent avec la trajectoire qu'il accompagne (metrics_version 2)."""
+    rec = cc.recompute_daily(values, days=days)
+    return {
+        "metrics_version": 2,
+        "total_trades": cycles + positions,
+        "winning_trades": cycles + positions - 1,
+        "losing_trades": 1,
+        "win_rate": (cycles + positions - 1) / (cycles + positions),
+        "total_return_pct": (values[-1] / values[0] - 1.0) * 100.0,
+        "sharpe_ratio": 1.2,
+        "sortino_ratio": 1.9,
+        "max_drawdown_pct_daily": rec.mdd_daily,
+        "max_drawdown_pct_engine": rec.mdd_daily * 1.4,
+        "profit_factor": 3.1,
+        "calmar_ratio": 2.0,
+        "net_pnl": values[-1] - values[0],
+        "total_fees": 3.5872191812515863,
+        "total_pnl": values[-1] - values[0] + 3.5872191812515863,
+        "unrealized_pnl": -1.1160860812926157,
+        "starting_balance": values[0],
+        "ending_balance": values[-1],
+        "duration_days": days,
+        "average_holding_time_minutes": 2361.42,
+        "gross_profit_net": 167.3,
+        "gross_loss_net": 1.85,
+        "pf_excluded_trades": 0,
+        "n_daily_returns": len(values) - 1,
+    }
+
+
+def observation(
+    strategy: str,
+    pair: str,
+    params: dict[str, Any],
+    index: int,
+    *,
+    with_futures: bool = True,
+    futures_variant: int = 0,
+    lots: bool = True,
+    sufficient: bool = True,
+    exec_interval: int | None = EXEC_INTERVAL,
+    cycles: int = 40,
+    positions: int = 2,
+    nav: list[float] | None = None,
+) -> dict[str, Any]:
+    """Une entrée d'observation conforme au contrat (C1/C2), préfixe `train` + futurs optionnels."""
+    values = nav if nav is not None else nav_path(pair, index)
+    reference = f"{values[-1] * 33.5:.8f}"
+    entry: dict[str, Any] = {
+        "strategy": strategy,
+        "pair": pair,
+        "params": params,
+        "effective_params": {
+            "strategy_class": "SynthGrid",
+            "passed_params": {**params, "pair": pair},
+            "params": {k: {"value": v, "source": "override"} for k, v in params.items()},
+        },
+        "exchange": "binance",
+        "fees": "bybit",
+        "metrics_version": 2,
+        "replay_version": 2,
+        "pair_costs_file": "config/pair_costs_b4.json",
+        "pair_costs": {"spread": PAIR_COSTS[pair][0], "slippage": PAIR_COSTS[pair][1]},
+        "min_order_usdc": 5.0,
+        "phase": "1",
+        "window_idx": None,
+        "period": {
+            f"{PREFIX}_start": WINDOW_START.isoformat(),
+            f"{PREFIX}_end": ANCHOR.isoformat(),
+        },
+        PREFIX: metrics_block(values, days=PREFIX_DAYS, cycles=cycles, positions=positions),
+        "equity_daily": {
+            PREFIX: {"start": WINDOW_START.isoformat(), "end": ANCHOR.isoformat(), "values": values}
+        },
+        "liquidation": {
+            PREFIX: liquidation_segment(
+                pair, reference_price=reference, positions=positions, lots=lots
+            )
+        },
+        "warmup": {PREFIX: warmup_segment(sufficient=sufficient)},
+        "rejections": {PREFIX: rejections_segment()},
+        "dca_counters": None,
+    }
+    if exec_interval is not None:
+        entry["exec_interval"] = exec_interval
+    if with_futures:
+        future_points = len(cc.daily_grid(ANCHOR, WINDOW_END))
+        future_days = (WINDOW_END - ANCHOR).total_seconds() / 86400.0
+        all_points = len(cc.daily_grid(WINDOW_START, WINDOW_END))
+        all_days = (WINDOW_END - WINDOW_START).total_seconds() / 86400.0
+        future_nav = nav_path(
+            pair,
+            index + 50 + futures_variant * 7,
+            future_points,
+            drift=0.0003 * (futures_variant + 1),
+        )
+        all_nav = nav_path(
+            pair,
+            index + 90 + futures_variant * 11,
+            all_points,
+            drift=0.0002 * (futures_variant + 1),
+        )
+        entry["period"].update(
+            {"test_start": ANCHOR.isoformat(), "test_end": WINDOW_END.isoformat()}
+        )
+        entry["test"] = metrics_block(
+            future_nav, days=future_days, cycles=15 + futures_variant, positions=1
+        )
+        entry["all"] = metrics_block(
+            all_nav, days=all_days, cycles=60 + futures_variant, positions=3
+        )
+        entry["equity_daily"]["test"] = {
+            "start": ANCHOR.isoformat(),
+            "end": WINDOW_END.isoformat(),
+            "values": future_nav,
+        }
+        entry["equity_daily"]["all"] = {
+            "start": WINDOW_START.isoformat(),
+            "end": WINDOW_END.isoformat(),
+            "values": all_nav,
+        }
+        entry["liquidation"]["test"] = liquidation_segment(
+            pair,
+            reference_price=f"{future_nav[-1] * 31.0:.8f}",
+            positions=1,
+            lots=lots,
+            timestamp=WINDOW_END - timedelta(minutes=EXEC_INTERVAL),
+        )
+        entry["liquidation"]["all"] = liquidation_segment(
+            pair,
+            reference_price=f"{all_nav[-1] * 29.0:.8f}",
+            positions=3,
+            lots=lots,
+            timestamp=WINDOW_END - timedelta(minutes=EXEC_INTERVAL),
+        )
+        entry["warmup"]["test"] = warmup_segment(sufficient=True)
+        entry["warmup"]["all"] = warmup_segment(sufficient=sufficient)
+        entry["rejections"]["test"] = rejections_segment()
+        entry["rejections"]["all"] = rejections_segment()
+    return entry
+
+
+def observation_key(strategy: str, pair: str, index: int) -> str:
+    return f"{strategy}_{pair.replace('/', '_')}_p1_{index:04d}"
+
+
+def observations(manifest_payload: dict[str, Any], **kw: Any) -> dict[str, dict[str, Any]]:
+    """Le fichier d'observations d'un manifeste : une entrée par candidat de l'univers, dans l'ordre."""
+    out: dict[str, dict[str, Any]] = {}
+    counters: dict[str, int] = {}
+    for cand in manifest_payload["universe"]["candidates"]:
+        pair = cand["pair"]
+        index = counters.get(pair, 0)
+        counters[pair] = index + 1
+        out[observation_key(cand["strategy"], pair, index)] = observation(
+            cand["strategy"], pair, cand["params"], index, **kw
+        )
+    return out
+
+
+def coverage(
+    manifest_payload: dict[str, Any],
+    *,
+    start: datetime = WINDOW_START,
+    end: datetime = ANCHOR,
+    degrade: dict[str, dict[int, dict[str, Any]]] | None = None,
+) -> dict[str, Any]:
+    """L'artefact de couverture (§ A.7) sur `[début, T]`, complet ; `degrade[pair][interval]` surcharge."""
+    pairs = sorted({c["pair"] for c in manifest_payload["universe"]["candidates"]})
+    per_day = {5: 288, 240: 6, 1440: 1, 10080: 1}
+    blocks: dict[str, Any] = {}
+    for pair in pairs:
+        blocks[pair] = {}
+        for iv in cc.D1_INTERVALS:
+            units = cc.expected_units(start, end, iv)
+            block = {
+                "observed": units * per_day[iv],
+                "expected": units * per_day[iv],
+                "covered_units": units,
+                "expected_units": units,
+                "unit": cc.coverage_unit(iv),
+                "missing_stamps": [],
+                "longest_gap_days": 0.0,
+                "first_day": start.date().isoformat(),
+                "last_day": end.date().isoformat(),
+            }
+            if degrade and pair in degrade and iv in degrade[pair]:
+                block.update(degrade[pair][iv])
+            blocks[pair][str(iv)] = block
+    return {
+        "generated_at": NOW,
+        "source": "fixture synthétique (§ A.7 : produit hors chaîne)",
+        "exchange": "binance",
+        "window": {"start": start.isoformat(), "end": end.isoformat()},
+        "pairs": blocks,
+    }
+
+
+def candles(
+    manifest_payload: dict[str, Any],
+    *,
+    start: datetime = WINDOW_START,
+    end: datetime = ANCHOR,
+    daily_scale: dict[str, float] | None = None,
+    missing_exec: str | None = None,
+    extra_stamp_after_end: bool = False,
+) -> dict[str, Any]:
+    """Les closes dont § C.3 a besoin : deux bougies d'exécution et un close 1 j par minuit intérieur."""
+    pairs = sorted({c["pair"] for c in manifest_payload["universe"]["candidates"]})
+    grid = cc.daily_grid(start, end)
+    out: dict[str, Any] = {}
+    for pair in pairs:
+        scale = (daily_scale or {}).get(pair, 1.0)
+        base = 30000.0 if pair.startswith("BTC") else 150.0
+        daily = []
+        for k, stamp in enumerate(grid[1:-1], start=1):
+            close = base * scale * (1.0 + 0.0003 * k + (((k * 17) % 29) - 14) / 2000.0)
+            daily.append({"t": stamp.isoformat(), "close": f"{close:.8f}"})
+        exec_rows = [
+            {
+                "t": cc.first_stamp_strictly_after(start, EXEC_INTERVAL).isoformat(),
+                "close": f"{base * scale:.8f}",
+            },
+            {
+                "t": cc.last_stamp_at_or_before(end, EXEC_INTERVAL).isoformat(),
+                "close": f"{base * scale * 1.21:.8f}",
+            },
+        ]
+        if missing_exec == "entry":
+            exec_rows = exec_rows[1:]
+        elif missing_exec == "exit":
+            exec_rows = exec_rows[:1]
+        if extra_stamp_after_end:
+            exec_rows.append(
+                {
+                    "t": (end + timedelta(minutes=EXEC_INTERVAL)).isoformat(),
+                    "close": f"{base * scale:.8f}",
+                }
+            )
+        out[pair] = {"exec_interval": EXEC_INTERVAL, "exec": exec_rows, "daily": daily}
+    return {
+        "generated_at": NOW,
+        "source": "fixture synthétique (§ C.3 : produit hors chaîne)",
+        "exchange": "binance",
+        "pairs": out,
+    }
+
+
+def world(
+    tmp_path: Any, manifest_payload: dict[str, Any] | None = None, **obs_kw: Any
+) -> dict[str, Any]:
+    """Écrit manifeste, observations, couverture et bougies dans `tmp_path` ; renvoie les chemins."""
+    payload = manifest_payload if manifest_payload is not None else manifest()
+    paths = {
+        "manifest": tmp_path / "manifest.json",
+        "observations": tmp_path / "observations.json",
+        "coverage": tmp_path / "coverage.json",
+        "candles": tmp_path / "candles.json",
+    }
+    cc.write_json(paths["manifest"], payload)
+    cc.write_json(paths["observations"], observations(payload, **obs_kw))
+    cc.write_json(paths["coverage"], coverage(payload))
+    cc.write_json(paths["candles"], candles(payload))
+    return {
+        "payload": payload,
+        **paths,
+        "registry": tmp_path / "variants.json",
+        "anchor": tmp_path / "anchor.json",
+    }

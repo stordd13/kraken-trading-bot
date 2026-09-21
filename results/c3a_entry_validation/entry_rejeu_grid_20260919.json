@@ -1,0 +1,1115 @@
+{
+  "anchor": "2025-05-07T04:48:00+00:00",
+  "assertions": [
+    {
+      "detail": "96 entrées, préfixe 'train'",
+      "id": "I-A.1",
+      "name": "forme des observations",
+      "status": "ok"
+    },
+    {
+      "detail": "non assertable : D5 — intervalle d'exécution — aucun porteur `exec_interval` dans 96 entrée(s) : le runner n'exporte pas l'intervalle d'exécution (§ A.7, aucun champ de la liste blanche ne le porte)",
+      "id": "I-A.2",
+      "name": "D5 — contrats d'instrument égaux au manifeste",
+      "status": "not_assertable"
+    },
+    {
+      "detail": "ok",
+      "id": "I-A.3",
+      "name": "bornes du préfixe exactement [début, T]",
+      "status": "ok"
+    },
+    {
+      "detail": "96 identités, égales à l'univers",
+      "id": "I-A.4",
+      "name": "unicité des identités et univers fermé",
+      "status": "ok"
+    },
+    {
+      "detail": "provenance 'contaminated' (liste close § A.5)",
+      "id": "I-A.5",
+      "name": "provenance de l'univers",
+      "status": "ok"
+    },
+    {
+      "detail": "ok",
+      "id": "I-A.6",
+      "name": "amorçage du préfixe : séries de décision, sufficient recalculé",
+      "status": "ok"
+    },
+    {
+      "detail": "non assertable : couverture (D1, § A.7) — artefact de couverture non fourni — aucun producteur committé ne peut le fabriquer en C3a",
+      "id": "I-A.7",
+      "name": "artefact de couverture",
+      "status": "not_assertable"
+    },
+    {
+      "detail": "D2 échoue sur la totalité des 96 candidats de l'artefact : refus d'artefact D_WARMUP_PREFIX, aucun classement n'est produit (§ I.1 l.5, § D.3)",
+      "id": "I-A.8",
+      "name": "D2 — promotion en refus d'artefact sur la totalité",
+      "status": "failed"
+    }
+  ],
+  "candidate_diagnostics": [
+    {
+      "clause": "D2",
+      "identity": "68f36ba5f9826a1b1a412ad662466398232faccd2c03fdcd9e1c12254b2885ef",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_aeeddd0c",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "3c840621f62cc38744c325d8dd096da2e3f03ac8abeed1daaf5308ee72c49d26",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_81ece5a1",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "241682e3e6fe80db672dbb6141568307e168fd9b7b02acf43d799b72d0de8289",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_73d535d6",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "e03f5b603ac6f48d0c344488094c217531a3ae5021c15ebd9849c4e4ba8ca66b",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba527153",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "e0be0994a62d0274e420384ae2eeeb43254837327f138306a98c1d31c297aa77",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5d0ca827",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "6e08e334b33086ced7c9353a39db88d33caae4b2e9306e51fb74375be4df1ede",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_1d8e270c",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "412c3ed7ef8e950952834786dc2829b1666e944a4d8dad0985aa79cbf136576f",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a1120e8e",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "1401fb382cdd4de314d3370c417c0924f1219da4dbafa5bd920498a07f7617cc",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0d72b529",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "f388e341e689396f25190e5b992a5c03f045d9b9b272be5d177496c7ce7a8def",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_eb5fc5f9",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "97484e48f80c7ed04ae4f73289280e9c94a83fea57057d00c6c412be09186c7f",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_21f01bb0",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "89ef71a47bb0f764c6a4b9ed407027284e622f749539a581917679b5626c4507",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_f423629b",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "eb480bd682ec13440e520c16983017e99167d6fce14fe7b2f946d24e0f5d6ca4",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b0f6090d",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "c26051039e9c4ea832519f16ae326552151a862f08d050a9f7973cfc142d3207",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_825bb9fa",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "501d8645ae96374f7705d0493f4af22bad636d4f32af38c4305091c49bf261e4",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_536293bc",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "1e380502e857855a612a98265a0fe10a77e8501e1a8ec4e95d02840251f41f8a",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_65dd3337",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "bd8715a758dad13ecd4f1d51dcde829b1e0a137add9b72db81339d2b14c38c38",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_405106c0",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "5edd1c86996f997bf3db953295ed1c3d52b6c0ee71c4015f640d78edd721da85",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d8dca2b8",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "fbcc692dd71a6da2bca2a05b6e8cb9bb113427efbe250b6294f2f048ce1a435e",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_3e5bec51",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "550093c57e384cd16ed94697191b6f75b90e125082fd56af65eeb26fad1e114e",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_523e4cce",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "f9e22c2c62b7c3689f74b37eace8dc61c06afc76e2be36407bc278f837994557",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e26ac6cb",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "18e695864dd2d379622af5be999b55038e91d28df18c33ccd670774c8e17f39f",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d0b8a32d",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "b2c7d67a41398a5686df24b5c4d1ada6b6d95e58d7753f838dbe7416c5eb02b8",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_2ff9a937",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "ea3ceec5320d735380c718120c4aa69219f97b575b5224aa23430a246932be23",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_96dee4d6",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "ec735427c9846031e846bd7ca4ee529b031c3be45e41010958b71d274ad083b2",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9ff78fb7",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "73d1df3eaddc9c367cefa6e890fa18449bfcad208b6c10cbfd061d515fafabc9",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a591b9bf",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "a8623ebc46e59305d0bb5724dd01531a5373d5a70ffc3c36a7dce6368dbca996",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_a8ea28c2",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "142649df5ef02eab9c6a56ff7bfddef19730647c43854c59944f4b2ffd7cac59",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_d2882bfe",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "4c0457857836c9748d98148cc6f235053af6f24a8c26b69a338cc9011f80bfdf",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_b054321f",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "95e794fb0cd7e150af66cce22a37b1b7cfdb8e38c0178aa6850947afd3ff658c",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_e5086996",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "0f0f5a07b0969a572fba0dd72e223a7ea285984236f5fecfd4d45cf91b44dc7a",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_94f303d3",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "0cddc3af59c599f1cdcb2d31a50d3d784eae0f0ce6b461ae87e483f38301fbae",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_c943880f",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "fb782a78ba87cfdfb62e8b1a6130fcf8e053e4e9846f4b9111544fc06c9c9245",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_cc468133",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "b3db652b2b9d36a3bae2ffa86cee6100477684820c75be5bd4028037810875f2",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_8140f17e",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "44e0903f09ba521bd8f7b29babfa031565e49b4041d13cdc9c0ce154acd2691b",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_6c789021",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "07b02584a9855541a0fa0d26e63c1d049baace86884d185c4f9c9adce3bf19e7",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_4426de63",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "0226c6d7b8bd46289f9a63a33cb96f73350e85921db70878d719e7aa33adccff",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_bbc1cdde",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "ba11ea60c7f70c843be18a51e45b6370a7064a6776ffb46a7971bd954984b2fd",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_ba542585",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "1f79fe4df72fba4f2f1139c661beec71ea674a713238ac0ca7f4223584e323a9",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_9d3bf21b",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "b2ef7c299986f4cee4af4e9090ba2f3b85cad05fe9084d82bf3969d7812f4ec0",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0fb41630",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "57a24cd92869097f9922756a15ed2ef3feb09b23769a7db0c253949d8391d245",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_df1cc242",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "e22f6072b7db8703697151ce2370889bea2ad59ff1fc207d84302585ff26095b",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_29877aa9",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "b13965c11e99d8ba6449265ed247fb0193d227eb44caac517c3801e480e80dc3",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_60c43197",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "2f4cd6a57adabc0196b22321949d8482cde0056c8f06d719de0dc88cd4b3a95d",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_5958d056",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "34d7e2811642b175a9a58c7a5c089625c0cb3e347a9d4c0befdcfad0dca20931",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_0901f763",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "115a45553364b3f1315e1f4f8099b15136cb7cdeac81f652e5771a4050b83051",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_40171b3b",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "89a76c9202787463b19abfd30d8faed5bea4ae46c4bc4150e31fe58a2a0b109b",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_50614027",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "6cf450f1fe145d9f21e9b055fe358ba20f6db52650a934fc557ddff513be55ce",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_de24a942",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "d4b64d60267ac1829e684bc911efc9e76d6b6c441fa8c1f73d0bd405c7de1b8d",
+      "key": "grok_grid_atr_adaptive_v4_BTC_USDC_p1_329c44ea",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "2315a9517447c85c77211d7da6eba5eb608309699288b398d2e24e2cd3b6903b",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_aeeddd0c",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "c710684395b3155465bf2ea96fda95996b04c1e3d8c8db8063bc244141585081",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_81ece5a1",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "a3630f435f7303cac03005d3623830745955e61a7856a9a634eb0aacd24987f0",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_73d535d6",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "a81368a5a83a036f7dd5286564d932cc2819d6fb3562d48b01b830a51f6171f3",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_ba527153",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "6472a4ba0bc637921b6621ee7244513a2272098099dc01282ad35507a70593fa",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_5d0ca827",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "23b3f0654bdaf1cbbdedf992c8edf5a9960623bb4b894ed753c1ba2200100150",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_1d8e270c",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "1a43e2f4aad0033b2d4502f124586c5b63f993ddb7074e5e3136b5b81acc1946",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a1120e8e",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "086f3a3d323543a2bff5b333511cb972dc3b8deaed9312cc7ea8704095762b2a",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0d72b529",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "c147eabb9f86ada71dfa324a1fa477999948f7c1c1a27e8e1699d4e984b9f103",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_eb5fc5f9",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "4f99889a98a32b271389e2e7d62c7f908d1dd728463abe0df83b462d3cde7cd3",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_21f01bb0",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "2d32bb2c8504150447acf3cae18c3d730b745e0dd9d2aac61792b400d2af7b67",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_f423629b",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "1726b5260ebdfda4a7f4153153a7633011cb7fc50dcb45593f3caca970414086",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_b0f6090d",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "3c278436dbdf4f9edc6242e546ea51d02dfe0ed30b0133c4a5041a0066067f9a",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_825bb9fa",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "47367d82acc2c4ec1325dfc933d964150b078a0e7df5e55b586fc5db0ec4cecc",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_536293bc",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "f6513ee20b51f36862b63c43f6171280b1c40f7c17fcd5f71d7e6137cb7eda0c",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_65dd3337",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "b7910a8957b2177f5404e314d23384756bd1ffb1f74ab3630adff6aa15a9ad3c",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_405106c0",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "0c0c40746769cc01aac26f8496dd293edbe474e8f5630a801e308b09b0c23c8a",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d8dca2b8",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "a6cdef2b05989029aa546ad387611da267d41a6cebacf8b7b9488d5b4d3a49d4",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_3e5bec51",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "0ae7ae3afd4e62fc15b33c0c945f74c55f1f6267fa7cad3fca37ee87dd0d24e0",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_523e4cce",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "154f0988b90506bc1a144040b0e7486816e7cd995dd3867c1ecd2d2a627fc94f",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_e26ac6cb",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "a297809537bc28764a963ebc2f5ede593f8efc56ddefdca0435f1eefe82acf83",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d0b8a32d",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "2760a9f226fa01d9b0da940f727ba2a944658cf87063eb6bddc3f98e7514f2ff",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_2ff9a937",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "a46ff6f2f3aee4de90855648ee0fb9fafe821239f0cba9c32ffff5e71dceb09e",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_96dee4d6",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "063ec1fb5340a9d8470e261b9ae0abe48903a1a6b214458631394afb64d88f04",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_9ff78fb7",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "71048aed7b327a1e3069c5906e3e0c57c8dd3a89cb44f4f40e2ebd0e9a3ffb36",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a591b9bf",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "93a950834d54ec4d0a42ab32a3f58c8b34c4877cec3b25437045aefd88078da1",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_a8ea28c2",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "a02326f07b94c236393b6bf5ca26730040b6c75806a652dec59c59244db78989",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_d2882bfe",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "c4893be5e0c472ebc4a1bdff2fc829c6042f25929eb82502f263597b85312d25",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_b054321f",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "7c32cf1a678f31b6ce63052b3109038970efc69cde3fe473876f2ea074824b8c",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_e5086996",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "957b4cb63d0aa93be53607455b7b29efc9be0550718d2bfcd8229ce85d57f93e",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_94f303d3",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "ce8b5ebc741682a3c680635ec34529bd0849b26fe242a98742d7adc47a4e7e66",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_c943880f",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "20918399ef4c6e56c74b669722ece95e2caca79691b46a430341070c55a955c0",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_cc468133",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "c450642f708db9b66b989a768575b444779456d9132d36e43ab0145bb2e0d418",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_8140f17e",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "b44ea92baaf977028293a9644b58fed1b5d101343c62590355dd38e6601d8b64",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_6c789021",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "3537b27356632e7728cf8f96b1d7f5e16990afa5352bb6f21d9187ae423ba2bb",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_4426de63",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "4305d9ec2df7c6771a75e0407b8cf68511b871f6dfa3cd7a75680e1c0741508c",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_bbc1cdde",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "dba7e718e563ed84b08541e2d39eb610042d024de5a0af23eadc6f8bc2529825",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_ba542585",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "65b9a740b92bd76e524570bbc70dbdc4b04d4f32a254d67a13f5a843db83b8c4",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_9d3bf21b",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "d6402442d98fa3b6ac485c5b72a8c3aff1d6b53a2894e57aa38e6cc8e736166a",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0fb41630",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "e41ed7d3111e2c38d28238d6ad87e865af51fe8d69ffe75fd977b97d11ae1f63",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_df1cc242",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "24111dc54faeb25e84d84cc4f423282da4d559d13adaa564be5e21b40a0b61b8",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_29877aa9",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "318e2a4e4cf84de395ad77f02d3ce48a718c52ece8e634dfd31282b63983b672",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_60c43197",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "68d3203fdab5af2e7380c20ca3c5c04bd830eb023089f778c089aa53aa47d18b",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_5958d056",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "6e914498633d6f50cd670d5d6e448dd4a3297d077aa5ceedad8b5cfb879c5c40",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_0901f763",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "ed5c31b04c0f723a9eb93176ae72f83bf917b2bc6777b2c0169f18e2a07b1a04",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_40171b3b",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "d527a5fd4424562cccf06a6643d4d142f26f86602a68093b0a278e2b4da44324",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_50614027",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "87bce06f97b6c30e46b808c1d4d7f08288b143959fd04c2b8840643d16adc579",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_de24a942",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "b09ec5754017b0cf66ff879647501e6c98f54c4bb46674e31cc0fdc2760149db",
+      "key": "grok_grid_atr_adaptive_v4_SOL_USDC_p1_329c44ea",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h",
+        "1d",
+        "1w"
+      ]
+    }
+  ],
+  "coverage": {
+    "path": null,
+    "sha256": null,
+    "status": "not_provided"
+  },
+  "exit_code": 2,
+  "generated_at": "2026-09-22T00:00:00+00:00",
+  "inputs_sha256": {
+    "anchor": "0ad3fa7edbbb54729467e46ce7821c6a0da8edb7d17bfd14dddef1d0a9c03915",
+    "manifest": "ec50063c9e6128e3cbecf6af331ba1cfc3170ff7e6a4b1e38973afe60045b14a",
+    "observations": "08d981e493402f37a8649a47090293a8f64358b61d8558d4978f13e1ff6436c6"
+  },
+  "invalide": false,
+  "n_candidates": 96,
+  "n_candidates_d2_failed": 96,
+  "not_assertable": [
+    {
+      "assertion": "I-A.2",
+      "clause": "D5 — intervalle d'exécution",
+      "why": "aucun porteur `exec_interval` dans 96 entrée(s) : le runner n'exporte pas l'intervalle d'exécution (§ A.7, aucun champ de la liste blanche ne le porte)"
+    },
+    {
+      "assertion": "I-A.7",
+      "clause": "couverture (D1, § A.7)",
+      "why": "artefact de couverture non fourni — aucun producteur committé ne peut le fabriquer en C3a"
+    }
+  ],
+  "observations": {
+    "path": "results/rejeu_grid_20260919/P7_phase1_grid.json",
+    "sha256": "08d981e493402f37a8649a47090293a8f64358b61d8558d4978f13e1ff6436c6"
+  },
+  "ok": false,
+  "prefix_segment": "train",
+  "protocole": {
+    "path": "docs/protocole_c3.md",
+    "sha256": "9b62915069e59e9b0f35120c60a77f48a72b278aa9102b3096dfcb8dc25e23c2"
+  },
+  "refusal": {
+    "assertion": "I-A.8",
+    "detail": "D2 échoue sur la totalité des 96 candidats de l'artefact : refus d'artefact D_WARMUP_PREFIX, aucun classement n'est produit (§ I.1 l.5, § D.3)",
+    "reason": "D_WARMUP_PREFIX",
+    "scope": "artefact"
+  },
+  "run_scope": "ce run établit le refus D2 seul ; le manifeste est dérivé des clés de l'artefact qu'il encadre, donc ses assertions D5 ne prouvent rien d'indépendant ; provenance `contaminated` = qualification du rapport gelé results/rejeu_grid_report.md § 10.3 ; aucun classement, aucun verdict économique sur la famille grid (§ D.3)",
+  "sentence": "cet artefact ne satisfait pas les conditions d'entrée C3",
+  "step": "entry",
+  "universe_provenance": "contaminated",
+  "violations": [],
+  "window": {
+    "end": "2026-04-01T00:00:00+00:00",
+    "start": "2023-04-01T00:00:00+00:00"
+  }
+}

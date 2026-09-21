@@ -207,7 +207,9 @@ class EntryRefusedError(MissingEvidenceError):
 #: exporte ``null`` pour le moteur signal et hors DCA, `run_p7_grid_search.py:768-772` — D6 tranche,
 #: § A.8) ; ``lots`` (sous-clé de ``liquidation``, exigence C3b, preuve par lot de D6) ;
 #: ``flat_start_proof`` et ``first_fill_at`` (§ B.2 et § B.6, non vérifiables sous les artefacts
-#: actuels) ; ``decision_timeframes`` (surcharge par candidat de la déclaration par stratégie).
+#: actuels) ; ``decision_timeframes`` (surcharge par candidat de la déclaration par stratégie) ;
+#: ``exec_interval`` (porteur de l'intervalle d'exécution dans une observation — absent de l'export
+#: réel, D5 le consigne ``not_assertable``) ; ``run_scope`` (note de portée d'un manifeste réel).
 OPTIONAL_FIELDS: frozenset[str] = frozenset(
     {
         "estimability",
@@ -217,6 +219,8 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
         "flat_start_proof",
         "first_fill_at",
         "decision_timeframes",
+        "exec_interval",
+        "run_scope",
     }
 )
 
@@ -224,7 +228,8 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
 #: seule liste que le scan accepte pour un ``nullable_*(...)``. Origine de chaque ``null`` :
 #: ``stale_by_candles``, ``first``, ``last`` — rien chargé (`backtest.py:508-528`) ; ``timestamp``,
 #: ``reference_price``, ``price``, ``spread_pct``, ``slippage_pct``, ``avg_holding_minutes`` — aucune
-#: liquidation forcée (`backtest.py:3296-3300`) ; ``entry_price``, ``pnl`` — lot à coût inconnu.
+#: liquidation forcée (`backtest.py:3296-3300`) ; ``entry_price``, ``pnl`` — lot à coût inconnu ;
+#: ``refusal`` — `entry.json` : ``null`` quand l'entrée est conforme, un bloc quand elle est refusée.
 NULLABLE_FIELDS: frozenset[str] = frozenset(
     {
         "stale_by_candles",
@@ -238,6 +243,7 @@ NULLABLE_FIELDS: frozenset[str] = frozenset(
         "avg_holding_minutes",
         "entry_price",
         "pnl",
+        "refusal",
     }
 )
 
@@ -377,6 +383,15 @@ def optional_sequence(obj: Any, key: str, *, where: str) -> Sequence[Any] | None
     return value
 
 
+def optional_int(obj: Any, key: str, *, where: str) -> int | None:
+    value = _optional(obj, key, where=where, must_exist=False)
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise MissingEvidenceError(f"{where}.{key}: entier attendu, reçu {type(value).__name__}")
+    return int(value)
+
+
 def optional_str(obj: Any, key: str, *, where: str) -> str | None:
     value = _optional(obj, key, where=where, must_exist=False)
     if value is None:
@@ -423,6 +438,15 @@ def nullable_str(obj: Any, key: str, *, where: str) -> str | None:
         return None
     if not isinstance(value, str):
         raise MissingEvidenceError(f"{where}.{key}: chaîne attendue, reçu {type(value).__name__}")
+    return value
+
+
+def nullable_mapping(obj: Any, key: str, *, where: str) -> Mapping[str, Any] | None:
+    value = _optional(obj, key, where=where, must_exist=True)
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise MissingEvidenceError(f"{where}.{key}: bloc attendu, reçu {type(value).__name__}")
     return value
 
 
@@ -937,6 +961,7 @@ class Manifest:
     parent_variant_key: str | None
     research_log_entry: str
     protocol_sha256: str
+    run_scope: str | None
 
     @property
     def capital(self) -> Decimal:
@@ -1080,6 +1105,7 @@ def load_manifest(raw: Any) -> Manifest:
     parent_key = None if is_root else require_str(parent, "variant_key", where=f"{where}.parent")
     research_log_entry = require_str(raw, "research_log_entry", where=where)
     protocol_sha = require_str(raw, "protocol_sha256", where=where)
+    run_scope = optional_str(raw, "run_scope", where=where)
     return Manifest(
         raw=raw,
         window_start=start,
@@ -1108,6 +1134,7 @@ def load_manifest(raw: Any) -> Manifest:
         parent_variant_key=parent_key,
         research_log_entry=research_log_entry,
         protocol_sha256=protocol_sha,
+        run_scope=run_scope,
     )
 
 

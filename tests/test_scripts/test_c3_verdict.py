@@ -88,7 +88,7 @@ def _artifacts(
             f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
         }
     return {
-        "entry": {"ok": True, "reason": None},
+        "entry": {"ok": True, "refusal": None},
         "anchor": {"universe_provenance": provenance},
         "selection": {
             "status": "SÉLECTION_VALIDE",
@@ -380,6 +380,84 @@ def test_metrique_non_finie_refuse_l_entree_au_lieu_de_refuter() -> None:
     artifacts["evaluation"]["metrics"]["net_pnl"] = float("nan")
     with pytest.raises(cc.InvalidValueError, match="non finie"):
         cv.decide(artifacts, violations=[])
+
+
+_REFUSAL_R0 = {"scope": "run", "reason": "R0_INVALID_RUN", "assertion": "I-A.3", "detail": "borne"}
+_REFUSAL_D2 = {
+    "scope": "artefact",
+    "reason": "D_WARMUP_PREFIX",
+    "assertion": "I-A.8",
+    "detail": "D2 sur tous",
+}
+
+
+# ---------------------------------------------------------------------------
+# Le contrat de `entry.json` : `ok` <=> `refusal` null — combinaisons incohérentes selon ce contrat
+# ---------------------------------------------------------------------------
+
+
+def test_entry_refusee_D_WARMUP_PREFIX_porte_sa_raison_et_sort_2(tmp_path: Path) -> None:
+    artifacts = _sound()
+    artifacts["entry"] = {"ok": False, "refusal": _REFUSAL_D2}
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=[])
+    assert info.value.reason == "D_WARMUP_PREFIX"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_entry_ok_avec_un_refus_porte_est_une_violation(tmp_path: Path) -> None:
+    artifacts = _sound()
+    artifacts["entry"] = {"ok": True, "refusal": _REFUSAL_D2}
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert decision.issue == cc.ISSUE_VALIDE, (
+        "le calcul continue, mais il sera invalidé à la sortie"
+    )
+    assert any("incohérent" in v for v in violations)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+
+
+def test_entry_non_ok_sans_refus_est_une_violation_pas_un_refus_propre(tmp_path: Path) -> None:
+    artifacts = _sound()
+    artifacts["entry"] = {"ok": False, "refusal": None}
+    violations: list[str] = []
+    with pytest.raises(cc.EntryRefusedError):
+        cv.decide(artifacts, violations=violations)
+    assert violations, "l'incohérence est consignée avant le refus"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1, "la violation prime sur le refus"
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+    assert any("refus d'entrée constaté après violation" in v for v in payload["violations"])
+
+
+@pytest.mark.parametrize(
+    "refusal",
+    [
+        {"scope": "run", "reason": "A_BELOW_FLOOR", "assertion": "x", "detail": "y"},
+        {"scope": "candidat", "reason": "R0_INVALID_RUN", "assertion": "x", "detail": "y"},
+        {"reason": "R0_INVALID_RUN"},
+        "refusé",
+    ],
+    ids=["raison hors lignes 2/5", "portée hors liste", "bloc incomplet", "mal typé"],
+)
+def test_un_refus_mal_forme_est_une_erreur_d_entree(tmp_path: Path, refusal: Any) -> None:
+    artifacts = _sound()
+    artifacts["entry"] = {"ok": False, "refusal": refusal}
+    with pytest.raises(cc.MissingEvidenceError):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+
+
+def test_refusal_absent_est_une_erreur_d_entree_null_est_la_valeur_conforme() -> None:
+    artifacts = _sound()
+    artifacts["entry"] = {"ok": True}
+    with pytest.raises(cc.MissingEvidenceError, match="jamais absente"):
+        cv.decide(artifacts, violations=[])
+    artifacts["entry"] = {"ok": True, "refusal": None}
+    assert cv.decide(artifacts, violations=[]).issue == cc.ISSUE_VALIDE
 
 
 #: Chemin d'une preuve obligatoire, décrit comme une suite de clés.
@@ -835,7 +913,7 @@ TABLE_I1 = [
     pytest.param(1, lambda a: None, cc.ISSUE_VALIDE, None, 0, True, True, id="L1 entrée conforme"),
     pytest.param(
         2,
-        lambda a: a.__setitem__("entry", {"ok": False}),
+        lambda a: a.__setitem__("entry", {"ok": False, "refusal": _REFUSAL_R0}),
         None,
         "R0_INVALID_RUN",
         2,

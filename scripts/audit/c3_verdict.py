@@ -180,9 +180,25 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     ou invalide.
     """
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
-    if not cc.require_bool(entry, "ok", where="entry"):
-        # § I.1, ligne 2 : contrat rompu -> code 2, la chaîne s'arrête, rien n'est publié.
-        raise cc.EntryRefusedError("R0_INVALID_RUN", "la validité d'entrée (§ I-A) a échoué")
+    entry_ok = cc.require_bool(entry, "ok", where="entry")
+    refusal = cc.nullable_mapping(entry, "refusal", where="entry")
+    # Le contrat de `entry.json` (c3_entry) : `ok` <=> `refusal` est null. Les combinaisons
+    # incohérentes sont des violations de l'instrument (§ I.1 l.15), jamais un verdict.
+    if entry_ok and refusal is not None:
+        violations.append(
+            "entry.ok vrai alors qu'un refus est porté "
+            f"({cc.require_str(refusal, 'reason', where='entry.refusal')}) — contrat d'entrée incohérent"
+        )
+    if not entry_ok:
+        if refusal is None:
+            violations.append("entry.ok faux sans bloc `refusal` — contrat d'entrée incohérent")
+            raise cc.EntryRefusedError("R0_INVALID_RUN", "la validité d'entrée (§ I-A) a échoué")
+        reason = cc.require_str(
+            refusal, "reason", where="entry.refusal", allowed=("R0_INVALID_RUN", "D_WARMUP_PREFIX")
+        )
+        cc.require_str(refusal, "scope", where="entry.refusal", allowed=("run", "artefact"))
+        # § I.1, lignes 2 et 5 : refus d'entrée -> code 2, la chaîne s'arrête, rien n'est publié.
+        raise cc.EntryRefusedError(reason, cc.require_str(refusal, "detail", where="entry.refusal"))
 
     anchor = cc.require_mapping(artifacts, "anchor", where="artefacts")
     provenance = cc.require_str(
@@ -417,9 +433,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         decision = decide(artifacts, violations=violations)
     except cc.EntryRefusedError as exc:
-        # § I.1, ligne 2 — contrat rompu : code 2, la chaîne s'arrête, rien n'est publié.
-        print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
-        return 2
+        if violations:
+            # Une violation constatée avant le refus prime (§ I.1 l.15 : « c'est une violation,
+            # pas un résultat ») : artefact diagnostic, code 1, le refus y est consigné.
+            violations.append(f"refus d'entrée constaté après violation : {exc}")
+        else:
+            # § I.1, lignes 2 et 5 — refus d'entrée : code 2, la chaîne s'arrête, rien n'est publié.
+            print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
+            return 2
     except cc.MissingEvidenceError as exc:
         # § I.1 — preuve obligatoire absente, nulle, mal typée ou hors liste close : code 2.
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)

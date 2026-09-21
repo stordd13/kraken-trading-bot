@@ -1,0 +1,73 @@
+{
+  "admissible_stamps": {
+    "10080": "2025-05-05T00:00:00+00:00",
+    "1440": "2025-05-07T00:00:00+00:00",
+    "240": "2025-05-07T04:00:00+00:00",
+    "5": "2025-05-07T04:45:00+00:00"
+  },
+  "admissible_stamps_by_label": {
+    "1d": "2025-05-07T00:00:00+00:00",
+    "1w": "2025-05-05T00:00:00+00:00",
+    "4h": "2025-05-07T04:00:00+00:00",
+    "5m": "2025-05-07T04:45:00+00:00"
+  },
+  "anchor": "2025-05-07T04:48:00+00:00",
+  "anchor_fraction": 0.7,
+  "evaluation_days": 328.79999999999995,
+  "exec_interval": 5,
+  "exit_code": 0,
+  "first_exec_stamp_after_anchor": "2025-05-07T04:50:00+00:00",
+  "frozen_values_asserted": [
+    "anchor_fraction",
+    "uncertainty",
+    "thresholds",
+    "protocol_sha256"
+  ],
+  "generated_at": "2026-09-22T00:00:00+00:00",
+  "inputs_sha256": {
+    "manifest": "ec50063c9e6128e3cbecf6af331ba1cfc3170ff7e6a4b1e38973afe60045b14a"
+  },
+  "invalide": false,
+  "manifest_sha256": "ec50063c9e6128e3cbecf6af331ba1cfc3170ff7e6a4b1e38973afe60045b14a",
+  "n_candidates": 96,
+  "ok": true,
+  "pairs": [
+    "BTC/USDC",
+    "SOL/USDC"
+  ],
+  "parent": {
+    "is_root": true
+  },
+  "prefix_days": 767.2,
+  "prefix_segment": "train",
+  "protocole": {
+    "path": "docs/protocole_c3.md",
+    "sha256": "9b62915069e59e9b0f35120c60a77f48a72b278aa9102b3096dfcb8dc25e23c2"
+  },
+  "registry": {
+    "new_entry": true,
+    "path": "results/c3a_entry_validation/variants.json",
+    "sha256": "18f263aea7ac9bfd615120fde259efd4218ec9e291b426a08f84ba23fc0411fe"
+  },
+  "research_log_entry": "docs/RESEARCH_LOG.md — « Rejeu diagnostic grid — 96 configs BTC/SOL (inscrit le 2026-09-20, avant lancement) » ; la validation d'entrée C3a n'est pas un run de recherche (§ 0.6 : aucun rejeu technique prévu)",
+  "step": "anchor",
+  "uncertainty": {
+    "B": 10000,
+    "block_lengths": [
+      10,
+      21,
+      42
+    ],
+    "bound_level": 0.95,
+    "seed": 20260921
+  },
+  "universe_provenance": "contaminated",
+  "variant_id": "c3a-entry-rejeu-grid-20260919",
+  "variant_key": "dd2a4751b9db4c105b8cba88714f3867e635cb38904768f27926549af51ab47b",
+  "violations": [],
+  "window": {
+    "end": "2026-04-01T00:00:00+00:00",
+    "start": "2023-04-01T00:00:00+00:00"
+  },
+  "window_days": 1096.0
+}
