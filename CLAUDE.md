@@ -8,9 +8,12 @@
 Bot de trading spot automatisé multi-pair (BTC/ETH/SOL contre USDC) sur **Bybit EU**, 8 stratégies
 orchestrées par un router avec risk management centralisé, déployé sur Hetzner (collector Bybit actif,
 trader masqué). **B4 est close (15 sept, tag `v2.8.0-b4-3-campaign`) : zéro sélection sous les critères codés — et
-l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Phase courante : chantiers C1 (métriques,
-mergé, tag `v2.9.0-c1-metrics`) → C2 (replay) → rejeu grid → C3 (validation chronologique) ; runs R&D gelés jusqu'à
-C1-C2, tickets papier sous `docs/CONTRAINTES_POST_B4.md`.** Les backtests tournent sur les 8.7M rows Binance
+l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Instrument réparé : C1 (métriques,
+`v2.9.0-c1-metrics`) et C2 (replay, `v2.10.0-c2-replay`) mergés ; rejeu grid clos `inconclusif` (20/09). **C3a close
+(22/09)** : protocole `docs/protocole_c3.md` gelé + outillage complet, artefact du rejeu **refusé à l'entrée**.
+Phase courante : pré-merge C3a (§ L.5) + préparation C3b ; aucune sélection, rien à trader ; R&D sur le papier
+(`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
+`docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
 end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts par paire mesurés (GATE B).
 
 ## Routage : type de tâche → fichier à lire
@@ -32,20 +35,20 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | **Audit red-team B4 / portée des conclusions** | `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` (+ addendum en tête de `results/B4_bybit_backtest_report.md`) |
 | **Comment une configuration est sélectionnée** (protocole gelé — spécification de TOUTE sélection future) | `docs/protocole_c3.md` |
 | **Brief du chantier C3a** (périmètre, gates, décisions figées) | `agent/c3a_protocole_chronologique_v2.md` |
+| **Outillage C3** (chaîne `c3_*.py`, codes de sortie, conventions d'outillage datées, seul run réel) | `skills/backtest.md` § « Validation C3 » |
+| **Rapport de session C3a** (revues Fin, conventions, exigences C3b accumulées) | `agent/rapport_session_c3a_20260922.md` |
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
 
-<!-- C3A-INTERIM:début — bloc d'état intermédiaire. À REMPLACER EN BLOC à la clôture de C3a, jamais à compléter (§ 0.7 du protocole, appliqué entre fichiers). -->
-
-> **C3a en cours — état au 2026-09-21.** `docs/protocole_c3.md` est **gelé** au commit `d931293`
-> (branche `feat/c3a-protocole`) : il spécifie l'ancrage, l'admissibilité, le classement, le contrat
-> de continuité, le benchmark, la procédure d'incertitude et les trois issues. **Aucune sélection ne
-> se fait hors de ce document**, et il ne se modifie que par amendement daté. L'outillage
-> `scripts/audit/c3_*.py` est **partiel** : `c3_common` et `c3_verdict` existent, `c3_anchor`,
-> `c3_entry`, `c3_benchmark`, `c3_select` et `c3_continuity` **n'existent pas encore**. Ne pas
-> lancer de sélection tant que la chaîne est incomplète.
-
-<!-- C3A-INTERIM:fin -->
+> **C3a livrée et validée (22 sept 2026 — branche `feat/c3a-protocole`, tip `acaeaf6`, non mergée).**
+> `docs/protocole_c3.md` est **gelé** au commit `d931293` : il spécifie **toute** sélection future (ancrage,
+> admissibilité, classement, contrat de continuité, benchmark, incertitude, trois issues) et ne se modifie que par
+> amendement daté. **Aucune sélection ne se fait hors de ce document.** L'outillage `scripts/audit/c3_*.py` est
+> **complet** (7 modules, 806 tests, sous-commande `c3_verdict.py chain`) — comportement et conventions d'outillage
+> datées dans `skills/backtest.md` § « Validation C3 ». Sa **seule sortie réelle est un refus** : l'artefact du rejeu
+> grid ne satisfait pas les conditions d'entrée C3 (`D_WARMUP_PREFIX`, 96/96, `results/c3a_entry_validation/`).
+> **Aucune campagne existante ne peut traverser la chaîne** sans un producteur conforme (chantier C3b) ; `validé` /
+> `réfuté` sont inatteignables avant C3b (§ L.1). Aucune sélection, aucun verdict économique. Porte pré-merge § L.5 due.
 
 ## Règles d'or (absolues)
 

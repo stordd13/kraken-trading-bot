@@ -1,15 +1,20 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 20 septembre 2026, **après le rejeu diagnostic grid**. B4 close le 15 sept (merge `4c98b6b`
+> Dernière mise à jour : 22 septembre 2026, **à la clôture de C3a**. B4 close le 15 sept (merge `4c98b6b`
 > dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec
 > un instrument depuis invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ;
 > sélection paper vide. Instrument réparé : **C1 métriques** (tag `v2.9.0-c1-metrics`) et **C2 fidélité replay** (tag
 > `v2.10.0-c2-replay`) mergés. **Rejeu diagnostic grid clos le 20 sept** → **`inconclusif (F_CANNOT_SEPARATE)`** : la
 > famille grid n'est **ni validée ni dépriorisée** sous instrument réparé — pas de déploiement, pas de tuning
-> supplémentaire, périmètre non élargi (`results/rejeu_grid_report.md`). **Phase courante : C3**, validation
-> chronologique. Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal `docs/RESEARCH_LOG.md` obligatoire
-> avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
+> supplémentaire, périmètre non élargi (`results/rejeu_grid_report.md`). **C3a livrée et validée le 22 sept** (revues
+> croisées Astra / Claude, **806 tests C3**, suite 2 615 passés / 6 skippés, branche `feat/c3a-protocole` @ `acaeaf6`,
+> non mergée) : protocole `docs/protocole_c3.md` **gelé** (`d931293`), outillage complet ; **l'artefact réel du rejeu
+> est refusé à l'entrée** (§ D.3, `D_WARMUP_PREFIX`, 96/96). **Fait stratégique : aucune campagne existante ne peut
+> traverser la chaîne C3 sans un producteur conforme → chantier C3b.** **Phase courante : pré-merge C3a** (§ L.5 :
+> 24 tests de déterminisme sur le serveur + re-passe Astra sur le SHA final) **et préparation de C3b** (gate
+> d'amendement du protocole, chantier producteur). Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
+> `docs/RESEARCH_LOG.md` obligatoire avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
 
 ---
 
@@ -31,7 +36,7 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - Monitoring Telegram en temps réel
 - Capital initial 1k USDC, scaling progressif vers 20k USDC
 
-### État actuel (16 septembre 2026)
+### État actuel (22 septembre 2026)
 
 - ✅ P0 à P6 terminées (audit, abstraction layer, REST/WS Binance, multi-pair, backtests 24 combos)
 - ✅ P7 phase 1 terminée (30 mai 2026 : 212 jobs de grid search cross-validés, fees Binance)
@@ -100,46 +105,32 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   sur 48 passent les gates ponctuels mais **aucune ne tient les six bornes simultanées** ; SOL/USDC est **descriptif**
   (825 jours de données, benchmark non constructible, warmup W2). La famille grid est donc **ni validée ni dépriorisée**
   sous instrument réparé — pas de déploiement, **pas de tuning supplémentaire**, périmètre non élargi
-  (`results/rejeu_grid_report.md`, `docs/rejeu_grid_prespec.md`). **Phase courante : C3, validation chronologique**
-  (note WF § 9) — equity continue, sélection sur le passé seul — avant toute sélection ; C3 devra aussi reprendre
-  l'amorçage des portes de régime (warmup 1 d/1 w de BTC `sufficient=False` par lacune interne, et `bias_1d` fait vivre
-  `regime_1d` dans tous les modes). Tickets papier (`docs/CONTRAINTES_POST_B4.md` § 6) autorisés ; tout run s'inscrit
-  d'abord dans `docs/RESEARCH_LOG.md`.
-<!-- C3A-INTERIM:début — bloc d'état intermédiaire. À REMPLACER EN BLOC à la clôture de C3a, jamais à compléter (§ 0.7 du protocole, appliqué entre fichiers). -->
-
-### C3a — état intermédiaire au 2026-09-21
-
-**Le protocole est gelé ; l'outillage ne l'est pas.** Ce bloc décrit un chantier **en cours** et sera
-**remplacé en bloc** à la clôture de C3a — il ne se complète pas.
-
-| Objet | État | Référence |
-|---|---|---|
-| `docs/protocole_c3.md` | **GELÉ** le 21 sept | commit **`d931293`**, branche `feat/c3a-protocole` |
-| `scripts/audit/c3_common.py` · `c3_verdict.py` et leurs tests | **correctifs livrés** (`075f740`), **revue ayant identifié des défauts restants** — corrigés en **`e358df9`** (publication sur violation, accesseur contourné, codes I.1), **en attente du GO d'Astra** avant bascule | `075f740` → `e358df9` |
-| `c3_anchor` · `c3_entry` · `c3_benchmark` · `c3_select` · `c3_continuity` | **n'existent pas** | liste fermée du § L.4 du protocole |
-| Test de chronologie forte et son contrôle négatif | **non écrits** | § A.12 du protocole |
-
-**Ce que le protocole gelé fixe** : la règle d'ancrage (fraction 0,70 de la fenêtre déclarée au
-manifeste, soit `2025-05-07T04:48Z`, **sans arrondi**), la projection sur liste blanche, les clauses
-d'admissibilité D1-D6, la séquence **filtrer puis classer**, le contrat de continuité, la
-séparation **décision / exécution** des deux côtés du benchmark, la procédure d'incertitude (borne
-**pivotale**, six combinaisons `L × appariement`), la **préséance de l'estimabilité** sur tout
-verdict économique, et les trois issues avec leur liste close de raisons.
-
-**Conséquences opérationnelles, aujourd'hui :**
-
-- **Aucune sélection n'est possible** — la chaîne d'outillage est incomplète.
-- **Aucune modification du protocole** hors amendement daté : si une fixture révèle une incohérence,
-  **on s'arrête et on la signale**, on ne corrige pas le document pour faire passer un test.
-- L'artefact du rejeu (`results/rejeu_grid_20260919/`) est **non recevable** en entrée C3, par un
-  motif technique unique (`D_WARMUP_PREFIX`, amorçage du préfixe défaillant sur les deux paires) ;
-  contamination de l'univers, inadmissibilité de SOL et gel du diagnostic sont des **limitations de
-  portée distinctes**, pas des motifs de refus.
-- L'amorçage des portes de régime reste **l'entrée obligatoire de C3** que le rejeu avait nommée :
-  la clause D2 du protocole l'exige au début du préfixe, et elle écarte aujourd'hui, de façon
-  déterministe, tout candidat dont une porte lit le 1 d ou le 1 w sur BTC et SOL pour cette fenêtre.
-
-<!-- C3A-INTERIM:fin -->
+  (`results/rejeu_grid_report.md`, `docs/rejeu_grid_prespec.md`) → **C3, validation chronologique** (note WF § 9) :
+  **C3a close le 22 sept** (puce suivante), **C3b ouvert**. L'amorçage des portes de régime que le rejeu avait nommé
+  (warmup 1 d/1 w de BTC `sufficient=False` par lacune interne, `bias_1d` faisant vivre `regime_1d` dans tous les
+  modes) est désormais **ce que D2 refuse mécaniquement à l'entrée** (`D_WARMUP_PREFIX`, 96/96) et relève du chantier
+  producteur C3b. Tickets papier (`docs/CONTRAINTES_POST_B4.md` § 6) autorisés ; tout run s'inscrit d'abord dans
+  `docs/RESEARCH_LOG.md`.
+- ✅ **C3a close (22 sept — branche `feat/c3a-protocole`, tip `acaeaf6`, non mergée, pas de tag)** : protocole
+  `docs/protocole_c3.md` **gelé** au `d931293` (sha256 `9b62915069e59e9b…`), jamais modifié depuis ; outillage
+  **complet**, liste fermée § L.4 — `scripts/audit/c3_{common,anchor,entry,benchmark,select,continuity,verdict}.py`,
+  sous-commande `c3_verdict.py chain` (chaîne § L.2 à neuf champs), **806 tests** C3 (8 fichiers ; suite complète
+  2 615 / 6), diff de contrôle § L.3 vide, `mypy src/` 65 = baseline ; revues croisées Astra / Claude (deux passes Fin,
+  huit correctifs rouges-avant, `chain.verified` défini), **arrêt Fin validé le 22/09**. **Seule sortie réelle : le refus
+  de l'artefact du rejeu à l'entrée** (`D_WARMUP_PREFIX`, portée artefact, **96/96** — 48 BTC `1d, 1w`, 48 SOL
+  `4h, 1d, 1w` ; I-A.2 `exec_interval` et I-A.7 couverture `not_assertable` ; `results/c3a_entry_validation/`),
+  conforme au § D.3 — **aucun classement, aucun verdict économique**, verdict du rejeu inchangé.
+  **Fait stratégique : aucune campagne existante (P6, P7, B4, C1, C2, rejeu) ne peut traverser la chaîne** — il manque
+  un **producteur conforme** : export `lots` par segment (D6, clause 3), `exec_interval` (D5), artefact de couverture
+  (D1), preuve de départ à plat à `T` (clause 1), `invocation.single_call` (clause 2), `first_fill_at` (clause 5),
+  amorçage suffisant au préfixe (D2) → **C3b**. `validé` / `réfuté` restent **structurellement inatteignables** sur
+  données réelles (§ L.1). Conventions d'outillage **datées** (21/09 : clause 3 `FAILED` → `UndefinedIssueError`,
+  code 2 ; 22/09 : preuve absente après violation → code 2, violations sur stderr) documentées dans
+  `skills/backtest.md` § « Validation C3 », **à ratifier par amendement** au gate C3b (avec la ligne run
+  `R1_NOT_NORMALISED`, E2 sur les six distributions, la tolérance MDD, l'énumération § L.1 / `candles.json`).
+  **Restent, hors C3a** : porte pré-merge § L.5 (`git diff --stat f585e8b -- <§ L.3>` = `pyproject.toml` seul →
+  option 2 indisponible : 24 tests de déterminisme sur le serveur au SHA final + re-passe Astra, sauf décision humaine
+  écrite), gate d'amendement, brief C3b. Rapport : `agent/rapport_session_c3a_20260922.md`.
 
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
@@ -370,9 +361,12 @@ Détail : `ROADMAP.md`.
   Bybit, B2 WS, B3 data/collector, **B4 re-run P6 + P7 fees Bybit** (15 sept, tag `v2.8.0-b4-3-campaign`) → **0 survivant**
   (zéro sélection sous les critères codés avec un instrument depuis invalidé — addendum B4), **C1 métriques** (16 sept,
   tag `v2.9.0-c1-metrics`).
-- ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`), C2 (mergé, `v2.10.0-c2-replay`) et **rejeu
+- ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`), C2 (mergé, `v2.10.0-c2-replay`), **rejeu
   diagnostic grid** (clos le 20 sept, verdict `inconclusif (F_CANNOT_SEPARATE)` — famille grid ni validée ni
-  dépriorisée) → **C3 validation chronologique, phase courante**.
+  dépriorisée) → **C3 validation chronologique** : **C3a close le 22 sept** (protocole gelé `d931293`, outillage 7
+  modules / 806 tests, artefact du rejeu refusé à l'entrée ; branche `feat/c3a-protocole` @ `acaeaf6` non mergée,
+  porte § L.5 due) ; **C3b ouvert** (gate d'amendement + producteur conforme, puis campagne réelle sous la chaîne).
+  **Phase courante : pré-merge C3a + préparation C3b.**
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
@@ -539,14 +533,18 @@ Détail : `ROADMAP.md`.
     déplace le MaxDD, donc `λ`, donc le rendement du comparateur apparié. **Prérequis C3b**, et **pas un simple
     transport de champs** : le dump `--equity-out` n'écrit que des états **postérieurs** au traitement d'une
     bougie, et à l'ancrage déclaré **aucun point n'existe à `T`** ; C3b doit **spécifier une preuve de départ à
-    plat**.
+    plat**. **État C3a** : `c3_continuity` clause 3 lit ce bloc — identités exactes **et** preuve par lot →
+    `VERIFIED` ; sans `lots` → `NOT_VERIFIABLE` ; bloc absent ou identité fausse → `FAILED`, issue non définie
+    (`UndefinedIssueError`, convention du 21/09, amendement `R1_NOT_NORMALISED` dû en C3b).
 
-**Note WF** (audit red-team 16/09, reformulée le 21 sept — **non déclarée résolue**) : la sélection top-5 de
+**Note WF** (audit red-team 16/09, reformulée le 22 sept — **non déclarée résolue**) : la sélection top-5 de
 P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7
-**n'est pas** une validation chronologique. **État réel** : la **voie C3 chronologique est spécifiée** — le
-protocole `docs/protocole_c3.md` est **gelé** (`d931293`) — et son **outillage est en cours** (bloc C3A-INTERIM
-ci-dessus). **L'ancienne phase 2 P7 est conservée pour reproduction et reste impropre à une nouvelle validation
-chronologique** : les runners ne sont pas modifiés, la fuite de sélection y est donc toujours présente.
+**n'est pas** une validation chronologique. **État réel** : **nouvelle voie C3 chronologique** — protocole
+`docs/protocole_c3.md` **gelé** (`d931293`), outillage **livré** (C3a, `skills/backtest.md` § « Validation C3 »),
+mais **aucune campagne existante ne le traverse** (refus à l'entrée, producteur conforme = chantier C3b) ;
+**ancienne phase 2 P7 conservée pour reproduction, impropre à une nouvelle validation chronologique** : les
+runners ne sont pas modifiés, la fuite de sélection y est donc toujours présente. La note sera déclarée résolue
+quand une campagne aura été **validée ou réfutée sous la chaîne C3** — pas avant.
 
 ---
 
