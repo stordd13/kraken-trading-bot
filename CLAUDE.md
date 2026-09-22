@@ -59,8 +59,9 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
    le code de production. Seuls les backtests lisent explicitement `exchange='binance'`.
 5. **Batcher les inserts SQL** (1000 rows par batch, jamais > 5000 par execute).
 6. **Ne jamais réimporter** des données déjà en DB : vérifier d'abord (`skills/database.md`).
-7. **Paper avant live**, 3+ ans de backtest avant paper. **B4** (re-backtests avec fees Bybit) est un
-   prérequis absolu avant tout paper trading Bybit.
+7. **Paper avant live**, 3+ ans de backtest avant paper. **Aucun paper Bybit sans un candidat validé sous le
+   protocole C3** (`docs/protocole_c3.md`, sélection chronologique, fees Bybit) — B4 (fees Bybit) reste le
+   prérequis d'**instrument**, il n'est plus le critère de sélection.
 8. **Fichiers protégés** : `MultiStrategyRouter`, `GeminiGlobalRiskManager`, `ExecutionEngine` —
    pas de modification sans raison explicite et review humain. Ne jamais bypasser le `GlobalRiskManager`.
 9. **Jamais de commit** de `.env`, credentials ou API keys.

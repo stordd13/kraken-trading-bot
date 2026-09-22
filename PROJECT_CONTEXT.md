@@ -567,7 +567,7 @@ Voir `CLAUDE.md` (routeur) — résumé :
 1. **Decimal** pour montants, **structlog** pour logs, **normalize_pair** pour paires.
 2. **Filtrer** via `settings.exchange_name` dans le code de production (jamais de littéral).
 3. **Batcher** les inserts SQL (~1000 rows max).
-4. **Tester en paper** avant live, **3+ ans de backtest** avant paper, **B4 avant tout paper Bybit**.
+4. **Tester en paper** avant live, **3+ ans de backtest** avant paper, **un candidat validé sous le protocole C3 avant tout paper Bybit** (B4 = prérequis d'instrument).
 5. **Ne JAMAIS commit** `.env` ni credentials.
 6. **Ne JAMAIS modifier** MultiStrategyRouter/GeminiGlobalRiskManager/ExecutionEngine sans review humain.
 7. **Lire le code existant** avant d'écrire.

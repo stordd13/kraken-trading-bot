@@ -203,7 +203,7 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 3. **Spread mesuré, pas supposé** : 0.02 % spread + 0.02 % slippage (conservateur vs B0).
 4. **Quote USDC** conservée (MiCA-compliant ; USDT délisté chez les acteurs EU).
 5. **PostOnly en entrée** pour garantir le maker ; sorties SL/trailing/timeout en MARKET.
-6. **B4 est un prérequis absolu avant tout paper** : aucun classement P6/P7 (fees Binance flat) n'est repris tel quel.
+6. **B4 est un prérequis absolu avant tout paper** : aucun classement P6/P7 (fees Binance flat) n'est repris tel quel ; **depuis C3 (22/09), la condition de démarrage de B5 est un candidat validé sous le protocole C3** (§ B5).
 7. **Filtre exchange via `settings.exchange_name`**, plus de littéral en production.
 8. ✅ **`TaskScheduler` via la factory** (B3) — backfill de gaps actif pour l'exchange courant (Bybit).
 9. **Legacy Kraken** : stratégies et connecteur futures supprimés en B0.5 (supersède la décision « conserver
@@ -219,6 +219,7 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 16. **Protocole basse rotation** (voir `docs/CONTRAINTES_POST_B4.md`) : repères de couverture nécessaires jamais
     suffisants, « inconclusif = pas de déploiement ».
 17. **Tout run de backtest est inscrit à `docs/RESEARCH_LOG.md` avant son lancement.**
+18. **Aucune sélection hors `docs/protocole_c3.md`** (gelé `d931293`) : le protocole ne change que par amendement daté (gate) ; l'outillage exécute, il ne norme pas.
 
 ---
 
