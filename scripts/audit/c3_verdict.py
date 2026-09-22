@@ -257,41 +257,48 @@ def _iso(window: tuple[datetime, datetime]) -> str:
     return f"[{window[0].isoformat()}, {window[1].isoformat()}]"
 
 
-def _continuity_gates(
+@dataclass(frozen=True)
+class ContinuityView:
+    """Ce que `continuity.json` établit une fois lu strictement, dérivé et recoupé — sans action."""
+
+    states: dict[str, str]
+    details: dict[str, str]
+    stamp_state: str
+    comparator_state: str
+    derived_state: str
+    derived_identity: str
+
+
+def _continuity_view(
     continuity: Mapping[str, Any],
     *,
     evaluation: Mapping[str, Any],
     anchor: Mapping[str, Any],
-    retained: str,
     violations: list[str],
-) -> tuple[list[str], str]:
-    """Ce que la continuité impose au verdict (plan § 6.4) ; renvoie (raisons run, agrégat **dérivé**).
+) -> ContinuityView:
+    """Lecture stricte, complète, de `continuity.json` ; dérivations ; recoupements (plan § 6.4).
 
-    **Rien n'est recopié** (revue Fin, défaut 2). L'artefact est lu strictement et en entier, puis :
+    **Rien n'est recopié** (revue Fin, défaut 2) :
 
+    * chaque état de clause est lu **contre la liste close de sa clause** (table § 6.4,
+      ``cc.CLAUSE_ADMISSIBLE_STATES``, revue Fin 2) : hors liste → erreur d'entrée, code 2, rien
+      publié ; les clés de ``clauses`` sont exactement c1..c5 ; ``stamp_cell`` et ``comparator``
+      ont leur propre liste close ;
     * l'agrégat est **recalculé** des cinq clauses (précédence ``cc.CONTINUITY_SEVERITY``) et recoupé
-      au ``state`` déclaré ; l'état du comparateur est recalculé de ses tests § C.5 et recoupé ;
+      au ``state`` déclaré ; l'état du comparateur est recalculé de ses tests § C.5 et de sa fenêtre
+      (revue Fin 3) et recoupé ;
     * les quatre résumés — ``warmup_anchor_ok`` (c4 ``VERIFIED``), ``benchmark_comparable``
       (comparateur ``VERIFIED``), ``stamp_same_daily_cell`` (``stamp_cell`` ``VERIFIED``),
       ``liquidation_normalised`` (``cc.LIQUIDATION_NORMALISED_OF_C3[c3]``) — sont dérivés et
       recoupés ; **toute contradiction déclaré / dérivé est une violation** (§ I.1 l.15) ;
-    * les actions se branchent sur les **clauses**, jamais sur les résumés : l'évaluation doit être
-      celle de la configuration retenue (§ H.1, sinon refus R0) ; c1, c2, c5 ``FAILED`` → refus R0
-      (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED`` → ``UndefinedIssueError``
-      (convention datée du 21/09, plan § 6.1) ; c4 ``FAILED`` → ``D_WARMUP_ANCHOR`` ; comparateur
-      ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` non ``VERIFIED`` → ``E_STAMP_MISMATCH``
-      (§ I.1 l.10-12). « ``validé`` avec ``continuite=FAILED`` » est ainsi inconstructible.
+    * ``identity`` est dérivée de ``evaluation.{strategy, pair, params}``, ``pair`` et ``synthetic``
+      recoupés à l'évaluation, ``evaluation_window`` à ``[anchor.anchor, anchor.window.end]``
+      (revue Fin 6).
 
-    Balayage (revue Fin 6) : ``identity`` est dérivée de ``evaluation.{strategy, pair, params}``,
-    ``pair`` et ``synthetic`` sont recoupés à l'évaluation, ``evaluation_window`` à
-    ``[anchor.anchor, anchor.window.end]`` ; c'est l'identité **dérivée** qui est comparée à la
-    configuration retenue.
-
-    Les contrôles sont obligatoires et typés : une clé absente ou nulle est une erreur d'entrée,
-    jamais un contrôle réputé satisfait.
+    Cette lecture précède **tout** chemin de publication, abstention comprise (passe interne de la
+    revue Fin 2) : un état hors liste close n'est jamais publié, sur aucun chemin.
     """
     where = "continuity"
-    # 1. Lecture stricte, complète, avant toute logique.
     strategy = cc.require_str(evaluation, "strategy", where="evaluation")
     pair_eval = cc.require_str(evaluation, "pair", where="evaluation")
     params = cc.require_mapping(evaluation, "params", where="evaluation")
@@ -301,21 +308,29 @@ def _continuity_gates(
     )
     declared_state = cc.require_str(continuity, "state", where=where, allowed=cc.CONTINUITY_STATES)
     clauses = cc.require_mapping(continuity, "clauses", where=where)
+    if set(clauses) != set(cc.CLAUSE_ADMISSIBLE_STATES):
+        raise cc.MissingEvidenceError(
+            f"{where}.clauses: clés {sorted(clauses)} != {sorted(cc.CLAUSE_ADMISSIBLE_STATES)} "
+            "(les cinq clauses § B, ni plus ni moins)"
+        )
     states: dict[str, str] = {}
     details: dict[str, str] = {}
     for key in ("c1", "c2", "c3", "c4", "c5"):
         block = cc.require_mapping(clauses, key, where=f"{where}.clauses")
         states[key] = cc.require_str(
-            block, "state", where=f"{where}.clauses.{key}", allowed=cc.CONTINUITY_STATES
+            block,
+            "state",
+            where=f"{where}.clauses.{key}",
+            allowed=cc.CLAUSE_ADMISSIBLE_STATES[key],
         )
         details[key] = cc.require_str(block, "detail", where=f"{where}.clauses.{key}")
     stamp_cell = cc.require_mapping(continuity, "stamp_cell", where=where)
     stamp_state = cc.require_str(
-        stamp_cell, "state", where=f"{where}.stamp_cell", allowed=cc.CONTINUITY_STATES
+        stamp_cell, "state", where=f"{where}.stamp_cell", allowed=cc.STAMP_CELL_ADMISSIBLE_STATES
     )
     comparator = cc.require_mapping(continuity, "comparator", where=where)
     comparator_state = cc.require_str(
-        comparator, "state", where=f"{where}.comparator", allowed=("VERIFIED", "FAILED")
+        comparator, "state", where=f"{where}.comparator", allowed=cc.COMPARATOR_ADMISSIBLE_STATES
     )
     tests_block = cc.require_mapping(comparator, "tests", where=f"{where}.comparator")
     tests = {
@@ -331,18 +346,7 @@ def _continuity_gates(
     identity = cc.require_str(continuity, "identity", where=where)
     pair = cc.require_str(continuity, "pair", where=where)
     synthetic = cc.require_bool(continuity, "synthetic", where=where)
-    evaluation_window = (
-        cc.require_datetime(
-            cc.require_mapping(continuity, "evaluation_window", where=where),
-            "start",
-            where=f"{where}.evaluation_window",
-        ),
-        cc.require_datetime(
-            cc.require_mapping(continuity, "evaluation_window", where=where),
-            "end",
-            where=f"{where}.evaluation_window",
-        ),
-    )
+    evaluation_window = _window_of(continuity, "evaluation_window", where=where)
     declared: dict[str, bool | None] = {
         "warmup_anchor_ok": cc.require_bool(continuity, "warmup_anchor_ok", where=where),
         "benchmark_comparable": cc.require_bool(continuity, "benchmark_comparable", where=where),
@@ -352,7 +356,7 @@ def _continuity_gates(
         ),
     }
 
-    # 2. Dérivations, puis recoupements — une contradiction est une violation.
+    # Dérivations, puis recoupements — une contradiction est une violation.
     derived_identity = cc.candidate_identity(strategy, pair_eval, params)
     if identity != derived_identity:
         violations.append(
@@ -370,8 +374,6 @@ def _continuity_gates(
             f"{where}.evaluation_window {_iso(evaluation_window)} != [anchor.anchor, anchor.window.end] "
             f"= {_iso((anchor_t, window_end))}"
         )
-    # La fenêtre du comparateur (revue Fin, défaut 3) : attendue = fenêtre d'évaluation, et le
-    # test `window_ok` est refait depuis les deux fenêtres portées par le bloc.
     if window_expected != evaluation_window:
         violations.append(
             f"{where}.comparator.window.expected {_iso(window_expected)} != evaluation_window "
@@ -395,19 +397,12 @@ def _continuity_gates(
             f"{where}.state déclaré {declared_state!r}, dérivé {derived_state!r} des clauses {states} "
             "(précédence FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED)"
         )
-    if states["c3"] in cc.LIQUIDATION_NORMALISED_OF_C3:
-        normalised_derived: bool | None = cc.LIQUIDATION_NORMALISED_OF_C3[states["c3"]]
-    else:
-        normalised_derived = None
-        violations.append(
-            f"{where}.clauses.c3.state {states['c3']!r} n'est pas un état atteignable de la clause 3 "
-            "(aucune déclaration ne prouve une liquidation costée)"
-        )
     derived: dict[str, bool | None] = {
         "warmup_anchor_ok": states["c4"] == "VERIFIED",
         "benchmark_comparable": derived_comparator == "VERIFIED",
         "stamp_same_daily_cell": stamp_state == "VERIFIED",
-        "liquidation_normalised": normalised_derived,
+        # défini sur la liste close de c3 (lue ci-dessus avec `allowed=`), et sur elle seule
+        "liquidation_normalised": cc.LIQUIDATION_NORMALISED_OF_C3[states["c3"]],
     }
     for key, value in derived.items():
         if declared[key] != value:
@@ -415,31 +410,47 @@ def _continuity_gates(
                 f"{where}.{key} déclaré {declared[key]!r}, dérivé {value!r} des clauses "
                 "— le résumé dérivé fait foi"
             )
+    return ContinuityView(
+        states=states,
+        details=details,
+        stamp_state=stamp_state,
+        comparator_state=derived_comparator,
+        derived_state=derived_state,
+        derived_identity=derived_identity,
+    )
 
-    # 3. Les actions, sur les clauses — et sur l'identité dérivée.
-    if derived_identity != retained:
+
+def _continuity_actions(view: ContinuityView, *, retained: str) -> list[str]:
+    """Ce que la continuité impose au verdict (table § 6.4) — sur les **clauses**, jamais sur les
+    résumés : l'évaluation doit être celle de la configuration retenue (§ H.1, sinon refus R0) ;
+    c1, c2, c5 ``FAILED`` → refus R0 (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED``
+    → ``UndefinedIssueError`` (convention datée du 21/09, plan § 6.1) ; c4 ``FAILED`` →
+    ``D_WARMUP_ANCHOR`` ; comparateur ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` non
+    ``VERIFIED`` → ``E_STAMP_MISMATCH`` (§ I.1 l.10-12). Quand plusieurs clauses sont ``FAILED``,
+    le refus R0 précède l'issue non définie (§ H : R0 avant toute autre chose)."""
+    if view.derived_identity != retained:
         raise cc.EntryRefusedError(
             "R0_INVALID_RUN",
-            f"l'évaluation porte la configuration {derived_identity[:16]}, la sélection a retenu "
+            f"l'évaluation porte la configuration {view.derived_identity[:16]}, la sélection a retenu "
             f"{retained[:16]} — ce n'est pas l'évaluation de la configuration retenue (§ H.1)",
         )
     for key in ("c1", "c2", "c5"):
-        if states[key] == "FAILED":
+        if view.states[key] == "FAILED":
             raise cc.EntryRefusedError(
                 "R0_INVALID_RUN",
                 f"clause {key} de continuité en échec — l'artefact déclare une rupture du contrat "
-                f"§ B : {details[key]}",
+                f"§ B : {view.details[key]}",
             )
-    if states["c3"] == "FAILED":
+    if view.states["c3"] == "FAILED":
         raise cc.UndefinedIssueError(UNDEFINED_ISSUE_MESSAGE)
     reasons: list[str] = []
-    if states["c4"] == "FAILED":
+    if view.states["c4"] == "FAILED":
         reasons.append("D_WARMUP_ANCHOR")
-    if derived_comparator == "FAILED":
+    if view.comparator_state == "FAILED":
         reasons.append("E_NO_BENCHMARK")
-    if stamp_state != "VERIFIED":
+    if view.stamp_state != "VERIFIED":
         reasons.append("E_STAMP_MISMATCH")
-    return reasons, derived_state
+    return reasons
 
 
 def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str]) -> Decision:
@@ -449,22 +460,105 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     liste close — **erreur d'entrée** (§ I.1 ligne 2, code 2), pas un verdict — et
     ``InvalidValueError`` sur une valeur non finie ou hors domaine — **violation** (§ I.1 ligne 15,
     code 1), pas un verdict non plus. Aucun verdict économique n'est prononcé sur une preuve manquante
-    ou invalide. ``UndefinedIssueError`` (clause 3 en échec) et ``EntryRefusedError`` (refus) sortent
-    en code 2 sans rien publier.
+    ou invalide. ``EntryRefusedError`` (refus) et ``UndefinedIssueError`` (clause 3 en échec) : sans
+    violation constatée, code 2 et rien publié ; après une violation, la violation prime (§ I.1
+    l.15) et l'exception est consignée dans le diagnostic, code 1 (voir ``run_verdict``).
 
-    **Ordre.** Le confinement (§ L.1, plan § 6.6) vient **en tête**, avant tout chemin de
-    publication — verdict calculé, abstention, diagnostic (revue Fin, défaut 1) : ``evaluation.synthetic``
-    est lu strictement (absent / null / ``"true"`` → erreur d'entrée) ; ``false`` est refusé ; la
-    décision rendue porte toujours ``synthetic=True`` et la chaîne est préfixée ``C3_SYNTH_``.
+    **Ordre : tout lire, puis décider** (revue Fin 5 et passe interne de la revue Fin 2). Le
+    confinement (§ L.1, plan § 6.6) vient en tête — ``evaluation.synthetic`` strict, ``false``
+    refusé — puis le contrat d'entrée (refus R0 avant toute autre chose, § H), puis **la lecture
+    stricte complète des cinq artefacts** : ancre, sélection (listes, statut dérivé), continuité
+    (états contre leur liste close, résumés dérivés et recoupés), évaluation (``B`` contre le
+    contrat, séries, métriques des portes, six bornes). Aucun chemin de publication — abstention,
+    inconclusif par raison run, réfuté, validé — ne précède cette lecture : une preuve manquante est
+    un code 2, jamais un inconclusif publié. La décision suit ensuite l'ordre du § H : abstention,
+    continuité (clauses), estimabilité (§ H.0), portes, bornes.
     """
+    # 0. Confinement, puis contrat d'entrée (R0 avant toute autre chose).
     evaluation = cc.require_mapping(artifacts, "evaluation", where="artefacts")
     synthetic = require_synthetic(evaluation)
-
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
+    _entry_contract(entry, violations=violations)
+
+    # 1. Lecture stricte complète — ancre, sélection, continuité, évaluation.
+    anchor = cc.require_mapping(artifacts, "anchor", where="artefacts")
+    provenance = cc.require_str(
+        anchor, "universe_provenance", where="anchor", allowed=cc.PROVENANCES
+    )
+    selection = cc.require_mapping(artifacts, "selection", where="artefacts")
+    selection_status, derived_retained, derived_reason = _selection_view(
+        selection, provenance=provenance, violations=violations
+    )
+    continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
+    view = _continuity_view(continuity, evaluation=evaluation, anchor=anchor, violations=violations)
+    estimable, estimability_payload = _estimability_of(evaluation, violations=violations)
+    gates = _gate_results(evaluation)
+    bounds_positive = _bounds_all_positive(evaluation)
+
+    # 2. La décision, dans l'ordre du § H.
+    reasons: list[str] = []
+    if not cc.PROVENANCE_CAN_SUPPORT_VALIDE[provenance]:
+        reasons.append("P_PROVENANCE")
+
+    if derived_retained is None:
+        # Abstention : aucune configuration retenue, l'évaluation n'est pas celle d'une retenue —
+        # la continuité et l'évaluation ont été lues et recoupées (contrat), elles ne sont pas
+        # rapportées ; la chaîne porte `continuite=-`.
+        assert derived_reason is not None
+        reasons.append(derived_reason)
+        return Decision(
+            issue=cc.ISSUE_INCONCLUSIF,
+            reason=cc.worst_reason(*reasons),
+            retained=None,
+            selection_status=selection_status,
+            provenance=provenance,
+            synthetic=synthetic,
+        )
+
+    retained = derived_retained
+    reasons.extend(_continuity_actions(view, retained=retained))
+    # § H.0 — l'estimabilité est préalable au verdict économique, et elle est **recalculée**.
+    if not estimable:
+        reasons.append("F_NOT_ESTIMABLE")
+
+    common: dict[str, Any] = {
+        "retained": retained,
+        "selection_status": selection_status,
+        "provenance": provenance,
+        "estimability": estimability_payload,
+        "continuity_state": view.derived_state,
+        "synthetic": synthetic,
+    }
+    if reasons:
+        return Decision(
+            issue=cc.ISSUE_INCONCLUSIF,
+            reason=cc.worst_reason(*reasons),
+            gates={},
+            bounds_positive=None,
+            **common,
+        )
+    if not all(gates.values()):
+        return Decision(
+            issue=cc.ISSUE_REFUTE, reason=None, gates=gates, bounds_positive=None, **common
+        )
+    if not bounds_positive:
+        return Decision(
+            issue=cc.ISSUE_INCONCLUSIF,
+            reason="F_CANNOT_SEPARATE",
+            gates=gates,
+            bounds_positive=False,
+            **common,
+        )
+    return Decision(issue=cc.ISSUE_VALIDE, reason=None, gates=gates, bounds_positive=True, **common)
+
+
+def _entry_contract(entry: Mapping[str, Any], *, violations: list[str]) -> None:
+    """Le contrat de `entry.json` (c3_entry) : `ok` <=> `refusal` est null. Les combinaisons
+    incohérentes sont des violations de l'instrument (§ I.1 l.15), jamais un verdict ; un refus
+    porteur de sa raison est relevé (§ I.1 lignes 2 et 5 : code 2, rien publié, sauf violation
+    antérieure)."""
     entry_ok = cc.require_bool(entry, "ok", where="entry")
     refusal = cc.nullable_mapping(entry, "refusal", where="entry")
-    # Le contrat de `entry.json` (c3_entry) : `ok` <=> `refusal` est null. Les combinaisons
-    # incohérentes sont des violations de l'instrument (§ I.1 l.15), jamais un verdict.
     if entry_ok and refusal is not None:
         violations.append(
             "entry.ok vrai alors qu'un refus est porté "
@@ -478,19 +572,18 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
             refusal, "reason", where="entry.refusal", allowed=("R0_INVALID_RUN", "D_WARMUP_PREFIX")
         )
         cc.require_str(refusal, "scope", where="entry.refusal", allowed=("run", "artefact"))
-        # § I.1, lignes 2 et 5 : refus d'entrée -> code 2, la chaîne s'arrête, rien n'est publié.
         raise cc.EntryRefusedError(reason, cc.require_str(refusal, "detail", where="entry.refusal"))
 
-    anchor = cc.require_mapping(artifacts, "anchor", where="artefacts")
-    provenance = cc.require_str(
-        anchor, "universe_provenance", where="anchor", allowed=cc.PROVENANCES
-    )
-    selection = cc.require_mapping(artifacts, "selection", where="artefacts")
+
+def _selection_view(
+    selection: Mapping[str, Any], *, provenance: str, violations: list[str]
+) -> tuple[str, str | None, str | None]:
+    """Lecture stricte de `selection.json` ; retenue, raison et statut **dérivés** des listes
+    (§ A.10 : filtrer → filtrer → classer ; revue Fin 6) et recoupés au déclaré. Renvoie
+    (statut déclaré, retenue dérivée, raison dérivée)."""
     selection_status = cc.require_str(
         selection, "status", where="selection", allowed=cc.STATUS_SELECTION
     )
-    # Le statut de sélection est **dérivable** de la provenance et du résultat (table de
-    # `c3_select`) : il est recalculé ici et recoupé au déclaré — un désaccord est une violation.
     selection_provenance = cc.require_str(
         selection, "provenance", where="selection", allowed=cc.PROVENANCES
     )
@@ -513,9 +606,6 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     lists = {
         name: _identity_list(selection, name) for name in ("admissible", "survivors", "ranking")
     }
-    # Balayage (revue Fin 6) : la retenue est la tête du classement, la raison d'abstention se
-    # lit dans les listes (§ A.10 : filtrer → filtrer → classer), le statut dans (provenance,
-    # retenue dérivée) — recopiés nulle part, recoupés partout.
     derived_retained = lists["ranking"][0] if lists["ranking"] else None
     if declared_retained != derived_retained:
         violations.append(
@@ -551,71 +641,7 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
             f"selection.status déclaré {selection_status!r}, dérivé {derived_status!r} de "
             f"(provenance {provenance!r}, retenu {derived_retained is not None}) — le statut dérivé fait foi"
         )
-
-    reasons: list[str] = []
-    if not cc.PROVENANCE_CAN_SUPPORT_VALIDE[provenance]:
-        reasons.append("P_PROVENANCE")
-
-    if derived_retained is None:
-        assert derived_reason is not None
-        reasons.append(derived_reason)
-        return Decision(
-            issue=cc.ISSUE_INCONCLUSIF,
-            reason=cc.worst_reason(*reasons),
-            retained=None,
-            selection_status=selection_status,
-            provenance=provenance,
-            synthetic=synthetic,
-        )
-
-    retained = derived_retained
-
-    # § B — la continuité (plan § 6.4) : refus, issue non définie, ou raisons run.
-    continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
-    continuity_reasons, continuity_state = _continuity_gates(
-        continuity, evaluation=evaluation, anchor=anchor, retained=retained, violations=violations
-    )
-    reasons.extend(continuity_reasons)
-
-    # § H.0 — l'estimabilité est préalable au verdict économique, et elle est **recalculée**.
-    estimable, estimability_payload = _estimability_of(evaluation, violations=violations)
-    if not estimable:
-        reasons.append("F_NOT_ESTIMABLE")
-
-    common: dict[str, Any] = {
-        "retained": retained,
-        "selection_status": selection_status,
-        "provenance": provenance,
-        "estimability": estimability_payload,
-        "continuity_state": continuity_state,
-        "synthetic": synthetic,
-    }
-    if reasons:
-        return Decision(
-            issue=cc.ISSUE_INCONCLUSIF,
-            reason=cc.worst_reason(*reasons),
-            gates={},
-            bounds_positive=None,
-            **common,
-        )
-
-    gates = _gate_results(evaluation)
-    if not all(gates.values()):
-        return Decision(
-            issue=cc.ISSUE_REFUTE, reason=None, gates=gates, bounds_positive=None, **common
-        )
-
-    bounds_positive = _bounds_all_positive(evaluation)
-    if not bounds_positive:
-        return Decision(
-            issue=cc.ISSUE_INCONCLUSIF,
-            reason="F_CANNOT_SEPARATE",
-            gates=gates,
-            bounds_positive=False,
-            **common,
-        )
-
-    return Decision(issue=cc.ISSUE_VALIDE, reason=None, gates=gates, bounds_positive=True, **common)
+    return selection_status, derived_retained, derived_reason
 
 
 # ---------------------------------------------------------------------------

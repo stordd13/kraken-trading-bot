@@ -40,7 +40,6 @@ sys.path.insert(0, str(_project_root / "tests"))
 import c3_anchor as ca
 import c3_benchmark as cb
 import c3_common as cc
-import c3_continuity as cn
 import c3_entry as ce
 import c3_select as cs
 import c3_verdict as cv
@@ -1552,18 +1551,17 @@ def test_une_identite_de_continuite_seule_discordante_est_une_violation(tmp_path
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
 
 
-@pytest.mark.parametrize("state", ["VERIFIED", "DECLARED", "NOT_VERIFIABLE"])
+@pytest.mark.parametrize("state", ["DECLARED", "NOT_VERIFIABLE"])
 def test_l_etat_agrege_est_porte_par_la_chaine_sans_changer_l_issue(state: str) -> None:
-    """Clauses cohérentes avec l'agrégat (c1/c5 portées à l'état voulu, c2 idem) ; l'issue ne
-    dépend pas de l'agrégat tant qu'aucune clause n'est FAILED."""
+    """Clauses cohérentes avec l'agrégat (c1/c5 portées à l'état voulu, c2 DECLARED — ses seuls
+    états admissibles sont {DECLARED, FAILED}, § 6.4) ; l'issue ne dépend pas de l'agrégat tant
+    qu'aucune clause n'est FAILED. VERIFIED n'est pas un agrégat constructible (§ 6.4)."""
     artifacts = _sound()
     clauses = artifacts["continuity"]["clauses"]
-    for key in ("c1", "c2", "c5"):
+    for key in ("c1", "c5"):
         clauses[key]["state"] = state
-    artifacts["continuity"]["state"] = cn.aggregate_state(
-        {k: v["state"] for k, v in clauses.items()}
-    )
-    assert artifacts["continuity"]["state"] == state
+    clauses["c2"]["state"] = "DECLARED"
+    artifacts["continuity"]["state"] = state
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
     assert violations == [] and decision.continuity_state == state
@@ -2381,48 +2379,290 @@ def test_revue_Fin_2_c3_FAILED_coherent_est_l_issue_non_definie_et_normalise_fau
     assert any("liquidation_normalised" in v for v in violations)
 
 
-@pytest.mark.parametrize("clause", ["c1", "c2", "c3", "c4", "c5"])
-@pytest.mark.parametrize("state", list(cc.CONTINUITY_STATES))
-def test_revue_Fin_2_valide_avec_continuite_FAILED_est_inconstructible(
-    clause: str, state: str
-) -> None:
-    """Chaque clause dans chaque état, résumés et agrégat **cohérents** : l'issue suit la table
-    § 6.4 et `validé` n'existe qu'avec un agrégat sans FAILED."""
-    artifacts = _sound()
+# ---------------------------------------------------------------------------
+# Revue Fin 2 (1) — la table § 6.4 s'applique en liste close ; les attendus se dérivent de la table
+# ---------------------------------------------------------------------------
+
+#: Colonne « États atteignables (C3a) » de la table § 6.4 (plan révisé, validée au second R1),
+#: **recopiée du texte, pas du code** : la liste close de chaque clause.
+ADMISSIBLE_STATES_6_4: dict[str, tuple[str, ...]] = {
+    "c1": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
+    "c2": ("DECLARED", "FAILED"),
+    "c3": ("VERIFIED", "NOT_VERIFIABLE", "FAILED"),
+    "c4": ("VERIFIED", "FAILED"),
+    "c5": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
+}
+
+#: Résumés dérivés d'une clause, tels que le plan les fixe (§ 6.4 c4 : « VERIFIED / FAILED » ;
+#: § 6.4 c3 et § 6.5 : `liquidation_normalised` vrai par preuve par lot, faux en échec, indécidable
+#: sans lots) — écrits depuis le texte pour que le test ne recopie pas l'implémentation.
+NORMALISED_6_4: dict[str, bool | None] = {"VERIFIED": True, "NOT_VERIFIABLE": None, "FAILED": False}
+
+
+def _aggregate_6_4(states: dict[str, str]) -> str:
+    """« Agrégat continuite= : FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED » (§ 6.4, texte)."""
+    for worst in ("FAILED", "NOT_VERIFIABLE", "DECLARED", "VERIFIED"):
+        if worst in states.values():
+            return worst
+    return "VERIFIED"
+
+
+#: Chaque ligne (clause, état) → issue attendue **et son appui**, la ligne § 6.4 qui la justifie.
+#: `calculee` = « issue calculée, continuite= le porte » ; `R0` = refus code 2 (l.1510) ;
+#: `undefined` = UndefinedIssueError (§ 6.1, convention datée du 21/09) ; `D_WARMUP_ANCHOR` = raison
+#: run (I.1 l.12) ; `hors_liste` = valeur hors liste close → code 2, rien publié (chantier 0).
+TABLE_6_4: list[tuple[str, str, str, str]] = [
+    (
+        "c1",
+        "NOT_VERIFIABLE",
+        "calculee",
+        "§ 6.4 c1 : NOT_VERIFIABLE (bloc absent) → issue calculée ; § B.2 l.743, l.723-724",
+    ),
+    (
+        "c1",
+        "DECLARED",
+        "calculee",
+        "§ 6.4 c1 : DECLARED (flat_start_proof cohérent) → issue calculée ; § B.2 l.764-768",
+    ),
+    (
+        "c1",
+        "FAILED",
+        "R0",
+        "§ 6.4 c1 : FAILED → R0 code 2, l'artefact déclare une rupture § B.2 ; l.1510",
+    ),
+    (
+        "c1",
+        "VERIFIED",
+        "hors_liste",
+        "§ 6.4 c1 : atteignables {NOT_VERIFIABLE, DECLARED, FAILED} — aucune déclaration ne produit VERIFIED",
+    ),
+    (
+        "c2",
+        "DECLARED",
+        "calculee",
+        "§ 6.4 c2 : DECLARED (single_call ∧ grille continue) → idem c1 ; § B.4 l.822-832",
+    ),
+    (
+        "c2",
+        "FAILED",
+        "R0",
+        "§ 6.4 c2 : FAILED (false ou grille discontinue) → idem c1, R0 code 2 ; § B.4 l.822-832",
+    ),
+    ("c2", "NOT_VERIFIABLE", "hors_liste", "§ 6.4 c2 : atteignables {DECLARED, FAILED}"),
+    (
+        "c2",
+        "VERIFIED",
+        "hors_liste",
+        "§ 6.4 c2 : atteignables {DECLARED, FAILED} — clause déclarative",
+    ),
+    (
+        "c3",
+        "VERIFIED",
+        "calculee",
+        "§ 6.4 c3 : VERIFIED (preuve par lot présente et vraie) → issue calculée ; § B.3 l.811-815",
+    ),
+    (
+        "c3",
+        "NOT_VERIFIABLE",
+        "calculee",
+        "§ 6.4 c3 : NOT_VERIFIABLE (lots absents, § 6.5) → issue calculée, porté par continuite= ; § B.3 l.811-815",
+    ),
+    (
+        "c3",
+        "FAILED",
+        "undefined",
+        "§ 6.4 c3 : FAILED → UndefinedIssueError, code 2, rien publié (§ 6.1) ; § B.3 l.811-815, § G.2 l.1399",
+    ),
+    (
+        "c3",
+        "DECLARED",
+        "hors_liste",
+        "§ 6.4 c3 : atteignables {VERIFIED, NOT_VERIFIABLE, FAILED} — aucune déclaration ne prouve une liquidation costée",
+    ),
+    (
+        "c4",
+        "VERIFIED",
+        "calculee",
+        "§ 6.4 c4 : VERIFIED (sufficient recalculé vrai sur chaque TF) → issue calculée ; § B.5 l.848-853",
+    ),
+    (
+        "c4",
+        "FAILED",
+        "D_WARMUP_ANCHOR",
+        "§ 6.4 c4 : FAILED → D_WARMUP_ANCHOR (l.12) ; § B.5 l.848-853, I.1 l.1525",
+    ),
+    (
+        "c4",
+        "NOT_VERIFIABLE",
+        "hors_liste",
+        "§ 6.4 c4 : atteignables {VERIFIED, FAILED} — l'amorçage est recalculé, jamais non vérifiable",
+    ),
+    (
+        "c4",
+        "DECLARED",
+        "hors_liste",
+        "§ 6.4 c4 : atteignables {VERIFIED, FAILED} — l'amorçage n'est jamais déclaré",
+    ),
+    (
+        "c5",
+        "NOT_VERIFIABLE",
+        "calculee",
+        "§ 6.4 c5 : NOT_VERIFIABLE (first_fill_at absent) → idem c1 ; § C.3 l.940",
+    ),
+    (
+        "c5",
+        "DECLARED",
+        "calculee",
+        "§ 6.4 c5 : DECLARED (présent, > T) → idem c1 ; § A.4 l.252-256",
+    ),
+    ("c5", "FAILED", "R0", "§ 6.4 c5 : FAILED (≤ T) → idem c1, R0 code 2 ; § C.3 l.940"),
+    (
+        "c5",
+        "VERIFIED",
+        "hors_liste",
+        "§ 6.4 c5 : atteignables {NOT_VERIFIABLE, DECLARED, FAILED} — clause déclarative",
+    ),
+]
+
+
+def _coherent_continuity(artifacts: dict[str, Any], clause: str, state: str) -> None:
+    """Pose l'état, puis des résumés et un agrégat **cohérents selon le texte** (pas selon le code)."""
     c = artifacts["continuity"]
     c["clauses"][clause]["state"] = state
     states = {k: v["state"] for k, v in c["clauses"].items()}
-    c["state"] = cn.aggregate_state(states)
+    c["state"] = _aggregate_6_4(states)
     c["warmup_anchor_ok"] = states["c4"] == "VERIFIED"
-    c["liquidation_normalised"] = {
-        "VERIFIED": True,
-        "NOT_VERIFIABLE": None,
-        "FAILED": False,
-        "DECLARED": False,
-    }[states["c3"]]
+    if states["c3"] in NORMALISED_6_4:
+        c["liquidation_normalised"] = NORMALISED_6_4[states["c3"]]
+
+
+def test_la_liste_close_des_etats_par_clause_est_celle_de_la_table_6_4() -> None:
+    assert cc.CLAUSE_ADMISSIBLE_STATES == ADMISSIBLE_STATES_6_4
+    for clause, states in ADMISSIBLE_STATES_6_4.items():
+        assert set(states) <= set(cc.CONTINUITY_STATES), clause
+    # Le résumé de c3 est défini sur la liste close de c3, et sur elle seule (§ 6.4 c3, § 6.5).
+    assert cc.LIQUIDATION_NORMALISED_OF_C3 == NORMALISED_6_4
+    assert set(cc.LIQUIDATION_NORMALISED_OF_C3) == set(ADMISSIBLE_STATES_6_4["c3"])
+
+
+@pytest.mark.parametrize(
+    ("block", "state"),
+    [("stamp_cell", "DECLARED"), ("comparator", "DECLARED"), ("comparator", "NOT_VERIFIABLE")],
+)
+def test_revue_Fin2_1_les_blocs_derivables_ont_aussi_leur_liste_close(
+    tmp_path: Path, block: str, state: str
+) -> None:
+    """`stamp_cell` (§ B.4) n'est jamais « déclarée » ; le comparateur (§ C.5) est une conjonction
+    recalculée, vraie ou fausse — hors liste → code 2, rien publié."""
+    artifacts = _sound()
+    artifacts["continuity"][block]["state"] = state
+    with pytest.raises(cc.MissingEvidenceError, match=f"continuity.{block}.state"):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+@pytest.mark.parametrize(
+    ("clause", "state", "expected", "appui"),
+    TABLE_6_4,
+    ids=[f"{c}-{s}-{e}" for c, s, e, _ in TABLE_6_4],
+)
+def test_revue_Fin2_1_chaque_ligne_de_la_table_6_4_donne_l_issue_qu_elle_dit(
+    tmp_path: Path, clause: str, state: str, expected: str, appui: str
+) -> None:
+    """Attendus **dérivés de la table**, appui cité ligne à ligne — un paramétré qui encoderait le
+    comportement de l'implémentation serait un verrou posé sur le défaut (revue Fin 2, leçon)."""
+    artifacts = _sound()
+    _coherent_continuity(artifacts, clause, state)
     violations: list[str] = []
-    try:
-        decision = cv.decide(artifacts, violations=violations)
-    except cc.EntryRefusedError:
-        assert clause in ("c1", "c2", "c5") and state == "FAILED"
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    out = tmp_path / "verdict.json"
+    if expected == "hors_liste":
+        with pytest.raises(cc.MissingEvidenceError, match=f"continuity.clauses.{clause}.state"):
+            cv.decide(artifacts, violations=violations)
+        assert cv.main(argv) == 2 and not out.exists(), appui
         return
-    except cc.UndefinedIssueError:
-        assert clause == "c3" and state == "FAILED"
+    if expected == "R0":
+        with pytest.raises(cc.EntryRefusedError) as info:
+            cv.decide(artifacts, violations=violations)
+        assert info.value.reason == "R0_INVALID_RUN" and violations == [], appui
+        assert cv.main(argv) == 2 and not out.exists(), appui
         return
-    if clause == "c3" and state == "DECLARED":
-        # DECLARED n'est pas un état atteignable de c3 (jamais par déclaration) : contradiction
-        assert violations, "c3 DECLARED est incohérent avec liquidation_normalised"
+    if expected == "undefined":
+        with pytest.raises(cc.UndefinedIssueError):
+            cv.decide(artifacts, violations=violations)
+        assert violations == [], appui
+        assert cv.main(argv) == 2 and not out.exists(), appui
         return
-    assert violations == [], violations
-    assert decision.continuity_state == c["state"]
-    if state == "FAILED":
-        assert clause == "c4" and decision.reason == "D_WARMUP_ANCHOR"
-        assert decision.issue != cc.ISSUE_VALIDE
-    elif clause == "c3" and state == "NOT_VERIFIABLE":
-        assert decision.issue == cc.ISSUE_VALIDE  # non vérifiable est admissible (§ B)
-    else:
-        assert decision.issue == cc.ISSUE_VALIDE
-    assert (decision.issue == cc.ISSUE_VALIDE) == ("FAILED" not in states.values())
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [], (appui, violations)
+    assert decision.continuity_state == artifacts["continuity"]["state"], appui
+    if expected == "D_WARMUP_ANCHOR":
+        assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "D_WARMUP_ANCHOR", (
+            appui
+        )
+        assert cv.main(argv) == 0 and cc.read_json(out)["raison"] == "D_WARMUP_ANCHOR"
+        return
+    assert expected == "calculee"
+    # « issue calculée » : le témoin sain franchit E1/E2 et Q1-Q3 → validé, la clause n'y change rien.
+    assert decision.issue == cc.ISSUE_VALIDE, appui
+    assert cv.main(argv) == 0 and cc.read_json(out)["continuite"] == decision.continuity_state
+
+
+@pytest.mark.parametrize("state", ["NOT_VERIFIABLE", "DECLARED"])
+def test_revue_Fin2_1_c4_non_verifiable_ou_declare_est_hors_liste_jamais_valide(
+    tmp_path: Path, state: str
+) -> None:
+    """La régression reproduite : c4 ∈ {VERIFIED, FAILED} seulement (§ 6.4 c4) — tout autre état
+    est hors liste close, code 2, rien publié ; jamais « validé »."""
+    artifacts = _sound()
+    _coherent_continuity(artifacts, "c4", state)
+    with pytest.raises(cc.MissingEvidenceError, match="continuity.clauses.c4.state"):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_revue_Fin2_1_l_agregat_VERIFIED_est_inconstructible_en_C3a() -> None:
+    """c1, c2, c5 sont déclaratives : VERIFIED leur est inatteignable (§ 6.4), donc aucune
+    combinaison d'états admissibles n'agrège en VERIFIED — sur les 3×2×3×2×3 = 108 combinaisons,
+    par le texte (`_aggregate_6_4`) comme par le code (`cc.continuity_aggregate`), et dans la chaîne."""
+    import itertools
+
+    combos = list(
+        itertools.product(*(ADMISSIBLE_STATES_6_4[k] for k in ("c1", "c2", "c3", "c4", "c5")))
+    )
+    assert len(combos) == 108
+    for combo in combos:
+        states = dict(zip(("c1", "c2", "c3", "c4", "c5"), combo, strict=True))
+        assert _aggregate_6_4(states) != "VERIFIED", states
+        assert cc.continuity_aggregate(states) == _aggregate_6_4(states), states
+        artifacts = _sound()
+        c = artifacts["continuity"]
+        for key, value in states.items():
+            c["clauses"][key]["state"] = value
+        c["state"] = _aggregate_6_4(states)
+        c["warmup_anchor_ok"] = states["c4"] == "VERIFIED"
+        c["liquidation_normalised"] = NORMALISED_6_4[states["c3"]]
+        violations: list[str] = []
+        declarative_failed = "FAILED" in (states["c1"], states["c2"], states["c5"])
+        try:
+            decision = cv.decide(artifacts, violations=violations)
+        except cc.EntryRefusedError:
+            # § 6.4 c1/c2/c5 : FAILED → R0 ; quand c3 est aussi FAILED, le refus R0 précède
+            # l'issue non définie (§ H : « R0 est évalué avant toute autre chose »).
+            assert declarative_failed, states
+            continue
+        except cc.UndefinedIssueError:
+            # § 6.4 c3 : FAILED → UndefinedIssueError, seulement si aucune clause déclarative n'a
+            # déjà rompu le contrat.
+            assert states["c3"] == "FAILED" and not declarative_failed, states
+            continue
+        assert not declarative_failed and states["c3"] != "FAILED", states
+        assert violations == [], (states, violations)
+        assert decision.continuity_state in ("NOT_VERIFIABLE", "DECLARED", "FAILED"), states
+        assert decision.continuity_state != "VERIFIED"
+        assert (decision.issue == cc.ISSUE_VALIDE) == ("FAILED" not in states.values()), states
 
 
 def test_revue_Fin_2_l_etat_du_comparateur_est_derive_de_ses_tests() -> None:
@@ -2783,3 +3023,103 @@ def test_revue_Fin_6_ancre_sans_date_ou_fenetre_est_une_erreur_d_entree(
     del target[missing[-1]]
     with pytest.raises(cc.MissingEvidenceError, match="anchor"):
         cv.decide(artifacts, violations=[])
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin 2 (1), passe interne — lecture stricte complète des cinq entrées avant tout chemin
+# ---------------------------------------------------------------------------
+
+OUT_OF_LIST_CONTINUITY: list[tuple[str, Any]] = [
+    ("c4_DECLARED", lambda c: c["clauses"]["c4"].__setitem__("state", "DECLARED")),
+    ("c4_NOT_VERIFIABLE", lambda c: c["clauses"]["c4"].__setitem__("state", "NOT_VERIFIABLE")),
+    ("c2_VERIFIED", lambda c: c["clauses"]["c2"].__setitem__("state", "VERIFIED")),
+    ("c1_VERIFIED", lambda c: c["clauses"]["c1"].__setitem__("state", "VERIFIED")),
+    ("c3_DECLARED", lambda c: c["clauses"]["c3"].__setitem__("state", "DECLARED")),
+    ("c5_VERIFIED", lambda c: c["clauses"]["c5"].__setitem__("state", "VERIFIED")),
+    ("stamp_cell_DECLARED", lambda c: c["stamp_cell"].__setitem__("state", "DECLARED")),
+    ("comparator_NOT_VERIFIABLE", lambda c: c["comparator"].__setitem__("state", "NOT_VERIFIABLE")),
+    ("state_OK", lambda c: c.__setitem__("state", "OK")),
+    ("clauses_vides", lambda c: c.__setitem__("clauses", {})),
+    (
+        "clause_c6_inconnue",
+        lambda c: c["clauses"].__setitem__("c6", {"state": "VERIFIED", "detail": "forgé"}),
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("label", "mutate"), OUT_OF_LIST_CONTINUITY, ids=[name for name, _ in OUT_OF_LIST_CONTINUITY]
+)
+def test_revue_Fin2_1_l_abstention_lit_la_continuite_strictement(
+    tmp_path: Path, label: str, mutate: Any
+) -> None:
+    """La norme ne restreint pas la liste close au chemin retenu : « hors liste close → code 2, rien
+    publié … dans le verdict (consommation) ». Une abstention lit `continuity.json` en entier, comme
+    toute entrée obligatoire (constat de la passe interne)."""
+    artifacts = _sound()
+    _abstain(artifacts)
+    mutate(artifacts["continuity"])
+    with pytest.raises(cc.MissingEvidenceError, match="continuity"):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2, label
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_revue_Fin2_1_l_abstention_recoupe_la_continuite_et_porte_continuite_tiret(
+    tmp_path: Path,
+) -> None:
+    """Abstention + continuité contredite (c4 VERIFIED, résumé faux) → violation, diagnostic 1 ;
+    abstention + continuité cohérente → 0, la chaîne porte `continuite=-` (aucune configuration
+    retenue, l'évaluation n'est pas celle d'une retenue)."""
+    artifacts = _sound()
+    _abstain(artifacts)
+    argv = _write_cli_inputs(tmp_path / "ok", artifacts)
+    assert cv.main(argv) == 0
+    payload = cc.read_json(tmp_path / "ok" / "verdict.json")
+    assert payload["continuite"] is None and " | continuite=- | " in payload["verdict_string"]
+    artifacts["continuity"]["warmup_anchor_ok"] = False  # contredit c4 VERIFIED
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.continuity_state is None
+    assert any("warmup_anchor_ok" in v for v in violations)
+    assert cv.main(_write_cli_inputs(tmp_path / "ko", artifacts)) == 1
+    assert cc.read_json(tmp_path / "ko" / "verdict.json")["invalide"] is True
+
+
+@pytest.mark.parametrize(
+    ("path", "mutate_eval"),
+    [
+        ("abstention", lambda e: e["metrics"].pop("delta_dd")),
+        ("abstention", lambda e: e.pop("bounds")),
+        ("abstention", lambda e: e.__setitem__("B", 400)),
+        ("F_NOT_ESTIMABLE", lambda e: e["metrics"].pop("delta_dd")),
+        ("F_NOT_ESTIMABLE", lambda e: e.pop("bounds")),
+        ("D_WARMUP_ANCHOR", lambda e: e["metrics"].pop("net_pnl")),
+    ],
+    ids=[
+        "abst_metrique",
+        "abst_bornes",
+        "abst_B",
+        "notest_metrique",
+        "notest_bornes",
+        "warmup_metrique",
+    ],
+)
+def test_revue_Fin2_1_les_portes_et_les_bornes_sont_lues_avant_tout_retour_anticipe(
+    tmp_path: Path, path: str, mutate_eval: Any
+) -> None:
+    """Défaut 5 appliqué à `decide()` lui-même : une raison run (abstention, F_NOT_ESTIMABLE,
+    D_WARMUP_ANCHOR) ne dispense pas de lire strictement `metrics`, `bounds` et `B` — une preuve
+    manquante reste un code 2 (ou un refus R0 pour `B`), jamais un inconclusif publié."""
+    artifacts = _sound()
+    if path == "abstention":
+        _abstain(artifacts)
+    elif path == "F_NOT_ESTIMABLE":
+        _all_discarded(artifacts)
+    else:
+        _coherent_continuity(artifacts, "c4", "FAILED")
+    mutate_eval(artifacts["evaluation"])
+    with pytest.raises((cc.MissingEvidenceError, cc.EntryRefusedError)):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()

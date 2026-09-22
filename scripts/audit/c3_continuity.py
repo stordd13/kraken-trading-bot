@@ -21,6 +21,12 @@ une preuve fausse, qui n'est jamais admissible.
 | ``stamp_cell`` — estampille de liquidation dans la cellule quotidienne finale (§ B.4) | dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED`` ; aucune estampille (bloc absent, `positions == 0`) → ``NOT_VERIFIABLE`` |
 | ``comparator`` — comparateur d'évaluation (§ C.5) | conjonction recalculée des tests déclarés **et de la fenêtre recoupée à [T, fin]** (``tests.window_ok``) → ``VERIFIED`` / ``FAILED`` ; ``comparable`` déclaré ≠ conjonction des cinq tests = violation |
 
+**La colonne « ce qui la décide » est une liste close par clause** (`cc.CLAUSE_ADMISSIBLE_STATES`,
+revue Fin 2) : c1 {NOT_VERIFIABLE, DECLARED, FAILED}, c2 {DECLARED, FAILED}, c3 {VERIFIED,
+NOT_VERIFIABLE, FAILED}, c4 {VERIFIED, FAILED}, c5 {NOT_VERIFIABLE, DECLARED, FAILED}. Un état hors
+liste est refusé (code 2, rien publié) ici comme au verdict ; l'agrégat ``VERIFIED`` est donc
+inconstructible en C3a.
+
 **Les résumés sont dérivés des blocs, jamais recopiés** (revue Fin, défaut 2) :
 ``warmup_anchor_ok = (c4 == VERIFIED)``, ``liquidation_normalised`` par
 ``cc.LIQUIDATION_NORMALISED_OF_C3[c3]``, ``stamp_same_daily_cell = (stamp_cell == VERIFIED)``,
@@ -209,6 +215,12 @@ def clause_4_warmup_at_anchor(
     evaluation: Mapping[str, Any], *, timeframes: Sequence[str], violations: list[str]
 ) -> dict[str, str]:
     warmup = cc.require_mapping(evaluation, "warmup", where="evaluation")
+    if not timeframes:
+        # § 6.4 c4 : VERIFIED = sufficient recalculé « sur chaque TF de décision » — sans série il
+        # n'y a rien de recalculé, donc rien de vérifié.
+        raise cc.MissingEvidenceError(
+            "evaluation.warmup: aucune série de décision (decision_timeframes vide) — rien à recalculer"
+        )
     insufficient: list[str] = []
     for tf in timeframes:
         block = cc.require_mapping(warmup, tf, where="evaluation.warmup")
@@ -362,6 +374,22 @@ def run_continuity(
     comparator = comparator_block(benchmark_eval, anchor=anchor, end=end, violations=violations)
     clauses = {"c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5}
     states = {k: v["state"] for k, v in clauses.items()}
+    # Revue Fin 2 (1) : la table § 6.4 s'applique en liste close côté producteur aussi — un état
+    # hors de la liste de sa clause n'est jamais publié (code 2), quelle que soit son origine.
+    for key, state in states.items():
+        if state not in cc.CLAUSE_ADMISSIBLE_STATES[key]:
+            raise cc.MissingEvidenceError(
+                f"continuity.clauses.{key}.state: {state!r} hors liste close "
+                f"{list(cc.CLAUSE_ADMISSIBLE_STATES[key])} (table § 6.4)"
+            )
+    for name, block, allowed in (
+        ("stamp_cell", stamp_cell, cc.STAMP_CELL_ADMISSIBLE_STATES),
+        ("comparator", comparator, cc.COMPARATOR_ADMISSIBLE_STATES),
+    ):
+        if block["state"] not in allowed:
+            raise cc.MissingEvidenceError(
+                f"continuity.{name}.state: {block['state']!r} hors liste close {list(allowed)}"
+            )
     # Les résumés sont **dérivés** des blocs (revue Fin, défaut 2) ; le verdict refait ces
     # dérivations et recoupe chaque résumé déclaré.
     return {

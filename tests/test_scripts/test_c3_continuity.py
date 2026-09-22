@@ -529,3 +529,120 @@ def test_revue_Fin_5_une_cle_absente_derriere_un_test_faux_est_une_erreur_d_entr
     cc.write_json(w["benchmark_eval"], bench)
     code, payload = _run(w)
     assert code == 2 and payload is None, "clé de comparabilité absente : 2, rien d'écrit"
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin 2 (1) — la table § 6.4 en liste close, côté producteur
+# ---------------------------------------------------------------------------
+
+
+#: Chaque (bloc, état hors liste) avec son appui — la colonne « États atteignables (C3a) » de § 6.4
+#: pour les cinq clauses ; pour les deux blocs dérivables, la nature de ce qu'ils décident
+#: (§ B.4 : cellule située ou non ; § C.5 : conjonction vraie ou fausse).
+OUT_OF_LIST_PRODUCER: list[tuple[str, str, str]] = [
+    (
+        "c1",
+        "VERIFIED",
+        "§ 6.4 c1 : {NOT_VERIFIABLE, DECLARED, FAILED} — déclarative, jamais VERIFIED",
+    ),
+    ("c2", "NOT_VERIFIABLE", "§ 6.4 c2 : {DECLARED, FAILED} — le bloc invocation est obligatoire"),
+    ("c2", "VERIFIED", "§ 6.4 c2 : {DECLARED, FAILED} — déclarative, jamais VERIFIED"),
+    (
+        "c3",
+        "DECLARED",
+        "§ 6.4 c3 : {VERIFIED, NOT_VERIFIABLE, FAILED} — seule la preuve par lot vérifie",
+    ),
+    ("c4", "NOT_VERIFIABLE", "§ 6.4 c4 : {VERIFIED, FAILED} — sufficient est recalculé"),
+    ("c4", "DECLARED", "§ 6.4 c4 : {VERIFIED, FAILED} — l'amorçage n'est jamais déclaré"),
+    (
+        "c5",
+        "VERIFIED",
+        "§ 6.4 c5 : {NOT_VERIFIABLE, DECLARED, FAILED} — déclarative, jamais VERIFIED",
+    ),
+    (
+        "stamp_cell",
+        "DECLARED",
+        "§ B.4 : une estampille est située, hors cellule, ou absente — jamais déclarée",
+    ),
+    ("comparator", "NOT_VERIFIABLE", "§ C.5 : une conjonction recalculée est vraie ou fausse"),
+    ("comparator", "DECLARED", "§ C.5 : une conjonction recalculée est vraie ou fausse"),
+]
+
+
+@pytest.mark.parametrize(
+    ("clause", "state", "appui"),
+    OUT_OF_LIST_PRODUCER,
+    ids=[f"{c}-{s}" for c, s, _ in OUT_OF_LIST_PRODUCER],
+)
+def test_revue_Fin2_1_le_producteur_refuse_un_etat_hors_liste_close(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clause: str, state: str, appui: str
+) -> None:
+    """Un état hors de la colonne « États atteignables (C3a) » de § 6.4 est une valeur hors liste
+    close : code 2, rien publié — même si une clause le produisait par erreur. Les deux blocs
+    dérivables sont gardés de la même façon."""
+    w = _world(tmp_path)
+    functions = {
+        "c1": "clause_1_flat_start",
+        "c2": "clause_2_no_reset",
+        "c3": "clause_3_costed_liquidation",
+        "c4": "clause_4_warmup_at_anchor",
+        "c5": "clause_5_first_execution",
+        "stamp_cell": "stamp_cell_block",
+        "comparator": "comparator_block",
+    }
+    original = getattr(cn, functions[clause])
+
+    def forged(*args: Any, **kwargs: Any) -> Any:
+        result = original(*args, **kwargs)
+        if isinstance(result, tuple):
+            return ({**result[0], "state": state}, *result[1:])
+        return {**result, "state": state}
+
+    monkeypatch.setattr(cn, functions[clause], forged)
+    code, payload = _run(w)
+    assert code == 2 and payload is None, (clause, state, appui)
+
+
+def test_revue_Fin2_1_le_temoin_sain_ne_produit_que_des_etats_admissibles(tmp_path: Path) -> None:
+    w = _world(tmp_path)
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    # attendu écrit depuis la table § 6.4, pas depuis la constante du code
+    admissible_6_4 = {
+        "c1": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
+        "c2": ("DECLARED", "FAILED"),
+        "c3": ("VERIFIED", "NOT_VERIFIABLE", "FAILED"),
+        "c4": ("VERIFIED", "FAILED"),
+        "c5": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
+    }
+    for clause, block in payload["clauses"].items():
+        assert block["state"] in admissible_6_4[clause], clause
+    assert set(payload["clauses"]) == set(admissible_6_4)
+    assert payload["state"] != "VERIFIED", "agrégat VERIFIED inconstructible en C3a (§ 6.4)"
+    assert SUMMARY_OF_C3 == cc.LIQUIDATION_NORMALISED_OF_C3
+
+
+def test_revue_Fin2_1_une_surcharge_de_series_vide_ne_verifie_pas_l_amorcage(
+    tmp_path: Path,
+) -> None:
+    """§ 6.4 c4 : VERIFIED = « sufficient recalculé … vrai sur chaque TF de décision » — sur zéro
+    série il n'y a rien de recalculé. La surcharge `decision_timeframes: []` d'un candidat est une
+    liste vide là où la déclaration par stratégie exige au moins une série : erreur d'entrée."""
+    with pytest.raises(cc.MissingEvidenceError, match="decision_timeframes"):
+        cn.clause_4_warmup_at_anchor(fx.evaluation(fx.manifest()), timeframes=[], violations=[])
+    payload = fx.manifest()
+    payload["universe"]["candidates"][0]["decision_timeframes"] = []
+    with pytest.raises(cc.MissingEvidenceError, match="decision_timeframes"):
+        cc.load_manifest(payload)
+    w = _world(tmp_path)
+    cc.write_json(w["manifest"], payload)
+    assert _run(w)[0] == 2
+
+
+def test_agregat_prend_la_pire_clause_est_un_test_de_precedence_hors_perimetre() -> None:
+    """`continuity_aggregate` sur des clés arbitraires : précédence seule. Vide ou hors vocabulaire
+    → erreur d'entrée, jamais un repli VERIFIED (l'état que § 6.4 rend inconstructible)."""
+    with pytest.raises(cc.MissingEvidenceError):
+        cc.continuity_aggregate({})
+    with pytest.raises(cc.MissingEvidenceError):
+        cc.continuity_aggregate({"c1": "FOO", "c2": "DECLARED"})
