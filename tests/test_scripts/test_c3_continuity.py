@@ -382,3 +382,77 @@ def test_agregat_prend_la_pire_clause() -> None:
     )
     assert cn.aggregate_state({"a": "FAILED", "b": "VERIFIED"}) == "FAILED"
     assert cn.aggregate_state({"a": "VERIFIED"}) == "VERIFIED"
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (2) — les blocs dérivables : cellule d'estampille et comparateur, résumés = dérivés
+# ---------------------------------------------------------------------------
+
+SUMMARY_OF_C3 = {"VERIFIED": True, "NOT_VERIFIABLE": None, "FAILED": False}
+
+
+def _assert_summaries_derived(payload: dict[str, Any]) -> None:
+    states = _states(payload)
+    assert payload["state"] == cn.aggregate_state(states)
+    assert payload["warmup_anchor_ok"] is (states["c4"] == "VERIFIED")
+    assert payload["liquidation_normalised"] is SUMMARY_OF_C3[states["c3"]]
+    assert payload["stamp_same_daily_cell"] is (payload["stamp_cell"]["state"] == "VERIFIED")
+    assert payload["benchmark_comparable"] is (payload["comparator"]["state"] == "VERIFIED")
+    tests = payload["comparator"]["tests"]
+    assert set(tests) >= {
+        "entry_stamp_present",
+        "exit_stamp_present",
+        "ff_ok",
+        "n_returns_ok",
+        "all_finite",
+    }
+    assert (payload["comparator"]["state"] == "VERIFIED") is all(tests.values())
+
+
+def test_revue_Fin_2_le_temoin_sain_porte_les_blocs_stamp_cell_et_comparator(
+    tmp_path: Path,
+) -> None:
+    w = _world(tmp_path)
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    assert (
+        payload["stamp_cell"]["state"] == "VERIFIED"
+        and payload["comparator"]["state"] == "VERIFIED"
+    )
+    _assert_summaries_derived(payload)
+
+
+def test_revue_Fin_2_estampille_hors_cellule_est_un_bloc_FAILED_derive(tmp_path: Path) -> None:
+    w = _world(tmp_path)
+    _mutate_eval(
+        w,
+        lambda d: d["liquidation"].__setitem__(
+            "timestamp", (fx.WINDOW_END - timedelta(days=2)).isoformat()
+        ),
+    )
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    assert payload["stamp_cell"]["state"] == "FAILED" and payload["stamp_same_daily_cell"] is False
+    _assert_summaries_derived(payload)
+
+
+def test_revue_Fin_2_liquidation_absente_rend_la_cellule_non_verifiable(tmp_path: Path) -> None:
+    w = _world(tmp_path, liquidation=False)
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    assert payload["stamp_cell"]["state"] == "NOT_VERIFIABLE"
+    assert payload["stamp_same_daily_cell"] is False and _states(payload)["c3"] == "FAILED"
+    _assert_summaries_derived(payload)
+
+
+def test_revue_Fin_2_comparateur_non_comparable_est_un_bloc_FAILED_derive(tmp_path: Path) -> None:
+    w = _world(tmp_path)
+    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(comparable=False))
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    assert (
+        payload["comparator"]["state"] == "FAILED"
+        and payload["comparator"]["tests"]["ff_ok"] is False
+    )
+    assert payload["benchmark_comparable"] is False
+    _assert_summaries_derived(payload)

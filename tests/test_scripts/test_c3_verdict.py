@@ -39,6 +39,7 @@ sys.path.insert(0, str(_project_root / "tests"))
 import c3_anchor as ca
 import c3_benchmark as cb
 import c3_common as cc
+import c3_continuity as cn
 import c3_entry as ce
 import c3_select as cs
 import c3_verdict as cv
@@ -100,9 +101,16 @@ def _artifacts(
             f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
         }
     identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
+    window = {"start": fx.ANCHOR.isoformat(), "end": fx.WINDOW_END.isoformat()}
     return {
         "entry": {**_envelope(), "ok": True, "refusal": None},
-        "anchor": {**_envelope(), "universe_provenance": provenance, "variant_key": VARIANT_KEY},
+        "anchor": {
+            **_envelope(),
+            "anchor": fx.ANCHOR.isoformat(),
+            "window": {"start": fx.WINDOW_START.isoformat(), "end": fx.WINDOW_END.isoformat()},
+            "universe_provenance": provenance,
+            "variant_key": VARIANT_KEY,
+        },
         "selection": {
             **_envelope(),
             "status": "SÉLECTION_VALIDE"
@@ -110,11 +118,17 @@ def _artifacts(
             else "SÉLECTION_DESCRIPTIVE",
             "reason": None,
             "provenance": provenance,
+            "admissible": [identity],
+            "survivors": [identity],
+            "ranking": [identity],
             "retained": {"identity": identity},
         },
         "continuity": {
             **_envelope(),
             "identity": identity,
+            "pair": "BTC/USDC",
+            "synthetic": True,
+            "evaluation_window": dict(window),
             "state": "NOT_VERIFIABLE",
             "clauses": {
                 "c1": {"state": "NOT_VERIFIABLE", "detail": "aucune preuve"},
@@ -123,6 +137,18 @@ def _artifacts(
                 "c4": {"state": "VERIFIED", "detail": "amorçage"},
                 "c5": {"state": "NOT_VERIFIABLE", "detail": "non exporté"},
             },
+            "stamp_cell": {"state": "VERIFIED", "detail": "dans la cellule finale"},
+            "comparator": {
+                "state": "VERIFIED",
+                "detail": "comparable",
+                "tests": {
+                    "entry_stamp_present": True,
+                    "exit_stamp_present": True,
+                    "ff_ok": True,
+                    "n_returns_ok": True,
+                    "all_finite": True,
+                },
+            },
             "warmup_anchor_ok": True,
             "benchmark_comparable": True,
             "stamp_same_daily_cell": True,
@@ -130,6 +156,9 @@ def _artifacts(
         },
         "evaluation": {
             "synthetic": True,
+            "strategy": "s",
+            "pair": "BTC/USDC",
+            "params": {"a": 1},
             "returns_config": list(returns_config),
             "delta_stars": [float(x) for x in deltas],
             "discarded": discarded,
@@ -1127,7 +1156,11 @@ TABLE_I1 = [
     ),
     pytest.param(
         10,
-        lambda a: a["continuity"].__setitem__("benchmark_comparable", False),
+        lambda a: (
+            a["continuity"]["comparator"].__setitem__("state", "FAILED"),
+            a["continuity"]["comparator"]["tests"].__setitem__("ff_ok", False),
+            a["continuity"].__setitem__("benchmark_comparable", False),
+        ),
         cc.ISSUE_INCONCLUSIF,
         "E_NO_BENCHMARK",
         0,
@@ -1137,7 +1170,10 @@ TABLE_I1 = [
     ),
     pytest.param(
         11,
-        lambda a: a["continuity"].__setitem__("stamp_same_daily_cell", False),
+        lambda a: (
+            a["continuity"]["stamp_cell"].__setitem__("state", "FAILED"),
+            a["continuity"].__setitem__("stamp_same_daily_cell", False),
+        ),
         cc.ISSUE_INCONCLUSIF,
         "E_STAMP_MISMATCH",
         0,
@@ -1147,7 +1183,11 @@ TABLE_I1 = [
     ),
     pytest.param(
         12,
-        lambda a: a["continuity"].__setitem__("warmup_anchor_ok", False),
+        lambda a: (
+            a["continuity"]["clauses"]["c4"].__setitem__("state", "FAILED"),
+            a["continuity"].__setitem__("state", "FAILED"),
+            a["continuity"].__setitem__("warmup_anchor_ok", False),
+        ),
         cc.ISSUE_INCONCLUSIF,
         "D_WARMUP_ANCHOR",
         0,
@@ -1438,20 +1478,21 @@ def test_une_evaluation_reelle_est_refusee_rien_publie(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("how", ["clause_c3_FAILED", "liquidation_normalised_false", "les_deux"])
+@pytest.mark.parametrize("how", ["clause_c3_FAILED_resume_vrai", "clause_et_resume_coherents"])
 def test_clause_3_en_echec_moteur_signal_a_l_evaluation_issue_non_definie(
     tmp_path: Path, how: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Fixture « moteur signal à l'évaluation » : liquidation terminale non normalisée. Le texte
-    gelé ne définit pas l'issue → `UndefinedIssueError`, code 2, rien d'écrit, message cité."""
+    gelé ne définit pas l'issue → `UndefinedIssueError`, code 2, rien d'écrit, message cité.
+    L'action se branche sur la **clause** (revue Fin 2) : le résumé, cohérent ou contredit, ne
+    change pas la conduite (contredit, il ajoute une violation — testé au § revue Fin 2)."""
     artifacts = _sound()
-    if how in ("clause_c3_FAILED", "les_deux"):
-        artifacts["continuity"]["clauses"]["c3"] = {
-            "state": "FAILED",
-            "detail": "liquidation absente (moteur signal)",
-        }
-        artifacts["continuity"]["state"] = "FAILED"
-    if how in ("liquidation_normalised_false", "les_deux"):
+    artifacts["continuity"]["clauses"]["c3"] = {
+        "state": "FAILED",
+        "detail": "liquidation absente (moteur signal)",
+    }
+    artifacts["continuity"]["state"] = "FAILED"
+    if how == "clause_et_resume_coherents":
         artifacts["continuity"]["liquidation_normalised"] = False
     with pytest.raises(cc.UndefinedIssueError) as info:
         cv.decide(artifacts, violations=[])
@@ -1488,10 +1529,20 @@ def test_la_continuite_d_une_autre_configuration_est_refusee(tmp_path: Path) -> 
 
 @pytest.mark.parametrize("state", ["VERIFIED", "DECLARED", "NOT_VERIFIABLE"])
 def test_l_etat_agrege_est_porte_par_la_chaine_sans_changer_l_issue(state: str) -> None:
+    """Clauses cohérentes avec l'agrégat (c1/c5 portées à l'état voulu, c2 idem) ; l'issue ne
+    dépend pas de l'agrégat tant qu'aucune clause n'est FAILED."""
     artifacts = _sound()
-    artifacts["continuity"]["state"] = state
-    decision = cv.decide(artifacts, violations=[])
-    assert decision.continuity_state == state and decision.issue == cc.ISSUE_VALIDE
+    clauses = artifacts["continuity"]["clauses"]
+    for key in ("c1", "c2", "c5"):
+        clauses[key]["state"] = state
+    artifacts["continuity"]["state"] = cn.aggregate_state(
+        {k: v["state"] for k, v in clauses.items()}
+    )
+    assert artifacts["continuity"]["state"] == state
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.continuity_state == state
+    assert decision.issue == cc.ISSUE_VALIDE
 
 
 def test_un_etat_de_continuite_hors_liste_close_est_une_erreur_d_entree() -> None:
@@ -2114,3 +2165,259 @@ def test_revue_Fin_1_confinement_au_niveau_chain(
             assert payload["invalide"] is True and payload["verdict_string"] is None
     else:
         assert code == 2 and not out.exists(), (path, label, captured.err)
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (2) — continuité : résumés et agrégat dérivés des clauses, jamais recopiés
+# ---------------------------------------------------------------------------
+
+
+def _never_valide(artifacts: dict[str, Any]) -> tuple[Any, list[str]]:
+    """Exécute `decide()` ; renvoie (issue ou exception, violations). Asserte « jamais validé »."""
+    violations: list[str] = []
+    try:
+        decision = cv.decide(artifacts, violations=violations)
+    except (cc.EntryRefusedError, cc.UndefinedIssueError) as exc:
+        return exc, violations
+    # Un artefact contredit ne publie jamais « validé » : soit l'issue calculée n'est pas validé,
+    # soit une violation la retient dans un diagnostic (§ I.1 l.15) — la CLI rend 1, jamais 0.
+    assert decision.issue != cc.ISSUE_VALIDE or violations, (
+        "un artefact de continuité contredit ne valide jamais"
+    )
+    return decision, violations
+
+
+def test_revue_Fin_2_c4_FAILED_et_warmup_anchor_ok_vrai_est_une_violation_jamais_valide(
+    tmp_path: Path,
+) -> None:
+    """Reproduction d'Astra : la clause dit FAILED, le résumé dit vrai — le verdict lisait le résumé."""
+    artifacts = _sound()
+    artifacts["continuity"]["clauses"]["c4"] = {"state": "FAILED", "detail": "amorçage insuffisant"}
+    artifacts["continuity"]["state"] = "FAILED"
+    # résumé laissé à True : contradiction déclaré / dérivé
+    outcome, violations = _never_valide(artifacts)
+    assert any("warmup_anchor_ok" in v for v in violations), violations
+    assert isinstance(outcome, cv.Decision) and outcome.reason == "D_WARMUP_ANCHOR", (
+        "l'action se branche sur la clause : D_WARMUP_ANCHOR (§ I.1 l.12)"
+    )
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+
+
+def test_revue_Fin_2_agregat_VERIFIED_declare_avec_c1_c5_NOT_VERIFIABLE_est_une_violation(
+    tmp_path: Path,
+) -> None:
+    """Reproduction d'Astra : précédence FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED, recalculée."""
+    artifacts = _sound()
+    artifacts["continuity"]["state"] = "VERIFIED"
+    outcome, violations = _never_valide(artifacts)
+    assert any("continuity.state" in v and "NOT_VERIFIABLE" in v for v in violations), violations
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    assert cc.read_json(tmp_path / "verdict.json")["invalide"] is True
+
+
+@pytest.mark.parametrize(
+    ("summary", "mutate_block", "expected_reason"),
+    [
+        (
+            "warmup_anchor_ok",
+            lambda c: c["clauses"]["c4"].__setitem__("state", "FAILED"),
+            "D_WARMUP_ANCHOR",
+        ),
+        ("warmup_anchor_ok", lambda c: c.__setitem__("warmup_anchor_ok", False), None),
+        (
+            "benchmark_comparable",
+            lambda c: (
+                c["comparator"].__setitem__("state", "FAILED"),
+                c["comparator"]["tests"].__setitem__("ff_ok", False),
+            ),
+            "E_NO_BENCHMARK",
+        ),
+        ("benchmark_comparable", lambda c: c.__setitem__("benchmark_comparable", False), None),
+        (
+            "stamp_same_daily_cell",
+            lambda c: c["stamp_cell"].__setitem__("state", "FAILED"),
+            "E_STAMP_MISMATCH",
+        ),
+        ("stamp_same_daily_cell", lambda c: c.__setitem__("stamp_same_daily_cell", False), None),
+        (
+            "liquidation_normalised",
+            lambda c: c["clauses"]["c3"].__setitem__("state", "NOT_VERIFIABLE"),
+            None,
+        ),
+        ("liquidation_normalised", lambda c: c.__setitem__("liquidation_normalised", False), None),
+        ("liquidation_normalised", lambda c: c.__setitem__("liquidation_normalised", None), None),
+    ],
+    ids=[
+        "c4_FAILED_resume_vrai",
+        "c4_VERIFIED_resume_faux",
+        "comparator_FAILED_resume_vrai",
+        "comparator_VERIFIED_resume_faux",
+        "stamp_FAILED_resume_vrai",
+        "stamp_VERIFIED_resume_faux",
+        "c3_NOT_VERIFIABLE_resume_vrai",
+        "c3_VERIFIED_resume_faux",
+        "c3_VERIFIED_resume_null",
+    ],
+)
+def test_revue_Fin_2_chaque_resume_contredit_est_une_violation(
+    tmp_path: Path, summary: str, mutate_block: Any, expected_reason: str | None
+) -> None:
+    artifacts = _sound()
+    mutate_block(artifacts["continuity"])
+    if artifacts["continuity"]["clauses"]["c4"]["state"] == "FAILED":
+        artifacts["continuity"]["state"] = "FAILED"
+    outcome, violations = _never_valide(artifacts)
+    assert any(summary in v for v in violations), (summary, violations)
+    if expected_reason is not None:
+        assert isinstance(outcome, cv.Decision) and outcome.reason == expected_reason
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    assert cc.read_json(tmp_path / "verdict.json")["invalide"] is True
+
+
+@pytest.mark.parametrize(
+    ("mutate_block", "expected"),
+    [
+        (
+            lambda c: (
+                c["clauses"]["c4"].__setitem__("state", "FAILED"),
+                c.__setitem__("state", "FAILED"),
+                c.__setitem__("warmup_anchor_ok", False),
+            ),
+            "D_WARMUP_ANCHOR",
+        ),
+        (
+            lambda c: (
+                c["comparator"].__setitem__("state", "FAILED"),
+                c["comparator"]["tests"].__setitem__("n_returns_ok", False),
+                c.__setitem__("benchmark_comparable", False),
+            ),
+            "E_NO_BENCHMARK",
+        ),
+        (
+            lambda c: (
+                c["stamp_cell"].__setitem__("state", "FAILED"),
+                c.__setitem__("stamp_same_daily_cell", False),
+            ),
+            "E_STAMP_MISMATCH",
+        ),
+        (
+            lambda c: (
+                c["stamp_cell"].__setitem__("state", "NOT_VERIFIABLE"),
+                c.__setitem__("stamp_same_daily_cell", False),
+            ),
+            "E_STAMP_MISMATCH",
+        ),
+    ],
+    ids=["c4", "comparator", "stamp_FAILED", "stamp_NOT_VERIFIABLE"],
+)
+def test_revue_Fin_2_les_actions_se_branchent_sur_les_clauses_coherentes(
+    tmp_path: Path, mutate_block: Any, expected: str
+) -> None:
+    """Résumés cohérents avec les clauses : aucune violation, la raison run vient de la clause."""
+    artifacts = _sound()
+    mutate_block(artifacts["continuity"])
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert (
+        violations == [] and decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == expected
+    )
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert (
+        payload["raison"] == expected and payload["continuite"] == artifacts["continuity"]["state"]
+    )
+
+
+def test_revue_Fin_2_c3_FAILED_coherent_est_l_issue_non_definie_et_normalise_faux_seul_une_violation() -> (
+    None
+):
+    artifacts = _sound()
+    c = artifacts["continuity"]
+    c["clauses"]["c3"]["state"] = "FAILED"
+    c["state"] = "FAILED"
+    c["liquidation_normalised"] = False
+    with pytest.raises(cc.UndefinedIssueError):
+        cv.decide(artifacts, violations=[])
+    # Le résumé seul ne déclenche pas la convention : il est contredit par la clause → violation.
+    artifacts = _sound()
+    artifacts["continuity"]["liquidation_normalised"] = False
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert decision.issue != cc.ISSUE_VALIDE or violations, "jamais validé sans violation"
+    assert any("liquidation_normalised" in v for v in violations)
+
+
+@pytest.mark.parametrize("clause", ["c1", "c2", "c3", "c4", "c5"])
+@pytest.mark.parametrize("state", list(cc.CONTINUITY_STATES))
+def test_revue_Fin_2_valide_avec_continuite_FAILED_est_inconstructible(
+    clause: str, state: str
+) -> None:
+    """Chaque clause dans chaque état, résumés et agrégat **cohérents** : l'issue suit la table
+    § 6.4 et `validé` n'existe qu'avec un agrégat sans FAILED."""
+    artifacts = _sound()
+    c = artifacts["continuity"]
+    c["clauses"][clause]["state"] = state
+    states = {k: v["state"] for k, v in c["clauses"].items()}
+    c["state"] = cn.aggregate_state(states)
+    c["warmup_anchor_ok"] = states["c4"] == "VERIFIED"
+    c["liquidation_normalised"] = {
+        "VERIFIED": True,
+        "NOT_VERIFIABLE": None,
+        "FAILED": False,
+        "DECLARED": False,
+    }[states["c3"]]
+    violations: list[str] = []
+    try:
+        decision = cv.decide(artifacts, violations=violations)
+    except cc.EntryRefusedError:
+        assert clause in ("c1", "c2", "c5") and state == "FAILED"
+        return
+    except cc.UndefinedIssueError:
+        assert clause == "c3" and state == "FAILED"
+        return
+    if clause == "c3" and state == "DECLARED":
+        # DECLARED n'est pas un état atteignable de c3 (jamais par déclaration) : contradiction
+        assert violations, "c3 DECLARED est incohérent avec liquidation_normalised"
+        return
+    assert violations == [], violations
+    assert decision.continuity_state == c["state"]
+    if state == "FAILED":
+        assert clause == "c4" and decision.reason == "D_WARMUP_ANCHOR"
+        assert decision.issue != cc.ISSUE_VALIDE
+    elif clause == "c3" and state == "NOT_VERIFIABLE":
+        assert decision.issue == cc.ISSUE_VALIDE  # non vérifiable est admissible (§ B)
+    else:
+        assert decision.issue == cc.ISSUE_VALIDE
+    assert (decision.issue == cc.ISSUE_VALIDE) == ("FAILED" not in states.values())
+
+
+def test_revue_Fin_2_l_etat_du_comparateur_est_derive_de_ses_tests() -> None:
+    artifacts = _sound()
+    artifacts["continuity"]["comparator"]["tests"]["all_finite"] = False  # état laissé VERIFIED
+    outcome, violations = _never_valide(artifacts)
+    assert any("comparator" in v for v in violations), violations
+    assert isinstance(outcome, cv.Decision) and outcome.reason == "E_NO_BENCHMARK"
+
+
+@pytest.mark.parametrize(
+    "missing",
+    [
+        "stamp_cell",
+        "comparator",
+        ("comparator", "tests"),
+        ("comparator", "tests", "all_finite"),
+        "evaluation_window",
+        "pair",
+    ],
+)
+def test_revue_Fin_2_bloc_de_continuite_manquant_est_une_erreur_d_entree(missing: Any) -> None:
+    artifacts = _sound()
+    target = artifacts["continuity"]
+    keys = (missing,) if isinstance(missing, str) else missing
+    for k in keys[:-1]:
+        target = target[k]
+    del target[keys[-1]]
+    with pytest.raises(cc.MissingEvidenceError, match="continuity"):
+        cv.decide(artifacts, violations=[])

@@ -935,6 +935,38 @@ ABSTENTION_CLAUSE = (
     "choisi est un résultat."
 )
 CONTINUITY_STATES: tuple[str, ...] = ("VERIFIED", "DECLARED", "NOT_VERIFIABLE", "FAILED")
+#: Précédence de l'agrégat de continuité (plan § 6.4) : la pire clause donne l'état. **Une seule
+#: définition**, consommée par le producteur (`c3_continuity`) et par le consommateur (`c3_verdict`,
+#: qui la recalcule et la recoupe — revue Fin, défaut 2).
+CONTINUITY_SEVERITY: tuple[str, ...] = ("FAILED", "NOT_VERIFIABLE", "DECLARED", "VERIFIED")
+#: Ce que la clause 3 (liquidation terminale costée) dit de la normalisation : dérivé de son état,
+#: jamais recopié. `DECLARED` n'est pas un état atteignable de c3 (aucune déclaration ne la prouve).
+LIQUIDATION_NORMALISED_OF_C3: dict[str, bool | None] = {
+    "VERIFIED": True,
+    "NOT_VERIFIABLE": None,
+    "FAILED": False,
+}
+
+
+#: § C.5 — les tests de comparabilité du comparateur d'évaluation, liste close, **lus et typés tous
+#: avant la conjonction** (revue Fin, défaut 5) ; partagée par `c3_continuity` et `c3_verdict`.
+COMPARABILITY_TESTS: tuple[str, ...] = (
+    "entry_stamp_present",
+    "exit_stamp_present",
+    "ff_ok",
+    "n_returns_ok",
+    "all_finite",
+)
+
+
+def continuity_aggregate(states: Mapping[str, str]) -> str:
+    """L'état agrégé des cinq clauses § B, par précédence `CONTINUITY_SEVERITY`."""
+    for candidate in CONTINUITY_SEVERITY:
+        if candidate in states.values():
+            return candidate
+    return "VERIFIED"
+
+
 #: Les quatre séries que D1 couvre (§ A.8), en minutes.
 D1_INTERVALS: tuple[int, ...] = (5, 240, 1440, 10080)
 WEEK_MINUTES = 10_080

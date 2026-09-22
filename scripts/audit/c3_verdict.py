@@ -31,7 +31,11 @@ discordance** ; elles ne prouvent pas que l'invocation courante a réussi : c'es
 sous-commande ``chain``, qui invoque chaque étape en processus et **contrôle son code de retour
 effectif** avant le verdict (plan § 5.3).
 
-**Continuité → verdict (plan § 6.4, validé).** Clauses déclaratives c1/c2/c5 ``FAILED`` : l'artefact
+**Continuité → verdict (plan § 6.4, validé ; revue Fin, défaut 2).** Les résumés
+(``warmup_anchor_ok``, ``benchmark_comparable``, ``stamp_same_daily_cell``, ``liquidation_normalised``)
+et l'agrégat sont **dérivés des clauses par le consommateur** et recoupés au déclaré — une
+contradiction est une violation ; les actions se branchent sur les clauses, jamais sur les résumés.
+Clauses déclaratives c1/c2/c5 ``FAILED`` : l'artefact
 déclare lui-même une rupture du contrat § B → refus ``R0_INVALID_RUN``, code 2. Clause 3 ``FAILED``
 (liquidation terminale non normalisée) : § B.3 et § G.2 interdisent tout verdict directionnel et § I.1
 ne porte aucune ligne de portée run pour ce cas → ``UndefinedIssueError``, **code 2, rien publié** —
@@ -228,28 +232,103 @@ def _estimability_of(
     return est.ok, payload
 
 
-def _continuity_gates(continuity: Mapping[str, Any], *, retained: str) -> tuple[list[str], str]:
-    """Ce que la continuité impose au verdict (plan § 6.4) ; renvoie (raisons run, état agrégé).
+def _continuity_gates(
+    continuity: Mapping[str, Any], *, retained: str, violations: list[str]
+) -> tuple[list[str], str]:
+    """Ce que la continuité impose au verdict (plan § 6.4) ; renvoie (raisons run, agrégat **dérivé**).
 
-    * l'évaluation doit être celle de la configuration retenue (§ H.1) — sinon refus R0 ;
-    * c1, c2, c5 ``FAILED`` : l'artefact déclare une rupture du contrat § B — refus R0, code 2 ;
-    * c3 ``FAILED`` ou ``liquidation_normalised`` faux : issue non définie par le texte gelé —
-      ``UndefinedIssueError``, code 2, rien publié (convention datée du 21/09, plan § 6.1) ;
-    * ``warmup_anchor_ok``, ``benchmark_comparable``, ``stamp_same_daily_cell`` faux : raisons run
-      ``D_WARMUP_ANCHOR``, ``E_NO_BENCHMARK``, ``E_STAMP_MISMATCH`` (§ I.1 l.10-12).
+    **Rien n'est recopié** (revue Fin, défaut 2). L'artefact est lu strictement et en entier, puis :
+
+    * l'agrégat est **recalculé** des cinq clauses (précédence ``cc.CONTINUITY_SEVERITY``) et recoupé
+      au ``state`` déclaré ; l'état du comparateur est recalculé de ses tests § C.5 et recoupé ;
+    * les quatre résumés — ``warmup_anchor_ok`` (c4 ``VERIFIED``), ``benchmark_comparable``
+      (comparateur ``VERIFIED``), ``stamp_same_daily_cell`` (``stamp_cell`` ``VERIFIED``),
+      ``liquidation_normalised`` (``cc.LIQUIDATION_NORMALISED_OF_C3[c3]``) — sont dérivés et
+      recoupés ; **toute contradiction déclaré / dérivé est une violation** (§ I.1 l.15) ;
+    * les actions se branchent sur les **clauses**, jamais sur les résumés : l'évaluation doit être
+      celle de la configuration retenue (§ H.1, sinon refus R0) ; c1, c2, c5 ``FAILED`` → refus R0
+      (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED`` → ``UndefinedIssueError``
+      (convention datée du 21/09, plan § 6.1) ; c4 ``FAILED`` → ``D_WARMUP_ANCHOR`` ; comparateur
+      ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` non ``VERIFIED`` → ``E_STAMP_MISMATCH``
+      (§ I.1 l.10-12). « ``validé`` avec ``continuite=FAILED`` » est ainsi inconstructible.
 
     Les contrôles sont obligatoires et typés : une clé absente ou nulle est une erreur d'entrée,
     jamais un contrôle réputé satisfait.
     """
-    state = cc.require_str(continuity, "state", where="continuity", allowed=cc.CONTINUITY_STATES)
-    clauses = cc.require_mapping(continuity, "clauses", where="continuity")
+    where = "continuity"
+    # 1. Lecture stricte, complète, avant toute logique.
+    declared_state = cc.require_str(continuity, "state", where=where, allowed=cc.CONTINUITY_STATES)
+    clauses = cc.require_mapping(continuity, "clauses", where=where)
     states: dict[str, str] = {}
+    details: dict[str, str] = {}
     for key in ("c1", "c2", "c3", "c4", "c5"):
-        block = cc.require_mapping(clauses, key, where="continuity.clauses")
+        block = cc.require_mapping(clauses, key, where=f"{where}.clauses")
         states[key] = cc.require_str(
-            block, "state", where=f"continuity.clauses.{key}", allowed=cc.CONTINUITY_STATES
+            block, "state", where=f"{where}.clauses.{key}", allowed=cc.CONTINUITY_STATES
         )
-    identity = cc.require_str(continuity, "identity", where="continuity")
+        details[key] = cc.require_str(block, "detail", where=f"{where}.clauses.{key}")
+    stamp_cell = cc.require_mapping(continuity, "stamp_cell", where=where)
+    stamp_state = cc.require_str(
+        stamp_cell, "state", where=f"{where}.stamp_cell", allowed=cc.CONTINUITY_STATES
+    )
+    comparator = cc.require_mapping(continuity, "comparator", where=where)
+    comparator_state = cc.require_str(
+        comparator, "state", where=f"{where}.comparator", allowed=("VERIFIED", "FAILED")
+    )
+    tests_block = cc.require_mapping(comparator, "tests", where=f"{where}.comparator")
+    tests = {
+        name: cc.require_bool(tests_block, name, where=f"{where}.comparator.tests")
+        for name in cc.COMPARABILITY_TESTS
+    }
+    identity = cc.require_str(continuity, "identity", where=where)
+    cc.require_str(continuity, "pair", where=where)
+    window = cc.require_mapping(continuity, "evaluation_window", where=where)
+    cc.require_datetime(window, "start", where=f"{where}.evaluation_window")
+    cc.require_datetime(window, "end", where=f"{where}.evaluation_window")
+    declared: dict[str, bool | None] = {
+        "warmup_anchor_ok": cc.require_bool(continuity, "warmup_anchor_ok", where=where),
+        "benchmark_comparable": cc.require_bool(continuity, "benchmark_comparable", where=where),
+        "stamp_same_daily_cell": cc.require_bool(continuity, "stamp_same_daily_cell", where=where),
+        "liquidation_normalised": cc.nullable_bool(
+            continuity, "liquidation_normalised", where=where
+        ),
+    }
+
+    # 2. Dérivations, puis recoupements — une contradiction est une violation.
+    derived_comparator = "VERIFIED" if all(tests.values()) else "FAILED"
+    if derived_comparator != comparator_state:
+        violations.append(
+            f"{where}.comparator.state déclaré {comparator_state!r}, dérivé {derived_comparator!r} "
+            f"des tests § C.5 {tests}"
+        )
+    derived_state = cc.continuity_aggregate(states)
+    if derived_state != declared_state:
+        violations.append(
+            f"{where}.state déclaré {declared_state!r}, dérivé {derived_state!r} des clauses {states} "
+            "(précédence FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED)"
+        )
+    if states["c3"] in cc.LIQUIDATION_NORMALISED_OF_C3:
+        normalised_derived: bool | None = cc.LIQUIDATION_NORMALISED_OF_C3[states["c3"]]
+    else:
+        normalised_derived = None
+        violations.append(
+            f"{where}.clauses.c3.state {states['c3']!r} n'est pas un état atteignable de la clause 3 "
+            "(aucune déclaration ne prouve une liquidation costée)"
+        )
+    derived: dict[str, bool | None] = {
+        "warmup_anchor_ok": states["c4"] == "VERIFIED",
+        "benchmark_comparable": derived_comparator == "VERIFIED",
+        "stamp_same_daily_cell": stamp_state == "VERIFIED",
+        "liquidation_normalised": normalised_derived,
+    }
+    for key, value in derived.items():
+        if declared[key] != value:
+            violations.append(
+                f"{where}.{key} déclaré {declared[key]!r}, dérivé {value!r} des clauses "
+                "— le résumé dérivé fait foi"
+            )
+
+    # 3. Les actions, sur les clauses.
     if identity != retained:
         raise cc.EntryRefusedError(
             "R0_INVALID_RUN",
@@ -258,24 +337,21 @@ def _continuity_gates(continuity: Mapping[str, Any], *, retained: str) -> tuple[
         )
     for key in ("c1", "c2", "c5"):
         if states[key] == "FAILED":
-            detail = cc.require_str(clauses[key], "detail", where=f"continuity.clauses.{key}")
             raise cc.EntryRefusedError(
                 "R0_INVALID_RUN",
                 f"clause {key} de continuité en échec — l'artefact déclare une rupture du contrat "
-                f"§ B : {detail}",
+                f"§ B : {details[key]}",
             )
-    normalised = cc.nullable_bool(continuity, "liquidation_normalised", where="continuity")
-    if states["c3"] == "FAILED" or normalised is False:
+    if states["c3"] == "FAILED":
         raise cc.UndefinedIssueError(UNDEFINED_ISSUE_MESSAGE)
     reasons: list[str] = []
-    for key, reason in (
-        ("warmup_anchor_ok", "D_WARMUP_ANCHOR"),
-        ("benchmark_comparable", "E_NO_BENCHMARK"),
-        ("stamp_same_daily_cell", "E_STAMP_MISMATCH"),
-    ):
-        if not cc.require_bool(continuity, key, where="continuity"):
-            reasons.append(reason)
-    return reasons, state
+    if states["c4"] == "FAILED":
+        reasons.append("D_WARMUP_ANCHOR")
+    if derived_comparator == "FAILED":
+        reasons.append("E_NO_BENCHMARK")
+    if stamp_state != "VERIFIED":
+        reasons.append("E_STAMP_MISMATCH")
+    return reasons, derived_state
 
 
 def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str]) -> Decision:
@@ -374,7 +450,9 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
 
     # § B — la continuité (plan § 6.4) : refus, issue non définie, ou raisons run.
     continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
-    continuity_reasons, continuity_state = _continuity_gates(continuity, retained=retained)
+    continuity_reasons, continuity_state = _continuity_gates(
+        continuity, retained=retained, violations=violations
+    )
     reasons.extend(continuity_reasons)
 
     # § H.0 — l'estimabilité est préalable au verdict économique, et elle est **recalculée**.
