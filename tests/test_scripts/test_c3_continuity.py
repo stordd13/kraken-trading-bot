@@ -399,14 +399,16 @@ def _assert_summaries_derived(payload: dict[str, Any]) -> None:
     assert payload["stamp_same_daily_cell"] is (payload["stamp_cell"]["state"] == "VERIFIED")
     assert payload["benchmark_comparable"] is (payload["comparator"]["state"] == "VERIFIED")
     tests = payload["comparator"]["tests"]
-    assert set(tests) >= {
+    assert set(tests) == {
         "entry_stamp_present",
         "exit_stamp_present",
         "ff_ok",
         "n_returns_ok",
         "all_finite",
+        "window_ok",
     }
     assert (payload["comparator"]["state"] == "VERIFIED") is all(tests.values())
+    assert payload["comparator"]["window"]["expected"] == payload["evaluation_window"]
 
 
 def test_revue_Fin_2_le_temoin_sain_porte_les_blocs_stamp_cell_et_comparator(
@@ -456,3 +458,42 @@ def test_revue_Fin_2_comparateur_non_comparable_est_un_bloc_FAILED_derive(tmp_pa
     )
     assert payload["benchmark_comparable"] is False
     _assert_summaries_derived(payload)
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (3) — la fenêtre du comparateur fait partie de la comparabilité recalculée
+# ---------------------------------------------------------------------------
+
+WINDOW_2000 = {"start": "2000-01-01T00:00:00+00:00", "end": "2001-01-01T00:00:00+00:00"}
+
+
+def test_revue_Fin_3_fenetre_2000_2001_rend_le_comparateur_FAILED_sans_violation(
+    tmp_path: Path,
+) -> None:
+    """Reproduction d'Astra : cinq tests vrais, `comparable` vrai, fenêtre 2000–2001. La fenêtre
+    n'est pas un test que le producteur peut asserter (il ne connaît pas T) : C3a la recalcule et
+    l'ajoute à la conjonction ; le comparateur est FAILED, code 0, voie E_NO_BENCHMARK."""
+    w = _world(tmp_path)
+    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(window=dict(WINDOW_2000)))
+    code, payload = _run(w)
+    assert code == 0 and payload is not None and payload["violations"] == []
+    comp = payload["comparator"]
+    assert comp["state"] == "FAILED" and comp["tests"]["window_ok"] is False
+    assert comp["window"] == {"declared": WINDOW_2000, "expected": payload["evaluation_window"]}
+    assert payload["benchmark_comparable"] is False
+    _assert_summaries_derived(payload)
+
+
+def test_revue_Fin_3_fenetre_du_comparateur_absente_ou_mal_typee_est_une_erreur_d_entree(
+    tmp_path: Path,
+) -> None:
+    w = _world(tmp_path)
+    bench = fx.benchmark_eval()
+    del bench["window"]
+    cc.write_json(w["benchmark_eval"], bench)
+    assert _run(w)[0] == 2
+    w2 = _world(tmp_path / "b")
+    cc.write_json(
+        w2["benchmark_eval"], fx.benchmark_eval(window={"start": "hier", "end": "demain"})
+    )
+    assert _run(w2)[0] == 2

@@ -19,7 +19,7 @@ une preuve fausse, qui n'est jamais admissible.
 | c5 — première exécution strictement après `T` (§ C.3) | ``first_fill_at`` absent → ``NOT_VERIFIABLE`` ; présent et `> T` → ``DECLARED`` ; `<= T` → ``FAILED`` |
 
 | ``stamp_cell`` — estampille de liquidation dans la cellule quotidienne finale (§ B.4) | dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED`` ; aucune estampille (bloc absent, `positions == 0`) → ``NOT_VERIFIABLE`` |
-| ``comparator`` — comparateur d'évaluation (§ C.5) | conjonction recalculée des tests déclarés → ``VERIFIED`` / ``FAILED`` ; ``comparable`` déclaré ≠ conjonction = violation |
+| ``comparator`` — comparateur d'évaluation (§ C.5) | conjonction recalculée des tests déclarés **et de la fenêtre recoupée à [T, fin]** (``tests.window_ok``) → ``VERIFIED`` / ``FAILED`` ; ``comparable`` déclaré ≠ conjonction des cinq tests = violation |
 
 **Les résumés sont dérivés des blocs, jamais recopiés** (revue Fin, défaut 2) :
 ``warmup_anchor_ok = (c4 == VERIFIED)``, ``liquidation_normalised`` par
@@ -244,9 +244,19 @@ def clause_5_first_execution(evaluation: Mapping[str, Any], *, anchor: datetime)
     )
 
 
-def comparator_block(block: Mapping[str, Any], *, violations: list[str]) -> dict[str, Any]:
-    """§ C.5 — le bloc ``comparator`` : les tests déclarés, l'état dérivé de leur conjonction, et le
-    ``comparable`` déclaré recoupé (désaccord = violation). Le verdict refait la conjonction."""
+def comparator_block(
+    block: Mapping[str, Any], *, anchor: datetime, end: datetime, violations: list[str]
+) -> dict[str, Any]:
+    """§ C.5 — le bloc ``comparator`` : les tests déclarés, la **fenêtre recoupée à [T, fin]**, l'état
+    dérivé de leur conjonction, et le ``comparable`` déclaré recoupé.
+
+    La fenêtre (revue Fin, défaut 3) n'est pas un test que le producteur peut asserter — il ne
+    connaît pas T : C3a la **recalcule** depuis l'ancre et le manifeste et l'ajoute à la conjonction
+    sous ``tests.window_ok``. Le ``comparable`` déclaré est recoupé à la conjonction des cinq tests
+    déclarés (ce que le producteur affirme) ; une fenêtre discordante rend le comparateur ``FAILED``
+    (voie ``E_NO_BENCHMARK``), sans violation. Le verdict refait les deux dérivations depuis
+    ``tests`` et ``window``.
+    """
     tests_block = cc.require_mapping(block, "comparability", where="benchmark_eval")
     recomputed = all(
         cc.require_bool(tests_block, name, where="benchmark_eval.comparability")
@@ -254,26 +264,41 @@ def comparator_block(block: Mapping[str, Any], *, violations: list[str]) -> dict
     )
     tests = {name: tests_block[name] for name in COMPARABILITY_TESTS if name in tests_block}
     declared = cc.require_bool(block, "comparable", where="benchmark_eval")
+    window = cc.require_mapping(block, "window", where="benchmark_eval")
+    w_start = cc.require_datetime(window, "start", where="benchmark_eval.window")
+    w_end = cc.require_datetime(window, "end", where="benchmark_eval.window")
+    window_ok = (w_start, w_end) == (anchor, end)
+    tests["window_ok"] = window_ok
     if declared != recomputed:
         violations.append(
             f"benchmark_eval.comparable déclaré {declared!r}, conjonction recalculée des tests § C.5 {recomputed!r}"
         )
+    comparable = recomputed and window_ok
     failed = [name for name, ok in tests.items() if ok is False]
     return {
         **_clause(
-            "VERIFIED" if recomputed else "FAILED",
-            "comparateur d'évaluation comparable (§ C.5)"
-            if recomputed
+            "VERIFIED" if comparable else "FAILED",
+            "comparateur d'évaluation comparable (§ C.5), fenêtre [T, fin] recoupée"
+            if comparable
             else f"tests § C.5 en échec : {', '.join(failed)}",
         ),
         "tests": tests,
+        "window": {
+            "declared": {"start": w_start.isoformat(), "end": w_end.isoformat()},
+            "expected": {"start": anchor.isoformat(), "end": end.isoformat()},
+        },
         "declared_comparable": declared,
     }
 
 
-def benchmark_comparable(block: Mapping[str, Any], *, violations: list[str]) -> bool:
-    """Compatibilité : la conjonction recalculée, dérivée du bloc ``comparator``."""
-    return comparator_block(block, violations=violations)["state"] == "VERIFIED"
+def benchmark_comparable(
+    block: Mapping[str, Any], *, anchor: datetime, end: datetime, violations: list[str]
+) -> bool:
+    """Compatibilité : la conjonction recalculée (fenêtre comprise), dérivée du bloc ``comparator``."""
+    return (
+        comparator_block(block, anchor=anchor, end=end, violations=violations)["state"]
+        == "VERIFIED"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -332,7 +357,7 @@ def run_continuity(
         evaluation, timeframes=candidate.decision_timeframes, violations=violations
     )
     c5 = clause_5_first_execution(evaluation, anchor=anchor)
-    comparator = comparator_block(benchmark_eval, violations=violations)
+    comparator = comparator_block(benchmark_eval, anchor=anchor, end=end, violations=violations)
     clauses = {"c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5}
     states = {k: v["state"] for k, v in clauses.items()}
     # Les résumés sont **dérivés** des blocs (revue Fin, défaut 2) ; le verdict refait ces

@@ -1176,9 +1176,14 @@ def evaluation(
 
 
 def benchmark_eval(
-    pair: str = "BTC/USDC", *, comparable: bool = True, contradict: bool = False
+    pair: str = "BTC/USDC",
+    *,
+    comparable: bool = True,
+    contradict: bool = False,
+    window: dict[str, str] | None = None,
 ) -> dict[str, Any]:
-    """Le bloc de comparabilité du comparateur d'évaluation (§ C.5), synthétique."""
+    """Le bloc de comparabilité du comparateur d'évaluation (§ C.5), synthétique ; ``window``
+    remplace la fenêtre [T, fin] déclarée (revue Fin, défaut 3)."""
     tests = {
         "entry_stamp_present": True,
         "exit_stamp_present": True,
@@ -1189,7 +1194,9 @@ def benchmark_eval(
     declared = comparable if not contradict else (not comparable)
     return {
         "pair": pair,
-        "window": {"start": ANCHOR.isoformat(), "end": WINDOW_END.isoformat()},
+        "window": window
+        if window is not None
+        else {"start": ANCHOR.isoformat(), "end": WINDOW_END.isoformat()},
         "comparable": declared,
         "comparability": tests,
     }

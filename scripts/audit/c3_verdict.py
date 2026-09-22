@@ -232,6 +232,18 @@ def _estimability_of(
     return est.ok, payload
 
 
+def _window_of(block: Mapping[str, Any], key: str, *, where: str) -> tuple[datetime, datetime]:
+    inner = cc.require_mapping(block, key, where=where)
+    return (
+        cc.require_datetime(inner, "start", where=f"{where}.{key}"),
+        cc.require_datetime(inner, "end", where=f"{where}.{key}"),
+    )
+
+
+def _iso(window: tuple[datetime, datetime]) -> str:
+    return f"[{window[0].isoformat()}, {window[1].isoformat()}]"
+
+
 def _continuity_gates(
     continuity: Mapping[str, Any], *, retained: str, violations: list[str]
 ) -> tuple[list[str], str]:
@@ -280,11 +292,26 @@ def _continuity_gates(
         name: cc.require_bool(tests_block, name, where=f"{where}.comparator.tests")
         for name in cc.COMPARABILITY_TESTS
     }
+    window_ok_declared = cc.require_bool(
+        tests_block, "window_ok", where=f"{where}.comparator.tests"
+    )
+    comparator_window = cc.require_mapping(comparator, "window", where=f"{where}.comparator")
+    window_declared = _window_of(comparator_window, "declared", where=f"{where}.comparator.window")
+    window_expected = _window_of(comparator_window, "expected", where=f"{where}.comparator.window")
     identity = cc.require_str(continuity, "identity", where=where)
     cc.require_str(continuity, "pair", where=where)
-    window = cc.require_mapping(continuity, "evaluation_window", where=where)
-    cc.require_datetime(window, "start", where=f"{where}.evaluation_window")
-    cc.require_datetime(window, "end", where=f"{where}.evaluation_window")
+    evaluation_window = (
+        cc.require_datetime(
+            cc.require_mapping(continuity, "evaluation_window", where=where),
+            "start",
+            where=f"{where}.evaluation_window",
+        ),
+        cc.require_datetime(
+            cc.require_mapping(continuity, "evaluation_window", where=where),
+            "end",
+            where=f"{where}.evaluation_window",
+        ),
+    )
     declared: dict[str, bool | None] = {
         "warmup_anchor_ok": cc.require_bool(continuity, "warmup_anchor_ok", where=where),
         "benchmark_comparable": cc.require_bool(continuity, "benchmark_comparable", where=where),
@@ -295,7 +322,20 @@ def _continuity_gates(
     }
 
     # 2. Dérivations, puis recoupements — une contradiction est une violation.
-    derived_comparator = "VERIFIED" if all(tests.values()) else "FAILED"
+    # La fenêtre du comparateur (revue Fin, défaut 3) : attendue = fenêtre d'évaluation, et le
+    # test `window_ok` est refait depuis les deux fenêtres portées par le bloc.
+    if window_expected != evaluation_window:
+        violations.append(
+            f"{where}.comparator.window.expected {_iso(window_expected)} != evaluation_window "
+            f"{_iso(evaluation_window)}"
+        )
+    window_ok = window_declared == window_expected
+    if window_ok != window_ok_declared:
+        violations.append(
+            f"{where}.comparator.tests.window_ok déclaré {window_ok_declared!r}, dérivé {window_ok!r} "
+            f"(déclarée {_iso(window_declared)}, attendue {_iso(window_expected)})"
+        )
+    derived_comparator = "VERIFIED" if all(tests.values()) and window_ok else "FAILED"
     if derived_comparator != comparator_state:
         violations.append(
             f"{where}.comparator.state déclaré {comparator_state!r}, dérivé {derived_comparator!r} "
@@ -834,7 +874,10 @@ def run_verdict(
         violations.append(str(exc))
 
     if violations:
-        # § I.1, ligne 15 — une violation n'est pas un résultat : aucun verdict normal n'est publié.
+        # § I.1, ligne 15 — une violation n'est pas un résultat : aucun verdict normal n'est publié,
+        # et la chaîne n'est pas « vérifiée » (revue Fin, défaut 3) : `verified` n'est vrai que dans
+        # un artefact normal ; les `checks` disent quels recoupements d'empreintes ont échoué.
+        chain["verified"] = False
         payload = build_diagnostic_payload(
             violations, campaign=campaign, now=now, inputs=inputs, partial=decision, chain=chain
         )

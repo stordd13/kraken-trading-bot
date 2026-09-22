@@ -147,7 +147,9 @@ def _artifacts(
                     "ff_ok": True,
                     "n_returns_ok": True,
                     "all_finite": True,
+                    "window_ok": True,
                 },
+                "window": {"declared": dict(window), "expected": dict(window)},
             },
             "warmup_anchor_ok": True,
             "benchmark_comparable": True,
@@ -1437,7 +1439,10 @@ def test_l_artefact_diagnostic_porte_les_empreintes_et_aucune_chaine(tmp_path: P
     assert payload["invalide"] is True and payload["exit_code"] == 1 and payload["ok"] is False
     assert payload["verdict_string"] is None and payload["verdict"] is None
     assert set(payload["inputs_sha256"]) == set(cv.INPUT_NAMES)
-    assert payload["chain"]["mode"] == "verdict" and payload["chain"]["verified"] is True
+    # Un diagnostic n'est jamais une chaîne « vérifiée » (revue Fin 3) ; les recoupements
+    # d'empreintes, eux, ont tous passé — la violation vient d'ailleurs.
+    assert payload["chain"]["mode"] == "verdict" and payload["chain"]["verified"] is False
+    assert all(c["ok"] for c in payload["chain"]["checks"])
 
 
 # ---------------------------------------------------------------------------
@@ -2421,3 +2426,86 @@ def test_revue_Fin_2_bloc_de_continuite_manquant_est_une_erreur_d_entree(missing
     del target[keys[-1]]
     with pytest.raises(cc.MissingEvidenceError, match="continuity"):
         cv.decide(artifacts, violations=[])
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (3) — la fenêtre du comparateur d'évaluation est recoupée à [T, fin]
+# ---------------------------------------------------------------------------
+
+WINDOW_2000 = {"start": "2000-01-01T00:00:00+00:00", "end": "2001-01-01T00:00:00+00:00"}
+
+
+def test_revue_Fin_3_fenetre_2000_2001_declaree_comparable_est_une_violation_jamais_valide(
+    tmp_path: Path,
+) -> None:
+    """Reproduction d'Astra : tests § C.5 tous vrais sur une fenêtre 2000–2001 — la fenêtre fait
+    partie de la comparabilité recalculée ; déclarée `window_ok` alors qu'elle diffère de
+    [T, fin] = contradiction → violation, `chain.verified` ne reste pas vrai."""
+    artifacts = _sound()
+    artifacts["continuity"]["comparator"]["window"]["declared"] = dict(WINDOW_2000)
+    outcome, violations = _never_valide(artifacts)
+    assert any("window_ok" in v for v in violations), violations
+    assert isinstance(outcome, cv.Decision) and outcome.reason == "E_NO_BENCHMARK"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["chain"]["verified"] is False
+
+
+def test_revue_Fin_3_fenetre_discordante_coherente_est_E_NO_BENCHMARK_sans_violation(
+    tmp_path: Path,
+) -> None:
+    artifacts = _sound()
+    comp = artifacts["continuity"]["comparator"]
+    comp["window"]["declared"] = dict(WINDOW_2000)
+    comp["tests"]["window_ok"] = False
+    comp["state"] = "FAILED"
+    artifacts["continuity"]["benchmark_comparable"] = False
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.issue == cc.ISSUE_INCONCLUSIF
+    assert decision.reason == "E_NO_BENCHMARK"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    assert cc.read_json(tmp_path / "verdict.json")["raison"] == "E_NO_BENCHMARK"
+
+
+def test_revue_Fin_3_fenetre_attendue_differente_de_la_fenetre_d_evaluation_est_une_violation() -> (
+    None
+):
+    artifacts = _sound()
+    artifacts["continuity"]["comparator"]["window"]["expected"] = dict(WINDOW_2000)
+    _, violations = _never_valide(artifacts)
+    assert any("comparator.window.expected" in v for v in violations), violations
+
+
+@pytest.mark.parametrize(
+    "missing",
+    [
+        ("comparator", "window"),
+        ("comparator", "window", "declared"),
+        ("comparator", "tests", "window_ok"),
+    ],
+)
+def test_revue_Fin_3_fenetre_du_comparateur_manquante_est_une_erreur_d_entree(missing: Any) -> None:
+    artifacts = _sound()
+    target = artifacts["continuity"]
+    for k in missing[:-1]:
+        target = target[k]
+    del target[missing[-1]]
+    with pytest.raises(cc.MissingEvidenceError, match="continuity.comparator"):
+        cv.decide(artifacts, violations=[])
+
+
+def test_revue_Fin_3_chain_fenetre_2000_2001_ne_valide_jamais(tmp_path: Path) -> None:
+    """De bout en bout : le comparateur d'évaluation déclaré sur 2000–2001, tests vrais, comparable
+    vrai → la continuité le classe FAILED (fenêtre ≠ [T, fin]), le verdict rend E_NO_BENCHMARK."""
+    w = _chain_world(tmp_path)
+    pair = cc.read_json(w["evaluation"])["pair"]
+    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(pair, window=dict(WINDOW_2000)))
+    assert cv.main(_chain_argv(w)) == 0
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["comparator"]["state"] == "FAILED"
+    assert continuity["comparator"]["tests"]["window_ok"] is False
+    assert continuity["benchmark_comparable"] is False
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "E_NO_BENCHMARK"
+    assert payload["verdict"] != cc.ISSUE_VALIDE
