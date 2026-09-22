@@ -193,6 +193,15 @@ class InvalidValueError(ValueError):
     """
 
 
+class UndefinedIssueError(ValueError):
+    """Convention d'outillage datée du 21/09 (plan § 6.1) : l'issue n'est **pas définie par le texte
+    gelé** — clause 3 de continuité en échec sur l'artefact d'évaluation. § B.3 et § G.2 interdisent
+    tout verdict directionnel ; § I.1 ne porte aucune ligne de portée run pour ce cas ; l'amendement
+    daté (a) est dû à l'ouverture de C3b. Conduite (b) : refus de produire une issue, code 2, rien
+    publié — une assignation de code hors table, assumée comme telle et consignée.
+    """
+
+
 class EntryRefusedError(MissingEvidenceError):
     """Refus d'entrée porteur d'une **raison** de la liste close (§ I.1, lignes 2 et 5) — code 2."""
 
@@ -232,7 +241,8 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
 #: liquidation forcée (`backtest.py:3296-3300`) ; ``entry_price``, ``pnl`` — lot à coût inconnu ;
 #: ``refusal`` — `entry.json` : ``null`` quand l'entrée est conforme, un bloc quand elle est refusée ;
 #: ``retained`` — `selection.json` : ``null`` en abstention, un bloc quand une configuration est retenue ;
-#: ``reason`` — `benchmark.pairs[].reason` et `selection.reason` : ``null`` quand rien n'est à signaler.
+#: ``reason`` — `benchmark.pairs[].reason` et `selection.reason` : ``null`` quand rien n'est à signaler ;
+#: ``liquidation_normalised`` — `continuity.json` : ``true`` prouvé par lot, ``false`` en échec, ``null`` non vérifiable.
 NULLABLE_FIELDS: frozenset[str] = frozenset(
     {
         "stale_by_candles",
@@ -249,6 +259,7 @@ NULLABLE_FIELDS: frozenset[str] = frozenset(
         "refusal",
         "retained",
         "reason",
+        "liquidation_normalised",
     }
 )
 
@@ -452,6 +463,15 @@ def nullable_mapping(obj: Any, key: str, *, where: str) -> Mapping[str, Any] | N
         return None
     if not isinstance(value, Mapping):
         raise MissingEvidenceError(f"{where}.{key}: bloc attendu, reçu {type(value).__name__}")
+    return value
+
+
+def nullable_bool(obj: Any, key: str, *, where: str) -> bool | None:
+    value = _optional(obj, key, where=where, must_exist=True)
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise MissingEvidenceError(f"{where}.{key}: booléen attendu, reçu {type(value).__name__}")
     return value
 
 

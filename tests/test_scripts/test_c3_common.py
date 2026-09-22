@@ -170,6 +170,7 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "refusal",
             "retained",
             "reason",
+            "liquidation_normalised",
         }
     )
     assert not (cc.OPTIONAL_FIELDS & cc.NULLABLE_FIELDS), (
@@ -1068,3 +1069,127 @@ def test_revue_R3b_le_plus_long_run_est_pris_parmi_plusieurs_trous() -> None:
     block = _block_with_missing(stamps, interval=1440, declared_gap=5.0)
     rec = cc.coverage_recompute(block, start=WINDOW_START, end=ANCHOR, interval=1440, where="t")
     assert rec["longest_gap_candles"] == 5 and rec["problems"] == []
+
+
+# ---------------------------------------------------------------------------
+# Évaluation synthétique (§ L.1 : C3a n'exerce les étapes 5 et 6 que sur des fixtures)
+# ---------------------------------------------------------------------------
+
+from functools import cache  # noqa: E402
+
+import numpy as np  # noqa: E402
+
+N_EVAL_POINTS = len(cc.daily_grid(ANCHOR, WINDOW_END))  # 330
+EVAL_DAYS = (WINDOW_END - ANCHOR).total_seconds() / 86400.0  # 328.8
+SEED = 20260921
+
+
+@cache
+def _bootstrap_cached(
+    cfg: tuple[float, ...], bch: tuple[float, ...]
+) -> tuple[tuple[float, ...], int]:
+    n = len(cfg)
+    rng = np.random.default_rng([SEED, 0, 21])
+    starts = cc.block_start_indices(rng, n, 21, cc.BOOTSTRAP_B)
+    idx = cc.block_indices(starts, 21, n)
+    deltas, discarded = cc.paired_delta_stars(cfg, bch, idx, float(EVAL_DAYS))
+    return tuple(float(x) for x in deltas), discarded
+
+
+def bootstrap(returns_config: list[float], returns_bench: list[float]) -> tuple[list[float], int]:
+    """Le vrai chemin numérique du § F.2 à `B = BOOTSTRAP_B`, mémoïsé par séries."""
+    deltas, discarded = _bootstrap_cached(tuple(returns_config), tuple(returns_bench))
+    return list(deltas), discarded
+
+
+def varying_returns(seed: int, n: int = N_EVAL_POINTS - 1) -> list[float]:
+    rng = np.random.default_rng(seed)
+    return list(rng.normal(0.0005, 0.02, n))
+
+
+def evaluation(
+    manifest_payload: dict[str, Any],
+    *,
+    candidate_index: int = 0,
+    synthetic: bool = True,
+    lots: bool = True,
+    liquidation: bool = True,
+    single_call: bool = True,
+    sufficient: bool = True,
+    first_fill_at: datetime | None = ANCHOR + timedelta(minutes=EXEC_INTERVAL * 2),
+    flat_start_proof: dict[str, Any] | None = None,
+    returns_bench: list[float] | None = None,
+    metrics: dict[str, Any] | None = None,
+    bounds: dict[str, float] | None = None,
+) -> dict[str, Any]:
+    """Un artefact d'évaluation **synthétique** de la configuration retenue, sur [T, fin] :
+    le contrat lu par c3_verdict (§ F.2, § F.8) et les blocs que c3_continuity vérifie (§ B)."""
+    cand = manifest_payload["universe"]["candidates"][candidate_index]
+    pair = cand["pair"]
+    values = nav_path(pair, candidate_index + 7, N_EVAL_POINTS, drift=0.0006)
+    returns_config = varying_returns(7)
+    deltas, discarded = bootstrap(
+        returns_config, returns_bench if returns_bench is not None else [0.0] * (N_EVAL_POINTS - 1)
+    )
+    if bounds is None:
+        bounds = {
+            f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
+        }
+    reference = f"{values[-1] * 33.5:.8f}"
+    liq = (
+        liquidation_segment(
+            pair,
+            reference_price=reference,
+            positions=2,
+            lots=lots,
+            timestamp=WINDOW_END - timedelta(minutes=EXEC_INTERVAL),
+        )
+        if liquidation
+        else None
+    )
+    out: dict[str, Any] = {
+        "synthetic": synthetic,
+        "strategy": cand["strategy"],
+        "pair": pair,
+        "params": cand["params"],
+        "period": {"start": ANCHOR.isoformat(), "end": WINDOW_END.isoformat()},
+        "equity_daily": {
+            "start": ANCHOR.isoformat(),
+            "end": WINDOW_END.isoformat(),
+            "values": values,
+        },
+        "liquidation": liq,
+        "warmup": warmup_segment(sufficient=sufficient),
+        "invocation": {"single_call": single_call},
+        "first_fill_at": None if first_fill_at is None else first_fill_at.isoformat(),
+        "flat_start_proof": flat_start_proof,
+        "returns_config": returns_config,
+        "delta_stars": deltas,
+        "discarded": discarded,
+        "B": cc.BOOTSTRAP_B,
+        "metrics": metrics
+        if metrics is not None
+        else {"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        "bounds": bounds,
+    }
+    return out
+
+
+def benchmark_eval(
+    pair: str = "BTC/USDC", *, comparable: bool = True, contradict: bool = False
+) -> dict[str, Any]:
+    """Le bloc de comparabilité du comparateur d'évaluation (§ C.5), synthétique."""
+    tests = {
+        "entry_stamp_present": True,
+        "exit_stamp_present": True,
+        "ff_ok": comparable,
+        "n_returns_ok": True,
+        "all_finite": True,
+    }
+    declared = comparable if not contradict else (not comparable)
+    return {
+        "pair": pair,
+        "window": {"start": ANCHOR.isoformat(), "end": WINDOW_END.isoformat()},
+        "comparable": declared,
+        "comparability": tests,
+    }
