@@ -654,3 +654,101 @@ def test_l_artefact_du_rejeu_est_refuse_D_WARMUP_PREFIX_et_intact(tmp_path: Path
     # Le chemin des observations est celui de l'invocation ; seule l'empreinte est comparable.
     assert payload["observations"]["sha256"] == committed["observations"]["sha256"]
     assert payload["observations"]["sha256"] == before
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (b) — couverture : cohérence interne recoupée avant D1, jamais un D1 vert par déclaration
+# ---------------------------------------------------------------------------
+
+
+def _coverage_mutate(w: dict[str, Any], mutate: Any) -> None:
+    cov = cc.read_json(w["coverage"])
+    mutate(cov)
+    cc.write_json(w["coverage"], cov)
+
+
+def test_revue_R3_couverture_observed_zero_avec_covered_intact_est_refusee(tmp_path: Path) -> None:
+    """Reproduction Astra : `observed = 0` sur toutes les séries, `covered_units` intact → six D1 verts."""
+    w = _sound(tmp_path)
+
+    def zero_observed(cov: dict[str, Any]) -> None:
+        for block in cov["pairs"]["BTC/USDC"].values():
+            block["observed"] = 0
+
+    _coverage_mutate(w, zero_observed)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.7"
+    assert "observed" in payload["refusal"]["detail"]
+
+
+def test_revue_R3_missing_stamps_contredisant_covered_units_est_refuse(tmp_path: Path) -> None:
+    w = _sound(tmp_path)
+
+    def stamps_without_counters(cov: dict[str, Any]) -> None:
+        block = cov["pairs"]["BTC/USDC"]["1440"]
+        block["missing_stamps"] = [
+            (fx.WINDOW_START + timedelta(days=k)).isoformat() for k in range(101, 131)
+        ]
+
+    _coverage_mutate(w, stamps_without_counters)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.7"
+    assert "covered_units" in payload["refusal"]["detail"]
+    w2 = _sound(tmp_path / "b")
+    _coverage_mutate(
+        w2, lambda cov: cov["pairs"]["BTC/USDC"]["1440"].__setitem__("covered_units", 700)
+    )
+    code, payload = _run(w2)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.7"
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(
+            lambda b: b.__setitem__("observed", b["expected"] + 1), id="observed > expected"
+        ),
+        pytest.param(
+            lambda b: b.__setitem__("first_day", "2022-12-31"), id="first_day avant la fenêtre"
+        ),
+        pytest.param(lambda b: b.__setitem__("last_day", "2025-06-01"), id="last_day après T"),
+        pytest.param(
+            lambda b: b.__setitem__("missing_stamps", ["2025-05-07T04:47:00+00:00"]),
+            id="estampille hors grille",
+        ),
+        pytest.param(
+            lambda b: b.__setitem__("missing_stamps", ["2026-01-01T00:00:00+00:00"]),
+            id="estampille après T",
+        ),
+    ],
+)
+def test_revue_R3_chaque_incoherence_de_couverture_est_refusee(tmp_path: Path, mutate: Any) -> None:
+    w = _sound(tmp_path)
+    _coverage_mutate(w, lambda cov: mutate(cov["pairs"]["SOL/USDC"]["1440"]))
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.7"
+
+
+def test_revue_R3_couverture_degradee_mais_coherente_reste_conforme_a_l_entree(
+    tmp_path: Path,
+) -> None:
+    """Le témoin dégradé : l'entrée valide la cohérence, pas D1 — c'est la sélection qui tranchera."""
+    w = _sound(tmp_path)
+    _coverage_mutate(w, lambda cov: fx.degrade_coverage(cov, "BTC/USDC", 1440, n_missing=30))
+    code, payload = _run(w)
+    assert code == 0 and payload["refusal"] is None
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (d) — un non-fini qui atteint la canonicalisation est une violation, jamais un traceback
+# ---------------------------------------------------------------------------
+
+
+def test_revue_R3_nan_dans_les_parametres_est_une_violation_code_1(tmp_path: Path) -> None:
+    w = _sound(tmp_path)
+    obs = cc.read_json(w["observations"])
+    _first(obs)["params"]["nan"] = float("nan")
+    w["observations"].write_text(json.dumps(obs, allow_nan=True), encoding="utf-8")
+    code, payload = _run(w)
+    assert code == 1 and payload["invalide"] is True and payload["refusal"] is None
+    assert any("non-finite" in v or "non fini" in v for v in payload["violations"])

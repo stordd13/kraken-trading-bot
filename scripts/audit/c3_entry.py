@@ -539,6 +539,18 @@ def a07_coverage(ctx: Context) -> Outcome:
                     )
                 if unit != cc.coverage_unit(iv):
                     out.problems.append(f"{swhere}.unit: {unit!r} != {cc.coverage_unit(iv)!r}")
+                # Revue R3 (b) : tout ce qui est dérivable des estampilles manquantes et des bornes
+                # est recalculé et recoupé — une contradiction est un problème de couverture,
+                # jamais un D1 vert par déclaration.
+                out.problems.extend(
+                    cc.coverage_recompute(
+                        series,
+                        start=ctx.manifest.window_start,
+                        end=ctx.anchor,
+                        interval=iv,
+                        where=swhere,
+                    )["problems"]
+                )
     except cc.MissingEvidenceError as exc:
         out.problems.append(str(exc))
     if not out.problems:
@@ -915,7 +927,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "assertion": "I-A.0",
             "detail": f"entrées de l'étape : {exc}",
         }
-    except cc.InvalidValueError as exc:
+    except (cc.InvalidValueError, cc.NonFiniteValueError) as exc:
+        # Non fini fourni (§ F.7) ou atteignant la canonicalisation : violation, code 1 (revue R3 d).
         violations.append(str(exc))
 
     exit_code = 1 if violations else (2 if refusal else 0)

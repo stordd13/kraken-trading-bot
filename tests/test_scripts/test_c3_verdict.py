@@ -1170,3 +1170,24 @@ def test_les_raisons_de_portee_candidat_sont_enumerees_sans_portee_exclusive() -
     # Ce que `decide()` émet (table I.1 paramétrée) n'en recoupe que `F_NOT_ESTIMABLE`, en portée run.
     emitted = {row.values[3] for row in TABLE_I1 if row.values[3] is not None}
     assert emitted & set(cc.CANDIDATE_REASONS) == {"F_NOT_ESTIMABLE"}
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (d) — un non-fini qui atteint la canonicalisation est une violation, jamais un traceback
+# ---------------------------------------------------------------------------
+
+
+def test_revue_R3_non_fini_a_la_canonicalisation_est_une_violation_code_1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`NonFiniteValueError` n'est pas une `InvalidValueError` : le verdict doit la router en violation."""
+
+    def raise_non_finite(*args: Any, **kwargs: Any) -> Any:
+        raise cc.NonFiniteValueError("non-finite value in the signature payload: nan")
+
+    monkeypatch.setattr(cv, "decide", raise_non_finite)
+    argv = _write_cli_inputs(tmp_path, _sound())
+    assert cv.main(argv) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+    assert any("non-finite" in v for v in payload["violations"])

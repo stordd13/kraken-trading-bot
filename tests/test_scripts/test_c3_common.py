@@ -372,6 +372,10 @@ def test_non_fini_est_une_erreur_de_valeur_pas_de_presence(value: float) -> None
 
 def test_les_deux_classes_d_erreur_sont_disjointes() -> None:
     assert not issubclass(cc.InvalidValueError, cc.MissingEvidenceError)
+    # Revue R3 (d) : la non-finitude levée par `canon` (héritée de rejeu_common) n'est **pas** une
+    # `InvalidValueError` — chaque `main()` doit la router explicitement vers la voie violation.
+    assert not issubclass(cc.NonFiniteValueError, cc.InvalidValueError)
+    assert issubclass(cc.NonFiniteValueError, ValueError)
     assert issubclass(cc.EntryRefusedError, cc.MissingEvidenceError)
     assert cc.EntryRefusedError("R0_INVALID_RUN", "x").reason == "R0_INVALID_RUN"
 
@@ -866,17 +870,18 @@ def coverage(
     end: datetime = ANCHOR,
     degrade: dict[str, dict[int, dict[str, Any]]] | None = None,
 ) -> dict[str, Any]:
-    """L'artefact de couverture (§ A.7) sur `[début, T]`, complet ; `degrade[pair][interval]` surcharge."""
+    """L'artefact de couverture (§ A.7) sur `[début, T]`, **cohérent par construction** : comptes
+    de bougies et d'unités recalculés depuis les bornes ; `degrade[pair][interval]` surcharge."""
     pairs = sorted({c["pair"] for c in manifest_payload["universe"]["candidates"]})
-    per_day = {5: 288, 240: 6, 1440: 1, 10080: 1}
     blocks: dict[str, Any] = {}
     for pair in pairs:
         blocks[pair] = {}
         for iv in cc.D1_INTERVALS:
             units = cc.expected_units(start, end, iv)
+            candles_expected = cc.expected_candles(start, end, iv)
             block = {
-                "observed": units * per_day[iv],
-                "expected": units * per_day[iv],
+                "observed": candles_expected,
+                "expected": candles_expected,
                 "covered_units": units,
                 "expected_units": units,
                 "unit": cc.coverage_unit(iv),
@@ -895,6 +900,33 @@ def coverage(
         "window": {"start": start.isoformat(), "end": end.isoformat()},
         "pairs": blocks,
     }
+
+
+def degrade_coverage(
+    cov: dict[str, Any],
+    pair: str,
+    interval: int,
+    *,
+    n_missing: int,
+    offset_units: int = 100,
+    start: datetime = WINDOW_START,
+    end: datetime = ANCHOR,
+) -> None:
+    """Retire `n_missing` estampilles **consécutives** de la série, en gardant le bloc cohérent :
+    `observed`, `covered_units` (règle de D1 propre à la série) et `longest_gap_days` suivent."""
+    block = cov["pairs"][pair][str(interval)]
+    step = timedelta(days=7) if interval == cc.WEEK_MINUTES else timedelta(minutes=interval)
+    first = cc.first_stamp_strictly_after(start, interval) + step * offset_units
+    stamps = [first + step * k for k in range(n_missing)]
+    assert stamps[-1] <= end, "dégradation hors de la fenêtre"
+    block["missing_stamps"] = [s.isoformat() for s in stamps]
+    block["observed"] = block["expected"] - n_missing
+    block["covered_units"] = cc.coverage_recompute(
+        block, start=start, end=end, interval=interval, where="fixture"
+    )["covered_recomputed"]
+    block["longest_gap_days"] = n_missing * (
+        7.0 if interval == cc.WEEK_MINUTES else interval / 1440.0
+    )
 
 
 def candles(

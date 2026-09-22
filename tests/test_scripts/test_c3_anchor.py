@@ -490,3 +490,25 @@ def test_now_illisible_ou_manifeste_illisible_sort_2(tmp_path: Path) -> None:
     assert ca.main(argv) == 2
     assert ca.main(fx.anchor_argv(tmp_path, tmp_path / "absent.json")) == 2
     assert not (tmp_path / "anchor.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (d) — un non-fini qui atteint la canonicalisation est une violation, jamais un traceback
+# ---------------------------------------------------------------------------
+
+
+def test_revue_R3_nan_dans_un_seuil_du_manifeste_est_une_violation_code_1(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Reproduction Astra : `thresholds.CAPITAL.value = NaN` traversait `canon` en traceback nu."""
+    payload = fx.manifest()
+    payload["selection_rule"]["thresholds"]["CAPITAL"]["value"] = float("nan")
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(payload, allow_nan=True), encoding="utf-8")
+    code = ca.main(fx.anchor_argv(tmp_path, path))
+    assert code == 1
+    out = cc.read_json(tmp_path / "anchor.json")
+    assert out["invalide"] is True and out["anchor"] is None
+    assert any("non-finite" in v or "non fini" in v for v in out["violations"])
+    assert not (tmp_path / "variants.json").exists()
+    assert "VIOLATION" in capsys.readouterr().err

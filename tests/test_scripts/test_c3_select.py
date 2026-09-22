@@ -319,7 +319,8 @@ def test_table_provenance_x_resultat(provenance: str, retained: bool, expected: 
 
 
 def _degrade_btc_coverage(cov: dict[str, Any]) -> None:
-    cov["pairs"]["BTC/USDC"]["1440"]["covered_units"] = 700  # 91 % < 97 %
+    """30 minuits consécutifs manquants sur 1 j : 737/767 = 96,1 % < 97 %, trou 30 j > 23 j — cohérent."""
+    fx.degrade_coverage(cov, "BTC/USDC", 1440, n_missing=30)
 
 
 def _d2_first(obs: dict[str, Any]) -> None:
@@ -835,3 +836,80 @@ def test_le_parseur_n_expose_que_des_chemins_et_un_horodatage() -> None:
         "markdown",
         "now",
     }
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (a) — D6 : quantité et notionnel des lots, identités exactes par construction
+# ---------------------------------------------------------------------------
+
+
+def test_revue_R3_lot_de_quantite_nulle_ne_passe_pas_D6(tmp_path: Path) -> None:
+    """Reproduction Astra : `amount_btc = "0"` sur les lots passait D6 (la quantité était lue puis jetée)."""
+
+    def zero_amount(obs: dict[str, Any]) -> None:
+        for lot in _liq(obs)["lots"]:
+            lot["amount_btc"] = "0"
+
+    w = chain(tmp_path, mutate_observations=zero_amount)
+    assert w["entry_code"] == 0
+    code, payload = run(w)
+    assert code == 0 and payload is not None
+    r = _first_record(w, payload)
+    assert r["clauses"]["D6"] is False and r["status"] == "HORS_USAGE_DÉCISIONNEL"
+    assert any("amount_btc" in d for d in r["d6_report"]["details"])
+
+
+def test_revue_R3_tous_les_lots_a_quantite_nulle_interdisent_SELECTION_VALIDE(
+    tmp_path: Path,
+) -> None:
+    def zero_all(obs: dict[str, Any]) -> None:
+        for e in obs.values():
+            for lot in e["liquidation"][fx.PREFIX]["lots"]:
+                lot["amount_btc"] = "0"
+
+    w = chain(tmp_path, mutate_observations=zero_all)
+    code, payload = run(w)
+    assert code == 0 and payload is not None
+    assert payload["status"] != "SÉLECTION_VALIDE"
+    assert payload["status"] == "ABSTENTION" and payload["reason"] == "A_NO_ADMISSIBLE_CANDIDATE"
+    assert all(r["first_failed_gate"] == "D6" for r in payload["candidates"])
+
+
+def test_revue_R3_gross_different_de_amount_x_price_ne_passe_pas_D6(tmp_path: Path) -> None:
+    """Un lot dont le notionnel ne vaut pas quantité × prix du bloc — agrégats et taker cohérents par ailleurs."""
+
+    def wrong_gross(obs: dict[str, Any]) -> None:
+        liq = _liq(obs)
+        lot = liq["lots"][0]
+        gross = Decimal(lot["gross_usdc"]) + Decimal("0.5")
+        lot["gross_usdc"] = str(gross)
+        lot["fee"] = str(gross * Decimal(fx.TAKER))
+        liq["gross_usdc"] = str(sum(Decimal(item["gross_usdc"]) for item in liq["lots"]))
+        liq["fees"] = str(sum(Decimal(item["fee"]) for item in liq["lots"]))
+
+    w = chain(tmp_path, mutate_observations=wrong_gross)
+    assert w["entry_code"] == 0
+    code, payload = run(w)
+    assert code == 0 and payload is not None
+    r = _first_record(w, payload)
+    assert r["clauses"]["D6"] is False and r["candidate_reason"] == "R1_NOT_NORMALISED"
+    assert any("amount × price" in d for d in r["d6_report"]["details"])
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (d) — un non-fini qui atteint la canonicalisation est une violation, jamais un traceback
+# ---------------------------------------------------------------------------
+
+
+def test_revue_R3_nan_dans_les_parametres_est_une_violation_code_1(tmp_path: Path) -> None:
+    w = chain(tmp_path)
+    obs = cc.read_json(w["observations"])
+    obs[_first_key(obs)]["params"]["nan"] = float("nan")
+    w["observations"].write_text(json.dumps(obs, allow_nan=True), encoding="utf-8")
+    for name in ("entry", "benchmark"):
+        art = cc.read_json(w[name])
+        art["inputs_sha256"]["observations"] = cc.file_sha256(w["observations"])
+        cc.write_json(w[name], art)
+    code, payload = run(w)
+    assert code == 1 and payload is not None and payload["invalide"] is True
+    assert any("non-finite" in v or "non fini" in v for v in payload["violations"])

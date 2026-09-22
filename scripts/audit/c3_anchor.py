@@ -315,7 +315,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except cc.MissingEvidenceError as exc:
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
         return 2
-    except cc.InvalidValueError as exc:
+    except (cc.InvalidValueError, cc.NonFiniteValueError) as exc:
+        # Non fini dans le manifeste, y compris un NaN atteignant `canon` (revue R3 d) : violation.
         violations.append(str(exc))
 
     if violations:

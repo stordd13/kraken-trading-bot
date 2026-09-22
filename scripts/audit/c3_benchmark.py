@@ -418,6 +418,9 @@ def match_lambda(curve: LambdaCurve, target: float) -> Match:
 def candidate_block(
     projection: Mapping[str, Any],
     *,
+    candidate: cc.Candidate,
+    manifest: cc.Manifest,
+    anchor: datetime,
     pair_benchmark: PairBenchmark,
     curves: Mapping[str, LambdaCurve],
     days: float,
@@ -448,8 +451,36 @@ def candidate_block(
     if not pair_benchmark.comparable:
         block.update({"first_failed": "benchmark", "reason": "E_NO_BENCHMARK"})
         return block, rec.mdd_daily
+    # Revue R3 (c) : aucun score décisionnel pour un candidat inadmissible — D3 et D6 sont
+    # pré-contrôlés avec les **mêmes règles** que c3_select (helpers partagés de c3_common), à
+    # côté de D4 ; le candidat est consigné avec son premier gate, les autres continuent.
+    metrics = cc.require_mapping(projection, "metrics", where=where)
+    liquidation = cc.optional_mapping(projection, "liquidation", where=where)
+    cycles, _ = cc.clause_d3(
+        manifest.engines[candidate.strategy],
+        total_trades=cc.require_int(metrics, "total_trades", where=f"{where}.metrics", minimum=0),
+        winning=cc.require_int(metrics, "winning_trades", where=f"{where}.metrics", minimum=0),
+        losing=cc.require_int(metrics, "losing_trades", where=f"{where}.metrics", minimum=0),
+        liquidation=liquidation,
+        where=f"{where}.liquidation",
+    )
+    if not cc.d3_passes(cycles):
+        block.update({"first_failed": "D3", "reason": "C_COVERAGE"})
+        return block, rec.mdd_daily
     if not rec.domain_ok or rec.sigma_daily is None or rec.cagr_pct is None:
         block.update({"first_failed": "D4", "reason": "F_NOT_ESTIMABLE"})
+        return block, rec.mdd_daily
+    spread, slippage = manifest.pair_costs[candidate.pair]
+    proof = cc.liquidation_identities(
+        liquidation,
+        spread=spread,
+        slippage=slippage,
+        taker=manifest.taker,
+        end=anchor,
+        where=f"{where}.liquidation",
+    )
+    if not proof["passed"]:
+        block.update({"first_failed": "D6", "reason": "R1_NOT_NORMALISED"})
         return block, rec.mdd_daily
     matches = {
         "dd": match_lambda(curves["dd"], rec.mdd_daily),
@@ -600,6 +631,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             block, _ = candidate_block(
                 projection,
+                candidate=candidate,
+                manifest=manifest,
+                anchor=anchor,
                 pair_benchmark=pairs[candidate.pair],
                 curves=curves[candidate.pair] if candidate.pair in curves else {},
                 days=days,
@@ -644,7 +678,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     except cc.MissingEvidenceError as exc:
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
         return 2
-    except cc.InvalidValueError as exc:
+    except (cc.InvalidValueError, cc.NonFiniteValueError) as exc:
+        # Non fini fourni ou atteignant la canonicalisation : violation, code 1 (revue R3 d).
         violations.append(str(exc))
 
     if violations:

@@ -429,3 +429,113 @@ def test_le_comparateur_ne_depend_que_du_prefixe(tmp_path: Path) -> None:
     core1 = {k: v for k, v in p1.items() if k not in strip}
     core2 = {k: v for k, v in p2.items() if k not in strip}
     assert cc.sig(core1) == cc.sig(core2)
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (c) — aucun score décisionnel pour un candidat inadmissible par D3 ou D6
+# ---------------------------------------------------------------------------
+
+
+def test_revue_R3_aucun_score_pour_un_candidat_inadmissible_D3_ou_D6(tmp_path: Path) -> None:
+    """Reproductions Astra : accumulation sans vente (D3) et liquidation absente ou sans lots (D6)
+    recevaient λ et Δ. Les exclus sont consignés, sans score ; les autres continuent, code 0."""
+    payload_m = fx.manifest()
+    payload_m["strategies"]["synth_signal"] = {
+        "engine": "signal",
+        "decision_timeframes": ["4h", "1d"],
+    }
+    btc = [c for c in payload_m["universe"]["candidates"] if c["pair"] == "BTC/USDC"]
+    btc[0]["strategy"] = "synth_signal"  # accumulation sans vente → D3
+    btc[2]["strategy"] = "synth_signal"  # ventes, liquidation absente → D6
+    w = fx.world(tmp_path, payload_m)
+    obs = cc.read_json(w["observations"])
+    signal_keys = [k for k, e in obs.items() if e["strategy"] == "synth_signal"]
+    assert len(signal_keys) == 2
+    acc, sells = obs[signal_keys[0]], obs[signal_keys[1]]
+    acc[fx.PREFIX].update({"total_trades": 101, "winning_trades": 0, "losing_trades": 0})
+    acc["liquidation"] = None
+    sells["liquidation"] = None
+    grid_key = next(
+        k for k, e in obs.items() if e["strategy"] == fx.STRATEGY and e["pair"] == "SOL/USDC"
+    )
+    obs[grid_key]["liquidation"][fx.PREFIX].pop("lots")  # grid, lots absent → D6
+    cc.write_json(w["observations"], obs)
+    assert (
+        ca.main(
+            [
+                "--manifest",
+                str(w["manifest"]),
+                "--registry",
+                str(w["registry"]),
+                "--output",
+                str(w["anchor"]),
+                "--now",
+                fx.NOW,
+            ]
+        )
+        == 0
+    )
+    w["entry"] = tmp_path / "entry.json"
+    assert (
+        ce.main(
+            [
+                "--manifest",
+                str(w["manifest"]),
+                "--anchor",
+                str(w["anchor"]),
+                "--observations",
+                str(w["observations"]),
+                "--coverage",
+                str(w["coverage"]),
+                "--output",
+                str(w["entry"]),
+                "--now",
+                fx.NOW,
+            ]
+        )
+        == 0
+    )
+    w["benchmark"] = tmp_path / "benchmark.json"
+    assert cb.main(_argv(w)) == 0
+    blocks = cc.read_json(w["benchmark"])["candidates"]
+
+    def block_of(key: str) -> dict[str, Any]:
+        e = obs[key]
+        return blocks[cc.candidate_identity(e["strategy"], e["pair"], e["params"])]
+
+    expected = {signal_keys[0]: "D3", signal_keys[1]: "D6", grid_key: "D6"}
+    for key, gate in expected.items():
+        b = block_of(key)
+        assert b["estimable"] is False and b["first_failed"] == gate, (key, b["first_failed"])
+        assert b["delta_dd"] is None and b["delta_sigma"] is None
+        assert b["lambda_dd"] is None and b["lambda_sigma"] is None and b["match_dd"] is None
+    others = [
+        b
+        for k, b in blocks.items()
+        if k
+        not in {
+            cc.candidate_identity(obs[x]["strategy"], obs[x]["pair"], obs[x]["params"])
+            for x in expected
+        }
+    ]
+    assert len(others) == 3 and all(b["estimable"] and b["delta_dd"] is not None for b in others)
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (d) — un non-fini qui atteint la canonicalisation est une violation, jamais un traceback
+# ---------------------------------------------------------------------------
+
+
+def test_revue_R3_nan_dans_les_parametres_est_une_violation_code_1(tmp_path: Path) -> None:
+    w = _chain(tmp_path)
+    obs = cc.read_json(w["observations"])
+    obs[next(iter(obs))]["params"]["nan"] = float("nan")
+    w["observations"].write_text(json.dumps(obs, allow_nan=True), encoding="utf-8")
+    entry = cc.read_json(w["entry"])
+    entry["inputs_sha256"]["observations"] = cc.file_sha256(w["observations"])
+    cc.write_json(w["entry"], entry)
+    assert cb.main(_argv(w)) == 1
+    payload = cc.read_json(w["benchmark"])
+    assert payload["invalide"] is True and any(
+        "non-finite" in v or "non fini" in v for v in payload["violations"]
+    )

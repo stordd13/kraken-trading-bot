@@ -85,16 +85,29 @@ def default_scorer(
 
 
 def d1_for_pair(
-    coverage_pair: Mapping[str, Any], *, prefix_days: float, where: str
+    coverage_pair: Mapping[str, Any],
+    *,
+    start: datetime,
+    end: datetime,
+    prefix_days: float,
+    where: str,
 ) -> dict[str, Any]:
+    """D1 sur les **valeurs recoupées** (`cc.coverage_recompute`, revue R3 b) : `covered_units`
+    est recalculé depuis `missing_stamps` et les bornes ; une contradiction est un refus, jamais
+    un D1 vert par déclaration."""
     gap_max = cc.max_gap_days(prefix_days)
     per_interval: dict[str, Any] = {}
     ok_all = True
     for iv in cc.D1_INTERVALS:
         block = cc.require_mapping(coverage_pair, str(iv), where=where)
         bwhere = f"{where}.{iv}"
-        covered = cc.require_int(block, "covered_units", where=bwhere, minimum=0)
-        expected = cc.require_int(block, "expected_units", where=bwhere, minimum=1)
+        recomputed = cc.coverage_recompute(block, start=start, end=end, interval=iv, where=bwhere)
+        if recomputed["problems"]:
+            raise cc.EntryRefusedError(
+                "R0_INVALID_RUN", "couverture incohérente : " + " ; ".join(recomputed["problems"])
+            )
+        covered = recomputed["covered_recomputed"]
+        expected = recomputed["expected_units_recomputed"]
         gap = cc.require_float(block, "longest_gap_days", where=bwhere)
         ratio = covered / expected
         ok = ratio >= cc.COVERAGE_MIN_RATIO and gap <= gap_max
@@ -111,7 +124,7 @@ def d1_for_pair(
 
 
 # ---------------------------------------------------------------------------
-# § A.8 D6 — la preuve de liquidation costée, identités exactes + preuve par lot
+# § A.8 D6 — la preuve est partagée (`cc.liquidation_identities`) avec la clause 3 de continuité
 # ---------------------------------------------------------------------------
 
 
@@ -124,157 +137,10 @@ def liquidation_proof(
     anchor: datetime,
     where: str,
 ) -> dict[str, Any]:
-    """Identités **exactes** en Decimal (plan § 5.5) et preuve par lot (§ 6.5). Aucun seuil."""
-    checks: dict[str, bool | None] = {}
-    details: list[str] = []
-    reported: dict[str, Any] = {}
-
-    def check(name: str, ok: bool, detail: str) -> None:
-        checks[name] = ok
-        if not ok:
-            details.append(f"{name}: {detail}")
-
-    if block is None:
-        return {
-            "passed": False,
-            "lots_present": False,
-            "checks": {"bloc_present": False},
-            "details": [
-                "bloc `liquidation` absent ou null : liquidation terminale non normalisée (§ B.3)"
-            ],
-            "reported": reported,
-        }
-    positions = cc.require_int(block, "positions", where=where, minimum=0)
-    trades = cc.require_int(block, "trades", where=where, minimum=0)
-    residual_trade = cc.require_decimal(block, "residual_trade_btc", where=where)
-    residual_net = cc.require_decimal(block, "residual_net_proceeds", where=where)
-    fees = cc.require_decimal(block, "fees", where=where)
-    gross = cc.require_decimal(block, "gross_usdc", where=where)
-    unknown = trades - positions
-    check("trades_positions", unknown in (0, 1), f"trades − positions = {unknown}, attendu 0 ou 1")
-    check(
-        "residual_trade_iff_unknown",
-        (residual_trade == ZERO) == (unknown == 0),
-        f"residual_trade_btc {residual_trade} vs lot inconnu {unknown}",
+    """D6 au préfixe : la borne est l'ancrage `T`."""
+    return cc.liquidation_identities(
+        block, spread=spread, slippage=slippage, taker=taker, end=anchor, where=where
     )
-    check(
-        "residual_net_iff_unknown",
-        (residual_net == ZERO) == (unknown == 0),
-        f"residual_net_proceeds {residual_net} vs lot inconnu {unknown}",
-    )
-    reported["dust_written_off_btc"] = str(
-        cc.require_decimal(block, "dust_written_off_btc", where=where)
-    )
-    reported["inventory_divergence_btc"] = str(
-        cc.require_decimal(block, "inventory_divergence_btc", where=where)
-    )
-    reported["net_pnl_lot_basis"] = str(cc.require_decimal(block, "net_pnl_lot_basis", where=where))
-    reported["pnl"] = str(cc.require_decimal(block, "pnl", where=where))
-    if trades > 0:
-        timestamp = cc.nullable_datetime(block, "timestamp", where=where)
-        reference = cc.nullable_decimal(block, "reference_price", where=where)
-        price = cc.nullable_decimal(block, "price", where=where)
-        spread_pct = cc.nullable_decimal(block, "spread_pct", where=where)
-        slippage_pct = cc.nullable_decimal(block, "slippage_pct", where=where)
-        present = None not in (timestamp, reference, price, spread_pct, slippage_pct)
-        check(
-            "prix_presents",
-            present,
-            "timestamp / reference_price / price / spread_pct / slippage_pct requis quand trades > 0",
-        )
-        if present:
-            assert timestamp is not None and reference is not None and price is not None
-            check("spread_pct", spread_pct == spread, f"{spread_pct} != manifeste {spread}")
-            check(
-                "slippage_pct", slippage_pct == slippage, f"{slippage_pct} != manifeste {slippage}"
-            )
-            expected_price = reference * (ONE - spread - slippage)
-            check(
-                "price_identity",
-                price == expected_price,
-                f"price {price} != reference × (1 − spread − slippage) = {expected_price}",
-            )
-            check(
-                "timestamp_le_T",
-                timestamp <= anchor,
-                f"{timestamp.isoformat()} > T {anchor.isoformat()}",
-            )
-        check("gross_positive", gross > ZERO, f"gross_usdc {gross} <= 0 avec trades > 0")
-        check(
-            "fees_positive",
-            fees > ZERO,
-            f"fees {fees} <= 0 avec trades > 0 — le taker n'a pas été prélevé",
-        )
-    else:
-        check(
-            "etat_sans_trade",
-            positions == 0 and fees == ZERO and gross == ZERO,
-            f"positions {positions}, fees {fees}, gross {gross} avec trades = 0",
-        )
-    lots = cc.optional_sequence(block, "lots", where=where)
-    if lots is None:
-        checks["lots_present"] = False
-        details.append(
-            "lots absent : la magnitude du taker est indécidable sur l'export agrégé — D6 non vérifié (exigence C3b : export des lots)"
-        )
-        return {
-            "passed": False,
-            "lots_present": False,
-            "checks": checks,
-            "details": details,
-            "reported": reported,
-        }
-    checks["lots_present"] = True
-    fee_sum = ZERO
-    gross_sum = ZERO
-    known = 0
-    unknown_amount = ZERO
-    lots_ok = True
-    for i, lot in enumerate(lots):
-        lwhere = f"{where}.lots[{i}]"
-        if not isinstance(lot, Mapping):
-            raise cc.MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
-        gross_i = cc.require_decimal(lot, "gross_usdc", where=lwhere)
-        fee_i = cc.require_decimal(lot, "fee", where=lwhere)
-        amount_i = cc.require_decimal(lot, "amount_btc", where=lwhere)
-        entry_price = cc.nullable_decimal(lot, "entry_price", where=lwhere)
-        pnl = cc.nullable_decimal(lot, "pnl", where=lwhere)
-        expected_fee = gross_i * taker
-        if fee_i != expected_fee:
-            lots_ok = False
-            details.append(f"lot[{i}]: fee {fee_i} != gross × taker = {expected_fee}")
-        if gross_i <= ZERO or fee_i <= ZERO:
-            lots_ok = False
-            details.append(f"lot[{i}]: gross {gross_i} ou fee {fee_i} non strictement positif")
-        if (entry_price is None) != (pnl is None):
-            lots_ok = False
-            details.append(
-                f"lot[{i}]: entry_price et pnl doivent être nuls ensemble (lot à coût inconnu)"
-            )
-        if entry_price is None:
-            unknown_amount += amount_i
-        else:
-            known += 1
-        fee_sum += fee_i
-        gross_sum += gross_i
-    check("lots_identites", lots_ok, "au moins un lot contredit fee = gross × taker")
-    check("lots_fees_sum", fee_sum == fees, f"Σ fee_i {fee_sum} != fees {fees}")
-    check("lots_gross_sum", gross_sum == gross, f"Σ gross_i {gross_sum} != gross_usdc {gross}")
-    check("lots_count", len(lots) == trades, f"{len(lots)} lots != trades {trades}")
-    check("lots_known", known == positions, f"{known} lots à coût connu != positions {positions}")
-    check(
-        "lots_unknown_amount",
-        unknown_amount == residual_trade,
-        f"Σ amount des lots inconnus {unknown_amount} != residual_trade_btc {residual_trade}",
-    )
-    passed = all(v for v in checks.values() if v is not None)
-    return {
-        "passed": passed,
-        "lots_present": True,
-        "checks": checks,
-        "details": details,
-        "reported": reported,
-    }
 
 
 # ---------------------------------------------------------------------------
@@ -459,30 +325,19 @@ def evaluate_candidate(
         if not insufficient
         else f"séries insuffisantes au début du préfixe : {', '.join(insufficient)}"
     )
-    # D3 — cycles selon le moteur déclaré.
+    # D3 — cycles selon le moteur déclaré (helper partagé avec c3_benchmark).
     engine = manifest.engines[candidate.strategy]
     liquidation = cc.optional_mapping(projection, "liquidation", where=where)
-    cycles: int | None = None
-    if engine == "grid":
-        if liquidation is None:
-            record.clause_details["D3"] = (
-                "moteur grid sans bloc liquidation : cycles non calculables"
-            )
-        else:
-            cycles = total_trades - cc.require_int(
-                liquidation, "positions", where=f"{where}.liquidation", minimum=0
-            )
-    elif winning + losing == 0 and total_trades > 0:
-        record.clause_details["D3"] = (
-            "stratégie d'accumulation sans aucune vente : D3 inapplicable, aucun nombre de substitution (§ A.8 D3)"
-        )
-    else:
-        cycles = total_trades
-    record.clauses["D3"] = cycles is not None and cycles >= cc.CYCLES_MIN
-    if cycles is not None:
-        record.clause_details["D3"] = (
-            f"cycles achevés {cycles} {'>=' if cycles >= cc.CYCLES_MIN else '<'} {cc.CYCLES_MIN}"
-        )
+    cycles, d3_detail = cc.clause_d3(
+        engine,
+        total_trades=total_trades,
+        winning=winning,
+        losing=losing,
+        liquidation=liquidation,
+        where=f"{where}.liquidation",
+    )
+    record.clauses["D3"] = cc.d3_passes(cycles)
+    record.clause_details["D3"] = d3_detail
     # D4 — rendements dérivés définis, dénominateurs non nuls.
     record.clauses["D4"] = rec.domain_ok
     record.clause_details["D4"] = (
@@ -648,6 +503,8 @@ def run_selection(
     for pair in manifest.pairs:
         d1 = d1_for_pair(
             cc.require_mapping(coverage_pairs, pair, where="coverage.pairs"),
+            start=manifest.window_start,
+            end=anchor,
             prefix_days=prefix_days,
             where=f"coverage.pairs.{pair}",
         )

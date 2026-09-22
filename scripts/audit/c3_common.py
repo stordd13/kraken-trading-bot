@@ -22,6 +22,7 @@ Exit codes des scripts qui l'importent : 0 ok, 1 violation, 2 usage ou entrée i
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -1340,3 +1341,333 @@ def coverage_unit(interval: int) -> str:
 def max_gap_days(prefix_days: float) -> float:
     """`min(31 j, 3 % des jours du préfixe)` (§ A.8 D1)."""
     return min(float(MAX_GAP_DAYS_ABS), MAX_GAP_RATIO * prefix_days)
+
+
+def expected_candles(start: datetime, end: datetime, interval: int) -> int:
+    """Estampilles de la série `interval` dans `(start, end]` — le compte de bougies attendu."""
+    if interval == WEEK_MINUTES:
+        return weekly_stamps_in(start, end)
+    first = first_stamp_strictly_after(start, interval)
+    if first > end:
+        return 0
+    return int((end - first).total_seconds() // (interval * 60)) + 1
+
+
+def unit_day_of(stamp: datetime, interval: int) -> Any:
+    """Le jour civil qu'une bougie **estampillée en fin de période** couvre : celui de `stamp − intervalle`."""
+    return (stamp - timedelta(minutes=interval)).date()
+
+
+def coverage_recompute(
+    block: Mapping[str, Any], *, start: datetime, end: datetime, interval: int, where: str
+) -> dict[str, Any]:
+    """Recoupe un bloc de couverture (§ A.7) **avant** que D1 le consomme (plan R3, correctif b).
+
+    Tout ce qui est dérivable des `missing_stamps` et des bornes est recalculé et comparé au
+    déclaré : le compte de bougies attendu, le compte observé, et surtout `covered_units` — par la
+    règle de D1 propre à chaque série (1 j : jour présent ; 4 h : les six estampilles ; 5 min :
+    au moins 144 bougies ; 1 w : période présente). Une contradiction est un **problème de
+    couverture**, jamais un D1 vert. Les compteurs sont aussi recoupés entre eux (`observed <=
+    expected`, `observed == 0 ⟹ covered == 0`) et les jours de bord contre la fenêtre.
+    """
+    problems: list[str] = []
+    expected = require_int(block, "expected", where=where, minimum=0)
+    observed = require_int(block, "observed", where=where, minimum=0)
+    covered = require_int(block, "covered_units", where=where, minimum=0)
+    expected_units_declared = require_int(block, "expected_units", where=where, minimum=1)
+    missing_raw = require_sequence(block, "missing_stamps", where=where)
+    stamps: list[datetime] = []
+    for i, item in enumerate(missing_raw):
+        stamp = parse_datetime(item, where=f"{where}.missing_stamps[{i}]")
+        if not (start < stamp <= end):
+            problems.append(f"{where}.missing_stamps[{i}]: {stamp.isoformat()} hors de (début, T]")
+        if last_stamp_at_or_before(stamp, interval) != stamp:
+            problems.append(
+                f"{where}.missing_stamps[{i}]: {stamp.isoformat()} n'est pas une estampille de la série {interval}"
+            )
+        stamps.append(stamp)
+    if len(set(stamps)) != len(stamps):
+        problems.append(f"{where}.missing_stamps: doublon")
+    expected_recomputed = expected_candles(start, end, interval)
+    if expected != expected_recomputed:
+        problems.append(
+            f"{where}.expected: {expected} != {expected_recomputed} recalculé depuis les bornes"
+        )
+    observed_recomputed = expected_recomputed - len(stamps)
+    if observed != observed_recomputed:
+        problems.append(
+            f"{where}.observed: {observed} != {observed_recomputed} = attendu − estampilles manquantes"
+        )
+    if observed > expected:
+        problems.append(f"{where}.observed: {observed} > expected {expected}")
+    units_recomputed = expected_units(start, end, interval)
+    if expected_units_declared != units_recomputed:
+        problems.append(
+            f"{where}.expected_units: {expected_units_declared} != {units_recomputed} recalculé depuis les bornes"
+        )
+    if interval == WEEK_MINUTES:
+        covered_recomputed = units_recomputed - len(stamps)
+    else:
+        first_full = start.replace(hour=0, minute=0, second=0, microsecond=0)
+        if first_full < start:
+            first_full += timedelta(days=1)
+        full_days = {(first_full + timedelta(days=k)).date() for k in range(units_recomputed)}
+        per_day = Counter(unit_day_of(stamp, interval) for stamp in stamps)
+        if interval == 5:
+            uncovered = {
+                d
+                for d, n in per_day.items()
+                if d in full_days and DAY_5M_EXPECTED - n < DAY_5M_MIN_CANDLES
+            }
+        else:
+            uncovered = {d for d in per_day if d in full_days}
+        covered_recomputed = units_recomputed - len(uncovered)
+    if covered != covered_recomputed:
+        problems.append(
+            f"{where}.covered_units: {covered} != {covered_recomputed} recalculé depuis missing_stamps"
+        )
+    if observed == 0 and covered != 0:
+        problems.append(f"{where}: observed == 0 mais covered_units == {covered}")
+    first_day = require_str(block, "first_day", where=where)
+    last_day = require_str(block, "last_day", where=where)
+    try:
+        first_d = datetime.fromisoformat(first_day).date()
+        last_d = datetime.fromisoformat(last_day).date()
+    except ValueError:
+        problems.append(
+            f"{where}.first_day/last_day: dates illisibles ({first_day!r}, {last_day!r})"
+        )
+    else:
+        if not (start.date() <= first_d <= last_d <= end.date()):
+            problems.append(
+                f"{where}.first_day/last_day: [{first_day}, {last_day}] hors de la fenêtre ou inversés"
+            )
+    return {
+        "expected_recomputed": expected_recomputed,
+        "observed_recomputed": observed_recomputed,
+        "covered_recomputed": covered_recomputed,
+        "expected_units_recomputed": units_recomputed,
+        "n_missing": len(stamps),
+        "problems": problems,
+    }
+
+
+# ---------------------------------------------------------------------------
+# § A.8 D3 et D6 — règles partagées par c3_benchmark, c3_select et c3_continuity
+# ---------------------------------------------------------------------------
+
+
+def clause_d3(
+    engine: str,
+    *,
+    total_trades: int,
+    winning: int,
+    losing: int,
+    liquidation: Mapping[str, Any] | None,
+    where: str,
+) -> tuple[int | None, str]:
+    """`(cycles, détail)` selon le moteur déclaré (§ A.8 D3) ; `None` = non calculable ou inapplicable."""
+    if engine == "grid":
+        if liquidation is None:
+            return None, "moteur grid sans bloc liquidation : cycles non calculables"
+        cycles = total_trades - require_int(liquidation, "positions", where=where, minimum=0)
+    elif winning + losing == 0 and total_trades > 0:
+        return (
+            None,
+            "stratégie d'accumulation sans aucune vente : D3 inapplicable, aucun nombre de substitution (§ A.8 D3)",
+        )
+    else:
+        cycles = total_trades
+    return cycles, f"cycles achevés {cycles} {'>=' if cycles >= CYCLES_MIN else '<'} {CYCLES_MIN}"
+
+
+def d3_passes(cycles: int | None) -> bool:
+    return cycles is not None and cycles >= CYCLES_MIN
+
+
+def liquidation_identities(
+    block: Mapping[str, Any] | None,
+    *,
+    spread: Decimal,
+    slippage: Decimal,
+    taker: Decimal,
+    end: datetime,
+    where: str,
+) -> dict[str, Any]:
+    """D6 — identités **exactes** en Decimal (plan § 5.5) et preuve par lot (§ 6.5, revue R3 a).
+
+    Par lot : `amount_i > 0`, `gross_i == amount_i × price` (le prix du bloc — un seul prix de
+    liquidation, `backtest.py:3104`), `fee_i == gross_i × taker` (`:3105`), `entry_price` et `pnl`
+    nuls ensemble ; agrégats : Σ fee = fees, Σ gross = gross_usdc, nombre de lots = trades, lots à
+    coût connu = positions, Σ amount des lots inconnus = residual_trade_btc. `lots` absent ⇒ la
+    magnitude du taker est indécidable ⇒ non vérifié. Aucun seuil. Partagé par la sélection (D6 au
+    préfixe) et la continuité (clause 3 à l'évaluation).
+    """
+    zero = Decimal(0)
+    one = Decimal(1)
+    checks: dict[str, bool | None] = {}
+    details: list[str] = []
+    reported: dict[str, Any] = {}
+
+    def check(name: str, ok: bool, detail: str) -> None:
+        checks[name] = ok
+        if not ok:
+            details.append(f"{name}: {detail}")
+
+    if block is None:
+        return {
+            "passed": False,
+            "lots_present": False,
+            "checks": {"bloc_present": False},
+            "details": [
+                "bloc `liquidation` absent ou null : liquidation terminale non normalisée (§ B.3)"
+            ],
+            "reported": reported,
+        }
+    positions = require_int(block, "positions", where=where, minimum=0)
+    trades = require_int(block, "trades", where=where, minimum=0)
+    residual_trade = require_decimal(block, "residual_trade_btc", where=where)
+    residual_net = require_decimal(block, "residual_net_proceeds", where=where)
+    fees = require_decimal(block, "fees", where=where)
+    gross = require_decimal(block, "gross_usdc", where=where)
+    unknown = trades - positions
+    check("trades_positions", unknown in (0, 1), f"trades − positions = {unknown}, attendu 0 ou 1")
+    check(
+        "residual_trade_iff_unknown",
+        (residual_trade == zero) == (unknown == 0),
+        f"residual_trade_btc {residual_trade} vs lot inconnu {unknown}",
+    )
+    check(
+        "residual_net_iff_unknown",
+        (residual_net == zero) == (unknown == 0),
+        f"residual_net_proceeds {residual_net} vs lot inconnu {unknown}",
+    )
+    reported["dust_written_off_btc"] = str(
+        require_decimal(block, "dust_written_off_btc", where=where)
+    )
+    reported["inventory_divergence_btc"] = str(
+        require_decimal(block, "inventory_divergence_btc", where=where)
+    )
+    reported["net_pnl_lot_basis"] = str(require_decimal(block, "net_pnl_lot_basis", where=where))
+    reported["pnl"] = str(require_decimal(block, "pnl", where=where))
+    price: Decimal | None = None
+    if trades > 0:
+        timestamp = nullable_datetime(block, "timestamp", where=where)
+        reference = nullable_decimal(block, "reference_price", where=where)
+        price = nullable_decimal(block, "price", where=where)
+        spread_pct = nullable_decimal(block, "spread_pct", where=where)
+        slippage_pct = nullable_decimal(block, "slippage_pct", where=where)
+        present = None not in (timestamp, reference, price, spread_pct, slippage_pct)
+        check(
+            "prix_presents",
+            present,
+            "timestamp / reference_price / price / spread_pct / slippage_pct requis quand trades > 0",
+        )
+        if present:
+            assert timestamp is not None and reference is not None and price is not None
+            check("spread_pct", spread_pct == spread, f"{spread_pct} != manifeste {spread}")
+            check(
+                "slippage_pct", slippage_pct == slippage, f"{slippage_pct} != manifeste {slippage}"
+            )
+            expected_price = reference * (one - spread - slippage)
+            check(
+                "price_identity",
+                price == expected_price,
+                f"price {price} != reference × (1 − spread − slippage) = {expected_price}",
+            )
+            check(
+                "timestamp_le_borne",
+                timestamp <= end,
+                f"{timestamp.isoformat()} > borne {end.isoformat()}",
+            )
+        check("gross_positive", gross > zero, f"gross_usdc {gross} <= 0 avec trades > 0")
+        check(
+            "fees_positive",
+            fees > zero,
+            f"fees {fees} <= 0 avec trades > 0 — le taker n'a pas été prélevé",
+        )
+    else:
+        check(
+            "etat_sans_trade",
+            positions == 0 and fees == zero and gross == zero,
+            f"positions {positions}, fees {fees}, gross {gross} avec trades = 0",
+        )
+    lots = optional_sequence(block, "lots", where=where)
+    if lots is None:
+        checks["lots_present"] = False
+        details.append(
+            "lots absent : la magnitude du taker est indécidable sur l'export agrégé — D6 non vérifié (exigence C3b : export des lots)"
+        )
+        return {
+            "passed": False,
+            "lots_present": False,
+            "checks": checks,
+            "details": details,
+            "reported": reported,
+        }
+    checks["lots_present"] = True
+    fee_sum = zero
+    gross_sum = zero
+    known = 0
+    unknown_amount = zero
+    lots_ok = True
+    for i, lot in enumerate(lots):
+        lwhere = f"{where}.lots[{i}]"
+        if not isinstance(lot, Mapping):
+            raise MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
+        gross_i = require_decimal(lot, "gross_usdc", where=lwhere)
+        fee_i = require_decimal(lot, "fee", where=lwhere)
+        amount_i = require_decimal(lot, "amount_btc", where=lwhere)
+        entry_price = nullable_decimal(lot, "entry_price", where=lwhere)
+        pnl = nullable_decimal(lot, "pnl", where=lwhere)
+        if amount_i <= zero:
+            lots_ok = False
+            details.append(f"lot[{i}]: amount_btc {amount_i} non strictement positif")
+        if price is None:
+            lots_ok = False
+            details.append(
+                f"lot[{i}]: aucun prix de liquidation dans le bloc pour vérifier gross = amount × price"
+            )
+        elif gross_i != amount_i * price:
+            lots_ok = False
+            details.append(f"lot[{i}]: gross_usdc {gross_i} != amount × price = {amount_i * price}")
+        expected_fee = gross_i * taker
+        if fee_i != expected_fee:
+            lots_ok = False
+            details.append(f"lot[{i}]: fee {fee_i} != gross × taker = {expected_fee}")
+        if gross_i <= zero or fee_i <= zero:
+            lots_ok = False
+            details.append(f"lot[{i}]: gross {gross_i} ou fee {fee_i} non strictement positif")
+        if (entry_price is None) != (pnl is None):
+            lots_ok = False
+            details.append(
+                f"lot[{i}]: entry_price et pnl doivent être nuls ensemble (lot à coût inconnu)"
+            )
+        if entry_price is None:
+            unknown_amount += amount_i
+        else:
+            known += 1
+        fee_sum += fee_i
+        gross_sum += gross_i
+    check(
+        "lots_identites",
+        lots_ok,
+        "au moins un lot contredit amount > 0, gross = amount × price ou fee = gross × taker",
+    )
+    check("lots_fees_sum", fee_sum == fees, f"Σ fee_i {fee_sum} != fees {fees}")
+    check("lots_gross_sum", gross_sum == gross, f"Σ gross_i {gross_sum} != gross_usdc {gross}")
+    check("lots_count", len(lots) == trades, f"{len(lots)} lots != trades {trades}")
+    check("lots_known", known == positions, f"{known} lots à coût connu != positions {positions}")
+    check(
+        "lots_unknown_amount",
+        unknown_amount == residual_trade,
+        f"Σ amount des lots inconnus {unknown_amount} != residual_trade_btc {residual_trade}",
+    )
+    passed = all(v for v in checks.values() if v is not None)
+    return {
+        "passed": passed,
+        "lots_present": True,
+        "checks": checks,
+        "details": details,
+        "reported": reported,
+    }

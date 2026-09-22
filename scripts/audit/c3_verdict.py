@@ -463,8 +463,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         # § I.1 — preuve obligatoire absente, nulle, mal typée ou hors liste close : code 2.
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
         return 2
-    except cc.InvalidValueError as exc:
+    except (cc.InvalidValueError, cc.NonFiniteValueError) as exc:
         # § F.7 -> § I.1, ligne 15 — non-finitude ou domaine : violation, code 1, diagnostic écrit.
+        # `NonFiniteValueError` (levée par `canon`) n'est pas une `InvalidValueError` : routée ici
+        # explicitement, comme dans les quatre autres modules (revue R3 d).
         violations.append(str(exc))
 
     if violations:
