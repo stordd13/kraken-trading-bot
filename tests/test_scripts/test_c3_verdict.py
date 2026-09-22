@@ -480,7 +480,7 @@ _REFUSAL_D2 = {
 
 def test_entry_refusee_D_WARMUP_PREFIX_porte_sa_raison_et_sort_2(tmp_path: Path) -> None:
     artifacts = _sound()
-    artifacts["entry"].update({"ok": False, "refusal": _REFUSAL_D2})
+    artifacts["entry"].update({"ok": False, "exit_code": 2, "refusal": _REFUSAL_D2})
     with pytest.raises(cc.EntryRefusedError) as info:
         cv.decide(artifacts, violations=[])
     assert info.value.reason == "D_WARMUP_PREFIX"
@@ -1114,7 +1114,7 @@ TABLE_I1 = [
     pytest.param(1, lambda a: None, cc.ISSUE_VALIDE, None, 0, True, True, id="L1 entrée conforme"),
     pytest.param(
         2,
-        lambda a: a["entry"].update({"ok": False, "refusal": _REFUSAL_R0}),
+        lambda a: a["entry"].update({"ok": False, "exit_code": 2, "refusal": _REFUSAL_R0}),
         None,
         "R0_INVALID_RUN",
         2,
@@ -1423,7 +1423,7 @@ def test_la_cli_ecrit_la_chaine_synthetique_les_empreintes_et_la_portee(
     assert payload["synthetic"] is True and payload["portee"] == cv.PORTEE_SYNTH
     assert payload["chain"]["mode"] == "verdict" and payload["chain"]["verified"] is True
     assert (
-        all(c["ok"] for c in payload["chain"]["checks"]) and len(payload["chain"]["checks"]) == 13
+        all(c["ok"] for c in payload["chain"]["checks"]) and len(payload["chain"]["checks"]) == 17
     )
     out = capsys.readouterr().out.splitlines()
     assert out[0] == f"PORTEE : {cv.PORTEE_SYNTH}"
@@ -1573,7 +1573,10 @@ def _raws_and_paths(
 def test_verify_chain_passe_sur_une_chaine_coherente(tmp_path: Path) -> None:
     raws, paths = _raws_and_paths(tmp_path, _sound())
     violations, checks = cv.verify_chain(raws, paths)
-    assert violations == [] and len(checks) == 13 and all(c["ok"] for c in checks)
+    assert violations == [] and len(checks) == 17 and all(c["ok"] for c in checks)
+    assert [c["check"] for c in checks[:4]] == [
+        f"{n}.coherence" for n in ("entry", "anchor", "selection", "continuity")
+    ]
 
 
 @pytest.mark.parametrize(
@@ -1625,19 +1628,23 @@ def test_un_protocole_different_dans_un_amont_est_une_violation(tmp_path: Path) 
 @pytest.mark.parametrize("artifact", ["anchor", "selection", "continuity"])
 @pytest.mark.parametrize(
     "failure",
-    [{"ok": False}, {"invalide": True}, {"exit_code": 1}],
-    ids=["ok_faux", "invalide", "exit_code_1"],
+    [
+        {"ok": False, "invalide": True, "exit_code": 1},
+        {"ok": False, "invalide": False, "exit_code": 2},
+    ],
+    ids=["diagnostic_coherent", "refus_coherent"],
 )
-def test_un_amont_en_echec_enregistre_est_un_refus_rien_ecrit(
+def test_un_amont_en_echec_enregistre_coherent_est_un_refus_rien_ecrit(
     tmp_path: Path, artifact: str, failure: dict[str, Any]
 ) -> None:
+    """Un échec amont **cohérent** garde son traitement : refus 2, rien d'écrit (revue Fin 4)."""
     artifacts = _sound()
     artifacts[artifact].update(failure)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
     assert not (tmp_path / "verdict.json").exists()
 
 
-def test_une_entree_diagnostic_invalide_est_un_refus(tmp_path: Path) -> None:
+def test_une_entree_diagnostic_invalide_coherente_est_un_refus(tmp_path: Path) -> None:
     artifacts = _sound()
     artifacts["entry"].update({"invalide": True, "exit_code": 1, "ok": False})
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
@@ -2509,3 +2516,109 @@ def test_revue_Fin_3_chain_fenetre_2000_2001_ne_valide_jamais(tmp_path: Path) ->
     payload = cc.read_json(w["out"] / "verdict.json")
     assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "E_NO_BENCHMARK"
     assert payload["verdict"] != cc.ISSUE_VALIDE
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (4) — contrat de cohérence interne de chaque amont dans verify_chain
+# ---------------------------------------------------------------------------
+
+
+def test_revue_Fin_4_entry_ok_vrai_sans_refus_avec_exit_code_2_est_une_violation_jamais_valide(
+    tmp_path: Path,
+) -> None:
+    """Reproduction d'Astra : `ok=true, refusal=null, exit_code=2` — trois champs qui ne peuvent
+    pas venir du même run ; jamais « validé », jamais `chain.verified=true`."""
+    artifacts = _sound()
+    artifacts["entry"].update({"ok": True, "refusal": None, "exit_code": 2})
+    raws, paths = _raws_and_paths(tmp_path, artifacts)
+    violations, checks = cv.verify_chain(raws, paths)
+    assert any("entry" in v and "exit_code" in v for v in violations), violations
+    assert any(c["check"] == "entry.coherence" and c["ok"] is False for c in checks)
+    assert cv.main(_write_cli_inputs(tmp_path / "cli", artifacts)) == 1
+    payload = cc.read_json(tmp_path / "cli" / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+    assert payload["chain"]["verified"] is False
+
+
+@pytest.mark.parametrize("artifact", ["anchor", "selection", "continuity"])
+@pytest.mark.parametrize(
+    "contradiction",
+    [
+        {"ok": True, "exit_code": 1},
+        {"ok": True, "exit_code": 2},
+        {"ok": True, "invalide": True, "exit_code": 0},
+        {"ok": False, "exit_code": 0},
+        {"ok": False, "invalide": True, "exit_code": 2},
+    ],
+    ids=["ok_exit1", "ok_exit2", "ok_invalide_exit0", "ko_exit0", "invalide_exit2"],
+)
+def test_revue_Fin_4_amont_incoherent_est_une_violation_code_1(
+    tmp_path: Path, artifact: str, contradiction: dict[str, Any]
+) -> None:
+    artifacts = _sound()
+    artifacts[artifact].update(contradiction)
+    raws, paths = _raws_and_paths(tmp_path, artifacts)
+    violations, checks = cv.verify_chain(raws, paths)
+    assert any(v.startswith(f"chaîne : {artifact}.coherence") for v in violations), violations
+    assert cv.main(_write_cli_inputs(tmp_path / "cli", artifacts)) == 1
+    payload = cc.read_json(tmp_path / "cli" / "verdict.json")
+    assert payload["invalide"] is True and payload["chain"]["verified"] is False
+
+
+@pytest.mark.parametrize(
+    "contradiction",
+    [
+        {
+            "ok": False,
+            "exit_code": 0,
+            "refusal": {
+                "scope": "run",
+                "reason": "R0_INVALID_RUN",
+                "assertion": "I-A.0",
+                "detail": "x",
+            },
+        },
+        {"ok": False, "invalide": False, "exit_code": 2, "refusal": None},
+        {"ok": True, "exit_code": 0, "invalide": True},
+    ],
+    ids=["refus_exit0", "exit2_sans_refus", "ok_invalide"],
+)
+def test_revue_Fin_4_entry_incoherente_est_une_violation_jamais_un_refus(
+    tmp_path: Path, contradiction: dict[str, Any]
+) -> None:
+    artifacts = _sound()
+    artifacts["entry"].update(contradiction)
+    code = cv.main(_write_cli_inputs(tmp_path, artifacts))
+    assert code == 1, "une contradiction interne est une violation, pas un refus silencieux"
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["chain"]["verified"] is False
+    assert any("entry.coherence" in v for v in payload["violations"])
+
+
+def test_revue_Fin_4_un_refus_d_entree_coherent_garde_son_traitement(tmp_path: Path) -> None:
+    artifacts = _sound()
+    artifacts["entry"].update(
+        {
+            "ok": False,
+            "invalide": False,
+            "exit_code": 2,
+            "refusal": {
+                "scope": "artefact",
+                "reason": "D_WARMUP_PREFIX",
+                "assertion": "I-A.8",
+                "detail": "D2",
+            },
+        }
+    )
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+@pytest.mark.parametrize("artifact", ["entry", "anchor", "selection", "continuity"])
+def test_revue_Fin_4_exit_code_hors_liste_close_est_une_erreur_d_entree(
+    tmp_path: Path, artifact: str
+) -> None:
+    artifacts = _sound()
+    artifacts[artifact]["exit_code"] = 3
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()

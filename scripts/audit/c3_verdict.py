@@ -579,24 +579,50 @@ def build_verdict_string(
 # ---------------------------------------------------------------------------
 
 
+def artifact_coherence(artifact: Mapping[str, Any], *, where: str) -> list[str]:
+    """Le contrat interne d'une enveloppe `c3_*` (``cc.envelope``) : ``ok ⟺ exit_code == 0``,
+    ``invalide ⟺ exit_code == 1`` ; pour ``entry`` (qui écrit toujours) : ``exit_code == 2 ⟹ refus
+    porté`` et ``refus porté ⟹ exit_code ≠ 0`` (un refus peut coexister avec une violation, code 1 —
+    `c3_entry.main`). ``exit_code`` hors de {0, 1, 2} est hors liste close : erreur d'entrée.
+    Renvoie les contradictions ; elles sont des violations (revue Fin, défaut 4)."""
+    ok = cc.require_bool(artifact, "ok", where=where)
+    invalide = cc.require_bool(artifact, "invalide", where=where)
+    code = cc.require_int(artifact, "exit_code", where=where, minimum=0)
+    if code not in (0, 1, 2):
+        raise cc.MissingEvidenceError(f"{where}.exit_code: {code} hors liste close (0, 1, 2)")
+    problems: list[str] = []
+    if ok != (code == 0):
+        problems.append(f"{where}: ok={ok} avec exit_code={code} (ok ⟺ exit_code == 0)")
+    if invalide != (code == 1):
+        problems.append(
+            f"{where}: invalide={invalide} avec exit_code={code} (invalide ⟺ exit_code == 1)"
+        )
+    if where == "entry":
+        refusal = cc.nullable_mapping(artifact, "refusal", where=where)
+        if code == 2 and refusal is None:
+            problems.append(f"{where}: exit_code=2 sans bloc refusal (refus ⟺ exit_code == 2)")
+        if refusal is not None and code == 0:
+            problems.append(
+                f"{where}: refusal porté avec exit_code=0 (un refus n'est jamais un succès)"
+            )
+    return problems
+
+
 def verify_chain(
     raws: Mapping[str, Mapping[str, Any]], paths: Mapping[str, Path]
 ) -> tuple[list[str], list[dict[str, Any]]]:
     """Exige le succès enregistré de chaque amont (sinon refus, code 2) et recoupe les empreintes
     entre elles et avec les fichiers fournis (discordance = violation, code 1).
 
+    Cohérence interne d'abord (``artifact_coherence``, revue Fin 4) : une contradiction entre ``ok``,
+    ``invalide``, ``exit_code`` (et ``refusal`` pour entry) est une violation, code 1 ; un échec
+    amont **cohérent** reste un refus, code 2.
+
     Recoupements : ``manifest`` identique entre anchor, entry, selection et continuity ;
     ``observations`` identique entre entry et selection ; ``anchor.json`` tel que consommé par entry,
     selection et continuity ; ``entry.json`` tel que consommé par selection ; ``evaluation.json`` tel
     que consommé par continuity ; ``protocole.sha256`` identique partout et égal au courant.
     """
-    for name in ("anchor", "selection", "continuity"):
-        cc.require_upstream_ok(raws[name], where=name)
-    entry = raws["entry"]
-    if cc.require_bool(entry, "invalide", where="entry"):
-        raise cc.EntryRefusedError(
-            "R0_INVALID_RUN", "entry.json est l'artefact diagnostic d'une violation (invalide)"
-        )
     checks: list[dict[str, Any]] = []
     violations: list[str] = []
 
@@ -604,6 +630,26 @@ def verify_chain(
         checks.append({"check": name, "ok": ok, "detail": detail})
         if not ok:
             violations.append(f"chaîne : {name} — {detail}")
+
+    # Revue Fin (4) — cohérence interne de chaque amont, **avant** d'en lire le succès : trois
+    # champs qui ne peuvent pas venir du même run sont une violation, jamais un refus silencieux.
+    coherent: dict[str, bool] = {}
+    for name in ("entry", "anchor", "selection", "continuity"):
+        problems = artifact_coherence(raws[name], where=name)
+        coherent[name] = not problems
+        record(
+            f"{name}.coherence",
+            not problems,
+            " ; ".join(problems) or "ok ⟺ exit 0, invalide ⟺ exit 1, refus ⟺ exit 2",
+        )
+    for name in ("anchor", "selection", "continuity"):
+        if coherent[name]:
+            cc.require_upstream_ok(raws[name], where=name)
+    entry = raws["entry"]
+    if coherent["entry"] and cc.require_bool(entry, "invalide", where="entry"):
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN", "entry.json est l'artefact diagnostic d'une violation (invalide)"
+        )
 
     def stated(name: str, key: str) -> str:
         recorded = cc.require_mapping(raws[name], "inputs_sha256", where=name)
