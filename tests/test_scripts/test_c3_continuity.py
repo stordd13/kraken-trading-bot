@@ -497,3 +497,35 @@ def test_revue_Fin_3_fenetre_du_comparateur_absente_ou_mal_typee_est_une_erreur_
         w2["benchmark_eval"], fx.benchmark_eval(window={"start": "hier", "end": "demain"})
     )
     assert _run(w2)[0] == 2
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (5) — conjonctions : lire et typer tout, conjoindre ensuite
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "tests",
+    [
+        {"entry_stamp_present": False},
+        {"entry_stamp_present": True, "exit_stamp_present": False},
+        {
+            "entry_stamp_present": True,
+            "exit_stamp_present": True,
+            "ff_ok": False,
+            "n_returns_ok": True,
+        },
+    ],
+    ids=["premier_faux_reste_absent", "deuxieme_faux_reste_absent", "all_finite_absent"],
+)
+def test_revue_Fin_5_une_cle_absente_derriere_un_test_faux_est_une_erreur_d_entree(
+    tmp_path: Path, tests: dict[str, bool]
+) -> None:
+    """Un `all()` paresseux court-circuite avant la clé absente et transforme une preuve
+    manquante (code 2) en comparateur FAILED (code 0)."""
+    w = _world(tmp_path)
+    bench = fx.benchmark_eval(comparable=False)
+    bench["comparability"] = tests
+    cc.write_json(w["benchmark_eval"], bench)
+    code, payload = _run(w)
+    assert code == 2 and payload is None, "clé de comparabilité absente : 2, rien d'écrit"

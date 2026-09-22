@@ -448,12 +448,11 @@ def candidate_block(
         "match_dd": None,
         "match_sigma": None,
     }
-    if not pair_benchmark.comparable:
-        block.update({"first_failed": "benchmark", "reason": "E_NO_BENCHMARK"})
-        return block, rec.mdd_daily
     # Revue R3 (c) : aucun score décisionnel pour un candidat inadmissible — D3 et D6 sont
     # pré-contrôlés avec les **mêmes règles** que c3_select (helpers partagés de c3_common), à
     # côté de D4 ; le candidat est consigné avec son premier gate, les autres continuent.
+    # Revue Fin (5) : **tout est lu et typé avant le premier pré-contrôle** — un retour anticipé
+    # (« pas de comparateur », « D3 en échec ») ne laisse aucune clé obligatoire non lue.
     metrics = cc.require_mapping(projection, "metrics", where=where)
     liquidation = cc.optional_mapping(projection, "liquidation", where=where)
     cycles, _ = cc.clause_d3(
@@ -464,12 +463,6 @@ def candidate_block(
         liquidation=liquidation,
         where=f"{where}.liquidation",
     )
-    if not cc.d3_passes(cycles):
-        block.update({"first_failed": "D3", "reason": "C_COVERAGE"})
-        return block, rec.mdd_daily
-    if not rec.domain_ok or rec.sigma_daily is None or rec.cagr_pct is None:
-        block.update({"first_failed": "D4", "reason": "F_NOT_ESTIMABLE"})
-        return block, rec.mdd_daily
     spread, slippage = manifest.pair_costs[candidate.pair]
     proof = cc.liquidation_identities(
         liquidation,
@@ -479,6 +472,15 @@ def candidate_block(
         end=anchor,
         where=f"{where}.liquidation",
     )
+    if not pair_benchmark.comparable:
+        block.update({"first_failed": "benchmark", "reason": "E_NO_BENCHMARK"})
+        return block, rec.mdd_daily
+    if not cc.d3_passes(cycles):
+        block.update({"first_failed": "D3", "reason": "C_COVERAGE"})
+        return block, rec.mdd_daily
+    if not rec.domain_ok or rec.sigma_daily is None or rec.cagr_pct is None:
+        block.update({"first_failed": "D4", "reason": "F_NOT_ESTIMABLE"})
+        return block, rec.mdd_daily
     if not proof["passed"]:
         block.update({"first_failed": "D6", "reason": "R1_NOT_NORMALISED"})
         return block, rec.mdd_daily

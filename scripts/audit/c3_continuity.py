@@ -258,11 +258,13 @@ def comparator_block(
     ``tests`` et ``window``.
     """
     tests_block = cc.require_mapping(block, "comparability", where="benchmark_eval")
-    recomputed = all(
-        cc.require_bool(tests_block, name, where="benchmark_eval.comparability")
+    # Revue Fin (5) : les cinq booléens sont lus et typés **tous**, la conjonction vient après —
+    # un `all()` paresseux court-circuitait avant une clé absente (code 2 devenu code 0).
+    tests: dict[str, bool] = {
+        name: cc.require_bool(tests_block, name, where="benchmark_eval.comparability")
         for name in COMPARABILITY_TESTS
-    )
-    tests = {name: tests_block[name] for name in COMPARABILITY_TESTS if name in tests_block}
+    }
+    recomputed = all(tests.values())
     declared = cc.require_bool(block, "comparable", where="benchmark_eval")
     window = cc.require_mapping(block, "window", where="benchmark_eval")
     w_start = cc.require_datetime(window, "start", where="benchmark_eval.window")

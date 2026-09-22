@@ -961,3 +961,27 @@ def test_revue_R3b_le_meme_trou_correctement_declare_donne_l_abstention_par_D1(
         assert five["ratio"] >= cc.COVERAGE_MIN_RATIO, "le ratio seul aurait laissé passer"
         assert five["longest_gap_days"] > block["d1"]["gap_max_days"]
         assert five["longest_gap_days"] == cc.gap_days(ASTRA_GAP_CANDLES, 5)
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (5) — balayage : un élément non typé n'est pas ignoré en silence
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "garbage",
+    ["oops", 42, {"identity": "x"}, {"clause": "D2"}],
+    ids=["chaine", "entier", "sans_clause", "sans_identite"],
+)
+def test_revue_Fin_5_un_diagnostic_d_entree_non_type_est_une_erreur_d_entree(
+    tmp_path: Path, garbage: Any
+) -> None:
+    """`isinstance(d, Mapping) and require_str(...)` sautait en silence tout élément qui n'est
+    pas un bloc : la lecture est stricte sur chaque élément, avant toute logique."""
+    w = chain(tmp_path)
+    assert w["entry_code"] == 0 and w["benchmark_code"] == 0
+    entry = cc.read_json(w["entry"])
+    entry["candidate_diagnostics"] = list(entry["candidate_diagnostics"]) + [garbage]
+    cc.write_json(w["entry"], entry)
+    code, payload = run(w)
+    assert code == 2 and payload is None

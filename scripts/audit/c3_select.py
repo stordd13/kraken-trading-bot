@@ -530,13 +530,17 @@ def run_selection(
         )
         by_identity[identity] = (key, raw)
 
-    # D2 selon l'entrée, pour recoupement.
-    entry_d2 = {
-        cc.require_str(d, "identity", where="entry.candidate_diagnostics")
-        for d in cc.require_sequence(entry_raw, "candidate_diagnostics", where="entry")
-        if isinstance(d, Mapping)
-        and cc.require_str(d, "clause", where="entry.candidate_diagnostics") == "D2"
-    }
+    # D2 selon l'entrée, pour recoupement — chaque élément est un bloc typé, lu en entier avant
+    # d'être classé (revue Fin 5 : un élément non typé ne s'ignore pas en silence).
+    entry_d2: set[str] = set()
+    for i, d in enumerate(cc.require_sequence(entry_raw, "candidate_diagnostics", where="entry")):
+        dwhere = f"entry.candidate_diagnostics[{i}]"
+        if not isinstance(d, Mapping):
+            raise cc.MissingEvidenceError(f"{dwhere}: bloc attendu, reçu {type(d).__name__}")
+        identity = cc.require_str(d, "identity", where=dwhere)
+        clause = cc.require_str(d, "clause", where=dwhere)
+        if clause == "D2":
+            entry_d2.add(identity)
 
     records: list[CandidateRecord] = []
     for candidate in sorted(manifest.candidates, key=lambda c: c.identity):

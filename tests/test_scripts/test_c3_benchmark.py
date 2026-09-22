@@ -10,6 +10,7 @@ au-delà du B&H n'est pas `λ = 1` mais `NOT_ESTIMABLE` ; le résidu, les croise
 # ruff: noqa: E402
 from __future__ import annotations
 
+import dataclasses
 from datetime import timedelta
 from decimal import Decimal
 import json
@@ -539,3 +540,66 @@ def test_revue_R3_nan_dans_les_parametres_est_une_violation_code_1(tmp_path: Pat
     assert payload["invalide"] is True and any(
         "non-finite" in v or "non fini" in v for v in payload["violations"]
     )
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (5) — balayage : candidate_block lit tout avant ses pré-contrôles
+# ---------------------------------------------------------------------------
+
+
+def _candidate_context() -> dict[str, Any]:
+    payload = fx.manifest()
+    manifest = cc.load_manifest(payload)
+    candidate = manifest.candidates[0]
+    obs = fx.observations(payload)
+    raw = next(
+        e for e in obs.values() if e["pair"] == candidate.pair and e["params"] == candidate.params
+    )
+    projection = dict(cc.project_prefix(raw, fx.PREFIX, where="t"))
+    projection["metrics"] = dict(projection["metrics"])
+    bench = _build(fx.candles(payload), candidate.pair)
+    curves = {
+        "dd": cb.LambdaCurve(bench.nav, CAPITAL, "dd"),
+        "sigma": cb.LambdaCurve(bench.nav, CAPITAL, "sigma"),
+    }
+    return {
+        "projection": projection,
+        "candidate": candidate,
+        "manifest": manifest,
+        "anchor": manifest.anchor(),
+        "pair_benchmark": bench,
+        "curves": curves,
+        "days": fx.PREFIX_DAYS,
+        "capital": CAPITAL,
+        "where": "t",
+    }
+
+
+def test_revue_Fin_5_metrique_absente_derriere_un_comparateur_non_comparable_est_une_erreur() -> (
+    None
+):
+    """Le retour anticipé « pas de comparateur » précédait la lecture des métriques : un
+    `total_trades` absent sortait en bloc E_NO_BENCHMARK, code 0, au lieu d'une erreur d'entrée."""
+    ctx = _candidate_context()
+    ctx["pair_benchmark"] = dataclasses.replace(
+        ctx["pair_benchmark"], comparable=False, reason="E_NO_BENCHMARK"
+    )
+    del ctx["projection"]["metrics"]["total_trades"]
+    with pytest.raises(cc.MissingEvidenceError, match="total_trades"):
+        cb.candidate_block(ctx.pop("projection"), **ctx)
+
+
+def test_revue_Fin_5_bloc_liquidation_incomplet_derriere_un_D3_en_echec_est_une_erreur() -> None:
+    ctx = _candidate_context()
+    ctx["projection"]["metrics"]["total_trades"] = 20  # aucune vente : D3 échoue en premier
+    liq = dict(ctx["projection"]["liquidation"])
+    del liq["fees"]
+    ctx["projection"]["liquidation"] = liq
+    with pytest.raises(cc.MissingEvidenceError, match="fees"):
+        cb.candidate_block(ctx.pop("projection"), **ctx)
+
+
+def test_revue_Fin_5_le_temoin_reste_estimable_apres_la_lecture_complete() -> None:
+    ctx = _candidate_context()
+    block, _ = cb.candidate_block(ctx.pop("projection"), **ctx)
+    assert block["estimable"] is True and block["first_failed"] is None
