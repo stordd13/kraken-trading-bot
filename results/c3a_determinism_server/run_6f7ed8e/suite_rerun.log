@@ -1,0 +1,1436 @@
+# C3a pre-merge gate § L.5 — suite rerun after the async-cleanup incident of the first pass
+# SHA: 6f7ed8e99191a795a42ca3a8ce253407d963e546
+# date: 2026-09-22T22:18:49Z
+# first pass (checks_6f7ed8e.log, 22:04:23Z -> 22:11:26Z): 2 failed, 2612 passed, 6 skipped, 1 error —
+#   ERROR  tests/test_main.py::TestKrakenBotStop::test_stop_handles_component_errors (setup, aiohttp ResourceWarning)
+#   FAILED tests/test_main.py::TestKrakenBotStart::test_start_subscribes_1m_when_router_crash_protector_is_configured (pycares callback, loop closed)
+#   FAILED tests/test_scripts/test_b4_campaign_configs.py::TestEngineMinOrder::test_order_below_floor_is_skipped_and_default_keeps_it (ExceptionGroup of 5 unclosed aiohttp sessions, body passed)
+
+$ nice -n 5 poetry run pytest -q -p no:cacheprovider --junitxml=/home/bruno/c3a-determinism/junit/suite.xml --ignore=tests/test_scripts/test_run_p6_determinism.py
+........................................................................ [  2%]
+........................................................................ [  5%]
+........................................................................ [  8%]
+.sssss...............................................s.................. [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 24%]
+........................................................................ [ 27%]
+..............................................................F.E..FF... [ 30%]
+........................................................................ [ 32%]
+........................................................................ [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 41%]
+.......................................F................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+........................................................................ [ 68%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 82%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 90%]
+........................................................................ [ 93%]
+........................................................................ [ 96%]
+........................................................................ [ 98%]
+.............................                                            [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestKrakenBotStart.test_start_routes_runtime_1m_ohlc_to_router_crash_protector _
+
+arg = <cdata 'void *' 0x7c3abab07d40>, status = None, timeouts = 0
+res = <cdata 'struct ares_addrinfo *' 0x5f89000>
+
+    @_ffi.def_extern()
+    def _addrinfo_cb(arg, status, timeouts, res):
+        # Get callback data without removing the reference yet
+        if arg not in _handle_to_channel:
+            return
+    
+        callback = _ffi.from_handle(arg)
+    
+        if status != _lib.ARES_SUCCESS:
+            result = None
+        else:
+            result = parse_addrinfo(res)
+            status = None
+    
+>       callback(result, status)
+
+arg        = <cdata 'void *' 0x7c3abab07d40>
+callback   = functools.partial(<bound method BaseEventLoop.call_soon_threadsafe of <_UnixSelectorEventLoop running=False closed=Tru...bug=False>>, <bound method DNSResolver._callback of <aiodns.DNSResolver object at 0x7c3abcf389e0>>, <Future cancelled>)
+res        = <cdata 'struct ares_addrinfo *' 0x5f89000>
+result     = AddrInfoResult(cnames=[], nodes=[AddrInfoNode(ttl=44, flags=0, family=<AddressFamily.AF_INET6: 10>, socktype=1, protoc...InfoNode(ttl=120, flags=0, family=<AddressFamily.AF_INET: 2>, socktype=1, protocol=0, addr=(b'149.154.166.110', 443))])
+status     = None
+timeouts   = 0
+
+.venv/lib/python3.12/site-packages/pycares/__init__.py:173: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/asyncio/base_events.py:840: in call_soon_threadsafe
+    self._check_closed()
+        args       = (<Future cancelled>, AddrInfoResult(cnames=[], nodes=[AddrInfoNode(ttl=44, flags=0, family=<AddressFamily.AF_INET6: 10...e(ttl=120, flags=0, family=<AddressFamily.AF_INET: 2>, socktype=1, protocol=0, addr=(b'149.154.166.110', 443))]), None)
+        callback   = <bound method DNSResolver._callback of <aiodns.DNSResolver object at 0x7c3abcf389e0>>
+        context    = None
+        self       = <_UnixSelectorEventLoop running=False closed=True debug=False>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+
+    def _check_closed(self):
+        if self._closed:
+>           raise RuntimeError('Event loop is closed')
+E           RuntimeError: Event loop is closed
+
+self       = <_UnixSelectorEventLoop running=False closed=True debug=False>
+
+/usr/lib/python3.12/asyncio/base_events.py:541: RuntimeError
+
+The above exception was the direct cause of the following exception:
+
+cls = <class '_pytest.runner.CallInfo'>
+func = <function call_and_report.<locals>.<lambda> at 0x7c3abcb3b420>
+when = 'setup'
+reraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+
+    @classmethod
+    def from_call(
+        cls,
+        func: Callable[[], TResult],
+        when: Literal["collect", "setup", "call", "teardown"],
+        reraise: type[BaseException] | tuple[type[BaseException], ...] | None = None,
+    ) -> CallInfo[TResult]:
+        """Call func, wrapping the result in a CallInfo.
+    
+        :param func:
+            The function to call. Called without arguments.
+        :type func: Callable[[], _pytest.runner.TResult]
+        :param when:
+            The phase in which the function is called.
+        :param reraise:
+            Exception or exceptions that shall propagate if raised by the
+            function, instead of being wrapped in the CallInfo.
+        """
+        excinfo = None
+        instant = timing.Instant()
+        try:
+>           result: TResult | None = func()
+                                     ^^^^^^
+
+cls        = <class '_pytest.runner.CallInfo'>
+duration   = Duration(start=Instant(time=1790115546.1698298, perf_count=1304473.017452277), stop=Instant(time=1790115546.2012153, perf_count=1304473.04883772))
+excinfo    = <ExceptionInfo PytestUnraisableExceptionWarning('Exception ignored from cffi callback <function _addrinfo_cb at 0x7c3acb329120>: None\n') tblen=13>
+func       = <function call_and_report.<locals>.<lambda> at 0x7c3abcb3b420>
+instant    = Instant(time=1790115546.1698298, perf_count=1304473.017452277)
+reraise    = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+result     = None
+when       = 'setup'
+
+.venv/lib/python3.12/site-packages/_pytest/runner.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/_pytest/runner.py:245: in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        item       = <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>
+        kwds       = {}
+        runtest_hook = <HookCaller 'pytest_runtest_setup'>
+.venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        kwargs     = {'item': <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>}
+        self       = <HookCaller 'pytest_runtest_setup'>
+.venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        hook_name  = 'pytest_runtest_setup'
+        kwargs     = {'item': <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>}
+        methods    = [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/home/bruno/c3a-determinism/r...xture=None>>, <HookImpl plugin_name='logging-plugin', plugin=<_pytest.logging.LoggingPlugin object at 0x7c3ace0878f0>>]
+        self       = <_pytest.config.PytestPluginManager object at 0x7c3ad1f665a0>
+.venv/lib/python3.12/site-packages/_pytest/logging.py:843: in pytest_runtest_setup
+    yield
+        empty      = {'setup': []}
+        item       = <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>
+        self       = <_pytest.logging.LoggingPlugin object at 0x7c3ace0878f0>
+.venv/lib/python3.12/site-packages/_pytest/capture.py:895: in pytest_runtest_setup
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>
+        self       = <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=5 _state='suspended' tmpfile=<_io....xtIOWrapper name='/dev/null' mode='r' encoding='utf-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:153: in pytest_runtest_setup
+    collect_unraisable(item.config)
+        item       = <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:79: in collect_unraisable
+    raise errors[0]
+        config     = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+        msg        = 'Exception ignored from cffi callback <function _addrinfo_cb at 0x7c3acb329120>: None\n\nTraceback (most recent call l..., line 541, in _check_closed\n    raise RuntimeError(\'Event loop is closed\')\nRuntimeError: Event loop is closed\n\n'
+        pop_unraisable = <built-in method pop of collections.deque object at 0x7c3ace074040>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+
+    def collect_unraisable(config: Config) -> None:
+        pop_unraisable = config.stash[unraisable_exceptions].pop
+        errors: list[pytest.PytestUnraisableExceptionWarning | RuntimeError] = []
+        meta = None
+        hook_error = None
+        try:
+            while True:
+                try:
+                    meta = pop_unraisable()
+                except IndexError:
+                    break
+    
+                if isinstance(meta, BaseException):
+                    hook_error = RuntimeError("Failed to process unraisable exception")
+                    hook_error.__cause__ = meta
+                    errors.append(hook_error)
+                    continue
+    
+                msg = meta.msg
+                try:
+>                   warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+E                   pytest.PytestUnraisableExceptionWarning: Exception ignored from cffi callback <function _addrinfo_cb at 0x7c3acb329120>: None
+
+config     = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+msg        = 'Exception ignored from cffi callback <function _addrinfo_cb at 0x7c3acb329120>: None\n\nTraceback (most recent call l..., line 541, in _check_closed\n    raise RuntimeError(\'Event loop is closed\')\nRuntimeError: Event loop is closed\n\n'
+pop_unraisable = <built-in method pop of collections.deque object at 0x7c3ace074040>
+
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning
+=================================== FAILURES ===================================
+_ TestKrakenBotStart.test_start_subscribes_1m_when_router_crash_protector_is_configured _
+
+arg = <cdata 'void *' 0x7c3abc63a380>, status = None, timeouts = 0
+res = <cdata 'struct ares_addrinfo *' 0x68ddb20>
+
+    @_ffi.def_extern()
+    def _addrinfo_cb(arg, status, timeouts, res):
+        # Get callback data without removing the reference yet
+        if arg not in _handle_to_channel:
+            return
+    
+        callback = _ffi.from_handle(arg)
+    
+        if status != _lib.ARES_SUCCESS:
+            result = None
+        else:
+            result = parse_addrinfo(res)
+            status = None
+    
+>       callback(result, status)
+
+arg        = <cdata 'void *' 0x7c3abc63a380>
+callback   = functools.partial(<bound method BaseEventLoop.call_soon_threadsafe of <_UnixSelectorEventLoop running=False closed=Tru...bug=False>>, <bound method DNSResolver._callback of <aiodns.DNSResolver object at 0x7c3abc6ee450>>, <Future cancelled>)
+res        = <cdata 'struct ares_addrinfo *' 0x68ddb20>
+result     = AddrInfoResult(cnames=[], nodes=[AddrInfoNode(ttl=45, flags=0, family=<AddressFamily.AF_INET6: 10>, socktype=1, protoc...InfoNode(ttl=121, flags=0, family=<AddressFamily.AF_INET: 2>, socktype=1, protocol=0, addr=(b'149.154.166.110', 443))])
+status     = None
+timeouts   = 0
+
+.venv/lib/python3.12/site-packages/pycares/__init__.py:173: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/asyncio/base_events.py:840: in call_soon_threadsafe
+    self._check_closed()
+        args       = (<Future cancelled>, AddrInfoResult(cnames=[], nodes=[AddrInfoNode(ttl=45, flags=0, family=<AddressFamily.AF_INET6: 10...e(ttl=121, flags=0, family=<AddressFamily.AF_INET: 2>, socktype=1, protocol=0, addr=(b'149.154.166.110', 443))]), None)
+        callback   = <bound method DNSResolver._callback of <aiodns.DNSResolver object at 0x7c3abc6ee450>>
+        context    = None
+        self       = <_UnixSelectorEventLoop running=False closed=True debug=False>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+
+    def _check_closed(self):
+        if self._closed:
+>           raise RuntimeError('Event loop is closed')
+E           RuntimeError: Event loop is closed
+
+self       = <_UnixSelectorEventLoop running=False closed=True debug=False>
+
+/usr/lib/python3.12/asyncio/base_events.py:541: RuntimeError
+
+The above exception was the direct cause of the following exception:
+
+cls = <class '_pytest.runner.CallInfo'>
+func = <function call_and_report.<locals>.<lambda> at 0x7c3abce14a40>
+when = 'call'
+reraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+
+    @classmethod
+    def from_call(
+        cls,
+        func: Callable[[], TResult],
+        when: Literal["collect", "setup", "call", "teardown"],
+        reraise: type[BaseException] | tuple[type[BaseException], ...] | None = None,
+    ) -> CallInfo[TResult]:
+        """Call func, wrapping the result in a CallInfo.
+    
+        :param func:
+            The function to call. Called without arguments.
+        :type func: Callable[[], _pytest.runner.TResult]
+        :param when:
+            The phase in which the function is called.
+        :param reraise:
+            Exception or exceptions that shall propagate if raised by the
+            function, instead of being wrapped in the CallInfo.
+        """
+        excinfo = None
+        instant = timing.Instant()
+        try:
+>           result: TResult | None = func()
+                                     ^^^^^^
+
+cls        = <class '_pytest.runner.CallInfo'>
+duration   = Duration(start=Instant(time=1790115545.7642176, perf_count=1304472.611840284), stop=Instant(time=1790115545.7966855, perf_count=1304472.644308442))
+excinfo    = <ExceptionInfo PytestUnraisableExceptionWarning('Exception ignored from cffi callback <function _addrinfo_cb at 0x7c3acb329120>: None\n') tblen=15>
+func       = <function call_and_report.<locals>.<lambda> at 0x7c3abce14a40>
+instant    = Instant(time=1790115545.7642176, perf_count=1304472.611840284)
+reraise    = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+result     = None
+when       = 'call'
+
+.venv/lib/python3.12/site-packages/_pytest/runner.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/_pytest/runner.py:245: in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+        kwds       = {}
+        runtest_hook = <HookCaller 'pytest_runtest_call'>
+.venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        kwargs     = {'item': <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>}
+        self       = <HookCaller 'pytest_runtest_call'>
+.venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        hook_name  = 'pytest_runtest_call'
+        kwargs     = {'item': <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>}
+        methods    = [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/home/bruno/c3a-determinism/r...xture=None>>, <HookImpl plugin_name='logging-plugin', plugin=<_pytest.logging.LoggingPlugin object at 0x7c3ace0878f0>>]
+        self       = <_pytest.config.PytestPluginManager object at 0x7c3ad1f665a0>
+.venv/lib/python3.12/site-packages/_pytest/logging.py:850: in pytest_runtest_call
+    yield
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+        self       = <_pytest.logging.LoggingPlugin object at 0x7c3ace0878f0>
+.venv/lib/python3.12/site-packages/_pytest/capture.py:900: in pytest_runtest_call
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+        self       = <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=5 _state='suspended' tmpfile=<_io....xtIOWrapper name='/dev/null' mode='r' encoding='utf-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+.venv/lib/python3.12/site-packages/_pytest/skipping.py:268: in pytest_runtest_call
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+        xfailed    = None
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:158: in pytest_runtest_call
+    collect_unraisable(item.config)
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:79: in collect_unraisable
+    raise errors[0]
+        config     = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+        msg        = 'Exception ignored from cffi callback <function _addrinfo_cb at 0x7c3acb329120>: None\n\nTraceback (most recent call l..., line 541, in _check_closed\n    raise RuntimeError(\'Event loop is closed\')\nRuntimeError: Event loop is closed\n\n'
+        pop_unraisable = <built-in method pop of collections.deque object at 0x7c3ace074040>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+
+    def collect_unraisable(config: Config) -> None:
+        pop_unraisable = config.stash[unraisable_exceptions].pop
+        errors: list[pytest.PytestUnraisableExceptionWarning | RuntimeError] = []
+        meta = None
+        hook_error = None
+        try:
+            while True:
+                try:
+                    meta = pop_unraisable()
+                except IndexError:
+                    break
+    
+                if isinstance(meta, BaseException):
+                    hook_error = RuntimeError("Failed to process unraisable exception")
+                    hook_error.__cause__ = meta
+                    errors.append(hook_error)
+                    continue
+    
+                msg = meta.msg
+                try:
+>                   warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+E                   pytest.PytestUnraisableExceptionWarning: Exception ignored from cffi callback <function _addrinfo_cb at 0x7c3acb329120>: None
+
+config     = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+msg        = 'Exception ignored from cffi callback <function _addrinfo_cb at 0x7c3acb329120>: None\n\nTraceback (most recent call l..., line 541, in _check_closed\n    raise RuntimeError(\'Event loop is closed\')\nRuntimeError: Event loop is closed\n\n'
+pop_unraisable = <built-in method pop of collections.deque object at 0x7c3ace074040>
+
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning
+----------------------------- Captured stdout call -----------------------------
+[2m2026-09-22T22:19:05.774068Z[0m [[32m[1minfo     [0m] [1manalyzer_created_for_pair     [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:05.775957Z[0m [[32m[1minfo     [0m] [1manalyzer_warmup_starting      [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mexchange[0m=[35mkraken[0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:05.778591Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m60[0m
+[2m2026-09-22T22:19:05.779860Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m15[0m
+[2m2026-09-22T22:19:05.780761Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m5[0m
+[2m2026-09-22T22:19:05.781659Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m240[0m
+[2m2026-09-22T22:19:05.782542Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m1440[0m
+[2m2026-09-22T22:19:05.783153Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m10080[0m
+[2m2026-09-22T22:19:05.783357Z[0m [[32m[1minfo     [0m] [1manalyzer_warmup_complete      [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:05.787998Z[0m [[32m[1minfo     [0m] [1mpending_orders_loaded         [0m [[0m[1m[34mkrakenbot.execution.order_manager[0m][0m [36mcount[0m=[35m0[0m
+[2m2026-09-22T22:19:05.792520Z[0m [[32m[1minfo     [0m] [1mAdding job tentatively -- it will be properly scheduled when the scheduler starts[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:05.793057Z[0m [[32m[1minfo     [0m] [1mAdded job "KrakenBot._send_daily_summary" to job store "default"[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:05.793282Z[0m [[32m[1minfo     [0m] [1mScheduler started             [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:05.795505Z[0m [[32m[1mdebug    [0m] [1mLooking for jobs to run       [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:05.795801Z[0m [[32m[1mdebug    [0m] [1mNext wakeup is due at 2026-09-22 23:00:00+00:00 (in 2454.204308 seconds)[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+------------------------------ Captured log call -------------------------------
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:72 {'pair': 'BTC/EUR', 'event': 'analyzer_created_for_pair', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:05.774068Z'}
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:104 {'pair': 'BTC/EUR', 'exchange': 'kraken', 'event': 'analyzer_warmup_starting', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:05.775957Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 60, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:05.778591Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 15, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:05.779860Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 5, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:05.780761Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 240, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:05.781659Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 1440, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:05.782542Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 10080, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:05.783153Z'}
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:106 {'pair': 'BTC/EUR', 'event': 'analyzer_warmup_complete', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:05.783357Z'}
+INFO     krakenbot.execution.order_manager:order_manager.py:183 {'count': 0, 'event': 'pending_orders_loaded', 'level': 'info', 'logger': 'krakenbot.execution.order_manager', 'timestamp': '2026-09-22T22:19:05.787998Z'}
+INFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO     apscheduler.scheduler:base.py:1090 Added job "KrakenBot._send_daily_summary" to job store "default"
+INFO     apscheduler.scheduler:base.py:214 Scheduler started
+DEBUG    apscheduler.scheduler:base.py:1151 Looking for jobs to run
+DEBUG    apscheduler.scheduler:base.py:1258 Next wakeup is due at 2026-09-22 23:00:00+00:00 (in 2454.204308 seconds)
+_____________ TestKrakenBotStop.test_stop_handles_component_errors _____________
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 353, in from_call
+  |     result: TResult | None = func()
+  |                              ^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 245, in <lambda>
+  |     lambda: runtest_hook(item=item, **kwds),
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+  |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+  |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+  |     raise exception
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/logging.py", line 850, in pytest_runtest_call
+  |     yield
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/capture.py", line 900, in pytest_runtest_call
+  |     return (yield)
+  |             ^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/skipping.py", line 268, in pytest_runtest_call
+  |     return (yield)
+  |             ^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+  |     res = hook_impl.function(*args)
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 158, in pytest_runtest_call
+  |     collect_unraisable(item.config)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 81, in collect_unraisable
+  |     raise ExceptionGroup("multiple unraisable exception warnings", errors)
+  | ExceptionGroup: multiple unraisable exception warnings (4 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x7c3abc9366c0>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 2 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x7c3abc6b9250>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 3 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x7c3abd1d6cc0>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 4 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x7c3abca52a20>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +------------------------------------
+----------------------------- Captured stdout call -----------------------------
+[2m2026-09-22T22:19:06.940002Z[0m [[32m[1minfo     [0m] [1manalyzer_created_for_pair     [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:06.941445Z[0m [[32m[1minfo     [0m] [1manalyzer_warmup_starting      [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mexchange[0m=[35mkraken[0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:06.943656Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m60[0m
+[2m2026-09-22T22:19:06.944665Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m15[0m
+[2m2026-09-22T22:19:06.945246Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m5[0m
+[2m2026-09-22T22:19:06.945795Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m240[0m
+[2m2026-09-22T22:19:06.946304Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m1440[0m
+[2m2026-09-22T22:19:06.948034Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m10080[0m
+[2m2026-09-22T22:19:06.948257Z[0m [[32m[1minfo     [0m] [1manalyzer_warmup_complete      [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:07.148608Z[0m [[32m[1minfo     [0m] [1mpending_orders_loaded         [0m [[0m[1m[34mkrakenbot.execution.order_manager[0m][0m [36mcount[0m=[35m0[0m
+[2m2026-09-22T22:19:07.151256Z[0m [[32m[1minfo     [0m] [1mAdding job tentatively -- it will be properly scheduled when the scheduler starts[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.151622Z[0m [[32m[1minfo     [0m] [1mAdded job "KrakenBot._send_daily_summary" to job store "default"[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.151760Z[0m [[32m[1minfo     [0m] [1mScheduler started             [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.153028Z[0m [[32m[1mdebug    [0m] [1mLooking for jobs to run       [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.153228Z[0m [[32m[1mdebug    [0m] [1mNext wakeup is due at 2026-09-22 23:00:00+00:00 (in 2452.846838 seconds)[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.514897Z[0m [[32m[1minfo     [0m] [1mScheduler has been shut down  [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+------------------------------ Captured log call -------------------------------
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:72 {'pair': 'BTC/EUR', 'event': 'analyzer_created_for_pair', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:06.940002Z'}
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:104 {'pair': 'BTC/EUR', 'exchange': 'kraken', 'event': 'analyzer_warmup_starting', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:06.941445Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 60, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:06.943656Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 15, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:06.944665Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 5, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:06.945246Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 240, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:06.945795Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 1440, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:06.946304Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 10080, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:06.948034Z'}
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:106 {'pair': 'BTC/EUR', 'event': 'analyzer_warmup_complete', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:06.948257Z'}
+INFO     krakenbot.execution.order_manager:order_manager.py:183 {'count': 0, 'event': 'pending_orders_loaded', 'level': 'info', 'logger': 'krakenbot.execution.order_manager', 'timestamp': '2026-09-22T22:19:07.148608Z'}
+INFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO     apscheduler.scheduler:base.py:1090 Added job "KrakenBot._send_daily_summary" to job store "default"
+INFO     apscheduler.scheduler:base.py:214 Scheduler started
+DEBUG    apscheduler.scheduler:base.py:1151 Looking for jobs to run
+DEBUG    apscheduler.scheduler:base.py:1258 Next wakeup is due at 2026-09-22 23:00:00+00:00 (in 2452.846838 seconds)
+INFO     apscheduler.scheduler:base.py:245 Scheduler has been shut down
+________ TestKrakenBotStats.test_log_stats_collects_all_component_stats ________
+
+self = <aiohttp.client.ClientSession object at 0x7c3abcc36d20>
+_warnings = <module 'warnings' from '/usr/lib/python3.12/warnings.py'>
+
+    def __del__(self, _warnings: Any = warnings) -> None:
+        if not self.closed:
+            kwargs = {"source": self}
+>           _warnings.warn(
+                f"Unclosed client session {self!r}", ResourceWarning, **kwargs
+            )
+E           ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x7c3abcc36d20>
+
+_warnings  = <module 'warnings' from '/usr/lib/python3.12/warnings.py'>
+kwargs     = {'source': <aiohttp.client.ClientSession object at 0x7c3abcc36d20>}
+self       = <aiohttp.client.ClientSession object at 0x7c3abcc36d20>
+
+.venv/lib/python3.12/site-packages/aiohttp/client.py:455: ResourceWarning
+
+The above exception was the direct cause of the following exception:
+
+cls = <class '_pytest.runner.CallInfo'>
+func = <function call_and_report.<locals>.<lambda> at 0x7c3abcbb9a80>
+when = 'call'
+reraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+
+    @classmethod
+    def from_call(
+        cls,
+        func: Callable[[], TResult],
+        when: Literal["collect", "setup", "call", "teardown"],
+        reraise: type[BaseException] | tuple[type[BaseException], ...] | None = None,
+    ) -> CallInfo[TResult]:
+        """Call func, wrapping the result in a CallInfo.
+    
+        :param func:
+            The function to call. Called without arguments.
+        :type func: Callable[[], _pytest.runner.TResult]
+        :param when:
+            The phase in which the function is called.
+        :param reraise:
+            Exception or exceptions that shall propagate if raised by the
+            function, instead of being wrapped in the CallInfo.
+        """
+        excinfo = None
+        instant = timing.Instant()
+        try:
+>           result: TResult | None = func()
+                                     ^^^^^^
+
+cls        = <class '_pytest.runner.CallInfo'>
+duration   = Duration(start=Instant(time=1790115547.552972, perf_count=1304474.400593747), stop=Instant(time=1790115547.5757716, perf_count=1304474.423394428))
+excinfo    = <ExceptionInfo PytestUnraisableExceptionWarning('Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de8...cated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.') tblen=15>
+func       = <function call_and_report.<locals>.<lambda> at 0x7c3abcbb9a80>
+instant    = Instant(time=1790115547.552972, perf_count=1304474.400593747)
+reraise    = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+result     = None
+when       = 'call'
+
+.venv/lib/python3.12/site-packages/_pytest/runner.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/_pytest/runner.py:245: in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        item       = <Coroutine test_log_stats_collects_all_component_stats>
+        kwds       = {}
+        runtest_hook = <HookCaller 'pytest_runtest_call'>
+.venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        kwargs     = {'item': <Coroutine test_log_stats_collects_all_component_stats>}
+        self       = <HookCaller 'pytest_runtest_call'>
+.venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        hook_name  = 'pytest_runtest_call'
+        kwargs     = {'item': <Coroutine test_log_stats_collects_all_component_stats>}
+        methods    = [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/home/bruno/c3a-determinism/r...xture=None>>, <HookImpl plugin_name='logging-plugin', plugin=<_pytest.logging.LoggingPlugin object at 0x7c3ace0878f0>>]
+        self       = <_pytest.config.PytestPluginManager object at 0x7c3ad1f665a0>
+.venv/lib/python3.12/site-packages/_pytest/logging.py:850: in pytest_runtest_call
+    yield
+        item       = <Coroutine test_log_stats_collects_all_component_stats>
+        self       = <_pytest.logging.LoggingPlugin object at 0x7c3ace0878f0>
+.venv/lib/python3.12/site-packages/_pytest/capture.py:900: in pytest_runtest_call
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_log_stats_collects_all_component_stats>
+        self       = <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=5 _state='suspended' tmpfile=<_io....xtIOWrapper name='/dev/null' mode='r' encoding='utf-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+.venv/lib/python3.12/site-packages/_pytest/skipping.py:268: in pytest_runtest_call
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_log_stats_collects_all_component_stats>
+        xfailed    = None
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:158: in pytest_runtest_call
+    collect_unraisable(item.config)
+        item       = <Coroutine test_log_stats_collects_all_component_stats>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:79: in collect_unraisable
+    raise errors[0]
+        config     = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+        msg        = 'Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>\n\nTraceback (most recent call last):\n  Fil...ct was allocated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.'
+        pop_unraisable = <built-in method pop of collections.deque object at 0x7c3ace074040>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+
+    def collect_unraisable(config: Config) -> None:
+        pop_unraisable = config.stash[unraisable_exceptions].pop
+        errors: list[pytest.PytestUnraisableExceptionWarning | RuntimeError] = []
+        meta = None
+        hook_error = None
+        try:
+            while True:
+                try:
+                    meta = pop_unraisable()
+                except IndexError:
+                    break
+    
+                if isinstance(meta, BaseException):
+                    hook_error = RuntimeError("Failed to process unraisable exception")
+                    hook_error.__cause__ = meta
+                    errors.append(hook_error)
+                    continue
+    
+                msg = meta.msg
+                try:
+>                   warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+E                   pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>
+E                   Enable tracemalloc to get traceback where the object was allocated.
+E                   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+config     = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+msg        = 'Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>\n\nTraceback (most recent call last):\n  Fil...ct was allocated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.'
+pop_unraisable = <built-in method pop of collections.deque object at 0x7c3ace074040>
+
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning
+----------------------------- Captured stdout call -----------------------------
+[2m2026-09-22T22:19:07.556427Z[0m [[32m[1minfo     [0m] [1manalyzer_created_for_pair     [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:07.557639Z[0m [[32m[1minfo     [0m] [1manalyzer_warmup_starting      [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mexchange[0m=[35mkraken[0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:07.559247Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m60[0m
+[2m2026-09-22T22:19:07.559979Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m15[0m
+[2m2026-09-22T22:19:07.560548Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m5[0m
+[2m2026-09-22T22:19:07.561076Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m240[0m
+[2m2026-09-22T22:19:07.561703Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m1440[0m
+[2m2026-09-22T22:19:07.562355Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m10080[0m
+[2m2026-09-22T22:19:07.562594Z[0m [[32m[1minfo     [0m] [1manalyzer_warmup_complete      [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:19:07.567195Z[0m [[32m[1minfo     [0m] [1mpending_orders_loaded         [0m [[0m[1m[34mkrakenbot.execution.order_manager[0m][0m [36mcount[0m=[35m0[0m
+[2m2026-09-22T22:19:07.571014Z[0m [[32m[1minfo     [0m] [1mAdding job tentatively -- it will be properly scheduled when the scheduler starts[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.571509Z[0m [[32m[1minfo     [0m] [1mAdded job "KrakenBot._send_daily_summary" to job store "default"[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.571725Z[0m [[32m[1minfo     [0m] [1mScheduler started             [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.574885Z[0m [[32m[1mdebug    [0m] [1mLooking for jobs to run       [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:19:07.575110Z[0m [[32m[1mdebug    [0m] [1mNext wakeup is due at 2026-09-22 23:00:00+00:00 (in 2452.424962 seconds)[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+------------------------------ Captured log call -------------------------------
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:72 {'pair': 'BTC/EUR', 'event': 'analyzer_created_for_pair', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:07.556427Z'}
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:104 {'pair': 'BTC/EUR', 'exchange': 'kraken', 'event': 'analyzer_warmup_starting', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:07.557639Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 60, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:07.559247Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 15, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:07.559979Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 5, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:07.560548Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 240, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:07.561076Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 1440, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:07.561703Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 10080, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:19:07.562355Z'}
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:106 {'pair': 'BTC/EUR', 'event': 'analyzer_warmup_complete', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:19:07.562594Z'}
+INFO     krakenbot.execution.order_manager:order_manager.py:183 {'count': 0, 'event': 'pending_orders_loaded', 'level': 'info', 'logger': 'krakenbot.execution.order_manager', 'timestamp': '2026-09-22T22:19:07.567195Z'}
+INFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO     apscheduler.scheduler:base.py:1090 Added job "KrakenBot._send_daily_summary" to job store "default"
+INFO     apscheduler.scheduler:base.py:214 Scheduler started
+DEBUG    apscheduler.scheduler:base.py:1151 Looking for jobs to run
+DEBUG    apscheduler.scheduler:base.py:1258 Next wakeup is due at 2026-09-22 23:00:00+00:00 (in 2452.424962 seconds)
+_______ test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T ________
+
+self = <aiohttp.client.ClientSession object at 0x7c3abc9e2f90>
+_warnings = <module 'warnings' from '/usr/lib/python3.12/warnings.py'>
+
+    def __del__(self, _warnings: Any = warnings) -> None:
+        if not self.closed:
+            kwargs = {"source": self}
+>           _warnings.warn(
+                f"Unclosed client session {self!r}", ResourceWarning, **kwargs
+            )
+E           ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x7c3abc9e2f90>
+
+_warnings  = <module 'warnings' from '/usr/lib/python3.12/warnings.py'>
+kwargs     = {'source': <aiohttp.client.ClientSession object at 0x7c3abc9e2f90>}
+self       = <aiohttp.client.ClientSession object at 0x7c3abc9e2f90>
+
+.venv/lib/python3.12/site-packages/aiohttp/client.py:455: ResourceWarning
+
+The above exception was the direct cause of the following exception:
+
+cls = <class '_pytest.runner.CallInfo'>
+func = <function call_and_report.<locals>.<lambda> at 0x7c3abccb67a0>
+when = 'call'
+reraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+
+    @classmethod
+    def from_call(
+        cls,
+        func: Callable[[], TResult],
+        when: Literal["collect", "setup", "call", "teardown"],
+        reraise: type[BaseException] | tuple[type[BaseException], ...] | None = None,
+    ) -> CallInfo[TResult]:
+        """Call func, wrapping the result in a CallInfo.
+    
+        :param func:
+            The function to call. Called without arguments.
+        :type func: Callable[[], _pytest.runner.TResult]
+        :param when:
+            The phase in which the function is called.
+        :param reraise:
+            Exception or exceptions that shall propagate if raised by the
+            function, instead of being wrapped in the CallInfo.
+        """
+        excinfo = None
+        instant = timing.Instant()
+        try:
+>           result: TResult | None = func()
+                                     ^^^^^^
+
+cls        = <class '_pytest.runner.CallInfo'>
+duration   = Duration(start=Instant(time=1790115550.698929, perf_count=1304477.546550663), stop=Instant(time=1790115551.0881226, perf_count=1304477.935745491))
+excinfo    = <ExceptionInfo PytestUnraisableExceptionWarning('Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de8...cated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.') tblen=15>
+func       = <function call_and_report.<locals>.<lambda> at 0x7c3abccb67a0>
+instant    = Instant(time=1790115550.698929, perf_count=1304477.546550663)
+reraise    = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+result     = None
+when       = 'call'
+
+.venv/lib/python3.12/site-packages/_pytest/runner.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/_pytest/runner.py:245: in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        item       = <Coroutine test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T>
+        kwds       = {}
+        runtest_hook = <HookCaller 'pytest_runtest_call'>
+.venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        kwargs     = {'item': <Coroutine test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T>}
+        self       = <HookCaller 'pytest_runtest_call'>
+.venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        hook_name  = 'pytest_runtest_call'
+        kwargs     = {'item': <Coroutine test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T>}
+        methods    = [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/home/bruno/c3a-determinism/r...xture=None>>, <HookImpl plugin_name='logging-plugin', plugin=<_pytest.logging.LoggingPlugin object at 0x7c3ace0878f0>>]
+        self       = <_pytest.config.PytestPluginManager object at 0x7c3ad1f665a0>
+.venv/lib/python3.12/site-packages/_pytest/logging.py:850: in pytest_runtest_call
+    yield
+        item       = <Coroutine test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T>
+        self       = <_pytest.logging.LoggingPlugin object at 0x7c3ace0878f0>
+.venv/lib/python3.12/site-packages/_pytest/capture.py:900: in pytest_runtest_call
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T>
+        self       = <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=5 _state='suspended' tmpfile=<_io....xtIOWrapper name='/dev/null' mode='r' encoding='utf-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+.venv/lib/python3.12/site-packages/_pytest/skipping.py:268: in pytest_runtest_call
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T>
+        xfailed    = None
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:158: in pytest_runtest_call
+    collect_unraisable(item.config)
+        item       = <Coroutine test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:79: in collect_unraisable
+    raise errors[0]
+        config     = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+        msg        = 'Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>\n\nTraceback (most recent call last):\n  Fil...ct was allocated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.'
+        pop_unraisable = <built-in method pop of collections.deque object at 0x7c3ace074040>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+
+    def collect_unraisable(config: Config) -> None:
+        pop_unraisable = config.stash[unraisable_exceptions].pop
+        errors: list[pytest.PytestUnraisableExceptionWarning | RuntimeError] = []
+        meta = None
+        hook_error = None
+        try:
+            while True:
+                try:
+                    meta = pop_unraisable()
+                except IndexError:
+                    break
+    
+                if isinstance(meta, BaseException):
+                    hook_error = RuntimeError("Failed to process unraisable exception")
+                    hook_error.__cause__ = meta
+                    errors.append(hook_error)
+                    continue
+    
+                msg = meta.msg
+                try:
+>                   warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+E                   pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>
+E                   Enable tracemalloc to get traceback where the object was allocated.
+E                   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+config     = <_pytest.config.Config object at 0x7c3ad1c7aff0>
+msg        = 'Exception ignored in: <function ClientSession.__del__ at 0x7c3acb3de840>\n\nTraceback (most recent call last):\n  Fil...ct was allocated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.'
+pop_unraisable = <built-in method pop of collections.deque object at 0x7c3ace074040>
+
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning
+----------------------------- Captured stdout call -----------------------------
+[2m2026-09-22T22:19:10.739854Z[0m [[32m[1minfo     [0m] [1mgrid_backtest_started         [0m [[0m[1m[34mroot[0m][0m [36mcandles[0m=[35m865[0m [36mcomponent[0m=[35mgrid_backtest[0m [36mpair[0m=[35mBTC/USDC[0m [36mperiod[0m=[35m'2024-03-04 to 2024-03-07'[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m
+[2m2026-09-22T22:19:10.740477Z[0m [[32m[1minfo     [0m] [1mgrok_grid_atr_v4_initialized  [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36matr_multiplier[0m=[35m1.0[0m [36mbear_protection_1d_enabled[0m=[35mFalse[0m [36mbias_1d[0m=[35m0.2[0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mgrid_levels[0m=[35m6[0m [36mmax_allocation_pct[0m=[35m20.0[0m [36mmax_spacing_pct[0m=[35m0.05[0m [36mmin_spacing_pct[0m=[35m0.015[0m [36morder_size_usdc[0m=[35m25.0[0m [36mpause_1w_strong_bear[0m=[35mTrue[0m [36mrecalc_hours[0m=[35m6[0m
+[2m2026-09-22T22:19:10.958669Z[0m [[32m[1minfo     [0m] [1mgrid_replay_sequence_built    [0m [[0m[1m[34mroot[0m][0m [36mcandles_1d[0m=[35m254[0m [36mcandles_1w[0m=[35m58[0m [36mcandles_4h[0m=[35m109[0m [36mcandles_trading[0m=[35m865[0m [36mcomponent[0m=[35mgrid_backtest[0m [36mdecisions[0m=[35m19[0m [36mtrading_interval[0m=[35m5[0m
+[2m2026-09-22T22:19:10.978257Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50000.0[0m [36mmetadata[0m=[35m{'atr_4h': 257.1042896384331, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47750.0, 'highest_sell_level': 52250.0, 'grid_initialized': False}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:10.978869Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50000.0[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:10.979154Z[0m [[32m[1minfo     [0m] [1mgrid_atr_buy_filled           [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mamount_btc[0m=[35m0.0005071065989847716[0m [36mposition_id[0m=[35m1[0m [36mprice[0m=[35m49250.0[0m [36msell_target[0m=[35m49988.8[0m [36mspacing_pct[0m=[35m1.5[0m
+[2m2026-09-22T22:19:10.979347Z[0m [[32m[1minfo     [0m] [1mgrid_atr_buy_filled           [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mamount_btc[0m=[35m0.0005149484536082474[0m [36mposition_id[0m=[35m2[0m [36mprice[0m=[35m48500.0[0m [36msell_target[0m=[35m49227.5[0m [36mspacing_pct[0m=[35m1.5[0m
+[2m2026-09-22T22:19:10.979640Z[0m [[32m[1minfo     [0m] [1mgrid_atr_buy_filled           [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mamount_btc[0m=[35m0.0005230366492146597[0m [36mposition_id[0m=[35m3[0m [36mprice[0m=[35m47750.0[0m [36msell_target[0m=[35m48466.2[0m [36mspacing_pct[0m=[35m1.5[0m
+[2m2026-09-22T22:19:10.979959Z[0m [[32m[1minfo     [0m] [1mgrid_atr_pair_completed       [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbuy_price[0m=[35m49250.0[0m [36mposition_id[0m=[35m1[0m [36mprofit[0m=[35m0.3493007049746193[0m [36msell_price[0m=[35m49988.8[0m [36mtotal_pairs[0m=[35m1[0m [36mtotal_profit[0m=[35m0.3493007049746193[0m
+[2m2026-09-22T22:19:10.980151Z[0m [[32m[1minfo     [0m] [1mgrid_atr_sell_filled          [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbuy_target[0m=[35m49239.0[0m [36mprice[0m=[35m49988.8[0m
+[2m2026-09-22T22:19:10.980344Z[0m [[32m[1minfo     [0m] [1mgrid_atr_pair_completed       [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbuy_price[0m=[35m48500.0[0m [36mposition_id[0m=[35m2[0m [36mprofit[0m=[35m0.349275375[0m [36msell_price[0m=[35m49227.5[0m [36mtotal_pairs[0m=[35m2[0m [36mtotal_profit[0m=[35m0.6985760799746192[0m
+[2m2026-09-22T22:19:10.980655Z[0m [[32m[1minfo     [0m] [1mgrid_atr_sell_filled          [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbuy_target[0m=[35m48489.1[0m [36mprice[0m=[35m49227.5[0m
+[2m2026-09-22T22:19:10.980862Z[0m [[32m[1minfo     [0m] [1mgrid_atr_pair_completed       [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbuy_price[0m=[35m47750.0[0m [36mposition_id[0m=[35m3[0m [36mprofit[0m=[35m0.34924924931937174[0m [36msell_price[0m=[35m48466.2[0m [36mtotal_pairs[0m=[35m3[0m [36mtotal_profit[0m=[35m1.047825329293991[0m
+[2m2026-09-22T22:19:10.981024Z[0m [[32m[1minfo     [0m] [1mgrid_atr_sell_filled          [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbuy_target[0m=[35m47739.2[0m [36mprice[0m=[35m48466.2[0m
+[2m2026-09-22T22:19:10.985282Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50109.9[0m [36mmetadata[0m=[35m{'atr_4h': 260.8896975214022, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47854.9545, 'highest_sell_level': 52364.8455, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:10.990853Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50213.1[0m [36mmetadata[0m=[35m{'atr_4h': 263.9547191270163, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47953.5105, 'highest_sell_level': 52472.6895, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:10.991309Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50213.1[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:10.991548Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50213.1[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50000.0[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+[2m2026-09-22T22:19:10.996489Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50303.4[0m [36mmetadata[0m=[35m{'atr_4h': 265.9079534750866, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48039.747, 'highest_sell_level': 52567.053, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.001447Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50375.8[0m [36mmetadata[0m=[35m{'atr_4h': 266.47167108400896, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48108.889, 'highest_sell_level': 52642.711, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.001899Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50375.8[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:11.002136Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50375.8[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50213.1[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+[2m2026-09-22T22:19:11.007102Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50426.4[0m [36mmetadata[0m=[35m{'atr_4h': 265.4594088637226, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48157.212, 'highest_sell_level': 52695.588, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.012310Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50453.4[0m [36mmetadata[0m=[35m{'atr_4h': 262.840879659171, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48182.997, 'highest_sell_level': 52723.803, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.012688Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50453.4[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:11.012864Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50453.4[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50375.8[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+[2m2026-09-22T22:19:11.017861Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50456.6[0m [36mmetadata[0m=[35m{'atr_4h': 258.7093882549445, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48186.053, 'highest_sell_level': 52727.147, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.022988Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50437.9[0m [36mmetadata[0m=[35m{'atr_4h': 255.98014623673416, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48168.1945, 'highest_sell_level': 52707.6055, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.023359Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50437.9[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:11.023588Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50437.9[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50453.4[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+[2m2026-09-22T22:19:11.028975Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50400.7[0m [36mmetadata[0m=[35m{'atr_4h': 254.76013579125316, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48132.6685, 'highest_sell_level': 52668.7315, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.034482Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50350.1[0m [36mmetadata[0m=[35m{'atr_4h': 254.57012609187794, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48084.3455, 'highest_sell_level': 52615.8545, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.034897Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50350.1[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:11.035075Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50350.1[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50437.9[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+[2m2026-09-22T22:19:11.040142Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50292.3[0m [36mmetadata[0m=[35m{'atr_4h': 254.89368851388664, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48029.1465, 'highest_sell_level': 52555.4535, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.045832Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50233.7[0m [36mmetadata[0m=[35m{'atr_4h': 255.23699647718047, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47973.1835, 'highest_sell_level': 52494.2165, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.046269Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50233.7[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:11.046498Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50233.7[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50350.1[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+[2m2026-09-22T22:19:11.051936Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50181.2[0m [36mmetadata[0m=[35m{'atr_4h': 255.10578244309613, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47923.046, 'highest_sell_level': 52439.354, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.057593Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50141.0[0m [36mmetadata[0m=[35m{'atr_4h': 254.0910836971607, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47884.655, 'highest_sell_level': 52397.345, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.057986Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50141.0[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:11.058158Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50141.0[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50233.7[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+[2m2026-09-22T22:19:11.064344Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50118.2[0m [36mmetadata[0m=[35m{'atr_4h': 251.89172057593493, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47862.881, 'highest_sell_level': 52373.519, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.070660Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50116.8[0m [36mmetadata[0m=[35m{'atr_4h': 248.31374053479672, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47861.544, 'highest_sell_level': 52372.056, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.071149Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50116.8[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:11.071342Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50116.8[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50141.0[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+[2m2026-09-22T22:19:11.076693Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50138.8[0m [36mmetadata[0m=[35m{'atr_4h': 246.4699019251684, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47882.554, 'highest_sell_level': 52395.046, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.082725Z[0m [[32m[1minfo     [0m] [1mstrategy_tick                 [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mbot_id[0m=[35mgrid_atr_v4[0m [36mclose[0m=[35m50184.5[0m [36mmetadata[0m=[35m{'atr_4h': 246.4649089305135, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47926.1975, 'highest_sell_level': 52442.8025, 'grid_initialized': True}[0m [36mpair[0m=[35mBTC/USDC[0m [36mreason[0m=[35mgrid_evaluation[0m [36msignal[0m=[35mHOLD[0m [36mstrategy[0m=[35mgrok_grid_atr_adaptive_v4[0m [36mtimeframe[0m=[35m4h[0m
+[2m2026-09-22T22:19:11.083168Z[0m [[32m[1minfo     [0m] [1mgrid_atr_built                [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcenter[0m=[35m50184.5[0m [36mn_buy[0m=[35m3[0m [36mn_sell[0m=[35m3[0m [36mregime_1d[0m=[35mstrong_bull[0m [36mspacing_pct[0m=[35m1.5[0m [36mtotal_levels[0m=[35m6[0m
+[2m2026-09-22T22:19:11.083366Z[0m [[32m[1minfo     [0m] [1mgrid_atr_recalculated         [0m [[0m[1m[34mGrokGridATRAdaptiveV4[0m][0m [36mcancelled[0m=[35m6[0m [36mnew_center[0m=[35m50184.5[0m [36mnew_levels[0m=[35m6[0m [36mnew_spacing_pct[0m=[35m1.5[0m [36mold_center[0m=[35m50116.8[0m [36mold_spacing_pct[0m=[35m1.5[0m [36mregime_1d[0m=[35mstrong_bull[0m
+------------------------------ Captured log call -------------------------------
+INFO     root:_base.py:223 {'component': 'grid_backtest', 'strategy': 'grok_grid_atr_adaptive_v4', 'pair': 'BTC/USDC', 'candles': 865, 'period': '2024-03-04 to 2024-03-07', 'event': 'grid_backtest_started', 'level': 'info', 'logger': 'root', 'timestamp': '2026-09-22T22:19:10.739854Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:192 {'bot_id': 'grid_atr_v4', 'grid_levels': 6, 'min_spacing_pct': 0.015, 'max_spacing_pct': 0.05, 'atr_multiplier': 1.0, 'recalc_hours': 6, 'order_size_usdc': 25.0, 'max_allocation_pct': 20.0, 'bias_1d': 0.2, 'pause_1w_strong_bear': True, 'bear_protection_1d_enabled': False, 'event': 'grok_grid_atr_v4_initialized', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.740477Z'}
+INFO     root:_base.py:223 {'component': 'grid_backtest', 'trading_interval': 5, 'candles_trading': 865, 'candles_4h': 109, 'decisions': 19, 'candles_1d': 254, 'candles_1w': 58, 'event': 'grid_replay_sequence_built', 'level': 'info', 'logger': 'root', 'timestamp': '2026-09-22T22:19:10.958669Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50000.0', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 257.1042896384331, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47750.0, 'highest_sell_level': 52250.0, 'grid_initialized': False}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.978257Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50000.0, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.978869Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:655 {'price': 49250.0, 'amount_btc': 0.0005071065989847716, 'sell_target': 49988.8, 'position_id': 1, 'spacing_pct': 1.5, 'event': 'grid_atr_buy_filled', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.979154Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:655 {'price': 48500.0, 'amount_btc': 0.0005149484536082474, 'sell_target': 49227.5, 'position_id': 2, 'spacing_pct': 1.5, 'event': 'grid_atr_buy_filled', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.979347Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:655 {'price': 47750.0, 'amount_btc': 0.0005230366492146597, 'sell_target': 48466.2, 'position_id': 3, 'spacing_pct': 1.5, 'event': 'grid_atr_buy_filled', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.979640Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:673 {'position_id': 1, 'buy_price': 49250.0, 'sell_price': 49988.8, 'profit': 0.3493007049746193, 'total_pairs': 1, 'total_profit': 0.3493007049746193, 'event': 'grid_atr_pair_completed', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.979959Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:698 {'price': 49988.8, 'buy_target': 49239.0, 'event': 'grid_atr_sell_filled', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.980151Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:673 {'position_id': 2, 'buy_price': 48500.0, 'sell_price': 49227.5, 'profit': 0.349275375, 'total_pairs': 2, 'total_profit': 0.6985760799746192, 'event': 'grid_atr_pair_completed', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.980344Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:698 {'price': 49227.5, 'buy_target': 48489.1, 'event': 'grid_atr_sell_filled', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.980655Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:673 {'position_id': 3, 'buy_price': 47750.0, 'sell_price': 48466.2, 'profit': 0.34924924931937174, 'total_pairs': 3, 'total_profit': 1.047825329293991, 'event': 'grid_atr_pair_completed', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.980862Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:698 {'price': 48466.2, 'buy_target': 47739.2, 'event': 'grid_atr_sell_filled', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.981024Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50109.9', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 260.8896975214022, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47854.9545, 'highest_sell_level': 52364.8455, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.985282Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50213.1', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 263.9547191270163, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47953.5105, 'highest_sell_level': 52472.6895, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.990853Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50213.1, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.991309Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50000.0, 'new_center': 50213.1, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.991548Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50303.4', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 265.9079534750866, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48039.747, 'highest_sell_level': 52567.053, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:10.996489Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50375.8', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 266.47167108400896, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48108.889, 'highest_sell_level': 52642.711, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.001447Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50375.8, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.001899Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50213.1, 'new_center': 50375.8, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.002136Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50426.4', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 265.4594088637226, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48157.212, 'highest_sell_level': 52695.588, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.007102Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50453.4', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 262.840879659171, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48182.997, 'highest_sell_level': 52723.803, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.012310Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50453.4, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.012688Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50375.8, 'new_center': 50453.4, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.012864Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50456.6', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 258.7093882549445, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48186.053, 'highest_sell_level': 52727.147, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.017861Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50437.9', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 255.98014623673416, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48168.1945, 'highest_sell_level': 52707.6055, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.022988Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50437.9, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.023359Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50453.4, 'new_center': 50437.9, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.023588Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50400.7', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 254.76013579125316, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48132.6685, 'highest_sell_level': 52668.7315, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.028975Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50350.1', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 254.57012609187794, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48084.3455, 'highest_sell_level': 52615.8545, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.034482Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50350.1, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.034897Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50437.9, 'new_center': 50350.1, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.035075Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50292.3', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 254.89368851388664, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 48029.1465, 'highest_sell_level': 52555.4535, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.040142Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50233.7', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 255.23699647718047, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47973.1835, 'highest_sell_level': 52494.2165, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.045832Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50233.7, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.046269Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50350.1, 'new_center': 50233.7, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.046498Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50181.2', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 255.10578244309613, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47923.046, 'highest_sell_level': 52439.354, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.051936Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50141.0', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 254.0910836971607, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47884.655, 'highest_sell_level': 52397.345, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.057593Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50141.0, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.057986Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50233.7, 'new_center': 50141.0, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.058158Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50118.2', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 251.89172057593493, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47862.881, 'highest_sell_level': 52373.519, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.064344Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50116.8', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 248.31374053479672, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47861.544, 'highest_sell_level': 52372.056, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.070660Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50116.8, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.071149Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50141.0, 'new_center': 50116.8, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.071342Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50138.8', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 246.4699019251684, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47882.554, 'highest_sell_level': 52395.046, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.076693Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:449 {'strategy': 'grok_grid_atr_adaptive_v4', 'bot_id': 'grid_atr_v4', 'pair': 'BTC/USDC', 'timeframe': '4h', 'close': '50184.5', 'signal': 'HOLD', 'reason': 'grid_evaluation', 'metadata': {'atr_4h': 246.4649089305135, 'spacing_pct': 1.5, 'regime_1d': 'strong_bull', 'regime_1w': 'strong_bull', 'n_buy': 3, 'n_sell': 3, 'lowest_buy_level': 47926.1975, 'highest_sell_level': 52442.8025, 'grid_initialized': True}, 'event': 'strategy_tick', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.082725Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:305 {'center': 50184.5, 'spacing_pct': 1.5, 'n_buy': 3, 'n_sell': 3, 'regime_1d': 'strong_bull', 'total_levels': 6, 'event': 'grid_atr_built', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.083168Z'}
+INFO     GrokGridATRAdaptiveV4:grok_grid_atr_adaptive_v4.py:528 {'old_center': 50116.8, 'new_center': 50184.5, 'old_spacing_pct': 1.5, 'new_spacing_pct': 1.5, 'cancelled': 6, 'new_levels': 6, 'regime_1d': 'strong_bull', 'event': 'grid_atr_recalculated', 'level': 'info', 'logger': 'GrokGridATRAdaptiveV4', 'timestamp': '2026-09-22T22:19:11.083366Z'}
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:99: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:108: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:114: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+ERROR tests/test_main.py::TestKrakenBotStart::test_start_routes_runtime_1m_ohlc_to_router_crash_protector
+FAILED tests/test_main.py::TestKrakenBotStart::test_start_subscribes_1m_when_router_crash_protector_is_configured
+FAILED tests/test_main.py::TestKrakenBotStop::test_stop_handles_component_errors
+FAILED tests/test_main.py::TestKrakenBotStats::test_log_stats_collects_all_component_stats
+FAILED tests/test_scripts/test_c2_replay_fidelity.py::test_order_created_at_T_does_not_fill_on_the_candle_ending_at_T
+4 failed, 2610 passed, 6 skipped, 1 error in 396.16s (0:06:36)
+[rc=1] 2026-09-22T22:25:30Z
+
+$ poetry run pytest -q -p no:cacheprovider tests/test_main.py   # first victim file, alone
+........F.E..E....                                                       [100%]
+==================================== ERRORS ====================================
+_ ERROR at setup of TestKrakenBotStart.test_start_routes_runtime_1m_ohlc_to_router_crash_protector _
+
+arg = <cdata 'void *' 0x76258a14ab00>, status = None, timeouts = 0
+res = <cdata 'struct ares_addrinfo *' 0x2eea2ec0>
+
+    @_ffi.def_extern()
+    def _addrinfo_cb(arg, status, timeouts, res):
+        # Get callback data without removing the reference yet
+        if arg not in _handle_to_channel:
+            return
+    
+        callback = _ffi.from_handle(arg)
+    
+        if status != _lib.ARES_SUCCESS:
+            result = None
+        else:
+            result = parse_addrinfo(res)
+            status = None
+    
+>       callback(result, status)
+
+arg        = <cdata 'void *' 0x76258a14ab00>
+callback   = functools.partial(<bound method BaseEventLoop.call_soon_threadsafe of <_UnixSelectorEventLoop running=False closed=Tru...bug=False>>, <bound method DNSResolver._callback of <aiodns.DNSResolver object at 0x76258a191a90>>, <Future cancelled>)
+res        = <cdata 'struct ares_addrinfo *' 0x2eea2ec0>
+result     = AddrInfoResult(cnames=[], nodes=[AddrInfoNode(ttl=32, flags=0, family=<AddressFamily.AF_INET6: 10>, socktype=1, protoc...InfoNode(ttl=173, flags=0, family=<AddressFamily.AF_INET: 2>, socktype=1, protocol=0, addr=(b'149.154.166.110', 443))])
+status     = None
+timeouts   = 0
+
+.venv/lib/python3.12/site-packages/pycares/__init__.py:173: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/asyncio/base_events.py:840: in call_soon_threadsafe
+    self._check_closed()
+        args       = (<Future cancelled>, AddrInfoResult(cnames=[], nodes=[AddrInfoNode(ttl=32, flags=0, family=<AddressFamily.AF_INET6: 10...e(ttl=173, flags=0, family=<AddressFamily.AF_INET: 2>, socktype=1, protocol=0, addr=(b'149.154.166.110', 443))]), None)
+        callback   = <bound method DNSResolver._callback of <aiodns.DNSResolver object at 0x76258a191a90>>
+        context    = None
+        self       = <_UnixSelectorEventLoop running=False closed=True debug=False>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+
+    def _check_closed(self):
+        if self._closed:
+>           raise RuntimeError('Event loop is closed')
+E           RuntimeError: Event loop is closed
+
+self       = <_UnixSelectorEventLoop running=False closed=True debug=False>
+
+/usr/lib/python3.12/asyncio/base_events.py:541: RuntimeError
+
+The above exception was the direct cause of the following exception:
+
+cls = <class '_pytest.runner.CallInfo'>
+func = <function call_and_report.<locals>.<lambda> at 0x762589fcbc40>
+when = 'setup'
+reraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+
+    @classmethod
+    def from_call(
+        cls,
+        func: Callable[[], TResult],
+        when: Literal["collect", "setup", "call", "teardown"],
+        reraise: type[BaseException] | tuple[type[BaseException], ...] | None = None,
+    ) -> CallInfo[TResult]:
+        """Call func, wrapping the result in a CallInfo.
+    
+        :param func:
+            The function to call. Called without arguments.
+        :type func: Callable[[], _pytest.runner.TResult]
+        :param when:
+            The phase in which the function is called.
+        :param reraise:
+            Exception or exceptions that shall propagate if raised by the
+            function, instead of being wrapped in the CallInfo.
+        """
+        excinfo = None
+        instant = timing.Instant()
+        try:
+>           result: TResult | None = func()
+                                     ^^^^^^
+
+cls        = <class '_pytest.runner.CallInfo'>
+duration   = Duration(start=Instant(time=1790115934.1821074, perf_count=1304861.029729671), stop=Instant(time=1790115934.2104335, perf_count=1304861.058056572))
+excinfo    = <ExceptionInfo PytestUnraisableExceptionWarning('Exception ignored from cffi callback <function _addrinfo_cb at 0x76258ac0e840>: None\n') tblen=13>
+func       = <function call_and_report.<locals>.<lambda> at 0x762589fcbc40>
+instant    = Instant(time=1790115934.1821074, perf_count=1304861.029729671)
+reraise    = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+result     = None
+when       = 'setup'
+
+.venv/lib/python3.12/site-packages/_pytest/runner.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/_pytest/runner.py:245: in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        item       = <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>
+        kwds       = {}
+        runtest_hook = <HookCaller 'pytest_runtest_setup'>
+.venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        kwargs     = {'item': <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>}
+        self       = <HookCaller 'pytest_runtest_setup'>
+.venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        hook_name  = 'pytest_runtest_setup'
+        kwargs     = {'item': <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>}
+        methods    = [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/home/bruno/c3a-determinism/r...xture=None>>, <HookImpl plugin_name='logging-plugin', plugin=<_pytest.logging.LoggingPlugin object at 0x76258de258e0>>]
+        self       = <_pytest.config.PytestPluginManager object at 0x762591035790>
+.venv/lib/python3.12/site-packages/_pytest/logging.py:843: in pytest_runtest_setup
+    yield
+        empty      = {'setup': []}
+        item       = <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>
+        self       = <_pytest.logging.LoggingPlugin object at 0x76258de258e0>
+.venv/lib/python3.12/site-packages/_pytest/capture.py:895: in pytest_runtest_setup
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>
+        self       = <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=5 _state='suspended' tmpfile=<_io....xtIOWrapper name='/dev/null' mode='r' encoding='utf-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:153: in pytest_runtest_setup
+    collect_unraisable(item.config)
+        item       = <Coroutine test_start_routes_runtime_1m_ohlc_to_router_crash_protector>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:79: in collect_unraisable
+    raise errors[0]
+        config     = <_pytest.config.Config object at 0x762591036d50>
+        msg        = 'Exception ignored from cffi callback <function _addrinfo_cb at 0x76258ac0e840>: None\n\nTraceback (most recent call l..., line 541, in _check_closed\n    raise RuntimeError(\'Event loop is closed\')\nRuntimeError: Event loop is closed\n\n'
+        pop_unraisable = <built-in method pop of collections.deque object at 0x76258da27e20>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = <_pytest.config.Config object at 0x762591036d50>
+
+    def collect_unraisable(config: Config) -> None:
+        pop_unraisable = config.stash[unraisable_exceptions].pop
+        errors: list[pytest.PytestUnraisableExceptionWarning | RuntimeError] = []
+        meta = None
+        hook_error = None
+        try:
+            while True:
+                try:
+                    meta = pop_unraisable()
+                except IndexError:
+                    break
+    
+                if isinstance(meta, BaseException):
+                    hook_error = RuntimeError("Failed to process unraisable exception")
+                    hook_error.__cause__ = meta
+                    errors.append(hook_error)
+                    continue
+    
+                msg = meta.msg
+                try:
+>                   warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+E                   pytest.PytestUnraisableExceptionWarning: Exception ignored from cffi callback <function _addrinfo_cb at 0x76258ac0e840>: None
+
+config     = <_pytest.config.Config object at 0x762591036d50>
+msg        = 'Exception ignored from cffi callback <function _addrinfo_cb at 0x76258ac0e840>: None\n\nTraceback (most recent call l..., line 541, in _check_closed\n    raise RuntimeError(\'Event loop is closed\')\nRuntimeError: Event loop is closed\n\n'
+pop_unraisable = <built-in method pop of collections.deque object at 0x76258da27e20>
+
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning
+____ ERROR at setup of TestKrakenBotStop.test_stop_handles_component_errors ____
+
+self = <aiohttp.client.ClientSession object at 0x76258a13de50>
+_warnings = <module 'warnings' from '/usr/lib/python3.12/warnings.py'>
+
+    def __del__(self, _warnings: Any = warnings) -> None:
+        if not self.closed:
+            kwargs = {"source": self}
+>           _warnings.warn(
+                f"Unclosed client session {self!r}", ResourceWarning, **kwargs
+            )
+E           ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x76258a13de50>
+
+_warnings  = <module 'warnings' from '/usr/lib/python3.12/warnings.py'>
+kwargs     = {'source': <aiohttp.client.ClientSession object at 0x76258a13de50>}
+self       = <aiohttp.client.ClientSession object at 0x76258a13de50>
+
+.venv/lib/python3.12/site-packages/aiohttp/client.py:455: ResourceWarning
+
+The above exception was the direct cause of the following exception:
+
+cls = <class '_pytest.runner.CallInfo'>
+func = <function call_and_report.<locals>.<lambda> at 0x76258a1fc9a0>
+when = 'setup'
+reraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+
+    @classmethod
+    def from_call(
+        cls,
+        func: Callable[[], TResult],
+        when: Literal["collect", "setup", "call", "teardown"],
+        reraise: type[BaseException] | tuple[type[BaseException], ...] | None = None,
+    ) -> CallInfo[TResult]:
+        """Call func, wrapping the result in a CallInfo.
+    
+        :param func:
+            The function to call. Called without arguments.
+        :type func: Callable[[], _pytest.runner.TResult]
+        :param when:
+            The phase in which the function is called.
+        :param reraise:
+            Exception or exceptions that shall propagate if raised by the
+            function, instead of being wrapped in the CallInfo.
+        """
+        excinfo = None
+        instant = timing.Instant()
+        try:
+>           result: TResult | None = func()
+                                     ^^^^^^
+
+cls        = <class '_pytest.runner.CallInfo'>
+duration   = Duration(start=Instant(time=1790115934.6887934, perf_count=1304861.536415471), stop=Instant(time=1790115934.7240584, perf_count=1304861.571681454))
+excinfo    = <ExceptionInfo PytestUnraisableExceptionWarning('Exception ignored in: <function ClientSession.__del__ at 0x76258accfb...cated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.') tblen=13>
+func       = <function call_and_report.<locals>.<lambda> at 0x76258a1fc9a0>
+instant    = Instant(time=1790115934.6887934, perf_count=1304861.536415471)
+reraise    = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+result     = None
+when       = 'setup'
+
+.venv/lib/python3.12/site-packages/_pytest/runner.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/_pytest/runner.py:245: in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        item       = <Coroutine test_stop_handles_component_errors>
+        kwds       = {}
+        runtest_hook = <HookCaller 'pytest_runtest_setup'>
+.venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        kwargs     = {'item': <Coroutine test_stop_handles_component_errors>}
+        self       = <HookCaller 'pytest_runtest_setup'>
+.venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        hook_name  = 'pytest_runtest_setup'
+        kwargs     = {'item': <Coroutine test_stop_handles_component_errors>}
+        methods    = [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/home/bruno/c3a-determinism/r...xture=None>>, <HookImpl plugin_name='logging-plugin', plugin=<_pytest.logging.LoggingPlugin object at 0x76258de258e0>>]
+        self       = <_pytest.config.PytestPluginManager object at 0x762591035790>
+.venv/lib/python3.12/site-packages/_pytest/logging.py:843: in pytest_runtest_setup
+    yield
+        empty      = {'setup': []}
+        item       = <Coroutine test_stop_handles_component_errors>
+        self       = <_pytest.logging.LoggingPlugin object at 0x76258de258e0>
+.venv/lib/python3.12/site-packages/_pytest/capture.py:895: in pytest_runtest_setup
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_stop_handles_component_errors>
+        self       = <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=5 _state='suspended' tmpfile=<_io....xtIOWrapper name='/dev/null' mode='r' encoding='utf-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:153: in pytest_runtest_setup
+    collect_unraisable(item.config)
+        item       = <Coroutine test_stop_handles_component_errors>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:79: in collect_unraisable
+    raise errors[0]
+        config     = <_pytest.config.Config object at 0x762591036d50>
+        msg        = 'Exception ignored in: <function ClientSession.__del__ at 0x76258accfb00>\n\nTraceback (most recent call last):\n  Fil...ct was allocated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.'
+        pop_unraisable = <built-in method pop of collections.deque object at 0x76258da27e20>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = <_pytest.config.Config object at 0x762591036d50>
+
+    def collect_unraisable(config: Config) -> None:
+        pop_unraisable = config.stash[unraisable_exceptions].pop
+        errors: list[pytest.PytestUnraisableExceptionWarning | RuntimeError] = []
+        meta = None
+        hook_error = None
+        try:
+            while True:
+                try:
+                    meta = pop_unraisable()
+                except IndexError:
+                    break
+    
+                if isinstance(meta, BaseException):
+                    hook_error = RuntimeError("Failed to process unraisable exception")
+                    hook_error.__cause__ = meta
+                    errors.append(hook_error)
+                    continue
+    
+                msg = meta.msg
+                try:
+>                   warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+E                   pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x76258accfb00>
+E                   Enable tracemalloc to get traceback where the object was allocated.
+E                   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+config     = <_pytest.config.Config object at 0x762591036d50>
+msg        = 'Exception ignored in: <function ClientSession.__del__ at 0x76258accfb00>\n\nTraceback (most recent call last):\n  Fil...ct was allocated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.'
+pop_unraisable = <built-in method pop of collections.deque object at 0x76258da27e20>
+
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning
+=================================== FAILURES ===================================
+_ TestKrakenBotStart.test_start_subscribes_1m_when_router_crash_protector_is_configured _
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 353, in from_call
+  |     result: TResult | None = func()
+  |                              ^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 245, in <lambda>
+  |     lambda: runtest_hook(item=item, **kwds),
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+  |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+  |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+  |     raise exception
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/logging.py", line 850, in pytest_runtest_call
+  |     yield
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/capture.py", line 900, in pytest_runtest_call
+  |     return (yield)
+  |             ^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/skipping.py", line 268, in pytest_runtest_call
+  |     return (yield)
+  |             ^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+  |     res = hook_impl.function(*args)
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 158, in pytest_runtest_call
+  |     collect_unraisable(item.config)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 81, in collect_unraisable
+  |     raise ExceptionGroup("multiple unraisable exception warnings", errors)
+  | ExceptionGroup: multiple unraisable exception warnings (2 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x76258a1b7770>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x76258accfb00>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 2 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pycares/__init__.py", line 173, in _addrinfo_cb
+    |     callback(result, status)
+    |   File "/usr/lib/python3.12/asyncio/base_events.py", line 840, in call_soon_threadsafe
+    |     self._check_closed()
+    |   File "/usr/lib/python3.12/asyncio/base_events.py", line 541, in _check_closed
+    |     raise RuntimeError('Event loop is closed')
+    | RuntimeError: Event loop is closed
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored from cffi callback <function _addrinfo_cb at 0x76258ac0e840>: None
+    | 
+    +------------------------------------
+----------------------------- Captured stdout call -----------------------------
+2026-09-22 22:25:33 [info     ] analyzer_created_for_pair      pair=BTC/EUR
+2026-09-22 22:25:33 [info     ] analyzer_warmup_starting       exchange=kraken pair=BTC/EUR
+2026-09-22 22:25:33 [info     ] mtf_warmup_loaded              candles=0 interval=60
+2026-09-22 22:25:33 [info     ] mtf_warmup_loaded              candles=0 interval=15
+2026-09-22 22:25:33 [info     ] mtf_warmup_loaded              candles=0 interval=5
+2026-09-22 22:25:33 [info     ] mtf_warmup_loaded              candles=0 interval=240
+2026-09-22 22:25:33 [info     ] mtf_warmup_loaded              candles=0 interval=1440
+2026-09-22 22:25:33 [info     ] mtf_warmup_loaded              candles=0 interval=10080
+2026-09-22 22:25:33 [info     ] analyzer_warmup_complete       pair=BTC/EUR
+2026-09-22 22:25:33 [info     ] pending_orders_loaded          count=0
+=========================== short test summary info ============================
+ERROR tests/test_main.py::TestKrakenBotStart::test_start_routes_runtime_1m_ohlc_to_router_crash_protector
+ERROR tests/test_main.py::TestKrakenBotStop::test_stop_handles_component_errors
+FAILED tests/test_main.py::TestKrakenBotStart::test_start_subscribes_1m_when_router_crash_protector_is_configured
+1 failed, 15 passed, 2 errors in 3.72s
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/bruno/c3a-determinism/repo/.venv/bin/pytest", line 8, in <module>
+  |     sys.exit(console_main())
+  |              ^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/config/__init__.py", line 223, in console_main
+  |     code = main()
+  |            ^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/config/__init__.py", line 199, in main
+  |     ret: ExitCode | int = config.hook.pytest_cmdline_main(config=config)
+  |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+  |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+  |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+  |     raise exception
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+  |     res = hook_impl.function(*args)
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/main.py", line 365, in pytest_cmdline_main
+  |     return wrap_session(config, _main)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/main.py", line 360, in wrap_session
+  |     config._ensure_unconfigure()
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/config/__init__.py", line 1171, in _ensure_unconfigure
+  |     self._cleanup_stack.close()
+  |   File "/usr/lib/python3.12/contextlib.py", line 618, in close
+  |     self.__exit__(None, None, None)
+  |   File "/usr/lib/python3.12/contextlib.py", line 610, in __exit__
+  |     raise exc_details[1]
+  |   File "/usr/lib/python3.12/contextlib.py", line 595, in __exit__
+  |     if cb(*exc_details):
+  |        ^^^^^^^^^^^^^^^^
+  |   File "/usr/lib/python3.12/contextlib.py", line 478, in _exit_wrapper
+  |     callback(*args, **kwds)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 95, in cleanup
+  |     collect_unraisable(config)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 81, in collect_unraisable
+  |     raise ExceptionGroup("multiple unraisable exception warnings", errors)
+  | ExceptionGroup: multiple unraisable exception warnings (3 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x7625880d9c70>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x76258accfb00>
+Enable tracemalloc to get traceback where the object was allocated.
+See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 2 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x76258a015e80>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x76258accfb00>
+Enable tracemalloc to get traceback where the object was allocated.
+See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 3 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x762588e3aea0>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x76258accfb00>
+Enable tracemalloc to get traceback where the object was allocated.
+See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +------------------------------------
+[rc=1]
+
+$ poetry run pytest -q -p no:cacheprovider tests/test_scripts/test_b4_campaign_configs.py   # second victim file, alone
+..............................                                           [100%]
+30 passed in 0.21s
+[rc=0]
+
+# end: 2026-09-22T22:25:40Z
+=== SUITE RERUN END

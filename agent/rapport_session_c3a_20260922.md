@@ -513,3 +513,93 @@ code futur ne l'appelle sur du contenu de fichier non gardé.
    `TABLE_6_4`, `OUT_OF_LIST_PRODUCER`, `ADMISSIBLE_STATES_6_4`, `NORMALISED_6_4` sont recopiés du
    texte et **épinglés** aux constantes du code par des tests d'égalité, jamais l'inverse.
 
+
+## 14. Porte pré-merge § L.5 — passée le 2026-09-22 au `6f7ed8e`
+
+**Option retenue : 1** (24 tests de déterminisme full-range sur le serveur, au SHA livré, recette C2). L'option 2
+n'est pas disponible : `git diff --stat f585e8b 6f7ed8e -- <chemins § L.3>` = `pyproject.toml` seul (+7/−1, bloc
+`extend-exclude` de Ruff), constaté en local à l'étape 1 et rejoué sur le serveur (`checks_6f7ed8e.log`).
+
+**Vérifications préalables (étape 1, local, lecture seule).** Branche `feat/c3a-protocole`, HEAD
+`6f7ed8e99191a795a42ca3a8ce253407d963e546`, `sha256sum docs/protocole_c3.md` =
+`9b62915069e59e9b0f35120c60a77f48a72b278aa9102b3096dfcb8dc25e23c2` (gel `d931293`, intouché). Le critère « diff
+vide `2b62530..6f7ed8e` sur `src scripts tests config pyproject.toml poetry.lock` » a **échoué** au premier passage :
+`acaeaf6` touche `scripts/audit/c3_verdict.py` (+20/−6). STOP (22/09, 20:42Z), rapport, décision humaine ci-dessous ;
+critère d'étape 1 devenu « diff vide hors ce fichier + preuve AST/bytecode archivée », satisfait.
+
+**Rejeu serveur (étape 2).** Checkout isolé `~/c3a-determinism/repo` (clone GitHub + `git bundle` local des 59
+commits, `origin/feat/c3a-protocole` étant resté à `5e056e0` ; aucune écriture sur `origin`), HEAD détaché sur
+`6f7ed8e` (`git describe` = `v2.10.0-c2-replay-59-g6f7ed8e`), venv propre `.venv` (`poetry install`, rc 0, Python
+3.12.3 / pytest 9.0.2 / ruff 0.14.13 / mypy 1.19.1), `.env` copié de l'arbre du service, base locale, `nice -n 5`,
+une invocation pytest par combo, arrêt prévu au premier échec (il n'a pas servi), pilotes refusant tout autre SHA.
+Jamais l'arbre du service, jamais `systemctl`, jamais le `.env` serveur.
+
+| Passage | Fenêtre (UTC, 2026-09-22) | Résultat |
+|---|---|---|
+| 24 combos full-range (`run24.sh` → `combo0..23.{xml,log}`, `run24.log`) | 20:54:39Z → 22:04:23Z (69 min 44 s) | **tests=24 failures=0 errors=0 skipped=0**, durées 38 s → 406 s, profil identique à C2 |
+| Suite hors déterminisme, première passe (`suite_run1_async_cleanup_incident.xml`) | 22:04:29Z → 22:11:26Z | **2 failed / 2 612 passed / 6 skipped / 1 error** — incident de nettoyage asynchrone, classe C2, aucun `AssertionError` (§ 14.2) |
+| Suite hors déterminisme, relance unique (`suite_rerun.sh` → `suite.xml`, `suite_rerun.log`) | 22:18:49Z → 22:25:40Z | **4 failed / 2 610 passed / 6 skipped / 1 error — non verte, même classe, reproductible (§ 14.2)** ; `test_main.py` seul 1 failed / 15 passed / 2 errors, `test_b4_campaign_configs.py` seul 30 passed |
+| 6 tests de déterminisme courts (`short.xml`) | 22:11:28Z (24,5 s) | **tests=6 failures=0 errors=0 skipped=0** |
+| Gold hashes (`test_grid_atr_v4_backward_compat.py`) | — | 2 passés |
+| 806 tests C3 (`tests/test_scripts/test_c3_*.py`, inclus dans la suite) | — | **806 passés** (226,8 s) |
+| `ruff check .` | — | propre |
+| `ruff format --check` (`.` et fichiers suivis `--force-exclude`) | — | 12 fichiers à reformater / 262 formatés, aucun de C3a (§ 14.3) |
+| `mypy src/` / `--ignore-missing-imports` | — | **65** / 64 (= baseline, § 5) |
+| Preuve AST/bytecode `c3_verdict.py` `2b62530` vs `6f7ed8e` (`ast_bytecode_check.py`) | — | AST hors docstrings **identique**, bytecode de module **identique**, rc 0 |
+
+Innocuité (22:16:34Z) : `krakenbot-collector` actif, `NRestarts=0` (depuis le 13/09 19:54Z), trader inactif ; aucun
+zombie, aucun processus résiduel ; bougies 1 m Bybit sur la fenêtre 20:54:39Z → 22:16:34Z : 82 lignes / 0 trou par
+paire (BTC, ETH, SOL), plus grand écart 1 min.
+
+**Archive** : `results/c3a_determinism_server/run_6f7ed8e/` — `combo0..23.{xml,log}`, `run24.log`,
+`suite_run1_async_cleanup_incident.xml`, `suite.xml`, `suite_rerun.log`, `short.xml`, `checks_6f7ed8e.log`, **les
+pilotes versionnés** `run24.sh`, `checks.sh`, `suite_rerun.sh`, `ast_bytecode_check.py` (à côté de leurs journaux — C2
+ne l'avait pas fait, trou de reproductibilité relevé par Bruno), `README.md` (SHA, fenêtres, commandes exactes,
+agrégats, incident, empreinte du lot). Exception `.gitignore` `!results/c3a_determinism_server/**/*.log`, même
+convention que C2. Ligne ajoutée à `results/INDEX.md`.
+
+### 14.1 Décision humaine (Bruno, reçue le 2026-09-22, datée 2026-09-23 dans la consigne) — condition 2 du § 10
+
+> Re-passe Astra (condition 2 du § 10). Les reproductions adverses des revues Fin ont été relancées
+> sur l'archive `48-g2b62530` (revue Claude, 22/09) : sept reproductions, toutes mortes. `2b62530`
+> est le dernier commit de code de la branche ; `acaeaf6` → `6f7ed8e` : diff vide sur `src/`, `tests/`, `config/`,
+> `pyproject.toml`, `poetry.lock` ; sur `scripts/`, limité aux docstrings et commentaires de
+> `scripts/audit/c3_verdict.py` (+20/−6, commit `acaeaf6`), AST hors docstrings et bytecode de module identiques à
+> `2b62530` — commande et sortie archivées dans `checks_6f7ed8e.log`. Les tests adverses qui encodent les
+> reproductions Fin font partie des 806 tests C3 exécutés à l'étape 2 sur `6f7ed8e`. La condition « relancées sur
+> le SHA final » est satisfaite pour le code. Ce qui n'a pas eu lieu : la contre-vérification externe par Astra,
+> quota épuisé — consignée comme non faite, sans substitut. Décision : merger sans l'attendre ; si le quota revient,
+> la re-passe se fait sur `dev` post-merge et s'archive au même endroit.
+
+Historique de la ligne corrigée : la consigne initiale disait « diff vide sur `src/`, `scripts/`, … vérifié à l'étape
+1 » ; l'étape 1 l'a réfutée (STOP du 22/09, 20:42Z ; le § 12 de ce rapport disait déjà « docstrings de
+`c3_verdict.py` »), Bruno a réécrit la ligne (ci-dessus) et tranché : pas de relance séparée des sept reproductions,
+le bytecode identique et la suite complète sur le SHA final couvrent le cas — une preuve d'équivalence exécutable
+est plus forte qu'un diff vide.
+
+### 14.2 Incident de la première passe de la suite — conservé, relancé une fois, comme en C2
+
+Trois non-verts, tous de la classe consignée en C2 (`run1_835ffe2/suite_run1_teardown_incident.xml`) : objets
+asynchrones (`aiohttp.ClientSession`, résolveur `pycares`/`aiodns`) survivant au test qui les a créés, ramassés
+pendant un autre test et remontés par le hook `unraisableexception` de pytest. `TestKrakenBotStop::
+test_stop_handles_component_errors` en erreur **au setup** (corps non exécuté) — même test, même phase, même signal
+qu'en C2 ; `TestKrakenBotStart::test_start_subscribes_1m_when_router_crash_protector_is_configured` — callback
+`_addrinfo_cb` sur boucle fermée, même test qu'en C2 ; `test_b4_campaign_configs.py::TestEngineMinOrder::
+test_order_below_floor_is_skipped_and_default_keeps_it` — `ExceptionGroup` de cinq `ClientSession` non fermées venues
+de `test_main.py`, corps allé au bout (journal capturé), victime de passage. Aucun `AssertionError` (vérifié dans le
+XML). `src/` est identique à `f585e8b` (§ L.3), où la même suite rendait 1 514 passés / 0 erreur. Traitement C2 :
+XML conservé sous un nom qui l'annonce, **relance unique de la suite seule** (`suite_rerun.sh`, jamais les 24 combos),
+fichiers victimes rejoués seuls. **La relance n'a pas rendu vert, elle a rendu pire** (4 failed / 2 610 passed / 1 error, dont `test_c2_replay_fidelity.py` victime de passage) et `tests/test_main.py` seul échoue (1 failed / 15 passed / 2 errors) — reproductible, là où C2 concluait « non reproductible ». Aucune troisième relance. Tableau des cinq non-verts et sortie complète : `README.md` du lot, `suite_rerun.log`.
+
+**Cause identifiée (lecture du code, aucune modification).** `tests/conftest.py::mock_settings` (l. 93) construit `Settings(environment="testing", kraken=…, database=…, risk=…, trading=…)` sans fixer `telegram` ; `TelegramSettings` (`env_prefix="TELEGRAM_"`) se remplit donc depuis l'environnement. Sur le serveur, le `.env` copié de l'arbre du service (recette C2) et l'export du `~/.bashrc` (l. 119, `set -a && source .env`) fournissent `TELEGRAM_ENABLED`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` **réels** ; `KrakenBot._init_telegram_notifier()` (`main.py` l. 443) construit un vrai `TelegramNotifier` — jamais patché dans `tests/test_main.py` — et `start()` lance `send_bot_started` en tâche détachée (`asyncio.create_task`, `main.py` l. 577) : une **vraie requête HTTPS vers `api.telegram.org`** (résolution `aiodns`/`pycares`, `aiohttp.ClientSession`) part des tests unitaires et survit à la fermeture de la boucle du test — callback `_addrinfo_cb` sur boucle fermée, session jamais fermée, ramassée pendant un test voisin. En local, le `.env` n'a **aucune** variable `TELEGRAM_` : notifier désactivé, `tests/test_main.py` 18 passés (×3), suite locale **2 615 passés / 6 skippés**, 196 s (22/09 22:27:46Z → 22:31:04Z, rc 0, même commande, `-p no:cacheprovider`). C2 avait le même défaut latent (son incident, « non reproductible » après trois relances vertes) ; ce soir la course est perdue à chaque passage. Ni `src/`, ni `tests/test_main.py`, ni `tests/conftest.py` n'ont changé depuis `f585e8b` ; les deux venvs (C2, C3a) sont identiques (75 paquets). **Ce n'est pas une régression C3a**, c'est un défaut d'hermétisme de la suite révélé par la recette (un `.env` de service avec des identifiants réels). Conséquence possible, à vérifier par Bruno : des messages Telegram « bot started (paper) » reçus pendant chaque suite serveur (19/09 en C2 ; 22/09 vers 22:05Z, 22:19Z et 22:25Z). Correctif hors périmètre de ce chantier (aucune ligne de code) : `telegram=TelegramSettings(enabled=False)` dans la fixture, ou patcher `TelegramNotifier` dans `tests/test_main.py` — item de dette de suite.
+
+### 14.3 Découvertes annexes, signalées, non traitées
+
+- `ruff format --check .` rend **12 fichiers** à reformater au `6f7ed8e` contre 2 au `f585e8b` (dette 10). Les 10
+  nouveaux viennent du rejeu grid (`aa17ed0`, `5a443da`, mergés dans `dev` le 20/09), préexistent sur `dev` à
+  l'identique (diff vide depuis la base de branche `57051cc`) ; les 15 fichiers C3a (`c3_*.py`, `test_c3_*.py`) sont
+  formatés. Dette 10 élargie de 2 à 12, hors C3a.
+- `origin/feat/c3a-protocole` était resté à `5e056e0` (11 commits documentaires derrière le tip) ; le merge de
+  l'étape 5 les pousse avec `dev`.
+- La surveillance par l'outil `Monitor` de la session ne pouvait pas ouvrir de SSH (environnement sans agent) ;
+  remplacée par des sondes `run_in_background` de 9,5 min, sans effet sur le rejeu.

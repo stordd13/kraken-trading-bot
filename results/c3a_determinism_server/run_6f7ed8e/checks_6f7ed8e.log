@@ -1,0 +1,627 @@
+# C3a pre-merge gate § L.5 — checks at the delivered SHA
+# SHA: 6f7ed8e99191a795a42ca3a8ce253407d963e546 (v2.10.0-c2-replay-59-g6f7ed8e)
+# date: 2026-09-22T22:04:23Z
+# host: server, local database, isolated checkout /home/bruno/c3a-determinism/repo (HEAD detached), venv .venv
+# python: Python 3.12.3 · ruff 0.14.13 · mypy 1.19.1 (compiled: yes)
+
+$ git status --short   # (expect: empty — .env is ignored)
+
+$ sha256sum docs/protocole_c3.md   # frozen at d931293
+9b62915069e59e9b0f35120c60a77f48a72b278aa9102b3096dfcb8dc25e23c2  docs/protocole_c3.md
+
+$ git diff --stat 2b62530 HEAD -- src tests config pyproject.toml poetry.lock   # (expect: empty)
+[end]
+
+$ git diff --stat 2b62530 HEAD -- scripts   # (expect: scripts/audit/c3_verdict.py only, commit acaeaf6)
+ scripts/audit/c3_verdict.py | 26 ++++++++++++++++++++------
+ 1 file changed, 20 insertions(+), 6 deletions(-)
+[end]
+
+$ git log --oneline 2b62530..HEAD -- scripts
+acaeaf6 docs(c3): validation Fin — ordre de constat, convention datée du 22/09, contrat de couche de decide()
+
+$ git show 2b62530:scripts/audit/c3_verdict.py > /home/bruno/c3a-determinism/c3_verdict_2b62530.py ; poetry run python /home/bruno/c3a-determinism/ast_bytecode_check.py /home/bruno/c3a-determinism/c3_verdict_2b62530.py scripts/audit/c3_verdict.py
+file A: /home/bruno/c3a-determinism/c3_verdict_2b62530.py  sha256(src)=7c7183a5e22d8495
+file B: scripts/audit/c3_verdict.py  sha256(src)=4e260238e0fb0089
+AST without docstrings identical : True
+  sha256(AST A) = d204fb994f133f4f
+  sha256(AST B) = d204fb994f133f4f
+module bytecode (co_code) identical : True
+[rc=0]
+
+$ git diff --stat f585e8b HEAD -- src scripts/backtest.py scripts/run_p6_backtests.py scripts/run_p7_grid_search.py scripts/p7_grids.py scripts/compute_benchmarks.py config pyproject.toml poetry.lock   # § L.3 (expect: pyproject.toml only)
+ pyproject.toml | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+[end]
+
+$ nice -n 5 poetry run pytest -q -p no:cacheprovider --junitxml=/home/bruno/c3a-determinism/junit/suite.xml --ignore=tests/test_scripts/test_run_p6_determinism.py
+........................................................................ [  2%]
+........................................................................ [  5%]
+........................................................................ [  8%]
+.sssss...............................................s.................. [ 10%]
+........................................................................ [ 13%]
+........................................................................ [ 16%]
+........................................................................ [ 19%]
+........................................................................ [ 21%]
+........................................................................ [ 24%]
+........................................................................ [ 27%]
+..............................................................F....E.... [ 30%]
+........................................................................ [ 32%]
+................................................F....................... [ 35%]
+........................................................................ [ 38%]
+........................................................................ [ 41%]
+........................................................................ [ 43%]
+........................................................................ [ 46%]
+........................................................................ [ 49%]
+........................................................................ [ 52%]
+........................................................................ [ 54%]
+........................................................................ [ 57%]
+........................................................................ [ 60%]
+........................................................................ [ 63%]
+........................................................................ [ 65%]
+........................................................................ [ 68%]
+........................................................................ [ 71%]
+........................................................................ [ 74%]
+........................................................................ [ 76%]
+........................................................................ [ 79%]
+........................................................................ [ 82%]
+........................................................................ [ 85%]
+........................................................................ [ 87%]
+........................................................................ [ 90%]
+........................................................................ [ 93%]
+........................................................................ [ 96%]
+........................................................................ [ 98%]
+.............................                                            [100%]
+==================================== ERRORS ====================================
+____ ERROR at setup of TestKrakenBotStop.test_stop_handles_component_errors ____
+
+self = <aiohttp.client.ClientSession object at 0x72149ac12480>
+_warnings = <module 'warnings' from '/usr/lib/python3.12/warnings.py'>
+
+    def __del__(self, _warnings: Any = warnings) -> None:
+        if not self.closed:
+            kwargs = {"source": self}
+>           _warnings.warn(
+                f"Unclosed client session {self!r}", ResourceWarning, **kwargs
+            )
+E           ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x72149ac12480>
+
+_warnings  = <module 'warnings' from '/usr/lib/python3.12/warnings.py'>
+kwargs     = {'source': <aiohttp.client.ClientSession object at 0x72149ac12480>}
+self       = <aiohttp.client.ClientSession object at 0x72149ac12480>
+
+.venv/lib/python3.12/site-packages/aiohttp/client.py:455: ResourceWarning
+
+The above exception was the direct cause of the following exception:
+
+cls = <class '_pytest.runner.CallInfo'>
+func = <function call_and_report.<locals>.<lambda> at 0x72149a632020>
+when = 'setup'
+reraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+
+    @classmethod
+    def from_call(
+        cls,
+        func: Callable[[], TResult],
+        when: Literal["collect", "setup", "call", "teardown"],
+        reraise: type[BaseException] | tuple[type[BaseException], ...] | None = None,
+    ) -> CallInfo[TResult]:
+        """Call func, wrapping the result in a CallInfo.
+    
+        :param func:
+            The function to call. Called without arguments.
+        :type func: Callable[[], _pytest.runner.TResult]
+        :param when:
+            The phase in which the function is called.
+        :param reraise:
+            Exception or exceptions that shall propagate if raised by the
+            function, instead of being wrapped in the CallInfo.
+        """
+        excinfo = None
+        instant = timing.Instant()
+        try:
+>           result: TResult | None = func()
+                                     ^^^^^^
+
+cls        = <class '_pytest.runner.CallInfo'>
+duration   = Duration(start=Instant(time=1790114699.6380436, perf_count=1303626.485665711), stop=Instant(time=1790114699.6805403, perf_count=1303626.528163299))
+excinfo    = <ExceptionInfo PytestUnraisableExceptionWarning('Exception ignored in: <function ClientSession.__del__ at 0x7214a98687...cated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.') tblen=13>
+func       = <function call_and_report.<locals>.<lambda> at 0x72149a632020>
+instant    = Instant(time=1790114699.6380436, perf_count=1303626.485665711)
+reraise    = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+result     = None
+when       = 'setup'
+
+.venv/lib/python3.12/site-packages/_pytest/runner.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/_pytest/runner.py:245: in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        item       = <Coroutine test_stop_handles_component_errors>
+        kwds       = {}
+        runtest_hook = <HookCaller 'pytest_runtest_setup'>
+.venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        kwargs     = {'item': <Coroutine test_stop_handles_component_errors>}
+        self       = <HookCaller 'pytest_runtest_setup'>
+.venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        hook_name  = 'pytest_runtest_setup'
+        kwargs     = {'item': <Coroutine test_stop_handles_component_errors>}
+        methods    = [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/home/bruno/c3a-determinism/r...xture=None>>, <HookImpl plugin_name='logging-plugin', plugin=<_pytest.logging.LoggingPlugin object at 0x7214ac7878c0>>]
+        self       = <_pytest.config.PytestPluginManager object at 0x7214afd544a0>
+.venv/lib/python3.12/site-packages/_pytest/logging.py:843: in pytest_runtest_setup
+    yield
+        empty      = {'setup': []}
+        item       = <Coroutine test_stop_handles_component_errors>
+        self       = <_pytest.logging.LoggingPlugin object at 0x7214ac7878c0>
+.venv/lib/python3.12/site-packages/_pytest/capture.py:895: in pytest_runtest_setup
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_stop_handles_component_errors>
+        self       = <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=5 _state='suspended' tmpfile=<_io....xtIOWrapper name='/dev/null' mode='r' encoding='utf-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:153: in pytest_runtest_setup
+    collect_unraisable(item.config)
+        item       = <Coroutine test_stop_handles_component_errors>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:79: in collect_unraisable
+    raise errors[0]
+        config     = <_pytest.config.Config object at 0x7214b0748a40>
+        msg        = 'Exception ignored in: <function ClientSession.__del__ at 0x7214a98687c0>\n\nTraceback (most recent call last):\n  Fil...ct was allocated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.'
+        pop_unraisable = <built-in method pop of collections.deque object at 0x7214ac774040>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = <_pytest.config.Config object at 0x7214b0748a40>
+
+    def collect_unraisable(config: Config) -> None:
+        pop_unraisable = config.stash[unraisable_exceptions].pop
+        errors: list[pytest.PytestUnraisableExceptionWarning | RuntimeError] = []
+        meta = None
+        hook_error = None
+        try:
+            while True:
+                try:
+                    meta = pop_unraisable()
+                except IndexError:
+                    break
+    
+                if isinstance(meta, BaseException):
+                    hook_error = RuntimeError("Failed to process unraisable exception")
+                    hook_error.__cause__ = meta
+                    errors.append(hook_error)
+                    continue
+    
+                msg = meta.msg
+                try:
+>                   warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+E                   pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7214a98687c0>
+E                   Enable tracemalloc to get traceback where the object was allocated.
+E                   See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+config     = <_pytest.config.Config object at 0x7214b0748a40>
+msg        = 'Exception ignored in: <function ClientSession.__del__ at 0x7214a98687c0>\n\nTraceback (most recent call last):\n  Fil...ct was allocated.\nSee https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.'
+pop_unraisable = <built-in method pop of collections.deque object at 0x7214ac774040>
+
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning
+=================================== FAILURES ===================================
+_ TestKrakenBotStart.test_start_subscribes_1m_when_router_crash_protector_is_configured _
+
+arg = <cdata 'void *' 0x72149a798a00>, status = None, timeouts = 0
+res = <cdata 'struct ares_addrinfo *' 0x16a1f190>
+
+    @_ffi.def_extern()
+    def _addrinfo_cb(arg, status, timeouts, res):
+        # Get callback data without removing the reference yet
+        if arg not in _handle_to_channel:
+            return
+    
+        callback = _ffi.from_handle(arg)
+    
+        if status != _lib.ARES_SUCCESS:
+            result = None
+        else:
+            result = parse_addrinfo(res)
+            status = None
+    
+>       callback(result, status)
+
+arg        = <cdata 'void *' 0x72149a798a00>
+callback   = functools.partial(<bound method BaseEventLoop.call_soon_threadsafe of <_UnixSelectorEventLoop running=False closed=Tru...bug=False>>, <bound method DNSResolver._callback of <aiodns.DNSResolver object at 0x72149aaf6930>>, <Future cancelled>)
+res        = <cdata 'struct ares_addrinfo *' 0x16a1f190>
+result     = AddrInfoResult(cnames=[], nodes=[AddrInfoNode(ttl=24, flags=0, family=<AddressFamily.AF_INET6: 10>, socktype=1, protoc...InfoNode(ttl=264, flags=0, family=<AddressFamily.AF_INET: 2>, socktype=1, protocol=0, addr=(b'149.154.166.110', 443))])
+status     = None
+timeouts   = 0
+
+.venv/lib/python3.12/site-packages/pycares/__init__.py:173: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/usr/lib/python3.12/asyncio/base_events.py:840: in call_soon_threadsafe
+    self._check_closed()
+        args       = (<Future cancelled>, AddrInfoResult(cnames=[], nodes=[AddrInfoNode(ttl=24, flags=0, family=<AddressFamily.AF_INET6: 10...e(ttl=264, flags=0, family=<AddressFamily.AF_INET: 2>, socktype=1, protocol=0, addr=(b'149.154.166.110', 443))]), None)
+        callback   = <bound method DNSResolver._callback of <aiodns.DNSResolver object at 0x72149aaf6930>>
+        context    = None
+        self       = <_UnixSelectorEventLoop running=False closed=True debug=False>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <_UnixSelectorEventLoop running=False closed=True debug=False>
+
+    def _check_closed(self):
+        if self._closed:
+>           raise RuntimeError('Event loop is closed')
+E           RuntimeError: Event loop is closed
+
+self       = <_UnixSelectorEventLoop running=False closed=True debug=False>
+
+/usr/lib/python3.12/asyncio/base_events.py:541: RuntimeError
+
+The above exception was the direct cause of the following exception:
+
+cls = <class '_pytest.runner.CallInfo'>
+func = <function call_and_report.<locals>.<lambda> at 0x72149ad26660>
+when = 'call'
+reraise = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+
+    @classmethod
+    def from_call(
+        cls,
+        func: Callable[[], TResult],
+        when: Literal["collect", "setup", "call", "teardown"],
+        reraise: type[BaseException] | tuple[type[BaseException], ...] | None = None,
+    ) -> CallInfo[TResult]:
+        """Call func, wrapping the result in a CallInfo.
+    
+        :param func:
+            The function to call. Called without arguments.
+        :type func: Callable[[], _pytest.runner.TResult]
+        :param when:
+            The phase in which the function is called.
+        :param reraise:
+            Exception or exceptions that shall propagate if raised by the
+            function, instead of being wrapped in the CallInfo.
+        """
+        excinfo = None
+        instant = timing.Instant()
+        try:
+>           result: TResult | None = func()
+                                     ^^^^^^
+
+cls        = <class '_pytest.runner.CallInfo'>
+duration   = Duration(start=Instant(time=1790114696.0265648, perf_count=1303622.874186481), stop=Instant(time=1790114696.0479138, perf_count=1303622.895536979))
+excinfo    = <ExceptionInfo PytestUnraisableExceptionWarning('Exception ignored from cffi callback <function _addrinfo_cb at 0x7214acfc36a0>: None\n') tblen=15>
+func       = <function call_and_report.<locals>.<lambda> at 0x72149ad26660>
+instant    = Instant(time=1790114696.0265648, perf_count=1303622.874186481)
+reraise    = (<class '_pytest.outcomes.Exit'>, <class 'KeyboardInterrupt'>)
+result     = None
+when       = 'call'
+
+.venv/lib/python3.12/site-packages/_pytest/runner.py:353: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+.venv/lib/python3.12/site-packages/_pytest/runner.py:245: in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+        kwds       = {}
+        runtest_hook = <HookCaller 'pytest_runtest_call'>
+.venv/lib/python3.12/site-packages/pluggy/_hooks.py:512: in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        kwargs     = {'item': <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>}
+        self       = <HookCaller 'pytest_runtest_call'>
+.venv/lib/python3.12/site-packages/pluggy/_manager.py:120: in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        firstresult = False
+        hook_name  = 'pytest_runtest_call'
+        kwargs     = {'item': <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>}
+        methods    = [<HookImpl plugin_name='threadexception', plugin=<module '_pytest.threadexception' from '/home/bruno/c3a-determinism/r...xture=None>>, <HookImpl plugin_name='logging-plugin', plugin=<_pytest.logging.LoggingPlugin object at 0x7214ac7878c0>>]
+        self       = <_pytest.config.PytestPluginManager object at 0x7214afd544a0>
+.venv/lib/python3.12/site-packages/_pytest/logging.py:850: in pytest_runtest_call
+    yield
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+        self       = <_pytest.logging.LoggingPlugin object at 0x7214ac7878c0>
+.venv/lib/python3.12/site-packages/_pytest/capture.py:900: in pytest_runtest_call
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+        self       = <CaptureManager _method='fd' _global_capturing=<MultiCapture out=<FDCapture 1 oldfd=5 _state='suspended' tmpfile=<_io....xtIOWrapper name='/dev/null' mode='r' encoding='utf-8'>> _state='suspended' _in_suspended=False> _capture_fixture=None>
+.venv/lib/python3.12/site-packages/_pytest/skipping.py:268: in pytest_runtest_call
+    return (yield)
+            ^^^^^
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+        xfailed    = None
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:158: in pytest_runtest_call
+    collect_unraisable(item.config)
+        item       = <Coroutine test_start_subscribes_1m_when_router_crash_protector_is_configured>
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:79: in collect_unraisable
+    raise errors[0]
+        config     = <_pytest.config.Config object at 0x7214b0748a40>
+        msg        = 'Exception ignored from cffi callback <function _addrinfo_cb at 0x7214acfc36a0>: None\n\nTraceback (most recent call l..., line 541, in _check_closed\n    raise RuntimeError(\'Event loop is closed\')\nRuntimeError: Event loop is closed\n\n'
+        pop_unraisable = <built-in method pop of collections.deque object at 0x7214ac774040>
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+config = <_pytest.config.Config object at 0x7214b0748a40>
+
+    def collect_unraisable(config: Config) -> None:
+        pop_unraisable = config.stash[unraisable_exceptions].pop
+        errors: list[pytest.PytestUnraisableExceptionWarning | RuntimeError] = []
+        meta = None
+        hook_error = None
+        try:
+            while True:
+                try:
+                    meta = pop_unraisable()
+                except IndexError:
+                    break
+    
+                if isinstance(meta, BaseException):
+                    hook_error = RuntimeError("Failed to process unraisable exception")
+                    hook_error.__cause__ = meta
+                    errors.append(hook_error)
+                    continue
+    
+                msg = meta.msg
+                try:
+>                   warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+E                   pytest.PytestUnraisableExceptionWarning: Exception ignored from cffi callback <function _addrinfo_cb at 0x7214acfc36a0>: None
+
+config     = <_pytest.config.Config object at 0x7214b0748a40>
+msg        = 'Exception ignored from cffi callback <function _addrinfo_cb at 0x7214acfc36a0>: None\n\nTraceback (most recent call l..., line 541, in _check_closed\n    raise RuntimeError(\'Event loop is closed\')\nRuntimeError: Event loop is closed\n\n'
+pop_unraisable = <built-in method pop of collections.deque object at 0x7214ac774040>
+
+.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py:67: PytestUnraisableExceptionWarning
+----------------------------- Captured stdout call -----------------------------
+[2m2026-09-22T22:04:56.030541Z[0m [[32m[1minfo     [0m] [1manalyzer_created_for_pair     [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:04:56.031684Z[0m [[32m[1minfo     [0m] [1manalyzer_warmup_starting      [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mexchange[0m=[35mkraken[0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:04:56.033634Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m60[0m
+[2m2026-09-22T22:04:56.034357Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m15[0m
+[2m2026-09-22T22:04:56.035022Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m5[0m
+[2m2026-09-22T22:04:56.035579Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m240[0m
+[2m2026-09-22T22:04:56.036132Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m1440[0m
+[2m2026-09-22T22:04:56.036722Z[0m [[32m[1minfo     [0m] [1mmtf_warmup_loaded             [0m [[0m[1m[34mkrakenbot.indicators.multi_timeframe[0m][0m [36mcandles[0m=[35m0[0m [36minterval[0m=[35m10080[0m
+[2m2026-09-22T22:04:56.036955Z[0m [[32m[1minfo     [0m] [1manalyzer_warmup_complete      [0m [[0m[1m[34mkrakenbot.indicators.multi_pair_registry[0m][0m [36mpair[0m=[35mBTC/EUR[0m
+[2m2026-09-22T22:04:56.041328Z[0m [[32m[1minfo     [0m] [1mpending_orders_loaded         [0m [[0m[1m[34mkrakenbot.execution.order_manager[0m][0m [36mcount[0m=[35m0[0m
+[2m2026-09-22T22:04:56.044354Z[0m [[32m[1minfo     [0m] [1mAdding job tentatively -- it will be properly scheduled when the scheduler starts[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:04:56.044737Z[0m [[32m[1minfo     [0m] [1mAdded job "KrakenBot._send_daily_summary" to job store "default"[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:04:56.044901Z[0m [[32m[1minfo     [0m] [1mScheduler started             [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:04:56.046910Z[0m [[32m[1mdebug    [0m] [1mLooking for jobs to run       [0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+[2m2026-09-22T22:04:56.047199Z[0m [[32m[1mdebug    [0m] [1mNext wakeup is due at 2026-09-22 23:00:00+00:00 (in 3303.952884 seconds)[0m [[0m[1m[34mapscheduler.scheduler[0m][0m
+------------------------------ Captured log call -------------------------------
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:72 {'pair': 'BTC/EUR', 'event': 'analyzer_created_for_pair', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:04:56.030541Z'}
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:104 {'pair': 'BTC/EUR', 'exchange': 'kraken', 'event': 'analyzer_warmup_starting', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:04:56.031684Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 60, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:04:56.033634Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 15, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:04:56.034357Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 5, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:04:56.035022Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 240, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:04:56.035579Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 1440, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:04:56.036132Z'}
+INFO     krakenbot.indicators.multi_timeframe:multi_timeframe.py:290 {'interval': 10080, 'candles': 0, 'event': 'mtf_warmup_loaded', 'level': 'info', 'logger': 'krakenbot.indicators.multi_timeframe', 'timestamp': '2026-09-22T22:04:56.036722Z'}
+INFO     krakenbot.indicators.multi_pair_registry:multi_pair_registry.py:106 {'pair': 'BTC/EUR', 'event': 'analyzer_warmup_complete', 'level': 'info', 'logger': 'krakenbot.indicators.multi_pair_registry', 'timestamp': '2026-09-22T22:04:56.036955Z'}
+INFO     krakenbot.execution.order_manager:order_manager.py:183 {'count': 0, 'event': 'pending_orders_loaded', 'level': 'info', 'logger': 'krakenbot.execution.order_manager', 'timestamp': '2026-09-22T22:04:56.041328Z'}
+INFO     apscheduler.scheduler:base.py:507 Adding job tentatively -- it will be properly scheduled when the scheduler starts
+INFO     apscheduler.scheduler:base.py:1090 Added job "KrakenBot._send_daily_summary" to job store "default"
+INFO     apscheduler.scheduler:base.py:214 Scheduler started
+DEBUG    apscheduler.scheduler:base.py:1151 Looking for jobs to run
+DEBUG    apscheduler.scheduler:base.py:1258 Next wakeup is due at 2026-09-22 23:00:00+00:00 (in 3303.952884 seconds)
+__ TestEngineMinOrder.test_order_below_floor_is_skipped_and_default_keeps_it ___
+  + Exception Group Traceback (most recent call last):
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 353, in from_call
+  |     result: TResult | None = func()
+  |                              ^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 245, in <lambda>
+  |     lambda: runtest_hook(item=item, **kwds),
+  |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+  |     return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+  |     return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+  |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+  |     raise exception
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/logging.py", line 850, in pytest_runtest_call
+  |     yield
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/capture.py", line 900, in pytest_runtest_call
+  |     return (yield)
+  |             ^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+  |     teardown.throw(exception)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/skipping.py", line 268, in pytest_runtest_call
+  |     return (yield)
+  |             ^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+  |     res = hook_impl.function(*args)
+  |           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 158, in pytest_runtest_call
+  |     collect_unraisable(item.config)
+  |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 81, in collect_unraisable
+  |     raise ExceptionGroup("multiple unraisable exception warnings", errors)
+  | ExceptionGroup: multiple unraisable exception warnings (5 sub-exceptions)
+  +-+---------------- 1 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x72149b2d0350>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7214a98687c0>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 2 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x72149b7e17f0>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7214a98687c0>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 3 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x7214a59e5580>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7214a98687c0>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 4 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x72149aad00b0>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7214a98687c0>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +---------------- 5 ----------------
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/aiohttp/client.py", line 455, in __del__
+    |     _warnings.warn(
+    | ResourceWarning: Unclosed client session <aiohttp.client.ClientSession object at 0x72149ace1ee0>
+    | 
+    | The above exception was the direct cause of the following exception:
+    | 
+    | Traceback (most recent call last):
+    |   File "/home/bruno/c3a-determinism/repo/.venv/lib/python3.12/site-packages/_pytest/unraisableexception.py", line 67, in collect_unraisable
+    |     warnings.warn(pytest.PytestUnraisableExceptionWarning(msg))
+    | pytest.PytestUnraisableExceptionWarning: Exception ignored in: <function ClientSession.__del__ at 0x7214a98687c0>
+    | Enable tracemalloc to get traceback where the object was allocated.
+    | See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+    +------------------------------------
+----------------------------- Captured stdout call -----------------------------
+[2m2026-09-22T22:05:01.596412Z[0m [[32m[1mdebug    [0m] [1mbacktest_buy_attempt          [0m [[0m[1m[34mroot[0m][0m [36mcomponent[0m=[35mbacktest[0m [36mmin_order[0m=[35m5.0[0m [36morder_amount[0m=[35m3.0[0m [36musdc_balance[0m=[35m3.0[0m
+[2m2026-09-22T22:05:01.596845Z[0m [[33m[1mwarning  [0m] [1mbacktest_buy_skipped_min_order[0m [[0m[1m[34mroot[0m][0m [36mcause[0m=[35mbelow_min_order[0m [36mcomponent[0m=[35mbacktest[0m [36morder_amount[0m=[35m3.0[0m [36morder_id[0m=[35msig#?[0m
+[2m2026-09-22T22:05:01.597994Z[0m [[32m[1mdebug    [0m] [1mbacktest_buy_attempt          [0m [[0m[1m[34mroot[0m][0m [36mcomponent[0m=[35mbacktest[0m [36mmin_order[0m=[35m1.0[0m [36morder_amount[0m=[35m3.0[0m [36musdc_balance[0m=[35m3.0[0m
+[2m2026-09-22T22:05:01.598686Z[0m [[32m[1mdebug    [0m] [1mbacktest_buy                  [0m [[0m[1m[34mroot[0m][0m [36mamount_usdc[0m=[35m3.0[0m [36mcomponent[0m=[35mbacktest[0m [36mcrypto[0m=[35m0.02997[0m [36mprice[0m=[35m100.0[0m
+------------------------------ Captured log call -------------------------------
+DEBUG    root:_base.py:223 {'component': 'backtest', 'usdc_balance': 3.0, 'order_amount': 3.0, 'min_order': 5.0, 'event': 'backtest_buy_attempt', 'level': 'debug', 'logger': 'root', 'timestamp': '2026-09-22T22:05:01.596412Z'}
+WARNING  root:_base.py:223 {'component': 'backtest', 'order_amount': 3.0, 'cause': 'below_min_order', 'order_id': 'sig#?', 'event': 'backtest_buy_skipped_min_order', 'level': 'warning', 'logger': 'root', 'timestamp': '2026-09-22T22:05:01.596845Z'}
+DEBUG    root:_base.py:223 {'component': 'backtest', 'usdc_balance': 3.0, 'order_amount': 3.0, 'min_order': 1.0, 'event': 'backtest_buy_attempt', 'level': 'debug', 'logger': 'root', 'timestamp': '2026-09-22T22:05:01.597994Z'}
+DEBUG    root:_base.py:223 {'component': 'backtest', 'price': 100.0, 'amount_usdc': 3.0, 'crypto': 0.02997, 'event': 'backtest_buy', 'level': 'debug', 'logger': 'root', 'timestamp': '2026-09-22T22:05:01.598686Z'}
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:99: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:108: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:114: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+ERROR tests/test_main.py::TestKrakenBotStop::test_stop_handles_component_errors
+FAILED tests/test_main.py::TestKrakenBotStart::test_start_subscribes_1m_when_router_crash_protector_is_configured
+FAILED tests/test_scripts/test_b4_campaign_configs.py::TestEngineMinOrder::test_order_below_floor_is_skipped_and_default_keeps_it
+2 failed, 2612 passed, 6 skipped, 1 error in 414.17s (0:06:54)
+[rc=1] 2026-09-22T22:11:26Z
+
+$ nice -n 5 poetry run pytest -q -p no:cacheprovider --junitxml=/home/bruno/c3a-determinism/junit/short.xml -k "not full" tests/test_scripts/test_run_p6_determinism.py
+......                                                                   [100%]
+6 passed, 24 deselected in 24.53s
+[rc=0] 2026-09-22T22:11:54Z
+
+$ poetry run pytest -q -p no:cacheprovider tests/test_strategies/test_grid_atr_v4_backward_compat.py   # gold hashes
+..                                                                       [100%]
+2 passed in 6.63s
+[rc=0]
+
+$ poetry run pytest -q -p no:cacheprovider tests/test_scripts/test_c3_*.py   # the C3 tests (806 expected), included in suite.xml above
+........................................................................ [  8%]
+........................................................................ [ 17%]
+........................................................................ [ 26%]
+........................................................................ [ 35%]
+........................................................................ [ 44%]
+........................................................................ [ 53%]
+........................................................................ [ 62%]
+........................................................................ [ 71%]
+........................................................................ [ 80%]
+........................................................................ [ 89%]
+........................................................................ [ 98%]
+..............                                                           [100%]
+806 passed in 226.82s (0:03:46)
+[rc=0]
+
+$ poetry run ruff check .
+All checks passed!
+[rc=0]
+
+$ poetry run ruff format --check .
+Would reformat: scripts/audit/rejeu_benchmark.py
+Would reformat: scripts/audit/rejeu_common.py
+Would reformat: scripts/audit/rejeu_effect.py
+Would reformat: scripts/audit/rejeu_validate_analysis.py
+Would reformat: scripts/audit/rejeu_validate_campaign.py
+Would reformat: scripts/audit/rejeu_verdict.py
+Would reformat: scripts/p6_5_diagnose_dca.py
+Would reformat: scripts/p6_5_diagnose_filters.py
+Would reformat: tests/test_scripts/test_rejeu_benchmark.py
+Would reformat: tests/test_scripts/test_rejeu_effect.py
+Would reformat: tests/test_scripts/test_rejeu_validate_campaign.py
+Would reformat: tests/test_scripts/test_rejeu_verdict.py
+12 files would be reformatted, 262 files already formatted
+[rc=1]
+
+$ git ls-files "*.py" | xargs poetry run ruff format --check --force-exclude   # tracked files only
+Would reformat: scripts/audit/rejeu_benchmark.py
+Would reformat: scripts/audit/rejeu_common.py
+Would reformat: scripts/audit/rejeu_effect.py
+Would reformat: scripts/audit/rejeu_validate_analysis.py
+Would reformat: scripts/audit/rejeu_validate_campaign.py
+Would reformat: scripts/audit/rejeu_verdict.py
+Would reformat: scripts/p6_5_diagnose_dca.py
+Would reformat: scripts/p6_5_diagnose_filters.py
+Would reformat: tests/test_scripts/test_rejeu_benchmark.py
+Would reformat: tests/test_scripts/test_rejeu_effect.py
+Would reformat: tests/test_scripts/test_rejeu_validate_campaign.py
+Would reformat: tests/test_scripts/test_rejeu_verdict.py
+12 files would be reformatted, 262 files already formatted
+[rc=123]
+
+$ poetry run mypy src/ | tail -1 ; poetry run mypy src/ | grep feature_store.py:32 ; poetry run mypy src/ --ignore-missing-imports | tail -1
+Found 65 errors in 18 files (checked 83 source files)
+src/krakenbot/ml/features/feature_store.py:32: error: Library stubs not installed for "pandas"  [import-untyped]
+src/krakenbot/ml/features/feature_store.py:32: note: Hint: "python3 -m pip install pandas-stubs"
+src/krakenbot/ml/features/feature_store.py:32: note: (or run "mypy --install-types" to install all missing stub packages)
+src/krakenbot/ml/features/feature_store.py:32: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+Found 64 errors in 18 files (checked 83 source files)
+
+# --- innocuity (after the runs) 2026-09-22T22:16:34Z
+# window: 2026-09-22T20:54:39Z -> 2026-09-22T22:16:34Z
+$ systemctl is-active krakenbot-collector ; systemctl show krakenbot-collector -p NRestarts -p ActiveEnterTimestamp ; systemctl is-active krakenbot
+active
+NRestarts=0
+ActiveEnterTimestamp=Sun 2026-09-13 19:54:11 UTC
+inactive
+$ ps -eo pid,stat,etime,cmd | awk '$2 ~ /Z/'   # zombies (expect: none)
+$ ps -eo pid,etime,cmd | grep -E "pytest|backtest" | grep -v grep   # residual (expect: none)
+$ sudo -n docker exec krakenbot-db psql -U krakenbot -d krakenbot -c "<1m continuity per pair over the window>"
+   pair   | rows | gaps | max_gap  
+----------+------+------+----------
+ BTC/USDC |   82 |    0 | 00:01:00
+ ETH/USDC |   82 |    0 | 00:01:00
+ SOL/USDC |   82 |    0 | 00:01:00
+(3 rows)
+
+
+# end: 2026-09-22T22:16:34Z

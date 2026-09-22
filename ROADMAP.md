@@ -41,7 +41,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | **C1** | Métriques fiables (module partagé, dual MaxDD, PF net, equity export, A/B vs tag) | 3-5 j | `results/C1_metrics_report.md`, gold hashes re-baselinés sur tableau A/B approuvé | ✅ 16 sept — mergé dans `dev`, tag `v2.9.0-c1-metrics` |
 | **C2** | Fidélité replay (grid 4h réels, préenregistrement EMA200 DCA, compteurs de rejets, dette 14 avec review) | 2-4 j | `results/C2_replay_report.md`, gold hashes grid re-baselinés sur tableau approuvé, preuves de déterminisme `results/c2_replay/determinism_server/` | ✅ 19 sept — mergé dans `dev`, tag `v2.10.0-c2-replay` |
 | **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | `results/rejeu_grid_report.md`, pré-spécification gelée `docs/rejeu_grid_prespec.md`, artefacts `results/rejeu_grid_20260919/` | ✅ 20 sept — **`inconclusif (F_CANNOT_SEPARATE)`** : 16 configs BTC passent les gates ponctuels, aucune ne tient les six bornes simultanées ; SOL descriptif (données insuffisantes). Ni candidat, ni dépriorisation : **pas de déploiement, pas de tuning supplémentaire**, périmètre non élargi. Suite → C3 |
-| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole gelé + outillé ; puis campagne réelle sous la chaîne | ✅ **C3a close le 22 sept** — protocole **gelé** (`docs/protocole_c3.md`, `d931293`), outillage **complet** (7 modules, 806 tests, `c3_verdict.py chain`), artefact du rejeu **refusé à l'entrée** (`D_WARMUP_PREFIX`, 96/96) ; branche `feat/c3a-protocole` @ `acaeaf6` **non mergée** (porte § L.5 due). 📋 **C3b ouvert** : (1) gate d'amendement du protocole + chantier producteur ; (2) campagne réelle sous la chaîne. Détail : § « C3 — Validation chronologique » |
+| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole gelé + outillé ; puis campagne réelle sous la chaîne | ✅ **C3a close le 22 sept** — protocole **gelé** (`docs/protocole_c3.md`, `d931293`), outillage **complet** (7 modules, 806 tests, `c3_verdict.py chain`), artefact du rejeu **refusé à l'entrée** (`D_WARMUP_PREFIX`, 96/96) ; branche `feat/c3a-protocole` @ `6f7ed8e`, porte § L.5 **passée le 2026-09-22** (24/24 déterminisme serveur), merge dans `dev` en cours. 📋 **C3b ouvert** : (1) gate d'amendement du protocole + chantier producteur ; (2) campagne réelle sous la chaîne. Détail : § « C3 — Validation chronologique » |
 | **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
 | P11+ | ML, scalping eval, RL | Mois | — | 🔮 |
@@ -122,9 +122,10 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
 - **Seule sortie réelle** : refus de `results/rejeu_grid_20260919/P7_phase1_grid.json` à l'entrée (`D_WARMUP_PREFIX`,
   portée artefact, 96/96 — `results/c3a_entry_validation/`). Aucune sélection, aucun verdict économique ;
   `validé` / `réfuté` inatteignables avant C3b (§ L.1).
-- **Porte pré-merge § L.5 due, hors C3a** : `git diff --stat f585e8b -- <chemins § L.3>` = `pyproject.toml` seul
-  (exclusions Ruff), donc l'option 2 n'est pas disponible → **24 tests de déterminisme sur le serveur au SHA final**
-  (recette C2) **et re-passe Astra** sur ce SHA, sauf décision humaine **écrite** traitant l'écart.
+- **Porte pré-merge § L.5 passée le 2026-09-22 au `6f7ed8e`** (option 1 : 24/24 déterminisme serveur, recette C2,
+  `results/c3a_determinism_server/run_6f7ed8e/` ; option 2 indisponible, `pyproject.toml` seul sur § L.3 ; re-passe Astra
+  consignée non faite, décision humaine écrite ; suite serveur non verte pour une cause hors C3a — tests non hermétiques
+  Telegram — rapport § 14).
 
 **C3b — deux paquets, dans cet ordre** (brief à écrire, non commencé) :
 

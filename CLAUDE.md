@@ -11,7 +11,8 @@ trader masqué). **B4 est close (15 sept, tag `v2.8.0-b4-3-campaign`) : zéro s�
 l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Instrument réparé : C1 (métriques,
 `v2.9.0-c1-metrics`) et C2 (replay, `v2.10.0-c2-replay`) mergés ; rejeu grid clos `inconclusif` (20/09). **C3a close
 (22/09)** : protocole `docs/protocole_c3.md` gelé + outillage complet, artefact du rejeu **refusé à l'entrée**.
-Phase courante : pré-merge C3a (§ L.5) + préparation C3b ; aucune sélection, rien à trader ; R&D sur le papier
+Phase courante : merge de C3a dans `dev` (porte § L.5 passée le 2026-09-22 au `6f7ed8e`, 24/24 déterminisme serveur ;
+suite serveur non verte pour une cause hors C3a, rapport § 14.2) + préparation C3b ; aucune sélection, rien à trader ; R&D sur le papier
 (`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
 `docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
 end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts par paire mesurés (GATE B).
@@ -40,7 +41,7 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
 
-> **C3a livrée et validée (22 sept 2026 — branche `feat/c3a-protocole`, tip `acaeaf6`, non mergée).**
+> **C3a livrée et validée (22 sept 2026 — branche `feat/c3a-protocole`, validée au tip `acaeaf6`, tip final `6f7ed8e`).**
 > `docs/protocole_c3.md` est **gelé** au commit `d931293` : il spécifie **toute** sélection future (ancrage,
 > admissibilité, classement, contrat de continuité, benchmark, incertitude, trois issues) et ne se modifie que par
 > amendement daté. **Aucune sélection ne se fait hors de ce document.** L'outillage `scripts/audit/c3_*.py` est
@@ -48,7 +49,9 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 > datées dans `skills/backtest.md` § « Validation C3 ». Sa **seule sortie réelle est un refus** : l'artefact du rejeu
 > grid ne satisfait pas les conditions d'entrée C3 (`D_WARMUP_PREFIX`, 96/96, `results/c3a_entry_validation/`).
 > **Aucune campagne existante ne peut traverser la chaîne** sans un producteur conforme (chantier C3b) ; `validé` /
-> `réfuté` sont inatteignables avant C3b (§ L.1). Aucune sélection, aucun verdict économique. Porte pré-merge § L.5 due.
+> `réfuté` sont inatteignables avant C3b (§ L.1). Aucune sélection, aucun verdict économique. Porte pré-merge § L.5 **passée le 2026-09-22 au `6f7ed8e`** (option 1 :
+> 24/24 déterminisme serveur, `results/c3a_determinism_server/run_6f7ed8e/`) ; suite serveur non verte pour une cause hors
+> C3a (tests non hermétiques Telegram, rapport § 14.2), merge sous décision humaine.
 
 ## Règles d'or (absolues)
 

@@ -11,8 +11,10 @@
 > croisées Astra / Claude, **806 tests C3**, suite 2 615 passés / 6 skippés, branche `feat/c3a-protocole` @ `acaeaf6`,
 > non mergée) : protocole `docs/protocole_c3.md` **gelé** (`d931293`), outillage complet ; **l'artefact réel du rejeu
 > est refusé à l'entrée** (§ D.3, `D_WARMUP_PREFIX`, 96/96). **Fait stratégique : aucune campagne existante ne peut
-> traverser la chaîne C3 sans un producteur conforme → chantier C3b.** **Phase courante : pré-merge C3a** (§ L.5 :
-> 24 tests de déterminisme sur le serveur + re-passe Astra sur le SHA final) **et préparation de C3b** (gate
+> traverser la chaîne C3 sans un producteur conforme → chantier C3b.** **Phase courante : merge de C3a dans `dev`** (porte § L.5
+> **passée le 2026-09-22 au `6f7ed8e`** : 24/24 déterminisme serveur, `results/c3a_determinism_server/run_6f7ed8e/` ;
+> re-passe Astra consignée non faite, décision Bruno ; suite serveur non verte pour une cause hors C3a — rapport § 14)
+> **et préparation de C3b** (gate
 > d'amendement du protocole, chantier producteur). Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
 > `docs/RESEARCH_LOG.md` obligatoire avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
 
@@ -128,9 +130,11 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   code 2 ; 22/09 : preuve absente après violation → code 2, violations sur stderr) documentées dans
   `skills/backtest.md` § « Validation C3 », **à ratifier par amendement** au gate C3b (avec la ligne run
   `R1_NOT_NORMALISED`, E2 sur les six distributions, la tolérance MDD, l'énumération § L.1 / `candles.json`).
-  **Restent, hors C3a** : porte pré-merge § L.5 (`git diff --stat f585e8b -- <§ L.3>` = `pyproject.toml` seul →
-  option 2 indisponible : 24 tests de déterminisme sur le serveur au SHA final + re-passe Astra, sauf décision humaine
-  écrite), gate d'amendement, brief C3b. Rapport : `agent/rapport_session_c3a_20260922.md`.
+  **Porte pré-merge § L.5 passée le 2026-09-22 au `6f7ed8e`** (option 1 : 24/24 déterminisme serveur, recette C2,
+  `results/c3a_determinism_server/run_6f7ed8e/` ; option 2 indisponible, `pyproject.toml` seul sur § L.3 ; re-passe Astra
+  consignée non faite, décision humaine écrite ; suite serveur non verte pour une cause hors C3a — tests non hermétiques
+  Telegram, `mock_settings` sans `telegram` — rapport § 14). **Restent, hors C3a** : gate d'amendement, brief C3b, dette
+  d'hermétisme de la suite. Rapport : `agent/rapport_session_c3a_20260922.md`.
 
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
@@ -364,9 +368,9 @@ Détail : `ROADMAP.md`.
 - ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`), C2 (mergé, `v2.10.0-c2-replay`), **rejeu
   diagnostic grid** (clos le 20 sept, verdict `inconclusif (F_CANNOT_SEPARATE)` — famille grid ni validée ni
   dépriorisée) → **C3 validation chronologique** : **C3a close le 22 sept** (protocole gelé `d931293`, outillage 7
-  modules / 806 tests, artefact du rejeu refusé à l'entrée ; branche `feat/c3a-protocole` @ `acaeaf6` non mergée,
-  porte § L.5 due) ; **C3b ouvert** (gate d'amendement + producteur conforme, puis campagne réelle sous la chaîne).
-  **Phase courante : pré-merge C3a + préparation C3b.**
+  modules / 806 tests, artefact du rejeu refusé à l'entrée ; branche `feat/c3a-protocole` @ `6f7ed8e`, porte § L.5
+  passée le 2026-09-22, merge dans `dev` en cours) ; **C3b ouvert** (gate d'amendement + producteur conforme, puis campagne réelle sous la chaîne).
+  **Phase courante : merge C3a + préparation C3b.**
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
