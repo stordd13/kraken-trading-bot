@@ -31,6 +31,20 @@ discordance** ; elles ne prouvent pas que l'invocation courante a réussi : c'es
 sous-commande ``chain``, qui invoque chaque étape en processus et **contrôle son code de retour
 effectif** avant le verdict (plan § 5.3).
 
+**``chain.verified`` — définition fixée (revue Fin 2).** ``chain.verified`` signifie l'**intégrité
+mécanique de la chaîne** : codes de succès enregistrés des amonts, cohérence interne de chaque
+enveloppe amont, empreintes concordantes. Il ne porte pas la qualité économique de l'issue — elle se
+lit dans ``verdict`` / ``raison``. Donc ``verified: true`` avec un ``inconclusif`` (``E_NO_BENCHMARK``,
+``F_NOT_ESTIMABLE``, abstention…) est cohérent ; ``verified: false`` sur **toute** violation (de
+chaîne ou non) **ou refus** — un refus sans violation ne publie rien (aucun ``verified`` à porter) ;
+un refus consigné après une violation publie un diagnostic, qui porte ``verified: false``.
+
+**Précédence violation → issue non définie (revue Fin 2).** Une contradiction déclaré / dérivé
+constatée est un diagnostic code 1 (``invalide: true``, violations listées), même quand la clause 3
+est en échec ; le refus 2 ``UndefinedIssueError`` reste réservé au cas cohérent (c3 en échec,
+résumés et agrégat concordants) — c'est lui que la convention datée couvre. Même règle pour un
+refus constaté après une violation (précédent du chantier 0).
+
 **Continuité → verdict (plan § 6.4, validé ; revue Fin, défaut 2).** Les résumés
 (``warmup_anchor_ok``, ``benchmark_comparable``, ``stamp_same_daily_cell``, ``liquidation_normalised``)
 et l'agrégat sont **dérivés des clauses par le consommateur** et recoupés au déclaré — une
@@ -38,9 +52,11 @@ contradiction est une violation ; les actions se branchent sur les clauses, jama
 Clauses déclaratives c1/c2/c5 ``FAILED`` : l'artefact
 déclare lui-même une rupture du contrat § B → refus ``R0_INVALID_RUN``, code 2. Clause 3 ``FAILED``
 (liquidation terminale non normalisée) : § B.3 et § G.2 interdisent tout verdict directionnel et § I.1
-ne porte aucune ligne de portée run pour ce cas → ``UndefinedIssueError``, **code 2, rien publié** —
-**convention d'outillage datée du 21/09** (plan § 6.1, conduite (b)), une assignation de code hors
-table assumée comme telle ; l'amendement daté (a) est dû à l'ouverture de C3b.
+ne porte aucune ligne de portée run pour ce cas → ``UndefinedIssueError`` — **convention d'outillage
+datée du 21/09** (plan révisé § 6.1, hors dépôt, conduite (b) ; rapport de session § 7), une
+assignation de code hors table assumée comme telle ; l'amendement daté (a) est dû à l'ouverture de
+C3b. Sa sortie (code 2, rien publié) ne vaut que pour le cas **cohérent** — voir la précédence
+ci-dessus.
 
 **Confinement des verdicts synthétiques (plan § 6.6, validé).** § L.1 : sur données réelles, C3a ne
 peut produire que non-recevabilité et abstention ; ``validé`` / ``réfuté`` sont structurellement
@@ -88,10 +104,14 @@ INPUT_NAMES: tuple[str, ...] = ("entry", "anchor", "selection", "continuity", "e
 SYNTH_PREFIX = "C3_SYNTH_"
 PORTEE_SYNTH = "exercice synthétique de l'outillage — aucune portée économique (§ L.1)"
 #: Convention d'outillage datée du 21/09 (plan § 6.1, conduite (b)) — le message cité par le test.
-UNDEFINED_ISSUE_MESSAGE = (
+UNDEFINED_ISSUE_MOTIF = (
     "issue non définie par le texte gelé, amendement pendant (§ 6.1) : liquidation terminale non "
     "normalisée sur l'artefact d'évaluation — § B.3 et § G.2 interdisent tout verdict directionnel, "
-    "§ I.1 ne porte aucune ligne de portée run pour ce cas ; convention d'outillage datée du 21/09 : "
+    "§ I.1 ne porte aucune ligne de portée run pour ce cas"
+)
+#: Le motif, puis la conduite (b) de la convention datée — celle-ci ne s'applique qu'au cas cohérent.
+UNDEFINED_ISSUE_MESSAGE = (
+    f"{UNDEFINED_ISSUE_MOTIF} ; convention d'outillage datée du 21/09 : "
     "refus de produire une issue, code 2, rien publié"
 )
 ABSTENTION_REASONS: tuple[str, ...] = ("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR")
@@ -717,7 +737,11 @@ def artifact_coherence(artifact: Mapping[str, Any], *, where: str) -> list[str]:
 
 
 def verify_chain(
-    raws: Mapping[str, Mapping[str, Any]], paths: Mapping[str, Path]
+    raws: Mapping[str, Mapping[str, Any]],
+    paths: Mapping[str, Path],
+    *,
+    violations: list[str] | None = None,
+    checks: list[dict[str, Any]] | None = None,
 ) -> tuple[list[str], list[dict[str, Any]]]:
     """Exige le succès enregistré de chaque amont (sinon refus, code 2) et recoupe les empreintes
     entre elles et avec les fichiers fournis (discordance = violation, code 1).
@@ -731,8 +755,11 @@ def verify_chain(
     selection et continuity ; ``entry.json`` tel que consommé par selection ; ``evaluation.json`` tel
     que consommé par continuity ; ``protocole.sha256`` identique partout et égal au courant.
     """
-    checks: list[dict[str, Any]] = []
-    violations: list[str] = []
+    # Les listes du demandeur, quand il les passe : une contradiction consignée ici n'est jamais
+    # perdue si un refus (`require_upstream_ok`) ou une erreur d'entrée lève ensuite — le refus
+    # après violation reste consigné au diagnostic, code 1 (chantier 0 ; passe interne, revue Fin 2).
+    checks = checks if checks is not None else []
+    violations = violations if violations is not None else []
 
     def record(name: str, ok: bool, detail: str) -> None:
         checks.append({"check": name, "ok": ok, "detail": detail})
@@ -963,7 +990,14 @@ def run_verdict(
     now: datetime,
     chain_steps: Sequence[Mapping[str, Any]] = (),
 ) -> int:
-    """Lit les cinq artefacts, vérifie la chaîne, décide, écrit ``verdict.json`` (0 ou 1) ou rien (2)."""
+    """Lit les cinq artefacts, vérifie la chaîne, décide, écrit ``verdict.json`` (0 ou 1) ou rien (2).
+
+    ``chain.verified`` (définition fixée, revue Fin 2) : intégrité mécanique de la chaîne — codes
+    de succès des amonts, cohérence interne de chaque amont, empreintes concordantes ; vrai
+    seulement dans un artefact normal (code 0), faux sur toute violation (chaîne ou non) ou refus —
+    un refus sans violation ne publie rien (code 2), un refus après violation publie un diagnostic
+    ``verified: false``. Il ne dit rien de la qualité de l'issue (``verdict`` / ``raison``).
+    """
     artifacts: dict[str, Mapping[str, Any]] = {}
     for name in INPUT_NAMES:
         try:
@@ -997,17 +1031,27 @@ def run_verdict(
     variant_key = ""
     observations_sha256 = ""
     try:
-        chain_violations, chain["checks"] = verify_chain(artifacts, inputs)
+        chain_violations, _ = verify_chain(
+            artifacts, inputs, violations=violations, checks=chain["checks"]
+        )
         chain["verified"] = not chain_violations
-        violations += chain_violations
         variant_key = cc.require_str(artifacts["anchor"], "variant_key", where="anchor")
         recorded = cc.require_mapping(artifacts["entry"], "inputs_sha256", where="entry")
         observations_sha256 = cc.require_str(recorded, "observations", where="entry.inputs_sha256")
         decision = decide(artifacts, violations=violations)
     except cc.UndefinedIssueError as exc:
-        # Convention datée du 21/09 (plan § 6.1) : aucune issue, code 2, rien publié.
-        print(f"ISSUE NON DEFINIE {exc}", file=sys.stderr)
-        return 2
+        if violations:
+            # Revue Fin 2 (2) — précédence : une contradiction déclaré / dérivé constatée avant
+            # est une violation (§ I.1 l.15) ; elle prime, l'issue non définie est consignée dans
+            # le diagnostic, code 1. Le refus 2 de la convention datée reste réservé au cas cohérent.
+            # Le diagnostic consigne le motif, pas la conduite (b) qui ne s'est pas appliquée.
+            violations.append(
+                f"issue non définie constatée après violation : {UNDEFINED_ISSUE_MOTIF}"
+            )
+        else:
+            # Convention datée du 21/09 (plan § 6.1) : aucune issue, code 2, rien publié.
+            print(f"ISSUE NON DEFINIE {exc}", file=sys.stderr)
+            return 2
     except cc.EntryRefusedError as exc:
         if violations:
             # Une violation constatée avant le refus prime (§ I.1 l.15 : « c'est une violation,
@@ -1018,7 +1062,11 @@ def run_verdict(
             print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
             return 2
     except cc.MissingEvidenceError as exc:
-        # § I.1 — preuve obligatoire absente, nulle, mal typée ou hors liste close : code 2.
+        # § I.1 — preuve obligatoire absente, nulle, mal typée ou hors liste close : code 2, rien
+        # d'écrit (chantier 0). La norme est muette sur une violation constatée avant (question
+        # consignée au rapport) : rien n'est publié, mais rien n'est perdu — elle est dite sur stderr.
+        for violation in violations:
+            print(f"VIOLATION {violation}", file=sys.stderr)
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
         return 2
     except (cc.InvalidValueError, cc.NonFiniteValueError) as exc:
@@ -1029,8 +1077,8 @@ def run_verdict(
 
     if violations:
         # § I.1, ligne 15 — une violation n'est pas un résultat : aucun verdict normal n'est publié,
-        # et la chaîne n'est pas « vérifiée » (revue Fin, défaut 3) : `verified` n'est vrai que dans
-        # un artefact normal ; les `checks` disent quels recoupements d'empreintes ont échoué.
+        # et `chain.verified` est faux sur toute violation, de chaîne ou non (définition fixée,
+        # revue Fin 2 ; revue Fin 3) ; les `checks` disent quels recoupements ont passé ou échoué.
         chain["verified"] = False
         payload = build_diagnostic_payload(
             violations, campaign=campaign, now=now, inputs=inputs, partial=decision, chain=chain

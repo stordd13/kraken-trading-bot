@@ -198,7 +198,9 @@ class UndefinedIssueError(ValueError):
     gelé** — clause 3 de continuité en échec sur l'artefact d'évaluation. § B.3 et § G.2 interdisent
     tout verdict directionnel ; § I.1 ne porte aucune ligne de portée run pour ce cas ; l'amendement
     daté (a) est dû à l'ouverture de C3b. Conduite (b) : refus de produire une issue, code 2, rien
-    publié — une assignation de code hors table, assumée comme telle et consignée.
+    publié — une assignation de code hors table, assumée comme telle et consignée — **pour le cas
+    cohérent seulement** : une contradiction déclaré / dérivé constatée avant prime (§ I.1 l.15) et
+    l'issue non définie est consignée au diagnostic, code 1 (revue Fin 2, item 2 ; `c3_verdict`).
     """
 
 

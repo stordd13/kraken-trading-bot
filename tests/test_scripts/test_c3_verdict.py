@@ -1488,22 +1488,21 @@ def test_une_evaluation_reelle_est_refusee_rien_publie(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("how", ["clause_c3_FAILED_resume_vrai", "clause_et_resume_coherents"])
 def test_clause_3_en_echec_moteur_signal_a_l_evaluation_issue_non_definie(
-    tmp_path: Path, how: str, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Fixture « moteur signal à l'évaluation » : liquidation terminale non normalisée. Le texte
-    gelé ne définit pas l'issue → `UndefinedIssueError`, code 2, rien d'écrit, message cité.
-    L'action se branche sur la **clause** (revue Fin 2) : le résumé, cohérent ou contredit, ne
-    change pas la conduite (contredit, il ajoute une violation — testé au § revue Fin 2)."""
+    """Fixture « moteur signal à l'évaluation » : liquidation terminale non normalisée, résumés et
+    agrégat **concordants**. Le texte gelé ne définit pas l'issue → `UndefinedIssueError`, code 2,
+    rien d'écrit, message cité (§ 6.1, convention datée du 21/09). Le cas contredit (résumé vrai
+    sur une clause en échec) n'est plus ce refus mais un diagnostic code 1 — revue Fin 2 (2),
+    testé sous `test_revue_Fin2_2_*`."""
     artifacts = _sound()
     artifacts["continuity"]["clauses"]["c3"] = {
         "state": "FAILED",
         "detail": "liquidation absente (moteur signal)",
     }
     artifacts["continuity"]["state"] = "FAILED"
-    if how == "clause_et_resume_coherents":
-        artifacts["continuity"]["liquidation_normalised"] = False
+    artifacts["continuity"]["liquidation_normalised"] = False
     with pytest.raises(cc.UndefinedIssueError) as info:
         cv.decide(artifacts, violations=[])
     assert str(info.value) == cv.UNDEFINED_ISSUE_MESSAGE
@@ -3123,3 +3122,236 @@ def test_revue_Fin2_1_les_portes_et_les_bornes_sont_lues_avant_tout_retour_antic
         cv.decide(artifacts, violations=[])
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
     assert not (tmp_path / "verdict.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin 2 (2) — violation avant UndefinedIssue : une contradiction constatée est un
+# diagnostic code 1, même quand c3 est en échec ; le refus 2 reste réservé au cas cohérent
+# ---------------------------------------------------------------------------
+
+
+def _c3_failed(artifacts: dict[str, Any]) -> None:
+    c = artifacts["continuity"]
+    c["clauses"]["c3"] = {"state": "FAILED", "detail": "liquidation absente (moteur signal)"}
+    c["state"] = "FAILED"
+    c["liquidation_normalised"] = False
+
+
+def test_revue_Fin2_2_c3_FAILED_et_resume_normalise_vrai_est_un_diagnostic_code_1(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Reproduction d'Astra : c3=FAILED + liquidation_normalised=true — contradiction déclaré/dérivé
+    → diagnostic code 1 (invalide: true, violations listées), pas le refus 2 de la convention
+    datée. Appui : revue Fin 2, item 2 (précédence fixée ; précédent du chantier 0 pour un refus
+    après violation) ; § I.1 l.15 (« c'est une violation, pas un résultat »)."""
+    artifacts = _sound()
+    _c3_failed(artifacts)
+    artifacts["continuity"]["liquidation_normalised"] = True  # ment sur la clause en échec
+    violations: list[str] = []
+    with pytest.raises(cc.UndefinedIssueError):
+        cv.decide(artifacts, violations=violations)
+    assert any("liquidation_normalised" in v for v in violations)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+    assert any("liquidation_normalised" in v for v in payload["violations"])
+    assert any("issue non définie" in v for v in payload["violations"]), (
+        "la convention datée est consignée dans le diagnostic, pas exécutée"
+    )
+    assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
+
+
+def test_revue_Fin2_2_c3_FAILED_et_agregat_menteur_VERIFIED_est_un_diagnostic_code_1(
+    tmp_path: Path,
+) -> None:
+    """Reproduction d'Astra (item 2) : c3 en échec, résumé cohérent, agrégat déclaré VERIFIED →
+    contradiction déclaré/dérivé (dérivé FAILED, précédence § 6.4) → diagnostic code 1, jamais le
+    refus 2 — « le refus 2 reste réservé au cas cohérent »."""
+    artifacts = _sound()
+    _c3_failed(artifacts)
+    artifacts["continuity"]["state"] = "VERIFIED"
+    violations: list[str] = []
+    with pytest.raises(cc.UndefinedIssueError):
+        cv.decide(artifacts, violations=violations)
+    assert any("continuity.state" in v for v in violations)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["chain"]["verified"] is False
+
+
+def test_revue_Fin2_2_c3_FAILED_coherent_reste_le_refus_2_de_la_convention_datee(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Le cas que la convention datée du 21/09 couvre : c3 en échec, résumés et agrégat concordants
+    → UndefinedIssueError, code 2, rien publié (§ 6.1, conduite (b))."""
+    artifacts = _sound()
+    _c3_failed(artifacts)
+    violations: list[str] = []
+    with pytest.raises(cc.UndefinedIssueError):
+        cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+    assert "ISSUE NON DEFINIE" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin 2 (3) — chain.verified : intégrité mécanique de la chaîne, pas la qualité de l'issue
+# ---------------------------------------------------------------------------
+
+
+def test_revue_Fin2_3_chain_verified_vrai_avec_un_inconclusif_E_NO_BENCHMARK(
+    tmp_path: Path,
+) -> None:
+    """Définition fixée : `chain.verified` = codes de succès des amonts, cohérence interne de chaque
+    amont, empreintes concordantes. Un inconclusif E_NO_BENCHMARK sur des artefacts intègres est
+    `verified: true` — l'issue économique se lit dans verdict/raison, pas dans verified."""
+    artifacts = _sound()
+    comp = artifacts["continuity"]["comparator"]
+    comp["tests"]["ff_ok"] = False
+    comp["state"] = "FAILED"
+    artifacts["continuity"]["benchmark_comparable"] = False
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "E_NO_BENCHMARK"
+    assert payload["chain"]["verified"] is True
+    assert all(c["ok"] for c in payload["chain"]["checks"])
+
+
+@pytest.mark.parametrize(
+    ("label", "mutate"),
+    [
+        (
+            "violation_hors_chaine_estimabilite",
+            lambda a: a["evaluation"].__setitem__("estimability", {"ok": False}),
+        ),
+        (
+            "violation_hors_chaine_resume",
+            lambda a: a["continuity"].__setitem__("warmup_anchor_ok", False),
+        ),
+        ("violation_de_chaine_empreinte", "empreinte"),
+        ("violation_de_chaine_coherence", lambda a: a["selection"].__setitem__("exit_code", 2)),
+        (
+            "violation_de_chaine_protocole",
+            lambda a: a["anchor"].__setitem__(
+                "protocole", {"path": cc.PROTOCOL_RELPATH, "sha256": "f" * 64}
+            ),
+        ),
+        (
+            "violation_hors_chaine_non_fini",
+            lambda a: a["evaluation"]["delta_stars"].__setitem__(3, float("nan")),
+        ),
+    ],
+    ids=["estimabilite", "resume", "empreinte", "coherence", "protocole", "non_fini"],
+)
+def test_revue_Fin2_3_chain_verified_faux_sur_toute_violation(
+    tmp_path: Path, label: str, mutate: Any
+) -> None:
+    """Sens « faux » de la définition (revue Fin 2, item 3 : « verified: false sur toute violation
+    ou refus ») : chaîne (empreinte, cohérence, protocole) comme hors chaîne (estimabilité, résumé,
+    non-fini fourni) — un diagnostic (§ I.1 l.15) ne porte jamais `verified: true`. Vert avant le
+    correctif 2 : ce test fixe la définition, il ne mord pas sur un défaut."""
+    artifacts = _sound()
+    if mutate == "empreinte":
+        argv = _write_cli_inputs(tmp_path, artifacts)
+        sel = cc.read_json(tmp_path / "selection.json")
+        sel["inputs_sha256"]["anchor"] = "0" * 64
+        cc.write_json(tmp_path / "selection.json", sel)
+    else:
+        mutate(artifacts)
+        argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 1, label
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["chain"]["verified"] is False, label
+
+
+def test_revue_Fin2_3_un_refus_ne_publie_rien_donc_aucun_verified(tmp_path: Path) -> None:
+    """Item 3, moitié « ou refus » : un refus sans violation ne publie rien (chantier 0 : code 2,
+    rien d'écrit), il n'y a donc aucun `verified` à porter. Vert avant : fixe la définition."""
+    artifacts = _sound()
+    artifacts["selection"].update({"ok": False, "invalide": False, "exit_code": 2})
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_revue_Fin2_3_un_refus_apres_violation_publie_un_diagnostic_verified_faux(
+    tmp_path: Path,
+) -> None:
+    """Item 3, moitié « ou refus », le seul refus qui publie : consigné après une violation
+    (chantier 0), le diagnostic porte `verified: false`."""
+    artifacts = _sound()
+    artifacts["entry"].update({"ok": False, "refusal": None})  # incohérent (exit 0) puis refus R0
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["chain"]["verified"] is False
+    assert any("refus d'entrée constaté après violation" in v for v in payload["violations"])
+
+
+def test_revue_Fin2_3_chain_verified_en_mode_chain_avec_E_NO_BENCHMARK(tmp_path: Path) -> None:
+    """Sens « vrai » en mode chain (item 3) : les cinq étapes ont rendu 0, les enveloppes sont
+    cohérentes, les empreintes concordent ; l'issue est un inconclusif E_NO_BENCHMARK (fenêtre du
+    comparateur 2000–2001) — `verified: true`. Vert avant : fixe la définition."""
+    w = _chain_world(tmp_path)
+    pair = cc.read_json(w["evaluation"])["pair"]
+    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(pair, window=dict(WINDOW_2000)))
+    assert cv.main(_chain_argv(w)) == 0
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["raison"] == "E_NO_BENCHMARK" and payload["chain"]["verified"] is True
+    assert payload["chain"]["mode"] == "chain"
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin 2 (2), passe interne — une contradiction d'amont consignée n'est jamais perdue
+# ---------------------------------------------------------------------------
+
+
+def test_revue_Fin2_2_une_contradiction_d_amont_n_est_pas_perdue_par_un_refus_ulterieur(
+    tmp_path: Path,
+) -> None:
+    """Constat de la passe interne : `verify_chain` consignait les contradictions dans une liste
+    locale ; un `require_upstream_ok` levant ensuite sur un autre amont cohérent en échec faisait
+    sortir 2 sans diagnostic. Chantier 0 : refus après violation → consigné au diagnostic, code 1 ;
+    docstring de `verify_chain` : « une contradiction … est une violation, code 1 »."""
+    artifacts = _sound()
+    artifacts["entry"].update({"ok": True, "invalide": False, "exit_code": 1})  # contradiction
+    artifacts["selection"].update(
+        {"ok": False, "invalide": False, "exit_code": 2}
+    )  # échec cohérent
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["chain"]["verified"] is False
+    assert any("entry.coherence" in v for v in payload["violations"])
+    assert any("refus d'entrée constaté après violation" in v for v in payload["violations"])
+    assert any(
+        c["check"] == "entry.coherence" and c["ok"] is False for c in payload["chain"]["checks"]
+    )
+
+
+def test_revue_Fin2_2_une_preuve_absente_apres_violation_sort_2_et_la_violation_est_dite(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Chantier 0 : absent → 2, rien d'écrit — la norme est muette sur une violation constatée avant
+    (consigné au rapport, question ouverte). Conduite retenue : rien n'est publié, mais rien n'est
+    perdu — les violations déjà constatées sont dites sur stderr avec l'erreur d'entrée."""
+    artifacts = _sound()
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    sel = cc.read_json(tmp_path / "selection.json")
+    sel["inputs_sha256"]["anchor"] = "0" * 64  # discordance consignée d'abord
+    del sel["inputs_sha256"]["entry"]  # puis preuve absente
+    cc.write_json(tmp_path / "selection.json", sel)
+    assert cv.main(argv) == 2
+    assert not (tmp_path / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "ENTREE INVALIDE" in err and "VIOLATION chaîne : selection.anchor" in err
+
+
+def test_revue_Fin2_2_le_diagnostic_ne_dit_pas_rien_publie(tmp_path: Path) -> None:
+    """Un artefact publié n'affirme pas de lui-même « code 2, rien publié » : le diagnostic consigne
+    le motif de l'issue non définie, pas la conduite (b) qui ne s'est pas appliquée."""
+    artifacts = _sound()
+    _c3_failed(artifacts)
+    artifacts["continuity"]["liquidation_normalised"] = True
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    undefined = [v for v in payload["violations"] if "issue non définie" in v]
+    assert undefined and all("rien publié" not in v for v in undefined), undefined
