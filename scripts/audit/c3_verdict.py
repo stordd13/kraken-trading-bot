@@ -42,8 +42,14 @@ un refus consigné après une violation publie un diagnostic, qui porte ``verifi
 **Précédence violation → issue non définie (revue Fin 2).** Une contradiction déclaré / dérivé
 constatée est un diagnostic code 1 (``invalide: true``, violations listées), même quand la clause 3
 est en échec ; le refus 2 ``UndefinedIssueError`` reste réservé au cas cohérent (c3 en échec,
-résumés et agrégat concordants) — c'est lui que la convention datée couvre. Même règle pour un
-refus constaté après une violation (précédent du chantier 0).
+résumés et agrégat concordants) — c'est lui que la convention datée couvre. **Règle générale :
+l'ordre de constat** — après une violation, la violation prime (diagnostic, code 1), qu'un refus ou
+une issue non définie survienne ensuite ; **sauf lecture inachevable** : une preuve obligatoire
+absente, nulle, mal typée ou hors liste close constatée après une violation sort en code 2, rien
+publié, les violations dites sur stderr — **convention d'outillage datée du 22/09** (validation Fin),
+fondement : un diagnostic se bâtit sur une lecture complète ; clarification normative au paquet C3b.
+Le « précédent du chantier 0 » couvre le refus de contrat évalué **avant toute lecture** (``B``
+hors contrat → 2), pas cet ordre de constat.
 
 **Continuité → verdict (plan § 6.4, validé ; revue Fin, défaut 2).** Les résumés
 (``warmup_anchor_ok``, ``benchmark_comparable``, ``stamp_same_daily_cell``, ``liquidation_normalised``)
@@ -481,8 +487,15 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     ``InvalidValueError`` sur une valeur non finie ou hors domaine — **violation** (§ I.1 ligne 15,
     code 1), pas un verdict non plus. Aucun verdict économique n'est prononcé sur une preuve manquante
     ou invalide. ``EntryRefusedError`` (refus) et ``UndefinedIssueError`` (clause 3 en échec) : sans
-    violation constatée, code 2 et rien publié ; après une violation, la violation prime (§ I.1
-    l.15) et l'exception est consignée dans le diagnostic, code 1 (voir ``run_verdict``).
+    violation constatée, code 2 et rien publié ; après une violation, **l'ordre de constat** fait
+    foi — la violation prime (§ I.1 l.15) et l'exception est consignée dans le diagnostic, code 1 —
+    sauf lecture inachevable (``MissingEvidenceError`` après une violation → code 2, rien publié,
+    violations dites sur stderr ; convention d'outillage datée du 22/09, voir ``run_verdict``).
+
+    **Contrat de couche.** La cohérence d'enveloppe des amonts (``ok`` / ``exit_code`` / ``invalide``,
+    ``refusal`` pour entry) est le contrat de l'**appelant**, appliqué à la frontière fichier par
+    ``artifact_coherence`` (via ``verify_chain``) **avant tout appel** — ``decide()`` ne la revérifie
+    pas et ne doit jamais être appelée sur du contenu de fichier non gardé.
 
     **Ordre : tout lire, puis décider** (revue Fin 5 et passe interne de la revue Fin 2). Le
     confinement (§ L.1, plan § 6.6) vient en tête — ``evaluation.synthetic`` strict, ``false``
@@ -1063,8 +1076,9 @@ def run_verdict(
             return 2
     except cc.MissingEvidenceError as exc:
         # § I.1 — preuve obligatoire absente, nulle, mal typée ou hors liste close : code 2, rien
-        # d'écrit (chantier 0). La norme est muette sur une violation constatée avant (question
-        # consignée au rapport) : rien n'est publié, mais rien n'est perdu — elle est dite sur stderr.
+        # d'écrit (chantier 0). Constatée après une violation : lecture inachevable, un diagnostic
+        # se bâtit sur une lecture complète → 2 quand même, rien publié, les violations dites sur
+        # stderr (convention d'outillage datée du 22/09, validation Fin ; clarification au paquet C3b).
         for violation in violations:
             print(f"VIOLATION {violation}", file=sys.stderr)
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
