@@ -95,3 +95,21 @@ résultats P6/P7 historiques, `bybit` = cible de production. Détails : `skills/
   (`git worktree add ~/wt-human dev`) — jamais de checkout/commit humain dans le tree d'un agent.
 - Tout agent : assert `git branch --show-current == <branche du chantier>` avant chaque commit.
 - Un bloc GO contenant des écritures git part vers exactement une session, nommée.
+
+## Règles agent — tests de contrat et vérifications (acquises en C3a, 22/09)
+
+1. **Tout test de contrat naît adverse** : constaté **rouge** contre le code du tip précédent avant le correctif ;
+   pour une tranche neuve, écrit avec son cas adverse et constaté rouge contre un état qui ne l'implémente pas. Un
+   test vert dès l'écriture ne prouve rien — cinq défauts ont tenu dans 92 tests verts-avant (revue Fin C3a).
+2. **Le témoin sain est lui-même conforme au contrat** : la fixture « saine » d'un test adverse satisfait toutes les
+   clauses qu'elle exerce, sinon le test compare deux non-conformités.
+3. **L'attendu d'un test se dérive de la table ou du texte, appui cité** (section, ligne) — jamais de
+   l'implémentation. Rouge-avant prouve qu'un test mord, pas que son attendu est juste : un paramétré recopié du
+   code est un verrou posé sur le défaut. Les tables du texte sont recopiées dans le test et **épinglées** aux
+   constantes du code par un test d'égalité, jamais l'inverse.
+4. **`set -o pipefail` sur toute vérification pipée** (`pytest … | tail`, `… | tee`) : sans lui le code de sortie est
+   celui du dernier filtre, et un rouge passe (incident C3a, commit 4, amendé en `bd81b87`).
+5. **Précédence par ordre de constat** : après une violation constatée, la violation prime (diagnostic, code 1) sur
+   tout refus ou issue non définie survenant ensuite — **sauf lecture inachevable** (preuve obligatoire absente ou mal
+   typée constatée après : code 2, rien publié, violations sur stderr). Un contrat refusé **avant toute lecture** reste
+   un refus 2. Détail et conventions datées : `skills/backtest.md` § « Validation C3 ».
