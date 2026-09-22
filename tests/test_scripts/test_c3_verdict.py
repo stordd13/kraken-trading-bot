@@ -34,9 +34,21 @@ sys.path.insert(0, str(_project_root))
 sys.path.insert(0, str(_project_root / "src"))
 sys.path.insert(0, str(_project_root / "scripts"))
 sys.path.insert(0, str(_project_root / "scripts" / "audit"))
+sys.path.insert(0, str(_project_root / "tests"))
 
+import c3_anchor as ca
+import c3_benchmark as cb
 import c3_common as cc
+import c3_entry as ce
+import c3_select as cs
 import c3_verdict as cv
+
+from test_scripts import test_c3_common as fx
+
+REAL_OBSERVATIONS = _project_root / "results" / "rejeu_grid_20260919" / "P7_phase1_grid.json"
+REAL_DIR = _project_root / "results" / "c3a_entry_validation"
+REAL_MANIFEST = REAL_DIR / "manifest_rejeu_grid_20260919.json"
+REAL_REGISTRY = REAL_DIR / "variants.json"
 
 N_DAYS = 329  # longueur de la fenêtre d'évaluation de l'ancrage déclaré, en jours
 SEED = 20260921
@@ -87,23 +99,37 @@ def _artifacts(
         bounds = {
             f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
         }
+    identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
     return {
-        "entry": {"ok": True, "refusal": None},
-        "anchor": {"universe_provenance": provenance},
+        "entry": {**_envelope(), "ok": True, "refusal": None},
+        "anchor": {**_envelope(), "universe_provenance": provenance, "variant_key": VARIANT_KEY},
         "selection": {
+            **_envelope(),
             "status": "SÉLECTION_VALIDE"
             if provenance == cc.PROVENANCE_CLEAN
             else "SÉLECTION_DESCRIPTIVE",
             "reason": None,
             "provenance": provenance,
-            "retained": {"identity": cc.candidate_identity("s", "BTC/USDC", {"a": 1})},
+            "retained": {"identity": identity},
         },
         "continuity": {
+            **_envelope(),
+            "identity": identity,
+            "state": "NOT_VERIFIABLE",
+            "clauses": {
+                "c1": {"state": "NOT_VERIFIABLE", "detail": "aucune preuve"},
+                "c2": {"state": "DECLARED", "detail": "un seul appel"},
+                "c3": {"state": "VERIFIED", "detail": "prouvée par lot"},
+                "c4": {"state": "VERIFIED", "detail": "amorçage"},
+                "c5": {"state": "NOT_VERIFIABLE", "detail": "non exporté"},
+            },
             "warmup_anchor_ok": True,
             "benchmark_comparable": True,
             "stamp_same_daily_cell": True,
+            "liquidation_normalised": True,
         },
         "evaluation": {
+            "synthetic": True,
             "returns_config": list(returns_config),
             "delta_stars": [float(x) for x in deltas],
             "discarded": discarded,
@@ -111,6 +137,22 @@ def _artifacts(
             "metrics": metrics,
             "bounds": bounds,
         },
+    }
+
+
+VARIANT_KEY = "ab" * 32
+MANIFEST_SHA = "cd" * 32
+OBSERVATIONS_SHA = "ef" * 32
+
+
+def _envelope() -> dict[str, Any]:
+    """L'enveloppe d'un artefact amont réussi ; les empreintes sont posées à l'écriture."""
+    return {
+        "ok": True,
+        "invalide": False,
+        "exit_code": 0,
+        "protocole": cc.protocol_descriptor(),
+        "inputs_sha256": {},
     }
 
 
@@ -282,8 +324,14 @@ def test_la_chaine_est_identique_octet_pour_octet_sur_deux_executions() -> None:
         metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
     )
     sha = cc.protocol_descriptor()["sha256"]
-    first = cv.build_verdict_string("C3A", cv.decide(artifacts, violations=[]), sha)
-    second = cv.build_verdict_string("C3A", cv.decide(artifacts, violations=[]), sha)
+    kw = {
+        "continuity_state": "NOT_VERIFIABLE",
+        "variant_key": VARIANT_KEY,
+        "observations_sha256": OBSERVATIONS_SHA,
+        "synthetic": True,
+    }
+    first = cv.build_verdict_string("C3A", cv.decide(artifacts, violations=[]), sha, **kw)
+    second = cv.build_verdict_string("C3A", cv.decide(artifacts, violations=[]), sha, **kw)
     assert first == second
     assert sha[:16] in first
     assert "generated_at" not in first
@@ -344,7 +392,7 @@ def test_bloc_de_continuite_vide_refuse_l_entree_au_lieu_de_valider() -> None:
     """Défaut reproduit : les contrôles ne bloquaient que sur `False` exactement."""
     artifacts = _sound()
     artifacts["continuity"] = {}
-    with pytest.raises(cc.MissingEvidenceError, match="warmup_anchor_ok"):
+    with pytest.raises(cc.MissingEvidenceError, match="continuity"):
         cv.decide(artifacts, violations=[])
 
 
@@ -401,7 +449,7 @@ _REFUSAL_D2 = {
 
 def test_entry_refusee_D_WARMUP_PREFIX_porte_sa_raison_et_sort_2(tmp_path: Path) -> None:
     artifacts = _sound()
-    artifacts["entry"] = {"ok": False, "refusal": _REFUSAL_D2}
+    artifacts["entry"].update({"ok": False, "refusal": _REFUSAL_D2})
     with pytest.raises(cc.EntryRefusedError) as info:
         cv.decide(artifacts, violations=[])
     assert info.value.reason == "D_WARMUP_PREFIX"
@@ -411,7 +459,7 @@ def test_entry_refusee_D_WARMUP_PREFIX_porte_sa_raison_et_sort_2(tmp_path: Path)
 
 def test_entry_ok_avec_un_refus_porte_est_une_violation(tmp_path: Path) -> None:
     artifacts = _sound()
-    artifacts["entry"] = {"ok": True, "refusal": _REFUSAL_D2}
+    artifacts["entry"].update({"ok": True, "refusal": _REFUSAL_D2})
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
     assert decision.issue == cc.ISSUE_VALIDE, (
@@ -425,7 +473,7 @@ def test_entry_ok_avec_un_refus_porte_est_une_violation(tmp_path: Path) -> None:
 
 def test_entry_non_ok_sans_refus_est_une_violation_pas_un_refus_propre(tmp_path: Path) -> None:
     artifacts = _sound()
-    artifacts["entry"] = {"ok": False, "refusal": None}
+    artifacts["entry"].update({"ok": False, "refusal": None})
     violations: list[str] = []
     with pytest.raises(cc.EntryRefusedError):
         cv.decide(artifacts, violations=violations)
@@ -448,7 +496,7 @@ def test_entry_non_ok_sans_refus_est_une_violation_pas_un_refus_propre(tmp_path:
 )
 def test_un_refus_mal_forme_est_une_erreur_d_entree(tmp_path: Path, refusal: Any) -> None:
     artifacts = _sound()
-    artifacts["entry"] = {"ok": False, "refusal": refusal}
+    artifacts["entry"].update({"ok": False, "refusal": refusal})
     with pytest.raises(cc.MissingEvidenceError):
         cv.decide(artifacts, violations=[])
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
@@ -456,10 +504,10 @@ def test_un_refus_mal_forme_est_une_erreur_d_entree(tmp_path: Path, refusal: Any
 
 def test_refusal_absent_est_une_erreur_d_entree_null_est_la_valeur_conforme() -> None:
     artifacts = _sound()
-    artifacts["entry"] = {"ok": True}
+    artifacts["entry"].pop("refusal")
     with pytest.raises(cc.MissingEvidenceError, match="jamais absente"):
         cv.decide(artifacts, violations=[])
-    artifacts["entry"] = {"ok": True, "refusal": None}
+    artifacts["entry"]["refusal"] = None
     assert cv.decide(artifacts, violations=[]).issue == cc.ISSUE_VALIDE
 
 
@@ -538,6 +586,11 @@ MANDATORY: tuple[tuple[str, ...], ...] = (
     ("continuity", "warmup_anchor_ok"),
     ("continuity", "benchmark_comparable"),
     ("continuity", "stamp_same_daily_cell"),
+    ("continuity", "state"),
+    ("continuity", "clauses"),
+    ("continuity", "clauses", "c3", "state"),
+    ("continuity", "identity"),
+    ("evaluation", "synthetic"),
     ("evaluation", "returns_config"),
     ("evaluation", "delta_stars"),
     ("evaluation", "discarded"),
@@ -627,11 +680,53 @@ def test_bornes_incompletes_refusent_l_entree() -> None:
 
 
 def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]:
+    """Écrit les cinq artefacts dans l'ordre de la chaîne, en posant des empreintes cohérentes
+    (manifeste et observations fictifs mais identiques partout ; anchor, entry et evaluation réels)."""
+    paths = {
+        name: tmp_path / f"{name}.json"
+        for name in ("entry", "anchor", "selection", "continuity", "evaluation")
+    }
+
+    def stamp(name: str, inputs: dict[str, str]) -> None:
+        art = artifacts[name]
+        if (
+            isinstance(art, dict)
+            and isinstance(art.get("inputs_sha256"), dict)
+            and not art["inputs_sha256"]
+        ):
+            art["inputs_sha256"] = inputs
+
+    stamp("anchor", {"manifest": MANIFEST_SHA})
+    cc.write_json(paths["anchor"], artifacts["anchor"])
+    anchor_sha = cc.file_sha256(paths["anchor"])
+    stamp(
+        "entry", {"manifest": MANIFEST_SHA, "anchor": anchor_sha, "observations": OBSERVATIONS_SHA}
+    )
+    cc.write_json(paths["entry"], artifacts["entry"])
+    entry_sha = cc.file_sha256(paths["entry"])
+    stamp(
+        "selection",
+        {
+            "manifest": MANIFEST_SHA,
+            "anchor": anchor_sha,
+            "entry": entry_sha,
+            "observations": OBSERVATIONS_SHA,
+        },
+    )
+    cc.write_json(paths["selection"], artifacts["selection"])
+    cc.write_json(paths["evaluation"], artifacts["evaluation"])
+    stamp(
+        "continuity",
+        {
+            "manifest": MANIFEST_SHA,
+            "anchor": anchor_sha,
+            "evaluation": cc.file_sha256(paths["evaluation"]),
+        },
+    )
+    cc.write_json(paths["continuity"], artifacts["continuity"])
     argv: list[str] = []
     for name in ("entry", "anchor", "selection", "continuity", "evaluation"):
-        path = tmp_path / f"{name}.json"
-        cc.write_json(path, artifacts[name])
-        argv += [f"--{name}", str(path)]
+        argv += [f"--{name}", str(paths[name])]
     argv += ["--output", str(tmp_path / "verdict.json"), "--now", "2026-09-21T00:00:00+00:00"]
     return argv
 
@@ -641,7 +736,7 @@ def test_cli_temoin_sain_sort_0_et_ecrit_la_chaine(tmp_path: Path) -> None:
     assert cv.main(argv) == 0
     payload = cc.read_json(tmp_path / "verdict.json")
     assert payload["verdict"] == cc.ISSUE_VALIDE
-    assert payload["verdict_string"].startswith("C3_C3A | verdict=validé")
+    assert payload["verdict_string"].startswith("C3_SYNTH_C3A | verdict=validé")
 
 
 @pytest.mark.parametrize(
@@ -966,12 +1061,14 @@ def test_matrice_B_par_la_cli(
 
 def _abstention(reason: str) -> Any:
     def mutate(a: dict[str, Any]) -> None:
-        a["selection"] = {
-            "status": "ABSTENTION",
-            "reason": reason,
-            "provenance": a["anchor"]["universe_provenance"],
-            "retained": None,
-        }
+        a["selection"].update(
+            {
+                "status": "ABSTENTION",
+                "reason": reason,
+                "provenance": a["anchor"]["universe_provenance"],
+                "retained": None,
+            }
+        )
 
     return mutate
 
@@ -986,7 +1083,7 @@ TABLE_I1 = [
     pytest.param(1, lambda a: None, cc.ISSUE_VALIDE, None, 0, True, True, id="L1 entrée conforme"),
     pytest.param(
         2,
-        lambda a: a.__setitem__("entry", {"ok": False, "refusal": _REFUSAL_R0}),
+        lambda a: a["entry"].update({"ok": False, "refusal": _REFUSAL_R0}),
         None,
         "R0_INVALID_RUN",
         2,
@@ -997,7 +1094,7 @@ TABLE_I1 = [
     pytest.param(
         7,
         lambda a: (
-            a.__setitem__("anchor", {"universe_provenance": "contaminated"}),
+            a["anchor"].__setitem__("universe_provenance", "contaminated"),
             a["selection"].__setitem__("provenance", "contaminated"),
             a["selection"].__setitem__("status", "SÉLECTION_DESCRIPTIVE"),
         ),
@@ -1191,3 +1288,649 @@ def test_revue_R3_non_fini_a_la_canonicalisation_est_une_violation_code_1(
     payload = cc.read_json(tmp_path / "verdict.json")
     assert payload["invalide"] is True and payload["verdict"] is None
     assert any("non-finite" in v for v in payload["violations"])
+
+
+# ---------------------------------------------------------------------------
+# § L.2 — la chaîne à neuf champs : présence et correspondance aux entrées, sous les deux labels
+# ---------------------------------------------------------------------------
+
+NINE_FIELDS = (
+    "verdict",
+    "raison",
+    "selection",
+    "statut_selection",
+    "continuite",
+    "variante",
+    "provenance",
+    "protocole",
+    "observations",
+)
+
+
+def _fields(chain: str) -> tuple[str, dict[str, str]]:
+    parts = chain.split(" | ")
+    fields = dict(part.split("=", 1) for part in parts[1:])
+    return parts[0], fields
+
+
+@pytest.mark.parametrize(
+    ("synthetic", "label"), [(False, "C3_C3A"), (True, "C3_SYNTH_C3A")], ids=["reel", "synth"]
+)
+def test_les_neuf_champs_correspondent_aux_entrees_sous_les_deux_labels(
+    synthetic: bool, label: str
+) -> None:
+    """Le label `C3_<c>` n'existe qu'au niveau fonction en C3a — la CLI refuse toute évaluation
+    réelle (§ L.1) ; `C3_SYNTH_<c>` est ce qu'elle produit. Les neuf champs valent dans les deux cas."""
+    artifacts = _sound()
+    decision = cv.decide(artifacts, violations=[])
+    sha = cc.protocol_descriptor()["sha256"]
+    chain = cv.build_verdict_string(
+        "C3A",
+        decision,
+        sha,
+        continuity_state=artifacts["continuity"]["state"],
+        variant_key=artifacts["anchor"]["variant_key"],
+        observations_sha256=OBSERVATIONS_SHA,
+        synthetic=synthetic,
+    )
+    got_label, fields = _fields(chain)
+    assert got_label == label
+    assert tuple(fields) == NINE_FIELDS, "neuf champs, dans l'ordre, ni plus ni moins"
+    assert fields == {
+        "verdict": decision.issue,
+        "raison": decision.reason or "-",
+        "selection": artifacts["selection"]["retained"]["identity"],
+        "statut_selection": artifacts["selection"]["status"],
+        "continuite": artifacts["continuity"]["state"],
+        "variante": VARIANT_KEY[:16],
+        "provenance": artifacts["anchor"]["universe_provenance"],
+        "protocole": sha[:16],
+        "observations": OBSERVATIONS_SHA[:16],
+    }
+    assert decision.issue == cc.ISSUE_VALIDE and fields["raison"] == "-"
+
+
+def test_la_cli_ecrit_la_chaine_synthetique_les_empreintes_et_la_portee(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    artifacts = _sound()
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    label, fields = _fields(payload["verdict_string"])
+    assert label == "C3_SYNTH_C3A" and tuple(fields) == NINE_FIELDS
+    # Chaque champ correspond à son entrée sur disque, pas à une valeur recopiée dans la fixture.
+    anchor = cc.read_json(tmp_path / "anchor.json")
+    entry = cc.read_json(tmp_path / "entry.json")
+    continuity = cc.read_json(tmp_path / "continuity.json")
+    assert fields["variante"] == anchor["variant_key"][:16] == payload["variante"][:16]
+    assert fields["observations"] == entry["inputs_sha256"]["observations"][:16]
+    assert payload["observations_sha256"] == entry["inputs_sha256"]["observations"]
+    assert fields["continuite"] == continuity["state"] == payload["continuite"]
+    assert fields["protocole"] == cc.protocol_descriptor()["sha256"][:16]
+    assert (
+        fields["selection"]
+        == payload["selection"]
+        == artifacts["selection"]["retained"]["identity"]
+    )
+    # `inputs_sha256` des cinq entrées, égales aux fichiers.
+    assert set(payload["inputs_sha256"]) == set(cv.INPUT_NAMES)
+    for name in cv.INPUT_NAMES:
+        assert payload["inputs_sha256"][name] == cc.file_sha256(tmp_path / f"{name}.json")
+    assert payload["ok"] is True and payload["exit_code"] == 0 and payload["step"] == "verdict"
+    assert payload["synthetic"] is True and payload["portee"] == cv.PORTEE_SYNTH
+    assert payload["chain"]["mode"] == "verdict" and payload["chain"]["verified"] is True
+    assert (
+        all(c["ok"] for c in payload["chain"]["checks"]) and len(payload["chain"]["checks"]) == 13
+    )
+    out = capsys.readouterr().out.splitlines()
+    assert out[0] == f"PORTEE : {cv.PORTEE_SYNTH}"
+    assert out[1] == payload["verdict_string"]
+
+
+def test_l_artefact_diagnostic_porte_les_empreintes_et_aucune_chaine(tmp_path: Path) -> None:
+    artifacts = _sound()
+    artifacts["selection"]["provenance"] = "unknown"  # ≠ anchor.universe_provenance → violation
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["exit_code"] == 1 and payload["ok"] is False
+    assert payload["verdict_string"] is None and payload["verdict"] is None
+    assert set(payload["inputs_sha256"]) == set(cv.INPUT_NAMES)
+    assert payload["chain"]["mode"] == "verdict" and payload["chain"]["verified"] is True
+
+
+# ---------------------------------------------------------------------------
+# Confinement des verdicts synthétiques (plan § 6.6) — une règle de code
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("value", ["absent", None, "true"], ids=["absent", "null", "chaine"])
+def test_synthetic_absent_nul_ou_chaine_est_une_erreur_d_entree(tmp_path: Path, value: Any) -> None:
+    artifacts = _sound()
+    if value == "absent":
+        del artifacts["evaluation"]["synthetic"]
+    else:
+        artifacts["evaluation"]["synthetic"] = value
+    with pytest.raises(cc.MissingEvidenceError, match="synthetic"):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_une_evaluation_reelle_est_refusee_rien_publie(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 : `validé`/`réfuté` sont inatteignables sur données réelles en C3a — le code l'exécute."""
+    artifacts = _sound()
+    artifacts["evaluation"]["synthetic"] = False
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=[])
+    assert info.value.reason == "R0_INVALID_RUN"
+    assert "évaluation réelle non exerçable par l'outillage C3a" in str(info.value)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+    assert "évaluation réelle non exerçable par l'outillage C3a — § L.1" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# Continuité → verdict (plan § 6.4) ; clause 3 en échec = convention datée du 21/09 (§ 6.1)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("how", ["clause_c3_FAILED", "liquidation_normalised_false", "les_deux"])
+def test_clause_3_en_echec_moteur_signal_a_l_evaluation_issue_non_definie(
+    tmp_path: Path, how: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fixture « moteur signal à l'évaluation » : liquidation terminale non normalisée. Le texte
+    gelé ne définit pas l'issue → `UndefinedIssueError`, code 2, rien d'écrit, message cité."""
+    artifacts = _sound()
+    if how in ("clause_c3_FAILED", "les_deux"):
+        artifacts["continuity"]["clauses"]["c3"] = {
+            "state": "FAILED",
+            "detail": "liquidation absente (moteur signal)",
+        }
+        artifacts["continuity"]["state"] = "FAILED"
+    if how in ("liquidation_normalised_false", "les_deux"):
+        artifacts["continuity"]["liquidation_normalised"] = False
+    with pytest.raises(cc.UndefinedIssueError) as info:
+        cv.decide(artifacts, violations=[])
+    assert str(info.value) == cv.UNDEFINED_ISSUE_MESSAGE
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "ISSUE NON DEFINIE" in err
+    assert "issue non définie par le texte gelé, amendement pendant (§ 6.1)" in err
+    assert "convention d'outillage datée du 21/09" in err
+
+
+@pytest.mark.parametrize("clause", ["c1", "c2", "c5"])
+def test_clause_declarative_en_echec_est_un_refus_R0(tmp_path: Path, clause: str) -> None:
+    """L'artefact déclare lui-même une rupture du contrat § B : refus, code 2, rien d'écrit."""
+    artifacts = _sound()
+    artifacts["continuity"]["clauses"][clause] = {"state": "FAILED", "detail": "rupture déclarée"}
+    artifacts["continuity"]["state"] = "FAILED"
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=[])
+    assert info.value.reason == "R0_INVALID_RUN" and f"clause {clause}" in str(info.value)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_la_continuite_d_une_autre_configuration_est_refusee(tmp_path: Path) -> None:
+    artifacts = _sound()
+    artifacts["continuity"]["identity"] = cc.candidate_identity("s", "SOL/USDC", {"a": 2})
+    with pytest.raises(cc.EntryRefusedError, match="configuration retenue"):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+@pytest.mark.parametrize("state", ["VERIFIED", "DECLARED", "NOT_VERIFIABLE"])
+def test_l_etat_agrege_est_porte_par_la_chaine_sans_changer_l_issue(state: str) -> None:
+    artifacts = _sound()
+    artifacts["continuity"]["state"] = state
+    decision = cv.decide(artifacts, violations=[])
+    assert decision.continuity_state == state and decision.issue == cc.ISSUE_VALIDE
+
+
+def test_un_etat_de_continuite_hors_liste_close_est_une_erreur_d_entree() -> None:
+    artifacts = _sound()
+    artifacts["continuity"]["state"] = "OK"
+    with pytest.raises(cc.MissingEvidenceError, match="continuity.state"):
+        cv.decide(artifacts, violations=[])
+
+
+# ---------------------------------------------------------------------------
+# verify_chain — succès enregistré des amonts, empreintes recoupées
+# ---------------------------------------------------------------------------
+
+
+def _raws_and_paths(
+    tmp_path: Path, artifacts: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Path]]:
+    _write_cli_inputs(tmp_path, artifacts)
+    paths = {name: tmp_path / f"{name}.json" for name in cv.INPUT_NAMES}
+    return {name: cc.read_json(path) for name, path in paths.items()}, paths
+
+
+def test_verify_chain_passe_sur_une_chaine_coherente(tmp_path: Path) -> None:
+    raws, paths = _raws_and_paths(tmp_path, _sound())
+    violations, checks = cv.verify_chain(raws, paths)
+    assert violations == [] and len(checks) == 13 and all(c["ok"] for c in checks)
+
+
+@pytest.mark.parametrize(
+    ("artifact", "key"),
+    [
+        ("selection", "entry"),
+        ("selection", "anchor"),
+        ("selection", "observations"),
+        ("selection", "manifest"),
+        ("entry", "anchor"),
+        ("entry", "manifest"),
+        ("continuity", "evaluation"),
+        ("continuity", "anchor"),
+        ("continuity", "manifest"),
+    ],
+)
+def test_une_empreinte_discordante_est_une_violation_code_1(
+    tmp_path: Path, artifact: str, key: str
+) -> None:
+    artifacts = _sound()
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    path = tmp_path / f"{artifact}.json"
+    data = cc.read_json(path)
+    data["inputs_sha256"][key] = "0" * 64
+    cc.write_json(path, data)
+    # Réécrire un amont change son empreinte : les consommateurs aval sont réécrits en cascade
+    # pour isoler la seule discordance injectée.
+    if artifact == "entry":
+        sel = cc.read_json(tmp_path / "selection.json")
+        sel["inputs_sha256"]["entry"] = cc.file_sha256(path)
+        cc.write_json(tmp_path / "selection.json", sel)
+    assert cv.main(argv) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["chain"]["verified"] is False
+    assert any(f"chaîne : {artifact}.{key}" in v for v in payload["violations"])
+    failed = [c["check"] for c in payload["chain"]["checks"] if not c["ok"]]
+    assert failed == [f"{artifact}.{key}"]
+
+
+def test_un_protocole_different_dans_un_amont_est_une_violation(tmp_path: Path) -> None:
+    artifacts = _sound()
+    artifacts["anchor"]["protocole"] = {"path": cc.PROTOCOL_RELPATH, "sha256": "f" * 64}
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert any("anchor.protocole" in v for v in payload["violations"])
+
+
+@pytest.mark.parametrize("artifact", ["anchor", "selection", "continuity"])
+@pytest.mark.parametrize(
+    "failure",
+    [{"ok": False}, {"invalide": True}, {"exit_code": 1}],
+    ids=["ok_faux", "invalide", "exit_code_1"],
+)
+def test_un_amont_en_echec_enregistre_est_un_refus_rien_ecrit(
+    tmp_path: Path, artifact: str, failure: dict[str, Any]
+) -> None:
+    artifacts = _sound()
+    artifacts[artifact].update(failure)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_une_entree_diagnostic_invalide_est_un_refus(tmp_path: Path) -> None:
+    artifacts = _sound()
+    artifacts["entry"].update({"invalide": True, "exit_code": 1, "ok": False})
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+@pytest.mark.parametrize("artifact", ["anchor", "entry", "selection", "continuity"])
+def test_un_amont_sans_empreintes_est_une_erreur_d_entree(tmp_path: Path, artifact: str) -> None:
+    artifacts = _sound()
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    path = tmp_path / f"{artifact}.json"
+    data = cc.read_json(path)
+    del data["inputs_sha256"]
+    cc.write_json(path, data)
+    assert cv.main(argv) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_un_verdict_anterieur_discordant_est_signale_jamais_supprime(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    artifacts = _sound()
+    argv = _write_cli_inputs(tmp_path, artifacts)
+    assert cv.main(argv) == 0
+    first = (tmp_path / "verdict.json").read_bytes()
+    # Une nouvelle évaluation sur disque : la continuité ne l'a pas consommée → violation, et
+    # l'ancien verdict est signalé avant d'être remplacé par le diagnostic.
+    data = cc.read_json(tmp_path / "evaluation.json")
+    data["metrics"]["net_pnl"] = 43.0
+    cc.write_json(tmp_path / "evaluation.json", data)
+    assert cv.main(argv) == 1
+    err = capsys.readouterr().err
+    assert "AVERTISSEMENT un verdict antérieur discordant" in err
+    assert (tmp_path / "verdict.json").read_bytes() != first
+    assert cc.read_json(tmp_path / "verdict.json")["invalide"] is True
+
+
+# ---------------------------------------------------------------------------
+# Sous-commande chain — le site réel de l'orchestration (plan § 5.3)
+# ---------------------------------------------------------------------------
+
+
+def _retained_index(tmp_path: Path, w: dict[str, Any]) -> int:
+    """Une chaîne de sondage anchor → entry → benchmark → select, pour connaître la retenue."""
+    probe = tmp_path / "probe"
+    probe.mkdir()
+    registry = probe / "variants.json"
+    anchor, entry, bench, sel = (probe / n for n in ("a.json", "e.json", "b.json", "s.json"))
+    m, o, c, k = (str(w[n]) for n in ("manifest", "observations", "coverage", "candles"))
+    now = ["--now", fx.NOW]
+    assert (
+        ca.main(["--manifest", m, "--registry", str(registry), "--output", str(anchor)] + now) == 0
+    )
+    assert (
+        ce.main(
+            [
+                "--manifest",
+                m,
+                "--anchor",
+                str(anchor),
+                "--observations",
+                o,
+                "--coverage",
+                c,
+                "--output",
+                str(entry),
+            ]
+            + now
+        )
+        == 0
+    )
+    assert (
+        cb.main(
+            [
+                "--manifest",
+                m,
+                "--anchor",
+                str(anchor),
+                "--entry",
+                str(entry),
+                "--observations",
+                o,
+                "--candles",
+                k,
+                "--output",
+                str(bench),
+            ]
+            + now
+        )
+        == 0
+    )
+    assert (
+        cs.main(
+            [
+                "--manifest",
+                m,
+                "--anchor",
+                str(anchor),
+                "--entry",
+                str(entry),
+                "--observations",
+                o,
+                "--coverage",
+                c,
+                "--benchmark",
+                str(bench),
+                "--output",
+                str(sel),
+            ]
+            + now
+        )
+        == 0
+    )
+    retained = cc.read_json(sel)["retained"]["identity"]
+    for i, cand in enumerate(w["payload"]["universe"]["candidates"]):
+        if cc.candidate_identity(cand["strategy"], cand["pair"], cand["params"]) == retained:
+            return i
+    raise AssertionError("la configuration retenue n'est pas dans l'univers")
+
+
+def _chain_world(tmp_path: Path, **eval_kw: Any) -> dict[str, Any]:
+    w = fx.world(tmp_path)
+    index = _retained_index(tmp_path, w)
+    cand = w["payload"]["universe"]["candidates"][index]
+    w["evaluation"] = tmp_path / "evaluation.json"
+    w["benchmark_eval"] = tmp_path / "benchmark_eval.json"
+    cc.write_json(w["evaluation"], fx.evaluation(w["payload"], candidate_index=index, **eval_kw))
+    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(cand["pair"]))
+    w["out"] = tmp_path / "run"
+    return w
+
+
+def _chain_argv(
+    w: dict[str, Any], *, out: Path | None = None, coverage: bool = True, candles: bool = True
+) -> list[str]:
+    argv = [
+        "chain",
+        "--manifest",
+        str(w["manifest"]),
+        "--observations",
+        str(w["observations"]),
+        "--evaluation",
+        str(w["evaluation"]),
+        "--benchmark-eval",
+        str(w["benchmark_eval"]),
+        "--registry",
+        str(w["registry"]),
+        "--out-dir",
+        str(out if out is not None else w["out"]),
+        "--now",
+        fx.NOW,
+    ]
+    if coverage:
+        argv += ["--coverage", str(w["coverage"])]
+    if candles:
+        argv += ["--candles", str(w["candles"])]
+    return argv
+
+
+CHAIN_FILES = (
+    "anchor.json",
+    "entry.json",
+    "benchmark.json",
+    "selection.json",
+    "continuity.json",
+    "verdict.json",
+)
+
+
+def test_chain_complete_sur_fixtures_verdict_et_neuf_champs_correspondants(tmp_path: Path) -> None:
+    w = _chain_world(tmp_path)
+    assert cv.main(_chain_argv(w)) == 0
+    out = w["out"]
+    assert all((out / f).exists() for f in CHAIN_FILES)
+    payload = cc.read_json(out / "verdict.json")
+    assert payload["ok"] is True and payload["verdict"] in (
+        cc.ISSUE_VALIDE,
+        cc.ISSUE_REFUTE,
+        cc.ISSUE_INCONCLUSIF,
+    )
+    assert payload["chain"]["mode"] == "chain" and payload["chain"]["verified"] is True
+    assert [s["name"] for s in payload["chain"]["steps"]] == [
+        "anchor",
+        "entry",
+        "benchmark",
+        "select",
+        "continuity",
+    ]
+    assert all(s["exit_code"] == 0 for s in payload["chain"]["steps"])
+    label, fields = _fields(payload["verdict_string"])
+    assert label == "C3_SYNTH_C3A" and tuple(fields) == NINE_FIELDS
+    anchor = cc.read_json(out / "anchor.json")
+    entry = cc.read_json(out / "entry.json")
+    selection = cc.read_json(out / "selection.json")
+    continuity = cc.read_json(out / "continuity.json")
+    assert fields["variante"] == anchor["variant_key"][:16]
+    assert fields["observations"] == cc.file_sha256(w["observations"])[:16]
+    assert (
+        entry["inputs_sha256"]["observations"]
+        == selection["inputs_sha256"]["observations"]
+        == payload["observations_sha256"]
+    )
+    assert fields["selection"] == selection["retained"]["identity"] == continuity["identity"]
+    assert (
+        fields["statut_selection"] == selection["status"]
+        and fields["continuite"] == continuity["state"]
+    )
+    assert fields["provenance"] == anchor["universe_provenance"]
+    assert fields["protocole"] == cc.protocol_descriptor()["sha256"][:16]
+    for name, path in (
+        ("anchor", out / "anchor.json"),
+        ("entry", out / "entry.json"),
+        ("selection", out / "selection.json"),
+        ("continuity", out / "continuity.json"),
+        ("evaluation", w["evaluation"]),
+    ):
+        assert payload["inputs_sha256"][name] == cc.file_sha256(path)
+    assert payload["portee"] == cv.PORTEE_SYNTH
+
+
+def test_chain_contre_exemple_un_amont_echoue_avant_ecriture_et_le_verdict_ancien_reste(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Run 1 cohérent sur disque ; run 2 : `c3_anchor` rend 2 **avant toute écriture** (registre
+    malformé). `verify_chain` sur les fichiers **passe** (tous du run 1) ; `chain` doit échouer (2)
+    et `verdict.json` rester octet pour octet celui du run 1 — les empreintes ne prouvent pas que
+    l'invocation courante a réussi, seul le code de retour effectif le fait."""
+    w = _chain_world(tmp_path)
+    assert cv.main(_chain_argv(w)) == 0
+    out = w["out"]
+    before = {f: (out / f).read_bytes() for f in CHAIN_FILES}
+    capsys.readouterr()
+    w["registry"].write_text('{"variants": [1]}', encoding="utf-8")
+    assert cv.main(_chain_argv(w)) == 2
+    err = capsys.readouterr().err
+    assert "CHAINE ARRETEE à l'étape anchor (code de retour 2)" in err
+    after = {f: (out / f).read_bytes() for f in CHAIN_FILES}
+    assert after == before, "rien n'a été réécrit : les six fichiers sont ceux du run 1"
+    paths = {
+        "entry": out / "entry.json",
+        "anchor": out / "anchor.json",
+        "selection": out / "selection.json",
+        "continuity": out / "continuity.json",
+        "evaluation": w["evaluation"],
+    }
+    raws = {name: cc.read_json(path) for name, path in paths.items()}
+    violations, checks = cv.verify_chain(raws, paths)
+    assert violations == [] and all(c["ok"] for c in checks), (
+        "les fichiers du run 1 sont mutuellement cohérents : verify_chain seul ne voit pas l'échec"
+    )
+
+
+def test_chain_s_arrete_a_benchmark_sans_candles(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    w = _chain_world(tmp_path)
+    assert cv.main(_chain_argv(w, candles=False)) == 2
+    out = w["out"]
+    assert (out / "anchor.json").exists() and (out / "entry.json").exists()
+    assert not (out / "benchmark.json").exists() and not (out / "verdict.json").exists()
+    assert "CHAINE ARRETEE à l'étape benchmark" in capsys.readouterr().err
+
+
+def test_chain_sur_une_evaluation_reelle_s_arrete_au_verdict_rien_publie(tmp_path: Path) -> None:
+    """§ 6.6 (2) de bout en bout : la continuité s'exécute, le verdict refuse, aucun `verdict.json`."""
+    w = _chain_world(tmp_path, synthetic=False)
+    assert cv.main(_chain_argv(w)) == 2
+    assert (w["out"] / "continuity.json").exists()
+    assert cc.read_json(w["out"] / "continuity.json")["synthetic"] is False
+    assert not (w["out"] / "verdict.json").exists()
+
+
+def test_chain_moteur_signal_a_l_evaluation_clause_3_FAILED_rien_publie(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """La convention datée du 21/09 de bout en bout : `c3_continuity` rapporte c3 `FAILED`
+    (`liquidation` null), le verdict refuse de produire une issue, code 2, aucun `verdict.json`."""
+    w = _chain_world(tmp_path, liquidation=False)
+    assert cv.main(_chain_argv(w)) == 2
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["clauses"]["c3"]["state"] == "FAILED"
+    assert continuity["liquidation_normalised"] is False
+    assert not (w["out"] / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "ISSUE NON DEFINIE" in err and "amendement pendant (§ 6.1)" in err
+
+
+@pytest.mark.skipif(
+    not (REAL_OBSERVATIONS.exists() and REAL_MANIFEST.exists() and REAL_REGISTRY.exists()),
+    reason="artefact du rejeu ou livrable réel absent",
+)
+def test_chain_sur_l_artefact_reel_s_arrete_a_entry_code_2_aucun_verdict(tmp_path: Path) -> None:
+    """§ 6.6 (4) : sur données réelles la chaîne s'arrête à `entry` (refus D2) ; aucun chemin réel
+    n'atteint le verdict en C3a. L'artefact du rejeu et le registre committé restent intacts."""
+    before = cc.file_sha256(REAL_OBSERVATIONS)
+    registry_before = cc.file_sha256(REAL_REGISTRY)
+    registry = tmp_path / "variants.json"
+    registry.write_bytes(REAL_REGISTRY.read_bytes())
+    never_read = tmp_path / "never_read.json"
+    never_read.write_text("{}", encoding="utf-8")
+    out = tmp_path / "run"
+    argv = [
+        "chain",
+        "--manifest",
+        str(REAL_MANIFEST),
+        "--observations",
+        str(REAL_OBSERVATIONS),
+        "--evaluation",
+        str(never_read),
+        "--benchmark-eval",
+        str(never_read),
+        "--registry",
+        str(registry),
+        "--out-dir",
+        str(out),
+        "--now",
+        fx.NOW,
+    ]
+    assert cv.main(argv) == 2
+    assert (out / "anchor.json").exists() and (out / "entry.json").exists()
+    entry = cc.read_json(out / "entry.json")
+    assert entry["ok"] is False and entry["exit_code"] == 2
+    assert entry["refusal"]["reason"] == "D_WARMUP_PREFIX" and entry["n_candidates_d2_failed"] == 96
+    for f in ("benchmark.json", "selection.json", "continuity.json", "verdict.json"):
+        assert not (out / f).exists(), f
+    assert cc.file_sha256(REAL_OBSERVATIONS) == before
+    assert cc.file_sha256(REAL_REGISTRY) == registry_before
+    assert never_read.read_text(encoding="utf-8") == "{}"
+
+
+def test_le_parseur_chain_n_expose_que_des_chemins_une_campagne_et_un_horodatage() -> None:
+    actions = {a.dest for a in cv.build_chain_parser()._actions} - {"help"}
+    assert actions == {
+        "manifest",
+        "observations",
+        "coverage",
+        "candles",
+        "evaluation",
+        "benchmark_eval",
+        "registry",
+        "out_dir",
+        "campaign",
+        "now",
+    }
+
+
+def test_un_now_illisible_en_mode_chain_est_une_erreur_d_usage_rien_ecrit(tmp_path: Path) -> None:
+    w = _chain_world(tmp_path)
+    argv = _chain_argv(w)
+    argv[argv.index("--now") + 1] = "hier"
+    assert cv.main(argv) == 2
+    assert not any((w["out"] / f).exists() for f in CHAIN_FILES)
