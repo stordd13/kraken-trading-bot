@@ -137,7 +137,30 @@ Correctif postérieur du validateur : `rejeu_validate_campaign.py` acceptait un 
 livrés n'en contiennent aucun ; re-validés avec le validateur corrigé, ils redonnent **EXPLOITABLE,
 exit 0** (`validation_campaign_revalidated.json`) — le verdict n'est pas remis en cause.
 
+### Clôture C3a — la chaîne C3 n'a produit qu'un refus d'entrée (inscrite le 2026-09-22, après coup : aucun run de backtest)
+
+C3a livre le protocole gelé (`docs/protocole_c3.md` @ `d931293`) et son outillage (`scripts/audit/c3_*.py`, 806 tests) ;
+**aucune simulation n'a été lancée, aucune donnée nouvelle produite**. Le seul « run » de la chaîne sur données réelles
+est l'application de `c3_entry` à l'artefact du rejeu (entrée 11), qui le **refuse** — consigné parce que c'est la
+seule sortie réelle de l'outillage et qu'elle borne ce que le rejeu peut encore prouver. Produit au commit `bd81b87`
+(2026-09-22), revalidé au tip `acaeaf6` (empreintes inchangées, `test_c3_entry.py`).
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 12 | 2026-09-22 | C3a — validité d'entrée § I-A de l'artefact du rejeu (`c3_entry.py`, puis `c3_verdict.py chain` en test d'intégration) — **aucune simulation** | `grok_grid_atr_adaptive_v4` × BTC/USDC et SOL/USDC, les 96 configs de l'entrée 11, préfixe `train` seul (`[2023-04-01, T]`, `T = 2025-05-07T04:48:00Z` recalculé) | `results/rejeu_grid_20260919/P7_phase1_grid.json` (sha256 `08d981e493402f37…`, intact) ; métadonnées seules | `feat/c3a-protocole` @ `bd81b87`, revalidé au tip `acaeaf6` ; protocole `d931293` ; artefact lu : métriques v2, `replay_version` 2 | hérité de l'artefact (bybit + coûts GATE B) — non exercé | **Refus d'artefact `D_WARMUP_PREFIX`** (portée artefact, I-A.8, code 2) : D2 échoue sur **96/96** candidats (48 BTC `1d, 1w` ; 48 SOL `4h, 1d, 1w`) ; I-A.2 (`exec_interval`) et I-A.7 (couverture) `not_assertable` ; `chain` s'arrête à `entry`, aucun `verdict.json`. **Aucune sélection, aucun verdict économique** (§ D.3) | C3b : chantier producteur (exports `lots`, `exec_interval`, couverture, preuve de départ à plat, `single_call`, `first_fill_at`, amorçage suffisant au préfixe) puis campagne réelle sous la chaîne, inscrite ici **avant** lancement ; gate d'amendement du protocole | `results/c3a_entry_validation/entry_rejeu_grid_20260919.{json,md}`, `agent/rapport_session_c3a_20260922.md` § 3 |
+
+Phrase portée par l'artefact (`entry_rejeu_grid_20260919.md`), citée telle quelle :
+
+> **Entrée refusée** — `D_WARMUP_PREFIX` (portée artefact, I-A.8) : D2 échoue sur la totalité des 96 candidats de l'artefact : refus d'artefact D_WARMUP_PREFIX, aucun classement n'est produit (§ I.1 l.5, § D.3)
+>
+> cet artefact ne satisfait pas les conditions d'entrée C3
+
+Verdict de session : **aucune sélection, aucun verdict économique**. Les trois issues n'ont été exercées que sur
+fixtures synthétiques (`C3_SYNTH_`). **C3a ≠ C3** : le protocole et l'outil existent ; aucune campagne existante ne
+les traverse.
+
 ### Essais à venir (à inscrire avant lancement)
 
-_(prochain inscrit attendu : **protocole C3** — validation chronologique, equity continue, sélection sur le passé
-seul. Le rejeu diagnostic grid est clos : entrée 11 et son issue ci-dessus.)_
+_(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après le gate d'amendement du
+protocole et un producteur conforme (paquet 1). Manifeste gelé et inscription ici **avant** tout lancement. C3a est
+close : entrée 12 ci-dessus ; le rejeu diagnostic grid : entrée 11.)_
