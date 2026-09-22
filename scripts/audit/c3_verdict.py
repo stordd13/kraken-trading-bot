@@ -94,6 +94,7 @@ UNDEFINED_ISSUE_MESSAGE = (
     "§ I.1 ne porte aucune ligne de portée run pour ce cas ; convention d'outillage datée du 21/09 : "
     "refus de produire une issue, code 2, rien publié"
 )
+ABSTENTION_REASONS: tuple[str, ...] = ("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR")
 REAL_EVALUATION_MESSAGE = (
     "évaluation réelle non exerçable par l'outillage C3a — § L.1 : l'exécution continue et la preuve "
     "de départ à plat relèvent de C3b ; seule une évaluation déclarée synthétique est admise"
@@ -232,6 +233,18 @@ def _estimability_of(
     return est.ok, payload
 
 
+def _identity_list(selection: Mapping[str, Any], key: str) -> list[str]:
+    """Une liste d'identités (chaînes), lue strictement — élément non typé = erreur d'entrée."""
+    out: list[str] = []
+    for i, item in enumerate(cc.require_sequence(selection, key, where="selection")):
+        if not isinstance(item, str):
+            raise cc.MissingEvidenceError(
+                f"selection.{key}[{i}]: chaîne attendue, reçu {type(item).__name__}"
+            )
+        out.append(item)
+    return out
+
+
 def _window_of(block: Mapping[str, Any], key: str, *, where: str) -> tuple[datetime, datetime]:
     inner = cc.require_mapping(block, key, where=where)
     return (
@@ -245,7 +258,12 @@ def _iso(window: tuple[datetime, datetime]) -> str:
 
 
 def _continuity_gates(
-    continuity: Mapping[str, Any], *, retained: str, violations: list[str]
+    continuity: Mapping[str, Any],
+    *,
+    evaluation: Mapping[str, Any],
+    anchor: Mapping[str, Any],
+    retained: str,
+    violations: list[str],
 ) -> tuple[list[str], str]:
     """Ce que la continuité impose au verdict (plan § 6.4) ; renvoie (raisons run, agrégat **dérivé**).
 
@@ -264,11 +282,23 @@ def _continuity_gates(
       ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` non ``VERIFIED`` → ``E_STAMP_MISMATCH``
       (§ I.1 l.10-12). « ``validé`` avec ``continuite=FAILED`` » est ainsi inconstructible.
 
+    Balayage (revue Fin 6) : ``identity`` est dérivée de ``evaluation.{strategy, pair, params}``,
+    ``pair`` et ``synthetic`` sont recoupés à l'évaluation, ``evaluation_window`` à
+    ``[anchor.anchor, anchor.window.end]`` ; c'est l'identité **dérivée** qui est comparée à la
+    configuration retenue.
+
     Les contrôles sont obligatoires et typés : une clé absente ou nulle est une erreur d'entrée,
     jamais un contrôle réputé satisfait.
     """
     where = "continuity"
     # 1. Lecture stricte, complète, avant toute logique.
+    strategy = cc.require_str(evaluation, "strategy", where="evaluation")
+    pair_eval = cc.require_str(evaluation, "pair", where="evaluation")
+    params = cc.require_mapping(evaluation, "params", where="evaluation")
+    anchor_t = cc.require_datetime(anchor, "anchor", where="anchor")
+    window_end = cc.require_datetime(
+        cc.require_mapping(anchor, "window", where="anchor"), "end", where="anchor.window"
+    )
     declared_state = cc.require_str(continuity, "state", where=where, allowed=cc.CONTINUITY_STATES)
     clauses = cc.require_mapping(continuity, "clauses", where=where)
     states: dict[str, str] = {}
@@ -299,7 +329,8 @@ def _continuity_gates(
     window_declared = _window_of(comparator_window, "declared", where=f"{where}.comparator.window")
     window_expected = _window_of(comparator_window, "expected", where=f"{where}.comparator.window")
     identity = cc.require_str(continuity, "identity", where=where)
-    cc.require_str(continuity, "pair", where=where)
+    pair = cc.require_str(continuity, "pair", where=where)
+    synthetic = cc.require_bool(continuity, "synthetic", where=where)
     evaluation_window = (
         cc.require_datetime(
             cc.require_mapping(continuity, "evaluation_window", where=where),
@@ -322,6 +353,23 @@ def _continuity_gates(
     }
 
     # 2. Dérivations, puis recoupements — une contradiction est une violation.
+    derived_identity = cc.candidate_identity(strategy, pair_eval, params)
+    if identity != derived_identity:
+        violations.append(
+            f"{where}.identity déclaré {identity[:16]}, dérivé {derived_identity[:16]} de "
+            "evaluation.{strategy, pair, params} — l'identité dérivée fait foi"
+        )
+    if pair != pair_eval:
+        violations.append(f"{where}.pair {pair!r} != evaluation.pair {pair_eval!r}")
+    if synthetic is not True:
+        violations.append(
+            f"{where}.synthetic déclaré {synthetic!r} alors que evaluation.synthetic est vrai"
+        )
+    if evaluation_window != (anchor_t, window_end):
+        violations.append(
+            f"{where}.evaluation_window {_iso(evaluation_window)} != [anchor.anchor, anchor.window.end] "
+            f"= {_iso((anchor_t, window_end))}"
+        )
     # La fenêtre du comparateur (revue Fin, défaut 3) : attendue = fenêtre d'évaluation, et le
     # test `window_ok` est refait depuis les deux fenêtres portées par le bloc.
     if window_expected != evaluation_window:
@@ -368,11 +416,11 @@ def _continuity_gates(
                 "— le résumé dérivé fait foi"
             )
 
-    # 3. Les actions, sur les clauses.
-    if identity != retained:
+    # 3. Les actions, sur les clauses — et sur l'identité dérivée.
+    if derived_identity != retained:
         raise cc.EntryRefusedError(
             "R0_INVALID_RUN",
-            f"l'artefact de continuité porte la configuration {identity[:16]}, la sélection a retenu "
+            f"l'évaluation porte la configuration {derived_identity[:16]}, la sélection a retenu "
             f"{retained[:16]} — ce n'est pas l'évaluation de la configuration retenue (§ H.1)",
         )
     for key in ("c1", "c2", "c5"):
@@ -452,7 +500,47 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
             f"{provenance!r} — le manifeste n'a qu'une provenance"
         )
     retained_block = cc.nullable_mapping(selection, "retained", where="selection")
-    if retained_block is None:
+    declared_retained = (
+        None
+        if retained_block is None
+        else cc.require_str(retained_block, "identity", where="selection.retained")
+    )
+    declared_reason = cc.nullable_str(selection, "reason", where="selection")
+    if declared_reason is not None and declared_reason not in ABSTENTION_REASONS:
+        raise cc.MissingEvidenceError(
+            f"selection.reason: {declared_reason!r} hors liste close {sorted(ABSTENTION_REASONS)}"
+        )
+    lists = {
+        name: _identity_list(selection, name) for name in ("admissible", "survivors", "ranking")
+    }
+    # Balayage (revue Fin 6) : la retenue est la tête du classement, la raison d'abstention se
+    # lit dans les listes (§ A.10 : filtrer → filtrer → classer), le statut dans (provenance,
+    # retenue dérivée) — recopiés nulle part, recoupés partout.
+    derived_retained = lists["ranking"][0] if lists["ranking"] else None
+    if declared_retained != derived_retained:
+        violations.append(
+            f"selection.retained déclaré {(declared_retained or '-')[:16]}, dérivé "
+            f"{(derived_retained or '-')[:16]} de la tête de selection.ranking — le classement fait foi"
+        )
+    if sorted(lists["ranking"]) != sorted(lists["survivors"]):
+        violations.append(
+            f"selection.ranking ({len(lists['ranking'])}) n'est pas une permutation de "
+            f"selection.survivors ({len(lists['survivors'])})"
+        )
+    if not set(lists["survivors"]) <= set(lists["admissible"]):
+        violations.append("selection.survivors n'est pas inclus dans selection.admissible")
+    if lists["survivors"]:
+        derived_reason: str | None = None
+    elif lists["admissible"]:
+        derived_reason = "A_BELOW_FLOOR"
+    else:
+        derived_reason = "A_NO_ADMISSIBLE_CANDIDATE"
+    if declared_reason != derived_reason:
+        violations.append(
+            f"selection.reason déclaré {declared_reason!r}, dérivé {derived_reason!r} des listes "
+            f"(admissible {len(lists['admissible'])}, survivors {len(lists['survivors'])}) — la raison dérivée fait foi"
+        )
+    if derived_retained is None:
         derived_status = "ABSTENTION"
     elif cc.PROVENANCE_CAN_SUPPORT_VALIDE[provenance]:
         derived_status = "SÉLECTION_VALIDE"
@@ -461,22 +549,16 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     if derived_status != selection_status:
         violations.append(
             f"selection.status déclaré {selection_status!r}, dérivé {derived_status!r} de "
-            f"(provenance {provenance!r}, retenu {retained_block is not None}) — le statut dérivé fait foi"
+            f"(provenance {provenance!r}, retenu {derived_retained is not None}) — le statut dérivé fait foi"
         )
 
     reasons: list[str] = []
     if not cc.PROVENANCE_CAN_SUPPORT_VALIDE[provenance]:
         reasons.append("P_PROVENANCE")
 
-    if retained_block is None:
-        reasons.append(
-            cc.require_str(
-                selection,
-                "reason",
-                where="selection",
-                allowed=("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR"),
-            )
-        )
+    if derived_retained is None:
+        assert derived_reason is not None
+        reasons.append(derived_reason)
         return Decision(
             issue=cc.ISSUE_INCONCLUSIF,
             reason=cc.worst_reason(*reasons),
@@ -486,12 +568,12 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
             synthetic=synthetic,
         )
 
-    retained = cc.require_str(retained_block, "identity", where="selection.retained")
+    retained = derived_retained
 
     # § B — la continuité (plan § 6.4) : refus, issue non définie, ou raisons run.
     continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
     continuity_reasons, continuity_state = _continuity_gates(
-        continuity, retained=retained, violations=violations
+        continuity, evaluation=evaluation, anchor=anchor, retained=retained, violations=violations
     )
     reasons.extend(continuity_reasons)
 

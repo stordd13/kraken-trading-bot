@@ -21,6 +21,7 @@ les **conséquences** des règles, ce qu'un index de symboles ne peut pas faire 
 from __future__ import annotations
 
 from collections.abc import Mapping
+from datetime import timedelta
 from functools import cache
 from pathlib import Path
 import sys
@@ -584,8 +585,8 @@ def test_statut_de_selection_declare_contredit_par_la_derivation_est_une_violati
 
 def test_abstention_sans_retenu_declaree_valide_est_une_violation() -> None:
     artifacts = _sound()
-    artifacts["selection"]["retained"] = None
-    artifacts["selection"]["reason"] = "A_NO_ADMISSIBLE_CANDIDATE"
+    _abstention("A_NO_ADMISSIBLE_CANDIDATE")(artifacts)
+    artifacts["selection"]["status"] = "SÉLECTION_VALIDE"
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
     assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "A_NO_ADMISSIBLE_CANDIDATE"
@@ -1092,12 +1093,17 @@ def test_matrice_B_par_la_cli(
 
 def _abstention(reason: str) -> Any:
     def mutate(a: dict[str, Any]) -> None:
+        identity = a["selection"]["retained"]["identity"]
         a["selection"].update(
             {
                 "status": "ABSTENTION",
                 "reason": reason,
                 "provenance": a["anchor"]["universe_provenance"],
                 "retained": None,
+                # listes cohérentes avec la raison (revue Fin 6 : la raison en dérive)
+                "admissible": [] if reason == "A_NO_ADMISSIBLE_CANDIDATE" else [identity],
+                "survivors": [],
+                "ranking": [],
             }
         )
 
@@ -1523,13 +1529,27 @@ def test_clause_declarative_en_echec_est_un_refus_R0(tmp_path: Path, clause: str
     assert not (tmp_path / "verdict.json").exists()
 
 
-def test_la_continuite_d_une_autre_configuration_est_refusee(tmp_path: Path) -> None:
+def test_l_evaluation_d_une_autre_configuration_est_refusee(tmp_path: Path) -> None:
+    """L'évaluation (et sa continuité, cohérente) portent une autre configuration que la retenue :
+    refus R0 (§ H.1). L'identité comparée est celle **dérivée** de l'évaluation (revue Fin 6)."""
     artifacts = _sound()
+    artifacts["evaluation"].update({"pair": "SOL/USDC", "params": {"a": 2}})
     artifacts["continuity"]["identity"] = cc.candidate_identity("s", "SOL/USDC", {"a": 2})
+    artifacts["continuity"]["pair"] = "SOL/USDC"
     with pytest.raises(cc.EntryRefusedError, match="configuration retenue"):
         cv.decide(artifacts, violations=[])
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
     assert not (tmp_path / "verdict.json").exists()
+
+
+def test_une_identite_de_continuite_seule_discordante_est_une_violation(tmp_path: Path) -> None:
+    """Le déclaré contredit le dérivé : violation, pas un refus — l'évaluation est bien celle de la
+    configuration retenue."""
+    artifacts = _sound()
+    artifacts["continuity"]["identity"] = cc.candidate_identity("s", "SOL/USDC", {"a": 2})
+    _, violations = _never_valide(artifacts)
+    assert any("continuity.identity" in v for v in violations)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
 
 
 @pytest.mark.parametrize("state", ["VERIFIED", "DECLARED", "NOT_VERIFIABLE"])
@@ -2622,3 +2642,144 @@ def test_revue_Fin_4_exit_code_hors_liste_close_est_une_erreur_d_entree(
     artifacts[artifact]["exit_code"] = 3
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
     assert not (tmp_path / "verdict.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (6) — balayage : statuts dérivés des listes de sélection ; identité, paire, portée et
+# fenêtre de continuité dérivées de l'évaluation et de l'ancre
+# ---------------------------------------------------------------------------
+
+
+def _other_identity() -> str:
+    return cc.candidate_identity("s", "SOL/USDC", {"a": 2})
+
+
+def test_revue_Fin_6_retenue_differente_de_la_tete_du_classement_est_une_violation(
+    tmp_path: Path,
+) -> None:
+    artifacts = _sound()
+    other = _other_identity()
+    sel = artifacts["selection"]
+    sel["admissible"] = [other, sel["retained"]["identity"]]
+    sel["survivors"] = list(sel["admissible"])
+    sel["ranking"] = [other, sel["retained"]["identity"]]  # la tête n'est pas la retenue déclarée
+    _, violations = _never_valide(artifacts)
+    assert any("selection.retained" in v and "ranking" in v for v in violations), violations
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+
+
+def test_revue_Fin_6_abstention_declaree_avec_un_classement_non_vide_est_une_violation() -> None:
+    artifacts = _sound()
+    sel = artifacts["selection"]
+    sel.update({"status": "ABSTENTION", "reason": "A_BELOW_FLOOR", "retained": None})
+    # listes laissées pleines : le classement dit qu'une configuration est retenue
+    _, violations = _never_valide(artifacts)
+    assert any("selection.retained" in v for v in violations), violations
+    assert any("selection.reason" in v for v in violations), violations
+
+
+@pytest.mark.parametrize(
+    ("reason", "admissible", "survivors"),
+    [
+        ("A_NO_ADMISSIBLE_CANDIDATE", ["x"], []),
+        ("A_BELOW_FLOOR", [], []),
+        (None, ["x"], []),
+    ],
+    ids=[
+        "aucun_admissible_mais_liste_pleine",
+        "sous_plancher_sans_admissible",
+        "sans_raison_sans_survivant",
+    ],
+)
+def test_revue_Fin_6_la_raison_d_abstention_derive_des_listes(
+    reason: str | None, admissible: list[str], survivors: list[str]
+) -> None:
+    artifacts = _sound()
+    sel = artifacts["selection"]
+    sel.update(
+        {
+            "status": "ABSTENTION",
+            "reason": reason,
+            "retained": None,
+            "admissible": admissible,
+            "survivors": survivors,
+            "ranking": [],
+        }
+    )
+    _, violations = _never_valide(artifacts)
+    assert any("selection.reason" in v for v in violations), violations
+
+
+def test_revue_Fin_6_classement_qui_n_est_pas_une_permutation_des_survivants() -> None:
+    artifacts = _sound()
+    sel = artifacts["selection"]
+    sel["ranking"] = [sel["retained"]["identity"], _other_identity()]
+    _, violations = _never_valide(artifacts)
+    assert any("selection.ranking" in v and "survivors" in v for v in violations), violations
+
+
+@pytest.mark.parametrize("missing", ["admissible", "survivors", "ranking"])
+def test_revue_Fin_6_listes_de_selection_manquantes_sont_une_erreur_d_entree(
+    tmp_path: Path, missing: str
+) -> None:
+    artifacts = _sound()
+    del artifacts["selection"][missing]
+    with pytest.raises(cc.MissingEvidenceError, match=f"selection.{missing}"):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_revue_Fin_6_identite_de_continuite_derivee_de_l_evaluation(tmp_path: Path) -> None:
+    """`continuity.identity` se dérive de `evaluation.{strategy, pair, params}` : un désaccord est
+    une violation, et c'est l'identité **dérivée** qui est comparée à la retenue."""
+    artifacts = _sound()
+    artifacts["evaluation"]["params"] = {"a": 2}
+    violations: list[str] = []
+    with pytest.raises(cc.EntryRefusedError, match="configuration retenue"):
+        cv.decide(artifacts, violations=violations)
+    assert any("continuity.identity" in v for v in violations), violations
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1, "la violation prime sur le refus"
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "fragment"),
+    [("pair", "SOL/USDC", "continuity.pair"), ("synthetic", False, "continuity.synthetic")],
+)
+def test_revue_Fin_6_paire_et_portee_de_continuite_recoupees_a_l_evaluation(
+    key: str, value: Any, fragment: str
+) -> None:
+    artifacts = _sound()
+    artifacts["continuity"][key] = value
+    _, violations = _never_valide(artifacts)
+    assert any(fragment in v for v in violations), violations
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda a: a["anchor"].__setitem__("anchor", (fx.ANCHOR + timedelta(days=1)).isoformat()),
+        lambda a: a["anchor"]["window"].__setitem__(
+            "end", (fx.WINDOW_END + timedelta(days=1)).isoformat()
+        ),
+    ],
+    ids=["ancre_deplacee", "fin_deplacee"],
+)
+def test_revue_Fin_6_fenetre_d_evaluation_derivee_de_l_ancre(mutate: Any) -> None:
+    artifacts = _sound()
+    mutate(artifacts)
+    _, violations = _never_valide(artifacts)
+    assert any("evaluation_window" in v and "anchor" in v for v in violations), violations
+
+
+@pytest.mark.parametrize("missing", [("anchor",), ("window",), ("window", "end")])
+def test_revue_Fin_6_ancre_sans_date_ou_fenetre_est_une_erreur_d_entree(
+    missing: tuple[str, ...],
+) -> None:
+    artifacts = _sound()
+    target = artifacts["anchor"]
+    for k in missing[:-1]:
+        target = target[k]
+    del target[missing[-1]]
+    with pytest.raises(cc.MissingEvidenceError, match="anchor"):
+        cv.decide(artifacts, violations=[])
