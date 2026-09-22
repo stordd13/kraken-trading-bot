@@ -913,3 +913,51 @@ def test_revue_R3_nan_dans_les_parametres_est_une_violation_code_1(tmp_path: Pat
     code, payload = run(w)
     assert code == 1 and payload is not None and payload["invalide"] is True
     assert any("non-finite" in v or "non fini" in v for v in payload["violations"])
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (2e passe, b) — le trou maximal recalculé décide D1, jamais le déclaré
+# ---------------------------------------------------------------------------
+
+ASTRA_GAP_CANDLES = 6636
+
+
+def _astra_gap(declared_gap: float | None) -> Any:
+    def mutate(cov: dict[str, Any]) -> None:
+        for pair in fx.PAIRS:
+            fx.degrade_coverage(cov, pair, 5, n_missing=ASTRA_GAP_CANDLES, offset_units=288 * 100)
+            if declared_gap is not None:
+                cov["pairs"][pair]["5"]["longest_gap_days"] = declared_gap
+
+    return mutate
+
+
+def test_revue_R3b_le_contre_exemple_d_Astra_ne_publie_jamais_SELECTION_VALIDE(
+    tmp_path: Path,
+) -> None:
+    """Ratio 744/767 = 97,0013 % franchi, trou réel 23,04 j > 23,016 j, trou déclaré 0 : refusé à l'entrée."""
+    w = chain(tmp_path, mutate_coverage=_astra_gap(0.0))
+    assert w["entry_code"] == 2, (
+        "la contradiction est un refus de couverture, avant toute sélection"
+    )
+    assert not w["selection"].exists()
+
+
+def test_revue_R3b_le_meme_trou_correctement_declare_donne_l_abstention_par_D1(
+    tmp_path: Path,
+) -> None:
+    """Le témoin de comportement vrai : entrée conforme, puis ABSTENTION, six D1 en échec sur le trou."""
+    w = chain(tmp_path, mutate_coverage=_astra_gap(None))
+    assert w["entry_code"] == 0
+    code, payload = run(w)
+    assert code == 0 and payload is not None
+    assert payload["status"] == "ABSTENTION" and payload["reason"] == "A_NO_ADMISSIBLE_CANDIDATE"
+    assert all(
+        r["clauses"]["D1"] is False and r["first_failed_gate"] == "D1"
+        for r in payload["candidates"]
+    )
+    for block in payload["pairs"].values():
+        five = block["d1"]["per_interval"]["5"]
+        assert five["ratio"] >= cc.COVERAGE_MIN_RATIO, "le ratio seul aurait laissé passer"
+        assert five["longest_gap_days"] > block["d1"]["gap_max_days"]
+        assert five["longest_gap_days"] == cc.gap_days(ASTRA_GAP_CANDLES, 5)

@@ -924,9 +924,7 @@ def degrade_coverage(
     block["covered_units"] = cc.coverage_recompute(
         block, start=start, end=end, interval=interval, where="fixture"
     )["covered_recomputed"]
-    block["longest_gap_days"] = n_missing * (
-        7.0 if interval == cc.WEEK_MINUTES else interval / 1440.0
-    )
+    block["longest_gap_days"] = cc.gap_days(n_missing, interval)
 
 
 def candles(
@@ -1006,3 +1004,67 @@ def world(
         "registry": tmp_path / "variants.json",
         "anchor": tmp_path / "anchor.json",
     }
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (2e passe, b) — le trou maximal est recalculé sur la grille attendue, bords compris
+# ---------------------------------------------------------------------------
+
+
+def _block_with_missing(
+    stamps: list[datetime], *, interval: int, declared_gap: float
+) -> dict[str, Any]:
+    start, end = WINDOW_START, ANCHOR
+    block = coverage(manifest())["pairs"]["BTC/USDC"][str(interval)]
+    block["missing_stamps"] = [s.isoformat() for s in stamps]
+    block["observed"] = block["expected"] - len(stamps)
+    block["covered_units"] = cc.coverage_recompute(
+        {**block, "longest_gap_days": declared_gap},
+        start=start,
+        end=end,
+        interval=interval,
+        where="t",
+    )["covered_recomputed"]
+    block["longest_gap_days"] = declared_gap
+    return block
+
+
+@pytest.mark.parametrize(
+    ("interval", "k", "edge"),
+    [(1440, 5, "start"), (1440, 4, "end"), (5, 300, "start"), (240, 7, "end"), (10080, 3, "start")],
+    ids=["1j début", "1j fin", "5min début", "4h fin", "1w début"],
+)
+def test_revue_R3b_un_trou_en_bord_de_fenetre_est_vu_par_le_recalcul(
+    interval: int, k: int, edge: str
+) -> None:
+    """Une série qui commence en retard ou s'arrête tôt est un trou — pas seulement un vide intérieur."""
+    step = timedelta(days=7) if interval == cc.WEEK_MINUTES else timedelta(minutes=interval)
+    first = cc.first_stamp_strictly_after(WINDOW_START, interval)
+    last = cc.last_stamp_at_or_before(ANCHOR, interval)
+    stamps = (
+        [first + step * i for i in range(k)]
+        if edge == "start"
+        else [last - step * i for i in range(k)]
+    )
+    block = _block_with_missing(stamps, interval=interval, declared_gap=cc.gap_days(k, interval))
+    rec = cc.coverage_recompute(block, start=WINDOW_START, end=ANCHOR, interval=interval, where="t")
+    assert rec["longest_gap_candles"] == k
+    assert rec["longest_gap_days_recomputed"] == cc.gap_days(k, interval)
+    assert rec["problems"] == []
+    # Le même bloc avec un trou déclaré nul est contredit.
+    block["longest_gap_days"] = 0.0
+    rec = cc.coverage_recompute(block, start=WINDOW_START, end=ANCHOR, interval=interval, where="t")
+    assert any("longest_gap_days" in p for p in rec["problems"])
+
+
+def test_revue_R3b_le_plus_long_run_est_pris_parmi_plusieurs_trous() -> None:
+    day = timedelta(days=1)
+    first = cc.first_stamp_strictly_after(WINDOW_START, 1440)
+    stamps = (
+        [first + day * i for i in (10, 11, 12)]
+        + [first + day * i for i in (50, 51, 52, 53, 54)]
+        + [first + day * 200]
+    )
+    block = _block_with_missing(stamps, interval=1440, declared_gap=5.0)
+    rec = cc.coverage_recompute(block, start=WINDOW_START, end=ANCHOR, interval=1440, where="t")
+    assert rec["longest_gap_candles"] == 5 and rec["problems"] == []

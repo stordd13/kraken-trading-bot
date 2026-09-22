@@ -752,3 +752,43 @@ def test_revue_R3_nan_dans_les_parametres_est_une_violation_code_1(tmp_path: Pat
     code, payload = _run(w)
     assert code == 1 and payload["invalide"] is True and payload["refusal"] is None
     assert any("non-finite" in v or "non fini" in v for v in payload["violations"])
+
+
+# ---------------------------------------------------------------------------
+# Revue R3 (2e passe, b) — longest_gap_days recoupé, jamais consommé sur déclaration
+# ---------------------------------------------------------------------------
+
+#: Contre-exemple d'Astra : 6 636 bougies de 5 min consécutives manquantes (23 j 1 h). Compteurs
+#: cohérents, 744/767 = 97,0013 % franchit 97 %, mais le trou réel 23,0417 j dépasse 23,016 j.
+ASTRA_GAP_CANDLES = 6636
+
+
+def test_revue_R3b_trou_declare_nul_contredit_par_les_estampilles_est_refuse(
+    tmp_path: Path,
+) -> None:
+    w = _sound(tmp_path)
+
+    def astra(cov: dict[str, Any]) -> None:
+        fx.degrade_coverage(cov, "BTC/USDC", 5, n_missing=ASTRA_GAP_CANDLES, offset_units=288 * 100)
+        block = cov["pairs"]["BTC/USDC"]["5"]
+        assert block["covered_units"] == 744, block["covered_units"]
+        block["longest_gap_days"] = 0.0  # la déclaration qui faisait publier SÉLECTION_VALIDE
+
+    _coverage_mutate(w, astra)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.7"
+    assert "longest_gap_days" in payload["refusal"]["detail"]
+
+
+def test_revue_R3b_serie_tronquee_au_debut_avec_trou_declare_nul_est_refusee(
+    tmp_path: Path,
+) -> None:
+    w = _sound(tmp_path)
+
+    def truncated(cov: dict[str, Any]) -> None:
+        fx.degrade_coverage(cov, "SOL/USDC", 1440, n_missing=10, offset_units=0)
+        cov["pairs"]["SOL/USDC"]["1440"]["longest_gap_days"] = 0.0
+
+    _coverage_mutate(w, truncated)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.7"

@@ -92,9 +92,9 @@ def d1_for_pair(
     prefix_days: float,
     where: str,
 ) -> dict[str, Any]:
-    """D1 sur les **valeurs recoupées** (`cc.coverage_recompute`, revue R3 b) : `covered_units`
-    est recalculé depuis `missing_stamps` et les bornes ; une contradiction est un refus, jamais
-    un D1 vert par déclaration."""
+    """D1 sur les **valeurs recoupées** (`cc.coverage_recompute`, revue R3 b) : `covered_units` et
+    le trou maximal sont recalculés depuis `missing_stamps` et les bornes ; une contradiction est
+    un refus, jamais un D1 vert par déclaration."""
     gap_max = cc.max_gap_days(prefix_days)
     per_interval: dict[str, Any] = {}
     ok_all = True
@@ -108,7 +108,7 @@ def d1_for_pair(
             )
         covered = recomputed["covered_recomputed"]
         expected = recomputed["expected_units_recomputed"]
-        gap = cc.require_float(block, "longest_gap_days", where=bwhere)
+        gap = recomputed["longest_gap_days_recomputed"]  # jamais le déclaré (revue R3, 2e passe)
         ratio = covered / expected
         ok = ratio >= cc.COVERAGE_MIN_RATIO and gap <= gap_max
         ok_all = ok_all and ok

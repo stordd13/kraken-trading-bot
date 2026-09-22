@@ -1343,6 +1343,29 @@ def max_gap_days(prefix_days: float) -> float:
     return min(float(MAX_GAP_DAYS_ABS), MAX_GAP_RATIO * prefix_days)
 
 
+def gap_days(run_candles: int, interval: int) -> float:
+    """Un run de `run_candles` estampilles manquantes consécutives, en jours — la formule est le
+    contrat de `longest_gap_days` : `run × 7` pour 1 w, sinon `run × intervalle / 1440`, en double."""
+    if interval == WEEK_MINUTES:
+        return run_candles * 7.0
+    return run_candles * interval / 1440.0
+
+
+def longest_missing_run(stamps: Sequence[datetime], interval: int) -> int:
+    """Plus longue suite d'estampilles manquantes **consécutives sur la grille attendue**. Une série
+    qui commence en retard ou s'arrête tôt est un trou au bord, compté comme les autres (revue R3,
+    2e passe) : les estampilles manquantes sont déjà contraintes à `(début, T]` et à la grille."""
+    step = timedelta(days=7) if interval == WEEK_MINUTES else timedelta(minutes=interval)
+    longest = 0
+    run = 0
+    previous: datetime | None = None
+    for stamp in sorted(stamps):
+        run = run + 1 if previous is not None and stamp - previous == step else 1
+        longest = max(longest, run)
+        previous = stamp
+    return longest
+
+
 def expected_candles(start: datetime, end: datetime, interval: int) -> int:
     """Estampilles de la série `interval` dans `(start, end]` — le compte de bougies attendu."""
     if interval == WEEK_MINUTES:
@@ -1428,6 +1451,16 @@ def coverage_recompute(
         )
     if observed == 0 and covered != 0:
         problems.append(f"{where}: observed == 0 mais covered_units == {covered}")
+    # Le trou maximal, même motif que covered_units : recalculé sur la grille attendue, bords
+    # compris, et recoupé au déclaré — d1_for_pair ne consomme jamais le déclaré.
+    longest_run = longest_missing_run(stamps, interval)
+    gap_recomputed = gap_days(longest_run, interval)
+    gap_declared = require_float(block, "longest_gap_days", where=where)
+    if gap_declared != gap_recomputed:
+        problems.append(
+            f"{where}.longest_gap_days: {gap_declared!r} != {gap_recomputed!r} recalculé "
+            f"({longest_run} estampilles consécutives manquantes)"
+        )
     first_day = require_str(block, "first_day", where=where)
     last_day = require_str(block, "last_day", where=where)
     try:
@@ -1447,6 +1480,8 @@ def coverage_recompute(
         "observed_recomputed": observed_recomputed,
         "covered_recomputed": covered_recomputed,
         "expected_units_recomputed": units_recomputed,
+        "longest_gap_candles": longest_run,
+        "longest_gap_days_recomputed": gap_recomputed,
         "n_missing": len(stamps),
         "problems": problems,
     }
