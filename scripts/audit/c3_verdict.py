@@ -43,7 +43,9 @@ peut produire que non-recevabilité et abstention ; ``validé`` / ``réfuté`` s
 inatteignables tant que C3b n'a pas livré l'exécution continue et la preuve de départ à plat.
 L'outillage l'exécute : ``evaluation.synthetic`` est **obligatoire et strictement typé** ; ``false``
 (évaluation réelle) est **refusé** (code 2, rien publié) ; ``true`` préfixe la chaîne ``C3_SYNTH_``
-et écrit ``portee`` en première ligne.
+et écrit ``portee`` en première ligne. Ce contrôle est le **premier** de ``decide()`` et de
+``run_verdict()`` : aucun chemin de publication — verdict calculé, abstention, diagnostic — ne le
+précède (revue Fin, défaut 1).
 
 Pure, read-only hors de sa sortie. Aucun accès base de données.
 
@@ -92,6 +94,20 @@ REAL_EVALUATION_MESSAGE = (
     "évaluation réelle non exerçable par l'outillage C3a — § L.1 : l'exécution continue et la preuve "
     "de départ à plat relèvent de C3b ; seule une évaluation déclarée synthétique est admise"
 )
+
+
+def require_synthetic(evaluation: Mapping[str, Any]) -> bool:
+    """Le confinement des verdicts synthétiques (§ L.1, plan § 6.6), **avant tout chemin de publication**.
+
+    ``evaluation.synthetic`` est une déclaration non dérivable, exigée explicite et strictement
+    typée : absent / null / ``"true"`` → erreur d'entrée (code 2, rien écrit) ; ``false`` → une
+    évaluation réelle n'est pas exerçable par l'outillage C3a → refus ``R0_INVALID_RUN`` (code 2,
+    rien publié — ni verdict, ni abstention, ni diagnostic). Renvoie ``True`` ou lève.
+    """
+    synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
+    if not synthetic:
+        raise cc.EntryRefusedError("R0_INVALID_RUN", REAL_EVALUATION_MESSAGE)
+    return True
 
 
 @dataclass(frozen=True)
@@ -271,7 +287,15 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     code 1), pas un verdict non plus. Aucun verdict économique n'est prononcé sur une preuve manquante
     ou invalide. ``UndefinedIssueError`` (clause 3 en échec) et ``EntryRefusedError`` (refus) sortent
     en code 2 sans rien publier.
+
+    **Ordre.** Le confinement (§ L.1, plan § 6.6) vient **en tête**, avant tout chemin de
+    publication — verdict calculé, abstention, diagnostic (revue Fin, défaut 1) : ``evaluation.synthetic``
+    est lu strictement (absent / null / ``"true"`` → erreur d'entrée) ; ``false`` est refusé ; la
+    décision rendue porte toujours ``synthetic=True`` et la chaîne est préfixée ``C3_SYNTH_``.
     """
+    evaluation = cc.require_mapping(artifacts, "evaluation", where="artefacts")
+    synthetic = require_synthetic(evaluation)
+
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
     entry_ok = cc.require_bool(entry, "ok", where="entry")
     refusal = cc.nullable_mapping(entry, "refusal", where="entry")
@@ -343,6 +367,7 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
             retained=None,
             selection_status=selection_status,
             provenance=provenance,
+            synthetic=synthetic,
         )
 
     retained = cc.require_str(retained_block, "identity", where="selection.retained")
@@ -351,13 +376,6 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
     continuity_reasons, continuity_state = _continuity_gates(continuity, retained=retained)
     reasons.extend(continuity_reasons)
-
-    evaluation = cc.require_mapping(artifacts, "evaluation", where="artefacts")
-    # Confinement (§ L.1, plan § 6.6) : déclaration obligatoire, strictement typée ; une évaluation
-    # réelle n'est pas exerçable par l'outillage C3a — refus, code 2, rien publié.
-    synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
-    if not synthetic:
-        raise cc.EntryRefusedError("R0_INVALID_RUN", REAL_EVALUATION_MESSAGE)
 
     # § H.0 — l'estimabilité est préalable au verdict économique, et elle est **recalculée**.
     estimable, estimability_payload = _estimability_of(evaluation, violations=violations)
@@ -587,6 +605,10 @@ def build_diagnostic_payload(
     payload.update(
         {
             "campagne": campaign,
+            # Le confinement a été franchi avant toute publication : un diagnostic est lui aussi un
+            # exercice synthétique, et il le dit.
+            "synthetic": True,
+            "portee": PORTEE_SYNTH,
             "verdict": None,
             "raison": None,
             "verdict_string": None,
@@ -604,14 +626,15 @@ def build_diagnostic_payload(
 
 
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
-    if payload["invalide"]:
-        out = ["ARTEFACT INVALIDE — aucun verdict, aucune chaîne citable"]
-        out += [f"  violation : {v}" for v in payload["violations"]]
-        return out
     out: list[str] = []
     if payload["portee"] is not None:
-        # Plan § 6.6 (3) : la portée d'un exercice synthétique s'imprime avant la chaîne.
+        # Plan § 6.6 (3) : la portée d'un exercice synthétique s'imprime en première ligne, avant
+        # la chaîne comme avant un diagnostic.
         out.append(f"PORTEE : {payload['portee']}")
+    if payload["invalide"]:
+        out.append("ARTEFACT INVALIDE — aucun verdict, aucune chaîne citable")
+        out += [f"  violation : {v}" for v in payload["violations"]]
+        return out
     out += [payload["verdict_string"], ""]
     est = payload["estimabilite"]
     if est is not None:
@@ -677,6 +700,18 @@ def run_verdict(
             print(f"--{name}: {exc}", file=sys.stderr)
             return 2
     inputs: dict[str, Path] = {name: Path(paths[name]) for name in INPUT_NAMES}
+    # Revue Fin (1) : le confinement précède tout chemin de publication, diagnostic compris — une
+    # violation constatée ensuite ne peut pas ramener une évaluation réelle sur disque.
+    try:
+        if not isinstance(artifacts["evaluation"], Mapping):
+            raise cc.MissingEvidenceError("evaluation: bloc attendu")
+        require_synthetic(artifacts["evaluation"])
+    except cc.EntryRefusedError as exc:
+        print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
+        return 2
+    except cc.MissingEvidenceError as exc:
+        print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
+        return 2
     _warn_stale_output(output, inputs)
 
     violations: list[str] = []

@@ -1624,8 +1624,9 @@ def test_un_verdict_anterieur_discordant_est_signale_jamais_supprime(
 # ---------------------------------------------------------------------------
 
 
-def _retained_index(tmp_path: Path, w: dict[str, Any]) -> int:
-    """Une chaîne de sondage anchor → entry → benchmark → select, pour connaître la retenue."""
+def _retained_index(tmp_path: Path, w: dict[str, Any]) -> int | None:
+    """Une chaîne de sondage anchor → entry → benchmark → select, pour connaître la retenue
+    (``None`` si la sélection s'abstient)."""
     probe = tmp_path / "probe"
     probe.mkdir()
     registry = probe / "variants.json"
@@ -1695,16 +1696,27 @@ def _retained_index(tmp_path: Path, w: dict[str, Any]) -> int:
         )
         == 0
     )
-    retained = cc.read_json(sel)["retained"]["identity"]
+    retained_block = cc.read_json(sel)["retained"]
+    if retained_block is None:
+        return None
+    retained = retained_block["identity"]
     for i, cand in enumerate(w["payload"]["universe"]["candidates"]):
         if cc.candidate_identity(cand["strategy"], cand["pair"], cand["params"]) == retained:
             return i
     raise AssertionError("la configuration retenue n'est pas dans l'univers")
 
 
-def _chain_world(tmp_path: Path, **eval_kw: Any) -> dict[str, Any]:
+def _chain_world(
+    tmp_path: Path, *, mutate_observations: Any = None, **eval_kw: Any
+) -> dict[str, Any]:
     w = fx.world(tmp_path)
+    if mutate_observations is not None:
+        obs = cc.read_json(w["observations"])
+        mutate_observations(obs)
+        cc.write_json(w["observations"], obs)
     index = _retained_index(tmp_path, w)
+    if index is None:
+        index = 0  # abstention : l'évaluation porte sur un candidat de l'univers, sans retenue
     cand = w["payload"]["universe"]["candidates"][index]
     w["evaluation"] = tmp_path / "evaluation.json"
     w["benchmark_eval"] = tmp_path / "benchmark_eval.json"
@@ -1934,3 +1946,171 @@ def test_un_now_illisible_en_mode_chain_est_une_erreur_d_usage_rien_ecrit(tmp_pa
     argv[argv.index("--now") + 1] = "hier"
     assert cv.main(argv) == 2
     assert not any((w["out"] / f).exists() for f in CHAIN_FILES)
+
+
+# ---------------------------------------------------------------------------
+# Revue Fin (1) — confinement synthétique : aucun chemin de publication avant le contrôle
+# ---------------------------------------------------------------------------
+
+SYNTH_VALUES: list[tuple[str, Any]] = [
+    ("true", True),
+    ("false", False),
+    ("absent", "absent"),
+    ("null", None),
+    ("chaine", "true"),
+]
+
+
+def _set_synthetic(evaluation: dict[str, Any], value: Any) -> None:
+    if value == "absent":
+        evaluation.pop("synthetic", None)
+    else:
+        evaluation["synthetic"] = value
+
+
+def _abstain(artifacts: dict[str, Any]) -> None:
+    artifacts["selection"].update(
+        {
+            "status": "ABSTENTION",
+            "reason": "A_NO_ADMISSIBLE_CANDIDATE",
+            "retained": None,
+            "admissible": [],
+            "survivors": [],
+            "ranking": [],
+        }
+    )
+
+
+def _violate(artifacts: dict[str, Any]) -> None:
+    artifacts["selection"]["provenance"] = "unknown"  # ≠ anchor → violation, chemin diagnostic
+
+
+PUBLICATION_PATHS: list[tuple[str, Any]] = [
+    ("abstention", _abstain),
+    ("verdict", lambda a: None),
+    ("diagnostic", _violate),
+]
+
+
+@pytest.mark.parametrize(
+    ("path", "mutate"), PUBLICATION_PATHS, ids=[p for p, _ in PUBLICATION_PATHS]
+)
+@pytest.mark.parametrize(("label", "value"), SYNTH_VALUES, ids=[v for v, _ in SYNTH_VALUES])
+def test_revue_Fin_1_confinement_au_niveau_fonction(
+    path: str, mutate: Any, label: str, value: Any
+) -> None:
+    """Le contrôle `evaluation.synthetic` précède **tout** chemin : abstention, verdict calculé,
+    diagnostic. Vrai → la décision porte `synthetic=True` et la chaîne le préfixe ; faux → refus ;
+    absent / null / chaîne → erreur d'entrée."""
+    artifacts = _sound()
+    mutate(artifacts)
+    _set_synthetic(artifacts["evaluation"], value)
+    violations: list[str] = []
+    if value is True:
+        decision = cv.decide(artifacts, violations=violations)
+        assert decision.synthetic is True, path
+        chain = cv.build_verdict_string(
+            "C3A",
+            decision,
+            cc.protocol_descriptor()["sha256"],
+            continuity_state=decision.continuity_state,
+            variant_key=VARIANT_KEY,
+            observations_sha256=OBSERVATIONS_SHA,
+            synthetic=decision.synthetic,
+        )
+        assert chain.startswith("C3_SYNTH_C3A | "), chain
+        assert (path == "diagnostic") == bool(violations)
+    elif value is False:
+        with pytest.raises(cc.EntryRefusedError, match="évaluation réelle non exerçable"):
+            cv.decide(artifacts, violations=violations)
+    else:
+        with pytest.raises(cc.MissingEvidenceError, match="evaluation.synthetic"):
+            cv.decide(artifacts, violations=violations)
+
+
+@pytest.mark.parametrize(
+    ("path", "mutate"), PUBLICATION_PATHS, ids=[p for p, _ in PUBLICATION_PATHS]
+)
+@pytest.mark.parametrize(("label", "value"), SYNTH_VALUES, ids=[v for v, _ in SYNTH_VALUES])
+def test_revue_Fin_1_confinement_au_niveau_cli(
+    tmp_path: Path,
+    path: str,
+    mutate: Any,
+    label: str,
+    value: Any,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    artifacts = _sound()
+    mutate(artifacts)
+    _set_synthetic(artifacts["evaluation"], value)
+    code = cv.main(_write_cli_inputs(tmp_path, artifacts))
+    out = tmp_path / "verdict.json"
+    captured = capsys.readouterr()
+    if value is True:
+        assert code == (1 if path == "diagnostic" else 0), captured.err
+        payload = cc.read_json(out)
+        assert payload["synthetic"] is True and payload["portee"] == cv.PORTEE_SYNTH
+        assert captured.out.splitlines()[0] == f"PORTEE : {cv.PORTEE_SYNTH}"
+        if path == "diagnostic":
+            assert payload["invalide"] is True and payload["verdict_string"] is None
+        else:
+            assert payload["verdict_string"].startswith("C3_SYNTH_C3A | ")
+            assert "C3_C3A |" not in payload["verdict_string"]
+    else:
+        assert code == 2 and not out.exists(), (path, label, captured.err)
+        if value is False:
+            assert "évaluation réelle non exerçable par l'outillage C3a" in captured.err
+
+
+def _all_d3(obs: dict[str, Any]) -> None:
+    for e in obs.values():
+        e[fx.PREFIX]["total_trades"] = 20  # aucune vente identifiable : D3 échoue partout
+
+
+def _contradict_estimability(evaluation: dict[str, Any]) -> None:
+    evaluation["estimability"] = {"E1": False, "E2": False, "ok": False}  # ≠ recalculé → violation
+
+
+CHAIN_PATHS: list[tuple[str, Any, Any]] = [
+    ("abstention", _all_d3, None),
+    ("verdict", None, None),
+    ("diagnostic", None, _contradict_estimability),
+]
+
+
+@pytest.mark.parametrize(
+    ("path", "mutate_obs", "mutate_eval"), CHAIN_PATHS, ids=[p for p, _, _ in CHAIN_PATHS]
+)
+@pytest.mark.parametrize(("label", "value"), SYNTH_VALUES, ids=[v for v, _ in SYNTH_VALUES])
+def test_revue_Fin_1_confinement_au_niveau_chain(
+    tmp_path: Path,
+    path: str,
+    mutate_obs: Any,
+    mutate_eval: Any,
+    label: str,
+    value: Any,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    w = _chain_world(tmp_path, mutate_observations=mutate_obs)
+    evaluation = cc.read_json(w["evaluation"])
+    if mutate_eval is not None:
+        mutate_eval(evaluation)
+    _set_synthetic(evaluation, value)
+    cc.write_json(w["evaluation"], evaluation)
+    code = cv.main(_chain_argv(w))
+    out = w["out"] / "verdict.json"
+    captured = capsys.readouterr()
+    if value is True:
+        assert code == (1 if path == "diagnostic" else 0), captured.err
+        payload = cc.read_json(out)
+        assert payload["synthetic"] is True and payload["portee"] == cv.PORTEE_SYNTH
+        if path == "abstention":
+            assert payload["verdict_string"].startswith(
+                "C3_SYNTH_C3A | verdict=inconclusif | raison=A_NO_ADMISSIBLE_CANDIDATE"
+            )
+        elif path == "verdict":
+            assert payload["verdict_string"].startswith("C3_SYNTH_C3A | ")
+        else:
+            assert payload["invalide"] is True and payload["verdict_string"] is None
+    else:
+        assert code == 2 and not out.exists(), (path, label, captured.err)
