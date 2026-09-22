@@ -1,5 +1,16 @@
 # Note de passation — KrakenBot, C3a en cours (rédigée le 2026-09-20, actualisée le 2026-09-21)
 
+> **Note historique — état au 21/09/2026, conservée telle quelle.** C3a a été **livrée et validée le 22/09**
+> (branche `feat/c3a-protocole`, tip `acaeaf6`, 806 tests C3, revues Fin Astra / Claude) : les « cinq modules
+> restants », le test de chronologie forte et son contrôle négatif, la chaîne § L.2 et le refus de l'artefact du
+> rejeu par `c3_entry` (`D_WARMUP_PREFIX`, 96/96, `results/c3a_entry_validation/`) **existent**. Les passages qui les
+> décrivent au futur (§ 1.1, § 1.3, § 2 « C3a (en cours) », § 3 « Reste en C3a », tip `e358df9` / 1931 tests /
+> 122 C3, § 4 « sera refusé », § 8, § 9 brouillon d'addendum) sont **périmés** ; l'état courant est dans
+> `agent/rapport_session_c3a_20260922.md`, `PROJECT_CONTEXT.md` et `skills/backtest.md` § « Validation C3 ». Les
+> blocs `C3A-INTERIM` cités ont été remplacés à la clôture (`docs(c3a)`, 22/09). **Seule correction apportée au
+> texte** : la baseline `mypy src/` (§ 3), 64 → **65** (`results/C2_replay_report.md` § 0). Consensus Astra
+> acquis (revue Fin du 22/09).
+
 > Usage : (1) coller en ouverture de la nouvelle conversation Claude du Project ; (2) la dernière
 > section sert de base au brief de reprise du nouvel agent, **après** cadrage 4 questions.
 > Tout ce qui suit est tiré de la conversation précédente et des rapports d'agents ; les SHA et
@@ -67,8 +78,10 @@ Branche `feat/c3a-protocole`, créée depuis `dev` @ `57051cc`. Historique :
 | `371f59b` | Blocs `C3A-INTERIM` de `PROJECT_CONTEXT.md` et `ROADMAP.md` : le « commit de reprise » épinglé à `e358df9` |
 | `5ee4b1f` + suivant | Cette note de passation (première version, puis actualisation au 21/09) |
 
-État au `e358df9` : 1931 tests verts hors module de déterminisme (dont 122 C3), `mypy src/` = 64
-(baseline), ruff vert, diff de contrôle vide, protocole intact depuis le gel (`d931293`).
+État au `e358df9` : 1931 tests verts hors module de déterminisme (dont 122 C3), `mypy src/` = **65**
+(baseline — corrigé le 22/09 : le « 64 » venait de `--ignore-missing-imports`, `results/C2_replay_report.md` § 0 ;
+la 65e erreur est `ml/features/feature_store.py:32`, stubs pandas), ruff vert, diff de contrôle vide, protocole
+intact depuis le gel (`d931293`).
 Note technique acquise : `math.log1p(-1.0)` lève une exception en Python (pas `-inf`) — la garde de
 domaine est nécessaire, pas seulement prudente.
 
