@@ -1,0 +1,20 @@
+{
+  "variants": {
+    "dd2a4751b9db4c105b8cba88714f3867e635cb38904768f27926549af51ab47b": {
+      "anchor": "2025-05-07T04:48:00+00:00",
+      "first_registered_at": "2026-09-22T00:00:00+00:00",
+      "manifest_sha256": "ec50063c9e6128e3cbecf6af331ba1cfc3170ff7e6a4b1e38973afe60045b14a",
+      "parent": {
+        "is_root": true
+      },
+      "prefix_segment": "train",
+      "research_log_entry": "docs/RESEARCH_LOG.md — « Rejeu diagnostic grid — 96 configs BTC/SOL (inscrit le 2026-09-20, avant lancement) » ; la validation d'entrée C3a n'est pas un run de recherche (§ 0.6 : aucun rejeu technique prévu)",
+      "universe_provenance": "contaminated",
+      "variant_id": "c3a-entry-rejeu-grid-20260919",
+      "window": {
+        "end": "2026-04-01T00:00:00+00:00",
+        "start": "2023-04-01T00:00:00+00:00"
+      }
+    }
+  }
+}

@@ -16,10 +16,12 @@ cross-validé et 280 fenêtres de walk-forward (P7) : **zéro configuration sél
 sous ce protocole avec cet instrument**, sur données assainies (end-stamps, look-ahead
 éliminé), comptabilité des fills réglée (liquidation terminale, fees maker/taker par
 site de fill) et coûts mesurés par paire. L'audit red-team du 16/09 a invalidé
-l'instrument de mesure — métriques (D1-D6, corrigées en C1), replay (à corriger en C2)
+l'instrument de mesure — métriques (D1-D6, corrigées en C1), replay (corrigé en C2, mergé)
 et walk-forward non chronologique (C3) : aucune comparaison chiffrée de Sharpe, MaxDD
-ou PF n'est reprise ici tant que le rejeu sous instrument réparé n'a pas eu lieu (voir
-l'addendum en tête de `results/B4_bybit_backtest_report.md`). Ce qui reste établi :
+ou PF n'est reprise ici. Le rejeu sous instrument réparé a eu lieu (20/09, `inconclusif`,
+`results/rejeu_grid_report.md`) ; toute sélection relève du protocole C3
+(`docs/protocole_c3.md`, gelé), dont l'outillage refuse aujourd'hui l'artefact du rejeu à
+l'entrée (voir l'addendum en tête de `results/B4_bybit_backtest_report.md`). Ce qui reste établi :
 aucune stratégie n'est validée pour le déploiement par cette campagne ; les fees et
 coûts mesurés ; les comptes d'exécutions du simulateur, cités comme tels.
 
@@ -103,9 +105,10 @@ cash). « Positif dans l'absolu » ne suffit pas : le B&H est gratuit.
 
 ## 6. Ticket d'entrée (obligatoire, sur le papier, avant tout code)
 
-> ⚠️ **Gel des runs** : aucun backtest de nouvelle famille avant le merge de C1-C2 — le
-> pipeline actuel est déclaré non fiable pour juger un ticket. Les tickets sur papier
-> continuent ; cap de 2 familles par cycle inchangé.
+> ⚠️ **Gel des runs levé (C1-C2 mergés)** : un backtest de nouvelle famille exige un ticket
+> complet ci-dessous et une inscription à `docs/RESEARCH_LOG.md` **avant** lancement ; le
+> pipeline P6/P7 `--fees bybit` est l'outil de test, pas de sélection — **toute sélection
+> relève du protocole C3** (`docs/protocole_c3.md`). Cap de 2 familles par cycle inchangé.
 
 Toute proposition fournit ces sept réponses :
 
@@ -127,9 +130,11 @@ Toute proposition fournit ces sept réponses :
 - **Données** : Binance 2021-01 → 2026-04 (7 TF, end-stamped ; trou SOL de 455 j
   en 2022-23, BTC/ETH 164 j) ; Bybit EU depuis 2025-06 (ETH/SOL depuis 2025-06-27),
   collecte continue. Pas de données de sentiment, d'orderflow ou de funding en base.
-- **Protocole non négociable** : 3+ ans de backtest → cross-validation →
-  walk-forward → 4+ semaines de paper → live progressif. Critères écrits avant les
-  runs, appliqués tels quels.
+- **Protocole non négociable** : 3+ ans de backtest → **validation chronologique sous
+  le protocole C3** (`docs/protocole_c3.md` : sélection sur le passé seul, equity
+  continue, issue « inconclusif » possible ; la cross-validation et le walk-forward P7
+  restent des diagnostics, pas une validation) → 4+ semaines de paper → live progressif.
+  Critères écrits avant les runs, appliqués tels quels.
 - **Pas de ML** avant profit live confirmé (P11+). Un filtre ML sur du bruit reste
   du bruit.
 - **Cap : deux familles maximum** entrent en backtest par cycle de R&D. Le pipeline

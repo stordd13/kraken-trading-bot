@@ -110,3 +110,6 @@ results/c2_ab/*_equity.jsonl
 # C2 pre-merge gate evidence: these are proof artifacts of the server determinism reruns,
 # not runtime logs — the blanket `*.log` rule above would silently drop them (it did once).
 !results/c2_replay/determinism_server/**/*.log
+# C3a pre-merge gate evidence (§ L.5, same convention as C2): server determinism reruns at 6f7ed8e,
+# proof artifacts, not runtime logs.
+!results/c3a_determinism_server/**/*.log

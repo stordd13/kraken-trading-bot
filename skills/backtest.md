@@ -533,6 +533,125 @@ Plus rigoureux que le cross-validate simple. Fenêtre glissante :
 
 **Consistency score** : combien de fenêtres test ont un PF > 1.0. Si < 50% (moins de 4/8), la stratégie est instable temporellement.
 
+**Ce walk-forward n'est pas une validation chronologique** (audit 16/09, note WF de `PROJECT_CONTEXT.md`) : le top-5 est
+choisi sur le test global. Toute sélection relève du protocole C3 — section suivante.
+
+## Validation C3 (protocole gelé `d931293` — ce que fait l'outillage de sélection, et ce qu'il ne fait pas)
+
+Source : `agent/rapport_session_c3a_20260922.md` (2026-09-22) ; `docs/protocole_c3.md` gelé au `d931293` (sha256
+`9b62915069e59e9b…`). **La norme est le protocole, et lui seul** (§ 0.7). Cette section décrit le **comportement de
+l'outillage** `scripts/audit/c3_*.py` au tip `acaeaf6`, y compris ses conventions datées là où la table du § I.1 est
+muette — aucune n'est une règle nouvelle ; celles qui doivent le devenir passent par un amendement daté (gate
+d'ouverture de C3b). En cas d'écart entre cette section et le protocole, le protocole fait foi.
+
+**La chaîne (§ L.1) — sept modules, liste fermée § L.4.** `c3_common` est le socle : constantes gelées (registre
+`THRESHOLDS`, 23 seuils, chacun avec sa classe et sa section), vocabulaire des raisons, statuts et états (listes
+closes), noyau numérique § F.2, accesseur strict, `canon` / `sig`. Puis, dans l'ordre, chaque étape ne lit que les
+artefacts des étapes précédentes et les entrées hors chaîne (manifeste, observations, couverture — plus
+`candles.json` pour le benchmark, quatrième entrée produite avant, jamais par l'outillage) :
+
+| # | Module | Lit | Écrit | Ce qu'il tranche |
+|---|---|---|---|---|
+| 1 | `c3_anchor.py` | manifeste, registre | `anchor.json`, registre de variantes | `T = début + F × (fin − début)` recalculé sans arrondi (§ A.3) ; estampilles admissibles `≤ T` par timeframe, première bougie d'exécution `> T` (§ A.4, § C.3) ; clé de variante `sig(canon(manifeste))`, idempotence, parenté (§ A.6) ; quatre valeurs gelées **assertées** (fraction, incertitude, seuils, sha256 du protocole) |
+| 2 | `c3_entry.py` | manifeste, anchor, observations, [couverture] | `entry.json` + `.md` — **toujours écrit** | validité d'entrée § I-A, huit assertions dans l'ordre gelé (le premier échec saute les suivantes) ; D2 sur la **totalité** → refus d'artefact `D_WARMUP_PREFIX` (§ I.1 l.5, § D.3), sur une **partie** → diagnostics, la chaîne continue (l.4) ; `sufficient` et couverture **recalculés** |
+| 3 | `c3_benchmark.py` | manifeste, anchor, entry (verte), observations, `candles.json` | `benchmark.json` | B&H plein notionnel du préfixe sous § C.3 (entrée au close de la première bougie d'exécution strictement après le début, liquidation au close de la dernière `≤ T`, coûts sur les deux jambes, **aucune bougie de substitution**) ; comparabilité § C.5 (échec → paire non comparable, `E_NO_BENCHMARK`) ; `λ_dd` / `λ_σ` par recherche sur les NAV construites, raffinement au pas 0,001, cible au-delà du B&H ou résidu > 10 % → `NOT_ESTIMABLE` ; pré-contrôles D3 / D4 / D6 sans score pour un candidat inadmissible |
+| 4 | `c3_select.py` | manifeste, anchor, entry (verte), observations, couverture, benchmark | `selection.json` + `.md` | projection π_T sur liste blanche (§ A.7 — un futur différent n'y change rien, `test_c3_chronology`) ; **filtrer D1-D6, filtrer P1-P3, classer** (§ A.10) ; CAGR, MDD, σ recalculés ; preuve D6 par lot ; `NOT_ESTIMABLE ∉ admissible` ; abstention `A_NO_ADMISSIBLE_CANDIDATE` / `A_BELOW_FLOOR` ; paire D1 ou benchmark non constructible → `DESCRIPTIF` ; statut dérivé de la provenance |
+| 5 | `c3_continuity.py` | manifeste, anchor, évaluation, comparateur d'évaluation | `continuity.json` | contrat § B : cinq clauses en états, blocs `stamp_cell` (§ B.4) et `comparator` (§ C.5, fenêtre recoupée à `[T, fin]`), résumés et agrégat **dérivés** des clauses — jamais une issue ; **sans entrée réelle en C3a** |
+| 6 | `c3_verdict.py` | anchor, entry, selection, continuity, évaluation | `verdict.json` | issue § H (préséance de l'estimabilité § H.0), raison de niveau run par priorité § H, chaîne § L.2 ; `verify_chain` : 17 contrôles (4 de cohérence interne, 9 d'empreintes, 4 de protocole) ; sous-commande **`chain`** |
+
+**Convention commune, sans exception (§ L.4)** : pur, lecture seule hors de ses sorties, JSON en entrée et en sortie,
+**aucun accès base**, `--now` injectable (sortie reproductible octet à octet), aucun paramètre libre. **Codes de
+sortie = table § I.1, et rien d'autre** : **0** entrée conforme ; **1** violation (statut recalculé ≠ enregistré,
+non-finitude fournie — l.15) ; **2** contrat rompu, refus d'entrée, usage ou entrée invalide — rien n'est publié,
+**sauf `c3_entry`, qui écrit toujours son artefact de validation**.
+
+**Sous-commande `chain`.** `poetry run python scripts/audit/c3_verdict.py chain --manifest M --observations O
+[--coverage C] [--candles K] --evaluation E --benchmark-eval B --registry R --out-dir D [--campaign NAME] [--now TS]`
+invoque en processus `c3_anchor → c3_entry → c3_benchmark → c3_select → c3_continuity`, **s'arrête au premier code
+≠ 0** (le rend, n'écrit rien de plus), puis `verify_chain`, puis le verdict ; fichiers
+`D/{anchor,entry,benchmark,selection,continuity,verdict}.json`. Les empreintes **détectent une discordance**, elles ne
+prouvent pas que l'invocation courante a réussi : sur un registre corrompu, `c3_anchor` rend 2 avant toute écriture,
+`chain` rend 2, et les six fichiers d'un run antérieur restent sur disque, cohérents entre eux — **seul le code de
+retour effectif fait foi** (contre-exemple testé). Un `verdict.json` antérieur n'est jamais supprimé (§ L.4).
+
+**La chaîne de verdict (§ L.2), neuf champs** : `C3_<campagne> | verdict= | raison= | selection= | statut_selection= |
+continuite= | variante=<16 hex> | provenance= | protocole=<16 hex> | observations=<16 hex>`. Le rapport **cite** la
+chaîne, il ne la paraphrase pas. En C3a la CLI ne produit que le label `C3_SYNTH_<c>` (item 10).
+
+**Conventions d'outillage — comportement observé au tip, jamais norme.** Datées quand elles ont été posées par
+décision ; leur ratification relève du paquet d'amendements C3b.
+
+1. **Artefact diagnostic écrit en code 1** (la table I.1 est muette sur la forme) : `invalide: true`, violations
+   listées, `verdict` / `raison` / chaîne à `null` — rien de citable.
+2. **`B ≠ BOOTSTRAP_B` (10 000, § F.2 b) → `R0_INVALID_RUN`, code 2, avant tout parsing** (chantier 0, 21/09) : un `B`
+   hors contrat accompagné d'un compteur contradictoire ou d'un non-fini sort en refus 2, jamais en violation 1.
+3. **Clause 3 de continuité `FAILED` à l'évaluation → `UndefinedIssueError`, code 2, rien publié** — **convention
+   datée du 21/09** : le texte gelé ne définit aucune issue pour ce cas ; l'amendement ajoutant la ligne run
+   `R1_NOT_NORMALISED` à I.1 la remplacera (C3b). Réservée au **cas cohérent** (item 5).
+4. **`not_assertable` n'est jamais verte** : consignée, elle ne bloque pas les assertions suivantes mais interdit
+   `ok=True` — un parcours achevé avec une clause non assertable sort en `R0_INVALID_RUN` (`I-A.fin`). C'est ce qui
+   laisse l'artefact réel atteindre D2 et sortir en `D_WARMUP_PREFIX`.
+5. **Précédence par ordre de constat** (revue Fin 2, 22/09) : après une violation constatée, la violation prime —
+   diagnostic code 1, l'issue non définie ou le refus ultérieur y sont consignés — **sauf lecture inachevable**.
+   **Convention datée du 22/09** (ratifiée à la validation Fin) : preuve obligatoire absente, nulle, mal typée ou hors
+   liste close constatée **après** une violation → code 2, rien publié, violations dites sur **stderr** (un diagnostic
+   se bâtit sur une lecture complète). Le refus de contrat évalué **avant toute lecture** (item 2) reste un refus 2.
+6. **Non-finis ou hors domaine fournis → violation 1** partout ; absent / `null` / mal typé / hors liste close → 2,
+   rien écrit (sauf `c3_entry`). Lecture stricte **complète** des entrées avant tout chemin de publication, abstention
+   comprise ; conjonctions sur des dicts entièrement lus, jamais un `all()` paresseux.
+7. **Table provenance × statut** (calculée par `c3_select`, recoupée par `c3_verdict`, déclaré ≠ dérivé = violation) :
+   retenu ∧ `clean` → `SÉLECTION_VALIDE` ; retenu ∧ `contaminated` / `unknown` → `SÉLECTION_DESCRIPTIVE` ; non retenu →
+   `ABSTENTION` (raison `A_NO_ADMISSIBLE_CANDIDATE` ou `A_BELOW_FLOOR`, chaîne `P_PROVENANCE` par priorité sous
+   contamination). `retained` = tête de `ranking`, `ranking` permutation de `survivors ⊆ admissible`.
+8. **Listes closes d'états par clause de continuité** (`cc.CLAUSE_ADMISSIBLE_STATES`, producteur **et** verdict) :
+   c1 {`NOT_VERIFIABLE`, `DECLARED`, `FAILED`} ; c2 {`DECLARED`, `FAILED`} ; c3 {`VERIFIED`, `NOT_VERIFIABLE`,
+   `FAILED`} ; c4 {`VERIFIED`, `FAILED`} ; c5 {`NOT_VERIFIABLE`, `DECLARED`, `FAILED`}. Hors liste → 2, rien publié.
+   Aucune déclaration ne produit `VERIFIED` ; **l'agrégat `VERIFIED` est inconstructible en C3a** (108 combinaisons
+   testées) ; précédence `FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED`. Actions branchées sur les clauses : c1 / c2 /
+   c5 `FAILED` → R0 code 2 ; c4 `FAILED` → `D_WARMUP_ANCHOR` ; comparateur `FAILED` (test faux **ou** fenêtre ≠
+   `[T, fin]`) → `E_NO_BENCHMARK` ; `stamp_cell` non `VERIFIED` → `E_STAMP_MISMATCH`. Résumés et agrégat **dérivés**
+   des clauses par le consommateur, jamais recopiés ; contradiction = violation.
+9. **`chain.verified`** = **intégrité mécanique** de la chaîne : codes de succès enregistrés des amonts, cohérence
+   interne de chaque enveloppe (`ok ⟺ exit 0`, `invalide ⟺ exit 1`, entry : `exit 2 ⟹ refus porté`), empreintes
+   concordantes. **Pas la qualité de l'issue** : `verified: true` avec `inconclusif E_NO_BENCHMARK` est cohérent ;
+   `false` sur toute violation, de chaîne ou non ; un refus sans violation ne publie rien.
+10. **Confinement `evaluation.synthetic`** (§ L.1) : champ **obligatoire**, premier contrôle de `decide()` et de
+    `run_verdict()`, avant tout chemin de publication (abstention comprise). Absent / `null` / `"true"` → 2 ;
+    **`false` → refus** `R0_INVALID_RUN` (« évaluation réelle non exerçable par l'outillage C3a »), 2, rien écrit ;
+    `true` → label **`C3_SYNTH_<c>`** et `portee = "exercice synthétique de l'outillage — aucune portée économique
+    (§ L.1)"` dans les deux payloads, première ligne des deux rendus.
+11. **Convention moteur `_btc` littérale** : `residual_trade_btc`, `dust_written_off_btc`, `inventory_divergence_btc`,
+    `amount_btc` sont lus tels quels **pour toutes les paires** (`backtest.py:3288-3293`, convention `btc_held`) ; le
+    renommage est une question C3b.
+12. **D3** : « aucune vente » = `winning + losing == 0 ∧ total_trades > 0`, raison **`C_COVERAGE`** ; ordre d'affichage
+    **D3 puis D6**. **D6** : preuve par lot obligatoire (`lots` sous `liquidation[seg]` : `amount_i > 0`, `gross_i ==
+    amount_i × price`, `fee_i == gross_i × taker`, agrégats égaux aux sommes — `cc.liquidation_identities`, partagée
+    par `c3_select` et `c3_continuity`) ; `lots` absent ⇒ D6 non vérifié ⇒ candidat non admissible. **MDD** : décisions
+    sur le recalculé, écart enregistré ↔ recalculé rapporté, non classé. **D1** : `longest_gap_days` **recalculé** sur
+    la grille attendue, bords compris, jamais lu déclaré (contre-exemple : 744/767 j couverts, trou 23,04 j > 23,016 j).
+
+**Le seul run réel — un refus (§ D.3), 2026-09-22.** `c3_entry` sur `results/rejeu_grid_20260919/P7_phase1_grid.json`
+(sha256 `08d981e493402f37…`, intact) avec un manifeste **dérivé des clés de l'artefact** (`run_scope` le dit : ses
+assertions D5 ne prouvent rien d'indépendant) : `ok false`, `exit_code 2`, `refusal = {reason: D_WARMUP_PREFIX,
+scope: artefact, assertion: I-A.8}`, **96/96** candidats en échec D2 (48 BTC : séries `1d, 1w` insuffisantes ; 48
+SOL : `4h, 1d, 1w`) ; I-A.2 **`not_assertable`** (aucun porteur `exec_interval`) et I-A.7 **`not_assertable`**
+(couverture non fournie). Phrase portée : « cet artefact ne satisfait pas les conditions d'entrée C3 ». Artefacts
+sous `results/c3a_entry_validation/`. Le mode `chain` sur ce même artefact s'arrête à `entry`, code 2, sans
+`benchmark.json` ni `verdict.json`. **Ce run ne prouve pas** D5 ni D1 ; il ne produit ni classement ni verdict
+économique sur la famille grid, et le verdict du rejeu est inchangé.
+
+**Fait stratégique.** Aucune campagne existante (P6, P7, B4, C1, C2, rejeu grid) ne peut traverser la chaîne : il
+manque un **producteur conforme** — export `lots` par segment (D6, clause 3), `exec_interval` (D5), artefact de
+couverture (D1), preuve de départ à plat à `T` (clause 1 : le dump `--equity-out` n'a aucun point à `T`),
+`invocation.single_call` (clause 2), `first_fill_at` (clause 5), amorçage suffisant au préfixe (D2). C'est le chantier
+producteur de **C3b** ; jusque-là `validé` / `réfuté` sont inatteignables (§ L.1).
+
+**Tests** : `tests/test_scripts/test_c3_*.py` (8 fichiers, **806** : verdict 360, anchor 127, entry 127, select 54,
+continuity 51, common 50, benchmark 28, chronology 9) — dont `test_c3_chronology.py` (chronologie forte § A.12 :
+trois témoins, trois issues, permutation, provenance contaminée, **contrôle négatif** détectant un scoreur fuyant) ;
+les attendus sont recopiés du texte (`TABLE_6_4`, vingt lignes avec appui) et **épinglés** aux constantes du code ;
+scan AST contre `bool(…)` sur donnée externe et `.get(clé, défaut)` hors `OPTIONAL_FIELDS`.
+
 ## Benchmarks de comparaison
 
 Toute stratégie doit battre au moins un des deux :

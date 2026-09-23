@@ -8,9 +8,13 @@
 Bot de trading spot automatisé multi-pair (BTC/ETH/SOL contre USDC) sur **Bybit EU**, 8 stratégies
 orchestrées par un router avec risk management centralisé, déployé sur Hetzner (collector Bybit actif,
 trader masqué). **B4 est close (15 sept, tag `v2.8.0-b4-3-campaign`) : zéro sélection sous les critères codés — et
-l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Phase courante : chantiers C1 (métriques,
-mergé, tag `v2.9.0-c1-metrics`) → C2 (replay) → rejeu grid → C3 (validation chronologique) ; runs R&D gelés jusqu'à
-C1-C2, tickets papier sous `docs/CONTRAINTES_POST_B4.md`.** Les backtests tournent sur les 8.7M rows Binance
+l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Instrument réparé : C1 (métriques,
+`v2.9.0-c1-metrics`) et C2 (replay, `v2.10.0-c2-replay`) mergés ; rejeu grid clos `inconclusif` (20/09). **C3a close
+(22/09)** : protocole `docs/protocole_c3.md` gelé + outillage complet, artefact du rejeu **refusé à l'entrée**.
+Phase courante : merge de C3a dans `dev` (porte § L.5 passée le 2026-09-22 au `6f7ed8e`, 24/24 déterminisme serveur ;
+suite serveur non verte pour une cause hors C3a, rapport § 14.2) + préparation C3b ; aucune sélection, rien à trader ; R&D sur le papier
+(`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
+`docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
 end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts par paire mesurés (GATE B).
 
 ## Routage : type de tâche → fichier à lire
@@ -30,8 +34,24 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | Résultats de backtests (quoi est où, verdicts) | `results/INDEX.md` |
 | **Nouvelle idée de stratégie** (filtre d'entrée, ticket § 6 sur le papier avant tout code) | `docs/CONTRAINTES_POST_B4.md` |
 | **Audit red-team B4 / portée des conclusions** | `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` (+ addendum en tête de `results/B4_bybit_backtest_report.md`) |
+| **Comment une configuration est sélectionnée** (protocole gelé — spécification de TOUTE sélection future) | `docs/protocole_c3.md` |
+| **Brief du chantier C3a** (périmètre, gates, décisions figées) | `agent/c3a_protocole_chronologique_v2.md` |
+| **Outillage C3** (chaîne `c3_*.py`, codes de sortie, conventions d'outillage datées, seul run réel) | `skills/backtest.md` § « Validation C3 » |
+| **Rapport de session C3a** (revues Fin, conventions, exigences C3b accumulées) | `agent/rapport_session_c3a_20260922.md` |
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
+
+> **C3a livrée et validée (22 sept 2026 — branche `feat/c3a-protocole`, validée au tip `acaeaf6`, tip final `6f7ed8e`).**
+> `docs/protocole_c3.md` est **gelé** au commit `d931293` : il spécifie **toute** sélection future (ancrage,
+> admissibilité, classement, contrat de continuité, benchmark, incertitude, trois issues) et ne se modifie que par
+> amendement daté. **Aucune sélection ne se fait hors de ce document.** L'outillage `scripts/audit/c3_*.py` est
+> **complet** (7 modules, 806 tests, sous-commande `c3_verdict.py chain`) — comportement et conventions d'outillage
+> datées dans `skills/backtest.md` § « Validation C3 ». Sa **seule sortie réelle est un refus** : l'artefact du rejeu
+> grid ne satisfait pas les conditions d'entrée C3 (`D_WARMUP_PREFIX`, 96/96, `results/c3a_entry_validation/`).
+> **Aucune campagne existante ne peut traverser la chaîne** sans un producteur conforme (chantier C3b) ; `validé` /
+> `réfuté` sont inatteignables avant C3b (§ L.1). Aucune sélection, aucun verdict économique. Porte pré-merge § L.5 **passée le 2026-09-22 au `6f7ed8e`** (option 1 :
+> 24/24 déterminisme serveur, `results/c3a_determinism_server/run_6f7ed8e/`) ; suite serveur non verte pour une cause hors
+> C3a (tests non hermétiques Telegram, rapport § 14.2), merge sous décision humaine.
 
 ## Règles d'or (absolues)
 
@@ -42,8 +62,9 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
    le code de production. Seuls les backtests lisent explicitement `exchange='binance'`.
 5. **Batcher les inserts SQL** (1000 rows par batch, jamais > 5000 par execute).
 6. **Ne jamais réimporter** des données déjà en DB : vérifier d'abord (`skills/database.md`).
-7. **Paper avant live**, 3+ ans de backtest avant paper. **B4** (re-backtests avec fees Bybit) est un
-   prérequis absolu avant tout paper trading Bybit.
+7. **Paper avant live**, 3+ ans de backtest avant paper. **Aucun paper Bybit sans un candidat validé sous le
+   protocole C3** (`docs/protocole_c3.md`, sélection chronologique, fees Bybit) — B4 (fees Bybit) reste le
+   prérequis d'**instrument**, il n'est plus le critère de sélection.
 8. **Fichiers protégés** : `MultiStrategyRouter`, `GeminiGlobalRiskManager`, `ExecutionEngine` —
    pas de modification sans raison explicite et review humain. Ne jamais bypasser le `GlobalRiskManager`.
 9. **Jamais de commit** de `.env`, credentials ou API keys.
@@ -78,3 +99,21 @@ résultats P6/P7 historiques, `bybit` = cible de production. Détails : `skills/
   (`git worktree add ~/wt-human dev`) — jamais de checkout/commit humain dans le tree d'un agent.
 - Tout agent : assert `git branch --show-current == <branche du chantier>` avant chaque commit.
 - Un bloc GO contenant des écritures git part vers exactement une session, nommée.
+
+## Règles agent — tests de contrat et vérifications (acquises en C3a, 22/09)
+
+1. **Tout test de contrat naît adverse** : constaté **rouge** contre le code du tip précédent avant le correctif ;
+   pour une tranche neuve, écrit avec son cas adverse et constaté rouge contre un état qui ne l'implémente pas. Un
+   test vert dès l'écriture ne prouve rien — cinq défauts ont tenu dans 92 tests verts-avant (revue Fin C3a).
+2. **Le témoin sain est lui-même conforme au contrat** : la fixture « saine » d'un test adverse satisfait toutes les
+   clauses qu'elle exerce, sinon le test compare deux non-conformités.
+3. **L'attendu d'un test se dérive de la table ou du texte, appui cité** (section, ligne) — jamais de
+   l'implémentation. Rouge-avant prouve qu'un test mord, pas que son attendu est juste : un paramétré recopié du
+   code est un verrou posé sur le défaut. Les tables du texte sont recopiées dans le test et **épinglées** aux
+   constantes du code par un test d'égalité, jamais l'inverse.
+4. **`set -o pipefail` sur toute vérification pipée** (`pytest … | tail`, `… | tee`) : sans lui le code de sortie est
+   celui du dernier filtre, et un rouge passe (incident C3a, commit 4, amendé en `bd81b87`).
+5. **Précédence par ordre de constat** : après une violation constatée, la violation prime (diagnostic, code 1) sur
+   tout refus ou issue non définie survenant ensuite — **sauf lecture inachevable** (preuve obligatoire absente ou mal
+   typée constatée après : code 2, rien publié, violations sur stderr). Un contrat refusé **avant toute lecture** reste
+   un refus 2. Détail et conventions datées : `skills/backtest.md` § « Validation C3 ».

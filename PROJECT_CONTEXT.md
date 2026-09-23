@@ -1,15 +1,22 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 20 septembre 2026, **après le rejeu diagnostic grid**. B4 close le 15 sept (merge `4c98b6b`
+> Dernière mise à jour : 22 septembre 2026, **à la clôture de C3a**. B4 close le 15 sept (merge `4c98b6b`
 > dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec
 > un instrument depuis invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ;
 > sélection paper vide. Instrument réparé : **C1 métriques** (tag `v2.9.0-c1-metrics`) et **C2 fidélité replay** (tag
 > `v2.10.0-c2-replay`) mergés. **Rejeu diagnostic grid clos le 20 sept** → **`inconclusif (F_CANNOT_SEPARATE)`** : la
 > famille grid n'est **ni validée ni dépriorisée** sous instrument réparé — pas de déploiement, pas de tuning
-> supplémentaire, périmètre non élargi (`results/rejeu_grid_report.md`). **Phase courante : C3**, validation
-> chronologique. Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal `docs/RESEARCH_LOG.md` obligatoire
-> avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
+> supplémentaire, périmètre non élargi (`results/rejeu_grid_report.md`). **C3a livrée et validée le 22 sept** (revues
+> croisées Astra / Claude, **806 tests C3**, suite 2 615 passés / 6 skippés, branche `feat/c3a-protocole` @ `acaeaf6`,
+> non mergée) : protocole `docs/protocole_c3.md` **gelé** (`d931293`), outillage complet ; **l'artefact réel du rejeu
+> est refusé à l'entrée** (§ D.3, `D_WARMUP_PREFIX`, 96/96). **Fait stratégique : aucune campagne existante ne peut
+> traverser la chaîne C3 sans un producteur conforme → chantier C3b.** **Phase courante : merge de C3a dans `dev`** (porte § L.5
+> **passée le 2026-09-22 au `6f7ed8e`** : 24/24 déterminisme serveur, `results/c3a_determinism_server/run_6f7ed8e/` ;
+> re-passe Astra consignée non faite, décision Bruno ; suite serveur non verte pour une cause hors C3a — rapport § 14)
+> **et préparation de C3b** (gate
+> d'amendement du protocole, chantier producteur). Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
+> `docs/RESEARCH_LOG.md` obligatoire avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
 
 ---
 
@@ -31,7 +38,7 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - Monitoring Telegram en temps réel
 - Capital initial 1k USDC, scaling progressif vers 20k USDC
 
-### État actuel (16 septembre 2026)
+### État actuel (22 septembre 2026)
 
 - ✅ P0 à P6 terminées (audit, abstraction layer, REST/WS Binance, multi-pair, backtests 24 combos)
 - ✅ P7 phase 1 terminée (30 mai 2026 : 212 jobs de grid search cross-validés, fees Binance)
@@ -100,11 +107,35 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   sur 48 passent les gates ponctuels mais **aucune ne tient les six bornes simultanées** ; SOL/USDC est **descriptif**
   (825 jours de données, benchmark non constructible, warmup W2). La famille grid est donc **ni validée ni dépriorisée**
   sous instrument réparé — pas de déploiement, **pas de tuning supplémentaire**, périmètre non élargi
-  (`results/rejeu_grid_report.md`, `docs/rejeu_grid_prespec.md`). **Phase courante : C3, validation chronologique**
-  (note WF § 9) — equity continue, sélection sur le passé seul — avant toute sélection ; C3 devra aussi reprendre
-  l'amorçage des portes de régime (warmup 1 d/1 w de BTC `sufficient=False` par lacune interne, et `bias_1d` fait vivre
-  `regime_1d` dans tous les modes). Tickets papier (`docs/CONTRAINTES_POST_B4.md` § 6) autorisés ; tout run s'inscrit
-  d'abord dans `docs/RESEARCH_LOG.md`.
+  (`results/rejeu_grid_report.md`, `docs/rejeu_grid_prespec.md`) → **C3, validation chronologique** (note WF § 9) :
+  **C3a close le 22 sept** (puce suivante), **C3b ouvert**. L'amorçage des portes de régime que le rejeu avait nommé
+  (warmup 1 d/1 w de BTC `sufficient=False` par lacune interne, `bias_1d` faisant vivre `regime_1d` dans tous les
+  modes) est désormais **ce que D2 refuse mécaniquement à l'entrée** (`D_WARMUP_PREFIX`, 96/96) et relève du chantier
+  producteur C3b. Tickets papier (`docs/CONTRAINTES_POST_B4.md` § 6) autorisés ; tout run s'inscrit d'abord dans
+  `docs/RESEARCH_LOG.md`.
+- ✅ **C3a close (22 sept — branche `feat/c3a-protocole`, tip `acaeaf6`, non mergée, pas de tag)** : protocole
+  `docs/protocole_c3.md` **gelé** au `d931293` (sha256 `9b62915069e59e9b…`), jamais modifié depuis ; outillage
+  **complet**, liste fermée § L.4 — `scripts/audit/c3_{common,anchor,entry,benchmark,select,continuity,verdict}.py`,
+  sous-commande `c3_verdict.py chain` (chaîne § L.2 à neuf champs), **806 tests** C3 (8 fichiers ; suite complète
+  2 615 / 6), diff de contrôle § L.3 vide, `mypy src/` 65 = baseline ; revues croisées Astra / Claude (deux passes Fin,
+  huit correctifs rouges-avant, `chain.verified` défini), **arrêt Fin validé le 22/09**. **Seule sortie réelle : le refus
+  de l'artefact du rejeu à l'entrée** (`D_WARMUP_PREFIX`, portée artefact, **96/96** — 48 BTC `1d, 1w`, 48 SOL
+  `4h, 1d, 1w` ; I-A.2 `exec_interval` et I-A.7 couverture `not_assertable` ; `results/c3a_entry_validation/`),
+  conforme au § D.3 — **aucun classement, aucun verdict économique**, verdict du rejeu inchangé.
+  **Fait stratégique : aucune campagne existante (P6, P7, B4, C1, C2, rejeu) ne peut traverser la chaîne** — il manque
+  un **producteur conforme** : export `lots` par segment (D6, clause 3), `exec_interval` (D5), artefact de couverture
+  (D1), preuve de départ à plat à `T` (clause 1), `invocation.single_call` (clause 2), `first_fill_at` (clause 5),
+  amorçage suffisant au préfixe (D2) → **C3b**. `validé` / `réfuté` restent **structurellement inatteignables** sur
+  données réelles (§ L.1). Conventions d'outillage **datées** (21/09 : clause 3 `FAILED` → `UndefinedIssueError`,
+  code 2 ; 22/09 : preuve absente après violation → code 2, violations sur stderr) documentées dans
+  `skills/backtest.md` § « Validation C3 », **à ratifier par amendement** au gate C3b (avec la ligne run
+  `R1_NOT_NORMALISED`, E2 sur les six distributions, la tolérance MDD, l'énumération § L.1 / `candles.json`).
+  **Porte pré-merge § L.5 passée le 2026-09-22 au `6f7ed8e`** (option 1 : 24/24 déterminisme serveur, recette C2,
+  `results/c3a_determinism_server/run_6f7ed8e/` ; option 2 indisponible, `pyproject.toml` seul sur § L.3 ; re-passe Astra
+  consignée non faite, décision humaine écrite ; suite serveur non verte pour une cause hors C3a — tests non hermétiques
+  Telegram, `mock_settings` sans `telegram` — rapport § 14). **Restent, hors C3a** : gate d'amendement, brief C3b, dette
+  d'hermétisme de la suite. Rapport : `agent/rapport_session_c3a_20260922.md`.
+
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
   `# B5: re-enable trader`) ; **trader masqué** sur le serveur (`systemctl mask krakenbot`). Reste ouvert : test dette 13.
@@ -334,9 +365,12 @@ Détail : `ROADMAP.md`.
   Bybit, B2 WS, B3 data/collector, **B4 re-run P6 + P7 fees Bybit** (15 sept, tag `v2.8.0-b4-3-campaign`) → **0 survivant**
   (zéro sélection sous les critères codés avec un instrument depuis invalidé — addendum B4), **C1 métriques** (16 sept,
   tag `v2.9.0-c1-metrics`).
-- ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`), C2 (mergé, `v2.10.0-c2-replay`) et **rejeu
+- ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`), C2 (mergé, `v2.10.0-c2-replay`), **rejeu
   diagnostic grid** (clos le 20 sept, verdict `inconclusif (F_CANNOT_SEPARATE)` — famille grid ni validée ni
-  dépriorisée) → **C3 validation chronologique, phase courante**.
+  dépriorisée) → **C3 validation chronologique** : **C3a close le 22 sept** (protocole gelé `d931293`, outillage 7
+  modules / 806 tests, artefact du rejeu refusé à l'entrée ; branche `feat/c3a-protocole` @ `6f7ed8e`, porte § L.5
+  passée le 2026-09-22, merge dans `dev` en cours) ; **C3b ouvert** (gate d'amendement + producteur conforme, puis campagne réelle sous la chaîne).
+  **Phase courante : merge C3a + préparation C3b.**
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
@@ -485,8 +519,36 @@ Détail : `ROADMAP.md`.
     justesse de leurs indicateurs). **Blocage explicite de P12** (réévaluation scalping / mean reversion avec fees réelles) :
     invalide par construction tant que ce n'est pas corrigé.
 
-**Note WF** (audit red-team 16/09) : la sélection top-5 de P7 phase 2 utilise le Sharpe du test global (période chevauchant
-les fenêtres) — le walk-forward actuel n'est pas une validation chronologique. **Résolution : C3**.
+19. **Liquidation terminale absente du moteur signal** (constat C3a, 2026-09-21) : `GridBacktester` liquide
+    l'inventaire terminal au MARCHÉ en payant taker + spread + slippage et ajoute un point d'equity final
+    (`backtest.py:3149-3260`), mais **`BacktestEngine` n'a aucune liquidation** — aucune occurrence de
+    `liquidat` / `force_close` dans les lignes 787-2186, et `ending_balance = equity_curve[-1][1]`
+    (`:1555-1561`) valorise l'inventaire résiduel au dernier close **sans fee, sans spread, sans slippage**.
+    B4.3 GATE A a corrigé le grid et laissé le signal. **`unrealized_pnl` ne le détecte pas** : il n'est écrit
+    qu'à `:3267`, dans `GridBacktester` uniquement, et le moteur signal exporte toujours `0.0` (défaut `:636`).
+    Détecteur utilisable : l'identité de fin à plat `|net_pnl − (ending − starting)| ≤ 1e-6`, **nécessaire mais
+    pas suffisante** pour un inventaire nul — son compte de ruptures est une **borne inférieure**. Mesuré :
+    **166 segments sur 636** en P7 phase 1 B4 et **116 sur 560** en phase 2 la rompent, **aucun du moteur
+    grid** (phase 1 : DCA 144, SuperTrend 22 ; phase 2 : SuperTrend 67, DCA 37, Donchian 12). Cas extrême,
+    `grok_adaptive_dca_weekly` BTC segment `all` : 101 achats, **zéro vente**, `net_pnl = −0,9975`,
+    `ending_balance = 1716,84`, **`total_return_pct = +71,68 %` entièrement latent et sans coût de sortie**.
+    **Aucun verdict économique directionnel** n'est fondé sur un artefact dont la liquidation terminale n'est
+    pas normalisée (§ B.3 du protocole) — la direction de l'effet n'est pas universelle, puisque normaliser
+    déplace le MaxDD, donc `λ`, donc le rendement du comparateur apparié. **Prérequis C3b**, et **pas un simple
+    transport de champs** : le dump `--equity-out` n'écrit que des états **postérieurs** au traitement d'une
+    bougie, et à l'ancrage déclaré **aucun point n'existe à `T`** ; C3b doit **spécifier une preuve de départ à
+    plat**. **État C3a** : `c3_continuity` clause 3 lit ce bloc — identités exactes **et** preuve par lot →
+    `VERIFIED` ; sans `lots` → `NOT_VERIFIABLE` ; bloc absent ou identité fausse → `FAILED`, issue non définie
+    (`UndefinedIssueError`, convention du 21/09, amendement `R1_NOT_NORMALISED` dû en C3b).
+
+**Note WF** (audit red-team 16/09, reformulée le 22 sept — **non déclarée résolue**) : la sélection top-5 de
+P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7
+**n'est pas** une validation chronologique. **État réel** : **nouvelle voie C3 chronologique** — protocole
+`docs/protocole_c3.md` **gelé** (`d931293`), outillage **livré** (C3a, `skills/backtest.md` § « Validation C3 »),
+mais **aucune campagne existante ne le traverse** (refus à l'entrée, producteur conforme = chantier C3b) ;
+**ancienne phase 2 P7 conservée pour reproduction, impropre à une nouvelle validation chronologique** : les
+runners ne sont pas modifiés, la fuite de sélection y est donc toujours présente. La note sera déclarée résolue
+quand une campagne aura été **validée ou réfutée sous la chaîne C3** — pas avant.
 
 ---
 
@@ -509,7 +571,7 @@ Voir `CLAUDE.md` (routeur) — résumé :
 1. **Decimal** pour montants, **structlog** pour logs, **normalize_pair** pour paires.
 2. **Filtrer** via `settings.exchange_name` dans le code de production (jamais de littéral).
 3. **Batcher** les inserts SQL (~1000 rows max).
-4. **Tester en paper** avant live, **3+ ans de backtest** avant paper, **B4 avant tout paper Bybit**.
+4. **Tester en paper** avant live, **3+ ans de backtest** avant paper, **un candidat validé sous le protocole C3 avant tout paper Bybit** (B4 = prérequis d'instrument).
 5. **Ne JAMAIS commit** `.env` ni credentials.
 6. **Ne JAMAIS modifier** MultiStrategyRouter/GeminiGlobalRiskManager/ExecutionEngine sans review humain.
 7. **Lire le code existant** avant d'écrire.

@@ -1,6 +1,6 @@
 # KrakenBot — Roadmap (Septembre 2026)
 
-> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 19 septembre 2026 (post-audit B4, C1 et C2 mergés).
+> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 22 septembre 2026 (post-audit B4, C1 et C2 mergés, **C3a close**, C3b ouvert).
 > Décisions de pivot : `docs/archive/PIVOT_BYBIT_PLAN.md` · audit Bybit : `results/bybit_integration_audit.md` ·
 > audit red-team B4 (portée des conclusions) : `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` + addendum en tête de
 > `results/B4_bybit_backtest_report.md`.
@@ -41,7 +41,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | **C1** | Métriques fiables (module partagé, dual MaxDD, PF net, equity export, A/B vs tag) | 3-5 j | `results/C1_metrics_report.md`, gold hashes re-baselinés sur tableau A/B approuvé | ✅ 16 sept — mergé dans `dev`, tag `v2.9.0-c1-metrics` |
 | **C2** | Fidélité replay (grid 4h réels, préenregistrement EMA200 DCA, compteurs de rejets, dette 14 avec review) | 2-4 j | `results/C2_replay_report.md`, gold hashes grid re-baselinés sur tableau approuvé, preuves de déterminisme `results/c2_replay/determinism_server/` | ✅ 19 sept — mergé dans `dev`, tag `v2.10.0-c2-replay` |
 | **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | `results/rejeu_grid_report.md`, pré-spécification gelée `docs/rejeu_grid_prespec.md`, artefacts `results/rejeu_grid_20260919/` | ✅ 20 sept — **`inconclusif (F_CANNOT_SEPARATE)`** : 16 configs BTC passent les gates ponctuels, aucune ne tient les six bornes simultanées ; SOL descriptif (données insuffisantes). Ni candidat, ni dépriorisation : **pas de déploiement, pas de tuning supplémentaire**, périmètre non élargi. Suite → C3 |
-| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole v2 documenté + outillé | 📋 avant toute sélection |
+| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole gelé + outillé ; puis campagne réelle sous la chaîne | ✅ **C3a close le 22 sept** — protocole **gelé** (`docs/protocole_c3.md`, `d931293`), outillage **complet** (7 modules, 806 tests, `c3_verdict.py chain`), artefact du rejeu **refusé à l'entrée** (`D_WARMUP_PREFIX`, 96/96) ; branche `feat/c3a-protocole` @ `6f7ed8e`, porte § L.5 **passée le 2026-09-22** (24/24 déterminisme serveur), merge dans `dev` en cours. 📋 **C3b ouvert** : (1) gate d'amendement du protocole + chantier producteur ; (2) campagne réelle sous la chaîne. Détail : § « C3 — Validation chronologique » |
 | **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
 | P11+ | ML, scalping eval, RL | Mois | — | 🔮 |
@@ -104,7 +104,47 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
   sous 5k, plancher 5-10 USDC, doctrine des sorties MARKET à 0.25 %.
 - **Fait le 15 sept 2026** (`feat/b4-3-campaign`, tag `v2.8.0-b4-3-campaign`) : P6 0/24, P7 0/35, sélection paper vide
   (`results/B4_bybit_backtest_report.md`). **Métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de
-  sélection (vides) inchangés** — réparation de l'instrument : C1 et C2 **mergés** → rejeu grid (phase courante) → C3.
+  sélection (vides) inchangés** — réparation de l'instrument : C1 et C2 **mergés** → rejeu grid (**clos le 20 sept**, `inconclusif`) → C3 (**C3a close le 22 sept**, C3b ouvert — section suivante).
+
+### C3 — Validation chronologique (C3a close, C3b ouvert)
+
+**C3a — protocole et outillage de sélection, close le 22 sept 2026** (branche `feat/c3a-protocole`, tip `acaeaf6`,
+**non mergée, pas de tag**) :
+
+- `docs/protocole_c3.md` **gelé** au `d931293` (21/09, sha256 `9b62915069e59e9b…`) : spécification de toute sélection
+  future ; ne change que par amendement daté (§ 0.7).
+- Outillage complet, liste fermée § L.4 : `scripts/audit/c3_{common,anchor,entry,benchmark,select,continuity,verdict}.py`
+  (7 modules, ordre § L.1), tests `tests/test_scripts/test_c3_*.py` (8 fichiers, **806**), sous-commande
+  `c3_verdict.py chain` (chaîne § L.2, neuf champs) ; suite complète 2 615 / 6 ; diff de contrôle § L.3 vide ;
+  `mypy src/` 65 = baseline. Comportement et conventions d'outillage datées : `skills/backtest.md` § « Validation C3 ».
+- Arrêt Fin validé le 22/09 par les deux revues (Astra / Claude) : deux passes, huit correctifs rouges-avant,
+  `chain.verified` défini. Rapport : `agent/rapport_session_c3a_20260922.md`.
+- **Seule sortie réelle** : refus de `results/rejeu_grid_20260919/P7_phase1_grid.json` à l'entrée (`D_WARMUP_PREFIX`,
+  portée artefact, 96/96 — `results/c3a_entry_validation/`). Aucune sélection, aucun verdict économique ;
+  `validé` / `réfuté` inatteignables avant C3b (§ L.1).
+- **Porte pré-merge § L.5 passée le 2026-09-22 au `6f7ed8e`** (option 1 : 24/24 déterminisme serveur, recette C2,
+  `results/c3a_determinism_server/run_6f7ed8e/` ; option 2 indisponible, `pyproject.toml` seul sur § L.3 ; re-passe Astra
+  consignée non faite, décision humaine écrite ; suite serveur non verte pour une cause hors C3a — tests non hermétiques
+  Telegram — rapport § 14).
+
+**C3b — deux paquets, dans cet ordre** (brief à écrire, non commencé) :
+
+1. **Gate d'amendement du protocole** (amendements datés) : ligne run `R1_NOT_NORMALISED` à I.1 (remplace la convention
+   du 21/09 sur la clause 3) ; E2 sur les six distributions et frontière de confiance sur les bornes ; tolérance MDD
+   enregistré ↔ recalculé ; énumération § L.1 / `candles.json` quatrième entrée ; ratification des conventions
+   d'outillage datées 21/09 et 22/09 ; renommage des clés `_btc` ; état `NOT_VERIFIABLE` de `stamp_cell`. **Chantier
+   producteur** (runner) : export `lots` sous `liquidation[seg]` (D6, clause 3), `exec_interval` (D5), artefact de
+   couverture (D1), **preuve de départ à plat à `T`** (§ B.2, clause 1 — pas un transport de champs : `--equity-out`
+   n'a aucun point à `T`), `invocation.single_call` (clause 2), `first_fill_at` (clause 5), amorçage suffisant au
+   préfixe (D2) ; dette 19 (liquidation terminale du moteur signal, § B.3), dette 15(c) ; exécution continue
+   post-ancrage et procédure d'incertitude (§ B.4, § F.2). Aucune modification moteur sans écart démontré ; si
+   modification, gate humain + invariant `compare-ab --strict`.
+2. **Campagne réelle sous la chaîne** : inscription à `docs/RESEARCH_LOG.md` avant lancement, manifeste gelé,
+   `c3_verdict.py chain` — les trois issues ne deviennent atteignables qu'alors.
+
+**Conséquence opérationnelle : aucune sélection possible aujourd'hui** — non plus parce que l'outillage est incomplet,
+mais parce qu'**aucune campagne existante ne traverse la chaîne** sans producteur conforme. Les conditions de démarrage
+de B5 sont inchangées.
 
 ### B5 — Paper trading Bybit (4-6 semaines, ex-P9)
 
@@ -164,7 +204,7 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 3. **Spread mesuré, pas supposé** : 0.02 % spread + 0.02 % slippage (conservateur vs B0).
 4. **Quote USDC** conservée (MiCA-compliant ; USDT délisté chez les acteurs EU).
 5. **PostOnly en entrée** pour garantir le maker ; sorties SL/trailing/timeout en MARKET.
-6. **B4 est un prérequis absolu avant tout paper** : aucun classement P6/P7 (fees Binance flat) n'est repris tel quel.
+6. **B4 est un prérequis absolu avant tout paper** : aucun classement P6/P7 (fees Binance flat) n'est repris tel quel ; **depuis C3 (22/09), la condition de démarrage de B5 est un candidat validé sous le protocole C3** (§ B5).
 7. **Filtre exchange via `settings.exchange_name`**, plus de littéral en production.
 8. ✅ **`TaskScheduler` via la factory** (B3) — backfill de gaps actif pour l'exchange courant (Bybit).
 9. **Legacy Kraken** : stratégies et connecteur futures supprimés en B0.5 (supersède la décision « conserver
@@ -180,6 +220,7 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 16. **Protocole basse rotation** (voir `docs/CONTRAINTES_POST_B4.md`) : repères de couverture nécessaires jamais
     suffisants, « inconclusif = pas de déploiement ».
 17. **Tout run de backtest est inscrit à `docs/RESEARCH_LOG.md` avant son lancement.**
+18. **Aucune sélection hors `docs/protocole_c3.md`** (gelé `d931293`) : le protocole ne change que par amendement daté (gate) ; l'outillage exécute, il ne norme pas.
 
 ---
 
