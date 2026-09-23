@@ -1,6 +1,6 @@
 # KrakenBot — Roadmap (Septembre 2026)
 
-> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 22 septembre 2026 (post-audit B4, C1 et C2 mergés, **C3a close**, C3b ouvert).
+> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 23 septembre 2026 (post-audit B4, C1 et C2 mergés, **C3a mergée, protocole C3 amendé en v2.1**, C3b ouvert).
 > Décisions de pivot : `docs/archive/PIVOT_BYBIT_PLAN.md` · audit Bybit : `results/bybit_integration_audit.md` ·
 > audit red-team B4 (portée des conclusions) : `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` + addendum en tête de
 > `results/B4_bybit_backtest_report.md`.
@@ -41,7 +41,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | **C1** | Métriques fiables (module partagé, dual MaxDD, PF net, equity export, A/B vs tag) | 3-5 j | `results/C1_metrics_report.md`, gold hashes re-baselinés sur tableau A/B approuvé | ✅ 16 sept — mergé dans `dev`, tag `v2.9.0-c1-metrics` |
 | **C2** | Fidélité replay (grid 4h réels, préenregistrement EMA200 DCA, compteurs de rejets, dette 14 avec review) | 2-4 j | `results/C2_replay_report.md`, gold hashes grid re-baselinés sur tableau approuvé, preuves de déterminisme `results/c2_replay/determinism_server/` | ✅ 19 sept — mergé dans `dev`, tag `v2.10.0-c2-replay` |
 | **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | `results/rejeu_grid_report.md`, pré-spécification gelée `docs/rejeu_grid_prespec.md`, artefacts `results/rejeu_grid_20260919/` | ✅ 20 sept — **`inconclusif (F_CANNOT_SEPARATE)`** : 16 configs BTC passent les gates ponctuels, aucune ne tient les six bornes simultanées ; SOL descriptif (données insuffisantes). Ni candidat, ni dépriorisation : **pas de déploiement, pas de tuning supplémentaire**, périmètre non élargi. Suite → C3 |
-| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole gelé + outillé ; puis campagne réelle sous la chaîne | ✅ **C3a close le 22 sept** — protocole **gelé** (`docs/protocole_c3.md`, `d931293`), outillage **complet** (7 modules, 806 tests, `c3_verdict.py chain`), artefact du rejeu **refusé à l'entrée** (`D_WARMUP_PREFIX`, 96/96) ; branche `feat/c3a-protocole` @ `6f7ed8e`, porte § L.5 **passée le 2026-09-22** (24/24 déterminisme serveur), merge dans `dev` en cours. 📋 **C3b ouvert** : (1) gate d'amendement du protocole + chantier producteur ; (2) campagne réelle sous la chaîne. Détail : § « C3 — Validation chronologique » |
+| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole gelé + outillé ; puis campagne réelle sous la chaîne | ✅ **C3a mergée le 23 sept** (`64adede`, tag `v2.11.0-c3a-protocole`) — outillage complet, artefact du rejeu **refusé à l'entrée** (`D_WARMUP_PREFIX`, 96/96). ✅ **Protocole amendé en v2.1 le 23 sept** (`docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129` ; branche `feat/c3-amendements-v2.1`, merge sous décision humaine ; 932 tests C3). 📋 **C3b ouvert** : (1) producteur conforme, contrat fixé par v2.1, et décision de reconstruction 1 w ; (2) campagne réelle sous la chaîne. Détail : § « C3 — Validation chronologique » |
 | **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
 | P11+ | ML, scalping eval, RL | Mois | — | 🔮 |
@@ -104,12 +104,12 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
   sous 5k, plancher 5-10 USDC, doctrine des sorties MARKET à 0.25 %.
 - **Fait le 15 sept 2026** (`feat/b4-3-campaign`, tag `v2.8.0-b4-3-campaign`) : P6 0/24, P7 0/35, sélection paper vide
   (`results/B4_bybit_backtest_report.md`). **Métriques invalidées par l'audit du 16/09 (addendum B4) ; verdicts de
-  sélection (vides) inchangés** — réparation de l'instrument : C1 et C2 **mergés** → rejeu grid (**clos le 20 sept**, `inconclusif`) → C3 (**C3a close le 22 sept**, C3b ouvert — section suivante).
+  sélection (vides) inchangés** — réparation de l'instrument : C1 et C2 **mergés** → rejeu grid (**clos le 20 sept**, `inconclusif`) → C3 (**C3a mergée le 23 sept**, **protocole v2.1 amendé le 23 sept**, C3b ouvert — section suivante).
 
-### C3 — Validation chronologique (C3a close, C3b ouvert)
+### C3 — Validation chronologique (C3a mergée, protocole v2.1, C3b ouvert)
 
-**C3a — protocole et outillage de sélection, close le 22 sept 2026** (branche `feat/c3a-protocole`, tip `acaeaf6`,
-**non mergée, pas de tag**) :
+**C3a — protocole et outillage de sélection, close le 22 sept 2026** (branche `feat/c3a-protocole`, tip `6f7ed8e` ;
+**mergée le 23 sept**, `64adede`, tag `v2.11.0-c3a-protocole` sur `ad3b1b1`) :
 
 - `docs/protocole_c3.md` **gelé** au `d931293` (21/09, sha256 `9b62915069e59e9b…`) : spécification de toute sélection
   future ; ne change que par amendement daté (§ 0.7).
@@ -127,20 +127,36 @@ Règle : chaque phase B est écrite après la précédente, à partir de ses con
   consignée non faite, décision humaine écrite ; suite serveur non verte pour une cause hors C3a — tests non hermétiques
   Telegram — rapport § 14).
 
+**Protocole v2.1 — amendé le 23 sept 2026** (branche `feat/c3-amendements-v2.1` depuis `dev` @ `f321ddd`, merge sous
+décision humaine) : le gate d'amendement prévu pour C3b est passé. Vingt-huit amendements et le critère d'arrêt
+(`docs/CONTRAINTES_POST_B4.md` § 10), adoptés par Bruno, quatorze réserves d'application ; `docs/amendements_c3_v2.1.md`
+(section « Adoption ») ; sha256 v2.1 `9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129`. Les
+conventions d'outillage datées de C3a sont tranchées (21/09 abrogée par la ligne 10 bis, 22/09 ratifiée) ; fenêtre de
+la première campagne 2021-03-01 → 2026-06-29 (`T = 2024-11-22T04:48Z`) ; 932 tests C3.
+
 **C3b — deux paquets, dans cet ordre** (brief à écrire, non commencé) :
 
-1. **Gate d'amendement du protocole** (amendements datés) : ligne run `R1_NOT_NORMALISED` à I.1 (remplace la convention
-   du 21/09 sur la clause 3) ; E2 sur les six distributions et frontière de confiance sur les bornes ; tolérance MDD
-   enregistré ↔ recalculé ; énumération § L.1 / `candles.json` quatrième entrée ; ratification des conventions
-   d'outillage datées 21/09 et 22/09 ; renommage des clés `_btc` ; état `NOT_VERIFIABLE` de `stamp_cell`. **Chantier
-   producteur** (runner) : export `lots` sous `liquidation[seg]` (D6, clause 3), `exec_interval` (D5), artefact de
-   couverture (D1), **preuve de départ à plat à `T`** (§ B.2, clause 1 — pas un transport de champs : `--equity-out`
-   n'a aucun point à `T`), `invocation.single_call` (clause 2), `first_fill_at` (clause 5), amorçage suffisant au
-   préfixe (D2) ; dette 19 (liquidation terminale du moteur signal, § B.3), dette 15(c) ; exécution continue
-   post-ancrage et procédure d'incertitude (§ B.4, § F.2). Aucune modification moteur sans écart démontré ; si
-   modification, gate humain + invariant `compare-ab --strict`.
-2. **Campagne réelle sous la chaîne** : inscription à `docs/RESEARCH_LOG.md` avant lancement, manifeste gelé,
-   `c3_verdict.py chain` — les trois issues ne deviennent atteignables qu'alors.
+1. **Producteur conforme** — le contrat est fixé par v2.1 ; C3b déclare sa propre liste close de fichiers dans son
+   brief (§ L.3), `scripts/backtest.py` hors liste tant que la dette 19 n'est pas ouverte (C4 du 23/09) :
+   - export du bloc `liquidation[seg]` avec `lots` et clés **`_base`** (D6, clause 3, § A.7) ; `exec_interval` (D5) ;
+     artefact de couverture (D1) ;
+   - **`decision_timeframes` par observation**, dérivés par une méthode de classe pure de la stratégie (§ A.8 D2) ;
+   - **`flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}`** capturée avant la première bougie du run
+     d'évaluation (§ B.2), `invocation.single_call` (§ B.4), `first_fill_at` (§ C.3) ;
+   - l'**évaluation du § F.2**, rejouable au bit par la chaîne : `returns_config`, `returns_bench {dd, sigma}` (même
+     longueur), `replications` par combinaison `{delta_stars (ordre b = 1 … B), discarded, bound}`, `B`,
+     `environment {python, numpy, machine, libc}`, `metrics {net_pnl, cagr_pct, delta_dd}` ; producteur et chaîne
+     sur le serveur (§ J item 12) ;
+   - amorçage suffisant au préfixe (D2) ;
+   - **décision de reconstruction** des six estampilles 1 w manquantes de 2022 (D1 1 w à 188/194 < 97 % : sans elle,
+     l'ensemble admissible est vide) — **prérequis du manifeste** ; SOL partiel ou absent par D2 (29 bougies 1 w
+     au 2021-03-01) ;
+   - dettes : 19 (hors première campagne), 21 (`--campaign`, paramètre libre de la chaîne, à trancher avant la
+     campagne), 15(c).
+   Aucune modification moteur sans écart démontré ; si modification, gate humain + invariant `compare-ab --strict`.
+2. **Campagne réelle sous la chaîne** : inscription à `docs/RESEARCH_LOG.md` avant lancement, manifeste gelé portant
+   le sha256 v2.1, `c3_verdict.py chain` — les trois issues ne deviennent atteignables qu'alors ; le verdict est lu
+   par le critère d'arrêt (`docs/CONTRAINTES_POST_B4.md` § 10).
 
 **Conséquence opérationnelle : aucune sélection possible aujourd'hui** — non plus parce que l'outillage est incomplet,
 mais parce qu'**aucune campagne existante ne traverse la chaîne** sans producteur conforme. Les conditions de démarrage

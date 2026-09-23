@@ -9,10 +9,11 @@ Bot de trading spot automatisé multi-pair (BTC/ETH/SOL contre USDC) sur **Bybit
 orchestrées par un router avec risk management centralisé, déployé sur Hetzner (collector Bybit actif,
 trader masqué). **B4 est close (15 sept, tag `v2.8.0-b4-3-campaign`) : zéro sélection sous les critères codés — et
 l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Instrument réparé : C1 (métriques,
-`v2.9.0-c1-metrics`) et C2 (replay, `v2.10.0-c2-replay`) mergés ; rejeu grid clos `inconclusif` (20/09). **C3a close
-(22/09)** : protocole `docs/protocole_c3.md` gelé + outillage complet, artefact du rejeu **refusé à l'entrée**.
-Phase courante : merge de C3a dans `dev` (porte § L.5 passée le 2026-09-22 au `6f7ed8e`, 24/24 déterminisme serveur ;
-suite serveur non verte pour une cause hors C3a, rapport § 14.2) + préparation C3b ; aucune sélection, rien à trader ; R&D sur le papier
+`v2.9.0-c1-metrics`) et C2 (replay, `v2.10.0-c2-replay`) mergés ; rejeu grid clos `inconclusif` (20/09). **C3a mergée
+(23/09, `v2.11.0-c3a-protocole`)** : outillage complet, artefact du rejeu **refusé à l'entrée**. **Protocole amendé en
+v2.1 (23/09, `docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129`)** sur `feat/c3-amendements-v2.1`, merge sous
+décision humaine. Phase suivante : C3b (producteur conforme ; reconstruction 1 w avant le manifeste de la première
+campagne) ; aucune sélection, rien à trader ; R&D sur le papier
 (`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
 `docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
 end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts par paire mesurés (GATE B).
@@ -34,24 +35,25 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | Résultats de backtests (quoi est où, verdicts) | `results/INDEX.md` |
 | **Nouvelle idée de stratégie** (filtre d'entrée, ticket § 6 sur le papier avant tout code) | `docs/CONTRAINTES_POST_B4.md` |
 | **Audit red-team B4 / portée des conclusions** | `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` (+ addendum en tête de `results/B4_bybit_backtest_report.md`) |
-| **Comment une configuration est sélectionnée** (protocole gelé — spécification de TOUTE sélection future) | `docs/protocole_c3.md` |
+| **Comment une configuration est sélectionnée** (protocole v2.1 — spécification de TOUTE sélection future) | `docs/protocole_c3.md` (+ `docs/amendements_c3_v2.1.md`) |
+| **Critère d'arrêt** (clôture de famille, alpha-stop projet, kill-switch live) | `docs/CONTRAINTES_POST_B4.md` § 10 |
 | **Brief du chantier C3a** (périmètre, gates, décisions figées) | `agent/c3a_protocole_chronologique_v2.md` |
-| **Outillage C3** (chaîne `c3_*.py`, codes de sortie, conventions d'outillage datées, seul run réel) | `skills/backtest.md` § « Validation C3 » |
+| **Outillage C3** (chaîne `c3_*.py`, codes de sortie, règles appliquées et leur section d'origine v2.1, seul run réel) | `skills/backtest.md` § « Validation C3 » |
 | **Rapport de session C3a** (revues Fin, conventions, exigences C3b accumulées) | `agent/rapport_session_c3a_20260922.md` |
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
 
-> **C3a livrée et validée (22 sept 2026 — branche `feat/c3a-protocole`, validée au tip `acaeaf6`, tip final `6f7ed8e`).**
-> `docs/protocole_c3.md` est **gelé** au commit `d931293` : il spécifie **toute** sélection future (ancrage,
-> admissibilité, classement, contrat de continuité, benchmark, incertitude, trois issues) et ne se modifie que par
-> amendement daté. **Aucune sélection ne se fait hors de ce document.** L'outillage `scripts/audit/c3_*.py` est
-> **complet** (7 modules, 806 tests, sous-commande `c3_verdict.py chain`) — comportement et conventions d'outillage
-> datées dans `skills/backtest.md` § « Validation C3 ». Sa **seule sortie réelle est un refus** : l'artefact du rejeu
-> grid ne satisfait pas les conditions d'entrée C3 (`D_WARMUP_PREFIX`, 96/96, `results/c3a_entry_validation/`).
-> **Aucune campagne existante ne peut traverser la chaîne** sans un producteur conforme (chantier C3b) ; `validé` /
-> `réfuté` sont inatteignables avant C3b (§ L.1). Aucune sélection, aucun verdict économique. Porte pré-merge § L.5 **passée le 2026-09-22 au `6f7ed8e`** (option 1 :
-> 24/24 déterminisme serveur, `results/c3a_determinism_server/run_6f7ed8e/`) ; suite serveur non verte pour une cause hors
-> C3a (tests non hermétiques Telegram, rapport § 14.2), merge sous décision humaine.
+> **Protocole C3 v2.1 (amendé le 23 sept 2026 — `docs/amendements_c3_v2.1.md`, sha256
+> `9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129`).** `docs/protocole_c3.md` spécifie **toute**
+> sélection future et ne se modifie que par amendement daté (v2.0 gelée au `d931293` : historique C3a). **Aucune
+> sélection ne se fait hors de ce document.** v2.1 : rejeu complet du tirage § F.2 par la chaîne (égalité au bit,
+> environnement `{python, numpy, machine, libc}`), E2 conjonctive, c3 non normalisée → `inconclusif
+> (R1_NOT_NORMALISED)`, bloc de liquidation contradictoire → violation, évaluation réelle admise avec `flat_start_proof`,
+> `invocation.single_call` et `first_fill_at` (§ L.1). L'outillage `scripts/audit/c3_*.py` (7 modules, 932 tests)
+> est décrit dans `skills/backtest.md` § « Validation C3 ». Sa seule sortie réelle reste un refus (livrable C3a,
+> manifeste v2.0). **Aucune campagne existante ne peut traverser la chaîne** sans un producteur conforme (C3b), dont
+> v2.1 fixe le contrat ; `validé` / `réfuté` deviennent atteignables sur données réelles par ce chemin et par aucun
+> autre. Critère d'arrêt pré-enregistré : `docs/CONTRAINTES_POST_B4.md` § 10.
 
 ## Règles d'or (absolues)
 
@@ -116,4 +118,5 @@ résultats P6/P7 historiques, `bybit` = cible de production. Détails : `skills/
 5. **Précédence par ordre de constat** : après une violation constatée, la violation prime (diagnostic, code 1) sur
    tout refus ou issue non définie survenant ensuite — **sauf lecture inachevable** (preuve obligatoire absente ou mal
    typée constatée après : code 2, rien publié, violations sur stderr). Un contrat refusé **avant toute lecture** reste
-   un refus 2. Détail et conventions datées : `skills/backtest.md` § « Validation C3 ».
+   un refus 2. Section d'origine : protocole § I.1 v2.1 (ordre de constat) ; comportement de l'outillage :
+   `skills/backtest.md` § « Validation C3 ».
