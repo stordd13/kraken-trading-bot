@@ -1,0 +1,20 @@
+# Tests adverses --pairs, constatés ROUGES contre l'outil du tip 8fdaa2a (aucun --pairs, aucun filter_series)
+# 2026-09-23T06:52:50Z · poetry run pytest -q tests/test_scripts/test_data_inventory.py
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+message = 'pytest: error: unrecognized arguments: --pairs BTC/USDT, ETH/USDT,SOL/USDT\n'
+message    = 'pytest: error: unrecognized arguments: --pairs BTC/USDT, ETH/USDT,SOL/USDT\n'
+pytest: error: unrecognized arguments: --pairs BTC/USDT, ETH/USDT,SOL/USDT
+    self.exit(2, _('%(prog)s: error: %(message)s\n') % args)
+message = 'pytest: error: unrecognized arguments: --pairs BTC/USDT,ETH/USDT\n'
+message    = 'pytest: error: unrecognized arguments: --pairs BTC/USDT,ETH/USDT\n'
+pytest: error: unrecognized arguments: --pairs BTC/USDT,ETH/USDT
+FAILED tests/test_scripts/test_data_inventory.py::test_parse_args_without_pairs_filters_nothing
+FAILED tests/test_scripts/test_data_inventory.py::test_parse_args_pairs_is_a_comma_separated_list_stripped
+FAILED tests/test_scripts/test_data_inventory.py::test_filter_series_keeps_only_the_requested_pairs_on_every_exchange
+FAILED tests/test_scripts/test_data_inventory.py::test_filter_series_without_filter_is_the_identity
+FAILED tests/test_scripts/test_data_inventory.py::test_filter_series_refuses_a_pair_with_no_series
+FAILED tests/test_scripts/test_data_inventory.py::test_unfiltered_artifact_is_unchanged_and_filtered_artifact_records_the_filter
+FAILED tests/test_scripts/test_data_inventory.py::test_build_artifact_with_an_absent_pair_raises
+FAILED tests/test_scripts/test_data_inventory.py::test_markdown_header_names_the_filter_only_when_one_is_given
+FAILED tests/test_scripts/test_data_inventory.py::test_main_exits_2_and_writes_nothing_when_a_requested_pair_has_no_series
+9 failed, 30 passed in 0.16s

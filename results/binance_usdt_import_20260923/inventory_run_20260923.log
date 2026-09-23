@@ -1,0 +1,8 @@
+=== 2026-09-23T07:43:50Z inventory start ; HEAD 8fdaa2ab94a274e04095d7124d546eb0cd14c961 (dev) ; data_inventory.py sha256 3f9ebdde586eba6e6a6f6b12af2a16b35c7798c4822f840a525868459c508708
+2026-09-23 07:43:52 [info     ] initializing_database          echo=False max_overflow=10 pool_size=5
+2026-09-23 07:43:52 [info     ] database_connection_successful
+2026-09-23 07:44:42 [info     ] database_closed
+  74 séries agrégées, borne timestamp <= 2026-09-23T07:43:00+00:00
+inventory.json written: /home/bruno/usdt_inventory_out/inventory.json (sha256 c6c420147d50d20b59e049b7b8d6d11dff40a29b480d76e33b1385b513109cf8)
+markdown written: /home/bruno/usdt_inventory_out/inventory.md
+=== 2026-09-23T07:45:06Z inventory exit=0
