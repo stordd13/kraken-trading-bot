@@ -1281,7 +1281,10 @@ def test_revue_R3b_le_plus_long_run_est_pris_parmi_plusieurs_trous() -> None:
 # Évaluation synthétique (§ L.1 : C3a n'exerce les étapes 5 et 6 que sur des fixtures)
 # ---------------------------------------------------------------------------
 
+from collections.abc import Mapping, Sequence  # noqa: E402
+import copy  # noqa: E402
 from functools import cache  # noqa: E402
+import platform  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -1290,42 +1293,121 @@ EVAL_DAYS = (WINDOW_END - ANCHOR).total_seconds() / 86400.0  # 328.8
 SEED = 20260921
 
 
+# ---------------------------------------------------------------------------
+# § F.2 (b), (c), (d) v2.1 — la procédure d'incertitude, écrite ICI depuis le texte, et non importée du
+# noyau de `c3_common` : c'est ce que fait un producteur conforme, et le rejeu de la chaîne doit la
+# retrouver bit à bit. Une divergence entre ce texte-ci et le noyau est un défaut de l'un ou de l'autre.
+# ---------------------------------------------------------------------------
+
+#: § F.2 (b) : les longueurs de bloc, en tête `L = 21` ; § F.2 (h) : les deux appariements.
+F2_BLOCK_LENGTHS: tuple[int, ...] = (10, 21, 42)
+F2_MATCHINGS: tuple[str, ...] = ("dd", "sigma")
+
+
+def environment() -> dict[str, str]:
+    """§ F.2 (b) v2.1 et § I.2 I-C : l'environnement du tirage — Python, numpy, architecture et bibliothèque
+    C (bibliothèque et version, séparées par une espace) ; jamais la chaîne noyau."""
+    lib, version = platform.libc_ver()
+    return {
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "machine": platform.machine(),
+        "libc": f"{lib} {version}".strip(),
+    }
+
+
+def _f2_cagr_rows(log_returns: Any, idx: Any, days: float) -> Any:
+    """§ F.2 (c) v2.1 : `(exp(Σ log1p(r) × 365 / n_jours) − 1) × 100` par `numpy` — `log1p` élément par
+    élément, somme par ligne, `exp` ; un débordement rend la réplication non finie (§ F.2 e)."""
+    with np.errstate(over="ignore", invalid="ignore"):
+        return (np.exp(log_returns[idx].sum(axis=1) * (365 / days)) - 1.0) * 100.0
+
+
 @cache
-def _bootstrap_cached(
-    cfg: tuple[float, ...], bch: tuple[float, ...], block_length: int
-) -> tuple[tuple[float, ...], int]:
+def _f2_cached(
+    cfg: tuple[float, ...],
+    bench_dd: tuple[float, ...],
+    bench_sigma: tuple[float, ...],
+    seed: int,
+    pair_index: int,
+    days: float,
+    b: int,
+) -> dict[str, Any]:
     n = len(cfg)
-    rng = np.random.default_rng([SEED, 0, block_length])
-    starts = cc.block_start_indices(rng, n, block_length, cc.BOOTSTRAP_B)
-    idx = cc.block_indices(starts, block_length, n)
-    deltas, discarded = cc.paired_delta_stars(cfg, bch, idx, float(EVAL_DAYS))
-    return tuple(float(x) for x in deltas), discarded
-
-
-def bootstrap(
-    returns_config: list[float], returns_bench: list[float], *, block_length: int = 21
-) -> tuple[list[float], int]:
-    """Le vrai chemin numérique du § F.2 à `B = BOOTSTRAP_B`, mémoïsé par séries et par `L`."""
-    deltas, discarded = _bootstrap_cached(tuple(returns_config), tuple(returns_bench), block_length)
-    return list(deltas), discarded
-
-
-def replications(
-    returns_config: list[float], returns_bench: list[float], *, bound: float = 1.0
-) -> dict[str, dict[str, Any]]:
-    """Les six combinaisons `L × appariement` du § F.2 (h), format v2.1 : par combinaison, la suite `Δ*`
-    retenue, le compte d'écartées et la borne déclarée. Une suite par `L` (§ F.2 b) sert les deux
-    appariements : les fixtures n'ont qu'une série de comparateur."""
-    out: dict[str, dict[str, Any]] = {}
-    for length in cc.BLOCK_LENGTHS:
-        deltas, discarded = bootstrap(returns_config, returns_bench, block_length=length)
-        for matching in cc.MATCHINGS:
-            out[f"{length}:{matching}"] = {
-                "delta_stars": list(deltas),
-                "discarded": discarded,
+    log_cfg = np.log1p(np.asarray(cfg, dtype=float))
+    log_bench = {
+        "dd": np.log1p(np.asarray(bench_dd, dtype=float)),
+        "sigma": np.log1p(np.asarray(bench_sigma, dtype=float)),
+    }
+    # § F.2 (c) v2.1 : le même chemin, appliqué aux indices identité, donne les valeurs observées.
+    identity = np.arange(n)[None, :]
+    cagr_config = float(_f2_cagr_rows(log_cfg, identity, days)[0])
+    delta_hat = {
+        m: cagr_config - float(_f2_cagr_rows(log_bench[m], identity, days)[0]) for m in F2_MATCHINGS
+    }
+    replications: dict[str, dict[str, Any]] = {}
+    for length in F2_BLOCK_LENGTHS:
+        # § F.2 (b) v2.1 : un tirage par `L`, en un seul appel ; les mêmes indices pour la configuration,
+        # le comparateur, et les deux appariements.
+        rng = np.random.default_rng([seed, pair_index, length])
+        starts = rng.integers(0, n, size=(b, math.ceil(n / length)))
+        idx = (starts[:, :, None] + np.arange(length)).reshape(b, -1)[:, :n] % n
+        rows_config = _f2_cagr_rows(log_cfg, idx, days)
+        for matching in F2_MATCHINGS:
+            with np.errstate(invalid="ignore"):
+                delta = rows_config - _f2_cagr_rows(log_bench[matching], idx, days)
+            finite = np.isfinite(delta)
+            kept = delta[finite]
+            centre = delta_hat[matching]
+            # § F.2 (d) : LB = Δ̂ − quantile_0,95(Δ* − Δ̂), `numpy.quantile(..., method="linear")` ;
+            # § F.2 (e) v2.1 : une combinaison sans réplication retenue ne porte pas de borne.
+            bound = (
+                None
+                if kept.size == 0
+                else centre - float(np.quantile(kept - centre, 0.95, method="linear"))
+            )
+            replications[f"{length}:{matching}"] = {
+                "delta_stars": [float(x) for x in kept],
+                "discarded": int((~finite).sum()),
                 "bound": bound,
             }
-    return out
+    return {"cagr_config": cagr_config, "delta_hat": delta_hat, "replications": replications}
+
+
+def f2_procedure(
+    returns_config: Sequence[float],
+    returns_bench: Mapping[str, Sequence[float]],
+    *,
+    seed: int = SEED,
+    pair_index: int = 0,
+    days: float = EVAL_DAYS,
+    b: int = cc.BOOTSTRAP_B,
+) -> dict[str, Any]:
+    """La procédure § F.2 v2.1 d'un producteur conforme, mémoïsée par séries ; renvoie une copie profonde
+    (les tests mutent leurs artefacts) : `cagr_config`, `delta_hat` par appariement, `replications`."""
+    cached = _f2_cached(
+        tuple(float(x) for x in returns_config),
+        tuple(float(x) for x in returns_bench["dd"]),
+        tuple(float(x) for x in returns_bench["sigma"]),
+        seed,
+        pair_index,
+        days,
+        b,
+    )
+    return copy.deepcopy(cached)
+
+
+def bench_by_matching(returns_bench: Any) -> dict[str, list[float]]:
+    """Une série de comparateur (les deux appariements) ou déjà une table `{dd, sigma}`."""
+    if isinstance(returns_bench, Mapping):
+        return {m: [float(x) for x in returns_bench[m]] for m in F2_MATCHINGS}
+    return {m: [float(x) for x in returns_bench] for m in F2_MATCHINGS}
+
+
+def witness_returns(n: int = N_EVAL_POINTS - 1) -> list[float]:
+    """Le témoin d'évaluation : dérive positive à faible bruit, N(0,0005 ; 0,002), graine 11. Contre du cash,
+    mesuré par la procédure ci-dessus : CAGR ≈ 22,3 %/an et six bornes ≈ 14,6 à 17,2 points de %/an."""
+    return list(np.random.default_rng(11).normal(0.0005, 0.002, n))
 
 
 def varying_returns(seed: int, n: int = N_EVAL_POINTS - 1) -> list[float]:
@@ -1344,19 +1426,32 @@ def evaluation(
     sufficient: bool = True,
     first_fill_at: datetime | None = ANCHOR + timedelta(minutes=EXEC_INTERVAL * 2),
     flat_start_proof: dict[str, Any] | None = None,
-    returns_bench: list[float] | None = None,
+    returns_config: list[float] | None = None,
+    returns_bench: Any = None,
+    net_pnl: float = 42.0,
     metrics: dict[str, Any] | None = None,
     bounds: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    """Un artefact d'évaluation **synthétique** de la configuration retenue, sur [T, fin] :
-    le contrat lu par c3_verdict (§ F.2, § F.8) et les blocs que c3_continuity vérifie (§ B)."""
+    """Un artefact d'évaluation **synthétique** de la configuration retenue, sur [T, fin] : le contrat lu par
+    c3_verdict (§ F.2, § F.8) et les blocs que c3_continuity vérifie (§ B). Suites, bornes, `cagr_pct` et
+    `delta_dd` sont ceux de la procédure § F.2 v2.1 (graine du manifeste, index de la paire parmi les paires
+    triées de l'univers) ; seul `net_pnl` (Q1) est déclaré. Défaut : le témoin contre du cash."""
     cand = manifest_payload["universe"]["candidates"][candidate_index]
     pair = cand["pair"]
+    pairs = sorted({c["pair"] for c in manifest_payload["universe"]["candidates"]})
     values = nav_path(pair, candidate_index + 7, N_EVAL_POINTS, drift=0.0006)
-    returns_config = varying_returns(7)
-    replicated = replications(
-        returns_config, returns_bench if returns_bench is not None else [0.0] * (N_EVAL_POINTS - 1)
+    config = returns_config if returns_config is not None else witness_returns()
+    bench = bench_by_matching(
+        returns_bench if returns_bench is not None else [0.0] * (N_EVAL_POINTS - 1)
     )
+    procedure = f2_procedure(
+        config,
+        bench,
+        seed=manifest_payload["uncertainty"]["seed"],
+        pair_index=pairs.index(pair),
+        days=EVAL_DAYS,
+    )
+    replicated = procedure["replications"]
     for combination, bound in (bounds or {}).items():
         replicated[combination]["bound"] = bound
     reference = f"{values[-1] * 33.5:.8f}"
@@ -1387,12 +1482,18 @@ def evaluation(
         "invocation": {"single_call": single_call},
         "first_fill_at": None if first_fill_at is None else first_fill_at.isoformat(),
         "flat_start_proof": flat_start_proof,
-        "returns_config": returns_config,
+        "returns_config": list(config),
+        "returns_bench": bench,
+        "environment": environment(),
         "B": cc.BOOTSTRAP_B,
         "replications": replicated,
         "metrics": metrics
         if metrics is not None
-        else {"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        else {
+            "net_pnl": net_pnl,
+            "cagr_pct": procedure["cagr_config"],
+            "delta_dd": procedure["delta_hat"]["dd"],
+        },
     }
     return out
 

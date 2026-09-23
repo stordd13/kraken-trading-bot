@@ -1274,6 +1274,16 @@ par `numpy.random.default_rng([graine, index de paire, L])` ; la graine est **d�
 évaluation et entre dans l'empreinte (§ A.6). Classe de `L` et de `B` : qualité des données ; classe de la
 graine : contrat.
 
+**Le tirage, écrit pour être rejoué.** L'**index de paire** est la position de la paire de la configuration
+évaluée dans la liste **triée** des paires de l'univers (celle que porte l'artefact d'ancrage). Pour chaque `L`,
+les départs de blocs sont tirés **en un seul appel**, `rng.integers(0, n, size=(B, ⌈n / L⌉))`, `n` étant le
+nombre de rendements quotidiens de la fenêtre d'évaluation ; les indices d'une réplication sont
+`(départ + k) mod n` pour `k = 0 … L − 1`, concaténés bloc après bloc et tronqués aux `n` premiers. **Les mêmes
+indices** servent à la configuration et au comparateur, et **aux deux appariements** d'un même `L` : seul le
+comparateur change entre `dd` et `σ`. Ce tirage n'est exact que dans l'environnement qui l'a produit — versions
+de Python et de `numpy`, architecture, bibliothèque C —, que l'artefact d'évaluation déclare (§ I.2 I-C) ;
+jamais la version du noyau du système d'exploitation, qui ne change pas le calcul.
+
 **Les valeurs de `L`, `B` et le niveau de la borne sont des contrats d'instrument au sens de D5** : un
 artefact d'évaluation qui déclare `B ≠ 10 000`, une longueur de bloc hors `{10, 21, 42}` ou une combinaison
 manquante ou surnuméraire est un **contrat rompu** — `R0_INVALID_RUN`, code 2, rien n'est publié (§ I.1,
@@ -1284,7 +1294,15 @@ en violation par accident d'ordre de lecture. Précédent : `rejeu_validate_anal
 **(c) La reconstruction et l'annualisation.** Pour chaque réplication, la trajectoire est reconstruite par
 **produit cumulé** depuis le capital `C` (§ 0.5), puis le rendement géométrique annualisé est
 `CAGR = (exp(Σ log1p(r) × 365 / n_jours) − 1) × 100`, en %/an. `n_jours` est la durée de la fenêtre
-d'évaluation, pas le nombre de rendements. `Δ* = CAGR(config) − CAGR(comparateur)` sur la **même** réplication.
+d'évaluation, pas le nombre de rendements : `(fin − T)` en secondes, divisé par 86 400, en double précision.
+`Δ* = CAGR(config) − CAGR(comparateur)` sur la **même** réplication.
+
+**Un seul chemin de calcul.** Le `CAGR` d'une réplication est calculé par `numpy` — `log1p` élément par
+élément, somme par ligne, `exp` — et **le même chemin, appliqué aux indices identité `0 … n − 1`**, donne le
+`CAGR` observé de la configuration (porte `Q2`, § F.8) et celui de chaque comparateur, donc `Δ̂` par
+appariement — `Δ̂` en drawdown est la valeur de la porte `Q3` et le centre des trois bornes `dd` ; `Δ̂` en
+écart-type, le centre des trois bornes `σ`. Une seule fonction, une seule convention : aucune divergence
+d'arrondi entre l'estimation et ses réplications.
 
 **(d) La borne, sa formule, son niveau, sa convention de quantile.** Borne inférieure **unilatérale à 95 %**,
 de forme **pivotale (« basic »)**, recentrée sur l'estimation :

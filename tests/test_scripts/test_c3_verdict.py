@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import timedelta
 from functools import cache
+import math
 from pathlib import Path
 import sys
 from typing import Any
@@ -67,7 +68,7 @@ def _bootstrap_cached(
     rng = np.random.default_rng([SEED, 0, block_length])
     starts = cc.block_start_indices(rng, n, block_length, b)
     idx = cc.block_indices(starts, block_length, n)
-    return cc.paired_delta_stars(cfg, bch, idx, float(N_DAYS))
+    return cc.paired_delta_stars(cfg, bch, idx, fx.EVAL_DAYS)
 
 
 def _bootstrap(
@@ -87,33 +88,52 @@ def _bootstrap(
     return deltas.copy(), discarded
 
 
-def _replications(returns_config, returns_bench, *, bound: float = 1.0) -> dict[str, Any]:
-    """Les six combinaisons `L × appariement` du § F.2 (h), au format v2.1 : par combinaison, la suite
-    `Δ*` retenue, le compte d'écartées et la borne déclarée. Une suite par `L` — tirée une fois par `L`
-    (§ F.2 b) — sert les deux appariements : les fixtures n'ont qu'une série de comparateur."""
-    out: dict[str, Any] = {}
-    for length in cc.BLOCK_LENGTHS:
-        deltas, discarded = _bootstrap(returns_config, returns_bench, block_length=length)
-        for matching in cc.MATCHINGS:
-            out[f"{length}:{matching}"] = {
-                "delta_stars": [float(x) for x in deltas],
-                "discarded": discarded,
-                "bound": bound,
-            }
-    return out
+def _evaluation_series(
+    returns_config: Any, returns_bench: Any, *, net_pnl: float = 42.0
+) -> dict[str, Any]:
+    """Les champs de l'évaluation qu'un producteur conforme tire de ses séries (§ F.2 v2.1) : suites,
+    écartées et bornes par combinaison, `cagr_pct` (Q2) et `delta_dd` (Q3) recalculables ; seul `net_pnl`
+    (Q1) est déclaré. La procédure est celle de `fx.f2_procedure`, écrite depuis le texte ; graine du
+    manifeste, paire d'index 0 (`anchor.pairs` = `["BTC/USDC"]`), `n_jours` exact de la fenêtre."""
+    bench = fx.bench_by_matching(returns_bench)
+    procedure = fx.f2_procedure(returns_config, bench, seed=SEED, pair_index=0)
+    return {
+        "returns_config": [float(x) for x in returns_config],
+        "returns_bench": bench,
+        "environment": fx.environment(),
+        "B": cc.BOOTSTRAP_B,
+        "replications": procedure["replications"],
+        "metrics": {
+            "net_pnl": net_pnl,
+            "cagr_pct": procedure["cagr_config"],
+            "delta_dd": procedure["delta_hat"]["dd"],
+        },
+    }
+
+
+def _reseries(
+    artifacts: dict[str, Any], returns_config: Any, returns_bench: Any, *, net_pnl: float = 42.0
+) -> None:
+    """Remplace les séries de l'évaluation et tout ce qui en dérive — l'artefact reste cohérent."""
+    artifacts["evaluation"].update(
+        _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
+    )
 
 
 def _artifacts(
     *,
     returns_config,
     returns_bench,
-    metrics: dict[str, Any],
+    net_pnl: float = 42.0,
+    metrics: dict[str, Any] | None = None,
     bounds: dict[str, float] | None = None,
     provenance: str = cc.PROVENANCE_CLEAN,
 ) -> dict[str, dict[str, Any]]:
-    replications = _replications(returns_config, returns_bench)
+    series = _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
+    if metrics is not None:
+        series["metrics"].update(metrics)
     for combination, bound in (bounds or {}).items():
-        replications[combination]["bound"] = bound
+        series["replications"][combination]["bound"] = bound
     identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
     window = {"start": fx.ANCHOR.isoformat(), "end": fx.WINDOW_END.isoformat()}
     return {
@@ -124,6 +144,13 @@ def _artifacts(
             "window": {"start": fx.WINDOW_START.isoformat(), "end": fx.WINDOW_END.isoformat()},
             "universe_provenance": provenance,
             "variant_key": VARIANT_KEY,
+            "pairs": ["BTC/USDC"],
+            "uncertainty": {
+                "seed": SEED,
+                "B": cc.BOOTSTRAP_B,
+                "block_lengths": list(cc.BLOCK_LENGTHS),
+                "bound_level": cc.BOUND_LEVEL,
+            },
         },
         "selection": {
             **_envelope(),
@@ -175,10 +202,7 @@ def _artifacts(
             "strategy": "s",
             "pair": "BTC/USDC",
             "params": {"a": 1},
-            "returns_config": list(returns_config),
-            "B": cc.BOOTSTRAP_B,
-            "replications": replications,
-            "metrics": metrics,
+            **series,
         },
     }
 
@@ -199,6 +223,11 @@ def _envelope() -> dict[str, Any]:
     }
 
 
+def _witness() -> list[float]:
+    """Le témoin d'évaluation des fixtures (`fx.witness_returns`) : contre du cash, six bornes > 0."""
+    return fx.witness_returns(N_DAYS)
+
+
 def _varying(seed: int) -> list[float]:
     rng = np.random.default_rng(seed)
     return list(rng.normal(0.0005, 0.02, N_DAYS))
@@ -215,7 +244,7 @@ def test_configuration_inactive_donne_inconclusif_et_jamais_refute() -> None:
     artifacts = _artifacts(
         returns_config=flat,
         returns_bench=_varying(11),
-        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
+        net_pnl=0.0,
     )
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
@@ -254,9 +283,9 @@ def test_comparateur_cash_donne_un_verdict_economique_et_jamais_F_NOT_ESTIMABLE(
     """§ A.13 E1 : le comparateur est exempté, sans quoi toute comparaison à `λ = 0` serait vaine."""
     cash = [0.0] * N_DAYS  # comparateur déterministe : λ = 0, cash pur
     artifacts = _artifacts(
-        returns_config=_varying(7),
+        returns_config=_witness(),
         returns_bench=cash,
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
     )
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
@@ -278,7 +307,7 @@ def test_comparateur_cash_et_strategie_perdante_donne_refute_pas_inconclusif() -
     artifacts = _artifacts(
         returns_config=_varying(9),
         returns_bench=[0.0] * N_DAYS,
-        metrics={"net_pnl": -30.0, "cagr_pct": -1.0, "delta_dd": -2.0},
+        net_pnl=-30.0,
     )
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
@@ -325,7 +354,7 @@ def test_trajectoires_identiques_donnent_inconclusif_et_jamais_refute() -> None:
     artifacts = _artifacts(
         returns_config=same,
         returns_bench=same,
-        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": 0.0},
+        net_pnl=0.0,
     )
     assert all(
         len(r["delta_stars"]) == cc.BOOTSTRAP_B
@@ -353,7 +382,7 @@ def test_provenance_non_clean_interdit_valide_et_refute(provenance: str) -> None
     artifacts = _artifacts(
         returns_config=_varying(5),
         returns_bench=_varying(6),
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
         provenance=provenance,
     )
     decision = cv.decide(artifacts, violations=[])
@@ -365,9 +394,9 @@ def test_provenance_non_clean_interdit_valide_et_refute(provenance: str) -> None
 def test_la_chaine_est_identique_octet_pour_octet_sur_deux_executions() -> None:
     """§ 0.6 : deux personnes, mêmes artefacts, même chaîne. Aucun horodatage dedans."""
     artifacts = _artifacts(
-        returns_config=_varying(7),
+        returns_config=_witness(),
         returns_bench=[0.0] * N_DAYS,
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
     )
     sha = cc.protocol_descriptor()["sha256"]
     kw = {
@@ -416,9 +445,9 @@ def test_toutes_les_raisons_de_la_liste_close_sont_connues_du_module() -> None:
 def _sound() -> dict[str, dict[str, Any]]:
     """Le témoin sain : il doit rendre `validé`, sans quoi les contre-tests ne prouvent rien."""
     return _artifacts(
-        returns_config=_varying(7),
+        returns_config=_witness(),
         returns_bench=[0.0] * N_DAYS,
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
     )
 
 
@@ -457,7 +486,7 @@ def test_estimabilite_declaree_contredite_par_les_series_est_une_violation() -> 
     artifacts = _artifacts(
         returns_config=flat,
         returns_bench=_varying(11),
-        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
+        net_pnl=0.0,
     )
     artifacts["evaluation"]["estimability"] = {"ok": True, "E1": True, "E2": True}
     violations: list[str] = []
@@ -582,9 +611,9 @@ def test_statut_de_selection_declare_contredit_par_la_derivation_est_une_violati
     tmp_path: Path, provenance: str, declared: str
 ) -> None:
     artifacts = _artifacts(
-        returns_config=_varying(7),
+        returns_config=_witness(),
         returns_bench=[0.0] * N_DAYS,
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
         provenance=provenance,
     )
     artifacts["selection"]["status"] = declared
@@ -885,7 +914,7 @@ def test_contradiction_declare_estimable_recalcule_non_estimable_est_une_violati
     artifacts = _artifacts(
         returns_config=flat,
         returns_bench=_varying(11),
-        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
+        net_pnl=0.0,
     )
     artifacts["evaluation"]["estimability"] = {"ok": True, "E1": True}
     violations: list[str] = []
@@ -989,21 +1018,11 @@ def _with_replications(
         a["evaluation"]["replications"]["21:dd"]["delta_stars"][3] = float("nan")
 
 
-#: (B, len(delta_stars), discarded, non-fini dans delta_stars, code CLI, issue, raison)
+#: (B, len(delta_stars), discarded, non-fini dans delta_stars, code CLI, issue, raison). Les comptes
+#: cohérents (9 990 / 10 → estimable, 9 989 / 11 → `F_NOT_ESTIMABLE`) se testent au niveau fonction
+#: (`test_c3_common`, plafond par combinaison) : une suite tronquée à la main n'est pas celle qu'un
+#: producteur conforme tire de ses séries (§ F.2 v2.1), et le rejeu de la chaîne la contredirait.
 MATRIX_B = [
-    pytest.param(
-        10_000, 9_990, 10, False, 0, cc.ISSUE_VALIDE, None, id="10000/9990/10 -> 0 témoin sain"
-    ),
-    pytest.param(
-        10_000,
-        9_989,
-        11,
-        False,
-        0,
-        cc.ISSUE_INCONCLUSIF,
-        "F_NOT_ESTIMABLE",
-        id="10000/9989/11 -> 0 F_NOT_ESTIMABLE, compte cohérent",
-    ),
     pytest.param(
         10_000, 10_000, 11, False, 1, None, None, id="10000/10000/11 -> 1 compte contradictoire"
     ),
@@ -1065,19 +1084,9 @@ def test_matrice_B_en_appel_direct(
             "R0 est évalué avant la cohérence : aucune violation n'est produite"
         )
         return
-    decision = cv.decide(artifacts, violations=violations)
-    if code == 1:
-        assert violations and any("B déclaré" in v for v in violations)
-        return
-    assert violations == []
-    assert decision.issue == issue
-    assert decision.reason == reason
-    est = decision.estimability
-    assert est is not None
-    assert est["B"] == b
-    assert {(c["B_effectif"], c["discarded"]) for c in est["combinations"].values()} == {
-        (n_deltas, discarded)
-    }
+    assert code == 1 and issue is None
+    cv.decide(artifacts, violations=violations)
+    assert violations and any("B déclaré" in v for v in violations)
 
 
 @pytest.mark.parametrize(
@@ -1103,20 +1112,12 @@ def test_matrice_B_par_la_cli(
     if code == 2:
         assert not out.exists(), "code 2 : rien n'est écrit"
         return
+    assert code == 1 and issue is None
     payload = cc.read_json(out)
-    if code == 1:
-        assert payload["invalide"] is True
-        assert payload["verdict"] is None
-        assert payload["verdict_string"] is None
-        assert any("B déclaré" in v for v in payload["violations"])
-        return
-    assert payload["invalide"] is False
-    assert payload["verdict"] == issue
-    assert payload["raison"] == reason
-    assert payload["estimabilite"]["B"] == b
-    assert {
-        (c["B_effectif"], c["discarded"]) for c in payload["estimabilite"]["combinations"].values()
-    } == {(n_deltas, discarded)}
+    assert payload["invalide"] is True
+    assert payload["verdict"] is None
+    assert payload["verdict_string"] is None
+    assert any("B déclaré" in v for v in payload["violations"])
 
 
 # ---------------------------------------------------------------------------
@@ -1136,12 +1137,14 @@ def test_six_distributions_variables_satisfont_E2() -> None:
     )
 
 
-def test_une_seule_distribution_constante_sur_six_fait_echouer_E2() -> None:
-    """§ A.13 v2.1, E2 : « Une seule distribution constante suffit à faire échouer E2 » ; la conjonction de six
-    tests dont un est inévaluable est inévaluable → `inconclusif (F_NOT_ESTIMABLE)` (§ H.0), jamais `validé`,
-    même avec six bornes positives et les portes Q franchies."""
+def test_des_distributions_constantes_sur_un_appariement_font_echouer_E2() -> None:
+    """§ A.13 v2.1, E2 : « Une seule distribution constante suffit à faire échouer E2 » (au niveau fonction :
+    `test_c3_common`). Ici, par les séries : le comparateur de l'appariement σ est la configuration elle-même,
+    ses trois distributions sont constantes — sous rééchantillonnage apparié, la différence vaut toujours zéro
+    (§ A.13) — et l'issue est `inconclusif (F_NOT_ESTIMABLE)` (§ H.0), jamais `validé`, alors que les trois
+    distributions dd varient et que les portes Q passent."""
     artifacts = _sound()
-    artifacts["evaluation"]["replications"]["42:sigma"]["delta_stars"] = [0.25] * cc.BOOTSTRAP_B
+    _reseries(artifacts, _witness(), {"dd": [0.0] * N_DAYS, "sigma": _witness()})
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
     assert violations == []
@@ -1149,26 +1152,32 @@ def test_une_seule_distribution_constante_sur_six_fait_echouer_E2() -> None:
     assert decision.issue != cc.ISSUE_VALIDE
     est = decision.estimability
     assert est is not None and est["E2"] is False
-    assert est["combinations"]["42:sigma"]["E2"] is False
-    assert all(v["E2"] for k, v in est["combinations"].items() if k != "42:sigma")
+    assert {k for k, v in est["combinations"].items() if not v["E2"]} == {
+        "10:sigma",
+        "21:sigma",
+        "42:sigma",
+    }
 
 
-def test_une_combinaison_au_dela_du_plafond_rend_l_inference_inutilisable() -> None:
-    """§ F.2 (e) v2.1 : au-delà de 10 réplications écartées « sur l'une quelconque des six combinaisons »,
-    l'inférence est inutilisable — `inconclusif (F_NOT_ESTIMABLE)` ; `B_effectif` est publié par combinaison."""
+def test_au_dela_du_plafond_de_replications_ecartees_l_inference_est_inutilisable() -> None:
+    """§ F.2 (e) v2.1 : au-delà de 10 réplications écartées sur l'une quelconque des six combinaisons,
+    `inconclusif (F_NOT_ESTIMABLE)` ; `B_effectif` est publié par combinaison. Par les séries : un jour de
+    rendement extrême (`log1p(r) = 300`) laisse la trajectoire observée finie, mais toute réplication qui le
+    tire trois fois déborde — échec numérique, réplication écartée et comptée (§ F.2 e), sur les six
+    combinaisons (le plafond au niveau fonction, une combinaison seule : `test_c3_common`)."""
     artifacts = _sound()
-    replication = artifacts["evaluation"]["replications"]["10:dd"]
-    replication["delta_stars"] = replication["delta_stars"][: cc.BOOTSTRAP_B - 11]
-    replication["discarded"] = 11
+    extreme = _witness()
+    extreme[100] = math.expm1(300.0)
+    _reseries(artifacts, extreme, [0.0] * N_DAYS)
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
     assert violations == []
     assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "F_NOT_ESTIMABLE"
     est = decision.estimability
     assert est is not None and est["within_ceiling"] is False
-    assert est["combinations"]["10:dd"]["within_ceiling"] is False
-    assert est["combinations"]["10:dd"]["B_effectif"] == cc.BOOTSTRAP_B - 11
-    assert all(v["within_ceiling"] for k, v in est["combinations"].items() if k != "10:dd")
+    for v in est["combinations"].values():
+        assert v["discarded"] > cc.DISCARDED_MAX and v["within_ceiling"] is False
+        assert v["B_effectif"] == cc.BOOTSTRAP_B - v["discarded"]
 
 
 @pytest.mark.parametrize(
@@ -1270,11 +1279,16 @@ def _abstention(reason: str) -> Any:
     return mutate
 
 
-def _all_discarded(a: dict[str, Any]) -> None:
-    """§ F.2 (e) : toutes les réplications écartées sur chaque combinaison, compte cohérent ; une suite
-    vide ne porte pas de borne (nulle si et seulement si la suite est vide)."""
-    for replication in a["evaluation"]["replications"].values():
-        replication.update({"delta_stars": [], "discarded": cc.BOOTSTRAP_B, "bound": None})
+def _flat(a: dict[str, Any]) -> None:
+    """Une configuration restée plate après l'ancrage, contre du cash : E1 échoue (aucun jour à rendement
+    non nul, § A.13), et `Δ*` est constamment nul (E2) — l'artefact reste cohérent avec ses séries."""
+    _reseries(a, [0.0] * N_DAYS, [0.0] * N_DAYS, net_pnl=0.0)
+
+
+def _cannot_separate(a: dict[str, Any]) -> None:
+    """Un effet positif que la borne ne sépare pas de zéro : N(0,0005 ; 0,02), graine 51, contre du cash —
+    mesuré par la procédure § F.2 : CAGR ≈ 3,8 %/an (Q2), Δ̂_dd > 0 (Q3), six bornes ≈ −110 points."""
+    _reseries(a, _varying(51), [0.0] * N_DAYS)
 
 
 #: (ligne, fixture, issue attendue, raison attendue, code CLI attendu, artefact écrit ?, chaîne citable ?)
@@ -1367,17 +1381,17 @@ TABLE_I1 = [
     ),
     pytest.param(
         13,
-        _all_discarded,
+        _flat,
         cc.ISSUE_INCONCLUSIF,
         "F_NOT_ESTIMABLE",
         0,
         True,
         True,
-        id="L13 estimabilité (toutes réplications écartées, compte cohérent)",
+        id="L13 estimabilité (configuration plate : E1, et E2)",
     ),
     pytest.param(
         14,
-        lambda a: [r.__setitem__("bound", -0.5) for r in a["evaluation"]["replications"].values()],
+        _cannot_separate,
         cc.ISSUE_INCONCLUSIF,
         "F_CANNOT_SEPARATE",
         0,
@@ -3286,7 +3300,7 @@ def test_revue_Fin2_1_les_portes_et_les_bornes_sont_lues_avant_tout_retour_antic
     if path == "abstention":
         _abstain(artifacts)
     elif path == "F_NOT_ESTIMABLE":
-        _all_discarded(artifacts)
+        _flat(artifacts)
     else:
         _coherent_continuity(artifacts, "c4", "FAILED")
     mutate_eval(artifacts["evaluation"])
