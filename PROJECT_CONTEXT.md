@@ -554,6 +554,24 @@ Détail : `ROADMAP.md`.
     `VERIFIED` ; sans `lots` → `NOT_VERIFIABLE` ; bloc absent ou identité fausse → `FAILED`, issue non définie
     (`UndefinedIssueError`, convention du 21/09, amendement `R1_NOT_NORMALISED` dû en C3b).
 
+20. ✅ **Suite de tests non hermétique aux `TELEGRAM_*`** (incident de la porte pré-merge C3a, 22/09/2026, rapport
+    `agent/rapport_session_c3a_20260922.md` § 14.2 — **résolu le 2026-09-23**, branche `fix/tests-telegram-hermetic`,
+    commit `fix(tests): mock_settings et purge autouse hermétiques aux TELEGRAM_*`). **Mécanisme** : `get_settings()`
+    appelle `load_dotenv()` au runtime → `TELEGRAM_ENABLED` / `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` du `.env`
+    serveur entrent dans `os.environ` → `mock_settings` construisait `Settings(...)` sans `telegram=` →
+    `TelegramSettings` (`env_prefix="TELEGRAM_"`) les lisait → `_init_telegram_notifier` créait un vrai notifier →
+    `send_bot_started` partait en tâche détachée : **vrais messages « bot started (paper) » reçus le 22/09**, sessions
+    aiohttp / résolveur pycares ramassés dans un test voisin (`PytestUnraisableExceptionWarning`). **Fix**
+    (`tests/conftest.py` seul, aucun `src/`) : la purge autouse `_default_exchange_env` retire aussi les trois
+    `TELEGRAM_*` (`_TELEGRAM_VARS`, même mécanisme que `_EXCHANGE_CREDENTIAL_VARS`) et `mock_settings` passe
+    `telegram=TelegramSettings(enabled=False, bot_token="", chat_id="")` — `enabled=False` seul laisse `bot_token` /
+    `chat_id` lus depuis l'env (mesuré) ; trois tests négatifs rouges-avant (`tests/test_conftest_hermetic.py`).
+    **Diagnostic C2 corrigé** : l'incident « nettoyage asynchrone, non reproductible » de la suite serveur C2
+    (`results/c2_replay/determinism_server/run1_835ffe2/`) était ce même défaut, reproductible à chaque passage dès que
+    `TELEGRAM_*` est dans l'environnement. **Observation `src/`, non traitée** : `get_settings()` charge `.env` dans
+    `os.environ` au runtime (`settings.py:962`, `load_dotenv()` ; `reload_settings()` idem avec `override=True`, `:976`)
+    — vecteur de fuite pour tout test qui l'appelle, hors périmètre de ce fix.
+
 **Note WF** (audit red-team 16/09, reformulée le 22 sept — **non déclarée résolue**) : la sélection top-5 de
 P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7
 **n'est pas** une validation chronologique. **État réel** : **nouvelle voie C3 chronologique** — protocole

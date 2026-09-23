@@ -26,6 +26,7 @@ from krakenbot.config.settings import (
     RiskManagementSettings,
     Settings,
     StrategySettings,
+    TelegramSettings,
     TradingMode,
     TradingSettings,
 )
@@ -46,6 +47,17 @@ _EXCHANGE_CREDENTIAL_VARS = (
     "KRAKEN_FUTURES_API_SECRET",
     "BINANCE_API_KEY",
     "BINANCE_API_SECRET",
+)
+
+#: Telegram wiring purged for the same reason (C3a pre-merge gate incident, 2026-09-22):
+#: ``get_settings()`` runs ``load_dotenv()`` at run time (settings.py:962), so a ``.env`` with real
+#: ``TELEGRAM_*`` (the server's) put them in os.environ; ``mock_settings`` then built an enabled
+#: ``TelegramSettings`` and ``KrakenBot.start()`` sent a genuine "bot started" message from the unit
+#: tests, leaving an unclosed aiohttp session behind (tests/test_conftest_hermetic.py).
+_TELEGRAM_VARS = (
+    "TELEGRAM_ENABLED",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
 )
 
 
@@ -73,7 +85,7 @@ def _session_event_loop() -> Generator[None, None, None]:
 
 @pytest.fixture(autouse=True)
 def _default_exchange_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Pin EXCHANGE_NAME and purge exchange credentials for every test.
+    """Pin EXCHANGE_NAME and purge exchange credentials and Telegram wiring for every test.
 
     ``Settings.exchange_name`` is required (no default) since B1. Tests that build
     ``Settings(...)`` without it inherit Kraken here; tests targeting another
@@ -82,16 +94,22 @@ def _default_exchange_env(monkeypatch: pytest.MonkeyPatch) -> None:
     The credential purge makes the suite order-independent and hermetic: no
     script may load ``.env`` at import time any more (B4.2), but ``runner.main()``
     is invoked at run time by the DB-gated tests and a developer shell may export
-    keys. ``DATABASE_URL*`` is deliberately left alone (DB-gated tests need it).
+    keys. ``TELEGRAM_*`` is purged alike so that no ``Settings(...)`` built by a test can
+    reach a real bot (``_TELEGRAM_VARS``). ``DATABASE_URL*`` is deliberately left alone
+    (DB-gated tests need it).
     """
     monkeypatch.setenv("EXCHANGE_NAME", "kraken")
-    for var in _EXCHANGE_CREDENTIAL_VARS:
+    for var in (*_EXCHANGE_CREDENTIAL_VARS, *_TELEGRAM_VARS):
         monkeypatch.delenv(var, raising=False)
 
 
 @pytest.fixture
 def mock_settings() -> Settings:
     """Create mock settings for testing.
+
+    ``telegram`` is pinned disabled and empty: init kwargs beat the environment source, which
+    ``_env_file=None`` never disables, and ``enabled=False`` alone would still let
+    ``bot_token`` / ``chat_id`` be read from a leaked ``TELEGRAM_*`` (``_TELEGRAM_VARS``).
 
     Returns:
         A Settings instance configured for testing.
@@ -130,6 +148,7 @@ def mock_settings() -> Settings:
             sell_threshold_pct=2.0,
             lookback_periods=10,
         ),
+        telegram=TelegramSettings(enabled=False, bot_token="", chat_id=""),
     )
     return settings
 
