@@ -1981,7 +1981,30 @@ obtiennent **la même chaîne**. Elle porte au minimum l'issue, la raison, l'ide
 statut de sélection, l'état de la continuité, l'identité de variante, la provenance de l'univers, le sha256 de
 ce document, et celui des observations. **Le rapport cite la chaîne, il ne la paraphrase pas.**
 
+**Préfixe et portée.** Une chaîne d'exercice synthétique est préfixée `C3_SYNTH_` et son artefact porte, en
+première ligne, une portée qui dit qu'elle n'a aucune portée économique ; une chaîne réelle est préfixée `C3_`
+et ne porte pas cette ligne. Le préfixe est dérivé de `evaluation.synthetic`, jamais d'un choix.
+
+**`chain.verified`** signifie **l'intégrité mécanique de la chaîne** : codes de succès enregistrés des étapes
+amont, cohérence interne de chaque enveloppe amont (`ok ⟺ code 0`, `invalide ⟺ code 1`, refus ⟺ code 2 pour
+l'entrée) assertée **avant** d'en lire le succès, empreintes concordantes. Il ne dit rien de la qualité
+économique de l'issue, qui se lit dans `verdict` et `raison` : `verified: true` avec un `inconclusif` est
+cohérent ; `verified: false` accompagne toute violation ; un refus sans violation ne publie rien, donc ne porte
+pas de `verified`.
+
+**Les enveloppes amont disent ce qu'elles ont fait, pas ce qui a réussi.** Une étape enregistre son code de
+sortie dans son artefact ; la sous-commande `chain` invoque chaque étape en processus et **contrôle le code de
+retour effectif** avant de lire l'artefact. Une enveloppe qui se dit `ok` avec un code non nul est une
+violation.
+
 ### L.3 Diff de contrôle
+
+**Portée : C3a.** Les listes de ce paragraphe et du § L.4 sont celles du chantier C3a, closes et vérifiées à sa
+porte pré-merge (§ L.5, passée le 2026-09-22). C3b ouvre la zone que C3a gelait — runner, exports, amorçage,
+`src/` pour la méthode de classe du § A.8 D2 — et **déclare sa propre liste close dans son brief**, sous ses
+propres gates, avec son propre diff de contrôle sur tout ce que le brief ne nomme pas. Ce protocole n'énumère pas
+les fichiers de C3b ; il exige qu'ils soient énumérés avant la première ligne, et que `scripts/backtest.py`
+reste hors liste tant que la dette 19 n'est pas ouverte par une décision séparée (C4 du 23/09).
 
 Vide sur `src`, `scripts/backtest.py`, `scripts/run_p6_backtests.py`, `scripts/run_p7_grid_search.py`,
 `scripts/p7_grids.py`, **`scripts/compute_benchmarks.py`**, `config`, `pyproject.toml`, `poetry.lock`.
@@ -1991,6 +2014,8 @@ tentation de « juste corriger la borne d'un jour » est exactement la dérive q
 attraper.
 
 ### L.4 La liste fermée des fichiers nouveaux
+
+**Portée : C3a** (§ L.3) — C3b déclare sa propre liste dans son brief.
 
 Hors de cette liste, **aucun fichier n'est créé, modifié ou supprimé** par C3a. La liste est close par ce
 document : l'allonger est un amendement au protocole, pas une décision d'implémentation.
