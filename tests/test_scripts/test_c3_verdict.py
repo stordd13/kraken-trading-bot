@@ -1965,9 +1965,12 @@ def test_chain_moteur_signal_a_l_evaluation_clause_3_FAILED_rien_publie(
     not (REAL_OBSERVATIONS.exists() and REAL_MANIFEST.exists() and REAL_REGISTRY.exists()),
     reason="artefact du rejeu ou livrable réel absent",
 )
-def test_chain_sur_l_artefact_reel_s_arrete_a_entry_code_2_aucun_verdict(tmp_path: Path) -> None:
-    """§ 6.6 (4) : sur données réelles la chaîne s'arrête à `entry` (refus D2) ; aucun chemin réel
-    n'atteint le verdict en C3a. L'artefact du rejeu et le registre committé restent intacts."""
+def test_chain_sur_le_livrable_reel_v20_s_arrete_a_l_ancrage_code_2_rien_d_ecrit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """En-tête v2.1 et § A.6 : le manifeste réel de C3a déclare le sha256 de v2.0, et `c3_anchor` asserte le
+    sha256 du protocole courant parmi les valeurs gelées — la chaîne s'arrête donc à l'étape 1 (§ L.1), code 2,
+    rien d'écrit en aval (§ I.1, ligne 2). L'artefact du rejeu et le registre committé restent intacts."""
     before = cc.file_sha256(REAL_OBSERVATIONS)
     registry_before = cc.file_sha256(REAL_REGISTRY)
     registry = tmp_path / "variants.json"
@@ -1993,14 +1996,22 @@ def test_chain_sur_l_artefact_reel_s_arrete_a_entry_code_2_aucun_verdict(tmp_pat
         fx.NOW,
     ]
     assert cv.main(argv) == 2
-    assert (out / "anchor.json").exists() and (out / "entry.json").exists()
-    entry = cc.read_json(out / "entry.json")
-    assert entry["ok"] is False and entry["exit_code"] == 2
-    assert entry["refusal"]["reason"] == "D_WARMUP_PREFIX" and entry["n_candidates_d2_failed"] == 96
-    for f in ("benchmark.json", "selection.json", "continuity.json", "verdict.json"):
+    for f in (
+        "anchor.json",
+        "entry.json",
+        "benchmark.json",
+        "selection.json",
+        "continuity.json",
+        "verdict.json",
+    ):
         assert not (out / f).exists(), f
+    err = capsys.readouterr().err
+    assert "CHAINE ARRETEE à l'étape anchor" in err and "protocol_sha256" in err
     assert cc.file_sha256(REAL_OBSERVATIONS) == before
     assert cc.file_sha256(REAL_REGISTRY) == registry_before
+    assert cc.file_sha256(registry) == registry_before, (
+        "un refus d'ancrage ne réécrit pas le registre"
+    )
     assert never_read.read_text(encoding="utf-8") == "{}"
 
 

@@ -109,7 +109,7 @@ Trois nombres décisionnels qui échappaient à cette règle sont fixés ici, un
 
 | Nombre | Valeur | Classe |
 |---|---|---|
-| Capital de référence `C` des simulations et du comparateur | **1000 USDC** | contrat (`starting_balance` des runners) |
+| Capital de référence `C` des simulations et du comparateur | **1000 unités de la monnaie de cotation de la paire du manifeste** (USDC à la cible Bybit ; USDT sur la base de validation Binance, transposition déclarée § A.6) | contrat (`starting_balance` des runners) |
 | Taux sans risque `rf` du comparateur | **0** | préférence économique, convention déclarée (§ J.8) |
 | Résidu d'appariement au-delà duquel un `λ` est rejeté (§ C.6) | **10 %** de la cible appariée | qualité des données |
 
@@ -193,8 +193,8 @@ erreur d'entrée, jamais un tirage au sort** — portée et code au § I.1.
 ```
 ancrage T = début + F × (fin − début)
 F = 0,70
-fenêtre déclarée : 2023-04-01T00:00:00Z → 2026-04-01T00:00:00Z
-⇒ T = 2025-05-07T04:48:00Z          (préfixe 767,2 j · période évaluée 328,8 j · fenêtre 1096 j)
+fenêtre déclarée (v2.1, première campagne) : 2021-03-01T00:00:00Z → 2026-06-29T00:00:00Z
+⇒ T = 2024-11-22T04:48:00Z          (préfixe 1362,2 j · période évaluée 583,8 j · fenêtre 1946 j)
 ```
 
 Classe de `F` : **préférence économique**, avec divulgation de provenance ci-dessous.
@@ -215,10 +215,25 @@ C3 et n'a pas été choisi au vu d'un résultat C3**. C'est une **convention ré
 d'optimalité** : elle ne fixe pas une date universelle, et toute application future déclare son propre ancrage
 dans son manifeste, **avant évaluation**.
 
-**La fenêtre n'est pas élargie.** Des données existent depuis 2021-01 **[v]** `docs/CONTRAINTES_POST_B4.md` § 7,
-mais élargir la fenêtre maintenant changerait le cas de référence pendant la construction du protocole. Le
-protocole note que **le choix de fenêtre est un second levier de shopping**, au même titre que l'ancrage, et que
-la règle « bornes du manifeste, déclarées avant évaluation » le ferme.
+> **Historique.** La fenêtre de v2.0, `2023-04-01Z → 2026-04-01Z` (`T = 2025-05-07T04:48Z`), était la fenêtre
+> de référence de la construction du protocole, et elle n'a servi qu'à cela : aucune sélection n'a été produite
+> sous elle (§ L.1, § D.3). Elle reste citée aux § 0.2, § A.8 et § D.3 comme fait historique.
+>
+> **La fenêtre de la première campagne est déclarée ici, et elle ne bouge plus.** Borne basse au 2021-03-01,
+> déclarée le 2026-09-23 et maintenue au gate du même jour. Sur la base USDT importée depuis le 2019-01-01 (SOL
+> depuis le 2020-08-11) **[v]** `results/data_inventory_usdt_2019_20260923/inventory.md`, l'amorçage des séries
+> 4 h et 1 d (jusqu'à 200 bougies) est couvert à cette date sur les trois paires, et celui du 1 w — régime 1 w, 50 bougies **[v]**
+> `scripts/backtest.py:305`, `:420-425` — sur BTC et ETH ; pour SOL, la 50ᵉ estampille 1 w tombe le 2021-07-26.
+> La conséquence sur D2 est écrite au § A.8, pas découverte. Borne haute au 2026-06-29, dernière semaine
+> hebdomadaire publiée : la série 1 w s'arrête au 2026-07-06 et Vision n'a pas publié 2026-07/08 ; finir la
+> fenêtre **avant** le trou de queue évite qu'une absence de publication soit lue comme une absence de données.
+> Ces deux bornes sont écrites dans `docs/RESEARCH_LOG.md` et dans le manifeste gelé **avant tout run** ; changer
+> de fenêtre est **une nouvelle campagne** et non une variante de celle-ci (critère d'arrêt,
+> `docs/CONTRAINTES_POST_B4.md` § 10.1).
+>
+> **Le choix de fenêtre est un second levier de shopping**, au même titre que l'ancrage, et la règle
+> « bornes du manifeste, déclarées avant évaluation » le ferme. Il est interdit de déplacer une borne après
+> avoir constaté quoi que ce soit de la période évaluée.
 
 **Il est interdit de déplacer `F` après avoir constaté la longueur de la période évaluée.**
 
@@ -232,12 +247,12 @@ Les données étant estampillées en fin de période (B4.1), la bougie estampill
 **appartient au passé de `t`**. La dernière observation admissible à l'ancrage est donc, par timeframe, la
 dernière bougie estampillée `≤ T` :
 
-| TF | Dernière observation admissible à `T = 2025-05-07T04:48Z` |
+| TF | Dernière observation admissible à `T = 2024-11-22T04:48Z` |
 |---|---|
-| 5 min | `2025-05-07T04:45Z` |
-| 4 h | `2025-05-07T04:00Z` |
-| 1 j | `2025-05-07T00:00Z` |
-| 1 w | `2025-05-05T00:00Z` (le lundi 5 mai) |
+| 5 min | `2024-11-22T04:45Z` |
+| 4 h | `2024-11-22T04:00Z` |
+| 1 j | `2024-11-22T00:00Z` |
+| 1 w | `2024-11-18T00:00Z` (le lundi 18 novembre) |
 
 **Règle, et non les quatre valeurs** : pour chaque timeframe, l'observation admissible est **la dernière
 estampille `≤ T`** de ce timeframe. Les quatre valeurs du tableau sont ce que cette règle donne à l'ancrage
