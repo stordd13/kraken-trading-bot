@@ -16,8 +16,10 @@ accepté que sur une clé constante qui y figure.
 from __future__ import annotations
 
 import ast
+import hashlib
 import math
 from pathlib import Path
+import re
 import sys
 
 import pytest
@@ -533,6 +535,40 @@ REASONS_H1 = (
     "D_NOT_ADMISSIBLE",
     "C_COVERAGE",
 )
+
+
+# ---------------------------------------------------------------------------
+# En-tête v2.1 (AM-00, R-01) — l'empreinte du protocole, consignée hors du fichier
+# ---------------------------------------------------------------------------
+
+ADOPTED_PACKAGE = _project_root / "docs" / "amendements_c3_v2.1.md"
+
+
+def _adoption_section() -> str:
+    text = ADOPTED_PACKAGE.read_text(encoding="utf-8")
+    return text.split("## Adoption", 1)[1].split("\n## ", 1)[0]
+
+
+def test_le_sha_v21_consigne_hors_du_fichier_est_celui_du_protocole_livre() -> None:
+    """En-tête v2.1 (AM-00, R-01) : « Nouveau sha256 : consigné hors du fichier » — la ligne consignée à la
+    section « Adoption » du paquet adopté est l'empreinte du protocole livré, celle que `protocol_descriptor`
+    recalcule dans chaque artefact. Une retouche du protocole sans amendement daté la fait diverger."""
+    match = re.search(r"\*\*sha256 v2\.1 :\*\* `([0-9a-f]{64})`", _adoption_section())
+    assert match is not None
+    digest = hashlib.sha256((_project_root / cc.PROTOCOL_RELPATH).read_bytes()).hexdigest()
+    assert match.group(1) == digest == cc.protocol_descriptor()["sha256"]
+
+
+def test_aucun_sha_de_protocole_n_est_ecrit_en_dur_dans_l_outillage_ni_les_tests() -> None:
+    """AM-00 : « aucun sha en dur dans les tests » — les empreintes v2.0 et v2.1, lues dans le paquet adopté,
+    n'apparaissent dans aucun fichier Python de `scripts/` ni de `tests/` : l'outillage recalcule, il ne
+    recopie pas."""
+    shas = set(re.findall(r"`([0-9a-f]{64})`", _adoption_section()))
+    assert len(shas) == 2
+    for folder in ("scripts", "tests"):
+        for path in sorted((_project_root / folder).rglob("*.py")):
+            content = path.read_text(encoding="utf-8", errors="replace")
+            assert not any(sha[:12] in content for sha in shas), path
 
 
 def test_la_liste_recopiee_est_celle_du_bloc_du_texte() -> None:

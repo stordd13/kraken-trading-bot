@@ -1408,7 +1408,7 @@ def test_un_rejeu_inexecutable_est_une_erreur_d_entree_code_2(tmp_path: Path, mu
     """§ F.2 (d) v2.1 : le producteur exporte les séries « de chaque appariement — toutes de même longueur
     n » et déclare son environnement ; une preuve absente est une erreur de forme, et « des séries de
     longueurs différentes rendent les indices appariés impossibles : le rejeu est inexécutable, erreur
-    d'entrée (§ I.1, ligne 2), code 2 » — pas un contrat rompu, rien n'est publié."""
+    de forme (§ I.1, ligne 2), code 2 » — pas un contrat rompu, rien n'est publié."""
     artifacts = _sound()
     mutate(artifacts["evaluation"])
     with pytest.raises(cc.MissingEvidenceError) as info:

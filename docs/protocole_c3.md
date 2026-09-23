@@ -1,5 +1,14 @@
 # Protocole de validation chronologique — C3, version 2
 
+> **Révision v2.1 — amendée le 2026-09-23.** Vingt-huit amendements datés (AM-00 à AM-27),
+> `docs/amendements_c3_v2.1.md`, adoptés par Bruno au gate d'amendement du 2026-09-23, sous les décisions de
+> gate et les quatorze réserves d'application (R-01 à R-14) que ce paquet consigne dans sa section
+> « Adoption ». **Nouveau sha256 : consigné hors du fichier** — un fichier ne peut pas porter sa propre
+> empreinte ; il est inscrit dans `docs/amendements_c3_v2.1.md` (section « Adoption »), `docs/RESEARCH_LOG.md`,
+> `skills/backtest.md` et `CLAUDE.md`, et `c3_common.protocol_descriptor` le recalcule dans chaque artefact.
+> Le sha256 de v2.0, `9b62915069e59e9b0f35120c60a77f48a72b278aa9102b3096dfcb8dc25e23c2`, reste celui que porte
+> tout manifeste C3a ; un manifeste v2.1 est une nouvelle variante (§ A.6).
+>
 > **Statut : GELÉ.** GO humain donné le **2026-09-21**, sur cette révision, après les deux corrections
 > documentaires qui la constituent. **À partir d'ici, l'outillage suit ce document ; le document ne suit pas
 > l'outillage.** Si une fixture révèle une incohérence du protocole, **on s'arrête et on la signale** — on ne
@@ -20,7 +29,38 @@
 > et ses tests. **C3b** livre l'intégration et la vérification de l'exécution continue. Aucun des deux ne
 > sélectionne quoi que ce soit pour le paper.
 
-## Amendements — révision de gel
+## Amendements — v2.1
+
+Révision datée du **2026-09-23** : vingt-huit amendements (AM-00 à AM-27) et le critère d'arrêt (annexe A du
+paquet, porté au § 10 de `docs/CONTRAINTES_POST_B4.md`), adoptés par Bruno, avec quatorze réserves
+d'application (R-01 à R-14). **Les textes avant / après, les motifs, les décisions de gate et les réserves sont
+dans `docs/amendements_c3_v2.1.md` ; ce document ne les redit pas** (§ 0.7). Correspondance entre le brief de
+reprise du 23/09 et les amendements :
+
+| Brief | Objet | Amendement |
+|---|---|---|
+| A | Conventions d'outillage datées 21/09 et 22/09 ; rapport § 7 items 1, 2, 4, 5, 7, 10, 13, 14 ; état `NOT_VERIFIABLE` de `stamp_cell` | AM-11, AM-13, AM-15, AM-17, AM-19, AM-20, AM-21, AM-22, AM-25 |
+| B1 | Ligne run `R1_NOT_NORMALISED` à I.1 | AM-19 (origine), renvois § B.3 et § H.1 |
+| B2 | E2 conjonctive sur les six distributions | AM-09, AM-16 |
+| B3 | MDD journalier des deux côtés, aucune tolérance | AM-08 |
+| B4 | `candles.json` absent de l'énumération du § L.1 | AM-24 (R-10 : il y entre) |
+| B5 | Clés `_btc` → `_base` dans l'export | AM-06 |
+| B6 | Levée du confinement `synthetic` | AM-24 |
+| B7 | Preuve de départ à plat déclarative | AM-10, AM-22 |
+| B8 | `decision_timeframes` dérivés | AM-07 |
+| B9 | Critère d'arrêt méta | AM-23 + annexe A |
+| C1 | Profondeur 2019 de la base USDT | AM-05 (fait de données, pas de clause propre) |
+| C2 | Transposition BTC/USDT → BTC/USDC Bybit | AM-01, AM-04, AM-22 |
+| C3 | Aucune reconstruction des 8 semaines 1 w | aucun amendement |
+| C4 | Dette 19 hors première campagne | aucun amendement ; AM-26 tient `scripts/backtest.py` hors liste |
+| C5 | Fenêtre 2021-03-01 → 2026-06-29, ancrage 70 % | AM-02, AM-03, AM-05 |
+
+La procédure d'incertitude du § F.2 a reçu, après la porte intermédiaire du 23/09, les précisions qui en font
+une spécification au bit près (ordre des opérations, critère d'écartement — R-14 —, suite exportée,
+environnement) ; elles sont consignées au même paquet. **Les numéros de ligne de la table du § I.1 ne sont
+jamais renumérotés** : une ligne nouvelle est « 10 bis », parce que « ligne 15 » est cité ailleurs.
+
+## Amendements — révision de gel (v2.0)
 
 Ce qui a **réellement** changé dans cette révision, celle sur laquelle le GO a été donné. Aucun code n'existait
 au moment de la soumission.
@@ -223,9 +263,9 @@ dans son manifeste, **avant évaluation**.
 > **La fenêtre de la première campagne est déclarée ici, et elle ne bouge plus.** Borne basse au 2021-03-01,
 > déclarée le 2026-09-23 et maintenue au gate du même jour. Sur la base USDT importée depuis le 2019-01-01 (SOL
 > depuis le 2020-08-11) **[v]** `results/data_inventory_usdt_2019_20260923/inventory.md`, l'amorçage des séries
-> 4 h et 1 d (jusqu'à 200 bougies) est couvert à cette date sur les trois paires, et celui du 1 w — régime 1 w, 50 bougies **[v]**
-> `scripts/backtest.py:305`, `:420-425` — sur BTC et ETH ; pour SOL, la 50ᵉ estampille 1 w tombe le 2021-07-26.
-> La conséquence sur D2 est écrite au § A.8, pas découverte. Borne haute au 2026-06-29, dernière semaine
+> 4 h et 1 d (jusqu'à 200 bougies) est couvert à cette date sur les trois paires, et celui du 1 w — régime 1 w,
+> 50 bougies **[v]** `scripts/backtest.py:305`, `:420-425` — sur BTC et ETH ; pour SOL, la 50ᵉ estampille 1 w
+> tombe le 2021-07-26. La conséquence sur D2 est écrite au § A.8, pas découverte. Borne haute au 2026-06-29, dernière semaine
 > hebdomadaire publiée : la série 1 w s'arrête au 2026-07-06 et Vision n'a pas publié 2026-07/08 ; finir la
 > fenêtre **avant** le trou de queue évite qu'une absence de publication soit lue comme une absence de données.
 > Ces deux bornes sont écrites dans `docs/RESEARCH_LOG.md` et dans le manifeste gelé **avant tout run** ; changer
@@ -1438,7 +1478,7 @@ les six suites, les comptes d'écartées, `Δ̂` par appariement, le `CAGR` de l
 égalité au bit, ordre des suites compris —, et les portes `Q2`, `Q3` et les bornes décident sur les valeurs
 **rejouées**. Le rejeu n'est exécuté que dans l'environnement que l'artefact déclare : sinon, contrat rompu
 (§ F.2 b), jamais une comparaison tolérante. Des séries de longueurs différentes rendent les indices appariés
-impossibles (§ F.2 a) : le rejeu est **inexécutable**, erreur d'entrée (§ I.1, ligne 2), code 2. **Ce qui
+impossibles (§ F.2 a) : le rejeu est **inexécutable**, erreur de forme (§ I.1, ligne 2), code 2. **Ce qui
 reste déclaratif** : les séries quotidiennes elles-mêmes et `net_pnl` (porte `Q1`), qu'aucune série de
 l'artefact ne permet de recalculer (§ J, item 12).
 
@@ -1932,8 +1972,8 @@ est pré-enregistrée** : le § 10 de `docs/CONTRAINTES_POST_B4.md` (critère d'
 de ce protocole) dit d'avance quels verdicts de cette chaîne closent une famille, combien de familles et combien
 de temps le projet s'accorde avant de s'arrêter, et ce qui doit exister avant tout ordre live. Ce protocole
 **produit les événements** que ce critère lit — les issues et leurs raisons — et **ne le contient pas** : le
-critère reste une règle de gestion, avec son auteur, hors des § 0 à M. Elle peut être prise, et elle passe
-alors par le § 5 et le ticket § 6 de `docs/CONTRAINTES_POST_B4.md`. **Elle est annoncée
+critère reste une règle de gestion, avec son auteur, hors des § 0 à M. La décision peut être prise, et elle
+passe alors par le § 5 et le ticket § 6 de `docs/CONTRAINTES_POST_B4.md`. **Elle est annoncée
 comme telle, avec son auteur et son motif, et n'est jamais déduite d'un verdict de ce protocole.** Un rapport
 qui écrirait « la famille est close parce que le protocole a rendu `réfuté` » commettrait l'inférence que ce
 paragraphe interdit.

@@ -223,7 +223,7 @@ def _read_replications(evaluation: Mapping[str, Any]) -> dict[str, Replication]:
 def _read_series(evaluation: Mapping[str, Any]) -> tuple[list[float], dict[str, list[float]]]:
     """Les séries quotidiennes que la procédure consomme (§ F.2 a) : la configuration et le comparateur de
     chaque appariement, **toutes finies et dans le domaine** (`r > −1`, sinon violation, § F.2 e), **de
-    même longueur `n`** (§ F.2 d v2.1 : sinon « le rejeu est inexécutable, erreur d'entrée (§ I.1, ligne 2),
+    même longueur `n`** (§ F.2 d v2.1 : sinon « le rejeu est inexécutable, erreur de forme (§ I.1, ligne 2),
     code 2 »)."""
     returns = cc.require_finite_series(
         evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
