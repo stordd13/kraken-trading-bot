@@ -542,7 +542,8 @@ ISSUE_INCONCLUSIF = "inconclusif"
 ISSUE_DESCRIPTIF = "descriptif"
 ISSUES: tuple[str, ...] = (ISSUE_VALIDE, ISSUE_REFUTE, ISSUE_INCONCLUSIF, ISSUE_DESCRIPTIF)
 
-#: Ordre de priorité du § H. La chaîne porte **la première raison qui s'applique**.
+#: Ordre de priorité du § H.1 v2.1 (AM-18 : `R1_NOT_NORMALISED` après `D_WARMUP_ANCHOR`, avant
+#: `E_NO_BENCHMARK`). La chaîne porte **la première raison qui s'applique**.
 REASON_PRIORITY: tuple[str, ...] = (
     "R0_INVALID_RUN",
     "P_PROVENANCE",
@@ -550,11 +551,11 @@ REASON_PRIORITY: tuple[str, ...] = (
     "A_NO_ADMISSIBLE_CANDIDATE",
     "A_BELOW_FLOOR",
     "D_WARMUP_ANCHOR",
+    "R1_NOT_NORMALISED",
     "E_NO_BENCHMARK",
     "E_STAMP_MISMATCH",
     "F_NOT_ESTIMABLE",
     "F_CANNOT_SEPARATE",
-    "R1_NOT_NORMALISED",
     "D_NOT_ADMISSIBLE",
     "C_COVERAGE",
 )

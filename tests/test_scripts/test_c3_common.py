@@ -512,6 +512,47 @@ def test_les_six_combinaisons_sont_celles_du_texte() -> None:
     assert cc.COMBINATIONS == COMBINATIONS_F2H
 
 
+# ---------------------------------------------------------------------------
+# § H.1 v2.1 (AM-18) — la liste fermée des raisons, par ordre de priorité
+# ---------------------------------------------------------------------------
+
+#: § H.1 v2.1, recopiée du texte, ordre compris : « L'ordre ci-dessus est l'ordre de priorité, sans
+#: exception et sans départage à inventer ».
+REASONS_H1 = (
+    "R0_INVALID_RUN",
+    "P_PROVENANCE",
+    "D_WARMUP_PREFIX",
+    "A_NO_ADMISSIBLE_CANDIDATE",
+    "A_BELOW_FLOOR",
+    "D_WARMUP_ANCHOR",
+    "R1_NOT_NORMALISED",
+    "E_NO_BENCHMARK",
+    "E_STAMP_MISMATCH",
+    "F_NOT_ESTIMABLE",
+    "F_CANNOT_SEPARATE",
+    "D_NOT_ADMISSIBLE",
+    "C_COVERAGE",
+)
+
+
+def test_la_liste_recopiee_est_celle_du_bloc_du_texte() -> None:
+    """La copie ci-dessus est relue dans le bloc du § H.1 du protocole — une révision du texte sans
+    révision de la copie se voit ici, pas dans une issue."""
+    text = (_project_root / "docs" / "protocole_c3.md").read_text(encoding="utf-8")
+    block = text.split("Liste fermée des raisons, par ordre de priorité :", 1)[1]
+    block = block.split("```", 2)[1]
+    names = tuple(line.split()[0] for line in block.splitlines() if line[:1].isupper())
+    assert names == REASONS_H1
+
+
+def test_la_priorite_des_raisons_est_celle_du_texte() -> None:
+    """§ H.1 v2.1 (AM-18) : `R1_NOT_NORMALISED` à sa place de raison run, après `D_WARMUP_ANCHOR` et avant
+    `E_NO_BENCHMARK` ; « la chaîne porte la première raison qui s'applique »."""
+    assert cc.REASON_PRIORITY == REASONS_H1
+    assert cc.worst_reason("E_NO_BENCHMARK", "R1_NOT_NORMALISED") == "R1_NOT_NORMALISED"
+    assert cc.worst_reason("R1_NOT_NORMALISED", "D_WARMUP_ANCHOR") == "D_WARMUP_ANCHOR"
+
+
 def _suites(**overrides: tuple[list[float], int]) -> dict[str, tuple[list[float], int]]:
     varying = [0.1 * i for i in range(50)]
     suites = {c: (list(varying), 0) for c in COMBINATIONS_F2H}

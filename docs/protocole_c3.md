@@ -1624,11 +1624,12 @@ D_WARMUP_PREFIX             D2 échoue sur la totalité des candidats de l'artef
 A_NO_ADMISSIBLE_CANDIDATE   l'ensemble admissible est vide
 A_BELOW_FLOOR               ensemble non vide, aucun candidat ne franchit le plancher
 D_WARMUP_ANCHOR             amorçage défaillant à l'ancrage d'évaluation
+R1_NOT_NORMALISED           liquidation terminale non normalisée : D6 sur un candidat ; clause 3 en échec
+                            ou non vérifiable sur l'évaluation
 E_NO_BENCHMARK              benchmark non constructible ou non comparable
 E_STAMP_MISMATCH            estampille de liquidation et borne finale en cellules distinctes
 F_NOT_ESTIMABLE             estimabilité post-ancrage en défaut, ou aucun candidat estimable
 F_CANNOT_SEPARATE           la borne ne sépare pas l'effet de zéro dans les six combinaisons
-R1_NOT_NORMALISED           D6 : liquidation terminale non normalisée
 D_NOT_ADMISSIBLE            D1 ou D5
 C_COVERAGE                  D3 échoue, ou D3 est inapplicable
 ```
@@ -1643,6 +1644,11 @@ de tous les candidats se fait par cette voie.
 
 **Lecture de la liste.** L'ordre ci-dessus est **l'ordre de priorité**, sans exception et sans départage à
 inventer : la chaîne porte **la première raison qui s'applique**.
+
+`R1_NOT_NORMALISED` précède `E_NO_BENCHMARK` parce que le comparateur est apparié sur le risque réalisé du
+candidat (§ C.4), que la liquidation terminale déplace ce risque (§ B.3), et qu'un comparateur construit contre
+une NAV non normalisée n'est pas le comparateur du protocole : le défaut d'instrument se lit avant le défaut du
+comparateur qu'il a contaminé.
 
 **La portée d'une raison — candidat, artefact ou run — n'est pas redite ici.** Elle est donnée par la **table
 du § I.1, seule source** (§ 0.7). Une raison de portée candidat est imprimée à côté du candidat qu'elle a
