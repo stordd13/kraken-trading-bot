@@ -1863,8 +1863,9 @@ paramètres, graines et versions consignés dans l'artefact.
 
 ## § J. Non-mesurables déclarés, chacun avec la règle qui remplace la mesure
 
-1. **Le départ à plat à l'ancrage** (§ B.2). → Déclaré **non vérifiable** ; les champs qui le rendraient
-   vérifiable sont nommés et routés en C3b. **Aucune preuve de substitution n'est proposée.**
+1. **Le départ à plat à l'ancrage** (§ B.2). → **Déclaré, jamais vérifié** : la preuve `flat_start_proof` est
+   produite par le programme qu'elle décrit et contrôlée cohérente, non recalculée. Ce qui reste non mesurable
+   est l'écart entre l'état déclaré et l'état réel du moteur à `T` ; aucun substitut.
 2. **Le coût de liquidation terminale du moteur signal** (§ B.3). → Aucun verdict directionnel ; normalisation
    définie et vérifiée avant tout usage décisionnel.
 3. **L'exposition et le notionnel déployé au cours du temps.** Ni cash, ni inventaire, ni notionnel ne sont
@@ -1888,9 +1889,20 @@ paramètres, graines et versions consignés dans l'artefact.
    compte de ruptures est une **borne inférieure**. → Il est rapporté comme tel, jamais comme un dénombrement.
 10. **L'état du portefeuille à l'instant `T` lui-même.** Aucun point d'equity n'est écrit avant qu'une bougie
     n'ait été traitée **[v]** `scripts/backtest.py:1959-1960`, `:2333-2334` ; et à l'ancrage déclaré, **aucune
-    bougie n'est estampillée à `T`** (§ A.4), donc **aucun point n'existe à `T`**. → Le départ à plat est
-    déclaré **non vérifiable** (§ B.2) ; **aucune preuve de substitution n'est proposée**, et C3b doit
-    **spécifier** une preuve, pas déplacer des colonnes.
+    bougie n'est estampillée à `T`** (§ A.4), donc **aucun point n'existe à `T`**. → La preuve spécifiée au
+    § B.2 est capturée **avant la première bougie**, donc avant qu'un point d'equity existe ; elle décrit l'état
+    initial et non un état postérieur, et vaut `DÉCLARÉ`.
+11. **L'écart de peg entre la monnaie de cotation de validation et celle de déploiement** (§ A.6, transposition
+    déclarée : USDT Binance → USDC Bybit). → Non modélisé ; la transposition est déclarée avec son argument, les
+    coûts de la cible sont ceux de la paire de déploiement, et aucun facteur de correction n'est appliqué.
+12. **Ce que le rejeu du § F.2 ne couvre pas** (§ F.2 b, d). → La chaîne rejoue le tirage et **recalcule** les
+    suites, les écartées, `Δ̂`, le `CAGR` et les bornes ; ce qu'elle ne peut pas recalculer reste **déclaratif** :
+    les séries quotidiennes elles-mêmes, et `net_pnl` (porte `Q1`), qu'aucune série de l'artefact ne permet de
+    reconstruire. Et l'égalité d'environnement (§ F.2 b) ne distingue pas tout ce qui change un calcul au dernier
+    bit : ni deux hôtes de même architecture et de même bibliothèque C dont les jeux d'instructions diffèrent, ni,
+    sur macOS, la bibliothèque mathématique du système — `platform.libc_ver()` y est vide. **Cette limite n'a pas
+    d'effet opérationnel tant que le producteur et la chaîne tournent sur le serveur** (la recette de C2) : c'est
+    cette règle d'exploitation qui tient lieu de garantie, pas le champ `libc`.
 
 ---
 
@@ -1915,8 +1927,13 @@ substitution n'est sélectionné, aucune clause n'est relâchée, aucune borne n
 > exactement cela pour sa propre issue négative ; l'extension était une inférence, pas une règle.
 
 **Une clôture plus large est possible, mais elle change de nature.** Décider d'arrêter une famille entière est
-une **décision de gestion de la recherche** — budget, priorités, cap de deux familles par cycle. Elle peut être
-prise, et elle passe alors par le § 5 et le ticket § 6 de `docs/CONTRAINTES_POST_B4.md`. **Elle est annoncée
+une **décision de gestion de la recherche** — budget, priorités, cap de deux familles par cycle. **Cette décision
+est pré-enregistrée** : le § 10 de `docs/CONTRAINTES_POST_B4.md` (critère d'arrêt, adopté avec la révision v2.1
+de ce protocole) dit d'avance quels verdicts de cette chaîne closent une famille, combien de familles et combien
+de temps le projet s'accorde avant de s'arrêter, et ce qui doit exister avant tout ordre live. Ce protocole
+**produit les événements** que ce critère lit — les issues et leurs raisons — et **ne le contient pas** : le
+critère reste une règle de gestion, avec son auteur, hors des § 0 à M. Elle peut être prise, et elle passe
+alors par le § 5 et le ticket § 6 de `docs/CONTRAINTES_POST_B4.md`. **Elle est annoncée
 comme telle, avec son auteur et son motif, et n'est jamais déduite d'un verdict de ce protocole.** Un rapport
 qui écrirait « la famille est close parce que le protocole a rendu `réfuté` » commettrait l'inférence que ce
 paragraphe interdit.
