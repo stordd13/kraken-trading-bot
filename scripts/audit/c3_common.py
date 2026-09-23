@@ -1124,7 +1124,7 @@ def load_manifest(raw: Any) -> Manifest:
         tfs = require_sequence(
             block, "decision_timeframes", where=f"{where}.strategies.{name}", min_len=1
         )
-        strategy_tfs[name] = _timeframe_labels(
+        strategy_tfs[name] = timeframe_labels(
             tfs, timeframes, where=f"{where}.strategies.{name}.decision_timeframes"
         )
     raw_candidates = require_sequence(universe, "candidates", where=f"{where}.universe", min_len=1)
@@ -1155,7 +1155,7 @@ def load_manifest(raw: Any) -> Manifest:
         tfs = (
             strategy_tfs[strategy]
             if override is None
-            else _timeframe_labels(override, timeframes, where=f"{cwhere}.decision_timeframes")
+            else timeframe_labels(override, timeframes, where=f"{cwhere}.decision_timeframes")
         )
         identity = candidate_identity(strategy, pair, params)
         if identity in seen:
@@ -1286,9 +1286,11 @@ def _deployment_pairs(
     return declared
 
 
-def _timeframe_labels(
+def timeframe_labels(
     items: Sequence[Any], timeframes: Mapping[str, int], *, where: str
 ) -> tuple[str, ...]:
+    """Étiquettes de séries : chaînes de `data.timeframes`, sans doublon — la forme d'une liste de séries
+    de décision, au manifeste (§ A.8 D2) comme dans l'observation qui l'exporte (§ A.8 D2 v2.1)."""
     labels: list[str] = []
     for i, item in enumerate(items):
         if not isinstance(item, str):

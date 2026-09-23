@@ -479,6 +479,74 @@ def test_sufficient_declare_contredit_par_le_recalcul_est_une_violation(tmp_path
 
 
 # ---------------------------------------------------------------------------
+# § A.8 D2 v2.1 (AM-07) — la liste des timeframes de décision est exportée par l'observation et recoupée
+# ---------------------------------------------------------------------------
+
+
+def test_une_observation_sans_decision_timeframes_refuse_l_entree_a_la_forme(
+    tmp_path: Path,
+) -> None:
+    """§ A.8 D2 v2.1 : « Une observation sans `decision_timeframes` est une erreur d'entrée (§ I.1, ligne 2) :
+    D2 ne peut pas être mesurée sur une liste absente »."""
+    w = _sound(tmp_path)
+    _mutate_observations(w, lambda obs: _first(obs).pop("decision_timeframes", None))
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+    assert "decision_timeframes" in payload["refusal"]["detail"]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [[], ["4h", "4h"], ["2h"], "4h", [4], None],
+    ids=["vide", "doublon", "étiquette hors data.timeframes", "chaîne", "entier", "null"],
+)
+def test_une_liste_de_decision_mal_formee_refuse_l_entree_a_la_forme(
+    tmp_path: Path, value: Any
+) -> None:
+    """§ A.8 D2 v2.1 : la liste exportée est une suite **non vide d'étiquettes distinctes** de `data.timeframes` ;
+    toute autre forme est une erreur d'entrée (§ I.1, ligne 2)."""
+    w = _sound(tmp_path)
+    _mutate_observations(w, lambda obs: _first(obs).__setitem__("decision_timeframes", value))
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+
+
+def test_une_liste_exportee_differente_de_la_liste_du_manifeste_est_une_violation(
+    tmp_path: Path,
+) -> None:
+    """§ A.8 D2 v2.1 : « un désaccord entre la liste exportée et la liste déclarée est une violation (§ I.1,
+    ligne 15), jamais un arbitrage » — ici `("4h",)` exporté contre `("4h", "1d", "1w")` déclaré."""
+    w = _sound(tmp_path)
+    _mutate_observations(w, lambda obs: _first(obs).__setitem__("decision_timeframes", ["4h"]))
+    code, payload = _run(w)
+    assert code == 1 and payload["invalide"] is True
+    assert any("decision_timeframes" in v for v in payload["violations"])
+
+
+def test_la_liste_exportee_se_compare_en_ensemble(tmp_path: Path) -> None:
+    """§ A.8 D2 v2.1 : la liste nomme les séries qui alimentent une porte ; son ordre ne porte aucun sens."""
+    w = _sound(tmp_path)
+    _mutate_observations(
+        w, lambda obs: _first(obs).__setitem__("decision_timeframes", ["1w", "4h", "1d"])
+    )
+    code, payload = _run(w)
+    assert code == 0 and payload["violations"] == []
+
+
+def test_la_liste_exportee_se_compare_a_celle_du_candidat_apparie(tmp_path: Path) -> None:
+    """§ A.8 D2 v2.1 : la liste effective est celle **du candidat** — sa surcharge dans le manifeste, sinon la
+    déclaration de sa stratégie — jamais celle d'un autre candidat de la même stratégie."""
+    payload = fx.manifest()
+    # Le premier candidat surcharge la liste de sa stratégie ; les suivants, de même stratégie, ne la
+    # surchargent pas : chacun exporte sa propre liste effective, et aucune n'est comparée à celle d'un voisin.
+    payload["universe"]["candidates"][0]["decision_timeframes"] = ["4h", "1d"]
+    w = fx.world(tmp_path, payload)
+    _anchor(w)
+    code, out = _run(w)
+    assert code == 0 and out["violations"] == []
+
+
+# ---------------------------------------------------------------------------
 # not_assertable : jamais verte, ne bloque pas, interdit ok=True
 # ---------------------------------------------------------------------------
 

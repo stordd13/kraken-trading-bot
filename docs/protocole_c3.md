@@ -469,6 +469,19 @@ Le rejeu, lui, a toléré cette classe en imprimant une mise en garde à côté 
 le peut pas, et la raison est l'usage, pas la qualité** : une mise en garde a un lecteur, **un classement n'en a
 pas** — il est consommé. D2 est donc plus strict, et cette différence est un choix, non une correction du rejeu.
 
+**La liste des timeframes de décision est dérivée, jamais déclarée.** Pour un candidat, « chaque timeframe
+qui alimente une porte de décision » est la liste que **la stratégie elle-même** dérive de ses paramètres
+effectifs (pour la famille grid : `bear_protection_mode` et `bias_1d` décident si `regime_1d` et la porte 1 w
+vivent), par une méthode de classe pure, testée, **sans changement de comportement du moteur**. Le producteur
+exporte cette liste **par candidat** dans **toute** observation (`decision_timeframes`) — une observation ne
+porte aucun drapeau qui la distinguerait d'une fixture. Le manifeste la redit, par stratégie ou par candidat
+(surcharge) ; **un désaccord entre la liste exportée et la liste effective du manifeste pour ce candidat est
+une violation** (§ I.1, ligne 15), jamais un arbitrage, et les deux listes se comparent en ensembles. Une
+observation sans `decision_timeframes`, ou qui en porte une liste vide, dupliquée ou hors des séries déclarées,
+est une erreur d'entrée (§ I.1, ligne 2) : D2 ne peut pas être mesurée sur une liste absente. Le recoupement
+est fait à la validité d'entrée (§ I.2 I-A), qui lit l'observation entière ; la projection du § A.7 n'est pas
+élargie.
+
 **D3 — la quantité comptée, d'abord.** « Cycle achevé » n'a de sens que si le document dit quel nombre il
 compte, et ce nombre est **dépendant du moteur** :
 

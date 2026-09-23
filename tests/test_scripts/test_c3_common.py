@@ -899,14 +899,19 @@ def observation(
     cycles: int = 40,
     positions: int = 2,
     nav: list[float] | None = None,
+    decision_timeframes: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Une entrée d'observation conforme au contrat (C1/C2), préfixe `train` + futurs optionnels."""
+    """Une entrée d'observation conforme au contrat (C1/C2), préfixe `train` + futurs optionnels ;
+    elle exporte ses séries de décision (§ A.8 D2 v2.1), par défaut celles de la stratégie des fixtures."""
     values = nav if nav is not None else nav_path(pair, index)
     reference = f"{values[-1] * 33.5:.8f}"
     entry: dict[str, Any] = {
         "strategy": strategy,
         "pair": pair,
         "params": params,
+        "decision_timeframes": list(
+            decision_timeframes if decision_timeframes is not None else DECISION_TFS
+        ),
         "effective_params": {
             "strategy_class": "SynthGrid",
             "passed_params": {**params, "pair": pair},
@@ -1009,8 +1014,14 @@ def observations(manifest_payload: dict[str, Any], **kw: Any) -> dict[str, dict[
         pair = cand["pair"]
         index = counters.get(pair, 0)
         counters[pair] = index + 1
+        # § A.8 D2 v2.1 : l'observation exporte la liste effective **du candidat** — sa surcharge au
+        # manifeste, sinon la déclaration de sa stratégie.
+        effective = (
+            cand.get("decision_timeframes")
+            or manifest_payload["strategies"][cand["strategy"]]["decision_timeframes"]
+        )
         out[observation_key(cand["strategy"], pair, index)] = observation(
-            cand["strategy"], pair, cand["params"], index, **kw
+            cand["strategy"], pair, cand["params"], index, decision_timeframes=effective, **kw
         )
     return out
 

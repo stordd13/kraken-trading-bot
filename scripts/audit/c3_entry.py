@@ -99,15 +99,23 @@ class Context:
     def entry(self, key: str) -> Mapping[str, Any]:
         return cc.require_mapping(self.observations, key, where="observations")
 
-    def decision_timeframes(self, entry: Mapping[str, Any], *, where: str) -> tuple[str, ...]:
-        """Les séries de décision du candidat : sa surcharge, sinon celles de sa stratégie."""
+    def matched_candidate(self, entry: Mapping[str, Any], *, where: str) -> cc.Candidate | None:
+        """Le candidat du manifeste de même identité canonique (§ A.2), ou ``None``."""
         strategy = cc.require_str(entry, "strategy", where=where)
         pair = cc.require_str(entry, "pair", where=where)
         params = cc.require_mapping(entry, "params", where=where)
         identity = cc.candidate_identity(strategy, pair, params)
         for candidate in self.manifest.candidates:
             if candidate.identity == identity:
-                return candidate.decision_timeframes
+                return candidate
+        return None
+
+    def decision_timeframes(self, entry: Mapping[str, Any], *, where: str) -> tuple[str, ...]:
+        """Les séries de décision du candidat : sa surcharge, sinon celles de sa stratégie."""
+        matched = self.matched_candidate(entry, where=where)
+        if matched is not None:
+            return matched.decision_timeframes
+        strategy = cc.require_str(entry, "strategy", where=where)
         if strategy not in self.manifest.engines:
             raise cc.MissingEvidenceError(
                 f"{where}.strategy: {strategy!r} absent de manifest.strategies"
@@ -241,6 +249,13 @@ def a01_form(ctx: Context) -> Outcome:
                 cc.require_str(entry, name, where=where)
             cc.require_mapping(entry, "params", where=where)
             cc.require_mapping(entry, "effective_params", where=where)
+            # § A.8 D2 v2.1 : toute observation exporte la liste de ses séries de décision — suite non
+            # vide d'étiquettes distinctes de `data.timeframes`. Absente ou mal formée : § I.1, ligne 2.
+            cc.timeframe_labels(
+                cc.require_sequence(entry, "decision_timeframes", where=where, min_len=1),
+                ctx.manifest.timeframes,
+                where=f"{where}.decision_timeframes",
+            )
             cc.require_int(entry, "metrics_version", where=where)
             cc.require_int(entry, "replay_version", where=where)
             costs = cc.require_mapping(entry, "pair_costs", where=where)
@@ -456,11 +471,27 @@ def a05_provenance(ctx: Context) -> Outcome:
 
 
 def a06_warmup(ctx: Context) -> Outcome:
-    """Chaque série de décision présente au bloc d'amorçage ; `sufficient` recalculé et recoupé."""
+    """Chaque série de décision présente au bloc d'amorçage ; `sufficient` recalculé et recoupé.
+
+    § A.8 D2 v2.1 : la liste exportée par l'observation est recoupée, **en ensemble**, à la liste effective
+    du candidat apparié (sa surcharge au manifeste, sinon la déclaration de sa stratégie) — jamais à celle
+    d'un autre candidat ; un désaccord est une violation (§ I.1, ligne 15), jamais un arbitrage."""
     out = Outcome()
     for key in ctx.observations:
         where = f"observations.{key}"
         entry = ctx.entry(key)
+        exported = cc.timeframe_labels(
+            cc.require_sequence(entry, "decision_timeframes", where=where, min_len=1),
+            ctx.manifest.timeframes,
+            where=f"{where}.decision_timeframes",
+        )
+        matched = ctx.matched_candidate(entry, where=where)
+        if matched is not None and set(exported) != set(matched.decision_timeframes):
+            ctx.violations.append(
+                f"{where}.decision_timeframes exportée {sorted(exported)} ≠ liste effective du "
+                f"manifeste {sorted(matched.decision_timeframes)} pour ce candidat — un désaccord est "
+                "une violation, jamais un arbitrage (§ A.8 D2)"
+            )
         warmup = cc.require_mapping(
             cc.require_mapping(entry, "warmup", where=where), ctx.prefix, where=f"{where}.warmup"
         )
