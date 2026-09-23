@@ -250,12 +250,12 @@ def test_c3_quantite_de_lot_nulle_est_FAILED_via_la_preuve_partagee(tmp_path: Pa
 
     def zero_amount(d: dict[str, Any]) -> None:
         for lot in d["liquidation"]["lots"]:
-            lot["amount_btc"] = "0"
+            lot["amount_base"] = "0"
 
     _mutate_eval(w, zero_amount)
     code, payload = _run(w)
     assert code == 0 and payload is not None and _states(payload)["c3"] == "FAILED"
-    assert any("amount_btc" in d for d in payload["d6_report"]["details"])
+    assert any("amount_base" in d for d in payload["d6_report"]["details"])
 
 
 def test_estampille_de_liquidation_hors_de_la_derniere_cellule(tmp_path: Path) -> None:

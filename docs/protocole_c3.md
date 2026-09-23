@@ -358,7 +358,7 @@ Tout autre segment est **hors liste blanche**.
 | Bornes | **les seules bornes du segment de préfixe** : son début et sa fin |
 | Métriques | le bloc de métriques **du segment de préfixe**, entier |
 | Trajectoire | `equity_daily[<préfixe>]` : `start`, `end`, `values` |
-| Comptabilité | `liquidation[<préfixe>]`, entier |
+| Comptabilité | `liquidation[<préfixe>]`, entier. **Contrat de forme des quantités en actif de base** : les clés `amount_base`, `residual_trade_base`, `dust_written_off_base`, `inventory_divergence_base`, dans le bloc et dans chaque lot, **quelle que soit la paire** ; un bloc qui porte une clé suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur de forme (§ I.1, ligne 2). Le renommage vit dans la couche d'export du runner ; le moteur `scripts/backtest.py` est intouché |
 | Amorçage | `warmup[<préfixe>]`, entier, **et** le bloc d'amorçage mesuré au début du préfixe |
 | Exécution | `rejections[<préfixe>]`, `dca_counters[<préfixe>]` |
 | **Couverture** | l'**artefact de couverture** décrit ci-dessous, pour la paire du candidat, sur `[début, T]` |

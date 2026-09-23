@@ -498,6 +498,61 @@ def test_l_encart_v21_dit_ce_que_D1_mesure_sur_le_1w_du_prefixe() -> None:
     assert cc.gap_days(1, cc.WEEK_MINUTES) == 7.0 <= cc.max_gap_days(prefix_days)
 
 
+def _resuffix_block(block: dict[str, Any], suffix: str) -> dict[str, Any]:
+    """Le bloc de liquidation, ses quatre quantités en actif de base portant le suffixe demandé (§ A.7)."""
+    out = {}
+    for key, value in block.items():
+        stem = next((s for s in BASE_QUANTITY_STEMS if key.startswith(f"{s}_")), None)
+        out[f"{stem}_{suffix}" if stem is not None else key] = value
+    if "lots" in out:
+        out["lots"] = [_resuffix_block(dict(lot), suffix) for lot in out["lots"]]
+    return out
+
+
+def _identities(block: dict[str, Any]) -> dict[str, Any]:
+    spread, slippage = (Decimal(x) for x in PAIR_COSTS["BTC/USDC"])
+    return cc.liquidation_identities(
+        block,
+        spread=spread,
+        slippage=slippage,
+        taker=Decimal(TAKER),
+        end=ANCHOR,
+        where="t.liquidation",
+    )
+
+
+def test_les_quantites_en_actif_de_base_sont_celles_du_texte() -> None:
+    """§ A.7 v2.1, ligne « Comptabilité » : `amount_base`, `residual_trade_base`, `dust_written_off_base`,
+    `inventory_divergence_base` — la liste recopiée du texte, épinglée à la constante du code."""
+    assert cc.BASE_QUANTITY_STEMS == BASE_QUANTITY_STEMS
+
+
+def test_un_bloc_de_liquidation_en_base_passe_les_identites_et_la_preuve_par_lot() -> None:
+    """§ A.7 v2.1 : les clés `amount_base`, `residual_trade_base`, `dust_written_off_base`,
+    `inventory_divergence_base`, « quelle que soit la paire »."""
+    block = _resuffix_block(liquidation_segment("BTC/USDC", reference_price="30000"), "base")
+    proof = _identities(block)
+    assert proof["passed"] is True and proof["lots_present"] is True
+    assert set(proof["reported"]) >= {"dust_written_off_base", "inventory_divergence_base"}
+
+
+@pytest.mark.parametrize("suffix", ["btc", "eth", "sol"])
+def test_un_bloc_suffixe_par_un_actif_est_une_erreur_de_forme(suffix: str) -> None:
+    """§ A.7 v2.1 : « un bloc qui porte une clé suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur
+    de forme (§ I.1, ligne 2) » — le message nomme la clé `_base` attendue."""
+    block = _resuffix_block(liquidation_segment("BTC/USDC", reference_price="30000"), suffix)
+    with pytest.raises(cc.MissingEvidenceError, match="_base"):
+        _identities(block)
+
+
+def test_un_bloc_portant_les_deux_suffixes_est_une_erreur_de_forme() -> None:
+    """§ A.7 v2.1 : une clé suffixée par un actif est une erreur de forme même à côté de sa jumelle `_base`."""
+    block = _resuffix_block(liquidation_segment("BTC/USDC", reference_price="30000"), "base")
+    block["dust_written_off_btc"] = block["dust_written_off_base"]
+    with pytest.raises(cc.MissingEvidenceError, match="dust_written_off_base"):
+        _identities(block)
+
+
 def test_l_encart_v21_dit_ce_que_D2_mesure_sur_le_1w_de_SOL() -> None:
     """Encart § A.8 v2.1 : « Au 2021-03-01, SOL en porte 29 (première estampille 1 w le 2020-08-17) ; la 50ᵉ
     tombe le 2021-07-26 » — le régime 1 w exige 50 bougies."""
@@ -655,11 +710,20 @@ FIRST_EXEC_STAMP = cc.first_stamp_strictly_after(WINDOW_START, EXEC_INTERVAL)  #
 SEGMENT_FUTURE = ("test", "all")
 
 
+#: § A.7 v2.1 — les quatre quantités en actif de base, suffixées `_base` quelle que soit la paire.
+BASE_QUANTITY_STEMS: tuple[str, ...] = (
+    "amount",
+    "residual_trade",
+    "dust_written_off",
+    "inventory_divergence",
+)
+
+
 def base_asset(pair: str) -> str:
-    """Les clés `*_btc` du bloc `liquidation` sont littérales pour toutes les paires (convention
-    `btc_held` du moteur) : la fixture reproduit l'export réel, pas une lecture « par actif »."""
+    """§ A.7 v2.1 : les quantités en actif de base sont suffixées `_base` **quelle que soit la paire** —
+    la fixture reproduit l'export conforme (C3b), pas la convention littérale `_btc` du moteur."""
     del pair
-    return "btc"
+    return "base"
 
 
 def nav_path(

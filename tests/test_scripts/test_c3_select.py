@@ -186,8 +186,8 @@ def test_le_temoin_sain_retient_une_configuration_clean(tmp_path: Path) -> None:
     assert all(r["d6_report"]["passed"] and r["d6_report"]["lots_present"] for r in records)
     # Contre-exemple 2 : poussière ≠ divergence dans la fixture, et D6 ne rate pas pour cela.
     assert all(
-        r["d6_report"]["reported"]["dust_written_off_btc"]
-        != r["d6_report"]["reported"]["inventory_divergence_btc"]
+        r["d6_report"]["reported"]["dust_written_off_base"]
+        != r["d6_report"]["reported"]["inventory_divergence_base"]
         for r in records
     )
     assert all(r["mdd_report"]["abs_diff"] == 0.0 for r in records), (
@@ -623,15 +623,15 @@ def test_contre_exemple_2_poussiere_differente_de_la_divergence_ne_fait_pas_echo
 ) -> None:
     def real_dust(obs: dict[str, Any]) -> None:
         liq = _liq(obs)
-        liq["dust_written_off_btc"] = "7E-28"
-        liq["inventory_divergence_btc"] = "1E-27"
+        liq["dust_written_off_base"] = "7E-28"
+        liq["inventory_divergence_base"] = "1E-27"
 
     w = chain(tmp_path, mutate_observations=real_dust)
     code, payload = run(w)
     assert code == 0 and payload is not None
     r = _first_record(w, payload)
     assert r["clauses"]["D6"] is True and r["status"] == "ADMISSIBLE"
-    assert r["d6_report"]["reported"]["dust_written_off_btc"] == "7E-28"
+    assert r["d6_report"]["reported"]["dust_written_off_base"] == "7E-28"
 
 
 @pytest.mark.parametrize(
@@ -844,11 +844,11 @@ def test_le_parseur_n_expose_que_des_chemins_et_un_horodatage() -> None:
 
 
 def test_revue_R3_lot_de_quantite_nulle_ne_passe_pas_D6(tmp_path: Path) -> None:
-    """Reproduction Astra : `amount_btc = "0"` sur les lots passait D6 (la quantité était lue puis jetée)."""
+    """Reproduction Astra : `amount_base = "0"` sur les lots passait D6 (la quantité était lue puis jetée)."""
 
     def zero_amount(obs: dict[str, Any]) -> None:
         for lot in _liq(obs)["lots"]:
-            lot["amount_btc"] = "0"
+            lot["amount_base"] = "0"
 
     w = chain(tmp_path, mutate_observations=zero_amount)
     assert w["entry_code"] == 0
@@ -856,7 +856,7 @@ def test_revue_R3_lot_de_quantite_nulle_ne_passe_pas_D6(tmp_path: Path) -> None:
     assert code == 0 and payload is not None
     r = _first_record(w, payload)
     assert r["clauses"]["D6"] is False and r["status"] == "HORS_USAGE_DÉCISIONNEL"
-    assert any("amount_btc" in d for d in r["d6_report"]["details"])
+    assert any("amount_base" in d for d in r["d6_report"]["details"])
 
 
 def test_revue_R3_tous_les_lots_a_quantite_nulle_interdisent_SELECTION_VALIDE(
@@ -865,7 +865,7 @@ def test_revue_R3_tous_les_lots_a_quantite_nulle_interdisent_SELECTION_VALIDE(
     def zero_all(obs: dict[str, Any]) -> None:
         for e in obs.values():
             for lot in e["liquidation"][fx.PREFIX]["lots"]:
-                lot["amount_btc"] = "0"
+                lot["amount_base"] = "0"
 
     w = chain(tmp_path, mutate_observations=zero_all)
     code, payload = run(w)

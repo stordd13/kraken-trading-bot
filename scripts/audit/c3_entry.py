@@ -126,12 +126,15 @@ class Context:
 
 
 def _liquidation_form(block: Mapping[str, Any], pair: str, *, where: str) -> None:
-    """Forme du bloc `liquidation` (grid, B4.3). Les clés ``residual_trade_btc``,
-    ``dust_written_off_btc`` et ``inventory_divergence_btc`` sont **littérales pour toutes les
-    paires** — convention ``btc_held`` du moteur (`backtest.py:3288-3293`), vérifiée sur les 48
-    entrées SOL de l'artefact réel — et ne sont jamais suffixées par l'actif de base."""
+    """Forme du bloc `liquidation` (grid, B4.3). § A.7 v2.1 : les quantités en actif de base portent le
+    suffixe ``_base`` **quelle que soit la paire** (``residual_trade_base``, ``dust_written_off_base``,
+    ``inventory_divergence_base``, et ``amount_base`` par lot) ; une clé suffixée par le nom d'un actif
+    (``_btc``, ``_eth``, …) est une erreur de forme (§ I.1, ligne 2). Le moteur écrit ``_btc`` pour toutes
+    les paires (convention ``btc_held``, `backtest.py:3288-3293`) : le renommage vit dans la couche
+    d'export du runner (C3b), jamais ici."""
     del pair  # la paire n'entre pas dans les noms de clés, voir la docstring
-    base = "btc"
+    base = "base"
+    cc.check_base_quantity_keys(block, where=where)
     cc.require_int(block, "positions", where=where, minimum=0)
     cc.require_int(block, "trades", where=where, minimum=0)
     for key in (
@@ -159,6 +162,7 @@ def _liquidation_form(block: Mapping[str, Any], pair: str, *, where: str) -> Non
             lwhere = f"{where}.lots[{i}]"
             if not isinstance(lot, Mapping):
                 raise cc.MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
+            cc.check_base_quantity_keys(lot, where=lwhere)
             cc.require_decimal(lot, f"amount_{base}", where=lwhere)
             cc.require_decimal(lot, "gross_usdc", where=lwhere)
             cc.require_decimal(lot, "fee", where=lwhere)

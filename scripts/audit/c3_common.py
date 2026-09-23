@@ -1663,6 +1663,28 @@ def d3_passes(cycles: int | None) -> bool:
     return cycles is not None and cycles >= CYCLES_MIN
 
 
+#: § A.7 v2.1 — les quantités en actif de base du bloc `liquidation` et de ses lots portent le suffixe
+#: `_base` **quelle que soit la paire** ; le renommage vit dans la couche d'export du runner.
+BASE_QUANTITY_STEMS: tuple[str, ...] = (
+    "amount",
+    "residual_trade",
+    "dust_written_off",
+    "inventory_divergence",
+)
+
+
+def check_base_quantity_keys(block: Mapping[str, Any], *, where: str) -> None:
+    """§ A.7 v2.1 : une clé de quantité suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur de
+    forme (§ I.1, ligne 2), même à côté de sa jumelle `_base` — le message nomme la clé attendue."""
+    for key in block:
+        for stem in BASE_QUANTITY_STEMS:
+            if key.startswith(f"{stem}_") and key != f"{stem}_base":
+                raise MissingEvidenceError(
+                    f"{where}.{key}: quantité suffixée par un actif — la clé attendue est "
+                    f"`{stem}_base`, quelle que soit la paire (§ A.7)"
+                )
+
+
 def liquidation_identities(
     block: Mapping[str, Any] | None,
     *,
@@ -1677,7 +1699,7 @@ def liquidation_identities(
     Par lot : `amount_i > 0`, `gross_i == amount_i × price` (le prix du bloc — un seul prix de
     liquidation, `backtest.py:3104`), `fee_i == gross_i × taker` (`:3105`), `entry_price` et `pnl`
     nuls ensemble ; agrégats : Σ fee = fees, Σ gross = gross_usdc, nombre de lots = trades, lots à
-    coût connu = positions, Σ amount des lots inconnus = residual_trade_btc. `lots` absent ⇒ la
+    coût connu = positions, Σ amount des lots inconnus = residual_trade_base. `lots` absent ⇒ la
     magnitude du taker est indécidable ⇒ non vérifié. Aucun seuil. Partagé par la sélection (D6 au
     préfixe) et la continuité (clause 3 à l'évaluation).
     """
@@ -1702,9 +1724,10 @@ def liquidation_identities(
             ],
             "reported": reported,
         }
+    check_base_quantity_keys(block, where=where)
     positions = require_int(block, "positions", where=where, minimum=0)
     trades = require_int(block, "trades", where=where, minimum=0)
-    residual_trade = require_decimal(block, "residual_trade_btc", where=where)
+    residual_trade = require_decimal(block, "residual_trade_base", where=where)
     residual_net = require_decimal(block, "residual_net_proceeds", where=where)
     fees = require_decimal(block, "fees", where=where)
     gross = require_decimal(block, "gross_usdc", where=where)
@@ -1713,18 +1736,18 @@ def liquidation_identities(
     check(
         "residual_trade_iff_unknown",
         (residual_trade == zero) == (unknown == 0),
-        f"residual_trade_btc {residual_trade} vs lot inconnu {unknown}",
+        f"residual_trade_base {residual_trade} vs lot inconnu {unknown}",
     )
     check(
         "residual_net_iff_unknown",
         (residual_net == zero) == (unknown == 0),
         f"residual_net_proceeds {residual_net} vs lot inconnu {unknown}",
     )
-    reported["dust_written_off_btc"] = str(
-        require_decimal(block, "dust_written_off_btc", where=where)
+    reported["dust_written_off_base"] = str(
+        require_decimal(block, "dust_written_off_base", where=where)
     )
-    reported["inventory_divergence_btc"] = str(
-        require_decimal(block, "inventory_divergence_btc", where=where)
+    reported["inventory_divergence_base"] = str(
+        require_decimal(block, "inventory_divergence_base", where=where)
     )
     reported["net_pnl_lot_basis"] = str(require_decimal(block, "net_pnl_lot_basis", where=where))
     reported["pnl"] = str(require_decimal(block, "pnl", where=where))
@@ -1793,14 +1816,15 @@ def liquidation_identities(
         lwhere = f"{where}.lots[{i}]"
         if not isinstance(lot, Mapping):
             raise MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
+        check_base_quantity_keys(lot, where=lwhere)
         gross_i = require_decimal(lot, "gross_usdc", where=lwhere)
         fee_i = require_decimal(lot, "fee", where=lwhere)
-        amount_i = require_decimal(lot, "amount_btc", where=lwhere)
+        amount_i = require_decimal(lot, "amount_base", where=lwhere)
         entry_price = nullable_decimal(lot, "entry_price", where=lwhere)
         pnl = nullable_decimal(lot, "pnl", where=lwhere)
         if amount_i <= zero:
             lots_ok = False
-            details.append(f"lot[{i}]: amount_btc {amount_i} non strictement positif")
+            details.append(f"lot[{i}]: amount_base {amount_i} non strictement positif")
         if price is None:
             lots_ok = False
             details.append(
@@ -1839,7 +1863,7 @@ def liquidation_identities(
     check(
         "lots_unknown_amount",
         unknown_amount == residual_trade,
-        f"Σ amount des lots inconnus {unknown_amount} != residual_trade_btc {residual_trade}",
+        f"Σ amount des lots inconnus {unknown_amount} != residual_trade_base {residual_trade}",
     )
     passed = all(v for v in checks.values() if v is not None)
     return {

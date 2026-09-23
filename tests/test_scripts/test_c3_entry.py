@@ -336,6 +336,24 @@ def test_chaque_bloc_mal_type_refuse_l_entree_a_la_forme(
     assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
 
 
+def test_un_bloc_de_liquidation_suffixe_par_un_actif_refuse_l_entree_a_la_forme(
+    tmp_path: Path,
+) -> None:
+    """§ A.7 v2.1 : « un bloc qui porte une clé suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur
+    de forme (§ I.1, ligne 2) » — refus d'entrée à I-A.1, le détail nomme la clé `_base` attendue."""
+    w = _sound(tmp_path)
+
+    def to_btc(obs: dict[str, Any]) -> None:
+        for entry in obs.values():
+            for segment, block in entry["liquidation"].items():
+                entry["liquidation"][segment] = fx._resuffix_block(block, "btc")
+
+    _mutate_observations(w, to_btc)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+    assert "_base" in payload["refusal"]["detail"]
+
+
 def test_un_segment_futur_malforme_refuse_l_entree(tmp_path: Path) -> None:
     """§ A.12 : les futurs restent présents et bien formés — un futur cassé est une erreur de forme."""
     w = _sound(tmp_path)
