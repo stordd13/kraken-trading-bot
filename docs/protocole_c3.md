@@ -530,7 +530,7 @@ pas dans la stratégie, et le rapport doit le dire ainsi.
 **Un candidat inadmissible est imprimé avec ses métriques et son premier gate en échec**, dans l'ordre
 D1 → D6. Son score décisionnel n'est pas publié : on ne calcule pas quand même pour commenter le chiffre.
 
-> **Conséquence de D2 sur la fenêtre déclarée, écrite plutôt que découverte.** La fenêtre du § A.3 commence au
+> **Conséquence de D2 sur la fenêtre de v2.0 (historique).** La fenêtre du § A.3 commence au
 > 2023-04-01, et l'amorçage 1 d / 1 w remonte alors dans les trous 2022-23 des données (`CONTRAINTES` § 7).
 > Mesuré sur l'unique artefact réel, `sufficient` est **`False`** en 1 d et 1 w sur BTC et sur SOL au début du
 > préfixe. **D2 écarte donc aujourd'hui, de façon déterministe, tout candidat dont une porte de décision lit le
@@ -538,6 +538,32 @@ D1 → D6. Son score décisionnel n'est pas publié : on ne calcule pas quand m�
 > des deux choix — la fenêtre et D2 — et elle est déclarée ici pour que le § F.6 ne se lise pas comme une
 > prophétie. **La borne basse de la fenêtre est donc un levier sur D2 autant que sur l'ancrage**, et c'est une
 > raison de plus de la déclarer au manifeste avant toute évaluation.
+
+> **Conséquences de D2 et de D1 sur la fenêtre de v2.1, écrites plutôt que découvertes.** La fenêtre de la
+> première campagne commence au 2021-03-01 sur la base USDT Binance, importée du 2019-01-01 (BTC, ETH) et du
+> 2020-08-11 (SOL) au 2026-09-01, six timeframes (5 m, 15 m, 1 h, 4 h, 1 j, 1 w), contiguë hors maintenances
+> Binance inférieures à un jour, un trou 4 h de deux bougies le 2019-05-15 hors de toute fenêtre, huit
+> estampilles 1 w isolées **[v]** `results/data_inventory_usdt_2019_20260923/inventory.md`. Deux conséquences
+> s'en déduisent, calculées par les fonctions de l'outillage sur les bornes déclarées :
+>
+> - **D2 sur SOL.** Le régime 1 w exige 50 bougies **[v]** `scripts/backtest.py:305`, `:420-425`. Au 2021-03-01,
+>   SOL en porte **29** (première estampille 1 w le 2020-08-17) ; la 50ᵉ tombe le **2021-07-26**. D2 retire donc
+>   tout candidat SOL dont une porte de décision lit le 1 w : **SOL est partiel dans la première campagne, ou
+>   absent** si tous les modes de la famille lisent le 1 w. BTC et ETH sont amorcés sur toutes leurs séries au
+>   début du préfixe. Une paire dont un timeframe de décision n'est pas amorcé au 2021-03-01 sort par D2 sur ses
+>   candidats, et la clause de promotion du § I.1 s'applique telle quelle.
+> - **D1 sur le 1 w.** Six des huit estampilles 1 w isolées tombent **dans le préfixe** — 2022-06-06,
+>   2022-07-04, 2022-09-05, 2022-10-03, 2022-11-07, 2022-12-05, les mêmes sur les trois paires ; les deux autres
+>   (2025-02-03, 2025-03-03) tombent dans la période évaluée. Sur les 194 périodes hebdomadaires de
+>   `(2021-03-01, T]`, **188 sont présentes, soit 96,9 %, sous les 97 % de D1**, sur BTC, ETH et SOL ; le trou
+>   maximal, 7 jours, reste sous la borne de 31 jours. Sans reconstruction, D1 retire les trois paires et
+>   l'ensemble admissible est vide : `A_NO_ADMISSIBLE_CANDIDATE` (§ I.1, ligne 8).
+>
+> **Aucune reconstruction des estampilles 1 w manquantes n'est faite tant que D1 passe** (décision C3 du
+> 23/09). D1 ne passe pas sur cette fenêtre : **la reconstruction depuis le 1 d est une décision séparée,
+> chiffrée, en rows marquées dérivées, jamais silencieuse, et elle est un prérequis du manifeste de la première
+> campagne.** Cette note déclare ce que la lecture des données laisse attendre ; l'outil, lui, mesure sur
+> l'artefact de couverture.
 
 ### A.9 Score, classement, égalités
 

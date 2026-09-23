@@ -469,6 +469,45 @@ def test_une_transposition_hors_contrat_est_une_erreur_d_entree(
 
 
 # ---------------------------------------------------------------------------
+# § A.8 v2.1 — les nombres de l'encart « Conséquences de D2 et de D1 sur la fenêtre de v2.1 » (AM-05)
+# ---------------------------------------------------------------------------
+
+#: Encart § A.8 v2.1 : les six estampilles 1 w manquantes dans le préfixe, les mêmes sur les trois paires.
+V21_MISSING_1W_IN_PREFIX = (
+    (2022, 6, 6),
+    (2022, 7, 4),
+    (2022, 9, 5),
+    (2022, 10, 3),
+    (2022, 11, 7),
+    (2022, 12, 5),
+)
+
+
+def test_l_encart_v21_dit_ce_que_D1_mesure_sur_le_1w_du_prefixe() -> None:
+    """Encart § A.8 v2.1 : « Sur les 194 périodes hebdomadaires de (2021-03-01, T], 188 sont présentes, soit
+    96,9 %, sous les 97 % de D1 […] ; le trou maximal, 7 jours, reste sous la borne de 31 jours »."""
+    start = datetime(2021, 3, 1, tzinfo=UTC)
+    anchor = cc.anchor_of(start, datetime(2026, 6, 29, tzinfo=UTC))
+    missing = [datetime(y, m, d, tzinfo=UTC) for (y, m, d) in V21_MISSING_1W_IN_PREFIX]
+    assert all(start < stamp <= anchor for stamp in missing), "les six tombent dans le préfixe"
+    assert all(cc.last_stamp_at_or_before(s, cc.WEEK_MINUTES) == s for s in missing)
+    units = cc.expected_units(start, anchor, cc.WEEK_MINUTES)
+    assert units == 194
+    assert (units - len(missing)) / units < cc.COVERAGE_MIN_RATIO, "D1 échoue sur le 1 w"
+    prefix_days = (anchor - start).total_seconds() / 86400.0
+    assert cc.gap_days(1, cc.WEEK_MINUTES) == 7.0 <= cc.max_gap_days(prefix_days)
+
+
+def test_l_encart_v21_dit_ce_que_D2_mesure_sur_le_1w_de_SOL() -> None:
+    """Encart § A.8 v2.1 : « Au 2021-03-01, SOL en porte 29 (première estampille 1 w le 2020-08-17) ; la 50ᵉ
+    tombe le 2021-07-26 » — le régime 1 w exige 50 bougies."""
+    first = datetime(2020, 8, 17, tzinfo=UTC)
+    start = datetime(2021, 3, 1, tzinfo=UTC)
+    assert cc.weekly_stamps_in(first - timedelta(days=7), start) == 29
+    assert first + timedelta(weeks=49) == datetime(2021, 7, 26, tzinfo=UTC), "la 50ᵉ estampille"
+
+
+# ---------------------------------------------------------------------------
 # Fixtures synthétiques partagées (§ D.4 : « générées en code ») — importées par les autres
 # `test_c3_*.py` sous `test_scripts.test_c3_common`. Un monde synthétique conforme au contrat : une
 # fenêtre gelée, deux paires, une stratégie grid, N candidats par paire, un préfixe `train` et deux
