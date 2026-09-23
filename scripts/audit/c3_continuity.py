@@ -18,7 +18,7 @@ une preuve fausse, qui n'est jamais admissible.
 | c4 — amorçage à `T` (§ B.5, W-ancrage) | ``sufficient`` recalculé sur chaque série de décision → ``VERIFIED`` / ``FAILED`` ; déclaré ≠ recalculé = violation |
 | c5 — première exécution strictement après `T` (§ C.3) | ``first_fill_at`` absent → ``NOT_VERIFIABLE`` ; présent et `> T` → ``DECLARED`` ; `<= T` → ``FAILED`` |
 
-| ``stamp_cell`` — estampille de liquidation dans la cellule quotidienne finale (§ B.4) | dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED`` ; aucune estampille (bloc absent, `positions == 0`) → ``NOT_VERIFIABLE`` |
+| ``stamp_cell`` — estampille de liquidation dans la cellule quotidienne finale (§ B.4) | dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED`` ; aucune estampille (bloc absent, ou bloc qui ne liquide rien : `trades == 0`, estampille nulle) → ``NOT_VERIFIABLE``, satisfait à vide au verdict (§ B.4 v2.1) |
 | ``comparator`` — comparateur d'évaluation (§ C.5) | conjonction recalculée des tests déclarés **et de la fenêtre recoupée à [T, fin]** (``tests.window_ok``) → ``VERIFIED`` / ``FAILED`` ; ``comparable`` déclaré ≠ conjonction des cinq tests = violation |
 
 **La colonne « ce qui la décide » est une liste close par clause** (`cc.CLAUSE_ADMISSIBLE_STATES`,
@@ -213,9 +213,10 @@ def stamp_cell_block(
 ) -> dict[str, str]:
     """§ B.4 — l'estampille de liquidation et la borne finale dans la même cellule quotidienne.
 
-    Aucune estampille (bloc absent, ou ``positions == 0`` avec ``timestamp`` nul) → ``NOT_VERIFIABLE`` ;
-    dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED``. Le verdict en dérive
-    ``stamp_same_daily_cell`` (``VERIFIED`` seulement) et la raison ``E_STAMP_MISMATCH`` (§ I.1 l.11).
+    Aucune estampille (bloc absent, ou bloc qui ne liquide rien : ``trades == 0``, ``timestamp`` nul) →
+    ``NOT_VERIFIABLE`` ; dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED``. Le verdict en dérive
+    ``stamp_same_daily_cell`` (``VERIFIED`` seulement) et la raison ``E_STAMP_MISMATCH`` sur ``FAILED``
+    seulement : ``NOT_VERIFIABLE`` satisfait l'assertion à vide (§ B.4 v2.1).
     """
     if block is None:
         return _clause("NOT_VERIFIABLE", "aucun bloc de liquidation, aucune estampille à situer")

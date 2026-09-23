@@ -2724,15 +2724,8 @@ def test_revue_Fin_2_chaque_resume_contredit_est_une_violation(
             ),
             "E_STAMP_MISMATCH",
         ),
-        (
-            lambda c: (
-                c["stamp_cell"].__setitem__("state", "NOT_VERIFIABLE"),
-                c.__setitem__("stamp_same_daily_cell", False),
-            ),
-            "E_STAMP_MISMATCH",
-        ),
     ],
-    ids=["c4", "comparator", "stamp_FAILED", "stamp_NOT_VERIFIABLE"],
+    ids=["c4", "comparator", "stamp_FAILED"],
 )
 def test_revue_Fin_2_les_actions_se_branchent_sur_les_clauses_coherentes(
     tmp_path: Path, mutate_block: Any, expected: str
@@ -2750,6 +2743,36 @@ def test_revue_Fin_2_les_actions_se_branchent_sur_les_clauses_coherentes(
     assert (
         payload["raison"] == expected and payload["continuite"] == artifacts["continuity"]["state"]
     )
+
+
+def test_une_estampille_non_verifiable_est_satisfaite_a_vide(tmp_path: Path) -> None:
+    """§ B.4 v2.1 (AM-11) : « Quand il n'y a pas d'estampille […] l'assertion est satisfaite à vide […]. Cet
+    état est rapporté NON VÉRIFIABLE (aucune estampille), il ne produit pas E_STAMP_MISMATCH, et il ne bloque
+    pas validé » — seul `stamp_cell` FAILED produit la raison (cas `stamp_FAILED` ci-dessus)."""
+    artifacts = _sound()
+    continuity = artifacts["continuity"]
+    continuity["stamp_cell"]["state"] = "NOT_VERIFIABLE"
+    continuity["stamp_same_daily_cell"] = False
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.issue == cc.ISSUE_VALIDE and decision.reason is None
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_VALIDE and payload["raison"] is None
+
+
+def test_chain_une_evaluation_qui_ne_liquide_rien_peut_etre_validee(tmp_path: Path) -> None:
+    """§ B.4 v2.1 (AM-11), de bout en bout : un bloc de liquidation présent qui ne liquide rien
+    (`trades == 0`, lots vides, estampille nulle) — `stamp_cell` NON VÉRIFIABLE, clause 3 VÉRIFIÉE (identités
+    exactes, preuve par lot vide) — n'empêche pas `validé` : l'assertion de cellule est satisfaite à vide."""
+    w = _chain_world(tmp_path, liquidation_positions=0)
+    assert cv.main(_chain_argv(w)) == 0
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["stamp_cell"]["state"] == "NOT_VERIFIABLE"
+    assert continuity["clauses"]["c3"]["state"] == "VERIFIED"
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_VALIDE and payload["raison"] is None
+    assert payload["synthetic"] is True
 
 
 def test_revue_Fin_2_c3_FAILED_coherent_est_l_issue_non_definie_et_normalise_faux_seul_une_violation() -> (

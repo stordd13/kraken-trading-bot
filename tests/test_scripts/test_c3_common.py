@@ -1528,6 +1528,7 @@ def evaluation(
     synthetic: bool = True,
     lots: bool = True,
     liquidation: bool = True,
+    liquidation_positions: int = 2,
     single_call: bool = True,
     sufficient: bool = True,
     first_fill_at: datetime | None = ANCHOR + timedelta(minutes=EXEC_INTERVAL * 2),
@@ -1565,7 +1566,7 @@ def evaluation(
         liquidation_segment(
             pair,
             reference_price=reference,
-            positions=2,
+            positions=liquidation_positions,
             lots=lots,
             timestamp=WINDOW_END - timedelta(minutes=EXEC_INTERVAL),
         )

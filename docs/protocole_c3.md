@@ -921,7 +921,12 @@ clause est donc satisfaite **si et seulement si** l'évaluation est invoquée en
 unique l'évite par construction. Et la liquidation terminale du grid est estampillée au **dernier close
 négociable**, pas à la borne finale **[v]** `:3175-3179`. Le protocole **asserte**, sans jamais le supposer, que
 cette estampille et la borne finale tombent dans la **même cellule de la grille quotidienne** ; sinon
-`E_STAMP_MISMATCH`.
+`E_STAMP_MISMATCH`. **Quand il n'y a pas d'estampille** — le bloc de liquidation est présent et ne liquide
+rien (`trades == 0`, estampille nulle) : l'inventaire est nul à la borne par le jeu de la stratégie elle-même —
+l'assertion est **satisfaite à vide** : il n'y a rien à situer, et rien n'a été liquidé hors cellule. Cet état
+est rapporté `NON VÉRIFIABLE` (aucune estampille), **il ne produit pas `E_STAMP_MISMATCH`**, et il ne bloque
+pas `validé`. Un bloc de liquidation **absent** est un autre cas : c'est D6 et la clause 3 (§ B.3), pas
+celle-ci.
 
 ### B.5 Clause 4 — l'amorçage, deux contrôles distincts
 

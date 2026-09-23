@@ -636,8 +636,9 @@ def _continuity_actions(view: ContinuityView, *, retained: str) -> list[str]:
     résumés : l'évaluation doit être celle de la configuration retenue (§ H.1, sinon refus R0) ;
     c1, c2, c5 ``FAILED`` → refus R0 (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED``
     → ``UndefinedIssueError`` (convention datée du 21/09, plan § 6.1) ; c4 ``FAILED`` →
-    ``D_WARMUP_ANCHOR`` ; comparateur ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` non
-    ``VERIFIED`` → ``E_STAMP_MISMATCH`` (§ I.1 l.10-12). Quand plusieurs clauses sont ``FAILED``,
+    ``D_WARMUP_ANCHOR`` ; comparateur ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` ``FAILED`` →
+    ``E_STAMP_MISMATCH`` (§ I.1 l.10-12) — ``NOT_VERIFIABLE`` (aucune estampille) est satisfait à vide
+    (§ B.4 v2.1). Quand plusieurs clauses sont ``FAILED``,
     le refus R0 précède l'issue non définie (§ H : R0 avant toute autre chose)."""
     if view.derived_identity != retained:
         raise cc.EntryRefusedError(
@@ -659,7 +660,9 @@ def _continuity_actions(view: ContinuityView, *, retained: str) -> list[str]:
         reasons.append("D_WARMUP_ANCHOR")
     if view.comparator_state == "FAILED":
         reasons.append("E_NO_BENCHMARK")
-    if view.stamp_state != "VERIFIED":
+    # § B.4 v2.1 (AM-11) : aucune estampille (NOT_VERIFIABLE) satisfait l'assertion à vide — seule une
+    # estampille hors cellule la rompt.
+    if view.stamp_state == "FAILED":
         reasons.append("E_STAMP_MISMATCH")
     return reasons
 
