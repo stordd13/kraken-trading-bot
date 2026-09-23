@@ -1,0 +1,31 @@
+# collector_check — 2026-09-23T07:43:44Z, lecture seule ; fenêtre de l import 2026-09-23 07:09:44+00 -> 07:42:56+00
+-- collector Bybit après import (lecture seule) : dernière bougie 1m < 3 min ; 0 trou 1m par paire sur la fenêtre de l'import
+-- 2026-09-23 07:09:44+00 / 2026-09-23 07:42:56+00 = début / fin de l'import (UTC), substitués par sed avant exécution
+SELECT pair, max(timestamp) AS last_1m, now() - max(timestamp) AS age FROM market_data_ohlc WHERE exchange='bybit' AND interval=1 GROUP BY 1 ORDER BY 1;
+WITH s AS (
+  SELECT pair, timestamp, LAG(timestamp) OVER (PARTITION BY pair ORDER BY timestamp) AS prev
+  FROM market_data_ohlc WHERE exchange='bybit' AND interval=1 AND timestamp >= '2026-09-23 07:09:44+00' AND timestamp <= '2026-09-23 07:42:56+00'
+)
+SELECT pair, count(*) AS rows_in_window, count(*) FILTER (WHERE timestamp - prev > interval '1 minute') AS holes_gt_1m FROM s GROUP BY 1 ORDER BY 1;
+
+   pair   |        last_1m         |       age       
+----------+------------------------+-----------------
+ BTC/USDC | 2026-09-23 07:43:00+00 | 00:00:44.631272
+ ETH/USDC | 2026-09-23 07:43:00+00 | 00:00:44.631272
+ SOL/USDC | 2026-09-23 07:43:00+00 | 00:00:44.631272
+(3 rows)
+
+   pair   | rows_in_window | holes_gt_1m 
+----------+----------------+-------------
+ BTC/USDC |             33 |           0
+ ETH/USDC |             33 |           0
+ SOL/USDC |             33 |           0
+(3 rows)
+
+# journal collector (dernières lignes, warnings/erreurs sur la fenêtre)
+14
+Sep 23 07:33:27 krakenbot krakenbot-collector[2983145]: {"window_seconds": 300, "topic_messages_delta": 319, "pongs_delta": 15, "ohlc_received": 273, "resubscribes_24h": 0, "event": "bybit_ws_data_flow_ok", "level": "info", "logger": "krakenbot.connectors.bybit.ws", "timestamp": "2026-09-23T07:33:27.291624Z"}
+Sep 23 07:37:33 krakenbot krakenbot-collector[2983145]: {"uptime_seconds": 4507.44454, "websocket": {"messages_received": 5131, "ohlc_received": 288, "ticks_received": 497, "errors": 0, "reconnections": 0, "topic_messages": 4881, "pongs_received": 226, "resubscribes": 0}, "rest_client": {"orders_placed": 0, "orders_filled": 0, "orders_failed": 0, "api_calls": 0}, "scheduler": {"num_jobs": 1, "jobs": [{"id": "gap_backfill", "next_run": "2026-09-24T03:30:00+00:00"}]}, "event": "collector_periodic_stats", "level": "info", "logger": "__main__", "timestamp": "2026-09-23T07:37:33.125701Z"}
+Sep 23 07:38:27 krakenbot krakenbot-collector[2983145]: {"window_seconds": 300, "topic_messages_delta": 622, "pongs_delta": 15, "ohlc_received": 291, "resubscribes_24h": 0, "event": "bybit_ws_data_flow_ok", "level": "info", "logger": "krakenbot.connectors.bybit.ws", "timestamp": "2026-09-23T07:38:27.298107Z"}
+Sep 23 07:42:33 krakenbot krakenbot-collector[2983145]: {"uptime_seconds": 4807.82591, "websocket": {"messages_received": 5551, "ohlc_received": 306, "ticks_received": 538, "errors": 0, "reconnections": 0, "topic_messages": 5286, "pongs_received": 241, "resubscribes": 0}, "rest_client": {"orders_placed": 0, "orders_filled": 0, "orders_failed": 0, "api_calls": 0}, "scheduler": {"num_jobs": 1, "jobs": [{"id": "gap_backfill", "next_run": "2026-09-24T03:30:00+00:00"}]}, "event": "collector_periodic_stats", "level": "info", "logger": "__main__", "timestamp": "2026-09-23T07:42:33.506996Z"}
+Sep 23 07:43:27 krakenbot krakenbot-collector[2983145]: {"window_seconds": 300, "topic_messages_delta": 429, "pongs_delta": 15, "ohlc_received": 309, "resubscribes_24h": 0, "event": "bybit_ws_data_flow_ok", "level": "info", "logger": "krakenbot.connectors.bybit.ws", "timestamp": "2026-09-23T07:43:27.305609Z"}

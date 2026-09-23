@@ -1,0 +1,45 @@
+# Comptage des événements du journal import_usdt.log (2026-09-23T07:43:24Z)
+file_not_found     6
+download_failed    0
+month_failed       0
+parse_error        0
+zip_extract_error  0
+imported_batch     1218
+imported           1218
+downloading        1224
+progress           24
+# file_not_found (urls)
+https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2026-07.zip
+https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2026-08.zip
+https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2026-07.zip
+https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2026-08.zip
+https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2026-07.zip
+https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2026-08.zip
+# imported par (pair, interval) — fichiers et rows
+BTC/USDT 15m files=68 rows=198554
+BTC/USDT 1d files=68 rows=2069
+BTC/USDT 1h files=68 rows=49642
+BTC/USDT 1w files=66 rows=279
+BTC/USDT 4h files=68 rows=12414
+BTC/USDT 5m files=68 rows=595659
+ETH/USDT 15m files=68 rows=198554
+ETH/USDT 1d files=68 rows=2069
+ETH/USDT 1h files=68 rows=49642
+ETH/USDT 1w files=66 rows=279
+ETH/USDT 4h files=68 rows=12414
+ETH/USDT 5m files=68 rows=595659
+SOL/USDT 15m files=68 rows=198554
+SOL/USDT 1d files=68 rows=2069
+SOL/USDT 1h files=68 rows=49642
+SOL/USDT 1w files=66 rows=279
+SOL/USDT 4h files=68 rows=12414
+SOL/USDT 5m files=68 rows=595659
+# ANSI check
+0
+# head / tail
+=== 2026-09-23T07:09:44Z import start on 8fdaa2ab94a274e04095d7124d546eb0cd14c961 (dev) ; df: 53G free
+2026-09-23 07:09:45 [info     ] import_plan                    intervals=['5m', '15m', '1h', '4h', '1d', '1w'] months_count=68 pairs=['BTC/USDT', 'ETH/USDT', 'SOL/USDT'] total_files=1224
+2026-09-23 07:09:46 [info     ] initializing_database          echo=False max_overflow=10 pool_size=5
+2026-09-23 07:42:56 [info     ] database_closed
+2026-09-23 07:42:56 [info     ] import_complete                failed_files=0 processed_files=1224 total_rows=2575851
+=== 2026-09-23T07:42:56Z import exit=0 ; df: 53G free

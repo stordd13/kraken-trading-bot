@@ -1,0 +1,4528 @@
+{
+  "conventions": {
+    "expected": "stamps de la grille dans [premier, dernier] (c3_common.expected_candles + 1)",
+    "hole": "LAG SQL ; bougies manquantes = (fin - début) / pas - 1 (None si hors grille) ; days = fin - début - pas (intervalle sans bougie) ; span_days = fin - début",
+    "observation_bound": "toute requête bornée par timestamp <= generated_at",
+    "required_levels": [
+      14,
+      50,
+      200
+    ],
+    "same_event": "les deux bornes à au plus un pas du timeframe des bornes de la série 1 min",
+    "stamp": "fin de période (timestamp = open + interval), PK (timestamp, pair, interval, exchange)",
+    "usdc_hole": "trou de plus longue durée intersectant le zoom [2022-01-01, 2023-07-01)",
+    "warmup_rule": "C2 : loaded >= required, stale_by_candles == 0, largest_gap_candles <= 1 ; S = premier stamp après le trou + (required - 1) x pas sur grille réelle (trou d'une bougie toléré, trou >= 2 renvoie au suivant)",
+    "weekly": "pas de 7 jours, grille ancrée au lundi 00:00 UTC (c3_common.WEEK_MINUTES)"
+  },
+  "db_session": {
+    "statement_timeout": "5min",
+    "transaction_read_only": "on"
+  },
+  "fact1_binance": {
+    "BTC/USDC": {
+      "1": {
+        "count": 2521597,
+        "expected": 2759040,
+        "first": "2021-01-01T00:01:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.054861,
+            "end": "2021-02-11T05:01:00+00:00",
+            "missing": 79,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:41:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:31:00+00:00",
+            "missing": 90,
+            "on_grid": true,
+            "span_days": 0.063194,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:31:00+00:00",
+            "missing": 150,
+            "on_grid": true,
+            "span_days": 0.104861,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.197222,
+            "end": "2021-04-25T08:46:00+00:00",
+            "missing": 284,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:01:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:31:00+00:00",
+            "missing": 270,
+            "on_grid": true,
+            "span_days": 0.188194,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:01:00+00:00",
+            "missing": 120,
+            "on_grid": true,
+            "span_days": 0.084028,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:31:00+00:00",
+            "missing": 236370,
+            "on_grid": true,
+            "span_days": 164.146528,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:01:00+00:00",
+            "missing": 80,
+            "on_grid": true,
+            "span_days": 0.05625,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 8,
+        "holes_in_zoom": [
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:31:00+00:00",
+            "missing": 236370,
+            "on_grid": true,
+            "span_days": 164.146528,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:01:00+00:00",
+            "missing": 80,
+            "on_grid": true,
+            "span_days": 0.05625,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 237443,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 236370,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 237443
+      },
+      "10080": {
+        "count": 246,
+        "expected": 274,
+        "first": "2021-01-11T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 161.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 23,
+            "on_grid": true,
+            "span_days": 168.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-02-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-01-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-03-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-02-24T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 5,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 161.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 23,
+            "on_grid": true,
+            "span_days": 168.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 28,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 23,
+        "last": "2026-04-06T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 28
+      },
+      "1440": {
+        "count": 1753,
+        "expected": 1916,
+        "first": "2021-01-02T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 163.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 163,
+            "on_grid": true,
+            "span_days": 164.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 163.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 163,
+            "on_grid": true,
+            "span_days": 164.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 163,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 163,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 163
+      },
+      "15": {
+        "count": 168108,
+        "expected": 183936,
+        "first": "2021-01-01T00:15:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:45:00+00:00",
+            "missing": 6,
+            "on_grid": true,
+            "span_days": 0.072917,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:45:00+00:00",
+            "missing": 10,
+            "on_grid": true,
+            "span_days": 0.114583,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:15:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:45:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:15:00+00:00",
+            "missing": 8,
+            "on_grid": true,
+            "span_days": 0.09375,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:45:00+00:00",
+            "missing": 15758,
+            "on_grid": true,
+            "span_days": 164.15625,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 8,
+        "holes_in_zoom": [
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:45:00+00:00",
+            "missing": 15758,
+            "on_grid": true,
+            "span_days": 164.15625,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 15828,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 15758,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 15828
+      },
+      "240": {
+        "count": 10512,
+        "expected": 11496,
+        "first": "2021-01-01T04:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 164.0,
+            "end": "2023-03-12T08:00:00+00:00",
+            "missing": 984,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 164.0,
+            "end": "2023-03-12T08:00:00+00:00",
+            "missing": 984,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 984,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 984,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 984
+      },
+      "5": {
+        "count": 504321,
+        "expected": 551808,
+        "first": "2021-01-01T00:05:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:35:00+00:00",
+            "missing": 47274,
+            "on_grid": true,
+            "span_days": 164.149306,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 8,
+        "holes_in_zoom": [
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:35:00+00:00",
+            "missing": 47274,
+            "on_grid": true,
+            "span_days": 164.149306,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 47487,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 47274,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 47487
+      },
+      "60": {
+        "count": 42031,
+        "expected": 45984,
+        "first": "2021-01-01T01:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.041667,
+            "end": "2021-02-11T06:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-02-11T04:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2021-03-06T04:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-04-20T05:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.125,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 3,
+            "on_grid": true,
+            "span_days": 0.166667,
+            "start": "2021-04-25T05:00:00+00:00"
+          },
+          {
+            "days": 0.166667,
+            "end": "2021-08-13T07:00:00+00:00",
+            "missing": 4,
+            "on_grid": true,
+            "span_days": 0.208333,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T10:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 164.125,
+            "end": "2023-03-12T07:00:00+00:00",
+            "missing": 3939,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_1": 3,
+        "holes_ge2": 5,
+        "holes_in_zoom": [
+          {
+            "days": 164.125,
+            "end": "2023-03-12T07:00:00+00:00",
+            "missing": 3939,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 3953,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 3939,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 3953
+      }
+    },
+    "BTC/USDT": {
+      "10080": {
+        "count": 279,
+        "expected": 287,
+        "first": "2021-01-11T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-10-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-11-14T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-10-31T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-12-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-11-28T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-02-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-01-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-03-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-02-24T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 8,
+        "holes_ge2": 0,
+        "holes_in_zoom": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-10-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-11-14T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-10-31T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-12-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-11-28T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 8,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 1,
+        "last": "2026-07-06T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 8
+      },
+      "1440": {
+        "count": 2069,
+        "expected": 2069,
+        "first": "2021-01-02T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [],
+        "holes_1": 0,
+        "holes_ge2": 0,
+        "holes_in_zoom": [],
+        "holes_missing_sum": 0,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 0,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 0
+      },
+      "15": {
+        "count": 198554,
+        "expected": 198624,
+        "first": "2021-01-01T00:15:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:45:00+00:00",
+            "missing": 6,
+            "on_grid": true,
+            "span_days": 0.072917,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:45:00+00:00",
+            "missing": 10,
+            "on_grid": true,
+            "span_days": 0.114583,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:15:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:45:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:15:00+00:00",
+            "missing": 8,
+            "on_grid": true,
+            "span_days": 0.09375,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 7,
+        "holes_in_zoom": [
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 70,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 18,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 70
+      },
+      "240": {
+        "count": 12414,
+        "expected": 12414,
+        "first": "2021-01-01T04:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [],
+        "holes_1": 0,
+        "holes_ge2": 0,
+        "holes_in_zoom": [],
+        "holes_missing_sum": 0,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 0,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 0
+      },
+      "5": {
+        "count": 595659,
+        "expected": 595872,
+        "first": "2021-01-01T00:05:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 7,
+        "holes_in_zoom": [
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 213,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 56,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 213
+      },
+      "60": {
+        "count": 49642,
+        "expected": 49656,
+        "first": "2021-01-01T01:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.041667,
+            "end": "2021-02-11T06:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-02-11T04:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2021-03-06T04:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-04-20T05:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.125,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 3,
+            "on_grid": true,
+            "span_days": 0.166667,
+            "start": "2021-04-25T05:00:00+00:00"
+          },
+          {
+            "days": 0.166667,
+            "end": "2021-08-13T07:00:00+00:00",
+            "missing": 4,
+            "on_grid": true,
+            "span_days": 0.208333,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T10:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_1": 3,
+        "holes_ge2": 4,
+        "holes_in_zoom": [
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 14,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 4,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 14
+      }
+    },
+    "ETH/USDC": {
+      "1": {
+        "count": 2521597,
+        "expected": 2759040,
+        "first": "2021-01-01T00:01:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.054861,
+            "end": "2021-02-11T05:01:00+00:00",
+            "missing": 79,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:41:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:31:00+00:00",
+            "missing": 90,
+            "on_grid": true,
+            "span_days": 0.063194,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:31:00+00:00",
+            "missing": 150,
+            "on_grid": true,
+            "span_days": 0.104861,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.197222,
+            "end": "2021-04-25T08:46:00+00:00",
+            "missing": 284,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:01:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:31:00+00:00",
+            "missing": 270,
+            "on_grid": true,
+            "span_days": 0.188194,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:01:00+00:00",
+            "missing": 120,
+            "on_grid": true,
+            "span_days": 0.084028,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:31:00+00:00",
+            "missing": 236370,
+            "on_grid": true,
+            "span_days": 164.146528,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:01:00+00:00",
+            "missing": 80,
+            "on_grid": true,
+            "span_days": 0.05625,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 8,
+        "holes_in_zoom": [
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:31:00+00:00",
+            "missing": 236370,
+            "on_grid": true,
+            "span_days": 164.146528,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:01:00+00:00",
+            "missing": 80,
+            "on_grid": true,
+            "span_days": 0.05625,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 237443,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 236370,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 237443
+      },
+      "10080": {
+        "count": 246,
+        "expected": 274,
+        "first": "2021-01-11T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 161.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 23,
+            "on_grid": true,
+            "span_days": 168.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-02-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-01-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-03-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-02-24T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 5,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 161.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 23,
+            "on_grid": true,
+            "span_days": 168.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 28,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 23,
+        "last": "2026-04-06T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 28
+      },
+      "1440": {
+        "count": 1753,
+        "expected": 1916,
+        "first": "2021-01-02T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 163.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 163,
+            "on_grid": true,
+            "span_days": 164.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 163.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 163,
+            "on_grid": true,
+            "span_days": 164.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 163,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 163,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 163
+      },
+      "15": {
+        "count": 168108,
+        "expected": 183936,
+        "first": "2021-01-01T00:15:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:45:00+00:00",
+            "missing": 6,
+            "on_grid": true,
+            "span_days": 0.072917,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:45:00+00:00",
+            "missing": 10,
+            "on_grid": true,
+            "span_days": 0.114583,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:15:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:45:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:15:00+00:00",
+            "missing": 8,
+            "on_grid": true,
+            "span_days": 0.09375,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:45:00+00:00",
+            "missing": 15758,
+            "on_grid": true,
+            "span_days": 164.15625,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 8,
+        "holes_in_zoom": [
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:45:00+00:00",
+            "missing": 15758,
+            "on_grid": true,
+            "span_days": 164.15625,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 15828,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 15758,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 15828
+      },
+      "240": {
+        "count": 10512,
+        "expected": 11496,
+        "first": "2021-01-01T04:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 164.0,
+            "end": "2023-03-12T08:00:00+00:00",
+            "missing": 984,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 164.0,
+            "end": "2023-03-12T08:00:00+00:00",
+            "missing": 984,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 984,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 984,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 984
+      },
+      "5": {
+        "count": 504321,
+        "expected": 551808,
+        "first": "2021-01-01T00:05:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:35:00+00:00",
+            "missing": 47274,
+            "on_grid": true,
+            "span_days": 164.149306,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 8,
+        "holes_in_zoom": [
+          {
+            "days": 164.145833,
+            "end": "2023-03-12T06:35:00+00:00",
+            "missing": 47274,
+            "on_grid": true,
+            "span_days": 164.149306,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 47487,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 47274,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 47487
+      },
+      "60": {
+        "count": 42031,
+        "expected": 45984,
+        "first": "2021-01-01T01:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.041667,
+            "end": "2021-02-11T06:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-02-11T04:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2021-03-06T04:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-04-20T05:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.125,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 3,
+            "on_grid": true,
+            "span_days": 0.166667,
+            "start": "2021-04-25T05:00:00+00:00"
+          },
+          {
+            "days": 0.166667,
+            "end": "2021-08-13T07:00:00+00:00",
+            "missing": 4,
+            "on_grid": true,
+            "span_days": 0.208333,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T10:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 164.125,
+            "end": "2023-03-12T07:00:00+00:00",
+            "missing": 3939,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_1": 3,
+        "holes_ge2": 5,
+        "holes_in_zoom": [
+          {
+            "days": 164.125,
+            "end": "2023-03-12T07:00:00+00:00",
+            "missing": 3939,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 3953,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 3939,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 3953
+      }
+    },
+    "ETH/USDT": {
+      "10080": {
+        "count": 279,
+        "expected": 287,
+        "first": "2021-01-11T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-10-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-11-14T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-10-31T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-12-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-11-28T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-02-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-01-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-03-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-02-24T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 8,
+        "holes_ge2": 0,
+        "holes_in_zoom": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-10-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-11-14T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-10-31T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-12-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-11-28T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 8,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 1,
+        "last": "2026-07-06T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 8
+      },
+      "1440": {
+        "count": 2069,
+        "expected": 2069,
+        "first": "2021-01-02T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [],
+        "holes_1": 0,
+        "holes_ge2": 0,
+        "holes_in_zoom": [],
+        "holes_missing_sum": 0,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 0,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 0
+      },
+      "15": {
+        "count": 198554,
+        "expected": 198624,
+        "first": "2021-01-01T00:15:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:45:00+00:00",
+            "missing": 6,
+            "on_grid": true,
+            "span_days": 0.072917,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:45:00+00:00",
+            "missing": 10,
+            "on_grid": true,
+            "span_days": 0.114583,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:15:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:45:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:15:00+00:00",
+            "missing": 8,
+            "on_grid": true,
+            "span_days": 0.09375,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 7,
+        "holes_in_zoom": [
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 70,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 18,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 70
+      },
+      "240": {
+        "count": 12414,
+        "expected": 12414,
+        "first": "2021-01-01T04:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [],
+        "holes_1": 0,
+        "holes_ge2": 0,
+        "holes_in_zoom": [],
+        "holes_missing_sum": 0,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 0,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 0
+      },
+      "5": {
+        "count": 595659,
+        "expected": 595872,
+        "first": "2021-01-01T00:05:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 7,
+        "holes_in_zoom": [
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 213,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 56,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 213
+      },
+      "60": {
+        "count": 49642,
+        "expected": 49656,
+        "first": "2021-01-01T01:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.041667,
+            "end": "2021-02-11T06:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-02-11T04:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2021-03-06T04:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-04-20T05:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.125,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 3,
+            "on_grid": true,
+            "span_days": 0.166667,
+            "start": "2021-04-25T05:00:00+00:00"
+          },
+          {
+            "days": 0.166667,
+            "end": "2021-08-13T07:00:00+00:00",
+            "missing": 4,
+            "on_grid": true,
+            "span_days": 0.208333,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T10:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_1": 3,
+        "holes_ge2": 4,
+        "holes_in_zoom": [
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 14,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 4,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 14
+      }
+    },
+    "SOL/USDC": {
+      "1": {
+        "count": 1719780,
+        "expected": 2375400,
+        "first": "2021-09-24T10:01:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:01:00+00:00",
+            "missing": 120,
+            "on_grid": true,
+            "span_days": 0.084028,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 455.208333,
+            "end": "2023-12-28T08:01:00+00:00",
+            "missing": 655500,
+            "on_grid": true,
+            "span_days": 455.209028,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 2,
+        "holes_in_zoom": [
+          {
+            "days": 455.208333,
+            "end": "2023-12-28T08:01:00+00:00",
+            "missing": 655500,
+            "on_grid": true,
+            "span_days": 455.209028,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 655620,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 655500,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 655620
+      },
+      "10080": {
+        "count": 168,
+        "expected": 237,
+        "first": "2021-09-27T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 448.0,
+            "end": "2024-01-01T00:00:00+00:00",
+            "missing": 64,
+            "on_grid": true,
+            "span_days": 455.0,
+            "start": "2022-10-03T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-02-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-01-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-03-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-02-24T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 5,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 448.0,
+            "end": "2024-01-01T00:00:00+00:00",
+            "missing": 64,
+            "on_grid": true,
+            "span_days": 455.0,
+            "start": "2022-10-03T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 69,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 64,
+        "last": "2026-04-06T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 69
+      },
+      "1440": {
+        "count": 1196,
+        "expected": 1650,
+        "first": "2021-09-25T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 454.0,
+            "end": "2023-12-29T00:00:00+00:00",
+            "missing": 454,
+            "on_grid": true,
+            "span_days": 455.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 454.0,
+            "end": "2023-12-29T00:00:00+00:00",
+            "missing": 454,
+            "on_grid": true,
+            "span_days": 455.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 454,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 454,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 454
+      },
+      "15": {
+        "count": 114652,
+        "expected": 158360,
+        "first": "2021-09-24T10:15:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:15:00+00:00",
+            "missing": 8,
+            "on_grid": true,
+            "span_days": 0.09375,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 455.208333,
+            "end": "2023-12-28T08:15:00+00:00",
+            "missing": 43700,
+            "on_grid": true,
+            "span_days": 455.21875,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 2,
+        "holes_in_zoom": [
+          {
+            "days": 455.208333,
+            "end": "2023-12-28T08:15:00+00:00",
+            "missing": 43700,
+            "on_grid": true,
+            "span_days": 455.21875,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 43708,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 43700,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 43708
+      },
+      "240": {
+        "count": 7167,
+        "expected": 9898,
+        "first": "2021-09-24T12:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 455.166667,
+            "end": "2023-12-28T12:00:00+00:00",
+            "missing": 2731,
+            "on_grid": true,
+            "span_days": 455.333333,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 1,
+        "holes_in_zoom": [
+          {
+            "days": 455.166667,
+            "end": "2023-12-28T12:00:00+00:00",
+            "missing": 2731,
+            "on_grid": true,
+            "span_days": 455.333333,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 2731,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 2731,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 2731
+      },
+      "5": {
+        "count": 343956,
+        "expected": 475080,
+        "first": "2021-09-24T10:05:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 455.208333,
+            "end": "2023-12-28T08:05:00+00:00",
+            "missing": 131100,
+            "on_grid": true,
+            "span_days": 455.211806,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 2,
+        "holes_in_zoom": [
+          {
+            "days": 455.208333,
+            "end": "2023-12-28T08:05:00+00:00",
+            "missing": 131100,
+            "on_grid": true,
+            "span_days": 455.211806,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 131124,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 131100,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 131124
+      },
+      "60": {
+        "count": 28663,
+        "expected": 39590,
+        "first": "2021-09-24T11:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T10:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 455.208333,
+            "end": "2023-12-28T09:00:00+00:00",
+            "missing": 10925,
+            "on_grid": true,
+            "span_days": 455.25,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 2,
+        "holes_in_zoom": [
+          {
+            "days": 455.208333,
+            "end": "2023-12-28T09:00:00+00:00",
+            "missing": 10925,
+            "on_grid": true,
+            "span_days": 455.25,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 10927,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 10925,
+        "last": "2026-04-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 10927
+      }
+    },
+    "SOL/USDT": {
+      "10080": {
+        "count": 279,
+        "expected": 287,
+        "first": "2021-01-11T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-10-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-11-14T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-10-31T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-12-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-11-28T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-02-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-01-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2025-03-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2025-02-24T00:00:00+00:00"
+          }
+        ],
+        "holes_1": 8,
+        "holes_ge2": 0,
+        "holes_in_zoom": [
+          {
+            "days": 7.0,
+            "end": "2022-06-13T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-05-30T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-07-11T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-06-27T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-09-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-08-29T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-10-10T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-11-14T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-10-31T00:00:00+00:00"
+          },
+          {
+            "days": 7.0,
+            "end": "2022-12-12T00:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 14.0,
+            "start": "2022-11-28T00:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 8,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 1,
+        "last": "2026-07-06T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 8
+      },
+      "1440": {
+        "count": 2069,
+        "expected": 2069,
+        "first": "2021-01-02T00:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [],
+        "holes_1": 0,
+        "holes_ge2": 0,
+        "holes_in_zoom": [],
+        "holes_missing_sum": 0,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 0,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 0
+      },
+      "15": {
+        "count": 198554,
+        "expected": 198624,
+        "first": "2021-01-01T00:15:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:45:00+00:00",
+            "missing": 6,
+            "on_grid": true,
+            "span_days": 0.072917,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:45:00+00:00",
+            "missing": 10,
+            "on_grid": true,
+            "span_days": 0.114583,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:15:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:45:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:15:00+00:00",
+            "missing": 8,
+            "on_grid": true,
+            "span_days": 0.09375,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 7,
+        "holes_in_zoom": [
+          {
+            "days": 0.052083,
+            "end": "2023-03-24T14:15:00+00:00",
+            "missing": 5,
+            "on_grid": true,
+            "span_days": 0.0625,
+            "start": "2023-03-24T12:45:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 70,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 18,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 70
+      },
+      "240": {
+        "count": 12414,
+        "expected": 12414,
+        "first": "2021-01-01T04:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [],
+        "holes_1": 0,
+        "holes_ge2": 0,
+        "holes_in_zoom": [],
+        "holes_missing_sum": 0,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 0,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 0
+      },
+      "5": {
+        "count": 595659,
+        "expected": 595872,
+        "first": "2021-01-01T00:05:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_1": 0,
+        "holes_ge2": 7,
+        "holes_in_zoom": [
+          {
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 213,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 56,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 213
+      },
+      "60": {
+        "count": 49642,
+        "expected": 49656,
+        "first": "2021-01-01T01:00:00+00:00",
+        "first_on_grid": true,
+        "holes": [
+          {
+            "days": 0.041667,
+            "end": "2021-02-11T06:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-02-11T04:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2021-03-06T04:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-04-20T05:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "days": 0.125,
+            "end": "2021-04-25T09:00:00+00:00",
+            "missing": 3,
+            "on_grid": true,
+            "span_days": 0.166667,
+            "start": "2021-04-25T05:00:00+00:00"
+          },
+          {
+            "days": 0.166667,
+            "end": "2021-08-13T07:00:00+00:00",
+            "missing": 4,
+            "on_grid": true,
+            "span_days": 0.208333,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "days": 0.083333,
+            "end": "2021-09-29T10:00:00+00:00",
+            "missing": 2,
+            "on_grid": true,
+            "span_days": 0.125,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_1": 3,
+        "holes_ge2": 4,
+        "holes_in_zoom": [
+          {
+            "days": 0.041667,
+            "end": "2023-03-24T15:00:00+00:00",
+            "missing": 1,
+            "on_grid": true,
+            "span_days": 0.083333,
+            "start": "2023-03-24T13:00:00+00:00"
+          }
+        ],
+        "holes_missing_sum": 14,
+        "holes_unmeasurable": 0,
+        "largest_missing_run": 4,
+        "last": "2026-09-01T00:00:00+00:00",
+        "last_on_grid": true,
+        "missing": 14
+      }
+    }
+  },
+  "fact2_usdc_hole": {
+    "BTC/USDC": {
+      "all_same_event": true,
+      "intervals_same_event": 7,
+      "intervals_with_hole": 7,
+      "per_interval": {
+        "1": {
+          "days": 164.145833,
+          "delta_after_minutes": 0,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-12T06:31:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 236370,
+          "same_event": true,
+          "tolerance_minutes": 1
+        },
+        "10080": {
+          "days": 161.0,
+          "delta_after_minutes": 1049,
+          "delta_before_minutes": -4500,
+          "first_after": "2023-03-13T00:00:00+00:00",
+          "last_before": "2022-09-26T00:00:00+00:00",
+          "missing": 23,
+          "same_event": true,
+          "tolerance_minutes": 10080
+        },
+        "1440": {
+          "days": 163.0,
+          "delta_after_minutes": 1049,
+          "delta_before_minutes": 1260,
+          "first_after": "2023-03-13T00:00:00+00:00",
+          "last_before": "2022-09-30T00:00:00+00:00",
+          "missing": 163,
+          "same_event": true,
+          "tolerance_minutes": 1440
+        },
+        "15": {
+          "days": 164.145833,
+          "delta_after_minutes": 14,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-12T06:45:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 15758,
+          "same_event": true,
+          "tolerance_minutes": 15
+        },
+        "240": {
+          "days": 164.0,
+          "delta_after_minutes": 89,
+          "delta_before_minutes": 60,
+          "first_after": "2023-03-12T08:00:00+00:00",
+          "last_before": "2022-09-29T04:00:00+00:00",
+          "missing": 984,
+          "same_event": true,
+          "tolerance_minutes": 240
+        },
+        "5": {
+          "days": 164.145833,
+          "delta_after_minutes": 4,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-12T06:35:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 47274,
+          "same_event": true,
+          "tolerance_minutes": 5
+        },
+        "60": {
+          "days": 164.125,
+          "delta_after_minutes": 29,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-12T07:00:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 3939,
+          "same_event": true,
+          "tolerance_minutes": 60
+        }
+      },
+      "reference_interval": 1
+    },
+    "BTC/USDT": {
+      "all_same_event": false,
+      "intervals_same_event": 3,
+      "intervals_with_hole": 4,
+      "per_interval": {
+        "10080": {
+          "days": 7.0,
+          "delta_after_minutes": -409805,
+          "delta_before_minutes": -429880,
+          "first_after": "2022-06-13T00:00:00+00:00",
+          "last_before": "2022-05-30T00:00:00+00:00",
+          "missing": 1,
+          "same_event": false,
+          "tolerance_minutes": 10080
+        },
+        "1440": null,
+        "15": {
+          "days": 0.052083,
+          "delta_after_minutes": 10,
+          "delta_before_minutes": 5,
+          "first_after": "2023-03-24T14:15:00+00:00",
+          "last_before": "2023-03-24T12:45:00+00:00",
+          "missing": 5,
+          "same_event": true,
+          "tolerance_minutes": 15
+        },
+        "240": null,
+        "5": {
+          "days": 0.055556,
+          "delta_after_minutes": 0,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-24T14:05:00+00:00",
+          "last_before": "2023-03-24T12:40:00+00:00",
+          "missing": 16,
+          "same_event": true,
+          "tolerance_minutes": 5
+        },
+        "60": {
+          "days": 0.041667,
+          "delta_after_minutes": 55,
+          "delta_before_minutes": 20,
+          "first_after": "2023-03-24T15:00:00+00:00",
+          "last_before": "2023-03-24T13:00:00+00:00",
+          "missing": 1,
+          "same_event": true,
+          "tolerance_minutes": 60
+        }
+      },
+      "reference_interval": 5
+    },
+    "ETH/USDC": {
+      "all_same_event": true,
+      "intervals_same_event": 7,
+      "intervals_with_hole": 7,
+      "per_interval": {
+        "1": {
+          "days": 164.145833,
+          "delta_after_minutes": 0,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-12T06:31:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 236370,
+          "same_event": true,
+          "tolerance_minutes": 1
+        },
+        "10080": {
+          "days": 161.0,
+          "delta_after_minutes": 1049,
+          "delta_before_minutes": -4500,
+          "first_after": "2023-03-13T00:00:00+00:00",
+          "last_before": "2022-09-26T00:00:00+00:00",
+          "missing": 23,
+          "same_event": true,
+          "tolerance_minutes": 10080
+        },
+        "1440": {
+          "days": 163.0,
+          "delta_after_minutes": 1049,
+          "delta_before_minutes": 1260,
+          "first_after": "2023-03-13T00:00:00+00:00",
+          "last_before": "2022-09-30T00:00:00+00:00",
+          "missing": 163,
+          "same_event": true,
+          "tolerance_minutes": 1440
+        },
+        "15": {
+          "days": 164.145833,
+          "delta_after_minutes": 14,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-12T06:45:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 15758,
+          "same_event": true,
+          "tolerance_minutes": 15
+        },
+        "240": {
+          "days": 164.0,
+          "delta_after_minutes": 89,
+          "delta_before_minutes": 60,
+          "first_after": "2023-03-12T08:00:00+00:00",
+          "last_before": "2022-09-29T04:00:00+00:00",
+          "missing": 984,
+          "same_event": true,
+          "tolerance_minutes": 240
+        },
+        "5": {
+          "days": 164.145833,
+          "delta_after_minutes": 4,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-12T06:35:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 47274,
+          "same_event": true,
+          "tolerance_minutes": 5
+        },
+        "60": {
+          "days": 164.125,
+          "delta_after_minutes": 29,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-12T07:00:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 3939,
+          "same_event": true,
+          "tolerance_minutes": 60
+        }
+      },
+      "reference_interval": 1
+    },
+    "ETH/USDT": {
+      "all_same_event": false,
+      "intervals_same_event": 3,
+      "intervals_with_hole": 4,
+      "per_interval": {
+        "10080": {
+          "days": 7.0,
+          "delta_after_minutes": -409805,
+          "delta_before_minutes": -429880,
+          "first_after": "2022-06-13T00:00:00+00:00",
+          "last_before": "2022-05-30T00:00:00+00:00",
+          "missing": 1,
+          "same_event": false,
+          "tolerance_minutes": 10080
+        },
+        "1440": null,
+        "15": {
+          "days": 0.052083,
+          "delta_after_minutes": 10,
+          "delta_before_minutes": 5,
+          "first_after": "2023-03-24T14:15:00+00:00",
+          "last_before": "2023-03-24T12:45:00+00:00",
+          "missing": 5,
+          "same_event": true,
+          "tolerance_minutes": 15
+        },
+        "240": null,
+        "5": {
+          "days": 0.055556,
+          "delta_after_minutes": 0,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-24T14:05:00+00:00",
+          "last_before": "2023-03-24T12:40:00+00:00",
+          "missing": 16,
+          "same_event": true,
+          "tolerance_minutes": 5
+        },
+        "60": {
+          "days": 0.041667,
+          "delta_after_minutes": 55,
+          "delta_before_minutes": 20,
+          "first_after": "2023-03-24T15:00:00+00:00",
+          "last_before": "2023-03-24T13:00:00+00:00",
+          "missing": 1,
+          "same_event": true,
+          "tolerance_minutes": 60
+        }
+      },
+      "reference_interval": 5
+    },
+    "SOL/USDC": {
+      "all_same_event": true,
+      "intervals_same_event": 7,
+      "intervals_with_hole": 7,
+      "per_interval": {
+        "1": {
+          "days": 455.208333,
+          "delta_after_minutes": 0,
+          "delta_before_minutes": 0,
+          "first_after": "2023-12-28T08:01:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 655500,
+          "same_event": true,
+          "tolerance_minutes": 1
+        },
+        "10080": {
+          "days": 448.0,
+          "delta_after_minutes": 5279,
+          "delta_before_minutes": 5580,
+          "first_after": "2024-01-01T00:00:00+00:00",
+          "last_before": "2022-10-03T00:00:00+00:00",
+          "missing": 64,
+          "same_event": true,
+          "tolerance_minutes": 10080
+        },
+        "1440": {
+          "days": 454.0,
+          "delta_after_minutes": 959,
+          "delta_before_minutes": 1260,
+          "first_after": "2023-12-29T00:00:00+00:00",
+          "last_before": "2022-09-30T00:00:00+00:00",
+          "missing": 454,
+          "same_event": true,
+          "tolerance_minutes": 1440
+        },
+        "15": {
+          "days": 455.208333,
+          "delta_after_minutes": 14,
+          "delta_before_minutes": 0,
+          "first_after": "2023-12-28T08:15:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 43700,
+          "same_event": true,
+          "tolerance_minutes": 15
+        },
+        "240": {
+          "days": 455.166667,
+          "delta_after_minutes": 239,
+          "delta_before_minutes": 60,
+          "first_after": "2023-12-28T12:00:00+00:00",
+          "last_before": "2022-09-29T04:00:00+00:00",
+          "missing": 2731,
+          "same_event": true,
+          "tolerance_minutes": 240
+        },
+        "5": {
+          "days": 455.208333,
+          "delta_after_minutes": 4,
+          "delta_before_minutes": 0,
+          "first_after": "2023-12-28T08:05:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 131100,
+          "same_event": true,
+          "tolerance_minutes": 5
+        },
+        "60": {
+          "days": 455.208333,
+          "delta_after_minutes": 59,
+          "delta_before_minutes": 0,
+          "first_after": "2023-12-28T09:00:00+00:00",
+          "last_before": "2022-09-29T03:00:00+00:00",
+          "missing": 10925,
+          "same_event": true,
+          "tolerance_minutes": 60
+        }
+      },
+      "reference_interval": 1
+    },
+    "SOL/USDT": {
+      "all_same_event": false,
+      "intervals_same_event": 3,
+      "intervals_with_hole": 4,
+      "per_interval": {
+        "10080": {
+          "days": 7.0,
+          "delta_after_minutes": -409805,
+          "delta_before_minutes": -429880,
+          "first_after": "2022-06-13T00:00:00+00:00",
+          "last_before": "2022-05-30T00:00:00+00:00",
+          "missing": 1,
+          "same_event": false,
+          "tolerance_minutes": 10080
+        },
+        "1440": null,
+        "15": {
+          "days": 0.052083,
+          "delta_after_minutes": 10,
+          "delta_before_minutes": 5,
+          "first_after": "2023-03-24T14:15:00+00:00",
+          "last_before": "2023-03-24T12:45:00+00:00",
+          "missing": 5,
+          "same_event": true,
+          "tolerance_minutes": 15
+        },
+        "240": null,
+        "5": {
+          "days": 0.055556,
+          "delta_after_minutes": 0,
+          "delta_before_minutes": 0,
+          "first_after": "2023-03-24T14:05:00+00:00",
+          "last_before": "2023-03-24T12:40:00+00:00",
+          "missing": 16,
+          "same_event": true,
+          "tolerance_minutes": 5
+        },
+        "60": {
+          "days": 0.041667,
+          "delta_after_minutes": 55,
+          "delta_before_minutes": 20,
+          "first_after": "2023-03-24T15:00:00+00:00",
+          "last_before": "2023-03-24T13:00:00+00:00",
+          "missing": 1,
+          "same_event": true,
+          "tolerance_minutes": 60
+        }
+      },
+      "reference_interval": 5
+    }
+  },
+  "fact3_other_exchanges": {
+    "constat": {
+      "bybit": {
+        "coverage_2022_2023": {
+          "BTC/USDC": [],
+          "ETH/USDC": [],
+          "SOL/USDC": []
+        },
+        "pairs_with_rows_in_window": [],
+        "series_total": 21,
+        "series_with_rows_in_window": 0
+      },
+      "kraken": {
+        "coverage_2022_2023": {
+          "BTC/USDC": [
+            "XBT/USDC 5m",
+            "XBT/USDC 15m",
+            "XBT/USDC 1h",
+            "XBT/USDC 4h",
+            "XBT/USDC 1d",
+            "XBT/USDC 1w"
+          ],
+          "ETH/USDC": [],
+          "SOL/USDC": []
+        },
+        "pairs_with_rows_in_window": [
+          "XBT/USDC"
+        ],
+        "series_total": 14,
+        "series_with_rows_in_window": 6
+      }
+    },
+    "exchanges": {
+      "bybit": [
+        {
+          "count": 675263,
+          "count_in_window": 0,
+          "first": "2025-06-11T09:21:00+00:00",
+          "first_in_window": null,
+          "interval": 1,
+          "last": "2026-09-23T07:43:00+00:00",
+          "last_in_window": null,
+          "pair": "BTC/USDC"
+        },
+        {
+          "count": 135052,
+          "count_in_window": 0,
+          "first": "2025-06-11T09:25:00+00:00",
+          "first_in_window": null,
+          "interval": 5,
+          "last": "2026-09-23T07:40:00+00:00",
+          "last_in_window": null,
+          "pair": "BTC/USDC"
+        },
+        {
+          "count": 45017,
+          "count_in_window": 0,
+          "first": "2025-06-11T09:30:00+00:00",
+          "first_in_window": null,
+          "interval": 15,
+          "last": "2026-09-23T07:30:00+00:00",
+          "last_in_window": null,
+          "pair": "BTC/USDC"
+        },
+        {
+          "count": 11254,
+          "count_in_window": 0,
+          "first": "2025-06-11T10:00:00+00:00",
+          "first_in_window": null,
+          "interval": 60,
+          "last": "2026-09-23T07:00:00+00:00",
+          "last_in_window": null,
+          "pair": "BTC/USDC"
+        },
+        {
+          "count": 2813,
+          "count_in_window": 0,
+          "first": "2025-06-11T12:00:00+00:00",
+          "first_in_window": null,
+          "interval": 240,
+          "last": "2026-09-23T04:00:00+00:00",
+          "last_in_window": null,
+          "pair": "BTC/USDC"
+        },
+        {
+          "count": 469,
+          "count_in_window": 0,
+          "first": "2025-06-12T00:00:00+00:00",
+          "first_in_window": null,
+          "interval": 1440,
+          "last": "2026-09-23T00:00:00+00:00",
+          "last_in_window": null,
+          "pair": "BTC/USDC"
+        },
+        {
+          "count": 67,
+          "count_in_window": 0,
+          "first": "2025-06-16T00:00:00+00:00",
+          "first_in_window": null,
+          "interval": 10080,
+          "last": "2026-09-21T00:00:00+00:00",
+          "last_in_window": null,
+          "pair": "BTC/USDC"
+        },
+        {
+          "count": 675228,
+          "count_in_window": 0,
+          "first": "2025-06-11T09:56:00+00:00",
+          "first_in_window": null,
+          "interval": 1,
+          "last": "2026-09-23T07:43:00+00:00",
+          "last_in_window": null,
+          "pair": "ETH/USDC"
+        },
+        {
+          "count": 135045,
+          "count_in_window": 0,
+          "first": "2025-06-11T10:00:00+00:00",
+          "first_in_window": null,
+          "interval": 5,
+          "last": "2026-09-23T07:40:00+00:00",
+          "last_in_window": null,
+          "pair": "ETH/USDC"
+        },
+        {
+          "count": 45015,
+          "count_in_window": 0,
+          "first": "2025-06-11T10:00:00+00:00",
+          "first_in_window": null,
+          "interval": 15,
+          "last": "2026-09-23T07:30:00+00:00",
+          "last_in_window": null,
+          "pair": "ETH/USDC"
+        },
+        {
+          "count": 11254,
+          "count_in_window": 0,
+          "first": "2025-06-11T10:00:00+00:00",
+          "first_in_window": null,
+          "interval": 60,
+          "last": "2026-09-23T07:00:00+00:00",
+          "last_in_window": null,
+          "pair": "ETH/USDC"
+        },
+        {
+          "count": 2813,
+          "count_in_window": 0,
+          "first": "2025-06-11T12:00:00+00:00",
+          "first_in_window": null,
+          "interval": 240,
+          "last": "2026-09-23T04:00:00+00:00",
+          "last_in_window": null,
+          "pair": "ETH/USDC"
+        },
+        {
+          "count": 469,
+          "count_in_window": 0,
+          "first": "2025-06-12T00:00:00+00:00",
+          "first_in_window": null,
+          "interval": 1440,
+          "last": "2026-09-23T00:00:00+00:00",
+          "last_in_window": null,
+          "pair": "ETH/USDC"
+        },
+        {
+          "count": 67,
+          "count_in_window": 0,
+          "first": "2025-06-16T00:00:00+00:00",
+          "first_in_window": null,
+          "interval": 10080,
+          "last": "2026-09-21T00:00:00+00:00",
+          "last_in_window": null,
+          "pair": "ETH/USDC"
+        },
+        {
+          "count": 675193,
+          "count_in_window": 0,
+          "first": "2025-06-11T10:31:00+00:00",
+          "first_in_window": null,
+          "interval": 1,
+          "last": "2026-09-23T07:43:00+00:00",
+          "last_in_window": null,
+          "pair": "SOL/USDC"
+        },
+        {
+          "count": 135038,
+          "count_in_window": 0,
+          "first": "2025-06-11T10:35:00+00:00",
+          "first_in_window": null,
+          "interval": 5,
+          "last": "2026-09-23T07:40:00+00:00",
+          "last_in_window": null,
+          "pair": "SOL/USDC"
+        },
+        {
+          "count": 45012,
+          "count_in_window": 0,
+          "first": "2025-06-11T10:45:00+00:00",
+          "first_in_window": null,
+          "interval": 15,
+          "last": "2026-09-23T07:30:00+00:00",
+          "last_in_window": null,
+          "pair": "SOL/USDC"
+        },
+        {
+          "count": 11253,
+          "count_in_window": 0,
+          "first": "2025-06-11T11:00:00+00:00",
+          "first_in_window": null,
+          "interval": 60,
+          "last": "2026-09-23T07:00:00+00:00",
+          "last_in_window": null,
+          "pair": "SOL/USDC"
+        },
+        {
+          "count": 2813,
+          "count_in_window": 0,
+          "first": "2025-06-11T12:00:00+00:00",
+          "first_in_window": null,
+          "interval": 240,
+          "last": "2026-09-23T04:00:00+00:00",
+          "last_in_window": null,
+          "pair": "SOL/USDC"
+        },
+        {
+          "count": 469,
+          "count_in_window": 0,
+          "first": "2025-06-12T00:00:00+00:00",
+          "first_in_window": null,
+          "interval": 1440,
+          "last": "2026-09-23T00:00:00+00:00",
+          "last_in_window": null,
+          "pair": "SOL/USDC"
+        },
+        {
+          "count": 67,
+          "count_in_window": 0,
+          "first": "2025-06-16T00:00:00+00:00",
+          "first_in_window": null,
+          "interval": 10080,
+          "last": "2026-09-21T00:00:00+00:00",
+          "last_in_window": null,
+          "pair": "SOL/USDC"
+        }
+      ],
+      "kraken": [
+        {
+          "count": 1545,
+          "count_in_window": 0,
+          "first": "2026-02-08T16:33:00+00:00",
+          "first_in_window": null,
+          "interval": 1,
+          "last": "2026-02-14T11:58:00+00:00",
+          "last_in_window": null,
+          "pair": "XBT/EUR"
+        },
+        {
+          "count": 3197,
+          "count_in_window": 0,
+          "first": "2026-01-31T09:04:59.979955+00:00",
+          "first_in_window": null,
+          "interval": 5,
+          "last": "2026-04-24T13:30:00+00:00",
+          "last_in_window": null,
+          "pair": "XBT/EUR"
+        },
+        {
+          "count": 1292,
+          "count_in_window": 0,
+          "first": "2026-01-21T14:14:59.991087+00:00",
+          "first_in_window": null,
+          "interval": 15,
+          "last": "2026-04-24T13:30:00+00:00",
+          "last_in_window": null,
+          "pair": "XBT/EUR"
+        },
+        {
+          "count": 864,
+          "count_in_window": 0,
+          "first": "2026-01-10T04:00:00+00:00",
+          "first_in_window": null,
+          "interval": 60,
+          "last": "2026-04-24T13:00:00+00:00",
+          "last_in_window": null,
+          "pair": "XBT/EUR"
+        },
+        {
+          "count": 19,
+          "count_in_window": 0,
+          "first": "2026-03-05T08:00:00+00:00",
+          "first_in_window": null,
+          "interval": 240,
+          "last": "2026-04-24T12:00:00+00:00",
+          "last_in_window": null,
+          "pair": "XBT/EUR"
+        },
+        {
+          "count": 4,
+          "count_in_window": 0,
+          "first": "2026-03-30T00:00:00+00:00",
+          "first_in_window": null,
+          "interval": 1440,
+          "last": "2026-04-16T00:00:00+00:00",
+          "last_in_window": null,
+          "pair": "XBT/EUR"
+        },
+        {
+          "count": 1,
+          "count_in_window": 0,
+          "first": "2026-04-16T00:00:00+00:00",
+          "first_in_window": null,
+          "interval": 10080,
+          "last": "2026-04-16T00:00:00+00:00",
+          "last_in_window": null,
+          "pair": "XBT/EUR"
+        },
+        {
+          "count": 581759,
+          "count_in_window": 0,
+          "first": "2025-02-15T11:58:00+00:00",
+          "first_in_window": null,
+          "interval": 1,
+          "last": "2026-05-30T02:00:00+00:00",
+          "last_in_window": null,
+          "pair": "XBT/USDC"
+        },
+        {
+          "count": 339273,
+          "count_in_window": 91720,
+          "first": "2023-02-16T11:25:00+00:00",
+          "first_in_window": "2023-02-16T11:25:00+00:00",
+          "interval": 5,
+          "last": "2026-05-30T02:00:00+00:00",
+          "last_in_window": "2024-01-01T00:00:00+00:00",
+          "pair": "XBT/USDC"
+        },
+        {
+          "count": 184986,
+          "count_in_window": 70075,
+          "first": "2021-02-16T11:15:00+00:00",
+          "first_in_window": "2022-01-01T00:15:00+00:00",
+          "interval": 15,
+          "last": "2026-05-30T02:00:00+00:00",
+          "last_in_window": "2024-01-01T00:00:00+00:00",
+          "pair": "XBT/USDC"
+        },
+        {
+          "count": 45773,
+          "count_in_window": 17519,
+          "first": "2021-02-16T12:00:00+00:00",
+          "first_in_window": "2022-01-01T01:00:00+00:00",
+          "interval": 60,
+          "last": "2026-05-30T02:00:00+00:00",
+          "last_in_window": "2024-01-01T00:00:00+00:00",
+          "pair": "XBT/USDC"
+        },
+        {
+          "count": 19104,
+          "count_in_window": 4380,
+          "first": "2017-08-17T04:00:00+00:00",
+          "first_in_window": "2022-01-01T04:00:00+00:00",
+          "interval": 240,
+          "last": "2026-05-30T00:00:00+00:00",
+          "last_in_window": "2024-01-01T00:00:00+00:00",
+          "pair": "XBT/USDC"
+        },
+        {
+          "count": 3193,
+          "count_in_window": 730,
+          "first": "2017-08-17T00:00:00+00:00",
+          "first_in_window": "2022-01-02T00:00:00+00:00",
+          "interval": 1440,
+          "last": "2026-05-30T00:00:00+00:00",
+          "last_in_window": "2024-01-01T00:00:00+00:00",
+          "pair": "XBT/USDC"
+        },
+        {
+          "count": 459,
+          "count_in_window": 105,
+          "first": "2017-08-14T00:00:00+00:00",
+          "first_in_window": "2022-01-03T00:00:00+00:00",
+          "interval": 10080,
+          "last": "2026-05-28T00:00:00+00:00",
+          "last_in_window": "2024-01-01T00:00:00+00:00",
+          "pair": "XBT/USDC"
+        }
+      ]
+    },
+    "note": "XBT est le code Kraken du bitcoin (src/krakenbot/connectors/kraken/rest.py, table XBT/USDC -> BTC/USDC) ; les paires sont rapportées telles quelles.",
+    "window": {
+      "end": "2024-01-01T00:00:00+00:00",
+      "start": "2022-01-01T00:00:00+00:00"
+    }
+  },
+  "fact4_vision": {
+    "months": [
+      "2022-08",
+      "2022-09",
+      "2022-10",
+      "2022-11",
+      "2022-12",
+      "2023-01",
+      "2023-02",
+      "2023-03",
+      "2023-04",
+      "2023-05"
+    ],
+    "skipped": false,
+    "status": {
+      "BTCUSDC": {
+        "2022-08": 200,
+        "2022-09": 200,
+        "2022-10": 404,
+        "2022-11": 404,
+        "2022-12": 404,
+        "2023-01": 404,
+        "2023-02": 404,
+        "2023-03": 200,
+        "2023-04": 200,
+        "2023-05": 200
+      },
+      "BTCUSDT": {
+        "2022-08": 200,
+        "2022-09": 200,
+        "2022-10": 200,
+        "2022-11": 200,
+        "2022-12": 200,
+        "2023-01": 200,
+        "2023-02": 200,
+        "2023-03": 200,
+        "2023-04": 200,
+        "2023-05": 200
+      },
+      "ETHUSDC": {
+        "2022-08": 200,
+        "2022-09": 200,
+        "2022-10": 404,
+        "2022-11": 404,
+        "2022-12": 404,
+        "2023-01": 404,
+        "2023-02": 404,
+        "2023-03": 200,
+        "2023-04": 200,
+        "2023-05": 200
+      },
+      "ETHUSDT": {
+        "2022-08": 200,
+        "2022-09": 200,
+        "2022-10": 200,
+        "2022-11": 200,
+        "2022-12": 200,
+        "2023-01": 200,
+        "2023-02": 200,
+        "2023-03": 200,
+        "2023-04": 200,
+        "2023-05": 200
+      },
+      "SOLUSDC": {
+        "2022-08": 200,
+        "2022-09": 200,
+        "2022-10": 404,
+        "2022-11": 404,
+        "2022-12": 404,
+        "2023-01": 404,
+        "2023-02": 404,
+        "2023-03": 404,
+        "2023-04": 404,
+        "2023-05": 404
+      },
+      "SOLUSDT": {
+        "2022-08": 200,
+        "2022-09": 200,
+        "2022-10": 200,
+        "2022-11": 200,
+        "2022-12": 200,
+        "2023-01": 200,
+        "2023-02": 200,
+        "2023-03": 200,
+        "2023-04": 200,
+        "2023-05": 200
+      }
+    },
+    "symbols": [
+      "BTCUSDC",
+      "ETHUSDC",
+      "SOLUSDC",
+      "BTCUSDT",
+      "ETHUSDT",
+      "SOLUSDT"
+    ],
+    "url_template": "https://data.binance.vision/data/spot/monthly/klines/{symbol}/1d/{symbol}-1d-{month}.zip"
+  },
+  "fact5_warmup": {
+    "BTC/USDC": {
+      "10080": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2023-06-12T00:00:00+00:00",
+              "200": null,
+              "50": "2024-02-19T00:00:00+00:00"
+            },
+            "days": 161.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 23,
+            "on_grid": true,
+            "span_days": 168.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-06-12T00:00:00+00:00",
+            "200": null,
+            "50": "2024-02-19T00:00:00+00:00"
+          },
+          "days": 161.0,
+          "end": "2023-03-13T00:00:00+00:00",
+          "missing": 23,
+          "on_grid": true,
+          "span_days": 168.0,
+          "start": "2022-09-26T00:00:00+00:00"
+        }
+      },
+      "1440": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2023-03-26T00:00:00+00:00",
+              "200": "2023-09-28T00:00:00+00:00",
+              "50": "2023-05-01T00:00:00+00:00"
+            },
+            "days": 163.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 163,
+            "on_grid": true,
+            "span_days": 164.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-26T00:00:00+00:00",
+            "200": "2023-09-28T00:00:00+00:00",
+            "50": "2023-05-01T00:00:00+00:00"
+          },
+          "days": 163.0,
+          "end": "2023-03-13T00:00:00+00:00",
+          "missing": 163,
+          "on_grid": true,
+          "span_days": 164.0,
+          "start": "2022-09-30T00:00:00+00:00"
+        }
+      },
+      "240": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2023-03-14T12:00:00+00:00",
+              "200": "2023-04-14T12:00:00+00:00",
+              "50": "2023-03-20T12:00:00+00:00"
+            },
+            "days": 164.0,
+            "end": "2023-03-12T08:00:00+00:00",
+            "missing": 984,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-14T12:00:00+00:00",
+            "200": "2023-04-14T12:00:00+00:00",
+            "50": "2023-03-20T12:00:00+00:00"
+          },
+          "days": 164.0,
+          "end": "2023-03-12T08:00:00+00:00",
+          "missing": 984,
+          "on_grid": true,
+          "span_days": 164.166667,
+          "start": "2022-09-29T04:00:00+00:00"
+        }
+      },
+      "5": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2021-02-11T06:10:00+00:00",
+              "200": "2021-02-11T21:40:00+00:00",
+              "50": "2021-02-11T09:10:00+00:00"
+            },
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-03-06T04:40:00+00:00",
+              "200": "2021-03-06T20:10:00+00:00",
+              "50": "2021-03-06T07:40:00+00:00"
+            },
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-20T05:40:00+00:00",
+              "200": "2021-04-20T21:10:00+00:00",
+              "50": "2021-04-20T08:40:00+00:00"
+            },
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-25T09:55:00+00:00",
+              "200": "2021-04-26T01:25:00+00:00",
+              "50": "2021-04-25T12:55:00+00:00"
+            },
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-08-13T07:40:00+00:00",
+              "200": "2021-08-13T23:10:00+00:00",
+              "50": "2021-08-13T10:40:00+00:00"
+            },
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-09-29T10:10:00+00:00",
+              "200": "2021-09-30T01:40:00+00:00",
+              "50": "2021-09-29T13:10:00+00:00"
+            },
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2023-03-12T07:40:00+00:00",
+              "200": "2023-03-12T23:10:00+00:00",
+              "50": "2023-03-12T10:40:00+00:00"
+            },
+            "days": 164.145833,
+            "end": "2023-03-12T06:35:00+00:00",
+            "missing": 47274,
+            "on_grid": true,
+            "span_days": 164.149306,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2023-03-24T15:10:00+00:00",
+              "200": "2023-03-25T06:40:00+00:00",
+              "50": "2023-03-24T18:10:00+00:00"
+            },
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-12T07:40:00+00:00",
+            "200": "2023-03-12T23:10:00+00:00",
+            "50": "2023-03-12T10:40:00+00:00"
+          },
+          "days": 164.145833,
+          "end": "2023-03-12T06:35:00+00:00",
+          "missing": 47274,
+          "on_grid": true,
+          "span_days": 164.149306,
+          "start": "2022-09-29T03:00:00+00:00"
+        }
+      }
+    },
+    "BTC/USDT": {
+      "10080": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "1440": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "240": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "5": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2021-02-11T06:10:00+00:00",
+              "200": "2021-02-11T21:40:00+00:00",
+              "50": "2021-02-11T09:10:00+00:00"
+            },
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-03-06T04:40:00+00:00",
+              "200": "2021-03-06T20:10:00+00:00",
+              "50": "2021-03-06T07:40:00+00:00"
+            },
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-20T05:40:00+00:00",
+              "200": "2021-04-20T21:10:00+00:00",
+              "50": "2021-04-20T08:40:00+00:00"
+            },
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-25T09:55:00+00:00",
+              "200": "2021-04-26T01:25:00+00:00",
+              "50": "2021-04-25T12:55:00+00:00"
+            },
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-08-13T07:40:00+00:00",
+              "200": "2021-08-13T23:10:00+00:00",
+              "50": "2021-08-13T10:40:00+00:00"
+            },
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-09-29T10:10:00+00:00",
+              "200": "2021-09-30T01:40:00+00:00",
+              "50": "2021-09-29T13:10:00+00:00"
+            },
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2023-03-24T15:10:00+00:00",
+              "200": "2023-03-25T06:40:00+00:00",
+              "50": "2023-03-24T18:10:00+00:00"
+            },
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-24T15:10:00+00:00",
+            "200": "2023-03-25T06:40:00+00:00",
+            "50": "2023-03-24T18:10:00+00:00"
+          },
+          "days": 0.055556,
+          "end": "2023-03-24T14:05:00+00:00",
+          "missing": 16,
+          "on_grid": true,
+          "span_days": 0.059028,
+          "start": "2023-03-24T12:40:00+00:00"
+        }
+      }
+    },
+    "ETH/USDC": {
+      "10080": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2023-06-12T00:00:00+00:00",
+              "200": null,
+              "50": "2024-02-19T00:00:00+00:00"
+            },
+            "days": 161.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 23,
+            "on_grid": true,
+            "span_days": 168.0,
+            "start": "2022-09-26T00:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-06-12T00:00:00+00:00",
+            "200": null,
+            "50": "2024-02-19T00:00:00+00:00"
+          },
+          "days": 161.0,
+          "end": "2023-03-13T00:00:00+00:00",
+          "missing": 23,
+          "on_grid": true,
+          "span_days": 168.0,
+          "start": "2022-09-26T00:00:00+00:00"
+        }
+      },
+      "1440": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2023-03-26T00:00:00+00:00",
+              "200": "2023-09-28T00:00:00+00:00",
+              "50": "2023-05-01T00:00:00+00:00"
+            },
+            "days": 163.0,
+            "end": "2023-03-13T00:00:00+00:00",
+            "missing": 163,
+            "on_grid": true,
+            "span_days": 164.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-26T00:00:00+00:00",
+            "200": "2023-09-28T00:00:00+00:00",
+            "50": "2023-05-01T00:00:00+00:00"
+          },
+          "days": 163.0,
+          "end": "2023-03-13T00:00:00+00:00",
+          "missing": 163,
+          "on_grid": true,
+          "span_days": 164.0,
+          "start": "2022-09-30T00:00:00+00:00"
+        }
+      },
+      "240": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2023-03-14T12:00:00+00:00",
+              "200": "2023-04-14T12:00:00+00:00",
+              "50": "2023-03-20T12:00:00+00:00"
+            },
+            "days": 164.0,
+            "end": "2023-03-12T08:00:00+00:00",
+            "missing": 984,
+            "on_grid": true,
+            "span_days": 164.166667,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-14T12:00:00+00:00",
+            "200": "2023-04-14T12:00:00+00:00",
+            "50": "2023-03-20T12:00:00+00:00"
+          },
+          "days": 164.0,
+          "end": "2023-03-12T08:00:00+00:00",
+          "missing": 984,
+          "on_grid": true,
+          "span_days": 164.166667,
+          "start": "2022-09-29T04:00:00+00:00"
+        }
+      },
+      "5": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2021-02-11T06:10:00+00:00",
+              "200": "2021-02-11T21:40:00+00:00",
+              "50": "2021-02-11T09:10:00+00:00"
+            },
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-03-06T04:40:00+00:00",
+              "200": "2021-03-06T20:10:00+00:00",
+              "50": "2021-03-06T07:40:00+00:00"
+            },
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-20T05:40:00+00:00",
+              "200": "2021-04-20T21:10:00+00:00",
+              "50": "2021-04-20T08:40:00+00:00"
+            },
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-25T09:55:00+00:00",
+              "200": "2021-04-26T01:25:00+00:00",
+              "50": "2021-04-25T12:55:00+00:00"
+            },
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-08-13T07:40:00+00:00",
+              "200": "2021-08-13T23:10:00+00:00",
+              "50": "2021-08-13T10:40:00+00:00"
+            },
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-09-29T10:10:00+00:00",
+              "200": "2021-09-30T01:40:00+00:00",
+              "50": "2021-09-29T13:10:00+00:00"
+            },
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2023-03-12T07:40:00+00:00",
+              "200": "2023-03-12T23:10:00+00:00",
+              "50": "2023-03-12T10:40:00+00:00"
+            },
+            "days": 164.145833,
+            "end": "2023-03-12T06:35:00+00:00",
+            "missing": 47274,
+            "on_grid": true,
+            "span_days": 164.149306,
+            "start": "2022-09-29T03:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2023-03-24T15:10:00+00:00",
+              "200": "2023-03-25T06:40:00+00:00",
+              "50": "2023-03-24T18:10:00+00:00"
+            },
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-12T07:40:00+00:00",
+            "200": "2023-03-12T23:10:00+00:00",
+            "50": "2023-03-12T10:40:00+00:00"
+          },
+          "days": 164.145833,
+          "end": "2023-03-12T06:35:00+00:00",
+          "missing": 47274,
+          "on_grid": true,
+          "span_days": 164.149306,
+          "start": "2022-09-29T03:00:00+00:00"
+        }
+      }
+    },
+    "ETH/USDT": {
+      "10080": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "1440": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "240": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "5": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2021-02-11T06:10:00+00:00",
+              "200": "2021-02-11T21:40:00+00:00",
+              "50": "2021-02-11T09:10:00+00:00"
+            },
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-03-06T04:40:00+00:00",
+              "200": "2021-03-06T20:10:00+00:00",
+              "50": "2021-03-06T07:40:00+00:00"
+            },
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-20T05:40:00+00:00",
+              "200": "2021-04-20T21:10:00+00:00",
+              "50": "2021-04-20T08:40:00+00:00"
+            },
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-25T09:55:00+00:00",
+              "200": "2021-04-26T01:25:00+00:00",
+              "50": "2021-04-25T12:55:00+00:00"
+            },
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-08-13T07:40:00+00:00",
+              "200": "2021-08-13T23:10:00+00:00",
+              "50": "2021-08-13T10:40:00+00:00"
+            },
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-09-29T10:10:00+00:00",
+              "200": "2021-09-30T01:40:00+00:00",
+              "50": "2021-09-29T13:10:00+00:00"
+            },
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2023-03-24T15:10:00+00:00",
+              "200": "2023-03-25T06:40:00+00:00",
+              "50": "2023-03-24T18:10:00+00:00"
+            },
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-24T15:10:00+00:00",
+            "200": "2023-03-25T06:40:00+00:00",
+            "50": "2023-03-24T18:10:00+00:00"
+          },
+          "days": 0.055556,
+          "end": "2023-03-24T14:05:00+00:00",
+          "missing": 16,
+          "on_grid": true,
+          "span_days": 0.059028,
+          "start": "2023-03-24T12:40:00+00:00"
+        }
+      }
+    },
+    "SOL/USDC": {
+      "10080": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2024-04-01T00:00:00+00:00",
+              "200": null,
+              "50": "2024-12-09T00:00:00+00:00"
+            },
+            "days": 448.0,
+            "end": "2024-01-01T00:00:00+00:00",
+            "missing": 64,
+            "on_grid": true,
+            "span_days": 455.0,
+            "start": "2022-10-03T00:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2024-04-01T00:00:00+00:00",
+            "200": null,
+            "50": "2024-12-09T00:00:00+00:00"
+          },
+          "days": 448.0,
+          "end": "2024-01-01T00:00:00+00:00",
+          "missing": 64,
+          "on_grid": true,
+          "span_days": 455.0,
+          "start": "2022-10-03T00:00:00+00:00"
+        }
+      },
+      "1440": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2024-01-11T00:00:00+00:00",
+              "200": "2024-07-15T00:00:00+00:00",
+              "50": "2024-02-16T00:00:00+00:00"
+            },
+            "days": 454.0,
+            "end": "2023-12-29T00:00:00+00:00",
+            "missing": 454,
+            "on_grid": true,
+            "span_days": 455.0,
+            "start": "2022-09-30T00:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2024-01-11T00:00:00+00:00",
+            "200": "2024-07-15T00:00:00+00:00",
+            "50": "2024-02-16T00:00:00+00:00"
+          },
+          "days": 454.0,
+          "end": "2023-12-29T00:00:00+00:00",
+          "missing": 454,
+          "on_grid": true,
+          "span_days": 455.0,
+          "start": "2022-09-30T00:00:00+00:00"
+        }
+      },
+      "240": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2023-12-30T16:00:00+00:00",
+              "200": "2024-01-30T16:00:00+00:00",
+              "50": "2024-01-05T16:00:00+00:00"
+            },
+            "days": 455.166667,
+            "end": "2023-12-28T12:00:00+00:00",
+            "missing": 2731,
+            "on_grid": true,
+            "span_days": 455.333333,
+            "start": "2022-09-29T04:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-12-30T16:00:00+00:00",
+            "200": "2024-01-30T16:00:00+00:00",
+            "50": "2024-01-05T16:00:00+00:00"
+          },
+          "days": 455.166667,
+          "end": "2023-12-28T12:00:00+00:00",
+          "missing": 2731,
+          "on_grid": true,
+          "span_days": 455.333333,
+          "start": "2022-09-29T04:00:00+00:00"
+        }
+      },
+      "5": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2021-09-29T10:10:00+00:00",
+              "200": "2021-09-30T01:40:00+00:00",
+              "50": "2021-09-29T13:10:00+00:00"
+            },
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2023-12-28T09:10:00+00:00",
+              "200": "2023-12-29T00:40:00+00:00",
+              "50": "2023-12-28T12:10:00+00:00"
+            },
+            "days": 455.208333,
+            "end": "2023-12-28T08:05:00+00:00",
+            "missing": 131100,
+            "on_grid": true,
+            "span_days": 455.211806,
+            "start": "2022-09-29T03:00:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-12-28T09:10:00+00:00",
+            "200": "2023-12-29T00:40:00+00:00",
+            "50": "2023-12-28T12:10:00+00:00"
+          },
+          "days": 455.208333,
+          "end": "2023-12-28T08:05:00+00:00",
+          "missing": 131100,
+          "on_grid": true,
+          "span_days": 455.211806,
+          "start": "2022-09-29T03:00:00+00:00"
+        }
+      }
+    },
+    "SOL/USDT": {
+      "10080": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "1440": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "240": {
+        "blocking_holes": [],
+        "usdc_hole": null
+      },
+      "5": {
+        "blocking_holes": [
+          {
+            "admissible_start": {
+              "14": "2021-02-11T06:10:00+00:00",
+              "200": "2021-02-11T21:40:00+00:00",
+              "50": "2021-02-11T09:10:00+00:00"
+            },
+            "days": 0.052083,
+            "end": "2021-02-11T05:05:00+00:00",
+            "missing": 15,
+            "on_grid": true,
+            "span_days": 0.055556,
+            "start": "2021-02-11T03:45:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-03-06T04:40:00+00:00",
+              "200": "2021-03-06T20:10:00+00:00",
+              "50": "2021-03-06T07:40:00+00:00"
+            },
+            "days": 0.0625,
+            "end": "2021-03-06T03:35:00+00:00",
+            "missing": 18,
+            "on_grid": true,
+            "span_days": 0.065972,
+            "start": "2021-03-06T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-20T05:40:00+00:00",
+              "200": "2021-04-20T21:10:00+00:00",
+              "50": "2021-04-20T08:40:00+00:00"
+            },
+            "days": 0.104167,
+            "end": "2021-04-20T04:35:00+00:00",
+            "missing": 30,
+            "on_grid": true,
+            "span_days": 0.107639,
+            "start": "2021-04-20T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-04-25T09:55:00+00:00",
+              "200": "2021-04-26T01:25:00+00:00",
+              "50": "2021-04-25T12:55:00+00:00"
+            },
+            "days": 0.194444,
+            "end": "2021-04-25T08:50:00+00:00",
+            "missing": 56,
+            "on_grid": true,
+            "span_days": 0.197917,
+            "start": "2021-04-25T04:05:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-08-13T07:40:00+00:00",
+              "200": "2021-08-13T23:10:00+00:00",
+              "50": "2021-08-13T10:40:00+00:00"
+            },
+            "days": 0.1875,
+            "end": "2021-08-13T06:35:00+00:00",
+            "missing": 54,
+            "on_grid": true,
+            "span_days": 0.190972,
+            "start": "2021-08-13T02:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2021-09-29T10:10:00+00:00",
+              "200": "2021-09-30T01:40:00+00:00",
+              "50": "2021-09-29T13:10:00+00:00"
+            },
+            "days": 0.083333,
+            "end": "2021-09-29T09:05:00+00:00",
+            "missing": 24,
+            "on_grid": true,
+            "span_days": 0.086806,
+            "start": "2021-09-29T07:00:00+00:00"
+          },
+          {
+            "admissible_start": {
+              "14": "2023-03-24T15:10:00+00:00",
+              "200": "2023-03-25T06:40:00+00:00",
+              "50": "2023-03-24T18:10:00+00:00"
+            },
+            "days": 0.055556,
+            "end": "2023-03-24T14:05:00+00:00",
+            "missing": 16,
+            "on_grid": true,
+            "span_days": 0.059028,
+            "start": "2023-03-24T12:40:00+00:00"
+          }
+        ],
+        "usdc_hole": {
+          "admissible_start": {
+            "14": "2023-03-24T15:10:00+00:00",
+            "200": "2023-03-25T06:40:00+00:00",
+            "50": "2023-03-24T18:10:00+00:00"
+          },
+          "days": 0.055556,
+          "end": "2023-03-24T14:05:00+00:00",
+          "missing": 16,
+          "on_grid": true,
+          "span_days": 0.059028,
+          "start": "2023-03-24T12:40:00+00:00"
+        }
+      }
+    }
+  },
+  "generated_at": "2026-09-23T07:43:00+00:00",
+  "observation_bound": "2026-09-23T07:43:00+00:00",
+  "views": {
+    "full": {
+      "end": "2026-05-01T00:00:00+00:00",
+      "start": "2021-01-01T00:00:00+00:00"
+    },
+    "zoom": {
+      "end": "2023-07-01T00:00:00+00:00",
+      "start": "2022-01-01T00:00:00+00:00"
+    }
+  }
+}
