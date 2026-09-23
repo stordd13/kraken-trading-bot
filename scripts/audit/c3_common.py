@@ -1028,7 +1028,7 @@ def envelope(
 
     `invalide` vaut **vrai si et seulement si** l'artefact est le diagnostic d'une violation
     (code 1) : il porte les violations et aucun résultat citable. Un refus (code 2) n'est pas
-    « invalide », il est un refus — seul `c3_entry` en écrit un (§ I.1 l.1558 : rien n'est publié
+    « invalide », il est un refus — seul `c3_entry` en écrit un (§ I.1 l.1858, v2.1 : rien n'est publié
     au-delà de la validation).
     """
     payload: dict[str, Any] = dict(artifact_header(now, inputs))

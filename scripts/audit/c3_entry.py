@@ -9,7 +9,7 @@ publié **au-delà de la validation** » (§ I.1). Ce que le rapport cite, c'est
 (précédent : `rejeu_validate_campaign.run_assertions`) :
 
 1. forme des observations — le préfixe est obligatoire, ses blocs typés ; les segments non-préfixe,
-   quand présents, sont bien formés (§ A.12 l.652) et jamais lus par π_T ;
+   quand présents, sont bien formés (§ A.12 l.766, v2.1) et jamais lus par π_T ;
 2. D5 — contrats d'instrument égaux au manifeste, intervalles des séries de décision ; l'intervalle
    d'exécution n'a **aucun porteur** dans l'export réel : il est consigné ``not_assertable`` ;
 3. bornes du préfixe exactement `[début, T]`, `T` recalculé, grille quotidienne de la bonne longueur ;

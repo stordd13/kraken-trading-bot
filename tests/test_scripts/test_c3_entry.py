@@ -81,7 +81,7 @@ def _entry_argv(
 def _run(w: dict[str, Any], **kw: Any) -> tuple[int, dict[str, Any]]:
     code = ce.main(_entry_argv(w, **kw))
     out = w["manifest"].parent / kw.get("output", "entry.json")
-    assert out.exists(), "c3_entry écrit toujours son artefact (§ I.1 l.1558)"
+    assert out.exists(), "c3_entry écrit toujours son artefact (§ I.1 l.1858, v2.1)"
     return code, cc.read_json(out)
 
 

@@ -3014,7 +3014,7 @@ def _aggregate_6_4(states: dict[str, str]) -> str:
 
 
 #: Chaque ligne (clause, état) → issue attendue **et son appui**, la ligne du § B.8 v2.1 qui la justifie.
-#: `calculee` = « issue calculée, continuite= le porte » ; `R0` = refus code 2 (l.1510) ;
+#: `calculee` = « issue calculée, continuite= le porte » ; `R0` = refus code 2 (§ I.1 l.1809, v2.1) ;
 #: `R1_NOT_NORMALISED` = raison run (§ I.1 v2.1, ligne 10 bis) ; `D_WARMUP_ANCHOR` = raison run
 #: (I.1 l.12) ; `hors_liste` = valeur hors liste close → code 2, rien publié (chantier 0).
 TABLE_6_4: list[tuple[str, str, str, str]] = [

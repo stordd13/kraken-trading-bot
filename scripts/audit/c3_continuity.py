@@ -9,7 +9,7 @@ issue**.
 
 **Ce que vaut chaque état** (§ B.8 v2.1 ; ex-plan § 6.4) : ``VERIFIED`` ne naît que d'identités recalculées ;
 **aucune déclaration ne produit ``VERIFIED``** — un bloc déclaratif cohérent avec le contrat vaut
-``DECLARED`` ; ``NOT_VERIFIABLE`` est une réponse admissible du protocole (§ B l.723) ; ``FAILED`` est
+``DECLARED`` ; ``NOT_VERIFIABLE`` est une réponse admissible du protocole (§ B l.843, v2.1) ; ``FAILED`` est
 une preuve fausse, qui n'est jamais admissible.
 
 | Clause | Ce qui la décide |
