@@ -2081,31 +2081,31 @@ régénéré à chaque révision et recollé ici.
 
 | Symbole | Site de définition | Sites de référence |
 |---|---|---|
-| `Q1` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
-| `Q2` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
-| `Q3` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
+| `Q1` | § F.8 | § A.8, § F.2, § F.5, § H.0, § H.1, § J |
+| `Q2` | § F.8 | § A.8, § F.2, § F.5, § H.0, § H.1 |
+| `Q3` | § F.8 | § A.8, § F.2, § F.5, § H.0, § H.1 |
 | `P1` | § A.10 | § A.11, § G.1, § H.1, § I.1 |
 | `P2` | § A.10 | § A.11, § H.1 |
 | `P3` | § A.10 | § A.11, § G.1, § H.1, § I.1 |
 | `D1` | § A.8 | § A.7, § A.10, § A.11, § C.5, § G.1, § H.1, § I.1, § J |
-| `D2` | § A.8 | § 0.5, § B.5, § D.3, § H.1, § I.1 |
+| `D2` | § A.8 | § 0.5, § A.3, § B.5, § D.3, § H.1, § I.1, § L.3 |
 | `D3` | § A.8 | § D.3, § H.1, § I.1, § J |
 | `D4` | § A.8 | § I.1 |
-| `D5` | § A.8 | § A.6, § D.3, § H.1, § I.1, § I.2 |
-| `D6` | § A.8 | § A.10, § A.11, § G.1, § H.1, § I.1 |
+| `D5` | § A.8 | § A.6, § D.3, § F.2, § H.1, § I.1, § I.2 |
+| `D6` | § A.8 | § A.10, § A.11, § B.3, § B.4, § G.1, § H.1, § I.1 |
 | `E1` | § A.13 | § F.8, § H.0 |
 | `E2` | § A.13 | § A.8, § H.0 |
-| `R0_INVALID_RUN` | § I.1 | § H.1 |
+| `R0_INVALID_RUN` | § I.1 | § B.2, § B.8, § F.2, § H.1, § I.2, § L.1 |
 | `P_PROVENANCE` | § I.1 | § H.1 |
 | `D_WARMUP_PREFIX` | § I.1 | § B.5, § D.3, § H.1 |
-| `A_NO_ADMISSIBLE_CANDIDATE` | § I.1 | § A.11, § H.1 |
+| `A_NO_ADMISSIBLE_CANDIDATE` | § I.1 | § A.8, § A.11, § H.1 |
 | `A_BELOW_FLOOR` | § I.1 | § A.11, § H.1 |
-| `D_WARMUP_ANCHOR` | § I.1 | § B.5, § H.1 |
-| `E_NO_BENCHMARK` | § I.1 | § C.5, § H.1 |
-| `E_STAMP_MISMATCH` | § I.1 | § B.4, § H.1 |
+| `D_WARMUP_ANCHOR` | § I.1 | § B.5, § B.8, § H.1 |
+| `E_NO_BENCHMARK` | § I.1 | § B.8, § C.5, § H.1 |
+| `E_STAMP_MISMATCH` | § I.1 | § B.4, § B.8, § H.1 |
 | `F_NOT_ESTIMABLE` | § I.1 | § A.13, § F.2, § F.8, § H.0, § H.1 |
 | `F_CANNOT_SEPARATE` | § I.1 | § F.5, § H.1 |
-| `R1_NOT_NORMALISED` | § I.1 | § A.8, § H.1 |
+| `R1_NOT_NORMALISED` | § I.1 | § A.8, § B.3, § B.8, § H.1 |
 | `D_NOT_ADMISSIBLE` | § I.1 | § H.1 |
 | `C_COVERAGE` | § I.1 | § A.8, § H.1 |
 
@@ -2114,21 +2114,22 @@ régénéré à chaque révision et recollé ici.
 | Seuil | Valeur | Site | Classe |
 |---|---|---|---|
 | Fraction d'ancrage `F` | 0,70 | § A.3 | préférence économique |
+| Fenêtre de la première campagne | 2021-03-01T00:00:00Z → 2026-06-29T00:00:00Z | § A.3 | préférence économique, choix déclaré |
 | Couverture minimale du préfixe | 97 % du dénominateur propre à chaque timeframe | § A.8 D1 | qualité des données |
 | Trou maximal | min(31 j, 3 % des jours) | § A.8 D1 | qualité des données |
 | Jour 5 min compté couvert | ≥ 144 bougies sur 288 | § A.8 D1 | qualité des données, convention |
 | Cycles achevés au préfixe | ≥ 25 | § A.8 D3 | préférence économique |
 | Plancher de rendement | 2,0 %/an | § A.10 P2 | préférence économique |
-| Capital de référence `C` | 1000 USDC | § 0.5 | contrat |
+| Capital de référence `C` | 1000 unités de la monnaie de cotation de la paire du manifeste | § 0.5 | contrat |
 | Taux sans risque | 0 | § 0.5 | préférence économique, convention |
 | Résidu d'appariement de `λ` | ≤ 10 % de la cible | § 0.5 | qualité des données |
 | Longueurs de bloc `L` | {10, 21, 42} | § F.2 (b) | qualité des données |
 | Réplications `B` | 10 000 | § F.2 (b) | qualité des données |
 | Niveau de la borne | 95 %, unilatéral | § F.2 (d) | préférence méthodologique déclarée |
 | Pas de recherche de `λ` | 0,005 puis 0,001 | § F.2 (g) | qualité des données |
-| Réplications écartées tolérées | ≤ 10 sur 10 000 | § F.2 (e) | qualité des données, convention |
+| Réplications écartées tolérées | ≤ 10 sur 10 000, **par combinaison** `L × appariement` | § F.2 (e) | qualité des données, convention |
 | Jours à rendement non nul | ≥ 10 % de la fenêtre d'évaluation | § A.13 E1 | qualité des données, convention |
-| Valeurs distinctes de `Δ*` | ≥ 2 | § A.13 E2 | garde-fou méthodologique |
+| Valeurs distinctes de `Δ*` | ≥ 2, **sur chacune des six** distributions | § A.13 E2 | garde-fou méthodologique |
 
 ### Ce que l'index ne prouve pas
 

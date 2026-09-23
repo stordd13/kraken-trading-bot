@@ -1839,7 +1839,7 @@ def test_l_artefact_diagnostic_porte_les_empreintes_et_aucune_chaine(tmp_path: P
 
 
 # ---------------------------------------------------------------------------
-# Confinement des verdicts synthétiques (plan § 6.6) — une règle de code
+# Admission de l'évaluation (§ L.1 v2.1 ; ex-confinement synthétique, plan § 6.6) — une règle de code
 # ---------------------------------------------------------------------------
 
 
@@ -2043,8 +2043,8 @@ def test_une_identite_de_continuite_seule_discordante_est_une_violation(tmp_path
 @pytest.mark.parametrize("state", ["DECLARED", "NOT_VERIFIABLE"])
 def test_l_etat_agrege_est_porte_par_la_chaine_sans_changer_l_issue(state: str) -> None:
     """Clauses cohérentes avec l'agrégat (c1/c5 portées à l'état voulu, c2 DECLARED — ses seuls
-    états admissibles sont {DECLARED, FAILED}, § 6.4) ; l'issue ne dépend pas de l'agrégat tant
-    qu'aucune clause n'est FAILED. VERIFIED n'est pas un agrégat constructible (§ 6.4)."""
+    états admissibles sont {DECLARED, FAILED}, § B.8) ; l'issue ne dépend pas de l'agrégat tant
+    qu'aucune clause n'est FAILED. VERIFIED n'est pas un agrégat constructible (§ B.8)."""
     artifacts = _sound()
     clauses = artifacts["continuity"]["clauses"]
     for key in ("c1", "c5"):
@@ -2986,7 +2986,7 @@ def test_revue_Fin_2_c3_FAILED_coherent_est_R1_et_normalise_faux_seul_une_violat
 
 
 # ---------------------------------------------------------------------------
-# Revue Fin 2 (1) — la table § 6.4 s'applique en liste close ; les attendus se dérivent de la table
+# Revue Fin 2 (1) — la table du § B.8 s'applique en liste close ; les attendus se dérivent de la table
 # ---------------------------------------------------------------------------
 
 #: Colonne « États admissibles » de la table du § B.8 v2.1 (section d'origine, AM-12 ; auparavant la
@@ -3006,7 +3006,7 @@ NORMALISED_6_4: dict[str, bool | None] = {"VERIFIED": True, "NOT_VERIFIABLE": No
 
 
 def _aggregate_6_4(states: dict[str, str]) -> str:
-    """« Agrégat continuite= : FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED » (§ 6.4, texte)."""
+    """« Agrégat continuite= : FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED » (§ B.8, texte)."""
     for worst in ("FAILED", "NOT_VERIFIABLE", "DECLARED", "VERIFIED"):
         if worst in states.values():
             return worst
@@ -3186,7 +3186,7 @@ def test_la_liste_close_des_etats_par_clause_est_celle_de_la_table_6_4() -> None
     assert cc.CLAUSE_ADMISSIBLE_STATES == ADMISSIBLE_STATES_6_4
     for clause, states in ADMISSIBLE_STATES_6_4.items():
         assert set(states) <= set(cc.CONTINUITY_STATES), clause
-    # Le résumé de c3 est défini sur la liste close de c3, et sur elle seule (§ 6.4 c3, § 6.5).
+    # Le résumé de c3 est défini sur la liste close de c3, et sur elle seule (§ B.8 c3).
     assert cc.LIQUIDATION_NORMALISED_OF_C3 == NORMALISED_6_4
     assert set(cc.LIQUIDATION_NORMALISED_OF_C3) == set(ADMISSIBLE_STATES_6_4["c3"])
 
@@ -3251,7 +3251,7 @@ def test_revue_Fin2_1_chaque_ligne_de_la_table_6_4_donne_l_issue_qu_elle_dit(
 def test_revue_Fin2_1_c4_non_verifiable_ou_declare_est_hors_liste_jamais_valide(
     tmp_path: Path, state: str
 ) -> None:
-    """La régression reproduite : c4 ∈ {VERIFIED, FAILED} seulement (§ 6.4 c4) — tout autre état
+    """La régression reproduite : c4 ∈ {VERIFIED, FAILED} seulement (§ B.8 c4) — tout autre état
     est hors liste close, code 2, rien publié ; jamais « validé »."""
     artifacts = _sound()
     _coherent_continuity(artifacts, "c4", state)
@@ -3262,7 +3262,7 @@ def test_revue_Fin2_1_c4_non_verifiable_ou_declare_est_hors_liste_jamais_valide(
 
 
 def test_revue_Fin2_1_l_agregat_VERIFIED_est_inconstructible_en_C3a() -> None:
-    """c1, c2, c5 sont déclaratives : VERIFIED leur est inatteignable (§ 6.4), donc aucune
+    """c1, c2, c5 sont déclaratives : VERIFIED leur est inatteignable (§ B.8), donc aucune
     combinaison d'états admissibles n'agrège en VERIFIED — sur les 3×2×3×2×3 = 108 combinaisons,
     par le texte (`_aggregate_6_4`) comme par le code (`cc.continuity_aggregate`), et dans la chaîne."""
     import itertools
@@ -3287,7 +3287,7 @@ def test_revue_Fin2_1_l_agregat_VERIFIED_est_inconstructible_en_C3a() -> None:
         try:
             decision = cv.decide(artifacts, violations=violations)
         except cc.EntryRefusedError:
-            # § 6.4 c1/c2/c5 : FAILED → R0, quel que soit c3 (§ H : « R0 est évalué avant toute
+            # § B.8 c1/c2/c5 : FAILED → R0, quel que soit c3 (§ H : « R0 est évalué avant toute
             # autre chose »).
             assert declarative_failed, states
             continue
@@ -3850,7 +3850,7 @@ def test_revue_Fin2_2_c3_FAILED_et_agregat_menteur_VERIFIED_est_un_diagnostic_co
     tmp_path: Path,
 ) -> None:
     """Reproduction d'Astra (item 2) : c3 en échec, résumé cohérent, agrégat déclaré VERIFIED →
-    contradiction déclaré/dérivé (dérivé FAILED, précédence § 6.4) → diagnostic code 1 (§ I.1 l.15)."""
+    contradiction déclaré/dérivé (dérivé FAILED, précédence du § B.8) → diagnostic code 1 (§ I.1 l.15)."""
     artifacts = _sound()
     _c3_failed(artifacts)
     artifacts["continuity"]["state"] = "VERIFIED"

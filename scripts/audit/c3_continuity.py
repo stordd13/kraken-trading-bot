@@ -7,7 +7,7 @@ Elle lit le manifeste, l'ancrage, un artefact d'évaluation et le bloc de compar
 comparateur d'évaluation, et écrit ``continuity.json`` — l'état de chaque clause, **jamais une
 issue**.
 
-**Ce que vaut chaque état** (plan § 6.4, validé) : ``VERIFIED`` ne naît que d'identités recalculées ;
+**Ce que vaut chaque état** (§ B.8 v2.1 ; ex-plan § 6.4) : ``VERIFIED`` ne naît que d'identités recalculées ;
 **aucune déclaration ne produit ``VERIFIED``** — un bloc déclaratif cohérent avec le contrat vaut
 ``DECLARED`` ; ``NOT_VERIFIABLE`` est une réponse admissible du protocole (§ B l.723) ; ``FAILED`` est
 une preuve fausse, qui n'est jamais admissible.
@@ -27,7 +27,7 @@ une preuve fausse, qui n'est jamais admissible.
 revue Fin 2) : c1 {NOT_VERIFIABLE, DECLARED, FAILED}, c2 {DECLARED, FAILED}, c3 {VERIFIED,
 NOT_VERIFIABLE, FAILED}, c4 {VERIFIED, FAILED}, c5 {NOT_VERIFIABLE, DECLARED, FAILED}. Un état hors
 liste est refusé (code 2, rien publié) ici comme au verdict ; l'agrégat ``VERIFIED`` est donc
-inconstructible en C3a.
+inconstructible (§ B.8).
 
 **Les résumés sont dérivés des blocs, jamais recopiés** (revue Fin, défaut 2) :
 ``warmup_anchor_ok = (c4 == VERIFIED)``, ``liquidation_normalised`` par
@@ -244,7 +244,7 @@ def clause_4_warmup_at_anchor(
 ) -> dict[str, str]:
     warmup = cc.require_mapping(evaluation, "warmup", where="evaluation")
     if not timeframes:
-        # § 6.4 c4 : VERIFIED = sufficient recalculé « sur chaque TF de décision » — sans série il
+        # § B.8 c4 : VERIFIED = sufficient recalculé « sur chaque TF de décision » — sans série il
         # n'y a rien de recalculé, donc rien de vérifié.
         raise cc.MissingEvidenceError(
             "evaluation.warmup: aucune série de décision (decision_timeframes vide) — rien à recalculer"
@@ -404,13 +404,13 @@ def run_continuity(
     comparator = comparator_block(benchmark_eval, anchor=anchor, end=end, violations=violations)
     clauses = {"c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5}
     states = {k: v["state"] for k, v in clauses.items()}
-    # Revue Fin 2 (1) : la table § 6.4 s'applique en liste close côté producteur aussi — un état
+    # Revue Fin 2 (1) : la table du § B.8 s'applique en liste close côté producteur aussi — un état
     # hors de la liste de sa clause n'est jamais publié (code 2), quelle que soit son origine.
     for key, state in states.items():
         if state not in cc.CLAUSE_ADMISSIBLE_STATES[key]:
             raise cc.MissingEvidenceError(
                 f"continuity.clauses.{key}.state: {state!r} hors liste close "
-                f"{list(cc.CLAUSE_ADMISSIBLE_STATES[key])} (table § 6.4)"
+                f"{list(cc.CLAUSE_ADMISSIBLE_STATES[key])} (§ B.8)"
             )
     for name, block, allowed in (
         ("stamp_cell", stamp_cell, cc.STAMP_CELL_ADMISSIBLE_STATES),

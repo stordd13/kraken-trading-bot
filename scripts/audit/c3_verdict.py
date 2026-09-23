@@ -54,7 +54,7 @@ fondement : un diagnostic se bâtit sur une lecture complète ; clarification no
 Le « précédent du chantier 0 » couvre le refus de contrat évalué **avant toute lecture** (``B``
 hors contrat → 2), pas cet ordre de constat.
 
-**Continuité → verdict (plan § 6.4, validé ; revue Fin, défaut 2).** Les résumés
+**Continuité → verdict (§ B.8 v2.1 ; revue Fin, défaut 2).** Les résumés
 (``warmup_anchor_ok``, ``benchmark_comparable``, ``stamp_same_daily_cell``, ``liquidation_normalised``)
 et l'agrégat sont **dérivés des clauses par le consommateur** et recoupés au déclaré — une
 contradiction est une violation ; les actions se branchent sur les clauses, jamais sur les résumés.
@@ -457,11 +457,11 @@ def _continuity_view(
     anchor: Mapping[str, Any],
     violations: list[str],
 ) -> ContinuityView:
-    """Lecture stricte, complète, de `continuity.json` ; dérivations ; recoupements (plan § 6.4).
+    """Lecture stricte, complète, de `continuity.json` ; dérivations ; recoupements (§ B.8).
 
     **Rien n'est recopié** (revue Fin, défaut 2) :
 
-    * chaque état de clause est lu **contre la liste close de sa clause** (table § 6.4,
+    * chaque état de clause est lu **contre la liste close de sa clause** (table du § B.8,
       ``cc.CLAUSE_ADMISSIBLE_STATES``, revue Fin 2) : hors liste → erreur d'entrée, code 2, rien
       publié ; les clés de ``clauses`` sont exactement c1..c5 ; ``stamp_cell`` et ``comparator``
       ont leur propre liste close ;
@@ -614,7 +614,7 @@ def _continuity_view(
 
 
 def _continuity_actions(view: ContinuityView, *, retained: str) -> list[str]:
-    """Ce que la continuité impose au verdict (table § 6.4) — sur les **clauses**, jamais sur les
+    """Ce que la continuité impose au verdict (§ B.8, actions par clause) — sur les **clauses**, jamais sur les
     résumés : l'évaluation doit être celle de la configuration retenue (§ H.1, sinon refus R0) ;
     c1, c2, c5 ``FAILED`` → refus R0 (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED`` ou
     ``NOT_VERIFIABLE`` → ``R1_NOT_NORMALISED`` (§ I.1 v2.1, ligne 10 bis) ; c4 ``FAILED`` →
@@ -671,8 +671,8 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     pas et ne doit jamais être appelée sur du contenu de fichier non gardé.
 
     **Ordre : tout lire, puis décider** (revue Fin 5 et passe interne de la revue Fin 2). Le
-    confinement (§ L.1, plan § 6.6) vient en tête — ``evaluation.synthetic`` strict, ``false``
-    refusé — puis le **contrat d'instrument de l'évaluation** (``B`` et les six combinaisons, § F.2 b
+    l'admission (§ L.1 v2.1) vient en tête — ``evaluation.synthetic`` strict, ``false`` admis
+    seulement avec ses trois porteurs — puis le **contrat d'instrument de l'évaluation** (``B`` et les six combinaisons, § F.2 b
     v2.1 : avant toute lecture), puis le contrat d'entrée (refus R0 avant toute autre chose, § H), puis
     **la lecture stricte complète des cinq artefacts** : ancre, sélection (listes, statut dérivé),
     continuité (états contre leur liste close, résumés dérivés et recoupés), évaluation (séries, six
@@ -882,7 +882,7 @@ def build_verdict_string(
 ) -> str:
     """La chaîne canonique du § L.2 — neuf champs, **sans horodatage**, pour qu'elle soit reproductible.
 
-    Le label est ``C3_<campagne>`` ; une évaluation synthétique le préfixe ``C3_SYNTH_`` (plan § 6.6)
+    Le label est ``C3_<campagne>`` ; une évaluation synthétique le préfixe ``C3_SYNTH_`` (§ L.2 v2.1)
     pour qu'un rapport ne puisse pas citer la chaîne sans citer sa portée. ``variante`` est la clé
     ``sig(canon(manifeste))`` enregistrée par ``c3_anchor`` ; ``observations`` l'empreinte du fichier
     d'observations enregistrée par ``c3_entry`` (et recoupée à celle de ``c3_select``).
@@ -1129,7 +1129,7 @@ def build_diagnostic_payload(
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
     out: list[str] = []
     if payload["portee"] is not None:
-        # Plan § 6.6 (3) : la portée d'un exercice synthétique s'imprime en première ligne, avant
+        # § L.2 v2.1 : la portée d'un exercice synthétique s'imprime en première ligne, avant
         # la chaîne comme avant un diagnostic.
         out.append(f"PORTEE : {payload['portee']}")
     if payload["invalide"]:
@@ -1339,8 +1339,8 @@ def run_chain(args: argparse.Namespace) -> int:
     """Invoque chaque étape **en processus**, contrôle son **code de retour effectif** (≠ 0 → la
     chaîne s'arrête et rend ce code, rien d'autre n'est écrit), puis ``verify_chain`` et le verdict.
 
-    Sur données réelles la chaîne s'arrête à ``entry`` (refus D2 ou ``not_assertable``) : aucun
-    chemin réel n'atteint le verdict en C3a (plan § 6.6 (4)).
+    Une évaluation réelle n'atteint le verdict qu'avec ses trois porteurs (§ L.1 v2.1) ; le livrable
+    réel de C3a, manifeste v2.0, s'arrête à ``anchor`` (sha du protocole, historique v2.0).
     """
     import c3_anchor
     import c3_benchmark

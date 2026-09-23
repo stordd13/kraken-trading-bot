@@ -1103,17 +1103,17 @@ ABSTENTION_CLAUSE = (
     "choisi est un résultat."
 )
 CONTINUITY_STATES: tuple[str, ...] = ("VERIFIED", "DECLARED", "NOT_VERIFIABLE", "FAILED")
-#: Précédence de l'agrégat de continuité (plan § 6.4) : la pire clause donne l'état. **Une seule
+#: Précédence de l'agrégat de continuité (§ B.8 v2.1) : la pire clause donne l'état. **Une seule
 #: définition**, consommée par le producteur (`c3_continuity`) et par le consommateur (`c3_verdict`,
 #: qui la recalcule et la recoupe — revue Fin, défaut 2).
 CONTINUITY_SEVERITY: tuple[str, ...] = ("FAILED", "NOT_VERIFIABLE", "DECLARED", "VERIFIED")
-#: **Table § 6.4, colonne « États atteignables (C3a) », en liste close** (revue Fin 2, défaut 1) :
+#: **Table du § B.8 v2.1, colonne « États admissibles », en liste close** (revue Fin 2, défaut 1) :
 #: c1, c2, c5 sont déclaratives (jamais `VERIFIED`) ; c2 n'est jamais « non vérifiable » (le bloc
 #: `invocation` est obligatoire) ; c3 n'est jamais « déclarée » (seule la preuve par lot la vérifie) ;
 #: c4 est recalculée (`sufficient`), donc `VERIFIED` ou `FAILED`, jamais autre chose. Un état hors de
 #: la liste de sa clause est une valeur hors liste close → code 2, rien publié — chez le producteur
 #: (`c3_continuity`) comme chez le consommateur (`c3_verdict`). Conséquence : l'agrégat `VERIFIED`
-#: est inconstructible en C3a.
+#: est inconstructible (§ B.8).
 CLAUSE_ADMISSIBLE_STATES: dict[str, tuple[str, ...]] = {
     "c1": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
     "c2": ("DECLARED", "FAILED"),
@@ -1121,10 +1121,9 @@ CLAUSE_ADMISSIBLE_STATES: dict[str, tuple[str, ...]] = {
     "c4": ("VERIFIED", "FAILED"),
     "c5": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
 }
-#: Les deux blocs dérivables hors des cinq clauses, en liste close eux aussi. La cellule
-#: d'estampille : § B.4 ne connaît que « même cellule » ou `E_STAMP_MISMATCH` ; l'état
-#: `NOT_VERIFIABLE` (bloc absent, estampille nulle) est une décision d'outillage de
-#: `c3_continuity.stamp_cell_block`, consignée au paquet de clarifications C3b, jamais « déclarée ».
+#: Les deux blocs dérivables hors des cinq clauses, en liste close eux aussi (§ B.8 v2.1). La cellule
+#: d'estampille : dans la cellule, hors cellule (`E_STAMP_MISMATCH`), ou `NOT_VERIFIABLE` — aucune
+#: estampille, assertion satisfaite à vide (§ B.4 v2.1, AM-11) ; jamais « déclarée ».
 #: Le comparateur d'évaluation : § C.5, une conjonction recalculée est vraie ou fausse, rien d'autre.
 STAMP_CELL_ADMISSIBLE_STATES: tuple[str, ...] = ("VERIFIED", "FAILED", "NOT_VERIFIABLE")
 COMPARATOR_ADMISSIBLE_STATES: tuple[str, ...] = ("VERIFIED", "FAILED")
@@ -1189,7 +1188,7 @@ def continuity_aggregate(states: Mapping[str, str]) -> str:
     """L'état agrégé des clauses § B, par précédence `CONTINUITY_SEVERITY` (la pire clause).
 
     Strict : un mapping vide ou un état hors `CONTINUITY_STATES` est une erreur d'entrée — jamais un
-    repli sur ``VERIFIED``, l'état que la table § 6.4 rend inconstructible en C3a.
+    repli sur ``VERIFIED``, l'état que la table du § B.8 rend inconstructible.
     """
     if not states:
         raise MissingEvidenceError("continuité : aucune clause à agréger")
