@@ -149,6 +149,7 @@ tranche** :
 | Définition d'une issue | **§ H** | renvoi |
 | Convention d'exécution des deux côtés | **§ C.3** | renvoi |
 | Classe d'un nombre décisionnel | **§ 0.5** | renvoi |
+| États de continuité et actions du verdict | **§ B.8** | renvoi |
 
 **Une reformulation, même fidèle, est un défaut de rédaction** : elle survivra à la prochaine correction de la
 section d'origine et la contredira.
@@ -971,6 +972,58 @@ Elle ne prouve ni la justesse économique d'une configuration, ni la fidélité 
 frictions non reproduites — file d'attente, non-exécutions, remplissages partiels, sélection adverse — restent
 **non modélisées et d'amplitude inconnue** (§ J).
 
+### B.8 États des clauses, agrégat, et ce que le verdict en fait
+
+**C'est la section d'origine des états de continuité et des actions qu'ils commandent (§ 0.7).**
+
+Quatre états, et quatre seulement : `VÉRIFIÉ` (recalculé par l'outillage depuis les données), `DÉCLARÉ`
+(affirmé par le producteur, contrôlé cohérent, non recalculable), `NON VÉRIFIABLE` (l'artefact ne porte pas
+de quoi statuer), `ÉCHEC`. **Liste close par clause**, des deux côtés — producteur `c3_continuity` et
+consommateur `c3_verdict` — et un état hors de la liste de sa clause est une valeur hors liste close (§ I.1,
+ligne 2) :
+
+| Clause | États admissibles | Pourquoi pas les autres |
+|---|---|---|
+| c1 départ à plat (§ B.2) | `NON VÉRIFIABLE`, `DÉCLARÉ`, `ÉCHEC` | jamais `VÉRIFIÉ` : preuve déclarative |
+| c2 aucune réinitialisation (§ B.4) | `DÉCLARÉ`, `ÉCHEC` | le bloc `invocation` est obligatoire, donc jamais « non vérifiable » ; `single_call` n'est pas recalculable |
+| c3 liquidation costée (§ B.3) | `VÉRIFIÉ`, `NON VÉRIFIABLE`, `ÉCHEC` | jamais `DÉCLARÉ` : seule la preuve par lot la vérifie ; identités exactes sans lots → `NON VÉRIFIABLE` |
+| c4 amorçage à `T` (§ B.5) | `VÉRIFIÉ`, `ÉCHEC` | recalculée (`sufficient`), rien d'autre n'est possible |
+| c5 première exécution (§ C.3) | `NON VÉRIFIABLE`, `DÉCLARÉ`, `ÉCHEC` | `first_fill_at` est déclaratif |
+| bloc `stamp_cell` (§ B.4) | `VÉRIFIÉ`, `ÉCHEC`, `NON VÉRIFIABLE` | aucune estampille → satisfaite à vide (§ B.4) |
+| bloc `comparator` (§ C.5) | `VÉRIFIÉ`, `ÉCHEC` | cinq tests booléens et la fenêtre recoupée ; tout vrai ou non |
+
+**Agrégat.** L'état agrégé des clauses est la **pire** clause, par la précédence
+`ÉCHEC > NON VÉRIFIABLE > DÉCLARÉ > VÉRIFIÉ`. Il est **imprimé**, et il ne commande **aucune action** : les
+actions se branchent sur les clauses.
+
+**Résumés dérivés, jamais recopiés.** Les résumés lisibles (`warmup_anchor_ok`, `benchmark_comparable`,
+`stamp_same_daily_cell`, `liquidation_normalised`) et l'agrégat sont **recalculés par le consommateur depuis
+les états des clauses**, puis recoupés au déclaré ; une contradiction déclaré / dérivé est une violation
+(§ I.1, ligne 15). `liquidation_normalised` vaut vrai si c3 est `VÉRIFIÉ`, faux en `ÉCHEC`, et `null` —
+**non établi** — en `NON VÉRIFIABLE`. Le verdict **lit tout** — les cinq clauses, les deux blocs, les portes,
+les six bornes — **avant** de prendre un chemin ; il ne conjoint qu'après avoir tout lu et typé.
+
+**Actions, par clause.**
+
+| Constat | Action |
+|---|---|
+| l'évaluation ne porte pas la configuration retenue (§ H.1) | refus `R0_INVALID_RUN` |
+| c1, c2 ou c5 en `ÉCHEC` | l'artefact déclare lui-même une rupture du contrat § B → refus `R0_INVALID_RUN` (§ I.1, ligne 2) |
+| c3 en `ÉCHEC` ou `NON VÉRIFIABLE` | issue `inconclusif (R1_NOT_NORMALISED)`, portée run (§ I.1, ligne 10 bis) |
+| c4 en `ÉCHEC` | `D_WARMUP_ANCHOR` (§ I.1, ligne 12) |
+| `comparator` en `ÉCHEC` | `E_NO_BENCHMARK` (§ I.1, ligne 10) |
+| `stamp_cell` en `ÉCHEC` | `E_STAMP_MISMATCH` (§ I.1, ligne 11) ; `NON VÉRIFIABLE` est satisfait à vide (§ B.4) |
+
+Quand plusieurs constats coexistent, un refus précède toute raison, et la raison portée est la première de la
+liste de priorité du § H.1.
+
+**Ce qu'exige `validé`** sur la continuité : c2 `DÉCLARÉ`, c3 `VÉRIFIÉ`, c4 `VÉRIFIÉ`, `comparator` `VÉRIFIÉ`,
+`stamp_cell` `VÉRIFIÉ` ou `NON VÉRIFIABLE`, et **c1, c5 `DÉCLARÉ` sur une évaluation réelle** — une
+évaluation réelle qui ne porte pas sa preuve de départ à plat ou son premier remplissage n'est pas admise
+(§ L.1). **En exercice synthétique** (§ L.1), c1 et c5 `NON VÉRIFIABLE` sont tolérés : l'exercice éprouve
+l'outillage, pas une évaluation. L'agrégat `VÉRIFIÉ` est inconstructible par la table ci-dessus, et c'est
+voulu.
+
 ---
 
 ## § C. Synchronisation stratégie ↔ benchmark
@@ -1672,6 +1725,9 @@ donne de niveau run. **Cet ancien classement est supprimé.**
 
 `A_NO_ADMISSIBLE_CANDIDATE` reste atteignable parce qu'il est prioritaire sur les raisons de clause : l'ensemble
 vide est le fait décisionnel, la clause qui l'a vidé est un diagnostic imprimé à côté.
+
+**L'état de la continuité et ce qu'il commande** — refus, raisons de continuité, ce qu'exige `validé` — ne sont
+pas redits ici : section d'origine **§ B.8**.
 
 **Un échec de niveau run court-circuite tout** : `R0_INVALID_RUN` est évalué avant toute autre chose, et
 `D_NOT_ADMISSIBLE` déclenché par D5 est un échec de § I-A, donc il remonte en `R0_INVALID_RUN`.

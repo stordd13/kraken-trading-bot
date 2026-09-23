@@ -2824,8 +2824,8 @@ def test_revue_Fin_2_c3_FAILED_coherent_est_R1_et_normalise_faux_seul_une_violat
 # Revue Fin 2 (1) — la table § 6.4 s'applique en liste close ; les attendus se dérivent de la table
 # ---------------------------------------------------------------------------
 
-#: Colonne « États atteignables (C3a) » de la table § 6.4 (plan révisé, validée au second R1),
-#: **recopiée du texte, pas du code** : la liste close de chaque clause.
+#: Colonne « États admissibles » de la table du § B.8 v2.1 (section d'origine, AM-12 ; auparavant la
+#: table § 6.4 du plan hors dépôt), **recopiée du texte, pas du code** : la liste close de chaque clause.
 ADMISSIBLE_STATES_6_4: dict[str, tuple[str, ...]] = {
     "c1": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
     "c2": ("DECLARED", "FAILED"),
@@ -2834,9 +2834,9 @@ ADMISSIBLE_STATES_6_4: dict[str, tuple[str, ...]] = {
     "c5": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
 }
 
-#: Résumés dérivés d'une clause, tels que le plan les fixe (§ 6.4 c4 : « VERIFIED / FAILED » ;
-#: § 6.4 c3 et § 6.5 : `liquidation_normalised` vrai par preuve par lot, faux en échec, indécidable
-#: sans lots) — écrits depuis le texte pour que le test ne recopie pas l'implémentation.
+#: Résumé dérivé de c3, tel que le § B.8 v2.1 le fixe : « `liquidation_normalised` vaut vrai si c3 est
+#: VÉRIFIÉ, faux en ÉCHEC, et `null` — non établi — en NON VÉRIFIABLE » — écrit depuis le texte pour que
+#: le test ne recopie pas l'implémentation.
 NORMALISED_6_4: dict[str, bool | None] = {"VERIFIED": True, "NOT_VERIFIABLE": None, "FAILED": False}
 
 
@@ -2848,7 +2848,7 @@ def _aggregate_6_4(states: dict[str, str]) -> str:
     return "VERIFIED"
 
 
-#: Chaque ligne (clause, état) → issue attendue **et son appui**, la ligne § 6.4 qui la justifie.
+#: Chaque ligne (clause, état) → issue attendue **et son appui**, la ligne du § B.8 v2.1 qui la justifie.
 #: `calculee` = « issue calculée, continuite= le porte » ; `R0` = refus code 2 (l.1510) ;
 #: `R1_NOT_NORMALISED` = raison run (§ I.1 v2.1, ligne 10 bis) ; `D_WARMUP_ANCHOR` = raison run
 #: (I.1 l.12) ; `hors_liste` = valeur hors liste close → code 2, rien publié (chantier 0).
@@ -2857,111 +2857,121 @@ TABLE_6_4: list[tuple[str, str, str, str]] = [
         "c1",
         "NOT_VERIFIABLE",
         "calculee",
-        "§ 6.4 c1 : NOT_VERIFIABLE (bloc absent) → issue calculée ; § B.2 l.743, l.723-724",
+        "§ B.8 c1 : NON VÉRIFIABLE admissible, toléré en exercice synthétique (« Ce qu'exige validé ») → issue calculée",
     ),
     (
         "c1",
         "DECLARED",
         "calculee",
-        "§ 6.4 c1 : DECLARED (flat_start_proof cohérent) → issue calculée ; § B.2 l.764-768",
+        "§ B.8 c1 : DÉCLARÉ (preuve du § B.2 cohérente) → issue calculée",
     ),
     (
         "c1",
         "FAILED",
         "R0",
-        "§ 6.4 c1 : FAILED → R0 code 2, l'artefact déclare une rupture § B.2 ; l.1510",
+        "§ B.8 actions : c1 en ÉCHEC → refus R0_INVALID_RUN (§ I.1, ligne 2)",
     ),
     (
         "c1",
         "VERIFIED",
         "hors_liste",
-        "§ 6.4 c1 : atteignables {NOT_VERIFIABLE, DECLARED, FAILED} — aucune déclaration ne produit VERIFIED",
+        "§ B.8 c1 : admissibles {NON VÉRIFIABLE, DÉCLARÉ, ÉCHEC} — jamais VÉRIFIÉ, preuve déclarative",
     ),
     (
         "c2",
         "DECLARED",
         "calculee",
-        "§ 6.4 c2 : DECLARED (single_call ∧ grille continue) → idem c1 ; § B.4 l.822-832",
+        "§ B.8 c2 : DÉCLARÉ (single_call ∧ grille continue) → issue calculée",
     ),
     (
         "c2",
         "FAILED",
         "R0",
-        "§ 6.4 c2 : FAILED (false ou grille discontinue) → idem c1, R0 code 2 ; § B.4 l.822-832",
+        "§ B.8 actions : c2 en ÉCHEC → refus R0_INVALID_RUN (§ I.1, ligne 2)",
     ),
-    ("c2", "NOT_VERIFIABLE", "hors_liste", "§ 6.4 c2 : atteignables {DECLARED, FAILED}"),
+    (
+        "c2",
+        "NOT_VERIFIABLE",
+        "hors_liste",
+        "§ B.8 c2 : admissibles {DÉCLARÉ, ÉCHEC} — le bloc invocation est obligatoire",
+    ),
     (
         "c2",
         "VERIFIED",
         "hors_liste",
-        "§ 6.4 c2 : atteignables {DECLARED, FAILED} — clause déclarative",
+        "§ B.8 c2 : admissibles {DÉCLARÉ, ÉCHEC} — single_call n'est pas recalculable",
     ),
     (
         "c3",
         "VERIFIED",
         "calculee",
-        "§ 6.4 c3 : VERIFIED (preuve par lot présente et vraie) → issue calculée ; § B.3 l.811-815",
+        "§ B.8 c3 : VÉRIFIÉ (preuve par lot) → issue calculée ; exigé par validé",
     ),
     (
         "c3",
         "NOT_VERIFIABLE",
         "R1_NOT_NORMALISED",
-        "§ I.1 v2.1 ligne 10 bis : c3 non vérifiable (lots absents) → inconclusif R1_NOT_NORMALISED, publié, code 0 ; § B.3 « Ce que la chaîne en fait »",
+        "§ B.8 actions : c3 NON VÉRIFIABLE → inconclusif R1_NOT_NORMALISED (§ I.1, ligne 10 bis)",
     ),
     (
         "c3",
         "FAILED",
         "R1_NOT_NORMALISED",
-        "§ I.1 v2.1 ligne 10 bis : c3 en échec → inconclusif R1_NOT_NORMALISED, publié, code 0 (convention du 21/09 abrogée) ; § B.3 « Ce que la chaîne en fait »",
+        "§ B.8 actions : c3 en ÉCHEC → inconclusif R1_NOT_NORMALISED (§ I.1, ligne 10 bis)",
     ),
     (
         "c3",
         "DECLARED",
         "hors_liste",
-        "§ 6.4 c3 : atteignables {VERIFIED, NOT_VERIFIABLE, FAILED} — aucune déclaration ne prouve une liquidation costée",
+        "§ B.8 c3 : admissibles {VÉRIFIÉ, NON VÉRIFIABLE, ÉCHEC} — jamais DÉCLARÉ",
     ),
     (
         "c4",
         "VERIFIED",
         "calculee",
-        "§ 6.4 c4 : VERIFIED (sufficient recalculé vrai sur chaque TF) → issue calculée ; § B.5 l.848-853",
+        "§ B.8 c4 : VÉRIFIÉ (sufficient recalculé sur chaque série) → issue calculée",
     ),
     (
         "c4",
         "FAILED",
         "D_WARMUP_ANCHOR",
-        "§ 6.4 c4 : FAILED → D_WARMUP_ANCHOR (l.12) ; § B.5 l.848-853, I.1 l.1525",
+        "§ B.8 actions : c4 en ÉCHEC → D_WARMUP_ANCHOR (§ I.1, ligne 12)",
     ),
     (
         "c4",
         "NOT_VERIFIABLE",
         "hors_liste",
-        "§ 6.4 c4 : atteignables {VERIFIED, FAILED} — l'amorçage est recalculé, jamais non vérifiable",
+        "§ B.8 c4 : admissibles {VÉRIFIÉ, ÉCHEC} — recalculée, rien d'autre n'est possible",
     ),
     (
         "c4",
         "DECLARED",
         "hors_liste",
-        "§ 6.4 c4 : atteignables {VERIFIED, FAILED} — l'amorçage n'est jamais déclaré",
+        "§ B.8 c4 : admissibles {VÉRIFIÉ, ÉCHEC} — l'amorçage n'est jamais déclaré",
     ),
     (
         "c5",
         "NOT_VERIFIABLE",
         "calculee",
-        "§ 6.4 c5 : NOT_VERIFIABLE (first_fill_at absent) → idem c1 ; § C.3 l.940",
+        "§ B.8 c5 : NON VÉRIFIABLE admissible, toléré en exercice synthétique → issue calculée",
     ),
     (
         "c5",
         "DECLARED",
         "calculee",
-        "§ 6.4 c5 : DECLARED (présent, > T) → idem c1 ; § A.4 l.252-256",
+        "§ B.8 c5 : DÉCLARÉ (first_fill_at > T, § C.3) → issue calculée",
     ),
-    ("c5", "FAILED", "R0", "§ 6.4 c5 : FAILED (≤ T) → idem c1, R0 code 2 ; § C.3 l.940"),
+    (
+        "c5",
+        "FAILED",
+        "R0",
+        "§ B.8 actions : c5 en ÉCHEC → refus R0_INVALID_RUN (§ I.1, ligne 2)",
+    ),
     (
         "c5",
         "VERIFIED",
         "hors_liste",
-        "§ 6.4 c5 : atteignables {NOT_VERIFIABLE, DECLARED, FAILED} — clause déclarative",
+        "§ B.8 c5 : admissibles {NON VÉRIFIABLE, DÉCLARÉ, ÉCHEC} — first_fill_at est déclaratif",
     ),
 ]
 
@@ -2975,6 +2985,36 @@ def _coherent_continuity(artifacts: dict[str, Any], clause: str, state: str) -> 
     c["warmup_anchor_ok"] = states["c4"] == "VERIFIED"
     if states["c3"] in NORMALISED_6_4:
         c["liquidation_normalised"] = NORMALISED_6_4[states["c3"]]
+
+
+#: § B.8 v2.1 : les noms d'état du texte et leurs constantes d'outillage.
+STATE_NAMES_B8: dict[str, str] = {
+    "VÉRIFIÉ": "VERIFIED",
+    "DÉCLARÉ": "DECLARED",
+    "NON VÉRIFIABLE": "NOT_VERIFIABLE",
+    "ÉCHEC": "FAILED",
+}
+
+
+def test_la_table_B8_du_texte_est_la_liste_close_du_code() -> None:
+    """§ B.8 v2.1 : « Liste close par clause, des deux côtés » — la table du texte, relue ligne à ligne
+    dans le protocole, est exactement celle du code (cinq clauses, `stamp_cell`, `comparator`), et
+    l'agrégat suit la précédence écrite « ÉCHEC > NON VÉRIFIABLE > DÉCLARÉ > VÉRIFIÉ »."""
+    text = (_project_root / "docs" / "protocole_c3.md").read_text(encoding="utf-8")
+    section = text.split("### B.8 ", 1)[1].split("\n## ", 1)[0]
+    rows: dict[str, tuple[str, ...]] = {}
+    for line in section.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[1].startswith("`"):
+            rows[cells[0]] = tuple(
+                STATE_NAMES_B8[s.strip().strip("`")] for s in cells[1].split(",")
+            )
+    clauses = {label.split()[0]: states for label, states in rows.items() if label.startswith("c")}
+    assert clauses == cc.CLAUSE_ADMISSIBLE_STATES == ADMISSIBLE_STATES_6_4
+    assert rows["bloc `stamp_cell` (§ B.4)"] == cc.STAMP_CELL_ADMISSIBLE_STATES
+    assert rows["bloc `comparator` (§ C.5)"] == cc.COMPARATOR_ADMISSIBLE_STATES
+    precedence = section.split("par la précédence", 1)[1].split("`", 2)[1]
+    assert tuple(STATE_NAMES_B8[s.strip()] for s in precedence.split(">")) == cc.CONTINUITY_SEVERITY
 
 
 def test_la_liste_close_des_etats_par_clause_est_celle_de_la_table_6_4() -> None:
