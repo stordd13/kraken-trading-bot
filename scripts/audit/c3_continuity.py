@@ -1,31 +1,33 @@
 """C3 — le contrat de continuité du portefeuille (§ B), cinq clauses avec l'état de leur vérifiabilité.
 
-Étape 5 de la chaîne du § L.1, **sans entrée réelle en C3a** : l'exécution continue post-ancrage
-relève de C3b, et cette étape ne s'exerce que sur des fixtures synthétiques. Elle lit le manifeste,
-l'ancrage, un artefact d'évaluation et le bloc de comparabilité du comparateur d'évaluation, et
-écrit ``continuity.json`` — l'état de chaque clause, **jamais une issue**.
+Étape 5 de la chaîne du § L.1. Depuis v2.1 (AM-24), une évaluation déclarée réelle est admise si et
+seulement si elle porte ses trois porteurs (``flat_start_proof``, ``invocation.single_call``,
+``first_fill_at``) — contrôle en tête, refus R0 sinon ; une évaluation synthétique reste admise.
+Elle lit le manifeste, l'ancrage, un artefact d'évaluation et le bloc de comparabilité du
+comparateur d'évaluation, et écrit ``continuity.json`` — l'état de chaque clause, **jamais une
+issue**.
 
-**Ce que vaut chaque état** (plan § 6.4, validé) : ``VERIFIED`` ne naît que d'identités recalculées ;
+**Ce que vaut chaque état** (§ B.8 v2.1 ; ex-plan § 6.4) : ``VERIFIED`` ne naît que d'identités recalculées ;
 **aucune déclaration ne produit ``VERIFIED``** — un bloc déclaratif cohérent avec le contrat vaut
-``DECLARED`` ; ``NOT_VERIFIABLE`` est une réponse admissible du protocole (§ B l.723) ; ``FAILED`` est
+``DECLARED`` ; ``NOT_VERIFIABLE`` est une réponse admissible du protocole (§ B l.843, v2.1) ; ``FAILED`` est
 une preuve fausse, qui n'est jamais admissible.
 
 | Clause | Ce qui la décide |
 |---|---|
-| c1 — départ à plat à `T` (§ B.2) | ``flat_start_proof`` absent → ``NOT_VERIFIABLE`` ; présent et cohérent (cash = C, quantité 0, aucun ordre en attente) → ``DECLARED`` ; incohérent → ``FAILED`` |
+| c1 — départ à plat à `T` (§ B.2) | ``flat_start_proof = {at, cash, qty, pending}`` (§ B.2 v2.1 ; un nom v2.0 est une erreur de forme) absent → ``NOT_VERIFIABLE`` ; présent et cohérent (``at == T``, cash = C, quantité 0, aucun ordre en attente) → ``DECLARED`` ; incohérent → ``FAILED`` |
 | c2 — aucune réinitialisation interne (§ B.4) | ``invocation.single_call`` vrai **et** grille quotidienne continue de `[T, fin]` → ``DECLARED`` ; faux ou grille rompue → ``FAILED`` |
 | c3 — liquidation terminale costée (§ B.3) | identités exactes **et preuve par lot** (``cc.liquidation_identities``, la même qu'en sélection) → ``VERIFIED`` ; identités exactes sans lots → ``NOT_VERIFIABLE`` ; bloc absent ou identité fausse → ``FAILED`` ; l'estampille de liquidation et la borne finale dans la même cellule quotidienne (§ B.4) sinon `E_STAMP_MISMATCH` |
 | c4 — amorçage à `T` (§ B.5, W-ancrage) | ``sufficient`` recalculé sur chaque série de décision → ``VERIFIED`` / ``FAILED`` ; déclaré ≠ recalculé = violation |
 | c5 — première exécution strictement après `T` (§ C.3) | ``first_fill_at`` absent → ``NOT_VERIFIABLE`` ; présent et `> T` → ``DECLARED`` ; `<= T` → ``FAILED`` |
 
-| ``stamp_cell`` — estampille de liquidation dans la cellule quotidienne finale (§ B.4) | dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED`` ; aucune estampille (bloc absent, `positions == 0`) → ``NOT_VERIFIABLE`` |
+| ``stamp_cell`` — estampille de liquidation dans la cellule quotidienne finale (§ B.4) | dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED`` ; aucune estampille (bloc absent, ou bloc qui ne liquide rien : `trades == 0`, estampille nulle) → ``NOT_VERIFIABLE``, satisfait à vide au verdict (§ B.4 v2.1) |
 | ``comparator`` — comparateur d'évaluation (§ C.5) | conjonction recalculée des tests déclarés **et de la fenêtre recoupée à [T, fin]** (``tests.window_ok``) → ``VERIFIED`` / ``FAILED`` ; ``comparable`` déclaré ≠ conjonction des cinq tests = violation |
 
 **La colonne « ce qui la décide » est une liste close par clause** (`cc.CLAUSE_ADMISSIBLE_STATES`,
 revue Fin 2) : c1 {NOT_VERIFIABLE, DECLARED, FAILED}, c2 {DECLARED, FAILED}, c3 {VERIFIED,
 NOT_VERIFIABLE, FAILED}, c4 {VERIFIED, FAILED}, c5 {NOT_VERIFIABLE, DECLARED, FAILED}. Un état hors
 liste est refusé (code 2, rien publié) ici comme au verdict ; l'agrégat ``VERIFIED`` est donc
-inconstructible en C3a.
+inconstructible (§ B.8).
 
 **Les résumés sont dérivés des blocs, jamais recopiés** (revue Fin, défaut 2) :
 ``warmup_anchor_ok = (c4 == VERIFIED)``, ``liquidation_normalised`` par
@@ -35,8 +37,9 @@ Le consommateur (`c3_verdict`) refait ces dérivations et recoupe chaque résum�
 contradiction est une violation.
 
 Ce que le verdict en fait est écrit là-bas, pas ici : une clause déclarative (c1, c2, c5) en échec
-rend l'artefact non recevable ; une clause 3 en échec n'a **aucune issue définie par le texte gelé**
-(``UndefinedIssueError``, convention datée du 21/09).
+rend l'artefact non recevable ; une clause 3 en échec ou non vérifiable porte ``R1_NOT_NORMALISED``,
+portée run (§ I.1 v2.1, ligne 10 bis). Un bloc de liquidation contradictoire (``trades > 0`` sans
+estampille ou sans prix) n'est pas une clause 3 en échec : c'est une violation, code 1 (§ B.3 v2.1).
 
 Pure, lecture seule hors de sa sortie. Aucun accès base.
 
@@ -92,28 +95,52 @@ def _clause(state: str, detail: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def clause_1_flat_start(evaluation: Mapping[str, Any], *, capital: Decimal) -> dict[str, str]:
+#: § B.2 v2.1 (AM-10) — les noms v2.0 de la preuve, qui ne sont plus la preuve spécifiée.
+FLAT_START_FIELDS_V20: tuple[str, ...] = ("cash_at_T", "inventory_qty_at_T", "pending_orders_at_T")
+
+
+def clause_1_flat_start(
+    evaluation: Mapping[str, Any], *, capital: Decimal, anchor: datetime
+) -> dict[str, str]:
+    """§ B.2 v2.1 — la preuve spécifiée `flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}`, capturée
+    avant la première bougie du run d'évaluation. Absente → ``NOT_VERIFIABLE`` ; cohérente (``at == T``,
+    ``cash == C`` du manifeste, ``qty == 0``, ``pending == 0``) → ``DECLARED``, jamais ``VERIFIED`` (produite
+    par le programme qu'elle décrit) ; incohérente → ``FAILED``. Un nom v2.0 est une erreur de forme."""
     proof = cc.optional_mapping(evaluation, "flat_start_proof", where="evaluation")
     if proof is None:
         return _clause(
             "NOT_VERIFIABLE",
-            "aucune preuve de départ à plat : les runners n'exportent ni cash, ni quantité, ni ordres "
-            "en attente à T, et aucun point d'equity n'existe à T (§ B.2, § J.1) — C3b doit spécifier la preuve",
+            "aucune preuve de départ à plat (`flat_start_proof` absent, § B.2) : aucun point d'equity "
+            "n'existe à T, et rien d'autre ne décrit l'état initial",
         )
     where = "evaluation.flat_start_proof"
-    cash = cc.require_decimal(proof, "cash_at_T", where=where)
-    qty = cc.require_decimal(proof, "inventory_qty_at_T", where=where)
-    pending = cc.require_int(proof, "pending_orders_at_T", where=where, minimum=0)
-    if cash == capital and qty == Decimal(0) and pending == 0:
+    legacy = sorted(set(proof) & set(FLAT_START_FIELDS_V20))
+    if legacy:
+        raise cc.MissingEvidenceError(
+            f"{where}: clés v2.0 {legacy} — la preuve spécifiée v2.1 est {{at, cash, qty, pending}} (§ B.2)"
+        )
+    at = cc.require_datetime(proof, "at", where=where)
+    cash = cc.require_decimal(proof, "cash", where=where)
+    qty = cc.require_decimal(proof, "qty", where=where)
+    pending = cc.require_int(proof, "pending", where=where, minimum=0)
+    problems: list[str] = []
+    if at != anchor:
+        problems.append(f"capturée à {at.isoformat()}, pas à T = {anchor.isoformat()}")
+    if cash != capital:
+        problems.append(f"cash {cash} ≠ C = {capital}")
+    if qty != Decimal(0):
+        problems.append(f"quantité {qty} ≠ 0")
+    if pending != 0:
+        problems.append(f"{pending} ordre(s) en attente")
+    if problems:
         return _clause(
-            "DECLARED",
-            f"bloc déclaratif cohérent avec le contrat (cash {cash} = C, quantité 0, 0 ordre en attente) — "
-            "une déclaration ne vaut jamais VERIFIED",
+            "FAILED",
+            " ; ".join(problems) + " — le portefeuille évalué ne démarre pas à plat à T (§ B.2)",
         )
     return _clause(
-        "FAILED",
-        f"le bloc déclare cash {cash} (C = {capital}), quantité {qty}, {pending} ordre(s) en attente : "
-        "le portefeuille évalué ne démarre pas à plat",
+        "DECLARED",
+        f"preuve cohérente avec le contrat (at = T, cash {cash} = C, quantité 0, 0 ordre en attente) — "
+        "produite par le programme qu'elle décrit, elle vaut DECLARED, jamais VERIFIED",
     )
 
 
@@ -189,9 +216,10 @@ def stamp_cell_block(
 ) -> dict[str, str]:
     """§ B.4 — l'estampille de liquidation et la borne finale dans la même cellule quotidienne.
 
-    Aucune estampille (bloc absent, ou ``positions == 0`` avec ``timestamp`` nul) → ``NOT_VERIFIABLE`` ;
-    dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED``. Le verdict en dérive
-    ``stamp_same_daily_cell`` (``VERIFIED`` seulement) et la raison ``E_STAMP_MISMATCH`` (§ I.1 l.11).
+    Aucune estampille (bloc absent, ou bloc qui ne liquide rien : ``trades == 0``, ``timestamp`` nul) →
+    ``NOT_VERIFIABLE`` ; dans la cellule → ``VERIFIED`` ; hors cellule → ``FAILED``. Le verdict en dérive
+    ``stamp_same_daily_cell`` (``VERIFIED`` seulement) et la raison ``E_STAMP_MISMATCH`` sur ``FAILED``
+    seulement : ``NOT_VERIFIABLE`` satisfait l'assertion à vide (§ B.4 v2.1).
     """
     if block is None:
         return _clause("NOT_VERIFIABLE", "aucun bloc de liquidation, aucune estampille à situer")
@@ -216,7 +244,7 @@ def clause_4_warmup_at_anchor(
 ) -> dict[str, str]:
     warmup = cc.require_mapping(evaluation, "warmup", where="evaluation")
     if not timeframes:
-        # § 6.4 c4 : VERIFIED = sufficient recalculé « sur chaque TF de décision » — sans série il
+        # § B.8 c4 : VERIFIED = sufficient recalculé « sur chaque TF de décision » — sans série il
         # n'y a rien de recalculé, donc rien de vérifié.
         raise cc.MissingEvidenceError(
             "evaluation.warmup: aucune série de décision (decision_timeframes vide) — rien à recalculer"
@@ -328,6 +356,9 @@ def run_continuity(
     *,
     violations: list[str],
 ) -> dict[str, Any]:
+    # § L.1 v2.1 (AM-24) : l'admission de l'évaluation, en tête — une évaluation réelle sans l'un de ses trois
+    # porteurs est refusée R0, code 2, rien publié, avec le nom de ce qui manque.
+    synthetic = cc.evaluation_admission(evaluation)
     anchor = manifest.anchor()
     declared_anchor = cc.require_datetime(anchor_raw, "anchor", where="anchor")
     if declared_anchor != anchor:
@@ -335,7 +366,6 @@ def run_continuity(
             f"anchor.anchor déclaré {declared_anchor.isoformat()}, recalculé {anchor.isoformat()}"
         )
     end = manifest.window_end
-    synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
     strategy = cc.require_str(evaluation, "strategy", where="evaluation")
     pair = cc.require_str(evaluation, "pair", where="evaluation")
     params = cc.require_mapping(evaluation, "params", where="evaluation")
@@ -362,7 +392,7 @@ def run_continuity(
             "R0_INVALID_RUN", f"benchmark_eval.pair {bench_pair!r} != evaluation.pair {pair!r}"
         )
     spread, slippage = manifest.pair_costs[pair]
-    c1 = clause_1_flat_start(evaluation, capital=manifest.capital)
+    c1 = clause_1_flat_start(evaluation, capital=manifest.capital, anchor=anchor)
     c2 = clause_2_no_reset(evaluation, anchor=anchor, end=end)
     c3, d6_report, stamp_cell = clause_3_costed_liquidation(
         evaluation, spread=spread, slippage=slippage, taker=manifest.taker, anchor=anchor, end=end
@@ -374,13 +404,13 @@ def run_continuity(
     comparator = comparator_block(benchmark_eval, anchor=anchor, end=end, violations=violations)
     clauses = {"c1": c1, "c2": c2, "c3": c3, "c4": c4, "c5": c5}
     states = {k: v["state"] for k, v in clauses.items()}
-    # Revue Fin 2 (1) : la table § 6.4 s'applique en liste close côté producteur aussi — un état
+    # Revue Fin 2 (1) : la table du § B.8 s'applique en liste close côté producteur aussi — un état
     # hors de la liste de sa clause n'est jamais publié (code 2), quelle que soit son origine.
     for key, state in states.items():
         if state not in cc.CLAUSE_ADMISSIBLE_STATES[key]:
             raise cc.MissingEvidenceError(
                 f"continuity.clauses.{key}.state: {state!r} hors liste close "
-                f"{list(cc.CLAUSE_ADMISSIBLE_STATES[key])} (table § 6.4)"
+                f"{list(cc.CLAUSE_ADMISSIBLE_STATES[key])} (§ B.8)"
             )
     for name, block, allowed in (
         ("stamp_cell", stamp_cell, cc.STAMP_CELL_ADMISSIBLE_STATES),

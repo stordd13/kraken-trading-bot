@@ -23,6 +23,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import timedelta
 from functools import cache
+import math
 from pathlib import Path
 import sys
 from typing import Any
@@ -67,7 +68,7 @@ def _bootstrap_cached(
     rng = np.random.default_rng([SEED, 0, block_length])
     starts = cc.block_start_indices(rng, n, block_length, b)
     idx = cc.block_indices(starts, block_length, n)
-    return cc.paired_delta_stars(cfg, bch, idx, float(N_DAYS))
+    return cc.paired_delta_stars(cfg, bch, idx, fx.EVAL_DAYS)
 
 
 def _bootstrap(
@@ -87,19 +88,52 @@ def _bootstrap(
     return deltas.copy(), discarded
 
 
+def _evaluation_series(
+    returns_config: Any, returns_bench: Any, *, net_pnl: float = 42.0
+) -> dict[str, Any]:
+    """Les champs de l'évaluation qu'un producteur conforme tire de ses séries (§ F.2 v2.1) : suites,
+    écartées et bornes par combinaison, `cagr_pct` (Q2) et `delta_dd` (Q3) recalculables ; seul `net_pnl`
+    (Q1) est déclaré. La procédure est celle de `fx.f2_procedure`, écrite depuis le texte ; graine du
+    manifeste, paire d'index 0 (`anchor.pairs` = `["BTC/USDC"]`), `n_jours` exact de la fenêtre."""
+    bench = fx.bench_by_matching(returns_bench)
+    procedure = fx.f2_procedure(returns_config, bench, seed=SEED, pair_index=0)
+    return {
+        "returns_config": [float(x) for x in returns_config],
+        "returns_bench": bench,
+        "environment": fx.environment(),
+        "B": cc.BOOTSTRAP_B,
+        "replications": procedure["replications"],
+        "metrics": {
+            "net_pnl": net_pnl,
+            "cagr_pct": procedure["cagr_config"],
+            "delta_dd": procedure["delta_hat"]["dd"],
+        },
+    }
+
+
+def _reseries(
+    artifacts: dict[str, Any], returns_config: Any, returns_bench: Any, *, net_pnl: float = 42.0
+) -> None:
+    """Remplace les séries de l'évaluation et tout ce qui en dérive — l'artefact reste cohérent."""
+    artifacts["evaluation"].update(
+        _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
+    )
+
+
 def _artifacts(
     *,
     returns_config,
     returns_bench,
-    metrics: dict[str, Any],
+    net_pnl: float = 42.0,
+    metrics: dict[str, Any] | None = None,
     bounds: dict[str, float] | None = None,
     provenance: str = cc.PROVENANCE_CLEAN,
 ) -> dict[str, dict[str, Any]]:
-    deltas, discarded = _bootstrap(returns_config, returns_bench)
-    if bounds is None:
-        bounds = {
-            f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
-        }
+    series = _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
+    if metrics is not None:
+        series["metrics"].update(metrics)
+    for combination, bound in (bounds or {}).items():
+        series["replications"][combination]["bound"] = bound
     identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
     window = {"start": fx.ANCHOR.isoformat(), "end": fx.WINDOW_END.isoformat()}
     return {
@@ -110,6 +144,13 @@ def _artifacts(
             "window": {"start": fx.WINDOW_START.isoformat(), "end": fx.WINDOW_END.isoformat()},
             "universe_provenance": provenance,
             "variant_key": VARIANT_KEY,
+            "pairs": ["BTC/USDC"],
+            "uncertainty": {
+                "seed": SEED,
+                "B": cc.BOOTSTRAP_B,
+                "block_lengths": list(cc.BLOCK_LENGTHS),
+                "bound_level": cc.BOUND_LEVEL,
+            },
         },
         "selection": {
             **_envelope(),
@@ -161,12 +202,7 @@ def _artifacts(
             "strategy": "s",
             "pair": "BTC/USDC",
             "params": {"a": 1},
-            "returns_config": list(returns_config),
-            "delta_stars": [float(x) for x in deltas],
-            "discarded": discarded,
-            "B": cc.BOOTSTRAP_B,
-            "metrics": metrics,
-            "bounds": bounds,
+            **series,
         },
     }
 
@@ -187,6 +223,11 @@ def _envelope() -> dict[str, Any]:
     }
 
 
+def _witness() -> list[float]:
+    """Le témoin d'évaluation des fixtures (`fx.witness_returns`) : contre du cash, six bornes > 0."""
+    return fx.witness_returns(N_DAYS)
+
+
 def _varying(seed: int) -> list[float]:
     rng = np.random.default_rng(seed)
     return list(rng.normal(0.0005, 0.02, N_DAYS))
@@ -203,7 +244,7 @@ def test_configuration_inactive_donne_inconclusif_et_jamais_refute() -> None:
     artifacts = _artifacts(
         returns_config=flat,
         returns_bench=_varying(11),
-        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
+        net_pnl=0.0,
     )
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
@@ -229,7 +270,7 @@ def test_configuration_inactive_echouerait_les_portes_Q_si_on_les_lisait() -> No
 
     Sans le § H.0, cette configuration serait ``réfuté`` sur une absence d'observation.
     """
-    gates = cv._gate_results({"metrics": {"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5}})
+    gates = cv._gate_results(net_pnl=0.0, cagr_pct=0.0, delta_dd=-1.5)
     assert gates == {"Q1": False, "Q2": False, "Q3": False}
 
 
@@ -242,9 +283,9 @@ def test_comparateur_cash_donne_un_verdict_economique_et_jamais_F_NOT_ESTIMABLE(
     """§ A.13 E1 : le comparateur est exempté, sans quoi toute comparaison à `λ = 0` serait vaine."""
     cash = [0.0] * N_DAYS  # comparateur déterministe : λ = 0, cash pur
     artifacts = _artifacts(
-        returns_config=_varying(7),
+        returns_config=_witness(),
         returns_bench=cash,
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
     )
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
@@ -266,7 +307,7 @@ def test_comparateur_cash_et_strategie_perdante_donne_refute_pas_inconclusif() -
     artifacts = _artifacts(
         returns_config=_varying(9),
         returns_bench=[0.0] * N_DAYS,
-        metrics={"net_pnl": -30.0, "cagr_pct": -1.0, "delta_dd": -2.0},
+        net_pnl=-30.0,
     )
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
@@ -313,9 +354,12 @@ def test_trajectoires_identiques_donnent_inconclusif_et_jamais_refute() -> None:
     artifacts = _artifacts(
         returns_config=same,
         returns_bench=same,
-        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": 0.0},
+        net_pnl=0.0,
     )
-    assert len(artifacts["evaluation"]["delta_stars"]) == cc.BOOTSTRAP_B
+    assert all(
+        len(r["delta_stars"]) == cc.BOOTSTRAP_B
+        for r in artifacts["evaluation"]["replications"].values()
+    )
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
 
@@ -338,7 +382,7 @@ def test_provenance_non_clean_interdit_valide_et_refute(provenance: str) -> None
     artifacts = _artifacts(
         returns_config=_varying(5),
         returns_bench=_varying(6),
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
         provenance=provenance,
     )
     decision = cv.decide(artifacts, violations=[])
@@ -350,9 +394,9 @@ def test_provenance_non_clean_interdit_valide_et_refute(provenance: str) -> None
 def test_la_chaine_est_identique_octet_pour_octet_sur_deux_executions() -> None:
     """§ 0.6 : deux personnes, mêmes artefacts, même chaîne. Aucun horodatage dedans."""
     artifacts = _artifacts(
-        returns_config=_varying(7),
+        returns_config=_witness(),
         returns_bench=[0.0] * N_DAYS,
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
     )
     sha = cc.protocol_descriptor()["sha256"]
     kw = {
@@ -401,9 +445,9 @@ def test_toutes_les_raisons_de_la_liste_close_sont_connues_du_module() -> None:
 def _sound() -> dict[str, dict[str, Any]]:
     """Le témoin sain : il doit rendre `validé`, sans quoi les contre-tests ne prouvent rien."""
     return _artifacts(
-        returns_config=_varying(7),
+        returns_config=_witness(),
         returns_bench=[0.0] * N_DAYS,
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
     )
 
 
@@ -430,7 +474,8 @@ def test_bloc_de_continuite_vide_refuse_l_entree_au_lieu_de_valider() -> None:
 def test_bornes_infinies_refusent_l_entree_au_lieu_de_valider() -> None:
     """Défaut reproduit : `float('inf') > 0` est vrai, donc `+inf` franchissait le plancher."""
     artifacts = _sound()
-    artifacts["evaluation"]["bounds"] = {k: float("inf") for k in artifacts["evaluation"]["bounds"]}
+    for replication in artifacts["evaluation"]["replications"].values():
+        replication["bound"] = float("inf")
     with pytest.raises(cc.InvalidValueError, match="non finie"):
         cv.decide(artifacts, violations=[])
 
@@ -441,7 +486,7 @@ def test_estimabilite_declaree_contredite_par_les_series_est_une_violation() -> 
     artifacts = _artifacts(
         returns_config=flat,
         returns_bench=_varying(11),
-        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
+        net_pnl=0.0,
     )
     artifacts["evaluation"]["estimability"] = {"ok": True, "E1": True, "E2": True}
     violations: list[str] = []
@@ -566,9 +611,9 @@ def test_statut_de_selection_declare_contredit_par_la_derivation_est_une_violati
     tmp_path: Path, provenance: str, declared: str
 ) -> None:
     artifacts = _artifacts(
-        returns_config=_varying(7),
+        returns_config=_witness(),
         returns_bench=[0.0] * N_DAYS,
-        metrics={"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
+        net_pnl=42.0,
         provenance=provenance,
     )
     artifacts["selection"]["status"] = declared
@@ -623,14 +668,15 @@ MANDATORY: tuple[tuple[str, ...], ...] = (
     ("continuity", "identity"),
     ("evaluation", "synthetic"),
     ("evaluation", "returns_config"),
-    ("evaluation", "delta_stars"),
-    ("evaluation", "discarded"),
     ("evaluation", "B"),
+    ("evaluation", "replications"),
+    ("evaluation", "replications", "21:dd"),
+    ("evaluation", "replications", "21:dd", "delta_stars"),
+    ("evaluation", "replications", "21:dd", "discarded"),
     ("evaluation", "metrics"),
     ("evaluation", "metrics", "net_pnl"),
     ("evaluation", "metrics", "cagr_pct"),
     ("evaluation", "metrics", "delta_dd"),
-    ("evaluation", "bounds"),
 )
 
 
@@ -665,7 +711,7 @@ def test_chaque_preuve_obligatoire_absente_ou_nulle_refuse_l_entree(
         (("selection", "status"), "OK"),
         (("evaluation", "metrics", "net_pnl"), "42"),
         (("evaluation", "returns_config"), 0.01),
-        (("evaluation", "delta_stars"), {"a": 1}),
+        (("evaluation", "replications", "21:dd", "delta_stars"), {"a": 1}),
     ],
     ids=[
         "entry.ok=int",
@@ -692,17 +738,19 @@ def test_chaque_preuve_obligatoire_mal_typee_refuse_l_entree(
 
 def test_serie_contenant_un_non_fini_refuse_l_entree() -> None:
     artifacts = _sound()
-    artifacts["evaluation"]["delta_stars"][3] = float("nan")
+    artifacts["evaluation"]["replications"]["21:dd"]["delta_stars"][3] = float("nan")
     with pytest.raises(cc.InvalidValueError, match=r"delta_stars\[3\]"):
         cv.decide(artifacts, violations=[])
 
 
-def test_bornes_incompletes_refusent_l_entree() -> None:
+def test_une_combinaison_manquante_est_un_contrat_rompu() -> None:
+    """§ F.2 (b) v2.1 (AM-14) : « une combinaison manquante ou surnuméraire est un contrat rompu —
+    `R0_INVALID_RUN`, code 2 » ; le contrôle se fait avant toute lecture des séries."""
     artifacts = _sound()
-    keys = sorted(artifacts["evaluation"]["bounds"])
-    artifacts["evaluation"]["bounds"].pop(keys[0])
-    with pytest.raises(cc.MissingEvidenceError, match="exactement"):
+    artifacts["evaluation"]["replications"].pop("10:dd")
+    with pytest.raises(cc.EntryRefusedError, match="combinaisons") as info:
         cv.decide(artifacts, violations=[])
+    assert info.value.reason == "R0_INVALID_RUN"
 
 
 # ---------------------------------------------------------------------------
@@ -775,7 +823,10 @@ def test_cli_temoin_sain_sort_0_et_ecrit_la_chaine(tmp_path: Path) -> None:
     [
         pytest.param(lambda a: a.__setitem__("anchor", {}), id="provenance supprimée"),
         pytest.param(lambda a: a.__setitem__("continuity", {}), id="continuité vide"),
-        pytest.param(lambda a: a["evaluation"].pop("discarded"), id="discarded absent"),
+        pytest.param(
+            lambda a: a["evaluation"]["replications"]["21:dd"].pop("discarded"),
+            id="discarded absent",
+        ),
         pytest.param(
             lambda a: a["evaluation"].__setitem__("estimability", {"E1": "false"}),
             id="déclaration en chaîne 'false'",
@@ -795,9 +846,10 @@ def test_cli_refuse_l_entree_avec_exit_2_et_n_ecrit_rien(tmp_path: Path, mutate:
     "mutate",
     [
         pytest.param(
-            lambda a: a["evaluation"].__setitem__(
-                "bounds", {k: float("inf") for k in a["evaluation"]["bounds"]}
-            ),
+            lambda a: [
+                r.__setitem__("bound", float("inf"))
+                for r in a["evaluation"]["replications"].values()
+            ],
             id="bornes infinies",
         ),
         pytest.param(
@@ -808,7 +860,10 @@ def test_cli_refuse_l_entree_avec_exit_2_et_n_ecrit_rien(tmp_path: Path, mutate:
             lambda a: a["evaluation"]["returns_config"].__setitem__(5, -1.0),
             id="rendement exactement -1",
         ),
-        pytest.param(lambda a: a["evaluation"].__setitem__("discarded", 11), id="B incohérent"),
+        pytest.param(
+            lambda a: a["evaluation"]["replications"]["21:dd"].__setitem__("discarded", 11),
+            id="B incohérent",
+        ),
     ],
 )
 def test_cli_violation_sort_1_avec_un_diagnostic_sans_verdict(tmp_path: Path, mutate: Any) -> None:
@@ -859,7 +914,7 @@ def test_contradiction_declare_estimable_recalcule_non_estimable_est_une_violati
     artifacts = _artifacts(
         returns_config=flat,
         returns_bench=_varying(11),
-        metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5},
+        net_pnl=0.0,
     )
     artifacts["evaluation"]["estimability"] = {"ok": True, "E1": True}
     violations: list[str] = []
@@ -895,7 +950,7 @@ def test_declaration_coherente_ne_produit_aucune_violation() -> None:
 def test_discarded_absent_est_une_erreur_d_entree_et_non_zero() -> None:
     """Défaut reproduit : `discarded` absent valait 0, donc `validé` là où 11 donnait `inconclusif`."""
     artifacts = _sound()
-    artifacts["evaluation"].pop("discarded")
+    artifacts["evaluation"]["replications"]["21:dd"].pop("discarded")
     with pytest.raises(cc.MissingEvidenceError, match="discarded"):
         cv.decide(artifacts, violations=[])
 
@@ -903,7 +958,8 @@ def test_discarded_absent_est_une_erreur_d_entree_et_non_zero() -> None:
 def test_discarded_incoherent_avec_B_est_une_violation() -> None:
     """`B` déclaré, `B_effectif` recalculé : un désaccord est une violation (§ I.1, ligne 15)."""
     artifacts = _sound()
-    artifacts["evaluation"]["discarded"] = 11  # B_effectif 10 000 + 11 != B 10 000
+    # B_effectif 10 000 + 11 != B 10 000, sur une combinaison
+    artifacts["evaluation"]["replications"]["21:dd"]["discarded"] = 11
     violations: list[str] = []
     cv.decide(artifacts, violations=violations)
     assert any("B déclaré" in v for v in violations)
@@ -955,27 +1011,18 @@ def _with_replications(
     suite : seul, il vaut une violation (code 1) ; **avec un `B` hors contrat, c'est R0 qui prime**.
     """
     a["evaluation"]["B"] = b
-    a["evaluation"]["delta_stars"] = a["evaluation"]["delta_stars"][:n_deltas]
-    a["evaluation"]["discarded"] = discarded
+    for replication in a["evaluation"]["replications"].values():
+        replication["delta_stars"] = replication["delta_stars"][:n_deltas]
+        replication["discarded"] = discarded
     if nan_in_deltas:
-        a["evaluation"]["delta_stars"][3] = float("nan")
+        a["evaluation"]["replications"]["21:dd"]["delta_stars"][3] = float("nan")
 
 
-#: (B, len(delta_stars), discarded, non-fini dans delta_stars, code CLI, issue, raison)
+#: (B, len(delta_stars), discarded, non-fini dans delta_stars, code CLI, issue, raison). Les comptes
+#: cohérents (9 990 / 10 → estimable, 9 989 / 11 → `F_NOT_ESTIMABLE`) se testent au niveau fonction
+#: (`test_c3_common`, plafond par combinaison) : une suite tronquée à la main n'est pas celle qu'un
+#: producteur conforme tire de ses séries (§ F.2 v2.1), et le rejeu de la chaîne la contredirait.
 MATRIX_B = [
-    pytest.param(
-        10_000, 9_990, 10, False, 0, cc.ISSUE_VALIDE, None, id="10000/9990/10 -> 0 témoin sain"
-    ),
-    pytest.param(
-        10_000,
-        9_989,
-        11,
-        False,
-        0,
-        cc.ISSUE_INCONCLUSIF,
-        "F_NOT_ESTIMABLE",
-        id="10000/9989/11 -> 0 F_NOT_ESTIMABLE, compte cohérent",
-    ),
     pytest.param(
         10_000, 10_000, 11, False, 1, None, None, id="10000/10000/11 -> 1 compte contradictoire"
     ),
@@ -1022,7 +1069,9 @@ def test_matrice_B_en_appel_direct(
     _with_replications(
         artifacts, b=b, n_deltas=n_deltas, discarded=discarded, nan_in_deltas=nan_in_deltas
     )
-    assert len(artifacts["evaluation"]["delta_stars"]) == n_deltas
+    assert all(
+        len(r["delta_stars"]) == n_deltas for r in artifacts["evaluation"]["replications"].values()
+    )
     violations: list[str] = []
     if code == 2:
         # `EntryRefusedError`, et pas `InvalidValueError` : le contrat est lu avant les séries.
@@ -1035,16 +1084,9 @@ def test_matrice_B_en_appel_direct(
             "R0 est évalué avant la cohérence : aucune violation n'est produite"
         )
         return
-    decision = cv.decide(artifacts, violations=violations)
-    if code == 1:
-        assert violations and any("B déclaré" in v for v in violations)
-        return
-    assert violations == []
-    assert decision.issue == issue
-    assert decision.reason == reason
-    est = decision.estimability
-    assert est is not None
-    assert (est["B"], est["B_effectif"], est["discarded"]) == (b, n_deltas, discarded)
+    assert code == 1 and issue is None
+    cv.decide(artifacts, violations=violations)
+    assert violations and any("B déclaré" in v for v in violations)
 
 
 @pytest.mark.parametrize(
@@ -1070,19 +1112,336 @@ def test_matrice_B_par_la_cli(
     if code == 2:
         assert not out.exists(), "code 2 : rien n'est écrit"
         return
+    assert code == 1 and issue is None
     payload = cc.read_json(out)
-    if code == 1:
-        assert payload["invalide"] is True
-        assert payload["verdict"] is None
-        assert payload["verdict_string"] is None
-        assert any("B déclaré" in v for v in payload["violations"])
-        return
-    assert payload["invalide"] is False
-    assert payload["verdict"] == issue
-    assert payload["raison"] == reason
-    assert payload["estimabilite"]["B"] == b
-    assert payload["estimabilite"]["B_effectif"] == n_deltas
-    assert payload["estimabilite"]["discarded"] == discarded
+    assert payload["invalide"] is True
+    assert payload["verdict"] is None
+    assert payload["verdict_string"] is None
+    assert any("B déclaré" in v for v in payload["violations"])
+
+
+# ---------------------------------------------------------------------------
+# § A.13 E2 v2.1 (AM-09), § F.2 (b) v2.1 (AM-14), § F.2 (e) v2.1 (AM-16) — les six distributions
+# ---------------------------------------------------------------------------
+
+
+def test_six_distributions_variables_satisfont_E2() -> None:
+    """§ A.13 v2.1, E2 : « Chacune des six distributions rééchantillonnées de Δ* […] porte au moins deux
+    valeurs distinctes » — le témoin sain le satisfait sur les six."""
+    decision = cv.decide(_sound(), violations=[])
+    est = decision.estimability
+    assert est is not None and est["E2"] is True
+    assert sorted(est["combinations"]) == sorted(cc.COMBINATIONS)
+    assert all(
+        c["E2"] is True and c["within_ceiling"] is True for c in est["combinations"].values()
+    )
+
+
+def test_des_distributions_constantes_sur_un_appariement_font_echouer_E2() -> None:
+    """§ A.13 v2.1, E2 : « Une seule distribution constante suffit à faire échouer E2 » (au niveau fonction :
+    `test_c3_common`). Ici, par les séries : le comparateur de l'appariement σ est la configuration elle-même,
+    ses trois distributions sont constantes — sous rééchantillonnage apparié, la différence vaut toujours zéro
+    (§ A.13) — et l'issue est `inconclusif (F_NOT_ESTIMABLE)` (§ H.0), jamais `validé`, alors que les trois
+    distributions dd varient et que les portes Q passent."""
+    artifacts = _sound()
+    _reseries(artifacts, _witness(), {"dd": [0.0] * N_DAYS, "sigma": _witness()})
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "F_NOT_ESTIMABLE"
+    assert decision.issue != cc.ISSUE_VALIDE
+    est = decision.estimability
+    assert est is not None and est["E2"] is False
+    assert {k for k, v in est["combinations"].items() if not v["E2"]} == {
+        "10:sigma",
+        "21:sigma",
+        "42:sigma",
+    }
+
+
+def test_au_dela_du_plafond_de_replications_ecartees_l_inference_est_inutilisable() -> None:
+    """§ F.2 (e) v2.1 : au-delà de 10 réplications écartées sur l'une quelconque des six combinaisons,
+    `inconclusif (F_NOT_ESTIMABLE)` ; `B_effectif` est publié par combinaison. Par les séries : un jour de
+    rendement extrême (`log1p(r) = 300`) laisse la trajectoire observée finie, mais toute réplication qui le
+    tire trois fois déborde — échec numérique, réplication écartée et comptée (§ F.2 e), sur les six
+    combinaisons (le plafond au niveau fonction, une combinaison seule : `test_c3_common`)."""
+    artifacts = _sound()
+    extreme = _witness()
+    extreme[100] = math.expm1(300.0)
+    _reseries(artifacts, extreme, [0.0] * N_DAYS)
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "F_NOT_ESTIMABLE"
+    est = decision.estimability
+    assert est is not None and est["within_ceiling"] is False
+    for v in est["combinations"].values():
+        assert v["discarded"] > cc.DISCARDED_MAX and v["within_ceiling"] is False
+        assert v["B_effectif"] == cc.BOOTSTRAP_B - v["discarded"]
+
+
+def test_au_dela_du_plafond_l_evaluation_porte_ses_bornes_et_le_verdict_n_en_cite_aucune(
+    tmp_path: Path,
+) -> None:
+    """§ F.2 (e) v2.1 : au-delà du plafond, « aucune borne n'est citée par le verdict. L'artefact
+    d'évaluation, lui, porte la borne de toute combinaison dont la suite retenue n'est pas vide […], et la
+    chaîne la recoupe au rejeu comme les autres » — un producteur qui annule ses bornes au-delà du plafond
+    contredit l'artefact (§ I.1, ligne 15)."""
+    artifacts = _sound()
+    extreme = _witness()
+    extreme[100] = math.expm1(300.0)
+    _reseries(artifacts, extreme, [0.0] * N_DAYS)
+    replications = artifacts["evaluation"]["replications"]
+    assert all(r["delta_stars"] and r["bound"] is not None for r in replications.values())
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "F_NOT_ESTIMABLE"
+    assert payload["bornes_toutes_positives"] is None
+    assert all("bound" not in c for c in payload["estimabilite"]["combinations"].values())
+    replications["21:dd"]["bound"] = None
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any("21:dd" in v and "borne" in v for v in violations), violations
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda r: r.pop("42:dd"), id="cinq combinaisons"),
+        pytest.param(lambda r: r.__setitem__("15:dd", dict(r["21:dd"])), id="clé étrangère"),
+        pytest.param(
+            lambda r: r.__setitem__("21:max", r.pop("21:sigma")), id="appariement inconnu"
+        ),
+    ],
+)
+def test_un_ensemble_de_combinaisons_hors_contrat_est_un_refus_R0(
+    tmp_path: Path, mutate: Any
+) -> None:
+    """§ F.2 (b) v2.1 : « une combinaison manquante ou surnuméraire est un contrat rompu — R0_INVALID_RUN,
+    code 2, rien n'est publié (§ I.1, ligne 2) »."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"]["replications"])
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=[])
+    assert info.value.reason == "R0_INVALID_RUN"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_le_contrat_d_instrument_vient_avant_toute_lecture(tmp_path: Path) -> None:
+    """§ F.2 (b) v2.1 et § I.1 v2.1 : le refus de contrat est « fait avant toute lecture des séries » et
+    « vient en premier par construction » — un `B` hors contrat accompagné d'une contradiction de continuité
+    sort en refus R0, code 2, rien publié ; jamais en diagnostic par accident d'ordre de lecture."""
+    artifacts = _sound()
+    artifacts["continuity"]["warmup_anchor_ok"] = (
+        False  # contredit c4 VERIFIED : une violation, seule
+    )
+    artifacts["evaluation"]["B"] = 400
+    violations: list[str] = []
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=violations)
+    assert info.value.reason == "R0_INVALID_RUN" and "F.2" in str(info.value)
+    assert violations == [], "le contrat est évalué avant la lecture de la continuité"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(
+            lambda r: r["21:dd"].__setitem__("bound", None), id="borne nulle, suite non vide"
+        ),
+        pytest.param(
+            lambda r: r["21:dd"].update(
+                {"delta_stars": [], "discarded": cc.BOOTSTRAP_B, "bound": 1.0}
+            ),
+            id="borne déclarée, suite vide",
+        ),
+    ],
+)
+def test_une_borne_est_nulle_si_et_seulement_si_sa_suite_est_vide(mutate: Any) -> None:
+    """§ F.2 (e) v2.1 : une combinaison sans réplication retenue ne porte pas de borne — la borne est nulle si
+    et seulement si la suite retenue est vide ; l'écart, dans un sens ou dans l'autre, contredit l'artefact
+    (§ I.1, ligne 15)."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"]["replications"])
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any("21:dd" in v and "borne" in v for v in violations)
+
+
+def test_une_borne_absente_est_une_erreur_d_entree() -> None:
+    """§ I.1 v2.1, ligne 2 : une clé absente est une erreur de forme — la borne est nullable, jamais absente."""
+    artifacts = _sound()
+    artifacts["evaluation"]["replications"]["21:dd"].pop("bound")
+    with pytest.raises(cc.MissingEvidenceError, match="bound"):
+        cv.decide(artifacts, violations=[])
+
+
+# ---------------------------------------------------------------------------
+# § F.2 (d) v2.1 (AM-15) — la chaîne rejoue le tirage et recalcule tout ce qui en dérive
+# ---------------------------------------------------------------------------
+
+
+def test_le_rejeu_du_temoin_concorde_sans_violation() -> None:
+    """§ F.2 (d) v2.1 : le témoin est l'artefact d'un producteur conforme — le rejeu retrouve ses suites, ses
+    écartées, son CAGR, ses Δ̂ et ses six bornes ; aucune violation, et l'issue est `validé`."""
+    violations: list[str] = []
+    decision = cv.decide(_sound(), violations=violations)
+    assert violations == [] and decision.issue == cc.ISSUE_VALIDE
+
+
+@pytest.mark.parametrize(
+    ("mutate", "fragment"),
+    [
+        pytest.param(
+            lambda e: e["replications"]["21:dd"]["delta_stars"].__setitem__(
+                5, e["replications"]["21:dd"]["delta_stars"][5] + 1e-9
+            ),
+            "21:dd",
+            id="une réplication de Δ*",
+        ),
+        pytest.param(
+            lambda e: e["replications"]["10:sigma"].__setitem__(
+                "bound", e["replications"]["10:sigma"]["bound"] + 0.5
+            ),
+            "10:sigma",
+            id="une borne",
+        ),
+        pytest.param(
+            lambda e: e["metrics"].__setitem__("delta_dd", e["metrics"]["delta_dd"] + 0.1),
+            "delta_dd",
+            id="Δ̂ dd (Q3)",
+        ),
+        pytest.param(
+            lambda e: e["metrics"].__setitem__("cagr_pct", e["metrics"]["cagr_pct"] + 0.1),
+            "cagr_pct",
+            id="CAGR (Q2)",
+        ),
+        pytest.param(
+            lambda e: e["replications"]["21:dd"]["delta_stars"].reverse(),
+            "21:dd",
+            id="suite dans un autre ordre",
+        ),
+        pytest.param(
+            lambda e: _to_15_digits(e["replications"]["42:sigma"]["delta_stars"]),
+            "42:sigma",
+            id="Δ* écrit à 15 chiffres",
+        ),
+    ],
+)
+def test_une_valeur_declaree_que_le_rejeu_ne_retrouve_pas_est_une_violation(
+    tmp_path: Path, mutate: Any, fragment: str
+) -> None:
+    """§ F.2 (d) v2.1 : la chaîne rejoue le tirage et recalcule suites, écartées, Δ̂, CAGR et bornes ; « toute
+    différence avec ce que l'artefact déclare est une violation (§ I.1, ligne 15) — la comparaison est une
+    égalité au bit, ordre des suites compris » — diagnostic, code 1. La suite est publiée « dans l'ordre des
+    réplications b = 1 … B » et chaque valeur « sérialisée par le repr le plus court qui se relit à
+    l'identique […], jamais avec assez de décimales »."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"])
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any(fragment in v and "rejeu" in v for v in violations), violations
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict_string"] is None
+
+
+def _to_15_digits(values: list[float]) -> None:
+    """Réécrit, en place, la première valeur que 15 chiffres significatifs ne relisent pas à l'identique —
+    ce que produirait une sérialisation « avec assez de décimales » (§ F.2 d v2.1)."""
+    for i, value in enumerate(values):
+        rounded = float(f"{value:.15g}")
+        if rounded != value:
+            values[i] = rounded
+            return
+    raise AssertionError("aucune valeur ne change à 15 chiffres : le cas ne mordrait pas")
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda e: e["returns_bench"].pop("sigma"), id="appariement σ absent"),
+        pytest.param(
+            lambda e: e["returns_bench"].__setitem__("cash", list(e["returns_bench"]["dd"])),
+            id="appariement surnuméraire",
+        ),
+        pytest.param(lambda e: e["environment"].__setitem__("python", "2.7.18"), id="autre python"),
+        pytest.param(lambda e: e["environment"].__setitem__("numpy", "0.0.0"), id="autre numpy"),
+        pytest.param(
+            lambda e: e["environment"].__setitem__("machine", "vax"), id="autre architecture"
+        ),
+        pytest.param(
+            lambda e: e["environment"].__setitem__("libc", "musl 1.2.5"),
+            id="autre bibliothèque C",
+        ),
+        pytest.param(
+            lambda e: e["environment"].__setitem__("kernel", "6.8.0-45-generic"),
+            id="champ en trop",
+        ),
+    ],
+)
+def test_un_contrat_de_rejeu_rompu_est_un_refus_R0(tmp_path: Path, mutate: Any) -> None:
+    """§ F.2 (b) v2.1 : « un comparateur qui ne porte pas exactement les deux appariements dd et σ, ou un
+    environnement qui n'est pas exactement celui où la chaîne rejoue — un champ en trop compris — est un
+    contrat rompu : R0_INVALID_RUN, code 2, rien n'est publié (§ I.1, ligne 2) »."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"])
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=[])
+    assert info.value.reason == "R0_INVALID_RUN"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda e: e.pop("returns_bench"), id="comparateur absent"),
+        pytest.param(lambda e: e.pop("environment"), id="environnement absent"),
+        pytest.param(lambda e: e["returns_bench"]["dd"].pop(), id="longueurs différentes"),
+    ],
+)
+def test_un_rejeu_inexecutable_est_une_erreur_d_entree_code_2(tmp_path: Path, mutate: Any) -> None:
+    """§ F.2 (d) v2.1 : le producteur exporte les séries « de chaque appariement — toutes de même longueur
+    n » et déclare son environnement ; une preuve absente est une erreur de forme, et « des séries de
+    longueurs différentes rendent les indices appariés impossibles : le rejeu est inexécutable, erreur
+    de forme (§ I.1, ligne 2), code 2 » — pas un contrat rompu, rien n'est publié."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"])
+    with pytest.raises(cc.MissingEvidenceError) as info:
+        cv.decide(artifacts, violations=[])
+    assert not isinstance(info.value, cc.EntryRefusedError)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_refute_par_Q2_sur_une_serie_qui_rend_moins_de_2_pct_par_an() -> None:
+    """§ F.8 : `Q2` lit le rendement géométrique **recalculé** de la configuration (§ F.2 c v2.1) — une série
+    à dérive quasi nulle, N(0,00001 ; 0,002), rend un CAGR sous le plancher de 2 %/an : `réfuté`."""
+    artifacts = _sound()
+    _reseries(
+        artifacts, list(np.random.default_rng(7).normal(0.00001, 0.002, N_DAYS)), [0.0] * N_DAYS
+    )
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_REFUTE and decision.gates["Q2"] is False
+
+
+def test_refute_par_Q3_quand_le_comparateur_en_drawdown_fait_mieux() -> None:
+    """§ F.8 : `Q3` lit `Δ̂` en drawdown **recalculé** (§ F.2 c v2.1) — le comparateur dd rend 0,02 %/jour de
+    plus que la configuration : `Q2` passe, `Q3` échoue, `réfuté`."""
+    artifacts = _sound()
+    witness = _witness()
+    _reseries(artifacts, witness, {"dd": [x + 0.0002 for x in witness], "sigma": [0.0] * N_DAYS})
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_REFUTE
+    assert decision.gates["Q2"] is True and decision.gates["Q3"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -1109,9 +1468,16 @@ def _abstention(reason: str) -> Any:
     return mutate
 
 
-def _all_discarded(a: dict[str, Any]) -> None:
-    a["evaluation"]["delta_stars"] = []
-    a["evaluation"]["discarded"] = cc.BOOTSTRAP_B
+def _flat(a: dict[str, Any]) -> None:
+    """Une configuration restée plate après l'ancrage, contre du cash : E1 échoue (aucun jour à rendement
+    non nul, § A.13), et `Δ*` est constamment nul (E2) — l'artefact reste cohérent avec ses séries."""
+    _reseries(a, [0.0] * N_DAYS, [0.0] * N_DAYS, net_pnl=0.0)
+
+
+def _cannot_separate(a: dict[str, Any]) -> None:
+    """Un effet positif que la borne ne sépare pas de zéro : N(0,0005 ; 0,02), graine 51, contre du cash —
+    mesuré par la procédure § F.2 : CAGR ≈ 3,8 %/an (Q2), Δ̂_dd > 0 (Q3), six bornes ≈ −110 points."""
+    _reseries(a, _varying(51), [0.0] * N_DAYS)
 
 
 #: (ligne, fixture, issue attendue, raison attendue, code CLI attendu, artefact écrit ?, chaîne citable ?)
@@ -1176,6 +1542,16 @@ TABLE_I1 = [
         id="L10 benchmark",
     ),
     pytest.param(
+        "10 bis",
+        lambda a: _coherent_continuity(a, "c3", "FAILED"),
+        cc.ISSUE_INCONCLUSIF,
+        "R1_NOT_NORMALISED",
+        0,
+        True,
+        True,
+        id="L10 bis liquidation d'évaluation non normalisée",
+    ),
+    pytest.param(
         11,
         lambda a: (
             a["continuity"]["stamp_cell"].__setitem__("state", "FAILED"),
@@ -1204,19 +1580,17 @@ TABLE_I1 = [
     ),
     pytest.param(
         13,
-        _all_discarded,
+        _flat,
         cc.ISSUE_INCONCLUSIF,
         "F_NOT_ESTIMABLE",
         0,
         True,
         True,
-        id="L13 estimabilité (toutes réplications écartées, compte cohérent)",
+        id="L13 estimabilité (configuration plate : E1, et E2)",
     ),
     pytest.param(
         14,
-        lambda a: a["evaluation"].__setitem__(
-            "bounds", dict.fromkeys(a["evaluation"]["bounds"], -0.5)
-        ),
+        _cannot_separate,
         cc.ISSUE_INCONCLUSIF,
         "F_CANNOT_SEPARATE",
         0,
@@ -1252,7 +1626,7 @@ TABLE_I1 = [
 )
 def test_table_I1_ligne_a_ligne(
     tmp_path: Path,
-    line: int,
+    line: int | str,
     mutate: Any,
     issue: Any,
     reason: Any,
@@ -1293,11 +1667,25 @@ def test_table_I1_ligne_a_ligne(
         assert payload["invalide"] is (not citable)
 
 
+def test_un_diagnostic_ne_porte_ni_verdict_ni_raison_ni_chaine_citable(tmp_path: Path) -> None:
+    """§ I.1 v2.1, « Forme d'un diagnostic (ligne 15) » : « Un artefact de diagnostic est écrit, code 1, et
+    porte `invalide: true` et la liste des violations ; il ne porte ni verdict, ni raison, ni chaîne
+    citable »."""
+    artifacts = _sound()
+    artifacts["evaluation"]["metrics"]["cagr_pct"] += 0.1  # une valeur que le rejeu ne retrouve pas
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["violations"]
+    assert payload["verdict"] is None and payload["raison"] is None
+    assert payload["verdict_string"] is None
+
+
 def test_les_raisons_de_portee_candidat_sont_enumerees_sans_portee_exclusive() -> None:
     """Lignes 3 à 6 d'I.1 : leurs raisons sont énumérées — **pas** une table raison → portée.
 
-    `F_NOT_ESTIMABLE` y figure (ligne 6, D4) **et** est de portée run (ligne 13) : c'est la seule
-    de l'énumération que `decide()` émet, et il l'émet en portée run. Les lignes 3 à 6 elles-mêmes
+    `F_NOT_ESTIMABLE` y figure (ligne 6, D4) **et** est de portée run (ligne 13) ; `R1_NOT_NORMALISED`
+    y figure (ligne 6, D6) **et** est de portée run depuis v2.1 (ligne 10 bis, AM-19) : ce sont les deux
+    de l'énumération que `decide()` émet, et il les émet en portée run. Les lignes 3 à 6 elles-mêmes
     s'exercent dans `c3_select` / `c3_entry`, pas ici ; elles sont énumérées pour que nul ne les
     croie couvertes.
     """
@@ -1311,9 +1699,9 @@ def test_les_raisons_de_portee_candidat_sont_enumerees_sans_portee_exclusive() -
     # L'union des raisons des lignes 3 à 6 (clauses D1, D2, D3, D4, D6) est exactement cette liste.
     lines_3_to_6 = {cc.CLAUSE_REASON[c] for c in ("D1", "D2", "D3", "D4", "D6")}
     assert lines_3_to_6 == set(cc.CANDIDATE_REASONS)
-    # Ce que `decide()` émet (table I.1 paramétrée) n'en recoupe que `F_NOT_ESTIMABLE`, en portée run.
+    # Ce que `decide()` émet (table I.1 paramétrée) n'en recoupe que ces deux-là, en portée run.
     emitted = {row.values[3] for row in TABLE_I1 if row.values[3] is not None}
-    assert emitted & set(cc.CANDIDATE_REASONS) == {"F_NOT_ESTIMABLE"}
+    assert emitted & set(cc.CANDIDATE_REASONS) == {"F_NOT_ESTIMABLE", "R1_NOT_NORMALISED"}
 
 
 # ---------------------------------------------------------------------------
@@ -1451,7 +1839,7 @@ def test_l_artefact_diagnostic_porte_les_empreintes_et_aucune_chaine(tmp_path: P
 
 
 # ---------------------------------------------------------------------------
-# Confinement des verdicts synthétiques (plan § 6.6) — une règle de code
+# Admission de l'évaluation (§ L.1 v2.1 ; ex-confinement synthétique, plan § 6.6) — une règle de code
 # ---------------------------------------------------------------------------
 
 
@@ -1468,50 +1856,134 @@ def test_synthetic_absent_nul_ou_chaine_est_une_erreur_d_entree(tmp_path: Path, 
     assert not (tmp_path / "verdict.json").exists()
 
 
-def test_une_evaluation_reelle_est_refusee_rien_publie(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+#: § L.1 v2.1 : « `flat_start_proof`, `invocation.single_call` et `first_fill_at` » — les trois porteurs sans
+#: lesquels une évaluation déclarée réelle n'est pas admise.
+REAL_CARRIERS_L1 = ("flat_start_proof", "invocation.single_call", "first_fill_at")
+
+
+def _carry(evaluation: dict[str, Any], carriers: tuple[str, ...] = REAL_CARRIERS_L1) -> None:
+    """Pose sur l'évaluation les porteurs demandés, conformes (§ B.2, § B.4, § C.3)."""
+    if "flat_start_proof" in carriers:
+        evaluation["flat_start_proof"] = fx.flat_start_proof()
+    if "invocation.single_call" in carriers:
+        evaluation["invocation"] = {"single_call": True}
+    if "first_fill_at" in carriers:
+        evaluation["first_fill_at"] = (fx.ANCHOR + timedelta(minutes=10)).isoformat()
+
+
+def _real_with_carriers(artifacts: dict[str, Any]) -> None:
+    """§ L.1 v2.1 : une évaluation déclarée réelle portant ses trois porteurs, et la continuité qu'en tire
+    `c3_continuity` — c1, c2, c5 DÉCLARÉ (§ B.8), agrégat cohérent, `synthetic: false`."""
+    artifacts["evaluation"]["synthetic"] = False
+    _carry(artifacts["evaluation"])
+    continuity = artifacts["continuity"]
+    continuity["synthetic"] = False
+    continuity["clauses"]["c1"] = {"state": "DECLARED", "detail": "preuve cohérente"}
+    continuity["clauses"]["c5"] = {"state": "DECLARED", "detail": "premier remplissage après T"}
+    continuity["state"] = "DECLARED"
+
+
+@pytest.mark.parametrize(
+    "carried",
+    [
+        pytest.param((), id="aucun porteur"),
+        pytest.param(("invocation.single_call", "first_fill_at"), id="sans flat_start_proof"),
+        pytest.param(("flat_start_proof", "first_fill_at"), id="sans invocation.single_call"),
+        pytest.param(("flat_start_proof", "invocation.single_call"), id="sans first_fill_at"),
+    ],
+)
+def test_une_evaluation_reelle_sans_ses_porteurs_est_refusee_R0_avec_ce_qui_manque(
+    tmp_path: Path, carried: tuple[str, ...], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """§ L.1 : `validé`/`réfuté` sont inatteignables sur données réelles en C3a — le code l'exécute."""
+    """§ L.1 v2.1 : une évaluation déclarée réelle est admise « si et seulement si elle porte
+    `flat_start_proof`, `invocation.single_call` et `first_fill_at` […] ; il lui en manque une → refus
+    `R0_INVALID_RUN`, code 2, rien publié, avec le nom de ce qui manque »."""
     artifacts = _sound()
     artifacts["evaluation"]["synthetic"] = False
+    _carry(artifacts["evaluation"], carried)
+    missing = [name for name in REAL_CARRIERS_L1 if name not in carried]
     with pytest.raises(cc.EntryRefusedError) as info:
         cv.decide(artifacts, violations=[])
     assert info.value.reason == "R0_INVALID_RUN"
-    assert "évaluation réelle non exerçable par l'outillage C3a" in str(info.value)
-    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
-    assert not (tmp_path / "verdict.json").exists()
-    assert "évaluation réelle non exerçable par l'outillage C3a — § L.1" in capsys.readouterr().err
-
-
-# ---------------------------------------------------------------------------
-# Continuité → verdict (plan § 6.4) ; clause 3 en échec = convention datée du 21/09 (§ 6.1)
-# ---------------------------------------------------------------------------
-
-
-def test_clause_3_en_echec_moteur_signal_a_l_evaluation_issue_non_definie(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """Fixture « moteur signal à l'évaluation » : liquidation terminale non normalisée, résumés et
-    agrégat **concordants**. Le texte gelé ne définit pas l'issue → `UndefinedIssueError`, code 2,
-    rien d'écrit, message cité (§ 6.1, convention datée du 21/09). Le cas contredit (résumé vrai
-    sur une clause en échec) n'est plus ce refus mais un diagnostic code 1 — revue Fin 2 (2),
-    testé sous `test_revue_Fin2_2_*`."""
-    artifacts = _sound()
-    artifacts["continuity"]["clauses"]["c3"] = {
-        "state": "FAILED",
-        "detail": "liquidation absente (moteur signal)",
-    }
-    artifacts["continuity"]["state"] = "FAILED"
-    artifacts["continuity"]["liquidation_normalised"] = False
-    with pytest.raises(cc.UndefinedIssueError) as info:
-        cv.decide(artifacts, violations=[])
-    assert str(info.value) == cv.UNDEFINED_ISSUE_MESSAGE
+    assert all(name in str(info.value) for name in missing), (missing, str(info.value))
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
     assert not (tmp_path / "verdict.json").exists()
     err = capsys.readouterr().err
-    assert "ISSUE NON DEFINIE" in err
-    assert "issue non définie par le texte gelé, amendement pendant (§ 6.1)" in err
-    assert "convention d'outillage datée du 21/09" in err
+    assert all(name in err for name in missing)
+
+
+def test_une_evaluation_reelle_avec_ses_porteurs_publie_une_chaine_C3_sans_portee(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.1 : « `validé` et `réfuté` deviennent atteignables sur données réelles par ce chemin et par
+    aucun autre » ; § L.2 : le préfixe `C3_SYNTH_` et la ligne de portée ne valent que pour l'exercice
+    synthétique."""
+    artifacts = _sound()
+    _real_with_carriers(artifacts)
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.synthetic is False
+    assert decision.issue == cc.ISSUE_VALIDE
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["synthetic"] is False and payload["portee"] is None
+    assert payload["verdict_string"].startswith("C3_C3A | verdict=validé")
+    assert not capsys.readouterr().out.startswith("PORTEE")
+
+
+def test_le_diagnostic_d_une_evaluation_reelle_dit_synthetic_faux(tmp_path: Path) -> None:
+    """§ L.1 v2.1 : le diagnostic d'une évaluation réelle n'est pas un exercice synthétique — `synthetic`
+    est tiré de l'évaluation, pas posé à vrai (§ I.1 : forme d'un diagnostic)."""
+    artifacts = _sound()
+    _real_with_carriers(artifacts)
+    artifacts["selection"]["provenance"] = "unknown"  # ≠ anchor → violation, chemin diagnostic
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True
+    assert payload["synthetic"] is False and payload["portee"] is None
+
+
+@pytest.mark.parametrize("clause", ["c1", "c5"])
+def test_c1_ou_c5_non_verifiable_sur_une_evaluation_reelle_est_une_violation(
+    tmp_path: Path, clause: str
+) -> None:
+    """§ B.8 v2.1, « Ce qu'exige validé » : c1 et c5 `DÉCLARÉ` sur une évaluation réelle — elle porte sa
+    preuve de départ à plat et son premier remplissage (§ L.1) ; une continuité qui les dit non vérifiables
+    contredit l'évaluation : violation (§ I.1, ligne 15), jamais `validé`."""
+    artifacts = _sound()
+    _real_with_carriers(artifacts)
+    artifacts["continuity"]["clauses"][clause] = {"state": "NOT_VERIFIABLE", "detail": "absent"}
+    artifacts["continuity"]["state"] = "NOT_VERIFIABLE"
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any(clause in v and "B.8" in v for v in violations), violations
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+
+
+# ---------------------------------------------------------------------------
+# Continuité → verdict ; clause 3 en échec ou non vérifiable : § I.1 v2.1, ligne 10 bis (AM-19)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("state", ["FAILED", "NOT_VERIFIABLE"])
+def test_clause_3_non_normalisee_a_l_evaluation_est_un_inconclusif_R1_publie(
+    tmp_path: Path, state: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ I.1 v2.1, ligne 10 bis : « clause 3 du § B en échec **ou non vérifiable** sur l'artefact évalué |
+    run | `R1_NOT_NORMALISED` | 0 | non ; issue `inconclusif` » ; § B.3 v2.1 : « un résultat, pas un refus,
+    parce que l'artefact est bien formé et dit vrai » — « cette ligne abroge la convention d'outillage datée
+    du 21/09 », qui sortait ce cas par un refus code 2."""
+    artifacts = _sound()
+    _coherent_continuity(artifacts, "c3", state)
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "R1_NOT_NORMALISED"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "R1_NOT_NORMALISED"
+    assert payload["chain"]["verified"] is True
+    assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("clause", ["c1", "c2", "c5"])
@@ -1525,6 +1997,24 @@ def test_clause_declarative_en_echec_est_un_refus_R0(tmp_path: Path, clause: str
     assert info.value.reason == "R0_INVALID_RUN" and f"clause {clause}" in str(info.value)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
     assert not (tmp_path / "verdict.json").exists()
+
+
+def test_chain_une_preuve_de_depart_capturee_apres_T_est_un_refus_R0(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ B.2 v2.1 : la preuve est capturée « avant le traitement de la première bougie », `at == T` ; un
+    objet incohérent — ici capturé à T + 5 min — met la clause en échec, « et l'artefact déclare alors
+    lui-même une rupture du contrat § B — refus `R0_INVALID_RUN` » : la continuité est publiée (c1 FAILED),
+    le verdict refuse, code 2, rien d'écrit."""
+    w = _chain_world(
+        tmp_path, flat_start_proof=fx.flat_start_proof(at=fx.ANCHOR + timedelta(minutes=5))
+    )
+    assert cv.main(_chain_argv(w)) == 2
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["clauses"]["c1"]["state"] == "FAILED"
+    assert not (w["out"] / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "R0_INVALID_RUN" in err and "clause c1" in err
 
 
 def test_l_evaluation_d_une_autre_configuration_est_refusee(tmp_path: Path) -> None:
@@ -1553,8 +2043,8 @@ def test_une_identite_de_continuite_seule_discordante_est_une_violation(tmp_path
 @pytest.mark.parametrize("state", ["DECLARED", "NOT_VERIFIABLE"])
 def test_l_etat_agrege_est_porte_par_la_chaine_sans_changer_l_issue(state: str) -> None:
     """Clauses cohérentes avec l'agrégat (c1/c5 portées à l'état voulu, c2 DECLARED — ses seuls
-    états admissibles sont {DECLARED, FAILED}, § 6.4) ; l'issue ne dépend pas de l'agrégat tant
-    qu'aucune clause n'est FAILED. VERIFIED n'est pas un agrégat constructible (§ 6.4)."""
+    états admissibles sont {DECLARED, FAILED}, § B.8) ; l'issue ne dépend pas de l'agrégat tant
+    qu'aucune clause n'est FAILED. VERIFIED n'est pas un agrégat constructible (§ B.8)."""
     artifacts = _sound()
     clauses = artifacts["continuity"]["clauses"]
     for key in ("c1", "c5"):
@@ -1937,37 +2427,80 @@ def test_chain_s_arrete_a_benchmark_sans_candles(
     assert "CHAINE ARRETEE à l'étape benchmark" in capsys.readouterr().err
 
 
-def test_chain_sur_une_evaluation_reelle_s_arrete_au_verdict_rien_publie(tmp_path: Path) -> None:
-    """§ 6.6 (2) de bout en bout : la continuité s'exécute, le verdict refuse, aucun `verdict.json`."""
-    w = _chain_world(tmp_path, synthetic=False)
-    assert cv.main(_chain_argv(w)) == 2
-    assert (w["out"] / "continuity.json").exists()
-    assert cc.read_json(w["out"] / "continuity.json")["synthetic"] is False
-    assert not (w["out"] / "verdict.json").exists()
-
-
-def test_chain_moteur_signal_a_l_evaluation_clause_3_FAILED_rien_publie(
+def test_chain_sur_une_evaluation_reelle_sans_porteur_s_arrete_a_la_continuite(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """La convention datée du 21/09 de bout en bout : `c3_continuity` rapporte c3 `FAILED`
-    (`liquidation` null), le verdict refuse de produire une issue, code 2, aucun `verdict.json`."""
-    w = _chain_world(tmp_path, liquidation=False)
+    """§ L.1 v2.1 de bout en bout : « La règle est appliquée en tête de `c3_continuity` comme de
+    `c3_verdict` » — une évaluation réelle sans `flat_start_proof` arrête la chaîne à l'étape 5, code 2, rien
+    publié à partir d'elle, le manque nommé."""
+    w = _chain_world(tmp_path, synthetic=False)
     assert cv.main(_chain_argv(w)) == 2
+    assert not (w["out"] / "continuity.json").exists()
+    assert not (w["out"] / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "CHAINE ARRETEE à l'étape continuity" in err and "flat_start_proof" in err
+
+
+def test_chain_sur_une_evaluation_reelle_avec_ses_porteurs_publie_un_verdict_C3(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.1 de bout en bout : évaluation réelle portant ses trois porteurs → c1, c2, c5 DÉCLARÉ
+    (§ B.8), verdict publié sous `C3_<campagne>`, sans ligne de portée synthétique (§ L.2)."""
+    w = _chain_world(tmp_path, synthetic=False, flat_start_proof=fx.flat_start_proof())
+    assert cv.main(_chain_argv(w)) == 0
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["synthetic"] is False
+    states = {k: v["state"] for k, v in continuity["clauses"].items()}
+    assert states["c1"] == states["c2"] == states["c5"] == "DECLARED"
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["synthetic"] is False and payload["portee"] is None
+    assert payload["verdict_string"].startswith("C3_C3A | verdict=")
+
+
+def test_chain_moteur_signal_a_l_evaluation_clause_3_FAILED_inconclusif_R1_publie(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ I.1 v2.1, ligne 10 bis, de bout en bout : `c3_continuity` rapporte c3 `FAILED` (`liquidation`
+    null, moteur signal), le verdict publie `inconclusif (R1_NOT_NORMALISED)`, code 0 — la convention du
+    21/09 (refus code 2, rien publié) est abrogée (§ B.3 v2.1)."""
+    w = _chain_world(tmp_path, liquidation=False)
+    assert cv.main(_chain_argv(w)) == 0
     continuity = cc.read_json(w["out"] / "continuity.json")
     assert continuity["clauses"]["c3"]["state"] == "FAILED"
     assert continuity["liquidation_normalised"] is False
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "R1_NOT_NORMALISED"
+    assert payload["chain"]["verified"] is True
+    assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
+
+
+def test_chain_un_bloc_de_liquidation_contradictoire_a_l_evaluation_s_arrete_en_violation(
+    tmp_path: Path,
+) -> None:
+    """§ B.3 v2.1 : un bloc qui déclare `trades > 0` sans estampille se contredit — violation (§ I.1,
+    ligne 15), code 1, « jamais `R1_NOT_NORMALISED` » : la continuité publie un diagnostic, la chaîne
+    s'arrête là, aucun verdict."""
+    w = _chain_world(tmp_path)
+    evaluation = cc.read_json(w["evaluation"])
+    evaluation["liquidation"]["timestamp"] = None
+    cc.write_json(w["evaluation"], evaluation)
+    assert cv.main(_chain_argv(w)) == 1
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["invalide"] is True
+    assert any("contradictoire" in v for v in continuity["violations"])
     assert not (w["out"] / "verdict.json").exists()
-    err = capsys.readouterr().err
-    assert "ISSUE NON DEFINIE" in err and "amendement pendant (§ 6.1)" in err
 
 
 @pytest.mark.skipif(
     not (REAL_OBSERVATIONS.exists() and REAL_MANIFEST.exists() and REAL_REGISTRY.exists()),
     reason="artefact du rejeu ou livrable réel absent",
 )
-def test_chain_sur_l_artefact_reel_s_arrete_a_entry_code_2_aucun_verdict(tmp_path: Path) -> None:
-    """§ 6.6 (4) : sur données réelles la chaîne s'arrête à `entry` (refus D2) ; aucun chemin réel
-    n'atteint le verdict en C3a. L'artefact du rejeu et le registre committé restent intacts."""
+def test_chain_sur_le_livrable_reel_v20_s_arrete_a_l_ancrage_code_2_rien_d_ecrit(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """En-tête v2.1 et § A.6 : le manifeste réel de C3a déclare le sha256 de v2.0, et `c3_anchor` asserte le
+    sha256 du protocole courant parmi les valeurs gelées — la chaîne s'arrête donc à l'étape 1 (§ L.1), code 2,
+    rien d'écrit en aval (§ I.1, ligne 2). L'artefact du rejeu et le registre committé restent intacts."""
     before = cc.file_sha256(REAL_OBSERVATIONS)
     registry_before = cc.file_sha256(REAL_REGISTRY)
     registry = tmp_path / "variants.json"
@@ -1993,14 +2526,22 @@ def test_chain_sur_l_artefact_reel_s_arrete_a_entry_code_2_aucun_verdict(tmp_pat
         fx.NOW,
     ]
     assert cv.main(argv) == 2
-    assert (out / "anchor.json").exists() and (out / "entry.json").exists()
-    entry = cc.read_json(out / "entry.json")
-    assert entry["ok"] is False and entry["exit_code"] == 2
-    assert entry["refusal"]["reason"] == "D_WARMUP_PREFIX" and entry["n_candidates_d2_failed"] == 96
-    for f in ("benchmark.json", "selection.json", "continuity.json", "verdict.json"):
+    for f in (
+        "anchor.json",
+        "entry.json",
+        "benchmark.json",
+        "selection.json",
+        "continuity.json",
+        "verdict.json",
+    ):
         assert not (out / f).exists(), f
+    err = capsys.readouterr().err
+    assert "CHAINE ARRETEE à l'étape anchor" in err and "protocol_sha256" in err
     assert cc.file_sha256(REAL_OBSERVATIONS) == before
     assert cc.file_sha256(REAL_REGISTRY) == registry_before
+    assert cc.file_sha256(registry) == registry_before, (
+        "un refus d'ancrage ne réécrit pas le registre"
+    )
     assert never_read.read_text(encoding="utf-8") == "{}"
 
 
@@ -2029,12 +2570,14 @@ def test_un_now_illisible_en_mode_chain_est_une_erreur_d_usage_rien_ecrit(tmp_pa
 
 
 # ---------------------------------------------------------------------------
-# Revue Fin (1) — confinement synthétique : aucun chemin de publication avant le contrôle
+# Revue Fin (1) — admission de l'évaluation (§ L.1 v2.1) : aucun chemin de publication avant le contrôle
 # ---------------------------------------------------------------------------
 
+#: `false` : évaluation réelle sans porteur (refus R0, § L.1 v2.1) ; `real` : réelle avec ses trois porteurs.
 SYNTH_VALUES: list[tuple[str, Any]] = [
     ("true", True),
     ("false", False),
+    ("false + porteurs", "real"),
     ("absent", "absent"),
     ("null", None),
     ("chaine", "true"),
@@ -2044,6 +2587,9 @@ SYNTH_VALUES: list[tuple[str, Any]] = [
 def _set_synthetic(evaluation: dict[str, Any], value: Any) -> None:
     if value == "absent":
         evaluation.pop("synthetic", None)
+    elif value == "real":
+        evaluation["synthetic"] = False
+        _carry(evaluation)
     else:
         evaluation["synthetic"] = value
 
@@ -2079,14 +2625,32 @@ PUBLICATION_PATHS: list[tuple[str, Any]] = [
 def test_revue_Fin_1_confinement_au_niveau_fonction(
     path: str, mutate: Any, label: str, value: Any
 ) -> None:
-    """Le contrôle `evaluation.synthetic` précède **tout** chemin : abstention, verdict calculé,
-    diagnostic. Vrai → la décision porte `synthetic=True` et la chaîne le préfixe ; faux → refus ;
-    absent / null / chaîne → erreur d'entrée."""
+    """Le contrôle d'admission (§ L.1 v2.1) précède **tout** chemin : abstention, verdict calculé,
+    diagnostic. Vrai → la décision porte `synthetic=True` et la chaîne le préfixe ; faux sans porteur →
+    refus R0 nommant ce qui manque ; faux avec ses porteurs → admise, chaîne `C3_` ; absent / null / chaîne
+    → erreur d'entrée."""
     artifacts = _sound()
     mutate(artifacts)
-    _set_synthetic(artifacts["evaluation"], value)
+    if value == "real":
+        _real_with_carriers(artifacts)
+    else:
+        _set_synthetic(artifacts["evaluation"], value)
     violations: list[str] = []
-    if value is True:
+    if value == "real":
+        decision = cv.decide(artifacts, violations=violations)
+        assert decision.synthetic is False, path
+        chain = cv.build_verdict_string(
+            "C3A",
+            decision,
+            cc.protocol_descriptor()["sha256"],
+            continuity_state=decision.continuity_state,
+            variant_key=VARIANT_KEY,
+            observations_sha256=OBSERVATIONS_SHA,
+            synthetic=decision.synthetic,
+        )
+        assert chain.startswith("C3_C3A | "), chain
+        assert (path == "diagnostic") == bool(violations)
+    elif value is True:
         decision = cv.decide(artifacts, violations=violations)
         assert decision.synthetic is True, path
         chain = cv.build_verdict_string(
@@ -2101,8 +2665,9 @@ def test_revue_Fin_1_confinement_au_niveau_fonction(
         assert chain.startswith("C3_SYNTH_C3A | "), chain
         assert (path == "diagnostic") == bool(violations)
     elif value is False:
-        with pytest.raises(cc.EntryRefusedError, match="évaluation réelle non exerçable"):
+        with pytest.raises(cc.EntryRefusedError, match="flat_start_proof") as info:
             cv.decide(artifacts, violations=violations)
+        assert info.value.reason == "R0_INVALID_RUN"
     else:
         with pytest.raises(cc.MissingEvidenceError, match="evaluation.synthetic"):
             cv.decide(artifacts, violations=violations)
@@ -2122,11 +2687,23 @@ def test_revue_Fin_1_confinement_au_niveau_cli(
 ) -> None:
     artifacts = _sound()
     mutate(artifacts)
-    _set_synthetic(artifacts["evaluation"], value)
+    if value == "real":
+        _real_with_carriers(artifacts)
+    else:
+        _set_synthetic(artifacts["evaluation"], value)
     code = cv.main(_write_cli_inputs(tmp_path, artifacts))
     out = tmp_path / "verdict.json"
     captured = capsys.readouterr()
-    if value is True:
+    if value == "real":
+        assert code == (1 if path == "diagnostic" else 0), captured.err
+        payload = cc.read_json(out)
+        assert payload["synthetic"] is False and payload["portee"] is None
+        assert not captured.out.startswith("PORTEE")
+        if path == "diagnostic":
+            assert payload["invalide"] is True and payload["verdict_string"] is None
+        else:
+            assert payload["verdict_string"].startswith("C3_C3A | ")
+    elif value is True:
         assert code == (1 if path == "diagnostic" else 0), captured.err
         payload = cc.read_json(out)
         assert payload["synthetic"] is True and payload["portee"] == cv.PORTEE_SYNTH
@@ -2139,7 +2716,7 @@ def test_revue_Fin_1_confinement_au_niveau_cli(
     else:
         assert code == 2 and not out.exists(), (path, label, captured.err)
         if value is False:
-            assert "évaluation réelle non exerçable par l'outillage C3a" in captured.err
+            assert "R0_INVALID_RUN" in captured.err and "flat_start_proof" in captured.err
 
 
 def _all_d3(obs: dict[str, Any]) -> None:
@@ -2180,20 +2757,26 @@ def test_revue_Fin_1_confinement_au_niveau_chain(
     code = cv.main(_chain_argv(w))
     out = w["out"] / "verdict.json"
     captured = capsys.readouterr()
-    if value is True:
+    if value is True or value == "real":
+        prefix = "C3_SYNTH_C3A | " if value is True else "C3_C3A | "
         assert code == (1 if path == "diagnostic" else 0), captured.err
         payload = cc.read_json(out)
-        assert payload["synthetic"] is True and payload["portee"] == cv.PORTEE_SYNTH
+        assert payload["synthetic"] is (value is True)
+        assert payload["portee"] == (cv.PORTEE_SYNTH if value is True else None)
         if path == "abstention":
             assert payload["verdict_string"].startswith(
-                "C3_SYNTH_C3A | verdict=inconclusif | raison=A_NO_ADMISSIBLE_CANDIDATE"
+                f"{prefix}verdict=inconclusif | raison=A_NO_ADMISSIBLE_CANDIDATE"
             )
         elif path == "verdict":
-            assert payload["verdict_string"].startswith("C3_SYNTH_C3A | ")
+            assert payload["verdict_string"].startswith(prefix)
         else:
             assert payload["invalide"] is True and payload["verdict_string"] is None
     else:
         assert code == 2 and not out.exists(), (path, label, captured.err)
+        # § L.1 v2.1 : l'admission est contrôlée en tête de `c3_continuity` — la chaîne s'y arrête.
+        assert "CHAINE ARRETEE à l'étape continuity" in captured.err, captured.err
+        if value is False:
+            assert "flat_start_proof" in captured.err
 
 
 # ---------------------------------------------------------------------------
@@ -2206,7 +2789,7 @@ def _never_valide(artifacts: dict[str, Any]) -> tuple[Any, list[str]]:
     violations: list[str] = []
     try:
         decision = cv.decide(artifacts, violations=violations)
-    except (cc.EntryRefusedError, cc.UndefinedIssueError) as exc:
+    except cc.EntryRefusedError as exc:
         return exc, violations
     # Un artefact contredit ne publie jamais « validé » : soit l'issue calculée n'est pas validé,
     # soit une violation la retient dans un diagnostic (§ I.1 l.15) — la CLI rend 1, jamais 0.
@@ -2331,15 +2914,8 @@ def test_revue_Fin_2_chaque_resume_contredit_est_une_violation(
             ),
             "E_STAMP_MISMATCH",
         ),
-        (
-            lambda c: (
-                c["stamp_cell"].__setitem__("state", "NOT_VERIFIABLE"),
-                c.__setitem__("stamp_same_daily_cell", False),
-            ),
-            "E_STAMP_MISMATCH",
-        ),
     ],
-    ids=["c4", "comparator", "stamp_FAILED", "stamp_NOT_VERIFIABLE"],
+    ids=["c4", "comparator", "stamp_FAILED"],
 )
 def test_revue_Fin_2_les_actions_se_branchent_sur_les_clauses_coherentes(
     tmp_path: Path, mutate_block: Any, expected: str
@@ -2359,17 +2935,48 @@ def test_revue_Fin_2_les_actions_se_branchent_sur_les_clauses_coherentes(
     )
 
 
-def test_revue_Fin_2_c3_FAILED_coherent_est_l_issue_non_definie_et_normalise_faux_seul_une_violation() -> (
-    None
-):
+def test_une_estampille_non_verifiable_est_satisfaite_a_vide(tmp_path: Path) -> None:
+    """§ B.4 v2.1 (AM-11) : « Quand il n'y a pas d'estampille […] l'assertion est satisfaite à vide […]. Cet
+    état est rapporté NON VÉRIFIABLE (aucune estampille), il ne produit pas E_STAMP_MISMATCH, et il ne bloque
+    pas validé » — seul `stamp_cell` FAILED produit la raison (cas `stamp_FAILED` ci-dessus)."""
+    artifacts = _sound()
+    continuity = artifacts["continuity"]
+    continuity["stamp_cell"]["state"] = "NOT_VERIFIABLE"
+    continuity["stamp_same_daily_cell"] = False
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.issue == cc.ISSUE_VALIDE and decision.reason is None
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_VALIDE and payload["raison"] is None
+
+
+def test_chain_une_evaluation_qui_ne_liquide_rien_peut_etre_validee(tmp_path: Path) -> None:
+    """§ B.4 v2.1 (AM-11), de bout en bout : un bloc de liquidation présent qui ne liquide rien
+    (`trades == 0`, lots vides, estampille nulle) — `stamp_cell` NON VÉRIFIABLE, clause 3 VÉRIFIÉE (identités
+    exactes, preuve par lot vide) — n'empêche pas `validé` : l'assertion de cellule est satisfaite à vide."""
+    w = _chain_world(tmp_path, liquidation_positions=0)
+    assert cv.main(_chain_argv(w)) == 0
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["stamp_cell"]["state"] == "NOT_VERIFIABLE"
+    assert continuity["clauses"]["c3"]["state"] == "VERIFIED"
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_VALIDE and payload["raison"] is None
+    assert payload["synthetic"] is True
+
+
+def test_revue_Fin_2_c3_FAILED_coherent_est_R1_et_normalise_faux_seul_une_violation() -> None:
+    """§ I.1 v2.1, ligne 10 bis : c3 en échec, résumés cohérents → `R1_NOT_NORMALISED`, aucune violation ;
+    le résumé seul, contredit par la clause, est une violation (§ I.1, ligne 15)."""
     artifacts = _sound()
     c = artifacts["continuity"]
     c["clauses"]["c3"]["state"] = "FAILED"
     c["state"] = "FAILED"
     c["liquidation_normalised"] = False
-    with pytest.raises(cc.UndefinedIssueError):
-        cv.decide(artifacts, violations=[])
-    # Le résumé seul ne déclenche pas la convention : il est contredit par la clause → violation.
+    coherent: list[str] = []
+    decision = cv.decide(artifacts, violations=coherent)
+    assert coherent == [] and decision.reason == "R1_NOT_NORMALISED"
+    # Le résumé seul ne commande aucune action : il est contredit par la clause → violation.
     artifacts = _sound()
     artifacts["continuity"]["liquidation_normalised"] = False
     violations: list[str] = []
@@ -2379,11 +2986,11 @@ def test_revue_Fin_2_c3_FAILED_coherent_est_l_issue_non_definie_et_normalise_fau
 
 
 # ---------------------------------------------------------------------------
-# Revue Fin 2 (1) — la table § 6.4 s'applique en liste close ; les attendus se dérivent de la table
+# Revue Fin 2 (1) — la table du § B.8 s'applique en liste close ; les attendus se dérivent de la table
 # ---------------------------------------------------------------------------
 
-#: Colonne « États atteignables (C3a) » de la table § 6.4 (plan révisé, validée au second R1),
-#: **recopiée du texte, pas du code** : la liste close de chaque clause.
+#: Colonne « États admissibles » de la table du § B.8 v2.1 (section d'origine, AM-12 ; auparavant la
+#: table § 6.4 du plan hors dépôt), **recopiée du texte, pas du code** : la liste close de chaque clause.
 ADMISSIBLE_STATES_6_4: dict[str, tuple[str, ...]] = {
     "c1": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
     "c2": ("DECLARED", "FAILED"),
@@ -2392,134 +2999,144 @@ ADMISSIBLE_STATES_6_4: dict[str, tuple[str, ...]] = {
     "c5": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
 }
 
-#: Résumés dérivés d'une clause, tels que le plan les fixe (§ 6.4 c4 : « VERIFIED / FAILED » ;
-#: § 6.4 c3 et § 6.5 : `liquidation_normalised` vrai par preuve par lot, faux en échec, indécidable
-#: sans lots) — écrits depuis le texte pour que le test ne recopie pas l'implémentation.
+#: Résumé dérivé de c3, tel que le § B.8 v2.1 le fixe : « `liquidation_normalised` vaut vrai si c3 est
+#: VÉRIFIÉ, faux en ÉCHEC, et `null` — non établi — en NON VÉRIFIABLE » — écrit depuis le texte pour que
+#: le test ne recopie pas l'implémentation.
 NORMALISED_6_4: dict[str, bool | None] = {"VERIFIED": True, "NOT_VERIFIABLE": None, "FAILED": False}
 
 
 def _aggregate_6_4(states: dict[str, str]) -> str:
-    """« Agrégat continuite= : FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED » (§ 6.4, texte)."""
+    """« Agrégat continuite= : FAILED > NOT_VERIFIABLE > DECLARED > VERIFIED » (§ B.8, texte)."""
     for worst in ("FAILED", "NOT_VERIFIABLE", "DECLARED", "VERIFIED"):
         if worst in states.values():
             return worst
     return "VERIFIED"
 
 
-#: Chaque ligne (clause, état) → issue attendue **et son appui**, la ligne § 6.4 qui la justifie.
-#: `calculee` = « issue calculée, continuite= le porte » ; `R0` = refus code 2 (l.1510) ;
-#: `undefined` = UndefinedIssueError (§ 6.1, convention datée du 21/09) ; `D_WARMUP_ANCHOR` = raison
-#: run (I.1 l.12) ; `hors_liste` = valeur hors liste close → code 2, rien publié (chantier 0).
+#: Chaque ligne (clause, état) → issue attendue **et son appui**, la ligne du § B.8 v2.1 qui la justifie.
+#: `calculee` = « issue calculée, continuite= le porte » ; `R0` = refus code 2 (§ I.1 l.1809, v2.1) ;
+#: `R1_NOT_NORMALISED` = raison run (§ I.1 v2.1, ligne 10 bis) ; `D_WARMUP_ANCHOR` = raison run
+#: (I.1 l.12) ; `hors_liste` = valeur hors liste close → code 2, rien publié (chantier 0).
 TABLE_6_4: list[tuple[str, str, str, str]] = [
     (
         "c1",
         "NOT_VERIFIABLE",
         "calculee",
-        "§ 6.4 c1 : NOT_VERIFIABLE (bloc absent) → issue calculée ; § B.2 l.743, l.723-724",
+        "§ B.8 c1 : NON VÉRIFIABLE admissible, toléré en exercice synthétique (« Ce qu'exige validé ») → issue calculée",
     ),
     (
         "c1",
         "DECLARED",
         "calculee",
-        "§ 6.4 c1 : DECLARED (flat_start_proof cohérent) → issue calculée ; § B.2 l.764-768",
+        "§ B.8 c1 : DÉCLARÉ (preuve du § B.2 cohérente) → issue calculée",
     ),
     (
         "c1",
         "FAILED",
         "R0",
-        "§ 6.4 c1 : FAILED → R0 code 2, l'artefact déclare une rupture § B.2 ; l.1510",
+        "§ B.8 actions : c1 en ÉCHEC → refus R0_INVALID_RUN (§ I.1, ligne 2)",
     ),
     (
         "c1",
         "VERIFIED",
         "hors_liste",
-        "§ 6.4 c1 : atteignables {NOT_VERIFIABLE, DECLARED, FAILED} — aucune déclaration ne produit VERIFIED",
+        "§ B.8 c1 : admissibles {NON VÉRIFIABLE, DÉCLARÉ, ÉCHEC} — jamais VÉRIFIÉ, preuve déclarative",
     ),
     (
         "c2",
         "DECLARED",
         "calculee",
-        "§ 6.4 c2 : DECLARED (single_call ∧ grille continue) → idem c1 ; § B.4 l.822-832",
+        "§ B.8 c2 : DÉCLARÉ (single_call ∧ grille continue) → issue calculée",
     ),
     (
         "c2",
         "FAILED",
         "R0",
-        "§ 6.4 c2 : FAILED (false ou grille discontinue) → idem c1, R0 code 2 ; § B.4 l.822-832",
+        "§ B.8 actions : c2 en ÉCHEC → refus R0_INVALID_RUN (§ I.1, ligne 2)",
     ),
-    ("c2", "NOT_VERIFIABLE", "hors_liste", "§ 6.4 c2 : atteignables {DECLARED, FAILED}"),
+    (
+        "c2",
+        "NOT_VERIFIABLE",
+        "hors_liste",
+        "§ B.8 c2 : admissibles {DÉCLARÉ, ÉCHEC} — le bloc invocation est obligatoire",
+    ),
     (
         "c2",
         "VERIFIED",
         "hors_liste",
-        "§ 6.4 c2 : atteignables {DECLARED, FAILED} — clause déclarative",
+        "§ B.8 c2 : admissibles {DÉCLARÉ, ÉCHEC} — single_call n'est pas recalculable",
     ),
     (
         "c3",
         "VERIFIED",
         "calculee",
-        "§ 6.4 c3 : VERIFIED (preuve par lot présente et vraie) → issue calculée ; § B.3 l.811-815",
+        "§ B.8 c3 : VÉRIFIÉ (preuve par lot) → issue calculée ; exigé par validé",
     ),
     (
         "c3",
         "NOT_VERIFIABLE",
-        "calculee",
-        "§ 6.4 c3 : NOT_VERIFIABLE (lots absents, § 6.5) → issue calculée, porté par continuite= ; § B.3 l.811-815",
+        "R1_NOT_NORMALISED",
+        "§ B.8 actions : c3 NON VÉRIFIABLE → inconclusif R1_NOT_NORMALISED (§ I.1, ligne 10 bis)",
     ),
     (
         "c3",
         "FAILED",
-        "undefined",
-        "§ 6.4 c3 : FAILED → UndefinedIssueError, code 2, rien publié (§ 6.1) ; § B.3 l.811-815, § G.2 l.1399",
+        "R1_NOT_NORMALISED",
+        "§ B.8 actions : c3 en ÉCHEC → inconclusif R1_NOT_NORMALISED (§ I.1, ligne 10 bis)",
     ),
     (
         "c3",
         "DECLARED",
         "hors_liste",
-        "§ 6.4 c3 : atteignables {VERIFIED, NOT_VERIFIABLE, FAILED} — aucune déclaration ne prouve une liquidation costée",
+        "§ B.8 c3 : admissibles {VÉRIFIÉ, NON VÉRIFIABLE, ÉCHEC} — jamais DÉCLARÉ",
     ),
     (
         "c4",
         "VERIFIED",
         "calculee",
-        "§ 6.4 c4 : VERIFIED (sufficient recalculé vrai sur chaque TF) → issue calculée ; § B.5 l.848-853",
+        "§ B.8 c4 : VÉRIFIÉ (sufficient recalculé sur chaque série) → issue calculée",
     ),
     (
         "c4",
         "FAILED",
         "D_WARMUP_ANCHOR",
-        "§ 6.4 c4 : FAILED → D_WARMUP_ANCHOR (l.12) ; § B.5 l.848-853, I.1 l.1525",
+        "§ B.8 actions : c4 en ÉCHEC → D_WARMUP_ANCHOR (§ I.1, ligne 12)",
     ),
     (
         "c4",
         "NOT_VERIFIABLE",
         "hors_liste",
-        "§ 6.4 c4 : atteignables {VERIFIED, FAILED} — l'amorçage est recalculé, jamais non vérifiable",
+        "§ B.8 c4 : admissibles {VÉRIFIÉ, ÉCHEC} — recalculée, rien d'autre n'est possible",
     ),
     (
         "c4",
         "DECLARED",
         "hors_liste",
-        "§ 6.4 c4 : atteignables {VERIFIED, FAILED} — l'amorçage n'est jamais déclaré",
+        "§ B.8 c4 : admissibles {VÉRIFIÉ, ÉCHEC} — l'amorçage n'est jamais déclaré",
     ),
     (
         "c5",
         "NOT_VERIFIABLE",
         "calculee",
-        "§ 6.4 c5 : NOT_VERIFIABLE (first_fill_at absent) → idem c1 ; § C.3 l.940",
+        "§ B.8 c5 : NON VÉRIFIABLE admissible, toléré en exercice synthétique → issue calculée",
     ),
     (
         "c5",
         "DECLARED",
         "calculee",
-        "§ 6.4 c5 : DECLARED (présent, > T) → idem c1 ; § A.4 l.252-256",
+        "§ B.8 c5 : DÉCLARÉ (first_fill_at > T, § C.3) → issue calculée",
     ),
-    ("c5", "FAILED", "R0", "§ 6.4 c5 : FAILED (≤ T) → idem c1, R0 code 2 ; § C.3 l.940"),
+    (
+        "c5",
+        "FAILED",
+        "R0",
+        "§ B.8 actions : c5 en ÉCHEC → refus R0_INVALID_RUN (§ I.1, ligne 2)",
+    ),
     (
         "c5",
         "VERIFIED",
         "hors_liste",
-        "§ 6.4 c5 : atteignables {NOT_VERIFIABLE, DECLARED, FAILED} — clause déclarative",
+        "§ B.8 c5 : admissibles {NON VÉRIFIABLE, DÉCLARÉ, ÉCHEC} — first_fill_at est déclaratif",
     ),
 ]
 
@@ -2535,11 +3152,41 @@ def _coherent_continuity(artifacts: dict[str, Any], clause: str, state: str) -> 
         c["liquidation_normalised"] = NORMALISED_6_4[states["c3"]]
 
 
+#: § B.8 v2.1 : les noms d'état du texte et leurs constantes d'outillage.
+STATE_NAMES_B8: dict[str, str] = {
+    "VÉRIFIÉ": "VERIFIED",
+    "DÉCLARÉ": "DECLARED",
+    "NON VÉRIFIABLE": "NOT_VERIFIABLE",
+    "ÉCHEC": "FAILED",
+}
+
+
+def test_la_table_B8_du_texte_est_la_liste_close_du_code() -> None:
+    """§ B.8 v2.1 : « Liste close par clause, des deux côtés » — la table du texte, relue ligne à ligne
+    dans le protocole, est exactement celle du code (cinq clauses, `stamp_cell`, `comparator`), et
+    l'agrégat suit la précédence écrite « ÉCHEC > NON VÉRIFIABLE > DÉCLARÉ > VÉRIFIÉ »."""
+    text = (_project_root / "docs" / "protocole_c3.md").read_text(encoding="utf-8")
+    section = text.split("### B.8 ", 1)[1].split("\n## ", 1)[0]
+    rows: dict[str, tuple[str, ...]] = {}
+    for line in section.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) == 3 and cells[1].startswith("`"):
+            rows[cells[0]] = tuple(
+                STATE_NAMES_B8[s.strip().strip("`")] for s in cells[1].split(",")
+            )
+    clauses = {label.split()[0]: states for label, states in rows.items() if label.startswith("c")}
+    assert clauses == cc.CLAUSE_ADMISSIBLE_STATES == ADMISSIBLE_STATES_6_4
+    assert rows["bloc `stamp_cell` (§ B.4)"] == cc.STAMP_CELL_ADMISSIBLE_STATES
+    assert rows["bloc `comparator` (§ C.5)"] == cc.COMPARATOR_ADMISSIBLE_STATES
+    precedence = section.split("par la précédence", 1)[1].split("`", 2)[1]
+    assert tuple(STATE_NAMES_B8[s.strip()] for s in precedence.split(">")) == cc.CONTINUITY_SEVERITY
+
+
 def test_la_liste_close_des_etats_par_clause_est_celle_de_la_table_6_4() -> None:
     assert cc.CLAUSE_ADMISSIBLE_STATES == ADMISSIBLE_STATES_6_4
     for clause, states in ADMISSIBLE_STATES_6_4.items():
         assert set(states) <= set(cc.CONTINUITY_STATES), clause
-    # Le résumé de c3 est défini sur la liste close de c3, et sur elle seule (§ 6.4 c3, § 6.5).
+    # Le résumé de c3 est défini sur la liste close de c3, et sur elle seule (§ B.8 c3).
     assert cc.LIQUIDATION_NORMALISED_OF_C3 == NORMALISED_6_4
     assert set(cc.LIQUIDATION_NORMALISED_OF_C3) == set(ADMISSIBLE_STATES_6_4["c3"])
 
@@ -2587,20 +3234,12 @@ def test_revue_Fin2_1_chaque_ligne_de_la_table_6_4_donne_l_issue_qu_elle_dit(
         assert info.value.reason == "R0_INVALID_RUN" and violations == [], appui
         assert cv.main(argv) == 2 and not out.exists(), appui
         return
-    if expected == "undefined":
-        with pytest.raises(cc.UndefinedIssueError):
-            cv.decide(artifacts, violations=violations)
-        assert violations == [], appui
-        assert cv.main(argv) == 2 and not out.exists(), appui
-        return
     decision = cv.decide(artifacts, violations=violations)
     assert violations == [], (appui, violations)
     assert decision.continuity_state == artifacts["continuity"]["state"], appui
-    if expected == "D_WARMUP_ANCHOR":
-        assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "D_WARMUP_ANCHOR", (
-            appui
-        )
-        assert cv.main(argv) == 0 and cc.read_json(out)["raison"] == "D_WARMUP_ANCHOR"
+    if expected in ("D_WARMUP_ANCHOR", "R1_NOT_NORMALISED"):
+        assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == expected, appui
+        assert cv.main(argv) == 0 and cc.read_json(out)["raison"] == expected, appui
         return
     assert expected == "calculee"
     # « issue calculée » : le témoin sain franchit E1/E2 et Q1-Q3 → validé, la clause n'y change rien.
@@ -2612,7 +3251,7 @@ def test_revue_Fin2_1_chaque_ligne_de_la_table_6_4_donne_l_issue_qu_elle_dit(
 def test_revue_Fin2_1_c4_non_verifiable_ou_declare_est_hors_liste_jamais_valide(
     tmp_path: Path, state: str
 ) -> None:
-    """La régression reproduite : c4 ∈ {VERIFIED, FAILED} seulement (§ 6.4 c4) — tout autre état
+    """La régression reproduite : c4 ∈ {VERIFIED, FAILED} seulement (§ B.8 c4) — tout autre état
     est hors liste close, code 2, rien publié ; jamais « validé »."""
     artifacts = _sound()
     _coherent_continuity(artifacts, "c4", state)
@@ -2623,7 +3262,7 @@ def test_revue_Fin2_1_c4_non_verifiable_ou_declare_est_hors_liste_jamais_valide(
 
 
 def test_revue_Fin2_1_l_agregat_VERIFIED_est_inconstructible_en_C3a() -> None:
-    """c1, c2, c5 sont déclaratives : VERIFIED leur est inatteignable (§ 6.4), donc aucune
+    """c1, c2, c5 sont déclaratives : VERIFIED leur est inatteignable (§ B.8), donc aucune
     combinaison d'états admissibles n'agrège en VERIFIED — sur les 3×2×3×2×3 = 108 combinaisons,
     par le texte (`_aggregate_6_4`) comme par le code (`cc.continuity_aggregate`), et dans la chaîne."""
     import itertools
@@ -2648,20 +3287,69 @@ def test_revue_Fin2_1_l_agregat_VERIFIED_est_inconstructible_en_C3a() -> None:
         try:
             decision = cv.decide(artifacts, violations=violations)
         except cc.EntryRefusedError:
-            # § 6.4 c1/c2/c5 : FAILED → R0 ; quand c3 est aussi FAILED, le refus R0 précède
-            # l'issue non définie (§ H : « R0 est évalué avant toute autre chose »).
+            # § B.8 c1/c2/c5 : FAILED → R0, quel que soit c3 (§ H : « R0 est évalué avant toute
+            # autre chose »).
             assert declarative_failed, states
             continue
-        except cc.UndefinedIssueError:
-            # § 6.4 c3 : FAILED → UndefinedIssueError, seulement si aucune clause déclarative n'a
-            # déjà rompu le contrat.
-            assert states["c3"] == "FAILED" and not declarative_failed, states
-            continue
-        assert not declarative_failed and states["c3"] != "FAILED", states
+        assert not declarative_failed, states
         assert violations == [], (states, violations)
         assert decision.continuity_state in ("NOT_VERIFIABLE", "DECLARED", "FAILED"), states
         assert decision.continuity_state != "VERIFIED"
-        assert (decision.issue == cc.ISSUE_VALIDE) == ("FAILED" not in states.values()), states
+        # § H.1 v2.1 : la chaîne porte la première raison qui s'applique, dans l'ordre recopié du texte —
+        # c4 FAILED → D_WARMUP_ANCHOR (l.12) ; c3 FAILED ou NOT_VERIFIABLE → R1_NOT_NORMALISED (l.10 bis).
+        applicable = ["D_WARMUP_ANCHOR"] if states["c4"] == "FAILED" else []
+        applicable += ["R1_NOT_NORMALISED"] if states["c3"] != "VERIFIED" else []
+        expected = min(applicable, key=fx.REASONS_H1.index) if applicable else None
+        assert decision.reason == expected, states
+        # validé ⟺ aucun ÉCHEC et c3 VÉRIFIÉ (c1/c5 NON VÉRIFIABLE tolérés en exercice synthétique).
+        assert (decision.issue == cc.ISSUE_VALIDE) == (
+            "FAILED" not in states.values() and states["c3"] == "VERIFIED"
+        ), states
+
+
+@pytest.mark.parametrize(
+    ("mutate", "other"),
+    [
+        pytest.param(
+            lambda c: (
+                c["clauses"]["c4"].__setitem__("state", "FAILED"),
+                c.__setitem__("warmup_anchor_ok", False),
+            ),
+            "D_WARMUP_ANCHOR",
+            id="c3 + c4",
+        ),
+        pytest.param(
+            lambda c: (
+                c["stamp_cell"].__setitem__("state", "FAILED"),
+                c.__setitem__("stamp_same_daily_cell", False),
+            ),
+            "E_STAMP_MISMATCH",
+            id="c3 + estampille",
+        ),
+        pytest.param(
+            lambda c: (
+                c["comparator"].__setitem__("state", "FAILED"),
+                c["comparator"]["tests"].__setitem__("ff_ok", False),
+                c.__setitem__("benchmark_comparable", False),
+            ),
+            "E_NO_BENCHMARK",
+            id="c3 + comparateur",
+        ),
+    ],
+)
+def test_R1_d_evaluation_prend_sa_place_dans_la_liste_de_priorite(mutate: Any, other: str) -> None:
+    """§ H.1 v2.1 : « la chaîne porte la première raison qui s'applique » — c3 en échec avec une autre
+    raison de continuité : l'attendu se lit dans la liste recopiée du texte (`fx.REASONS_H1`), pas dans le
+    code — `D_WARMUP_ANCHOR` précède `R1_NOT_NORMALISED`, qui précède `E_NO_BENCHMARK` et
+    `E_STAMP_MISMATCH`."""
+    artifacts = _sound()
+    _coherent_continuity(artifacts, "c3", "FAILED")
+    mutate(artifacts["continuity"])
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    expected = min(("R1_NOT_NORMALISED", other), key=fx.REASONS_H1.index)
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == expected
 
 
 def test_revue_Fin_2_l_etat_du_comparateur_est_derive_de_ses_tests() -> None:
@@ -3089,10 +3777,10 @@ def test_revue_Fin2_1_l_abstention_recoupe_la_continuite_et_porte_continuite_tir
     ("path", "mutate_eval"),
     [
         ("abstention", lambda e: e["metrics"].pop("delta_dd")),
-        ("abstention", lambda e: e.pop("bounds")),
+        ("abstention", lambda e: e["replications"]["21:dd"].pop("bound")),
         ("abstention", lambda e: e.__setitem__("B", 400)),
         ("F_NOT_ESTIMABLE", lambda e: e["metrics"].pop("delta_dd")),
-        ("F_NOT_ESTIMABLE", lambda e: e.pop("bounds")),
+        ("F_NOT_ESTIMABLE", lambda e: e["replications"]["21:dd"].pop("bound")),
         ("D_WARMUP_ANCHOR", lambda e: e["metrics"].pop("net_pnl")),
     ],
     ids=[
@@ -3114,7 +3802,7 @@ def test_revue_Fin2_1_les_portes_et_les_bornes_sont_lues_avant_tout_retour_antic
     if path == "abstention":
         _abstain(artifacts)
     elif path == "F_NOT_ESTIMABLE":
-        _all_discarded(artifacts)
+        _flat(artifacts)
     else:
         _coherent_continuity(artifacts, "c4", "FAILED")
     mutate_eval(artifacts["evaluation"])
@@ -3125,8 +3813,8 @@ def test_revue_Fin2_1_les_portes_et_les_bornes_sont_lues_avant_tout_retour_antic
 
 
 # ---------------------------------------------------------------------------
-# Revue Fin 2 (2) — violation avant UndefinedIssue : une contradiction constatée est un
-# diagnostic code 1, même quand c3 est en échec ; le refus 2 reste réservé au cas cohérent
+# Revue Fin 2 (2) — une contradiction constatée est un diagnostic code 1, même quand c3 est en échec ;
+# depuis v2.1 (§ I.1 ligne 10 bis) c3 en échec cohérent est un inconclusif publié, plus un refus
 # ---------------------------------------------------------------------------
 
 
@@ -3141,23 +3829,20 @@ def test_revue_Fin2_2_c3_FAILED_et_resume_normalise_vrai_est_un_diagnostic_code_
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Reproduction d'Astra : c3=FAILED + liquidation_normalised=true — contradiction déclaré/dérivé
-    → diagnostic code 1 (invalide: true, violations listées), pas le refus 2 de la convention
-    datée. Appui : revue Fin 2, item 2 (précédence fixée ; précédent du chantier 0 pour un refus
-    après violation) ; § I.1 l.15 (« c'est une violation, pas un résultat »)."""
+    → diagnostic code 1 (invalide: true, violations listées) ; § I.1 l.15 (« c'est une violation, pas un
+    résultat »). Depuis v2.1, c3 en échec n'est plus un refus (ligne 10 bis) : la précédence
+    violation → issue est triviale, et aucune « issue non définie » n'est plus consignée (AM-19)."""
     artifacts = _sound()
     _c3_failed(artifacts)
     artifacts["continuity"]["liquidation_normalised"] = True  # ment sur la clause en échec
     violations: list[str] = []
-    with pytest.raises(cc.UndefinedIssueError):
-        cv.decide(artifacts, violations=violations)
+    cv.decide(artifacts, violations=violations)
     assert any("liquidation_normalised" in v for v in violations)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
     payload = cc.read_json(tmp_path / "verdict.json")
     assert payload["invalide"] is True and payload["verdict"] is None
     assert any("liquidation_normalised" in v for v in payload["violations"])
-    assert any("issue non définie" in v for v in payload["violations"]), (
-        "la convention datée est consignée dans le diagnostic, pas exécutée"
-    )
+    assert not any("issue non définie" in v for v in payload["violations"])
     assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
 
 
@@ -3165,34 +3850,32 @@ def test_revue_Fin2_2_c3_FAILED_et_agregat_menteur_VERIFIED_est_un_diagnostic_co
     tmp_path: Path,
 ) -> None:
     """Reproduction d'Astra (item 2) : c3 en échec, résumé cohérent, agrégat déclaré VERIFIED →
-    contradiction déclaré/dérivé (dérivé FAILED, précédence § 6.4) → diagnostic code 1, jamais le
-    refus 2 — « le refus 2 reste réservé au cas cohérent »."""
+    contradiction déclaré/dérivé (dérivé FAILED, précédence du § B.8) → diagnostic code 1 (§ I.1 l.15)."""
     artifacts = _sound()
     _c3_failed(artifacts)
     artifacts["continuity"]["state"] = "VERIFIED"
     violations: list[str] = []
-    with pytest.raises(cc.UndefinedIssueError):
-        cv.decide(artifacts, violations=violations)
+    cv.decide(artifacts, violations=violations)
     assert any("continuity.state" in v for v in violations)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
     payload = cc.read_json(tmp_path / "verdict.json")
     assert payload["invalide"] is True and payload["chain"]["verified"] is False
 
 
-def test_revue_Fin2_2_c3_FAILED_coherent_reste_le_refus_2_de_la_convention_datee(
+def test_revue_Fin2_2_c3_FAILED_coherent_n_est_plus_un_refus_la_convention_datee_est_abrogee(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Le cas que la convention datée du 21/09 couvre : c3 en échec, résumés et agrégat concordants
-    → UndefinedIssueError, code 2, rien publié (§ 6.1, conduite (b))."""
+    """Le cas que la convention datée du 21/09 couvrait : c3 en échec, résumés et agrégat concordants.
+    § B.3 v2.1 : « Cette ligne abroge la convention d'outillage datée du 21/09 » — `inconclusif
+    (R1_NOT_NORMALISED)`, publié, code 0 (§ I.1, ligne 10 bis)."""
     artifacts = _sound()
     _c3_failed(artifacts)
     violations: list[str] = []
-    with pytest.raises(cc.UndefinedIssueError):
-        cv.decide(artifacts, violations=violations)
-    assert violations == []
-    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
-    assert not (tmp_path / "verdict.json").exists()
-    assert "ISSUE NON DEFINIE" in capsys.readouterr().err
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.reason == "R1_NOT_NORMALISED"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    assert cc.read_json(tmp_path / "verdict.json")["raison"] == "R1_NOT_NORMALISED"
+    assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------
@@ -3239,7 +3922,9 @@ def test_revue_Fin2_3_chain_verified_vrai_avec_un_inconclusif_E_NO_BENCHMARK(
         ),
         (
             "violation_hors_chaine_non_fini",
-            lambda a: a["evaluation"]["delta_stars"].__setitem__(3, float("nan")),
+            lambda a: a["evaluation"]["replications"]["21:dd"]["delta_stars"].__setitem__(
+                3, float("nan")
+            ),
         ),
     ],
     ids=["estimabilite", "resume", "empreinte", "coherence", "protocole", "non_fini"],
@@ -3346,12 +4031,14 @@ def test_revue_Fin2_2_une_preuve_absente_apres_violation_sort_2_et_la_violation_
 
 
 def test_revue_Fin2_2_le_diagnostic_ne_dit_pas_rien_publie(tmp_path: Path) -> None:
-    """Un artefact publié n'affirme pas de lui-même « code 2, rien publié » : le diagnostic consigne
-    le motif de l'issue non définie, pas la conduite (b) qui ne s'est pas appliquée."""
+    """Un artefact publié n'affirme pas de lui-même « code 2, rien publié » ; depuis v2.1 (AM-19), le
+    diagnostic d'un c3 contredit ne porte que la contradiction — aucune issue non définie à consigner."""
     artifacts = _sound()
     _c3_failed(artifacts)
     artifacts["continuity"]["liquidation_normalised"] = True
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
     payload = cc.read_json(tmp_path / "verdict.json")
-    undefined = [v for v in payload["violations"] if "issue non définie" in v]
-    assert undefined and all("rien publié" not in v for v in undefined), undefined
+    assert any("liquidation_normalised" in v for v in payload["violations"])
+    assert all(
+        "rien publié" not in v and "issue non définie" not in v for v in payload["violations"]
+    )

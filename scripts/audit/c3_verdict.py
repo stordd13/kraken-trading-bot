@@ -15,6 +15,9 @@ Ce qu'il fait, dans l'ordre gelé :
 * **§ H.0 — la préséance de l'estimabilité sur le verdict économique.** Tant que `E1` et `E2` ne
   sont pas satisfaites, **ni ``validé`` ni ``réfuté``** ne peuvent être prononcés, quel que soit le
   résultat des portes `Q1`, `Q2`, `Q3` : l'issue est ``inconclusif (F_NOT_ESTIMABLE)``.
+* § F.2 (d) v2.1 — **le tirage est rejoué** (graine du manifeste, index de paire, ``n_jours``, dans
+  l'environnement déclaré) : suites, écartées, CAGR observé, `Δ̂` par appariement et six bornes sont
+  recalculés, un écart au déclaré est une violation, et `Q2`, `Q3` et les bornes décident sur le rejoué.
 * § H.1 — les trois issues en conditions nécessaires et suffisantes.
 * § A.5 — un univers ``contaminated`` **ou ``unknown``** ne peut porter ni ``validé`` ni ``réfuté``.
 
@@ -39,39 +42,38 @@ lit dans ``verdict`` / ``raison``. Donc ``verified: true`` avec un ``inconclusif
 chaîne ou non) **ou refus** — un refus sans violation ne publie rien (aucun ``verified`` à porter) ;
 un refus consigné après une violation publie un diagnostic, qui porte ``verified: false``.
 
-**Précédence violation → issue non définie (revue Fin 2).** Une contradiction déclaré / dérivé
-constatée est un diagnostic code 1 (``invalide: true``, violations listées), même quand la clause 3
-est en échec ; le refus 2 ``UndefinedIssueError`` reste réservé au cas cohérent (c3 en échec,
-résumés et agrégat concordants) — c'est lui que la convention datée couvre. **Règle générale :
-l'ordre de constat** — après une violation, la violation prime (diagnostic, code 1), qu'un refus ou
-une issue non définie survienne ensuite ; **sauf lecture inachevable** : une preuve obligatoire
+**Précédence violation → issue (revue Fin 2).** Une contradiction déclaré / dérivé constatée est un
+diagnostic code 1 (``invalide: true``, violations listées), même quand la clause 3 est en échec — et
+depuis v2.1 la clause 3 en échec cohérente est une issue publiée (§ I.1 ligne 10 bis), plus un refus :
+la précédence y est triviale. **Règle générale : l'ordre de constat** — après une violation, la
+violation prime (diagnostic, code 1), qu'un refus survienne ensuite ; **sauf lecture inachevable** :
+une preuve obligatoire
 absente, nulle, mal typée ou hors liste close constatée après une violation sort en code 2, rien
 publié, les violations dites sur stderr — **convention d'outillage datée du 22/09** (validation Fin),
 fondement : un diagnostic se bâtit sur une lecture complète ; clarification normative au paquet C3b.
 Le « précédent du chantier 0 » couvre le refus de contrat évalué **avant toute lecture** (``B``
 hors contrat → 2), pas cet ordre de constat.
 
-**Continuité → verdict (plan § 6.4, validé ; revue Fin, défaut 2).** Les résumés
+**Continuité → verdict (§ B.8 v2.1 ; revue Fin, défaut 2).** Les résumés
 (``warmup_anchor_ok``, ``benchmark_comparable``, ``stamp_same_daily_cell``, ``liquidation_normalised``)
 et l'agrégat sont **dérivés des clauses par le consommateur** et recoupés au déclaré — une
 contradiction est une violation ; les actions se branchent sur les clauses, jamais sur les résumés.
 Clauses déclaratives c1/c2/c5 ``FAILED`` : l'artefact
-déclare lui-même une rupture du contrat § B → refus ``R0_INVALID_RUN``, code 2. Clause 3 ``FAILED``
-(liquidation terminale non normalisée) : § B.3 et § G.2 interdisent tout verdict directionnel et § I.1
-ne porte aucune ligne de portée run pour ce cas → ``UndefinedIssueError`` — **convention d'outillage
-datée du 21/09** (plan révisé § 6.1, hors dépôt, conduite (b) ; rapport de session § 7), une
-assignation de code hors table assumée comme telle ; l'amendement daté (a) est dû à l'ouverture de
-C3b. Sa sortie (code 2, rien publié) ne vaut que pour le cas **cohérent** — voir la précédence
-ci-dessus.
+déclare lui-même une rupture du contrat § B → refus ``R0_INVALID_RUN``, code 2. Clause 3 ``FAILED`` ou
+``NOT_VERIFIABLE`` (liquidation terminale de l'évaluation non normalisée) : ``inconclusif
+(R1_NOT_NORMALISED)``, portée run, publié, code 0 (§ I.1 v2.1, ligne 10 bis ; § B.3 v2.1, AM-19) — la
+convention d'outillage datée du 21/09 (``UndefinedIssueError``, code 2 hors table) est abrogée. Un bloc
+de liquidation contradictoire (``trades > 0`` sans estampille ou sans prix) n'arrive jamais jusqu'ici :
+``cc.liquidation_identities`` le lève en violation dès la continuité (§ B.3 v2.1).
 
-**Confinement des verdicts synthétiques (plan § 6.6, validé).** § L.1 : sur données réelles, C3a ne
-peut produire que non-recevabilité et abstention ; ``validé`` / ``réfuté`` sont structurellement
-inatteignables tant que C3b n'a pas livré l'exécution continue et la preuve de départ à plat.
-L'outillage l'exécute : ``evaluation.synthetic`` est **obligatoire et strictement typé** ; ``false``
-(évaluation réelle) est **refusé** (code 2, rien publié) ; ``true`` préfixe la chaîne ``C3_SYNTH_``
-et écrit ``portee`` en première ligne. Ce contrôle est le **premier** de ``decide()`` et de
-``run_verdict()`` : aucun chemin de publication — verdict calculé, abstention, diagnostic — ne le
-précède (revue Fin, défaut 1).
+**Admission de l'évaluation (§ L.1 v2.1, AM-24 ; ex-confinement synthétique, plan § 6.6).**
+``evaluation.synthetic`` est **obligatoire et strictement typé** (``cc.evaluation_admission``, partagé
+avec ``c3_continuity``). ``true`` : exercice synthétique, chaîne ``C3_SYNTH_``, ``portee`` en première
+ligne. ``false`` : évaluation réelle, admise **si et seulement si** elle porte ``flat_start_proof``,
+``invocation.single_call`` et ``first_fill_at`` — sinon refus ``R0_INVALID_RUN``, code 2, rien publié,
+le manque nommé ; admise, chaîne ``C3_<campagne>`` sans ligne de portée, et le diagnostic dit
+``synthetic: false``. Ce contrôle est le **premier** de ``decide()`` et de ``run_verdict()`` : aucun
+chemin de publication — verdict calculé, abstention, diagnostic — ne le précède (revue Fin, défaut 1).
 
 Pure, read-only hors de sa sortie. Aucun accès base de données.
 
@@ -109,36 +111,7 @@ STEP = "verdict"
 INPUT_NAMES: tuple[str, ...] = ("entry", "anchor", "selection", "continuity", "evaluation")
 SYNTH_PREFIX = "C3_SYNTH_"
 PORTEE_SYNTH = "exercice synthétique de l'outillage — aucune portée économique (§ L.1)"
-#: Convention d'outillage datée du 21/09 (plan § 6.1, conduite (b)) — le message cité par le test.
-UNDEFINED_ISSUE_MOTIF = (
-    "issue non définie par le texte gelé, amendement pendant (§ 6.1) : liquidation terminale non "
-    "normalisée sur l'artefact d'évaluation — § B.3 et § G.2 interdisent tout verdict directionnel, "
-    "§ I.1 ne porte aucune ligne de portée run pour ce cas"
-)
-#: Le motif, puis la conduite (b) de la convention datée — celle-ci ne s'applique qu'au cas cohérent.
-UNDEFINED_ISSUE_MESSAGE = (
-    f"{UNDEFINED_ISSUE_MOTIF} ; convention d'outillage datée du 21/09 : "
-    "refus de produire une issue, code 2, rien publié"
-)
 ABSTENTION_REASONS: tuple[str, ...] = ("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR")
-REAL_EVALUATION_MESSAGE = (
-    "évaluation réelle non exerçable par l'outillage C3a — § L.1 : l'exécution continue et la preuve "
-    "de départ à plat relèvent de C3b ; seule une évaluation déclarée synthétique est admise"
-)
-
-
-def require_synthetic(evaluation: Mapping[str, Any]) -> bool:
-    """Le confinement des verdicts synthétiques (§ L.1, plan § 6.6), **avant tout chemin de publication**.
-
-    ``evaluation.synthetic`` est une déclaration non dérivable, exigée explicite et strictement
-    typée : absent / null / ``"true"`` → erreur d'entrée (code 2, rien écrit) ; ``false`` → une
-    évaluation réelle n'est pas exerçable par l'outillage C3a → refus ``R0_INVALID_RUN`` (code 2,
-    rien publié — ni verdict, ni abstention, ni diagnostic). Renvoie ``True`` ou lève.
-    """
-    synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
-    if not synthetic:
-        raise cc.EntryRefusedError("R0_INVALID_RUN", REAL_EVALUATION_MESSAGE)
-    return True
 
 
 @dataclass(frozen=True)
@@ -157,69 +130,32 @@ class Decision:
     synthetic: bool | None = None
 
 
-def _gate_results(evaluation: Mapping[str, Any]) -> dict[str, bool]:
+def _gate_results(*, net_pnl: float, cagr_pct: float, delta_dd: float) -> dict[str, bool]:
     """`Q1`, `Q2`, `Q3` du § F.8, évaluées sur la fenêtre d'évaluation.
 
     `Q1` et `Q2` lisent le **résultat propre** de la configuration ; seule `Q3` lit le comparateur.
     Les seuils viennent du § A.10 via ``c3_common`` ; les redire ici les ferait diverger (§ 0.7).
-    Les trois métriques sont **obligatoires et finies**, et jamais une porte en échec : absente,
-    nulle ou mal typée → erreur d'entrée (code 2) ; `NaN` ou infinie → violation (code 1, § I.1 l.15).
+    § F.2 (c) et (d) v2.1 : `Q2` et `Q3` décident sur les valeurs **rejouées** (CAGR observé, `Δ̂` dd) ;
+    `Q1` sur `net_pnl`, déclaré, qu'aucune série de l'artefact ne permet de recalculer.
     """
-    metrics = cc.require_mapping(evaluation, "metrics", where="evaluation")
-    where = "evaluation.metrics"
     return {
-        "Q1": cc.require_float(metrics, "net_pnl", where=where) > cc.FLOOR_NET_PNL,
-        "Q2": cc.require_float(metrics, "cagr_pct", where=where) >= cc.FLOOR_CAGR_PCT,
-        "Q3": cc.require_float(metrics, "delta_dd", where=where) > cc.FLOOR_DELTA_DD,
+        "Q1": net_pnl > cc.FLOOR_NET_PNL,
+        "Q2": cagr_pct >= cc.FLOOR_CAGR_PCT,
+        "Q3": delta_dd > cc.FLOOR_DELTA_DD,
     }
 
 
-def _bounds_all_positive(evaluation: Mapping[str, Any]) -> bool:
-    """Les six combinaisons `L × appariement` du § F.2 (h), toutes **finies** et strictement positives.
-
-    La finitude est vérifiée **avant** la comparaison : sans elle, `+inf` franchirait le plancher et
-    un `NaN` le ferait échouer silencieusement.
-    """
-    bounds = cc.require_mapping(evaluation, "bounds", where="evaluation")
-    expected = {f"{length}:{matching}" for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS}
-    missing = expected - set(bounds)
-    extra = set(bounds) - expected
-    if missing or extra:
-        raise cc.MissingEvidenceError(
-            f"evaluation.bounds: attendu exactement {len(expected)} combinaisons ; "
-            f"manquantes={sorted(missing)} en trop={sorted(extra)}"
-        )
-    values = [cc.require_float(bounds, key, where="evaluation.bounds") for key in sorted(expected)]
-    return all(v > 0.0 for v in values)
-
-
-def _estimability_of(
-    evaluation: Mapping[str, Any], *, violations: list[str]
-) -> tuple[bool, dict[str, Any]]:
-    """§ A.13, **recalculé depuis les séries**, puis recoupé contre toute valeur déclarée.
-
-    Le statut déclaré n'est **jamais** recopié : il est recalculé et comparé, et un désaccord est une
-    **violation** (§ I.1, ligne 15). Le bloc déclaré est optionnel ; **s'il est présent, chaque champ
-    est strictement typé** — une chaîne ``"false"`` est une erreur de type, pas un ``True``.
-
-    Le compteur ``discarded`` et le total ``B`` sont **obligatoires** : un compteur absent n'est pas
-    zéro. Deux contrôles sur ``B``, dans cet ordre :
-
-    1. **contrat, en tête de fonction, avant tout parsing** — ``B`` est un paramètre de la procédure
-       d'incertitude que le manifeste déclare (§ A.6) et que D5 asserte « égal à ce qui est déclaré » ;
-       la valeur gelée est ``BOOTSTRAP_B`` (§ F.2 b). Un ``B`` différent est un **contrat d'instrument
-       rompu** : ``R0_INVALID_RUN``, code 2, rien n'est publié (§ I.1, ligne 2). « ``R0_INVALID_RUN``
-       est évalué avant toute autre chose » (§ H) vaut aussi contre les erreurs de parsing des séries :
-       un ``B`` hors contrat accompagné d'un compteur contradictoire **ou** d'un non-fini dans
-       ``delta_stars`` sort en refus de contrat (2, rien d'écrit), jamais en violation (1) par accident
-       d'ordre de lecture. Précédent : ``rejeu_validate_analysis.b02_frozen_parameters``.
-    2. **cohérence** — ``B_effectif`` est recalculé comme ``len(delta_stars)`` ;
-       ``B != B_effectif + discarded`` est un désaccord recalculé / enregistré, donc une violation
-       (§ I.1, ligne 15).
-
-    Une suite ``delta_stars`` **vide mais documentée** (toutes les réplications écartées) n'est pas une
-    erreur d'entrée : elle mène à ``F_NOT_ESTIMABLE`` par le § F.2 (e), comme tout ``discarded`` au-delà
-    de ``DISCARDED_MAX`` avec un compte cohérent.
+def _evaluation_contract(evaluation: Mapping[str, Any]) -> None:
+    """§ F.2 (b) v2.1 — les paramètres de la procédure d'incertitude sont des **contrats d'instrument**,
+    contrôlés **avant toute lecture** (§ I.1 v2.1 : le refus de contrat « vient en premier par
+    construction ») : ``B`` égal à la valeur gelée ``BOOTSTRAP_B``, **exactement** les six combinaisons
+    ``L × appariement`` du § F.2 (h) sous ``replications``, un environnement **exactement** égal à celui où la
+    chaîne rejoue (les quatre champs du § F.2 b, aucun en trop), et un comparateur portant **exactement** les
+    deux appariements ``dd`` et ``sigma``. Un bloc absent est une erreur de forme, non un contrat rompu.
+    Tout écart déclaré est un contrat rompu —
+    ``R0_INVALID_RUN``, code 2, rien n'est publié (§ I.1, ligne 2) — même accompagné d'un compteur
+    contradictoire, d'un non-fini dans une suite ou d'une contradiction de continuité : jamais une violation
+    par accident d'ordre de lecture. Précédent : ``rejeu_validate_analysis.b02_frozen_parameters``.
     """
     total = cc.require_int(evaluation, "B", where="evaluation")
     if total != cc.BOOTSTRAP_B:
@@ -228,22 +164,241 @@ def _estimability_of(
             f"evaluation.B = {total} ; la valeur gelée du § F.2 (b) est {cc.BOOTSTRAP_B} "
             "— contrat d'instrument rompu, aucun verdict",
         )
+    replications = cc.require_mapping(evaluation, "replications", where="evaluation")
+    expected = set(cc.COMBINATIONS)
+    missing = sorted(expected - set(replications))
+    extra = sorted(set(replications) - expected)
+    if missing or extra:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            "evaluation.replications : les six combinaisons L × appariement du § F.2 (h) sont exigées, "
+            f"exactement ; manquantes={missing} en trop={extra} — contrat d'instrument rompu (§ F.2 b)",
+        )
+    # § F.2 (b) v2.1 : le tirage n'est exact que dans l'environnement qui l'a produit — un autre
+    # environnement est un contrat rompu, jamais une comparaison tolérante.
+    environment = cc.require_mapping(evaluation, "environment", where="evaluation")
+    declared = {
+        key: cc.require_str(environment, key, where="evaluation.environment")
+        for key in cc.REPLAY_ENVIRONMENT_KEYS
+    }
+    unexpected = sorted(set(environment) - set(cc.REPLAY_ENVIRONMENT_KEYS))
+    current = cc.replay_environment()
+    if unexpected or declared != current:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"evaluation.environment : déclaré {declared} (champs en trop {unexpected}), courant "
+            f"{current} — le rejeu du § F.2 n'est exact que dans l'environnement du tirage ; "
+            "contrat d'instrument rompu (§ F.2 b)",
+        )
+    # § F.2 (d) v2.1 : le rejeu exige la série du comparateur de chacun des deux appariements.
+    bench = cc.require_mapping(evaluation, "returns_bench", where="evaluation")
+    if set(bench) != set(cc.MATCHINGS):
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"evaluation.returns_bench : les appariements {list(cc.MATCHINGS)} sont exigés, exactement ; "
+            f"déclarés {sorted(bench)} — contrat d'instrument rompu (§ F.2 b)",
+        )
+
+
+#: Une combinaison lue : la suite `Δ*` retenue, le compte d'écartées, la borne déclarée (nulle ⟺ suite vide).
+Replication = tuple[list[float], int, float | None]
+
+
+def _read_replications(evaluation: Mapping[str, Any]) -> dict[str, Replication]:
+    """Les six combinaisons, **lues strictement et entièrement** avant toute décision (§ F.2 e v2.1 : suites,
+    écartées et bornes sont publiées par combinaison). Le contrat sur l'ensemble des clés a été vérifié en
+    tête (``_evaluation_contract``) ; ici, chaque champ passe par l'accesseur strict."""
+    block = cc.require_mapping(evaluation, "replications", where="evaluation")
+    out: dict[str, Replication] = {}
+    for combination in cc.COMBINATIONS:
+        where = f"evaluation.replications.{combination}"
+        item = cc.require_mapping(block, combination, where="evaluation.replications")
+        deltas = cc.require_finite_series(item, "delta_stars", where=where, min_len=0)
+        discarded = cc.require_int(item, "discarded", where=where, minimum=0)
+        bound = cc.nullable_float(item, "bound", where=where)
+        out[combination] = (deltas, discarded, bound)
+    return out
+
+
+def _read_series(evaluation: Mapping[str, Any]) -> tuple[list[float], dict[str, list[float]]]:
+    """Les séries quotidiennes que la procédure consomme (§ F.2 a) : la configuration et le comparateur de
+    chaque appariement, **toutes finies et dans le domaine** (`r > −1`, sinon violation, § F.2 e), **de
+    même longueur `n`** (§ F.2 d v2.1 : sinon « le rejeu est inexécutable, erreur de forme (§ I.1, ligne 2),
+    code 2 »)."""
     returns = cc.require_finite_series(
         evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
     )
-    deltas = cc.require_finite_series(evaluation, "delta_stars", where="evaluation", min_len=0)
-    discarded = cc.require_int(evaluation, "discarded", where="evaluation", minimum=0)
-    b_effectif = len(deltas)
-    if total != b_effectif + discarded:
+    bench_block = cc.require_mapping(evaluation, "returns_bench", where="evaluation")
+    bench = {
+        matching: cc.require_finite_series(
+            bench_block,
+            matching,
+            where="evaluation.returns_bench",
+            domain_floor=cc.RETURN_DOMAIN_FLOOR,
+        )
+        for matching in cc.MATCHINGS
+    }
+    for matching, series in bench.items():
+        if len(series) != len(returns):
+            raise cc.MissingEvidenceError(
+                f"evaluation.returns_bench.{matching} : {len(series)} rendements, la configuration en "
+                f"porte {len(returns)} — indices appariés impossibles, rejeu inexécutable (§ F.2 a)"
+            )
+    return returns, bench
+
+
+def _replay(
+    evaluation: Mapping[str, Any],
+    anchor: Mapping[str, Any],
+    returns: Sequence[float],
+    bench: Mapping[str, Sequence[float]],
+) -> tuple[cc.Replay, dict[str, Any]]:
+    """§ F.2 (d) v2.1 : la chaîne rejoue le tirage — graine du manifeste (``anchor.uncertainty.seed``), index
+    de la paire évaluée dans les paires **triées** de l'univers (``anchor.pairs``), ``n_jours = (fin − T)`` en
+    secondes / 86 400, jamais ``evaluation_days`` (§ F.2 b, c)."""
+    uncertainty = cc.require_mapping(anchor, "uncertainty", where="anchor")
+    seed = cc.require_int(uncertainty, "seed", where="anchor.uncertainty", minimum=0)
+    listed = cc.require_sequence(anchor, "pairs", where="anchor", min_len=1)
+    pairs = sorted(
+        cc.require_str({"pair": item}, "pair", where="anchor.pairs[]") for item in listed
+    )
+    pair = cc.require_str(evaluation, "pair", where="evaluation")
+    if pair not in pairs:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"la paire évaluée {pair!r} n'est pas une paire de l'univers {pairs} — ce n'est pas "
+            "l'évaluation de la configuration retenue (§ H.1)",
+        )
+    start = cc.require_datetime(anchor, "anchor", where="anchor")
+    end = cc.require_datetime(
+        cc.require_mapping(anchor, "window", where="anchor"), "end", where="anchor.window"
+    )
+    days = (end - start).total_seconds() / 86400.0
+    replay = cc.replay_bootstrap(returns, bench, seed=seed, pair_index=pairs.index(pair), days=days)
+    return replay, {"seed": seed, "pair_index": pairs.index(pair), "days": days}
+
+
+def _cross_check_replay(
+    replications: Mapping[str, Replication],
+    replay: cc.Replay,
+    evaluation: Mapping[str, Any],
+    *,
+    violations: list[str],
+) -> None:
+    """§ F.2 (d) v2.1 : toute différence entre ce que l'artefact déclare et ce que le rejeu retrouve —
+    suites, écartées, bornes, CAGR observé, `Δ̂` dd — est une violation (§ I.1, ligne 15), jamais un
+    arbitrage : les décisions lisent les valeurs rejouées."""
+    for combination, (deltas, discarded, bound) in replications.items():
+        replayed, replayed_discarded, replayed_bound = replay.replications[combination]
+        if tuple(deltas) != replayed:
+            first = next(
+                (i for i, (a, b) in enumerate(zip(deltas, replayed, strict=False)) if a != b),
+                min(len(deltas), len(replayed)),
+            )
+            violations.append(
+                f"rejeu {combination} : la suite Δ* déclarée ({len(deltas)} réplications) n'est pas celle "
+                f"du tirage rejoué ({len(replayed)}) — première différence à la réplication {first} (§ F.2 d)"
+            )
+        if discarded != replayed_discarded:
+            violations.append(
+                f"rejeu {combination} : {discarded} réplications écartées déclarées, "
+                f"{replayed_discarded} au rejeu (§ F.2 e)"
+            )
+        if bound != replayed_bound:
+            violations.append(
+                f"rejeu {combination} : borne déclarée {bound!r}, rejouée {replayed_bound!r} (§ F.2 d)"
+            )
+    metrics = cc.require_mapping(evaluation, "metrics", where="evaluation")
+    cagr = cc.require_float(metrics, "cagr_pct", where="evaluation.metrics")
+    delta_dd = cc.require_float(metrics, "delta_dd", where="evaluation.metrics")
+    if cagr != replay.cagr_config:
         violations.append(
-            f"réplications : B déclaré {total}, recalculé B_effectif {b_effectif} + écartées "
-            f"{discarded} = {b_effectif + discarded} — le compte recalculé fait foi"
+            f"rejeu : metrics.cagr_pct déclaré {cagr!r}, CAGR rejoué {replay.cagr_config!r} (§ F.2 c)"
+        )
+    if delta_dd != replay.delta_hat["dd"]:
+        violations.append(
+            f"rejeu : metrics.delta_dd déclaré {delta_dd!r}, Δ̂ dd rejoué {replay.delta_hat['dd']!r} "
+            "(§ F.2 c)"
         )
 
-    est = cc.estimability(returns, deltas, discarded)
-    payload = est.to_dict()
-    payload["B"] = total
-    payload["B_effectif"] = b_effectif
+
+def _bounds_all_positive(
+    replications: Mapping[str, Replication], replay: cc.Replay, *, violations: list[str]
+) -> bool:
+    """Les six bornes du § F.2 (h), toutes **finies** (garde de l'accesseur, avant toute comparaison :
+    sans elle `+inf` franchirait le plancher et un `NaN` le ferait échouer silencieusement) et strictement
+    positives. § F.2 (e) v2.1 : une combinaison sans réplication retenue ne porte pas de borne — la borne est
+    nulle **si et seulement si** la suite retenue est vide ; l'écart, dans un sens ou dans l'autre, contredit
+    l'artefact : violation (§ I.1, ligne 15)."""
+    for combination, (deltas, _discarded, bound) in replications.items():
+        if (bound is None) != (len(deltas) == 0):
+            state = "nulle" if bound is None else "déclarée"
+            suite = "vide" if not deltas else "non vide"
+            violations.append(
+                f"réplications {combination} : borne {state} avec une suite retenue {suite} — une borne "
+                "est nulle si et seulement si sa suite retenue est vide (§ F.2 e)"
+            )
+    # § F.2 (d) v2.1 : la décision lit les bornes rejouées.
+    return all(bound is not None and bound > 0.0 for _d, _k, bound in replay.replications.values())
+
+
+def _estimability_of(
+    evaluation: Mapping[str, Any],
+    replications: Mapping[str, Replication],
+    replay: cc.Replay,
+    *,
+    violations: list[str],
+) -> tuple[bool, dict[str, Any]]:
+    """§ A.13 v2.1, **recalculé depuis les séries**, puis recoupé contre toute valeur déclarée.
+
+    E1 porte sur la trajectoire évaluée, unique ; **E2 est conjonctive sur les six distributions**
+    rééchantillonnées (§ A.13 v2.1 : une seule distribution constante suffit à la faire échouer) ; le
+    plafond de réplications écartées s'applique **par combinaison** (§ F.2 e v2.1). ``B`` a passé le
+    contrat en tête (``_evaluation_contract``) ; ici, par combinaison, ``B_effectif`` est recalculé comme
+    ``len(delta_stars)`` et ``B != B_effectif + discarded`` est un désaccord recalculé / enregistré, donc une
+    **violation** (§ I.1, ligne 15). Une suite **vide mais documentée** (toutes les réplications écartées)
+    n'est pas une erreur d'entrée : elle mène à ``F_NOT_ESTIMABLE`` par le plafond.
+
+    Le statut déclaré n'est **jamais** recopié : il est recalculé et comparé, et un désaccord est une
+    violation. Le bloc déclaré est optionnel ; **s'il est présent, chaque champ est strictement typé** — une
+    chaîne ``"false"`` est une erreur de type, pas un ``True``.
+    """
+    total = cc.require_int(evaluation, "B", where="evaluation")
+    returns = cc.require_finite_series(
+        evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
+    )
+    for combination, (deltas, discarded, _bound) in replications.items():
+        if total != len(deltas) + discarded:
+            violations.append(
+                f"réplications {combination} : B déclaré {total}, recalculé B_effectif {len(deltas)} "
+                f"+ écartées {discarded} = {len(deltas) + discarded} — le compte recalculé fait foi"
+            )
+    # § F.2 (d) v2.1 : E2 et le plafond lisent les suites **rejouées** (égales aux déclarées sans violation).
+    est = cc.combined_estimability(
+        returns,
+        {
+            c: (list(deltas), discarded)
+            for c, (deltas, discarded, _b) in replay.replications.items()
+        },
+    )
+    payload: dict[str, Any] = {
+        "E1": est.e1,
+        "E2": est.e2,
+        "nonzero_ratio": est.nonzero_ratio,
+        "B": total,
+        "within_ceiling": est.within_ceiling,
+        "ok": est.ok,
+        "combinations": {
+            combination: {
+                "E2": per.e2,
+                "distinct_delta_stars": per.distinct_delta_stars,
+                "B_effectif": len(replay.replications[combination][0]),
+                "discarded": per.discarded,
+                "within_ceiling": per.discarded <= cc.DISCARDED_MAX,
+            }
+            for combination, per in est.per_combination.items()
+        },
+    }
 
     if "estimability" in evaluation and evaluation["estimability"] is not None:
         declared = cc.require_mapping(evaluation, "estimability", where="evaluation")
@@ -302,11 +457,11 @@ def _continuity_view(
     anchor: Mapping[str, Any],
     violations: list[str],
 ) -> ContinuityView:
-    """Lecture stricte, complète, de `continuity.json` ; dérivations ; recoupements (plan § 6.4).
+    """Lecture stricte, complète, de `continuity.json` ; dérivations ; recoupements (§ B.8).
 
     **Rien n'est recopié** (revue Fin, défaut 2) :
 
-    * chaque état de clause est lu **contre la liste close de sa clause** (table § 6.4,
+    * chaque état de clause est lu **contre la liste close de sa clause** (table du § B.8,
       ``cc.CLAUSE_ADMISSIBLE_STATES``, revue Fin 2) : hors liste → erreur d'entrée, code 2, rien
       publié ; les clés de ``clauses`` sont exactement c1..c5 ; ``stamp_cell`` et ``comparator``
       ont leur propre liste close ;
@@ -391,10 +546,22 @@ def _continuity_view(
         )
     if pair != pair_eval:
         violations.append(f"{where}.pair {pair!r} != evaluation.pair {pair_eval!r}")
-    if synthetic is not True:
+    # § L.1 v2.1 : la déclaration de l'évaluation fait foi — la continuité la redit, elle ne la choisit pas.
+    evaluation_synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
+    if synthetic is not evaluation_synthetic:
         violations.append(
-            f"{where}.synthetic déclaré {synthetic!r} alors que evaluation.synthetic est vrai"
+            f"{where}.synthetic déclaré {synthetic!r}, evaluation.synthetic {evaluation_synthetic!r} — "
+            "la déclaration de l'évaluation fait foi (§ L.1)"
         )
+    # § B.8 v2.1, « Ce qu'exige validé » : sur une évaluation réelle, admise avec ses porteurs (§ L.1), c1 et
+    # c5 valent DÉCLARÉ ou ÉCHEC ; une continuité qui les dit non vérifiables contredit l'évaluation.
+    if not evaluation_synthetic:
+        for key in ("c1", "c5"):
+            if states[key] == "NOT_VERIFIABLE":
+                violations.append(
+                    f"{where}.clauses.{key} NOT_VERIFIABLE sur une évaluation réelle, qui porte sa preuve "
+                    "(§ L.1) — § B.8 : c1 et c5 DÉCLARÉ sur une évaluation réelle"
+                )
     if evaluation_window != (anchor_t, window_end):
         violations.append(
             f"{where}.evaluation_window {_iso(evaluation_window)} != [anchor.anchor, anchor.window.end] "
@@ -447,13 +614,14 @@ def _continuity_view(
 
 
 def _continuity_actions(view: ContinuityView, *, retained: str) -> list[str]:
-    """Ce que la continuité impose au verdict (table § 6.4) — sur les **clauses**, jamais sur les
+    """Ce que la continuité impose au verdict (§ B.8, actions par clause) — sur les **clauses**, jamais sur les
     résumés : l'évaluation doit être celle de la configuration retenue (§ H.1, sinon refus R0) ;
-    c1, c2, c5 ``FAILED`` → refus R0 (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED``
-    → ``UndefinedIssueError`` (convention datée du 21/09, plan § 6.1) ; c4 ``FAILED`` →
-    ``D_WARMUP_ANCHOR`` ; comparateur ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` non
-    ``VERIFIED`` → ``E_STAMP_MISMATCH`` (§ I.1 l.10-12). Quand plusieurs clauses sont ``FAILED``,
-    le refus R0 précède l'issue non définie (§ H : R0 avant toute autre chose)."""
+    c1, c2, c5 ``FAILED`` → refus R0 (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED`` ou
+    ``NOT_VERIFIABLE`` → ``R1_NOT_NORMALISED`` (§ I.1 v2.1, ligne 10 bis) ; c4 ``FAILED`` →
+    ``D_WARMUP_ANCHOR`` ; comparateur ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` ``FAILED`` →
+    ``E_STAMP_MISMATCH`` (§ I.1 l.10-12) — ``NOT_VERIFIABLE`` (aucune estampille) est satisfait à vide
+    (§ B.4 v2.1). Quand plusieurs clauses sont ``FAILED``, le refus R0 précède toute raison (§ H : R0
+    avant toute autre chose) ; entre raisons, la chaîne porte la première de la liste du § H.1."""
     if view.derived_identity != retained:
         raise cc.EntryRefusedError(
             "R0_INVALID_RUN",
@@ -467,14 +635,18 @@ def _continuity_actions(view: ContinuityView, *, retained: str) -> list[str]:
                 f"clause {key} de continuité en échec — l'artefact déclare une rupture du contrat "
                 f"§ B : {view.details[key]}",
             )
-    if view.states["c3"] == "FAILED":
-        raise cc.UndefinedIssueError(UNDEFINED_ISSUE_MESSAGE)
     reasons: list[str] = []
+    # § I.1 v2.1, ligne 10 bis (AM-19) : la liquidation terminale de l'évaluation non normalisée — c3 en
+    # échec ou non vérifiable — est de portée run ; la priorité entre raisons est celle du § H.1.
+    if view.states["c3"] in ("FAILED", "NOT_VERIFIABLE"):
+        reasons.append("R1_NOT_NORMALISED")
     if view.states["c4"] == "FAILED":
         reasons.append("D_WARMUP_ANCHOR")
     if view.comparator_state == "FAILED":
         reasons.append("E_NO_BENCHMARK")
-    if view.stamp_state != "VERIFIED":
+    # § B.4 v2.1 (AM-11) : aucune estampille (NOT_VERIFIABLE) satisfait l'assertion à vide — seule une
+    # estampille hors cellule la rompt.
+    if view.stamp_state == "FAILED":
         reasons.append("E_STAMP_MISMATCH")
     return reasons
 
@@ -486,8 +658,9 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     liste close — **erreur d'entrée** (§ I.1 ligne 2, code 2), pas un verdict — et
     ``InvalidValueError`` sur une valeur non finie ou hors domaine — **violation** (§ I.1 ligne 15,
     code 1), pas un verdict non plus. Aucun verdict économique n'est prononcé sur une preuve manquante
-    ou invalide. ``EntryRefusedError`` (refus) et ``UndefinedIssueError`` (clause 3 en échec) : sans
-    violation constatée, code 2 et rien publié ; après une violation, **l'ordre de constat** fait
+    ou invalide. ``EntryRefusedError`` (refus) et ``UndefinedIssueError`` (garde générique, sans site
+    c3 depuis v2.1) : sans violation constatée, code 2 et rien publié ; après une violation, **l'ordre
+    de constat** fait
     foi — la violation prime (§ I.1 l.15) et l'exception est consignée dans le diagnostic, code 1 —
     sauf lecture inachevable (``MissingEvidenceError`` après une violation → code 2, rien publié,
     violations dites sur stderr ; convention d'outillage datée du 22/09, voir ``run_verdict``).
@@ -498,18 +671,21 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     pas et ne doit jamais être appelée sur du contenu de fichier non gardé.
 
     **Ordre : tout lire, puis décider** (revue Fin 5 et passe interne de la revue Fin 2). Le
-    confinement (§ L.1, plan § 6.6) vient en tête — ``evaluation.synthetic`` strict, ``false``
-    refusé — puis le contrat d'entrée (refus R0 avant toute autre chose, § H), puis **la lecture
-    stricte complète des cinq artefacts** : ancre, sélection (listes, statut dérivé), continuité
-    (états contre leur liste close, résumés dérivés et recoupés), évaluation (``B`` contre le
-    contrat, séries, métriques des portes, six bornes). Aucun chemin de publication — abstention,
+    l'admission (§ L.1 v2.1) vient en tête — ``evaluation.synthetic`` strict, ``false`` admis
+    seulement avec ses trois porteurs — puis le **contrat d'instrument de l'évaluation** (``B`` et les six combinaisons, § F.2 b
+    v2.1 : avant toute lecture), puis le contrat d'entrée (refus R0 avant toute autre chose, § H), puis
+    **la lecture stricte complète des cinq artefacts** : ancre, sélection (listes, statut dérivé),
+    continuité (états contre leur liste close, résumés dérivés et recoupés), évaluation (séries, six
+    combinaisons, métriques des portes, six bornes). Aucun chemin de publication — abstention,
     inconclusif par raison run, réfuté, validé — ne précède cette lecture : une preuve manquante est
     un code 2, jamais un inconclusif publié. La décision suit ensuite l'ordre du § H : abstention,
     continuité (clauses), estimabilité (§ H.0), portes, bornes.
     """
     # 0. Confinement, puis contrat d'entrée (R0 avant toute autre chose).
     evaluation = cc.require_mapping(artifacts, "evaluation", where="artefacts")
-    synthetic = require_synthetic(evaluation)
+    synthetic = cc.evaluation_admission(evaluation)
+    # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument est évalué avant toute lecture.
+    _evaluation_contract(evaluation)
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
     _entry_contract(entry, violations=violations)
 
@@ -524,9 +700,21 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     )
     continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
     view = _continuity_view(continuity, evaluation=evaluation, anchor=anchor, violations=violations)
-    estimable, estimability_payload = _estimability_of(evaluation, violations=violations)
-    gates = _gate_results(evaluation)
-    bounds_positive = _bounds_all_positive(evaluation)
+    replications = _read_replications(evaluation)
+    returns, bench = _read_series(evaluation)
+    replay, replay_meta = _replay(evaluation, anchor, returns, bench)
+    _cross_check_replay(replications, replay, evaluation, violations=violations)
+    estimable, estimability_payload = _estimability_of(
+        evaluation, replications, replay, violations=violations
+    )
+    estimability_payload["rejeu"] = replay_meta
+    metrics = cc.require_mapping(evaluation, "metrics", where="evaluation")
+    gates = _gate_results(
+        net_pnl=cc.require_float(metrics, "net_pnl", where="evaluation.metrics"),
+        cagr_pct=replay.cagr_config,
+        delta_dd=replay.delta_hat["dd"],
+    )
+    bounds_positive = _bounds_all_positive(replications, replay, violations=violations)
 
     # 2. La décision, dans l'ordre du § H.
     reasons: list[str] = []
@@ -694,7 +882,7 @@ def build_verdict_string(
 ) -> str:
     """La chaîne canonique du § L.2 — neuf champs, **sans horodatage**, pour qu'elle soit reproductible.
 
-    Le label est ``C3_<campagne>`` ; une évaluation synthétique le préfixe ``C3_SYNTH_`` (plan § 6.6)
+    Le label est ``C3_<campagne>`` ; une évaluation synthétique le préfixe ``C3_SYNTH_`` (§ L.2 v2.1)
     pour qu'un rapport ne puisse pas citer la chaîne sans citer sa portée. ``variante`` est la clé
     ``sig(canon(manifeste))`` enregistrée par ``c3_anchor`` ; ``observations`` l'empreinte du fichier
     d'observations enregistrée par ``c3_entry`` (et recoupée à celle de ``c3_select``).
@@ -906,6 +1094,7 @@ def build_diagnostic_payload(
     inputs: Mapping[str, Path],
     partial: Decision | None,
     chain: Mapping[str, Any],
+    synthetic: bool,
 ) -> dict[str, Any]:
     """L'artefact **diagnostic** d'une violation (§ I.1, ligne 15) : explicitement invalide.
 
@@ -917,10 +1106,10 @@ def build_diagnostic_payload(
     payload.update(
         {
             "campagne": campaign,
-            # Le confinement a été franchi avant toute publication : un diagnostic est lui aussi un
-            # exercice synthétique, et il le dit.
-            "synthetic": True,
-            "portee": PORTEE_SYNTH,
+            # § L.1 v2.1 : l'admission a été franchie avant toute publication ; le diagnostic dit ce
+            # que l'évaluation déclare — exercice synthétique ou évaluation réelle —, jamais une constante.
+            "synthetic": synthetic,
+            "portee": PORTEE_SYNTH if synthetic else None,
             "verdict": None,
             "raison": None,
             "verdict_string": None,
@@ -940,7 +1129,7 @@ def build_diagnostic_payload(
 def render_lines(payload: Mapping[str, Any]) -> list[str]:
     out: list[str] = []
     if payload["portee"] is not None:
-        # Plan § 6.6 (3) : la portée d'un exercice synthétique s'imprime en première ligne, avant
+        # § L.2 v2.1 : la portée d'un exercice synthétique s'imprime en première ligne, avant
         # la chaîne comme avant un diagnostic.
         out.append(f"PORTEE : {payload['portee']}")
     if payload["invalide"]:
@@ -952,8 +1141,15 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
     if est is not None:
         out.append(
             f"estimabilité : E1={est['E1']} E2={est['E2']} nnz={est['nonzero_ratio']:.3f} "
-            f"distincts={est['distinct_delta_stars']} B={est['B']} B_effectif={est['B_effectif']} "
-            f"écartées={est['discarded']}"
+            f"B={est['B']} plafond={est['within_ceiling']}"
+        )
+        out.append(
+            "  par combinaison : "
+            + " | ".join(
+                f"{c} distincts={v['distinct_delta_stars']} B_effectif={v['B_effectif']} "
+                f"écartées={v['discarded']}"
+                for c, v in sorted(est["combinations"].items())
+            )
         )
     gates = payload["portes_Q"]
     if gates:
@@ -1024,7 +1220,9 @@ def run_verdict(
     try:
         if not isinstance(artifacts["evaluation"], Mapping):
             raise cc.MissingEvidenceError("evaluation: bloc attendu")
-        require_synthetic(artifacts["evaluation"])
+        synthetic = cc.evaluation_admission(artifacts["evaluation"])
+        # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument précède toute lecture, `verify_chain` compris.
+        _evaluation_contract(artifacts["evaluation"])
     except cc.EntryRefusedError as exc:
         print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
         return 2
@@ -1053,16 +1251,11 @@ def run_verdict(
         observations_sha256 = cc.require_str(recorded, "observations", where="entry.inputs_sha256")
         decision = decide(artifacts, violations=violations)
     except cc.UndefinedIssueError as exc:
+        # Garde générique (aucun site c3 ne la lève depuis v2.1, AM-19) : constatée après une violation,
+        # la violation prime (§ I.1 l.15) ; seule, aucune issue n'est publiée, code 2.
         if violations:
-            # Revue Fin 2 (2) — précédence : une contradiction déclaré / dérivé constatée avant
-            # est une violation (§ I.1 l.15) ; elle prime, l'issue non définie est consignée dans
-            # le diagnostic, code 1. Le refus 2 de la convention datée reste réservé au cas cohérent.
-            # Le diagnostic consigne le motif, pas la conduite (b) qui ne s'est pas appliquée.
-            violations.append(
-                f"issue non définie constatée après violation : {UNDEFINED_ISSUE_MOTIF}"
-            )
+            violations.append(f"issue non définie constatée après violation : {exc}")
         else:
-            # Convention datée du 21/09 (plan § 6.1) : aucune issue, code 2, rien publié.
             print(f"ISSUE NON DEFINIE {exc}", file=sys.stderr)
             return 2
     except cc.EntryRefusedError as exc:
@@ -1083,8 +1276,10 @@ def run_verdict(
             print(f"VIOLATION {violation}", file=sys.stderr)
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
         return 2
-    except (cc.InvalidValueError, cc.NonFiniteValueError) as exc:
+    except (cc.InvalidValueError, cc.NonFiniteValueError, cc.InvalidInputError) as exc:
         # § F.7 -> § I.1, ligne 15 — non-finitude ou domaine : violation, code 1, diagnostic écrit.
+        # `InvalidInputError` (noyau § F.2) ne peut plus être atteinte après les pré-contrôles des
+        # séries : filet, routé comme une entrée invalide (§ F.2 e).
         # `NonFiniteValueError` (levée par `canon`) n'est pas une `InvalidValueError` : routée ici
         # explicitement, comme dans les quatre autres modules (revue R3 d).
         violations.append(str(exc))
@@ -1095,7 +1290,13 @@ def run_verdict(
         # revue Fin 2 ; revue Fin 3) ; les `checks` disent quels recoupements ont passé ou échoué.
         chain["verified"] = False
         payload = build_diagnostic_payload(
-            violations, campaign=campaign, now=now, inputs=inputs, partial=decision, chain=chain
+            violations,
+            campaign=campaign,
+            now=now,
+            inputs=inputs,
+            partial=decision,
+            chain=chain,
+            synthetic=synthetic,
         )
         digest = cc.write_json(output, payload)
         print("\n".join(render_lines(payload)))
@@ -1138,8 +1339,8 @@ def run_chain(args: argparse.Namespace) -> int:
     """Invoque chaque étape **en processus**, contrôle son **code de retour effectif** (≠ 0 → la
     chaîne s'arrête et rend ce code, rien d'autre n'est écrit), puis ``verify_chain`` et le verdict.
 
-    Sur données réelles la chaîne s'arrête à ``entry`` (refus D2 ou ``not_assertable``) : aucun
-    chemin réel n'atteint le verdict en C3a (plan § 6.6 (4)).
+    Une évaluation réelle n'atteint le verdict qu'avec ses trois porteurs (§ L.1 v2.1) ; le livrable
+    réel de C3a, manifeste v2.0, s'arrête à ``anchor`` (sha du protocole, historique v2.0).
     """
     import c3_anchor
     import c3_benchmark

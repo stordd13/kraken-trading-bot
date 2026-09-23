@@ -1,5 +1,14 @@
 # Protocole de validation chronologique — C3, version 2
 
+> **Révision v2.1 — amendée le 2026-09-23.** Vingt-huit amendements datés (AM-00 à AM-27),
+> `docs/amendements_c3_v2.1.md`, adoptés par Bruno au gate d'amendement du 2026-09-23, sous les décisions de
+> gate et les quatorze réserves d'application (R-01 à R-14) que ce paquet consigne dans sa section
+> « Adoption ». **Nouveau sha256 : consigné hors du fichier** — un fichier ne peut pas porter sa propre
+> empreinte ; il est inscrit dans `docs/amendements_c3_v2.1.md` (section « Adoption »), `docs/RESEARCH_LOG.md`,
+> `skills/backtest.md` et `CLAUDE.md`, et `c3_common.protocol_descriptor` le recalcule dans chaque artefact.
+> Le sha256 de v2.0, `9b62915069e59e9b0f35120c60a77f48a72b278aa9102b3096dfcb8dc25e23c2`, reste celui que porte
+> tout manifeste C3a ; un manifeste v2.1 est une nouvelle variante (§ A.6).
+>
 > **Statut : GELÉ.** GO humain donné le **2026-09-21**, sur cette révision, après les deux corrections
 > documentaires qui la constituent. **À partir d'ici, l'outillage suit ce document ; le document ne suit pas
 > l'outillage.** Si une fixture révèle une incohérence du protocole, **on s'arrête et on la signale** — on ne
@@ -20,7 +29,38 @@
 > et ses tests. **C3b** livre l'intégration et la vérification de l'exécution continue. Aucun des deux ne
 > sélectionne quoi que ce soit pour le paper.
 
-## Amendements — révision de gel
+## Amendements — v2.1
+
+Révision datée du **2026-09-23** : vingt-huit amendements (AM-00 à AM-27) et le critère d'arrêt (annexe A du
+paquet, porté au § 10 de `docs/CONTRAINTES_POST_B4.md`), adoptés par Bruno, avec quatorze réserves
+d'application (R-01 à R-14). **Les textes avant / après, les motifs, les décisions de gate et les réserves sont
+dans `docs/amendements_c3_v2.1.md` ; ce document ne les redit pas** (§ 0.7). Correspondance entre le brief de
+reprise du 23/09 et les amendements :
+
+| Brief | Objet | Amendement |
+|---|---|---|
+| A | Conventions d'outillage datées 21/09 et 22/09 ; rapport § 7 items 1, 2, 4, 5, 7, 10, 13, 14 ; état `NOT_VERIFIABLE` de `stamp_cell` | AM-11, AM-13, AM-15, AM-17, AM-19, AM-20, AM-21, AM-22, AM-25 |
+| B1 | Ligne run `R1_NOT_NORMALISED` à I.1 | AM-19 (origine), renvois § B.3 et § H.1 |
+| B2 | E2 conjonctive sur les six distributions | AM-09, AM-16 |
+| B3 | MDD journalier des deux côtés, aucune tolérance | AM-08 |
+| B4 | `candles.json` absent de l'énumération du § L.1 | AM-24 (R-10 : il y entre) |
+| B5 | Clés `_btc` → `_base` dans l'export | AM-06 |
+| B6 | Levée du confinement `synthetic` | AM-24 |
+| B7 | Preuve de départ à plat déclarative | AM-10, AM-22 |
+| B8 | `decision_timeframes` dérivés | AM-07 |
+| B9 | Critère d'arrêt méta | AM-23 + annexe A |
+| C1 | Profondeur 2019 de la base USDT | AM-05 (fait de données, pas de clause propre) |
+| C2 | Transposition BTC/USDT → BTC/USDC Bybit | AM-01, AM-04, AM-22 |
+| C3 | Aucune reconstruction des 8 semaines 1 w | aucun amendement |
+| C4 | Dette 19 hors première campagne | aucun amendement ; AM-26 tient `scripts/backtest.py` hors liste |
+| C5 | Fenêtre 2021-03-01 → 2026-06-29, ancrage 70 % | AM-02, AM-03, AM-05 |
+
+La procédure d'incertitude du § F.2 a reçu, après la porte intermédiaire du 23/09, les précisions qui en font
+une spécification au bit près (ordre des opérations, critère d'écartement — R-14 —, suite exportée,
+environnement) ; elles sont consignées au même paquet. **Les numéros de ligne de la table du § I.1 ne sont
+jamais renumérotés** : une ligne nouvelle est « 10 bis », parce que « ligne 15 » est cité ailleurs.
+
+## Amendements — révision de gel (v2.0)
 
 Ce qui a **réellement** changé dans cette révision, celle sur laquelle le GO a été donné. Aucun code n'existait
 au moment de la soumission.
@@ -109,7 +149,7 @@ Trois nombres décisionnels qui échappaient à cette règle sont fixés ici, un
 
 | Nombre | Valeur | Classe |
 |---|---|---|
-| Capital de référence `C` des simulations et du comparateur | **1000 USDC** | contrat (`starting_balance` des runners) |
+| Capital de référence `C` des simulations et du comparateur | **1000 unités de la monnaie de cotation de la paire du manifeste** (USDC à la cible Bybit ; USDT sur la base de validation Binance, transposition déclarée § A.6) | contrat (`starting_balance` des runners) |
 | Taux sans risque `rf` du comparateur | **0** | préférence économique, convention déclarée (§ J.8) |
 | Résidu d'appariement au-delà duquel un `λ` est rejeté (§ C.6) | **10 %** de la cible appariée | qualité des données |
 
@@ -149,6 +189,7 @@ tranche** :
 | Définition d'une issue | **§ H** | renvoi |
 | Convention d'exécution des deux côtés | **§ C.3** | renvoi |
 | Classe d'un nombre décisionnel | **§ 0.5** | renvoi |
+| États de continuité et actions du verdict | **§ B.8** | renvoi |
 
 **Une reformulation, même fidèle, est un défaut de rédaction** : elle survivra à la prochaine correction de la
 section d'origine et la contredira.
@@ -193,8 +234,8 @@ erreur d'entrée, jamais un tirage au sort** — portée et code au § I.1.
 ```
 ancrage T = début + F × (fin − début)
 F = 0,70
-fenêtre déclarée : 2023-04-01T00:00:00Z → 2026-04-01T00:00:00Z
-⇒ T = 2025-05-07T04:48:00Z          (préfixe 767,2 j · période évaluée 328,8 j · fenêtre 1096 j)
+fenêtre déclarée (v2.1, première campagne) : 2021-03-01T00:00:00Z → 2026-06-29T00:00:00Z
+⇒ T = 2024-11-22T04:48:00Z          (préfixe 1362,2 j · période évaluée 583,8 j · fenêtre 1946 j)
 ```
 
 Classe de `F` : **préférence économique**, avec divulgation de provenance ci-dessous.
@@ -215,10 +256,25 @@ C3 et n'a pas été choisi au vu d'un résultat C3**. C'est une **convention ré
 d'optimalité** : elle ne fixe pas une date universelle, et toute application future déclare son propre ancrage
 dans son manifeste, **avant évaluation**.
 
-**La fenêtre n'est pas élargie.** Des données existent depuis 2021-01 **[v]** `docs/CONTRAINTES_POST_B4.md` § 7,
-mais élargir la fenêtre maintenant changerait le cas de référence pendant la construction du protocole. Le
-protocole note que **le choix de fenêtre est un second levier de shopping**, au même titre que l'ancrage, et que
-la règle « bornes du manifeste, déclarées avant évaluation » le ferme.
+> **Historique.** La fenêtre de v2.0, `2023-04-01Z → 2026-04-01Z` (`T = 2025-05-07T04:48Z`), était la fenêtre
+> de référence de la construction du protocole, et elle n'a servi qu'à cela : aucune sélection n'a été produite
+> sous elle (§ L.1, § D.3). Elle reste citée aux § 0.2, § A.8 et § D.3 comme fait historique.
+>
+> **La fenêtre de la première campagne est déclarée ici, et elle ne bouge plus.** Borne basse au 2021-03-01,
+> déclarée le 2026-09-23 et maintenue au gate du même jour. Sur la base USDT importée depuis le 2019-01-01 (SOL
+> depuis le 2020-08-11) **[v]** `results/data_inventory_usdt_2019_20260923/inventory.md`, l'amorçage des séries
+> 4 h et 1 d (jusqu'à 200 bougies) est couvert à cette date sur les trois paires, et celui du 1 w — régime 1 w,
+> 50 bougies **[v]** `scripts/backtest.py:305`, `:420-425` — sur BTC et ETH ; pour SOL, la 50ᵉ estampille 1 w
+> tombe le 2021-07-26. La conséquence sur D2 est écrite au § A.8, pas découverte. Borne haute au 2026-06-29, dernière semaine
+> hebdomadaire publiée : la série 1 w s'arrête au 2026-07-06 et Vision n'a pas publié 2026-07/08 ; finir la
+> fenêtre **avant** le trou de queue évite qu'une absence de publication soit lue comme une absence de données.
+> Ces deux bornes sont écrites dans `docs/RESEARCH_LOG.md` et dans le manifeste gelé **avant tout run** ; changer
+> de fenêtre est **une nouvelle campagne** et non une variante de celle-ci (critère d'arrêt,
+> `docs/CONTRAINTES_POST_B4.md` § 10.1).
+>
+> **Le choix de fenêtre est un second levier de shopping**, au même titre que l'ancrage, et la règle
+> « bornes du manifeste, déclarées avant évaluation » le ferme. Il est interdit de déplacer une borne après
+> avoir constaté quoi que ce soit de la période évaluée.
 
 **Il est interdit de déplacer `F` après avoir constaté la longueur de la période évaluée.**
 
@@ -232,12 +288,12 @@ Les données étant estampillées en fin de période (B4.1), la bougie estampill
 **appartient au passé de `t`**. La dernière observation admissible à l'ancrage est donc, par timeframe, la
 dernière bougie estampillée `≤ T` :
 
-| TF | Dernière observation admissible à `T = 2025-05-07T04:48Z` |
+| TF | Dernière observation admissible à `T = 2024-11-22T04:48Z` |
 |---|---|
-| 5 min | `2025-05-07T04:45Z` |
-| 4 h | `2025-05-07T04:00Z` |
-| 1 j | `2025-05-07T00:00Z` |
-| 1 w | `2025-05-05T00:00Z` (le lundi 5 mai) |
+| 5 min | `2024-11-22T04:45Z` |
+| 4 h | `2024-11-22T04:00Z` |
+| 1 j | `2024-11-22T00:00Z` |
+| 1 w | `2024-11-18T00:00Z` (le lundi 18 novembre) |
 
 **Règle, et non les quatre valeurs** : pour chaque timeframe, l'observation admissible est **la dernière
 estampille `≤ T`** de ce timeframe. Les quatre valeurs du tableau sont ce que cette règle donne à l'ancrage
@@ -308,6 +364,16 @@ sa forme machine.
   registre manque précisément ce qu'il existe pour tracer.
 - S'y ajoutent un **identifiant de variante déclaré par l'humain** et un **lien de parenté** vers la variante
   dont elle dérive.
+- **Transposition déclarée.** Un manifeste peut déclarer, par paire de l'univers, une **paire de
+  déploiement** distincte de la **paire de validation** quand, et seulement quand, l'actif de base est le
+  même et seule la monnaie de cotation diffère (première campagne : validation `BTC/USDT`, `ETH/USDT`,
+  `SOL/USDT` sur la base Binance ; déploiement `*/USDC` sur Bybit EU). La transposition est **écrite une fois,
+  ici, comme déclaration** : elle repose sur le même argument que la transposition de site Binance → Bybit
+  déjà admise par le projet — même actif de base, fees, spread et slippage de la cible mesurés sur la paire
+  de déploiement (`CONTRAINTES` § 2) et déclarés au manifeste. **L'écart de peg entre les deux stablecoins
+  n'est pas modélisé** : c'est un non-mesurable déclaré (§ J, item 11). L'identité du candidat (§ A.2) garde
+  `pair = paire de validation` ; la paire de déploiement entre dans le manifeste, donc dans l'empreinte de la
+  variante, et **n'entre pas** dans l'identité du candidat.
 - **Ré-exécuter le même manifeste est idempotent** : même empreinte, même enregistrement, aucun refus, aucun
   ordinal supplémentaire. Le registre trace des **essais de recherche**, il ne compte pas des appels de script.
 - Toute empreinte différente est **une nouvelle variante**, qui doit déclarer son parent. **C'est là que le
@@ -333,7 +399,7 @@ Tout autre segment est **hors liste blanche**.
 | Bornes | **les seules bornes du segment de préfixe** : son début et sa fin |
 | Métriques | le bloc de métriques **du segment de préfixe**, entier |
 | Trajectoire | `equity_daily[<préfixe>]` : `start`, `end`, `values` |
-| Comptabilité | `liquidation[<préfixe>]`, entier |
+| Comptabilité | `liquidation[<préfixe>]`, entier. **Contrat de forme des quantités en actif de base** : les clés `amount_base`, `residual_trade_base`, `dust_written_off_base`, `inventory_divergence_base`, dans le bloc et dans chaque lot, **quelle que soit la paire** ; un bloc qui porte une clé suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur de forme (§ I.1, ligne 2). Le renommage vit dans la couche d'export du runner ; le moteur `scripts/backtest.py` est intouché |
 | Amorçage | `warmup[<préfixe>]`, entier, **et** le bloc d'amorçage mesuré au début du préfixe |
 | Exécution | `rejections[<préfixe>]`, `dca_counters[<préfixe>]` |
 | **Couverture** | l'**artefact de couverture** décrit ci-dessous, pour la paire du candidat, sur `[début, T]` |
@@ -444,6 +510,19 @@ Le rejeu, lui, a toléré cette classe en imprimant une mise en garde à côté 
 le peut pas, et la raison est l'usage, pas la qualité** : une mise en garde a un lecteur, **un classement n'en a
 pas** — il est consommé. D2 est donc plus strict, et cette différence est un choix, non une correction du rejeu.
 
+**La liste des timeframes de décision est dérivée, jamais déclarée.** Pour un candidat, « chaque timeframe
+qui alimente une porte de décision » est la liste que **la stratégie elle-même** dérive de ses paramètres
+effectifs (pour la famille grid : `bear_protection_mode` et `bias_1d` décident si `regime_1d` et la porte 1 w
+vivent), par une méthode de classe pure, testée, **sans changement de comportement du moteur**. Le producteur
+exporte cette liste **par candidat** dans **toute** observation (`decision_timeframes`) — une observation ne
+porte aucun drapeau qui la distinguerait d'une fixture. Le manifeste la redit, par stratégie ou par candidat
+(surcharge) ; **un désaccord entre la liste exportée et la liste effective du manifeste pour ce candidat est
+une violation** (§ I.1, ligne 15), jamais un arbitrage, et les deux listes se comparent en ensembles. Une
+observation sans `decision_timeframes`, ou qui en porte une liste vide, dupliquée ou hors des séries déclarées,
+est une erreur d'entrée (§ I.1, ligne 2) : D2 ne peut pas être mesurée sur une liste absente. Le recoupement
+est fait à la validité d'entrée (§ I.2 I-A), qui lit l'observation entière ; la projection du § A.7 n'est pas
+élargie.
+
 **D3 — la quantité comptée, d'abord.** « Cycle achevé » n'a de sens que si le document dit quel nombre il
 compte, et ce nombre est **dépendant du moteur** :
 
@@ -505,7 +584,7 @@ pas dans la stratégie, et le rapport doit le dire ainsi.
 **Un candidat inadmissible est imprimé avec ses métriques et son premier gate en échec**, dans l'ordre
 D1 → D6. Son score décisionnel n'est pas publié : on ne calcule pas quand même pour commenter le chiffre.
 
-> **Conséquence de D2 sur la fenêtre déclarée, écrite plutôt que découverte.** La fenêtre du § A.3 commence au
+> **Conséquence de D2 sur la fenêtre de v2.0 (historique).** La fenêtre du § A.3 commence au
 > 2023-04-01, et l'amorçage 1 d / 1 w remonte alors dans les trous 2022-23 des données (`CONTRAINTES` § 7).
 > Mesuré sur l'unique artefact réel, `sufficient` est **`False`** en 1 d et 1 w sur BTC et sur SOL au début du
 > préfixe. **D2 écarte donc aujourd'hui, de façon déterministe, tout candidat dont une porte de décision lit le
@@ -513,6 +592,32 @@ D1 → D6. Son score décisionnel n'est pas publié : on ne calcule pas quand m�
 > des deux choix — la fenêtre et D2 — et elle est déclarée ici pour que le § F.6 ne se lise pas comme une
 > prophétie. **La borne basse de la fenêtre est donc un levier sur D2 autant que sur l'ancrage**, et c'est une
 > raison de plus de la déclarer au manifeste avant toute évaluation.
+
+> **Conséquences de D2 et de D1 sur la fenêtre de v2.1, écrites plutôt que découvertes.** La fenêtre de la
+> première campagne commence au 2021-03-01 sur la base USDT Binance, importée du 2019-01-01 (BTC, ETH) et du
+> 2020-08-11 (SOL) au 2026-09-01, six timeframes (5 m, 15 m, 1 h, 4 h, 1 j, 1 w), contiguë hors maintenances
+> Binance inférieures à un jour, un trou 4 h de deux bougies le 2019-05-15 hors de toute fenêtre, huit
+> estampilles 1 w isolées **[v]** `results/data_inventory_usdt_2019_20260923/inventory.md`. Deux conséquences
+> s'en déduisent, calculées par les fonctions de l'outillage sur les bornes déclarées :
+>
+> - **D2 sur SOL.** Le régime 1 w exige 50 bougies **[v]** `scripts/backtest.py:305`, `:420-425`. Au 2021-03-01,
+>   SOL en porte **29** (première estampille 1 w le 2020-08-17) ; la 50ᵉ tombe le **2021-07-26**. D2 retire donc
+>   tout candidat SOL dont une porte de décision lit le 1 w : **SOL est partiel dans la première campagne, ou
+>   absent** si tous les modes de la famille lisent le 1 w. BTC et ETH sont amorcés sur toutes leurs séries au
+>   début du préfixe. Une paire dont un timeframe de décision n'est pas amorcé au 2021-03-01 sort par D2 sur ses
+>   candidats, et la clause de promotion du § I.1 s'applique telle quelle.
+> - **D1 sur le 1 w.** Six des huit estampilles 1 w isolées tombent **dans le préfixe** — 2022-06-06,
+>   2022-07-04, 2022-09-05, 2022-10-03, 2022-11-07, 2022-12-05, les mêmes sur les trois paires ; les deux autres
+>   (2025-02-03, 2025-03-03) tombent dans la période évaluée. Sur les 194 périodes hebdomadaires de
+>   `(2021-03-01, T]`, **188 sont présentes, soit 96,9 %, sous les 97 % de D1**, sur BTC, ETH et SOL ; le trou
+>   maximal, 7 jours, reste sous la borne de 31 jours. Sans reconstruction, D1 retire les trois paires et
+>   l'ensemble admissible est vide : `A_NO_ADMISSIBLE_CANDIDATE` (§ I.1, ligne 8).
+>
+> **Aucune reconstruction des estampilles 1 w manquantes n'est faite tant que D1 passe** (décision C3 du
+> 23/09). D1 ne passe pas sur cette fenêtre : **la reconstruction depuis le 1 d est une décision séparée,
+> chiffrée, en rows marquées dérivées, jamais silencieuse, et elle est un prérequis du manifeste de la première
+> campagne.** Cette note déclare ce que la lecture des données laisse attendre ; l'outil, lui, mesure sur
+> l'artefact de couverture.
 
 ### A.9 Score, classement, égalités
 
@@ -531,6 +636,15 @@ D1 → D6. Son score décisionnel n'est pas publié : on ne calcule pas quand m�
   identité sont une erreur d'entrée** (§ I.1).
 - **L'ordre d'entrée n'influence rien** : permuter les candidats dans le fichier ne déplace ni un score, ni un
   rang, ni le choix.
+
+**D'où viennent les quantités de risque.** Le drawdown quotidien du candidat, son écart-type quotidien, et les
+mêmes grandeurs du comparateur et de tout blend apparié (§ C.4) sont **recalculés par l'outillage sur
+`equity_daily` du préfixe**, avec la même fonction et le même échantillonnage des deux côtés. La valeur
+`max_drawdown_pct_daily` enregistrée dans le bloc de métriques est **rapportée** à côté du recalcul, avec
+l'écart ; **cet écart n'est ni classé ni borné** — la NAV exportée est un `float`, l'écart est un résidu de
+représentation, et lui donner un seuil serait inventer une classe (§ 0.5) pour un nombre qui ne décide de
+rien. Le drawdown du moteur (`max_drawdown_pct_engine`, intra-bougie), que porte le bloc de métriques, n'est lu
+par aucune règle de la chaîne et **n'entre dans aucune comparaison** (§ J, item 4).
 
 ### A.10 Le plancher, et **la séquence de sélection**
 
@@ -676,7 +790,7 @@ prononcée :
 | # | Condition | Classe |
 |---|---|---|
 | **E1** | La trajectoire **évaluée** compte au moins **10 % de jours à rendement non nul** sur la fenêtre. **Le comparateur n'est pas soumis à E1** | qualité des données, **convention déclarée** |
-| **E2** | La distribution rééchantillonnée de `Δ*` porte **au moins deux valeurs distinctes** sur les réplications retenues | garde-fou méthodologique |
+| **E2** | **Chacune des six** distributions rééchantillonnées de `Δ*` — une par combinaison `L × appariement` du § F.2 (h) — porte **au moins deux valeurs distinctes** sur ses réplications retenues. Une seule distribution constante suffit à faire échouer E2 | garde-fou méthodologique |
 
 Un échec donne **`inconclusif (F_NOT_ESTIMABLE)`**, de portée run (§ I.1). **Ni `validé`, ni `réfuté`.**
 
@@ -710,6 +824,12 @@ condition opérationnelle d'E2 n'a pas changé ; seule son explication était fa
 et **c'est délibéré** : il refuse une borne sans information, il
 ne juge pas l'activité.
 
+**Pourquoi conjonctive.** `validé` exige une borne strictement positive dans les six combinaisons (§ H.1).
+Une distribution constante ne porte pas de borne estimable : sur cette combinaison-là, le test « borne > 0 »
+n'est ni vrai ni faux, il est **inévaluable**. Une conjonction de six tests dont un est inévaluable n'est pas
+« partiellement vraie » ; elle est inévaluable, et l'issue est `inconclusif (F_NOT_ESTIMABLE)`. E1, elle, ne
+porte que sur la trajectoire évaluée, unique, et reste une seule condition.
+
 **Ce contrôle n'est pas un repêchage** (§ A.11, section d'origine de cette interdiction). Un repêchage
 **remplace** un candidat écarté ou **relâche** une clause. E1 et E2 ne font ni l'un ni l'autre : ils
 **retirent une issue**, ils n'en fabriquent aucune, et **aucun candidat de substitution n'est jamais
@@ -740,7 +860,8 @@ qu'un appel unique de trois ans fonctionne — ce qui sert la clause 2.
 *Énoncé.* Les positions fictives des simulations de sélection **ne passent jamais** dans le portefeuille évalué :
 celui-ci démarre plat à `T`, avec le capital déclaré et un inventaire nul.
 
-*État : **NON VÉRIFIABLE** sous les artefacts actuels.* Deux vérifications apparemment naturelles n'en sont pas :
+*État : **DÉCLARÉ**, sous la preuve spécifiée ci-dessous ; **NON VÉRIFIABLE** quand elle est absente.* Deux
+vérifications apparemment naturelles n'en sont pas :
 
 - **`equity_daily[...].values[0] == capital` ne prouve rien.** La valeur est **imposée** à l'ancre :
   `if k > 0: # the anchor is authoritative: points stamped <= start are ignored`, puis
@@ -761,11 +882,16 @@ décrit un **état postérieur**, pas l'état initial. Et à l'ancrage déclaré
 **aucune bougie n'est estampillée à `T = 04:48`** (§ A.4), donc **aucun point n'existe à `T`** — le premier
 point disponible est postérieur à l'instant dont on voudrait prouver l'état.
 
-**C3b doit donc spécifier une preuve de départ à plat, pas déplacer des colonnes.** Ce que cette preuve doit
-établir, sans quoi la clause reste non vérifiable : qu'à l'instant `T`, **avant** tout traitement, le cash vaut
-le capital déclaré, la quantité détenue est nulle, et aucun ordre n'est en attente. **Tant que cette preuve
-n'est pas spécifiée, C3b n'est pas un « simple changement de runner »**, et ce document ne le présente pas comme
-tel. Le travail reste sous gate humain et sous invariant de confinement `compare-ab --strict`.
+**La preuve de départ à plat — spécifiée ici, produite par C3b.** Le runner capture, **avant le traitement de
+la première bougie du run d'évaluation**, l'objet `flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}`,
+et exporte `first_fill_at`, l'estampille du premier remplissage du run, qui doit être **strictement postérieure
+à `T`** (§ C.3). L'outillage contrôle la cohérence de l'objet (`at == T`, `cash == C` du manifeste,
+`qty == 0`, `pending == 0`) et `first_fill_at > T`. **Cette preuve vaut `DÉCLARÉ`, jamais `VÉRIFIÉ`** : elle
+est produite par le programme dont elle décrit l'état, et l'outillage n'a aucun moyen indépendant de la
+recalculer. `validé` n'exige pas mieux que `DÉCLARÉ` sur cette clause (§ B.8), et le rapport le dit avec ce
+mot. Un objet absent laisse la clause `NON VÉRIFIABLE` ; un objet incohérent la met en échec, et l'artefact
+déclare alors lui-même une rupture du contrat § B — refus `R0_INVALID_RUN` (§ B.8). Le travail de C3b reste
+sous gate humain et sous invariant `compare-ab --strict`.
 
 ### B.3 Clause 3 — toute liquidation prévue paie ses coûts, et là où il n'y en a pas, le contrat le dit
 
@@ -817,6 +943,19 @@ fortiori* puisque le coût omis est positif. **Cette règle est fausse et n'est 
 Ce constat est **consigné comme dette du projet et prérequis C3b**, pas comme une clause de qualité d'une
 configuration : le défaut est dans l'instrument, pas dans les stratégies.
 
+**Ce que la chaîne en fait.** Sur le préfixe, un candidat sans liquidation costée sort par D6 (§ I.1,
+ligne 6). Sur l'évaluation, une clause 3 en échec **ou non vérifiable** est de **portée run** : l'issue est
+`inconclusif (R1_NOT_NORMALISED)`, publiée, code 0 (§ I.1, ligne 10 bis) — un résultat, pas un refus, parce
+que l'artefact est bien formé et dit vrai ; il est seulement hors d'usage décisionnel. Cette ligne abroge la
+convention d'outillage datée du 21/09, qui sortait ce cas par un refus code 2 hors table.
+
+**Un bloc contradictoire n'est pas « non normalisé ».** Un bloc de liquidation qui déclare `trades > 0` sans
+estampille, ou sans l'un des champs de prix (`reference_price`, `price`, `spread_pct`, `slippage_pct`), se
+contredit : il dit avoir liquidé sans porter ce que toute liquidation porte. C'est une **violation** — statut
+recalculé ≠ statut enregistré (§ I.1, ligne 15), code 1 —, jamais `R1_NOT_NORMALISED` : publier un
+`inconclusif` sur un artefact incohérent est ce que la précédence violation → issue interdit (§ I.1). La règle
+vaut partout où le bloc est lu, D6 au préfixe comme clause 3 à l'évaluation.
+
 ### B.4 Clause 2 — aucune réinitialisation interne
 
 *Énoncé.* L'évaluation est **un seul appel** `engine.run(pair, T, fin)`. Les statistiques périodiques se
@@ -836,7 +975,12 @@ clause est donc satisfaite **si et seulement si** l'évaluation est invoquée en
 unique l'évite par construction. Et la liquidation terminale du grid est estampillée au **dernier close
 négociable**, pas à la borne finale **[v]** `:3175-3179`. Le protocole **asserte**, sans jamais le supposer, que
 cette estampille et la borne finale tombent dans la **même cellule de la grille quotidienne** ; sinon
-`E_STAMP_MISMATCH`.
+`E_STAMP_MISMATCH`. **Quand il n'y a pas d'estampille** — le bloc de liquidation est présent et ne liquide
+rien (`trades == 0`, estampille nulle) : l'inventaire est nul à la borne par le jeu de la stratégie elle-même —
+l'assertion est **satisfaite à vide** : il n'y a rien à situer, et rien n'a été liquidé hors cellule. Cet état
+est rapporté `NON VÉRIFIABLE` (aucune estampille), **il ne produit pas `E_STAMP_MISMATCH`**, et il ne bloque
+pas `validé`. Un bloc de liquidation **absent** est un autre cas : c'est D6 et la clause 3 (§ B.3), pas
+celle-ci.
 
 ### B.5 Clause 4 — l'amorçage, deux contrôles distincts
 
@@ -867,6 +1011,58 @@ suivante.
 Elle ne prouve ni la justesse économique d'une configuration, ni la fidélité du modèle de remplissage. Les
 frictions non reproduites — file d'attente, non-exécutions, remplissages partiels, sélection adverse — restent
 **non modélisées et d'amplitude inconnue** (§ J).
+
+### B.8 États des clauses, agrégat, et ce que le verdict en fait
+
+**C'est la section d'origine des états de continuité et des actions qu'ils commandent (§ 0.7).**
+
+Quatre états, et quatre seulement : `VÉRIFIÉ` (recalculé par l'outillage depuis les données), `DÉCLARÉ`
+(affirmé par le producteur, contrôlé cohérent, non recalculable), `NON VÉRIFIABLE` (l'artefact ne porte pas
+de quoi statuer), `ÉCHEC`. **Liste close par clause**, des deux côtés — producteur `c3_continuity` et
+consommateur `c3_verdict` — et un état hors de la liste de sa clause est une valeur hors liste close (§ I.1,
+ligne 2) :
+
+| Clause | États admissibles | Pourquoi pas les autres |
+|---|---|---|
+| c1 départ à plat (§ B.2) | `NON VÉRIFIABLE`, `DÉCLARÉ`, `ÉCHEC` | jamais `VÉRIFIÉ` : preuve déclarative |
+| c2 aucune réinitialisation (§ B.4) | `DÉCLARÉ`, `ÉCHEC` | le bloc `invocation` est obligatoire, donc jamais « non vérifiable » ; `single_call` n'est pas recalculable |
+| c3 liquidation costée (§ B.3) | `VÉRIFIÉ`, `NON VÉRIFIABLE`, `ÉCHEC` | jamais `DÉCLARÉ` : seule la preuve par lot la vérifie ; identités exactes sans lots → `NON VÉRIFIABLE` |
+| c4 amorçage à `T` (§ B.5) | `VÉRIFIÉ`, `ÉCHEC` | recalculée (`sufficient`), rien d'autre n'est possible |
+| c5 première exécution (§ C.3) | `NON VÉRIFIABLE`, `DÉCLARÉ`, `ÉCHEC` | `first_fill_at` est déclaratif |
+| bloc `stamp_cell` (§ B.4) | `VÉRIFIÉ`, `ÉCHEC`, `NON VÉRIFIABLE` | aucune estampille → satisfaite à vide (§ B.4) |
+| bloc `comparator` (§ C.5) | `VÉRIFIÉ`, `ÉCHEC` | cinq tests booléens et la fenêtre recoupée ; tout vrai ou non |
+
+**Agrégat.** L'état agrégé des clauses est la **pire** clause, par la précédence
+`ÉCHEC > NON VÉRIFIABLE > DÉCLARÉ > VÉRIFIÉ`. Il est **imprimé**, et il ne commande **aucune action** : les
+actions se branchent sur les clauses.
+
+**Résumés dérivés, jamais recopiés.** Les résumés lisibles (`warmup_anchor_ok`, `benchmark_comparable`,
+`stamp_same_daily_cell`, `liquidation_normalised`) et l'agrégat sont **recalculés par le consommateur depuis
+les états des clauses**, puis recoupés au déclaré ; une contradiction déclaré / dérivé est une violation
+(§ I.1, ligne 15). `liquidation_normalised` vaut vrai si c3 est `VÉRIFIÉ`, faux en `ÉCHEC`, et `null` —
+**non établi** — en `NON VÉRIFIABLE`. Le verdict **lit tout** — les cinq clauses, les deux blocs, les portes,
+les six bornes — **avant** de prendre un chemin ; il ne conjoint qu'après avoir tout lu et typé.
+
+**Actions, par clause.**
+
+| Constat | Action |
+|---|---|
+| l'évaluation ne porte pas la configuration retenue (§ H.1) | refus `R0_INVALID_RUN` |
+| c1, c2 ou c5 en `ÉCHEC` | l'artefact déclare lui-même une rupture du contrat § B → refus `R0_INVALID_RUN` (§ I.1, ligne 2) |
+| c3 en `ÉCHEC` ou `NON VÉRIFIABLE` | issue `inconclusif (R1_NOT_NORMALISED)`, portée run (§ I.1, ligne 10 bis) |
+| c4 en `ÉCHEC` | `D_WARMUP_ANCHOR` (§ I.1, ligne 12) |
+| `comparator` en `ÉCHEC` | `E_NO_BENCHMARK` (§ I.1, ligne 10) |
+| `stamp_cell` en `ÉCHEC` | `E_STAMP_MISMATCH` (§ I.1, ligne 11) ; `NON VÉRIFIABLE` est satisfait à vide (§ B.4) |
+
+Quand plusieurs constats coexistent, un refus précède toute raison, et la raison portée est la première de la
+liste de priorité du § H.1.
+
+**Ce qu'exige `validé`** sur la continuité : c2 `DÉCLARÉ`, c3 `VÉRIFIÉ`, c4 `VÉRIFIÉ`, `comparator` `VÉRIFIÉ`,
+`stamp_cell` `VÉRIFIÉ` ou `NON VÉRIFIABLE`, et **c1, c5 `DÉCLARÉ` sur une évaluation réelle** — une
+évaluation réelle qui ne porte pas sa preuve de départ à plat ou son premier remplissage n'est pas admise
+(§ L.1). **En exercice synthétique** (§ L.1), c1 et c5 `NON VÉRIFIABLE` sont tolérés : l'exercice éprouve
+l'outillage, pas une évaluation. L'agrégat `VÉRIFIÉ` est inconstructible par la table ci-dessus, et c'est
+voulu.
 
 ---
 
@@ -1032,7 +1228,7 @@ l'intérieur du passé*, et l'étiquette ci-dessus s'applique aussi.
 
 ### C.5 Tests de comparabilité — bloquants
 
-Paramétrés par la fenêtre considérée, jamais par une longueur en dur. Quatre tests, chacun avec ce qu'il
+Paramétrés par la fenêtre considérée, jamais par une longueur en dur. Cinq tests, chacun avec ce qu'il
 attrape :
 
 | Test | Borne | Ce qu'il attrape |
@@ -1041,8 +1237,15 @@ attrape :
 | Observation admissible aux deux bornes (§ A.4) | présence | un comparateur sans prix d'entrée ou sans prix de sortie |
 | Compte de rendements = `len(grille quotidienne) − 1` | égalité | **la ruine** : `resample_daily` cesse de définir un rendement dès qu'une NAV atteint 0 ou moins **[v]** `src/krakenbot/backtest_metrics.py:184-194`. Hors ce cas le test est vrai par construction, et il est conservé **uniquement** pour ce cas, qui est nommé |
 | Finitude | toutes valeurs finies | un NaN ou un infini entré dans la chaîne |
+| Fenêtre du comparateur d'évaluation | `[T, fin]` exactement, `T` recalculé par `c3_anchor` | un comparateur construit par le producteur sur une autre fenêtre — le producteur ne connaît pas `T`, il ne fait que déclarer ses bornes |
 
 Un échec donne `E_NO_BENCHMARK`, et **aucun repli sur `compute_benchmarks.py` n'est autorisé**.
+
+**Le producteur déclare, la chaîne recoupe.** Le comparateur d'évaluation est construit hors chaîne (§ L.1,
+pas 0) par un producteur qui ne connaît pas `T` ; il déclare ses bornes, et `c3_verdict` les compare à
+`[T, fin]`. Une discordance rend le comparateur **non comparable** (`E_NO_BENCHMARK`), **sans violation** : le
+producteur n'a pas menti, il a construit autre chose que ce que ce manifeste demande. Un `window_ok` déclaré qui
+contredit le recoupement est, lui, une violation (§ B.8, résumés dérivés).
 
 ### C.6 Cas non calculables
 
@@ -1195,10 +1398,58 @@ par `numpy.random.default_rng([graine, index de paire, L])` ; la graine est **d�
 évaluation et entre dans l'empreinte (§ A.6). Classe de `L` et de `B` : qualité des données ; classe de la
 graine : contrat.
 
-**(c) La reconstruction et l'annualisation.** Pour chaque réplication, la trajectoire est reconstruite par
-**produit cumulé** depuis le capital `C` (§ 0.5), puis le rendement géométrique annualisé est
-`CAGR = (exp(Σ log1p(r) × 365 / n_jours) − 1) × 100`, en %/an. `n_jours` est la durée de la fenêtre
-d'évaluation, pas le nombre de rendements. `Δ* = CAGR(config) − CAGR(comparateur)` sur la **même** réplication.
+**Le tirage, écrit pour être rejoué.** L'**index de paire** est la position de la paire de la configuration
+évaluée dans la liste **triée** des paires de l'univers (celle que porte l'artefact d'ancrage). Pour chaque `L`,
+les départs de blocs sont tirés **en un seul appel**, `rng.integers(0, n, size=(B, ⌈n / L⌉))`, `n` étant le
+nombre de rendements quotidiens de la fenêtre d'évaluation ; les indices d'une réplication sont
+`(départ + k) mod n` pour `k = 0 … L − 1`, concaténés bloc après bloc et tronqués aux `n` premiers.
+**Les mêmes indices** servent à la configuration et au comparateur, et **aux deux appariements** d'un même
+`L` : seul le comparateur change entre `dd` et `σ`. Ce tirage, et le calcul du § F.2 (c), ne sont exacts que
+dans l'environnement qui les a produits, que l'artefact d'évaluation déclare (§ I.2 I-C) en **quatre champs,
+et quatre seulement** :
+
+```
+python    platform.python_version()
+numpy     numpy.__version__
+machine   platform.machine()
+libc      platform.libc_ver() : la bibliothèque et sa version, séparées par une espace, espaces de bord retirées
+```
+
+Jamais la version du noyau du système d'exploitation, qui ne change pas le calcul. Sur macOS,
+`platform.libc_ver()` est vide, et `libc` aussi : ce que ce champ ne distingue pas est déclaré au § J, item 12.
+
+**Les valeurs de `L`, `B` et le niveau de la borne sont des contrats d'instrument au sens de D5, comme
+l'environnement du tirage et les deux appariements du comparateur** : un artefact d'évaluation qui déclare
+`B ≠ 10 000`, une longueur de bloc hors `{10, 21, 42}`, une combinaison manquante ou surnuméraire, un comparateur
+qui ne porte pas **exactement** les deux appariements `dd` et `σ`, ou un environnement qui n'est pas
+**exactement** celui où la chaîne rejoue — un champ en trop compris — est un **contrat rompu** :
+`R0_INVALID_RUN`, code 2, rien n'est publié (§ I.1, ligne 2). Ce contrôle est fait **avant toute lecture**,
+séries comprises : un `B` hors contrat accompagné d'un compteur contradictoire ou d'un non-fini dans une suite
+rééchantillonnée sort en refus de contrat, jamais en violation par accident d'ordre de lecture. Précédent :
+`rejeu_validate_analysis.b02_frozen_parameters`.
+
+**(c) Le rendement géométrique et l'annualisation.** Pour chaque réplication, le rendement géométrique
+annualisé est calculé **par somme des `log1p`** ; aucune trajectoire n'est reconstruite pas à pas depuis le
+capital `C` (§ 0.5) :
+
+```
+CAGR = (exp((Σ log1p(r) × 365) / n_jours) − 1) × 100          en %/an
+     = (numpy.exp((numpy.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100
+```
+
+`r` est le vecteur des rendements quotidiens, `indices` la matrice `(B, n)` des indices des réplications
+(§ F.2 b). `n_jours` est la durée de la fenêtre d'évaluation, pas le nombre de rendements : `(fin − T)` en
+secondes, divisé par 86 400, en double précision. **L'ordre des opérations fait partie de la définition** : la
+somme est multipliée par 365, **puis** divisée par `n_jours` — une seule division, faite en dernier.
+`somme × (365 / n_jours)` donne un autre nombre au dernier bit sur une part des réplications — environ une sur
+vingt pour la série témoin des tests, mesuré le 2026-09-23 —, et le rejeu est une égalité au bit (§ F.2 d).
+`Δ* = CAGR(config) − CAGR(comparateur)` sur la **même** réplication.
+
+**Un seul chemin de calcul.** Ce chemin est **le seul** : appliqué aux indices identité `[[0 … n − 1]]`, il
+donne le `CAGR` observé de la configuration (porte `Q2`, § F.8) et celui de chaque comparateur, donc `Δ̂` par
+appariement — `Δ̂` en drawdown est la valeur de la porte `Q3` et le centre des trois bornes `dd` ; `Δ̂` en
+écart-type, le centre des trois bornes `σ`. Une seule fonction, une seule convention : aucune divergence
+d'arrondi entre l'estimation et ses réplications.
 
 **(d) La borne, sa formule, son niveau, sa convention de quantile.** Borne inférieure **unilatérale à 95 %**,
 de forme **pivotale (« basic »)**, recentrée sur l'estimation :
@@ -1215,6 +1466,22 @@ liquidation — les deux bornes diffèrent, et la différence peut changer le si
 qu'employait le précédent (`LB_j = Δ̂_j − q`). **Le choix est déclaré ici parce qu'il est décisionnel**, pas
 parce qu'il est neutre. Classe : préférence méthodologique déclarée.
 
+**Qui calcule, et ce que la chaîne rejoue.** La procédure est **exécutée par le producteur d'évaluation**
+(C3b), qui exporte les séries quotidiennes de la configuration et du comparateur de chaque appariement —
+**toutes de même longueur `n`** —, et, par combinaison, la suite `Δ*` retenue **dans l'ordre des réplications
+`b = 1 … B`, écartées retirées**, le compte de réplications écartées et la borne. Toute valeur est publiée en
+double précision, **sérialisée par le `repr` le plus court qui se relit à l'identique** — la convention de
+`canon` (§ A.1 bis) —, jamais « avec assez de décimales ». La chaîne (§ L.1) **rejoue le tirage** — graine
+du manifeste, index de paire, `n_jours`, tirage et chemin de calcul des § F.2 (b) et (c) — et **recalcule**
+les six suites, les comptes d'écartées, `Δ̂` par appariement, le `CAGR` de la configuration et les six bornes.
+**Toute différence avec ce que l'artefact déclare est une violation** (§ I.1, ligne 15) — la comparaison est une
+égalité au bit, ordre des suites compris —, et les portes `Q2`, `Q3` et les bornes décident sur les valeurs
+**rejouées**. Le rejeu n'est exécuté que dans l'environnement que l'artefact déclare : sinon, contrat rompu
+(§ F.2 b), jamais une comparaison tolérante. Des séries de longueurs différentes rendent les indices appariés
+impossibles (§ F.2 a) : le rejeu est **inexécutable**, erreur de forme (§ I.1, ligne 2), code 2. **Ce qui
+reste déclaratif** : les séries quotidiennes elles-mêmes et `net_pnl` (porte `Q1`), qu'aucune série de
+l'artefact ne permet de recalculer (§ J, item 12).
+
 **(e) Entrées invalides et échecs numériques — deux choses distinctes, une seule règle.**
 
 **C'est la section d'origine du traitement des non-finitudes pendant le bootstrap (§ 0.7) ; le § F.7 traite les
@@ -1222,20 +1489,32 @@ non-finitudes dans les *entrées*, et les deux ne se recouvrent pas.**
 
 | | Ce que c'est | Quand | Traitement |
 |---|---|---|---|
-| **Entrée invalide** | un `NaN`, un infini, un `λ` non fini ou un rendement `≤ −1` **dans les données fournies** à la procédure | **avant** tout tirage | **erreur d'entrée** : § I.1, ligne 15. Aucun bootstrap n'est lancé |
-| **Échec numérique** | une **réplication** produit un `Δ*` non fini, ou un rendement rééchantillonné conduit la trajectoire à zéro | **pendant** le tirage | la réplication est **écartée et comptée** |
+| **Entrée invalide** | un `NaN`, un infini, un `λ` non fini ou un rendement `≤ −1` **dans les données fournies** à la procédure, ou une série dont le `CAGR` **observé** — chemin du § F.2 (c), indices identité — n'est pas fini : l'estimation elle-même n'existe pas, il n'y a rien à écarter | **avant** tout tirage | **erreur d'entrée** : § I.1, ligne 15. Aucun bootstrap n'est lancé |
+| **Échec numérique** | une **réplication** produit un `Δ*` non fini : l'exponentielle du § F.2 (c) déborde vers l'infini (d'un côté, `Δ*` est infini ; des deux, `∞ − ∞` n'est pas défini) | **pendant** le tirage | la réplication est **écartée et comptée** |
+
+**Rien d'autre n'est écarté.** Un rendement `≤ −1` étant une entrée invalide (ligne du dessus), `log1p` est
+défini partout et la somme du § F.2 (c) ne « va à zéro » nulle part. v2.0 écartait aussi la réplication dont
+« un rendement rééchantillonné conduit la trajectoire à zéro » : la phrase décrivait un produit cumulé, qui
+n'est pas le calcul du (c). Un `CAGR` de **−100 %/an exactement** — l'exponentielle sous-déborde vers 0 — est
+une valeur **finie et légitime**, celle du pire chemin : la réplication est **retenue**. L'écarter biaiserait
+la distribution vers les chemins qui finissent bien, ce que le paragraphe suivant interdit déjà pour le
+retirage.
 
 **Comment le quantile est calculé quand des réplications sont écartées.** Elles sont **exclues, comptées, et
 non remplacées** : pas de retirage, qui biaiserait la distribution vers les chemins qui se terminent bien. Le
-quantile du § F.2 (d) est calculé sur les **réplications retenues**, et l'artefact publie **`B_effectif`**, le
-nombre effectivement utilisé, à côté de `B`. Un rapport qui cite une borne sans citer `B_effectif` est
-incomplet.
+quantile du § F.2 (d) est calculé sur les **réplications retenues**, et l'artefact publie, **par
+combinaison** `L × appariement`, **`B_effectif`**, le nombre effectivement utilisé, à côté de `B`. Un rapport
+qui cite une borne sans le `B_effectif` de sa combinaison est incomplet. Une combinaison dont aucune
+réplication n'est retenue ne porte pas de borne : la borne déclarée est nulle **si et seulement si** sa suite
+retenue est vide, et l'écart, dans un sens ou dans l'autre, contredit l'artefact (§ I.1, ligne 15).
 
 **Le plafond, et ce qu'il vaut.** Au-delà de **10 réplications écartées sur 10 000** — soit un `B_effectif`
-inférieur à 9 990 — l'inférence est déclarée **inutilisable** : issue `inconclusif (F_NOT_ESTIMABLE)`, et
-**aucune borne n'est publiée**. Classe : qualité des données, **convention déclarée**. Le nombre est repris du
-précédent et **n'est pas dérivé** : il exprime qu'une poignée de chemins dégénérés est tolérable, et qu'au-delà
-la distribution n'est plus celle qu'on croit échantillonner.
+inférieur à 9 990 — **sur l'une quelconque des six combinaisons** `L × appariement`, l'inférence est déclarée
+**inutilisable** : issue `inconclusif (F_NOT_ESTIMABLE)`, et **aucune borne n'est citée par le verdict**.
+L'artefact d'évaluation, lui, porte la borne de toute combinaison dont la suite retenue n'est pas vide
+(ci-dessus), et la chaîne la recoupe au rejeu comme les autres. Classe : qualité des données, **convention
+déclarée**. Le nombre est repris du précédent et **n'est pas dérivé** : il exprime qu'une poignée de chemins
+dégénérés est tolérable, et qu'au-delà la distribution n'est plus celle qu'on croit échantillonner.
 
 **(f) `λ` reste celui du préfixe pendant toute la procédure décisionnelle.** Le **mode** de `λ` est tranché au
 **§ C.4, section d'origine** ; ce paragraphe n'en énonce que la conséquence procédurale : `λ` est estimé une
@@ -1458,11 +1737,12 @@ D_WARMUP_PREFIX             D2 échoue sur la totalité des candidats de l'artef
 A_NO_ADMISSIBLE_CANDIDATE   l'ensemble admissible est vide
 A_BELOW_FLOOR               ensemble non vide, aucun candidat ne franchit le plancher
 D_WARMUP_ANCHOR             amorçage défaillant à l'ancrage d'évaluation
+R1_NOT_NORMALISED           liquidation terminale non normalisée : D6 sur un candidat ; clause 3 en échec
+                            ou non vérifiable sur l'évaluation
 E_NO_BENCHMARK              benchmark non constructible ou non comparable
 E_STAMP_MISMATCH            estampille de liquidation et borne finale en cellules distinctes
 F_NOT_ESTIMABLE             estimabilité post-ancrage en défaut, ou aucun candidat estimable
 F_CANNOT_SEPARATE           la borne ne sépare pas l'effet de zéro dans les six combinaisons
-R1_NOT_NORMALISED           D6 : liquidation terminale non normalisée
 D_NOT_ADMISSIBLE            D1 ou D5
 C_COVERAGE                  D3 échoue, ou D3 est inapplicable
 ```
@@ -1475,8 +1755,24 @@ issue. `NOT_ESTIMABLE` (statut de candidat) et `F_NOT_ESTIMABLE` (raison) porten
 voisins et **ne sont pas la même chose** : le premier retire un candidat, le second n'apparaît que si le retrait
 de tous les candidats se fait par cette voie.
 
+**Comment le statut de sélection se calcule**, par `c3_select`, et se recoupe par `c3_verdict` :
+
+| Configuration retenue ? | Provenance | Statut | Raison de chaîne |
+|---|---|---|---|
+| oui | `clean` | `SÉLECTION_VALIDE` | — |
+| oui | `contaminated` ou `unknown` | `SÉLECTION_DESCRIPTIVE` | `P_PROVENANCE` |
+| non | quelconque | `ABSTENTION` | `A_NO_ADMISSIBLE_CANDIDATE` ou `A_BELOW_FLOOR` ; sous contamination, `P_PROVENANCE` la précède par priorité |
+
+Un statut déclaré par `c3_select` que `c3_verdict` ne redérive pas de la sélection et de la provenance est une
+violation (§ I.1, ligne 15).
+
 **Lecture de la liste.** L'ordre ci-dessus est **l'ordre de priorité**, sans exception et sans départage à
 inventer : la chaîne porte **la première raison qui s'applique**.
+
+`R1_NOT_NORMALISED` précède `E_NO_BENCHMARK` parce que le comparateur est apparié sur le risque réalisé du
+candidat (§ C.4), que la liquidation terminale déplace ce risque (§ B.3), et qu'un comparateur construit contre
+une NAV non normalisée n'est pas le comparateur du protocole : le défaut d'instrument se lit avant le défaut du
+comparateur qu'il a contaminé.
 
 **La portée d'une raison — candidat, artefact ou run — n'est pas redite ici.** Elle est donnée par la **table
 du § I.1, seule source** (§ 0.7). Une raison de portée candidat est imprimée à côté du candidat qu'elle a
@@ -1487,6 +1783,9 @@ donne de niveau run. **Cet ancien classement est supprimé.**
 
 `A_NO_ADMISSIBLE_CANDIDATE` reste atteignable parce qu'il est prioritaire sur les raisons de clause : l'ensemble
 vide est le fait décisionnel, la clause qui l'a vidé est un diagnostic imprimé à côté.
+
+**L'état de la continuité et ce qu'il commande** — refus, raisons de continuité, ce qu'exige `validé` — ne sont
+pas redits ici : section d'origine **§ B.8**.
 
 **Un échec de niveau run court-circuite tout** : `R0_INVALID_RUN` est évalué avant toute autre chose, et
 `D_NOT_ADMISSIBLE` déclenché par D5 est un échec de § I-A, donc il remonte en `R0_INVALID_RUN`.
@@ -1521,6 +1820,7 @@ Trois portées, et trois seulement :
 | 8 | Ensemble admissible vide après D1-D6 | **run** | `A_NO_ADMISSIBLE_CANDIDATE` | **0** | non ; c'est une **abstention**, donc un résultat publié |
 | 9 | Aucun survivant du plancher P1-P3 | **run** | `A_BELOW_FLOOR` | **0** | non ; abstention, résultat publié |
 | 10 | Benchmark non constructible ou non comparable | **run** | `E_NO_BENCHMARK` | **0** | non ; issue `inconclusif` |
+| 10 bis | **Liquidation terminale de l'évaluation non normalisée** : clause 3 du § B en échec **ou non vérifiable** sur l'artefact évalué | **run** | `R1_NOT_NORMALISED` | **0** | non ; issue `inconclusif` — aucun verdict directionnel n'est fondé sur cet artefact (§ B.3) |
 | 11 | Estampille de liquidation et borne finale en cellules distinctes | **run** | `E_STAMP_MISMATCH` | **0** | non ; issue `inconclusif` |
 | 12 | **Amorçage défaillant à l'ancrage d'évaluation** | **run** | `D_WARMUP_ANCHOR` | **0** | non ; issue `inconclusif` |
 | 13 | Estimabilité post-ancrage en défaut (§ A.13) | **run** | `F_NOT_ESTIMABLE` | **0** | non ; issue `inconclusif` |
@@ -1559,12 +1859,40 @@ des données recevables : code 0, publiée. La non-recevabilité est un **refus 
 publié au-delà de la validation. Les confondre laisserait tourner la sélection sur un artefact que le protocole
 vient de déclarer inapte.
 
+**Forme d'un diagnostic (ligne 15).** Un artefact de diagnostic est écrit, code 1, et porte `invalide: true`
+et la liste des violations ; il ne porte **ni verdict, ni raison, ni chaîne citable** : une violation n'est pas
+un résultat, et rien de ce qu'un diagnostic contient ne se cite dans un rapport comme une issue.
+
+**Ligne 2 ou ligne 15, la frontière.** Une valeur **fournie** mais non finie ou hors domaine (un `NaN`, un
+infini, un rendement `≤ −1`, un `λ` hors `[0, 1]`) est une violation : ligne 15, code 1 ; de même un bloc qui
+se contredit (§ B.3) ou une valeur que le rejeu ne retrouve pas (§ F.2 d). Une valeur **absente, nulle, mal
+typée ou hors liste close** (une chaîne là où un booléen est attendu, un état hors de la liste de sa clause, une
+clé manquante) est une erreur de forme : ligne 2, code 2, **rien n'est écrit** — à l'exception de `c3_entry`,
+qui écrit toujours sa validation, refus compris (§ D.3) ; de même un contrat d'instrument rompu ou un rejeu
+inexécutable (§ F.2 b, d).
+
+**Ordre de constat.** Après une violation, la violation prime : un refus ou une issue constatés ensuite
+n'effacent pas le diagnostic (code 1). **Sauf lecture inachevable** : une preuve obligatoire absente, nulle,
+mal typée ou hors liste close constatée **après** une violation sort en code 2, rien publié, et les violations
+déjà constatées sont dites sur la sortie d'erreur — un diagnostic se bâtit sur une lecture complète, et une
+lecture inachevable n'en permet aucun. Le refus de contrat évalué **avant toute lecture** (§ F.2 b) n'est pas
+concerné par cet ordre : il vient en premier par construction. Ce paragraphe ratifie la convention d'outillage
+datée du 22/09 (preuve absente après violation → code 2), dont il devient la section d'origine ; celle du
+21/09 est abrogée (§ B.3, ligne 10 bis).
+
 ### I.2 Les trois étapes
 
 **I-A. Validité d'entrée** — forme de l'artefact, contrats de version (D5), bornes finissant exactement à
 l'ancrage, présence et forme des blocs d'amorçage **et de couverture**, provenance de l'univers, unicité des
 identités canoniques. Les assertions sont exécutées **dans un ordre gelé** et tout ce qui suit le premier échec
 est marqué **sauté, jamais vert**. Codes : § I.1.
+
+Une assertion dont l'artefact ne porte **aucun porteur** — un champ que l'export réel ne produit pas, par
+exemple l'intervalle d'exécution ou l'artefact de couverture — est consignée **non assertable**. Elle n'est
+**jamais verte**, elle ne bloque pas les assertions suivantes, et **en fin de I-A toute clause non assertable
+est un refus** `R0_INVALID_RUN` (§ I.1, ligne 2) : une entrée n'est validée pour sélection que si chaque clause
+est assertable et verte. « Non assertable » n'est pas un état intermédiaire tolérable ; c'est le nom exact de ce
+qui manque au producteur.
 
 **I-B. Validité de chronologie** — la propriété du § A.12, vérifiée par invariance et par contrôle négatif.
 
@@ -1575,8 +1903,9 @@ paramètres, graines et versions consignés dans l'artefact.
 
 ## § J. Non-mesurables déclarés, chacun avec la règle qui remplace la mesure
 
-1. **Le départ à plat à l'ancrage** (§ B.2). → Déclaré **non vérifiable** ; les champs qui le rendraient
-   vérifiable sont nommés et routés en C3b. **Aucune preuve de substitution n'est proposée.**
+1. **Le départ à plat à l'ancrage** (§ B.2). → **Déclaré, jamais vérifié** : la preuve `flat_start_proof` est
+   produite par le programme qu'elle décrit et contrôlée cohérente, non recalculée. Ce qui reste non mesurable
+   est l'écart entre l'état déclaré et l'état réel du moteur à `T` ; aucun substitut.
 2. **Le coût de liquidation terminale du moteur signal** (§ B.3). → Aucun verdict directionnel ; normalisation
    définie et vérifiée avant tout usage décisionnel.
 3. **L'exposition et le notionnel déployé au cours du temps.** Ni cash, ni inventaire, ni notionnel ne sont
@@ -1584,7 +1913,8 @@ paramètres, graines et versions consignés dans l'artefact.
    aucune voie alternative fondée sur l'exposition n'est ouverte.
 4. **Le drawdown intrabar.** Non reconstructible (contrat C1). → Toute comparaison de drawdown est
    quotidien-contre-quotidien des deux côtés ; `max_drawdown_pct_engine` reste diagnostic et n'est jamais un
-   critère inter-familles.
+   critère inter-familles. L'origine des quantités de risque décisionnelles, recalculées sur `equity_daily`,
+   est au § A.9.
 5. **File d'attente, non-exécutions, remplissages partiels, sélection adverse.** Non modélisés, amplitude
    inconnue (`CONTRAINTES` § 2). → **Aucun substitut chiffré**, et la conditionnalité au modèle de remplissage
    est écrite dans chaque issue.
@@ -1599,9 +1929,20 @@ paramètres, graines et versions consignés dans l'artefact.
    compte de ruptures est une **borne inférieure**. → Il est rapporté comme tel, jamais comme un dénombrement.
 10. **L'état du portefeuille à l'instant `T` lui-même.** Aucun point d'equity n'est écrit avant qu'une bougie
     n'ait été traitée **[v]** `scripts/backtest.py:1959-1960`, `:2333-2334` ; et à l'ancrage déclaré, **aucune
-    bougie n'est estampillée à `T`** (§ A.4), donc **aucun point n'existe à `T`**. → Le départ à plat est
-    déclaré **non vérifiable** (§ B.2) ; **aucune preuve de substitution n'est proposée**, et C3b doit
-    **spécifier** une preuve, pas déplacer des colonnes.
+    bougie n'est estampillée à `T`** (§ A.4), donc **aucun point n'existe à `T`**. → La preuve spécifiée au
+    § B.2 est capturée **avant la première bougie**, donc avant qu'un point d'equity existe ; elle décrit l'état
+    initial et non un état postérieur, et vaut `DÉCLARÉ`.
+11. **L'écart de peg entre la monnaie de cotation de validation et celle de déploiement** (§ A.6, transposition
+    déclarée : USDT Binance → USDC Bybit). → Non modélisé ; la transposition est déclarée avec son argument, les
+    coûts de la cible sont ceux de la paire de déploiement, et aucun facteur de correction n'est appliqué.
+12. **Ce que le rejeu du § F.2 ne couvre pas** (§ F.2 b, d). → La chaîne rejoue le tirage et **recalcule** les
+    suites, les écartées, `Δ̂`, le `CAGR` et les bornes ; ce qu'elle ne peut pas recalculer reste **déclaratif** :
+    les séries quotidiennes elles-mêmes, et `net_pnl` (porte `Q1`), qu'aucune série de l'artefact ne permet de
+    reconstruire. Et l'égalité d'environnement (§ F.2 b) ne distingue pas tout ce qui change un calcul au dernier
+    bit : ni deux hôtes de même architecture et de même bibliothèque C dont les jeux d'instructions diffèrent, ni,
+    sur macOS, la bibliothèque mathématique du système — `platform.libc_ver()` y est vide. **Cette limite n'a pas
+    d'effet opérationnel tant que le producteur et la chaîne tournent sur le serveur** (la recette de C2) : c'est
+    cette règle d'exploitation qui tient lieu de garantie, pas le champ `libc`.
 
 ---
 
@@ -1626,8 +1967,13 @@ substitution n'est sélectionné, aucune clause n'est relâchée, aucune borne n
 > exactement cela pour sa propre issue négative ; l'extension était une inférence, pas une règle.
 
 **Une clôture plus large est possible, mais elle change de nature.** Décider d'arrêter une famille entière est
-une **décision de gestion de la recherche** — budget, priorités, cap de deux familles par cycle. Elle peut être
-prise, et elle passe alors par le § 5 et le ticket § 6 de `docs/CONTRAINTES_POST_B4.md`. **Elle est annoncée
+une **décision de gestion de la recherche** — budget, priorités, cap de deux familles par cycle. **Cette décision
+est pré-enregistrée** : le § 10 de `docs/CONTRAINTES_POST_B4.md` (critère d'arrêt, adopté avec la révision v2.1
+de ce protocole) dit d'avance quels verdicts de cette chaîne closent une famille, combien de familles et combien
+de temps le projet s'accorde avant de s'arrêter, et ce qui doit exister avant tout ordre live. Ce protocole
+**produit les événements** que ce critère lit — les issues et leurs raisons — et **ne le contient pas** : le
+critère reste une règle de gestion, avec son auteur, hors des § 0 à M. La décision peut être prise, et elle
+passe alors par le § 5 et le ticket § 6 de `docs/CONTRAINTES_POST_B4.md`. **Elle est annoncée
 comme telle, avec son auteur et son motif, et n'est jamais déduite d'un verdict de ce protocole.** Un rapport
 qui écrirait « la famille est close parce que le protocole a rendu `réfuté` » commettrait l'inférence que ce
 paragraphe interdit.
@@ -1649,20 +1995,24 @@ Aucun pas n'est sauté ni réordonné.
 
 | # | Producteur | Artefact |
 |---|---|---|
-| 0 | **hors chaîne** | le **manifeste** (§ A.6), les **observations**, et l'**artefact de couverture** (§ A.7) — trois entrées, produites avant, jamais par l'outillage de ce protocole |
+| 0 | **hors chaîne** | six entrées, produites avant, jamais par l'outillage de ce protocole : le **manifeste** (§ A.6), les **observations**, l'**artefact de couverture** (§ A.7), l'**export de bougies** `candles.json` (lecture seule de la base), que `c3_benchmark` lit pour construire le comparateur du préfixe (§ C), l'**artefact d'évaluation** (§ F.2, produit par C3b) et le **comparateur d'évaluation** (§ C.5) |
 | 1 | `c3_anchor` | ancrage recalculé, estampilles admissibles, enregistrement au registre de variantes |
 | 2 | `c3_entry` | validité d'entrée (§ I-A) → `results/c3a_entry_validation/` — poursuite selon la table du § I.1 |
 | 3 | `c3_benchmark` | comparateur du préfixe, `λ` et son mode |
 | 4 | `c3_select` | projection, admissibilité, scores, classement, choix ou abstention |
-| 5 | `c3_continuity` | contrat du § B sur un artefact d'évaluation, avec l'état de vérifiabilité de chaque clause — **sans entrée réelle en C3a** |
+| 5 | `c3_continuity` | contrat du § B sur un artefact d'évaluation, avec l'état de vérifiabilité de chaque clause |
 | 6 | `c3_verdict` | l'issue et **la chaîne de verdict** |
 
-**Ce qui est réellement atteignable en C3a.** L'exécution continue post-ancrage et la procédure d'incertitude
-relèvent de **C3b** (§ B.4, § F.2), et tout artefact réel existant est refusé à l'entrée (§ D.3). En C3a, les
-étapes 5 et 6 ne sont donc exerçables que sur des **fixtures synthétiques**, et les seules issues qu'elles
-peuvent produire sur données réelles sont la **non-recevabilité** et l'**abstention**. `validé` et `réfuté` sont
-**structurellement inatteignables tant que C3b n'a pas livré l'exécution continue** — ce n'est pas un défaut du
-protocole, c'est le découpage en deux lots, et il est écrit pour qu'on ne le découvre pas à l'usage.
+**Ce qui était atteignable en C3a, et ce qui l'est depuis v2.1.** En C3a, les étapes 5 et 6 n'étaient
+exerçables que sur des fixtures synthétiques, et l'outillage refusait toute évaluation déclarée réelle
+(`evaluation.synthetic: false` → refus). **Ce confinement est levé par cette révision, sous deux conditions
+cumulatives** : le paquet v2.1 adopté (ce texte) **et** un producteur conforme livré par C3b. Une évaluation
+déclarée réelle (`synthetic: false`) est admise **si et seulement si** elle porte `flat_start_proof`,
+`invocation.single_call` et `first_fill_at` (§ B.2, § B.4, § C.3 — les trois clauses déclaratives, en état
+`DÉCLARÉ`) ; il lui en manque une → refus `R0_INVALID_RUN`, code 2, rien publié, avec le nom de ce qui manque.
+La règle est appliquée en tête de `c3_continuity` comme de `c3_verdict`. Une évaluation synthétique reste
+admise, préfixe `C3_SYNTH_` et ligne de portée en tête (§ L.2). `validé` et `réfuté` deviennent atteignables sur
+données réelles **par ce chemin et par aucun autre**.
 
 ### L.2 La chaîne de verdict
 
@@ -1671,7 +2021,30 @@ obtiennent **la même chaîne**. Elle porte au minimum l'issue, la raison, l'ide
 statut de sélection, l'état de la continuité, l'identité de variante, la provenance de l'univers, le sha256 de
 ce document, et celui des observations. **Le rapport cite la chaîne, il ne la paraphrase pas.**
 
+**Préfixe et portée.** Une chaîne d'exercice synthétique est préfixée `C3_SYNTH_` et son artefact porte, en
+première ligne, une portée qui dit qu'elle n'a aucune portée économique ; une chaîne réelle est préfixée `C3_`
+et ne porte pas cette ligne. Le préfixe est dérivé de `evaluation.synthetic`, jamais d'un choix.
+
+**`chain.verified`** signifie **l'intégrité mécanique de la chaîne** : codes de succès enregistrés des étapes
+amont, cohérence interne de chaque enveloppe amont (`ok ⟺ code 0`, `invalide ⟺ code 1`, refus ⟺ code 2 pour
+l'entrée) assertée **avant** d'en lire le succès, empreintes concordantes. Il ne dit rien de la qualité
+économique de l'issue, qui se lit dans `verdict` et `raison` : `verified: true` avec un `inconclusif` est
+cohérent ; `verified: false` accompagne toute violation ; un refus sans violation ne publie rien, donc ne porte
+pas de `verified`.
+
+**Les enveloppes amont disent ce qu'elles ont fait, pas ce qui a réussi.** Une étape enregistre son code de
+sortie dans son artefact ; la sous-commande `chain` invoque chaque étape en processus et **contrôle le code de
+retour effectif** avant de lire l'artefact. Une enveloppe qui se dit `ok` avec un code non nul est une
+violation.
+
 ### L.3 Diff de contrôle
+
+**Portée : C3a.** Les listes de ce paragraphe et du § L.4 sont celles du chantier C3a, closes et vérifiées à sa
+porte pré-merge (§ L.5, passée le 2026-09-22). C3b ouvre la zone que C3a gelait — runner, exports, amorçage,
+`src/` pour la méthode de classe du § A.8 D2 — et **déclare sa propre liste close dans son brief**, sous ses
+propres gates, avec son propre diff de contrôle sur tout ce que le brief ne nomme pas. Ce protocole n'énumère pas
+les fichiers de C3b ; il exige qu'ils soient énumérés avant la première ligne, et que `scripts/backtest.py`
+reste hors liste tant que la dette 19 n'est pas ouverte par une décision séparée (C4 du 23/09).
 
 Vide sur `src`, `scripts/backtest.py`, `scripts/run_p6_backtests.py`, `scripts/run_p7_grid_search.py`,
 `scripts/p7_grids.py`, **`scripts/compute_benchmarks.py`**, `config`, `pyproject.toml`, `poetry.lock`.
@@ -1681,6 +2054,8 @@ tentation de « juste corriger la borne d'un jour » est exactement la dérive q
 attraper.
 
 ### L.4 La liste fermée des fichiers nouveaux
+
+**Portée : C3a** (§ L.3) — C3b déclare sa propre liste dans son brief.
 
 Hors de cette liste, **aucun fichier n'est créé, modifié ou supprimé** par C3a. La liste est close par ce
 document : l'allonger est un amendement au protocole, pas une décision d'implémentation.
@@ -1746,31 +2121,31 @@ régénéré à chaque révision et recollé ici.
 
 | Symbole | Site de définition | Sites de référence |
 |---|---|---|
-| `Q1` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
-| `Q2` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
-| `Q3` | § F.8 | § A.8, § F.5, § H.0, § H.1 |
+| `Q1` | § F.8 | § A.8, § F.2, § F.5, § H.0, § H.1, § J |
+| `Q2` | § F.8 | § A.8, § F.2, § F.5, § H.0, § H.1 |
+| `Q3` | § F.8 | § A.8, § F.2, § F.5, § H.0, § H.1 |
 | `P1` | § A.10 | § A.11, § G.1, § H.1, § I.1 |
 | `P2` | § A.10 | § A.11, § H.1 |
 | `P3` | § A.10 | § A.11, § G.1, § H.1, § I.1 |
 | `D1` | § A.8 | § A.7, § A.10, § A.11, § C.5, § G.1, § H.1, § I.1, § J |
-| `D2` | § A.8 | § 0.5, § B.5, § D.3, § H.1, § I.1 |
+| `D2` | § A.8 | § 0.5, § A.3, § B.5, § D.3, § H.1, § I.1, § L.3 |
 | `D3` | § A.8 | § D.3, § H.1, § I.1, § J |
 | `D4` | § A.8 | § I.1 |
-| `D5` | § A.8 | § A.6, § D.3, § H.1, § I.1, § I.2 |
-| `D6` | § A.8 | § A.10, § A.11, § G.1, § H.1, § I.1 |
+| `D5` | § A.8 | § A.6, § D.3, § F.2, § H.1, § I.1, § I.2 |
+| `D6` | § A.8 | § A.10, § A.11, § B.3, § B.4, § G.1, § H.1, § I.1 |
 | `E1` | § A.13 | § F.8, § H.0 |
 | `E2` | § A.13 | § A.8, § H.0 |
-| `R0_INVALID_RUN` | § I.1 | § H.1 |
+| `R0_INVALID_RUN` | § I.1 | § B.2, § B.8, § F.2, § H.1, § I.2, § L.1 |
 | `P_PROVENANCE` | § I.1 | § H.1 |
 | `D_WARMUP_PREFIX` | § I.1 | § B.5, § D.3, § H.1 |
-| `A_NO_ADMISSIBLE_CANDIDATE` | § I.1 | § A.11, § H.1 |
+| `A_NO_ADMISSIBLE_CANDIDATE` | § I.1 | § A.8, § A.11, § H.1 |
 | `A_BELOW_FLOOR` | § I.1 | § A.11, § H.1 |
-| `D_WARMUP_ANCHOR` | § I.1 | § B.5, § H.1 |
-| `E_NO_BENCHMARK` | § I.1 | § C.5, § H.1 |
-| `E_STAMP_MISMATCH` | § I.1 | § B.4, § H.1 |
+| `D_WARMUP_ANCHOR` | § I.1 | § B.5, § B.8, § H.1 |
+| `E_NO_BENCHMARK` | § I.1 | § B.8, § C.5, § H.1 |
+| `E_STAMP_MISMATCH` | § I.1 | § B.4, § B.8, § H.1 |
 | `F_NOT_ESTIMABLE` | § I.1 | § A.13, § F.2, § F.8, § H.0, § H.1 |
 | `F_CANNOT_SEPARATE` | § I.1 | § F.5, § H.1 |
-| `R1_NOT_NORMALISED` | § I.1 | § A.8, § H.1 |
+| `R1_NOT_NORMALISED` | § I.1 | § A.8, § B.3, § B.8, § H.1 |
 | `D_NOT_ADMISSIBLE` | § I.1 | § H.1 |
 | `C_COVERAGE` | § I.1 | § A.8, § H.1 |
 
@@ -1779,21 +2154,22 @@ régénéré à chaque révision et recollé ici.
 | Seuil | Valeur | Site | Classe |
 |---|---|---|---|
 | Fraction d'ancrage `F` | 0,70 | § A.3 | préférence économique |
+| Fenêtre de la première campagne | 2021-03-01T00:00:00Z → 2026-06-29T00:00:00Z | § A.3 | préférence économique, choix déclaré |
 | Couverture minimale du préfixe | 97 % du dénominateur propre à chaque timeframe | § A.8 D1 | qualité des données |
 | Trou maximal | min(31 j, 3 % des jours) | § A.8 D1 | qualité des données |
 | Jour 5 min compté couvert | ≥ 144 bougies sur 288 | § A.8 D1 | qualité des données, convention |
 | Cycles achevés au préfixe | ≥ 25 | § A.8 D3 | préférence économique |
 | Plancher de rendement | 2,0 %/an | § A.10 P2 | préférence économique |
-| Capital de référence `C` | 1000 USDC | § 0.5 | contrat |
+| Capital de référence `C` | 1000 unités de la monnaie de cotation de la paire du manifeste | § 0.5 | contrat |
 | Taux sans risque | 0 | § 0.5 | préférence économique, convention |
 | Résidu d'appariement de `λ` | ≤ 10 % de la cible | § 0.5 | qualité des données |
 | Longueurs de bloc `L` | {10, 21, 42} | § F.2 (b) | qualité des données |
 | Réplications `B` | 10 000 | § F.2 (b) | qualité des données |
 | Niveau de la borne | 95 %, unilatéral | § F.2 (d) | préférence méthodologique déclarée |
 | Pas de recherche de `λ` | 0,005 puis 0,001 | § F.2 (g) | qualité des données |
-| Réplications écartées tolérées | ≤ 10 sur 10 000 | § F.2 (e) | qualité des données, convention |
+| Réplications écartées tolérées | ≤ 10 sur 10 000, **par combinaison** `L × appariement` | § F.2 (e) | qualité des données, convention |
 | Jours à rendement non nul | ≥ 10 % de la fenêtre d'évaluation | § A.13 E1 | qualité des données, convention |
-| Valeurs distinctes de `Δ*` | ≥ 2 | § A.13 E2 | garde-fou méthodologique |
+| Valeurs distinctes de `Δ*` | ≥ 2, **sur chacune des six** distributions | § A.13 E2 | garde-fou méthodologique |
 
 ### Ce que l'index ne prouve pas
 

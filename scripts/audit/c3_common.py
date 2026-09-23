@@ -27,11 +27,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
+import functools
 import hashlib
 import math
 from pathlib import Path
+import platform
 import statistics
 import sys
+from types import MappingProxyType
 from typing import Any
 
 import numpy as np
@@ -126,6 +129,11 @@ DISCARDED_MAX = _t("DISCARDED_MAX", 10, CLASS_DATA, "§ F.2 (e)")
 # Conventions non décisionnelles (pas des seuils) — ni classées, ni au registre.
 ANNUALISATION_DAYS = 365
 MATCHINGS: tuple[str, ...] = ("dd", "sigma")
+#: § F.2 (h) — les six combinaisons `L × appariement`, sous la forme `L:appariement` des clés de
+#: l'artefact d'évaluation (§ F.2 e v2.1 : suites, écartées et bornes y sont publiées par combinaison).
+COMBINATIONS: tuple[str, ...] = tuple(
+    f"{length}:{matching}" for length in BLOCK_LENGTHS for matching in MATCHINGS
+)
 RETURN_DOMAIN_FLOOR = -1.0  # log1p n'existe pas en deçà ; § A.8 D4, contrainte mathématique pure
 
 # Noms du rejeu qu'aucune source `c3_*` ne doit importer (§ 0.5, antériorité).
@@ -194,13 +202,10 @@ class InvalidValueError(ValueError):
 
 
 class UndefinedIssueError(ValueError):
-    """Convention d'outillage datée du 21/09 (plan § 6.1) : l'issue n'est **pas définie par le texte
-    gelé** — clause 3 de continuité en échec sur l'artefact d'évaluation. § B.3 et § G.2 interdisent
-    tout verdict directionnel ; § I.1 ne porte aucune ligne de portée run pour ce cas ; l'amendement
-    daté (a) est dû à l'ouverture de C3b. Conduite (b) : refus de produire une issue, code 2, rien
-    publié — une assignation de code hors table, assumée comme telle et consignée — **pour le cas
-    cohérent seulement** : une contradiction déclaré / dérivé constatée avant prime (§ I.1 l.15) et
-    l'issue non définie est consignée au diagnostic, code 1 (revue Fin 2, item 2 ; `c3_verdict`).
+    """Garde générique : une issue que le texte gelé ne définit pas — code 2, rien publié ; constatée
+    après une violation, la violation prime (§ I.1 l.15). **Aucun site c3 ne la lève depuis v2.1** :
+    la clause 3 en échec, qui en était le seul cas (convention datée du 21/09), a sa ligne au § I.1
+    (10 bis, ``R1_NOT_NORMALISED``, AM-19) et la convention est abrogée (§ B.3 v2.1).
     """
 
 
@@ -218,10 +223,12 @@ class EntryRefusedError(MissingEvidenceError):
 #: ``estimability`` (déclaration recoupée, § A.13) ; ``liquidation`` et ``dca_counters`` (le runner
 #: exporte ``null`` pour le moteur signal et hors DCA, `run_p7_grid_search.py:768-772` — D6 tranche,
 #: § A.8) ; ``lots`` (sous-clé de ``liquidation``, exigence C3b, preuve par lot de D6) ;
-#: ``flat_start_proof`` et ``first_fill_at`` (§ B.2 et § B.6, non vérifiables sous les artefacts
-#: actuels) ; ``decision_timeframes`` (surcharge par candidat de la déclaration par stratégie) ;
+#: ``flat_start_proof`` et ``first_fill_at`` (§ B.2 v2.1 et § B.6 : preuves déclarées par C3b ; absentes,
+#: la clause est ``NOT_VERIFIABLE``) ; ``decision_timeframes`` (surcharge par candidat de la déclaration par
+#: stratégie) ;
 #: ``exec_interval`` (porteur de l'intervalle d'exécution dans une observation — absent de l'export
-#: réel, D5 le consigne ``not_assertable``) ; ``run_scope`` (note de portée d'un manifeste réel).
+#: réel, D5 le consigne ``not_assertable``) ; ``run_scope`` (note de portée d'un manifeste réel) ;
+#: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative).
 OPTIONAL_FIELDS: frozenset[str] = frozenset(
     {
         "estimability",
@@ -233,6 +240,7 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
         "decision_timeframes",
         "exec_interval",
         "run_scope",
+        "deployment_pairs",
     }
 )
 
@@ -244,7 +252,9 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
 #: ``refusal`` — `entry.json` : ``null`` quand l'entrée est conforme, un bloc quand elle est refusée ;
 #: ``retained`` — `selection.json` : ``null`` en abstention, un bloc quand une configuration est retenue ;
 #: ``reason`` — `benchmark.pairs[].reason` et `selection.reason` : ``null`` quand rien n'est à signaler ;
-#: ``liquidation_normalised`` — `continuity.json` : ``true`` prouvé par lot, ``false`` en échec, ``null`` non vérifiable.
+#: ``liquidation_normalised`` — `continuity.json` : ``true`` prouvé par lot, ``false`` en échec, ``null`` non vérifiable ;
+#: ``bound`` — `evaluation.replications[combinaison]` : ``null`` si et seulement si la suite retenue est vide
+#: (§ F.2 e v2.1 : une combinaison sans réplication retenue ne porte pas de borne).
 NULLABLE_FIELDS: frozenset[str] = frozenset(
     {
         "stale_by_candles",
@@ -262,6 +272,7 @@ NULLABLE_FIELDS: frozenset[str] = frozenset(
         "retained",
         "reason",
         "liquidation_normalised",
+        "bound",
     }
 )
 
@@ -528,7 +539,8 @@ ISSUE_INCONCLUSIF = "inconclusif"
 ISSUE_DESCRIPTIF = "descriptif"
 ISSUES: tuple[str, ...] = (ISSUE_VALIDE, ISSUE_REFUTE, ISSUE_INCONCLUSIF, ISSUE_DESCRIPTIF)
 
-#: Ordre de priorité du § H. La chaîne porte **la première raison qui s'applique**.
+#: Ordre de priorité du § H.1 v2.1 (AM-18 : `R1_NOT_NORMALISED` après `D_WARMUP_ANCHOR`, avant
+#: `E_NO_BENCHMARK`). La chaîne porte **la première raison qui s'applique**.
 REASON_PRIORITY: tuple[str, ...] = (
     "R0_INVALID_RUN",
     "P_PROVENANCE",
@@ -536,11 +548,11 @@ REASON_PRIORITY: tuple[str, ...] = (
     "A_NO_ADMISSIBLE_CANDIDATE",
     "A_BELOW_FLOOR",
     "D_WARMUP_ANCHOR",
+    "R1_NOT_NORMALISED",
     "E_NO_BENCHMARK",
     "E_STAMP_MISMATCH",
     "F_NOT_ESTIMABLE",
     "F_CANNOT_SEPARATE",
-    "R1_NOT_NORMALISED",
     "D_NOT_ADMISSIBLE",
     "C_COVERAGE",
 )
@@ -738,20 +750,28 @@ def paired_delta_stars(
     """`Δ*` par réplication, indices **appariés**, plus le compte de réplications écartées.
 
     § F.2 (e) : une réplication qui produit un `Δ*` non fini est **écartée et comptée**, jamais
-    remplacée — un retirage biaiserait la distribution vers les chemins qui se terminent bien.
+    remplacée — un retirage biaiserait la distribution vers les chemins qui se terminent bien. **Rien d'autre
+    n'est écarté** (v2.1) : un CAGR de −100 exactement (l'exponentielle sous-déborde vers 0) est fini, retenu.
     """
     cfg = np.asarray(list(returns_config), dtype=float)
     bch = np.asarray(list(returns_bench), dtype=float)
     if cfg.shape != bch.shape:
         raise InvalidInputError("les deux séries doivent avoir la même longueur (appariement)")
-    log_cfg = np.log1p(cfg)
-    log_bch = np.log1p(bch)
-    scale = ANNUALISATION_DAYS / days
-    cagr_cfg = (np.exp(log_cfg[idx].sum(axis=1) * scale) - 1.0) * 100.0
-    cagr_bch = (np.exp(log_bch[idx].sum(axis=1) * scale) - 1.0) * 100.0
-    delta = cagr_cfg - cagr_bch
+    with np.errstate(over="ignore", invalid="ignore"):
+        delta = cagr_rows(np.log1p(cfg), idx, days) - cagr_rows(np.log1p(bch), idx, days)
     finite = np.isfinite(delta)
     return delta[finite], int((~finite).sum())
+
+
+def cagr_rows(log_returns: np.ndarray, idx: np.ndarray, days: float) -> np.ndarray:
+    """§ F.2 (c) v2.1 — **le seul chemin de calcul** du CAGR, l'expression du texte :
+    `(numpy.exp((numpy.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100`, sur les indices `idx` —
+    ceux des réplications, ou les indices identité pour la valeur observée. **L'ordre des opérations fait
+    partie de la définition** : la somme est multipliée par 365, puis divisée par `n_jours` (l'ordre de
+    `cagr_pct`) ; `somme × (365 / n_jours)` est un autre nombre au dernier bit. Un débordement rend une valeur
+    non finie (une réplication écartée, § F.2 e), jamais un avertissement."""
+    with np.errstate(over="ignore", invalid="ignore"):
+        return (np.exp((log_returns[idx].sum(axis=1) * ANNUALISATION_DAYS) / days) - 1.0) * 100.0
 
 
 def pivotal_lower_bound(
@@ -768,6 +788,113 @@ def pivotal_lower_bound(
         raise InvalidInputError("aucune réplication retenue")
     q = float(np.quantile(arr - float(delta_hat), level, method="linear"))
     return float(delta_hat) - q
+
+
+#: § F.2 (b) v2.1 — les champs de l'environnement du tirage ; jamais la version du noyau du système.
+REPLAY_ENVIRONMENT_KEYS: tuple[str, ...] = ("python", "numpy", "machine", "libc")
+
+
+def replay_environment() -> dict[str, str]:
+    """§ F.2 (b) v2.1 et § I.2 I-C : l'environnement dans lequel le tirage est exact, « en quatre champs, et
+    quatre seulement » — `platform.python_version()`, `numpy.__version__`, `platform.machine()`, et la
+    bibliothèque C de `platform.libc_ver()` (bibliothèque et version, séparées par une espace, espaces de bord
+    retirées : vide sur macOS, § J item 12)."""
+    lib, version = platform.libc_ver()
+    return {
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "machine": platform.machine(),
+        "libc": f"{lib} {version}".strip(),
+    }
+
+
+@dataclass(frozen=True)
+class Replay:
+    """Le rejeu du § F.2 (d) v2.1 : CAGR observé de la configuration (porte `Q2`), `Δ̂` par appariement
+    (`dd` : porte `Q3`), et par combinaison `(suite Δ* retenue, écartées, borne ou None)`."""
+
+    cagr_config: float
+    delta_hat: Mapping[str, float]
+    replications: Mapping[str, tuple[tuple[float, ...], int, float | None]]
+
+
+def replay_bootstrap(
+    returns_config: Sequence[float],
+    returns_bench: Mapping[str, Sequence[float]],
+    *,
+    seed: int,
+    pair_index: int,
+    days: float,
+    b: int = BOOTSTRAP_B,
+) -> Replay:
+    """§ F.2 (b) à (d) v2.1 — la chaîne **rejoue** le tirage du producteur : générateur
+    `numpy.random.default_rng([graine, index de paire, L])`, départs en un seul appel, indices circulaires
+    tronqués, **les mêmes** pour la configuration, le comparateur et les deux appariements d'un même `L` ;
+    `CAGR` par le seul chemin `cagr_rows`, indices identité pour les valeurs observées ; borne pivotale.
+
+    Fonction pure, mémoïsée sur ses entrées ; ce qu'elle rend est immuable. Un CAGR **observé** non fini —
+    de la configuration ou d'un comparateur — est une entrée invalide (§ F.2 e v2.1 ; § I.1, ligne 15) :
+    l'estimation elle-même n'existe pas, il n'y a rien à écarter.
+    """
+    return _replay_cached(
+        tuple(float(x) for x in returns_config),
+        tuple(float(x) for x in returns_bench["dd"]),
+        tuple(float(x) for x in returns_bench["sigma"]),
+        int(seed),
+        int(pair_index),
+        float(days),
+        int(b),
+    )
+
+
+@functools.lru_cache(maxsize=32)
+def _replay_cached(
+    cfg: tuple[float, ...],
+    bench_dd: tuple[float, ...],
+    bench_sigma: tuple[float, ...],
+    seed: int,
+    pair_index: int,
+    days: float,
+    b: int,
+) -> Replay:
+    n = len(cfg)
+    log_cfg = np.log1p(np.asarray(cfg, dtype=float))
+    log_bench = {
+        "dd": np.log1p(np.asarray(bench_dd, dtype=float)),
+        "sigma": np.log1p(np.asarray(bench_sigma, dtype=float)),
+    }
+    identity = np.arange(n)[None, :]
+    cagr_config = float(cagr_rows(log_cfg, identity, days)[0])
+    observed = {m: float(cagr_rows(log_bench[m], identity, days)[0]) for m in MATCHINGS}
+    for label, value in (("de la configuration", cagr_config),) + tuple(
+        (f"du comparateur {m}", v) for m, v in observed.items()
+    ):
+        if not math.isfinite(value):
+            raise InvalidValueError(
+                f"rejeu : CAGR observé {label} non fini ({value!r}) — entrée invalide (§ F.2 e)"
+            )
+    delta_hat = {m: cagr_config - observed[m] for m in MATCHINGS}
+    replications: dict[str, tuple[tuple[float, ...], int, float | None]] = {}
+    for length in BLOCK_LENGTHS:
+        rng = np.random.default_rng([seed, pair_index, length])
+        idx = block_indices(block_start_indices(rng, n, length, b), length, n)
+        rows_config = cagr_rows(log_cfg, idx, days)
+        for matching in MATCHINGS:
+            with np.errstate(invalid="ignore"):
+                delta = rows_config - cagr_rows(log_bench[matching], idx, days)
+            finite = np.isfinite(delta)
+            kept = delta[finite]
+            bound = None if kept.size == 0 else pivotal_lower_bound(delta_hat[matching], kept)
+            replications[f"{length}:{matching}"] = (
+                tuple(float(x) for x in kept),
+                int((~finite).sum()),
+                bound,
+            )
+    return Replay(
+        cagr_config=cagr_config,
+        delta_hat=MappingProxyType(delta_hat),
+        replications=MappingProxyType(replications),
+    )
 
 
 @dataclass(frozen=True)
@@ -822,6 +949,45 @@ def estimability(
     )
 
 
+@dataclass(frozen=True)
+class CombinedEstimability:
+    """§ A.13 v2.1 et § F.2 (e) v2.1 : E1 sur la trajectoire évaluée, **E2 conjonctive** sur les six
+    distributions rééchantillonnées, plafond de réplications écartées **par combinaison**."""
+
+    e1: bool
+    nonzero_ratio: float
+    per_combination: Mapping[str, Estimability]
+
+    @property
+    def e2(self) -> bool:
+        return all(est.e2 for est in self.per_combination.values())
+
+    @property
+    def within_ceiling(self) -> bool:
+        return all(est.discarded <= DISCARDED_MAX for est in self.per_combination.values())
+
+    @property
+    def ok(self) -> bool:
+        return self.e1 and self.e2 and self.within_ceiling
+
+
+def combined_estimability(
+    returns_config: Sequence[float], suites: Mapping[str, tuple[Sequence[float], int]]
+) -> CombinedEstimability:
+    """`cc.estimability` appliquée à chaque combinaison (fonction inchangée), puis conjointe : une seule
+    distribution constante fait échouer E2, une seule combinaison au-delà du plafond rend l'inférence
+    inutilisable. E1, elle, ne porte que sur la trajectoire évaluée, unique."""
+    per = {
+        combination: estimability(returns_config, deltas, discarded)
+        for combination, (deltas, discarded) in suites.items()
+    }
+    cfg = np.asarray(list(returns_config), dtype=float)
+    ratio = float(np.count_nonzero(cfg)) / float(cfg.size) if cfg.size else 0.0
+    return CombinedEstimability(
+        e1=ratio >= E1_NONZERO_RATIO, nonzero_ratio=ratio, per_combination=per
+    )
+
+
 # ---------------------------------------------------------------------------
 # Provenance du document et des artefacts
 # ---------------------------------------------------------------------------
@@ -862,7 +1028,7 @@ def envelope(
 
     `invalide` vaut **vrai si et seulement si** l'artefact est le diagnostic d'une violation
     (code 1) : il porte les violations et aucun résultat citable. Un refus (code 2) n'est pas
-    « invalide », il est un refus — seul `c3_entry` en écrit un (§ I.1 l.1558 : rien n'est publié
+    « invalide », il est un refus — seul `c3_entry` en écrit un (§ I.1 l.1858, v2.1 : rien n'est publié
     au-delà de la validation).
     """
     payload: dict[str, Any] = dict(artifact_header(now, inputs))
@@ -937,17 +1103,17 @@ ABSTENTION_CLAUSE = (
     "choisi est un résultat."
 )
 CONTINUITY_STATES: tuple[str, ...] = ("VERIFIED", "DECLARED", "NOT_VERIFIABLE", "FAILED")
-#: Précédence de l'agrégat de continuité (plan § 6.4) : la pire clause donne l'état. **Une seule
+#: Précédence de l'agrégat de continuité (§ B.8 v2.1) : la pire clause donne l'état. **Une seule
 #: définition**, consommée par le producteur (`c3_continuity`) et par le consommateur (`c3_verdict`,
 #: qui la recalcule et la recoupe — revue Fin, défaut 2).
 CONTINUITY_SEVERITY: tuple[str, ...] = ("FAILED", "NOT_VERIFIABLE", "DECLARED", "VERIFIED")
-#: **Table § 6.4, colonne « États atteignables (C3a) », en liste close** (revue Fin 2, défaut 1) :
+#: **Table du § B.8 v2.1, colonne « États admissibles », en liste close** (revue Fin 2, défaut 1) :
 #: c1, c2, c5 sont déclaratives (jamais `VERIFIED`) ; c2 n'est jamais « non vérifiable » (le bloc
 #: `invocation` est obligatoire) ; c3 n'est jamais « déclarée » (seule la preuve par lot la vérifie) ;
 #: c4 est recalculée (`sufficient`), donc `VERIFIED` ou `FAILED`, jamais autre chose. Un état hors de
 #: la liste de sa clause est une valeur hors liste close → code 2, rien publié — chez le producteur
 #: (`c3_continuity`) comme chez le consommateur (`c3_verdict`). Conséquence : l'agrégat `VERIFIED`
-#: est inconstructible en C3a.
+#: est inconstructible (§ B.8).
 CLAUSE_ADMISSIBLE_STATES: dict[str, tuple[str, ...]] = {
     "c1": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
     "c2": ("DECLARED", "FAILED"),
@@ -955,10 +1121,9 @@ CLAUSE_ADMISSIBLE_STATES: dict[str, tuple[str, ...]] = {
     "c4": ("VERIFIED", "FAILED"),
     "c5": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
 }
-#: Les deux blocs dérivables hors des cinq clauses, en liste close eux aussi. La cellule
-#: d'estampille : § B.4 ne connaît que « même cellule » ou `E_STAMP_MISMATCH` ; l'état
-#: `NOT_VERIFIABLE` (bloc absent, estampille nulle) est une décision d'outillage de
-#: `c3_continuity.stamp_cell_block`, consignée au paquet de clarifications C3b, jamais « déclarée ».
+#: Les deux blocs dérivables hors des cinq clauses, en liste close eux aussi (§ B.8 v2.1). La cellule
+#: d'estampille : dans la cellule, hors cellule (`E_STAMP_MISMATCH`), ou `NOT_VERIFIABLE` — aucune
+#: estampille, assertion satisfaite à vide (§ B.4 v2.1, AM-11) ; jamais « déclarée ».
 #: Le comparateur d'évaluation : § C.5, une conjonction recalculée est vraie ou fausse, rien d'autre.
 STAMP_CELL_ADMISSIBLE_STATES: tuple[str, ...] = ("VERIFIED", "FAILED", "NOT_VERIFIABLE")
 COMPARATOR_ADMISSIBLE_STATES: tuple[str, ...] = ("VERIFIED", "FAILED")
@@ -969,6 +1134,43 @@ LIQUIDATION_NORMALISED_OF_C3: dict[str, bool | None] = {
     "NOT_VERIFIABLE": None,
     "FAILED": False,
 }
+
+#: § L.1 v2.1 (AM-24) — les trois porteurs sans lesquels une évaluation déclarée réelle n'est pas admise : les
+#: trois clauses déclaratives du § B (§ B.2, § B.4, § C.3).
+REAL_EVALUATION_CARRIERS: tuple[str, ...] = (
+    "flat_start_proof",
+    "invocation.single_call",
+    "first_fill_at",
+)
+
+
+def evaluation_admission(evaluation: Mapping[str, Any]) -> bool:
+    """§ L.1 v2.1 (AM-24) — l'admission d'un artefact d'évaluation, **en tête** de `c3_continuity` comme de
+    `c3_verdict`, avant tout chemin de publication. ``synthetic`` est obligatoire et strictement typé (absent,
+    nul, mal typé → erreur de forme). ``true`` : exercice synthétique, admis. ``false`` : évaluation réelle,
+    admise **si et seulement si** elle porte ses trois porteurs ; il en manque un → refus ``R0_INVALID_RUN``,
+    code 2, rien publié, avec le nom de ce qui manque. Renvoie ``synthetic``."""
+    synthetic = require_bool(evaluation, "synthetic", where="evaluation")
+    if synthetic:
+        return True
+    missing: list[str] = []
+    if optional_mapping(evaluation, "flat_start_proof", where="evaluation") is None:
+        missing.append("flat_start_proof")
+    try:
+        invocation = require_mapping(evaluation, "invocation", where="evaluation")
+        require_bool(invocation, "single_call", where="evaluation.invocation")
+    except MissingEvidenceError:
+        missing.append("invocation.single_call")
+    if optional_str(evaluation, "first_fill_at", where="evaluation") is None:
+        missing.append("first_fill_at")
+    if missing:
+        raise EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"évaluation réelle (synthetic: false) sans {', '.join(missing)} — § L.1 v2.1 : admise si et "
+            "seulement si elle porte flat_start_proof, invocation.single_call et first_fill_at "
+            "(§ B.2, § B.4, § C.3)",
+        )
+    return False
 
 
 #: § C.5 — les tests de comparabilité du comparateur d'évaluation, liste close, **lus et typés tous
@@ -986,7 +1188,7 @@ def continuity_aggregate(states: Mapping[str, str]) -> str:
     """L'état agrégé des clauses § B, par précédence `CONTINUITY_SEVERITY` (la pire clause).
 
     Strict : un mapping vide ou un état hors `CONTINUITY_STATES` est une erreur d'entrée — jamais un
-    repli sur ``VERIFIED``, l'état que la table § 6.4 rend inconstructible en C3a.
+    repli sur ``VERIFIED``, l'état que la table du § B.8 rend inconstructible.
     """
     if not states:
         raise MissingEvidenceError("continuité : aucune clause à agréger")
@@ -1053,6 +1255,8 @@ class Manifest:
     research_log_entry: str
     protocol_sha256: str
     run_scope: str | None
+    #: § A.6 v2.1 — paire de validation → paire de déploiement ; même actif de base, autre cotation.
+    deployment_pairs: Mapping[str, str]
 
     @property
     def capital(self) -> Decimal:
@@ -1120,7 +1324,7 @@ def load_manifest(raw: Any) -> Manifest:
         tfs = require_sequence(
             block, "decision_timeframes", where=f"{where}.strategies.{name}", min_len=1
         )
-        strategy_tfs[name] = _timeframe_labels(
+        strategy_tfs[name] = timeframe_labels(
             tfs, timeframes, where=f"{where}.strategies.{name}.decision_timeframes"
         )
     raw_candidates = require_sequence(universe, "candidates", where=f"{where}.universe", min_len=1)
@@ -1151,7 +1355,7 @@ def load_manifest(raw: Any) -> Manifest:
         tfs = (
             strategy_tfs[strategy]
             if override is None
-            else _timeframe_labels(override, timeframes, where=f"{cwhere}.decision_timeframes")
+            else timeframe_labels(override, timeframes, where=f"{cwhere}.decision_timeframes")
         )
         identity = candidate_identity(strategy, pair, params)
         if identity in seen:
@@ -1160,6 +1364,9 @@ def load_manifest(raw: Any) -> Manifest:
             )
         seen.add(identity)
         candidates.append(Candidate(strategy, pair, params, identity, tfs))
+    deployment_pairs = _deployment_pairs(
+        universe, {c.pair for c in candidates}, where=f"{where}.universe"
+    )
     rule = require_mapping(raw, "selection_rule", where=where)
     require_str(rule, "text", where=f"{where}.selection_rule")
     thresholds_block = require_mapping(rule, "thresholds", where=f"{where}.selection_rule")
@@ -1232,12 +1439,58 @@ def load_manifest(raw: Any) -> Manifest:
         research_log_entry=research_log_entry,
         protocol_sha256=protocol_sha,
         run_scope=run_scope,
+        deployment_pairs=deployment_pairs,
     )
 
 
-def _timeframe_labels(
+def _pair_parts(pair: str, *, where: str) -> tuple[str, str]:
+    """`BASE/COTATION`, deux parties non vides — la forme d'une paire du projet (`BTC/USDC`)."""
+    parts = pair.split("/")
+    if len(parts) != 2 or not all(parts):
+        raise MissingEvidenceError(f"{where}: {pair!r} n'a pas la forme BASE/COTATION (§ A.6)")
+    return parts[0], parts[1]
+
+
+def _deployment_pairs(
+    universe: Mapping[str, Any], universe_pairs: set[str], *, where: str
+) -> dict[str, str]:
+    """§ A.6 v2.1, transposition déclarée : par paire de l'univers, une paire de déploiement distincte
+    **quand, et seulement quand, l'actif de base est le même et seule la monnaie de cotation diffère**.
+    Facultative ; tout autre couple est une erreur d'entrée (§ I.1, ligne 2). Aucune autre lecture : la
+    déclaration entre dans l'empreinte de la variante par le manifeste haché, jamais dans l'identité
+    d'un candidat (§ A.2)."""
+    block = optional_mapping(universe, "deployment_pairs", where=where)
+    if block is None:
+        return {}
+    dwhere = f"{where}.deployment_pairs"
+    declared: dict[str, str] = {}
+    for validation in block:
+        deployment = require_str(block, validation, where=dwhere)
+        if validation not in universe_pairs:
+            raise MissingEvidenceError(
+                f"{dwhere}: {validation!r} n'est pas une paire de l'univers (§ A.6)"
+            )
+        base, quote = _pair_parts(validation, where=dwhere)
+        target_base, target_quote = _pair_parts(deployment, where=f"{dwhere}.{validation}")
+        if target_base != base:
+            raise MissingEvidenceError(
+                f"{dwhere}.{validation}: actif de base {target_base!r} ≠ {base!r} — seule la monnaie "
+                "de cotation peut différer (§ A.6)"
+            )
+        if target_quote == quote:
+            raise MissingEvidenceError(
+                f"{dwhere}.{validation}: même monnaie de cotation {quote!r} — ce n'est pas une "
+                "transposition (§ A.6)"
+            )
+        declared[validation] = deployment
+    return declared
+
+
+def timeframe_labels(
     items: Sequence[Any], timeframes: Mapping[str, int], *, where: str
 ) -> tuple[str, ...]:
+    """Étiquettes de séries : chaînes de `data.timeframes`, sans doublon — la forme d'une liste de séries
+    de décision, au manifeste (§ A.8 D2) comme dans l'observation qui l'exporte (§ A.8 D2 v2.1)."""
     labels: list[str] = []
     for i, item in enumerate(items):
         if not isinstance(item, str):
@@ -1612,6 +1865,28 @@ def d3_passes(cycles: int | None) -> bool:
     return cycles is not None and cycles >= CYCLES_MIN
 
 
+#: § A.7 v2.1 — les quantités en actif de base du bloc `liquidation` et de ses lots portent le suffixe
+#: `_base` **quelle que soit la paire** ; le renommage vit dans la couche d'export du runner.
+BASE_QUANTITY_STEMS: tuple[str, ...] = (
+    "amount",
+    "residual_trade",
+    "dust_written_off",
+    "inventory_divergence",
+)
+
+
+def check_base_quantity_keys(block: Mapping[str, Any], *, where: str) -> None:
+    """§ A.7 v2.1 : une clé de quantité suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur de
+    forme (§ I.1, ligne 2), même à côté de sa jumelle `_base` — le message nomme la clé attendue."""
+    for key in block:
+        for stem in BASE_QUANTITY_STEMS:
+            if key.startswith(f"{stem}_") and key != f"{stem}_base":
+                raise MissingEvidenceError(
+                    f"{where}.{key}: quantité suffixée par un actif — la clé attendue est "
+                    f"`{stem}_base`, quelle que soit la paire (§ A.7)"
+                )
+
+
 def liquidation_identities(
     block: Mapping[str, Any] | None,
     *,
@@ -1626,9 +1901,14 @@ def liquidation_identities(
     Par lot : `amount_i > 0`, `gross_i == amount_i × price` (le prix du bloc — un seul prix de
     liquidation, `backtest.py:3104`), `fee_i == gross_i × taker` (`:3105`), `entry_price` et `pnl`
     nuls ensemble ; agrégats : Σ fee = fees, Σ gross = gross_usdc, nombre de lots = trades, lots à
-    coût connu = positions, Σ amount des lots inconnus = residual_trade_btc. `lots` absent ⇒ la
+    coût connu = positions, Σ amount des lots inconnus = residual_trade_base. `lots` absent ⇒ la
     magnitude du taker est indécidable ⇒ non vérifié. Aucun seuil. Partagé par la sélection (D6 au
     préfixe) et la continuité (clause 3 à l'évaluation).
+
+    § B.3 v2.1 : un bloc qui déclare ``trades > 0`` sans estampille ou sans l'un des champs de prix
+    (``reference_price``, ``price``, ``spread_pct``, ``slippage_pct``) **se contredit** —
+    ``InvalidValueError``, violation (§ I.1 ligne 15, code 1), jamais une preuve en échec (qui rendrait
+    D6 faux ou la clause 3 en échec, donc ``R1_NOT_NORMALISED``). Partagée, la règle vaut aux deux sites.
     """
     zero = Decimal(0)
     one = Decimal(1)
@@ -1651,9 +1931,10 @@ def liquidation_identities(
             ],
             "reported": reported,
         }
+    check_base_quantity_keys(block, where=where)
     positions = require_int(block, "positions", where=where, minimum=0)
     trades = require_int(block, "trades", where=where, minimum=0)
-    residual_trade = require_decimal(block, "residual_trade_btc", where=where)
+    residual_trade = require_decimal(block, "residual_trade_base", where=where)
     residual_net = require_decimal(block, "residual_net_proceeds", where=where)
     fees = require_decimal(block, "fees", where=where)
     gross = require_decimal(block, "gross_usdc", where=where)
@@ -1662,18 +1943,18 @@ def liquidation_identities(
     check(
         "residual_trade_iff_unknown",
         (residual_trade == zero) == (unknown == 0),
-        f"residual_trade_btc {residual_trade} vs lot inconnu {unknown}",
+        f"residual_trade_base {residual_trade} vs lot inconnu {unknown}",
     )
     check(
         "residual_net_iff_unknown",
         (residual_net == zero) == (unknown == 0),
         f"residual_net_proceeds {residual_net} vs lot inconnu {unknown}",
     )
-    reported["dust_written_off_btc"] = str(
-        require_decimal(block, "dust_written_off_btc", where=where)
+    reported["dust_written_off_base"] = str(
+        require_decimal(block, "dust_written_off_base", where=where)
     )
-    reported["inventory_divergence_btc"] = str(
-        require_decimal(block, "inventory_divergence_btc", where=where)
+    reported["inventory_divergence_base"] = str(
+        require_decimal(block, "inventory_divergence_base", where=where)
     )
     reported["net_pnl_lot_basis"] = str(require_decimal(block, "net_pnl_lot_basis", where=where))
     reported["pnl"] = str(require_decimal(block, "pnl", where=where))
@@ -1684,29 +1965,37 @@ def liquidation_identities(
         price = nullable_decimal(block, "price", where=where)
         spread_pct = nullable_decimal(block, "spread_pct", where=where)
         slippage_pct = nullable_decimal(block, "slippage_pct", where=where)
-        present = None not in (timestamp, reference, price, spread_pct, slippage_pct)
+        carried = {
+            "timestamp": timestamp,
+            "reference_price": reference,
+            "price": price,
+            "spread_pct": spread_pct,
+            "slippage_pct": slippage_pct,
+        }
+        missing = [name for name, value in carried.items() if value is None]
+        if missing:
+            # § B.3 v2.1 : un bloc qui déclare `trades > 0` sans estampille ou sans l'un des champs de prix
+            # se contredit — violation (§ I.1, ligne 15), jamais « non normalisé ». La règle vaut partout
+            # où le bloc est lu : D6 au préfixe comme clause 3 à l'évaluation (fonction partagée).
+            raise InvalidValueError(
+                f"{where}: bloc contradictoire — trades = {trades} > 0 sans {', '.join(missing)} : il "
+                "déclare avoir liquidé sans porter ce que toute liquidation porte ; statut recalculé ≠ "
+                "statut enregistré (§ B.3, § I.1 ligne 15)"
+            )
+        assert timestamp is not None and reference is not None and price is not None
+        check("spread_pct", spread_pct == spread, f"{spread_pct} != manifeste {spread}")
+        check("slippage_pct", slippage_pct == slippage, f"{slippage_pct} != manifeste {slippage}")
+        expected_price = reference * (one - spread - slippage)
         check(
-            "prix_presents",
-            present,
-            "timestamp / reference_price / price / spread_pct / slippage_pct requis quand trades > 0",
+            "price_identity",
+            price == expected_price,
+            f"price {price} != reference × (1 − spread − slippage) = {expected_price}",
         )
-        if present:
-            assert timestamp is not None and reference is not None and price is not None
-            check("spread_pct", spread_pct == spread, f"{spread_pct} != manifeste {spread}")
-            check(
-                "slippage_pct", slippage_pct == slippage, f"{slippage_pct} != manifeste {slippage}"
-            )
-            expected_price = reference * (one - spread - slippage)
-            check(
-                "price_identity",
-                price == expected_price,
-                f"price {price} != reference × (1 − spread − slippage) = {expected_price}",
-            )
-            check(
-                "timestamp_le_borne",
-                timestamp <= end,
-                f"{timestamp.isoformat()} > borne {end.isoformat()}",
-            )
+        check(
+            "timestamp_le_borne",
+            timestamp <= end,
+            f"{timestamp.isoformat()} > borne {end.isoformat()}",
+        )
         check("gross_positive", gross > zero, f"gross_usdc {gross} <= 0 avec trades > 0")
         check(
             "fees_positive",
@@ -1742,14 +2031,15 @@ def liquidation_identities(
         lwhere = f"{where}.lots[{i}]"
         if not isinstance(lot, Mapping):
             raise MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
+        check_base_quantity_keys(lot, where=lwhere)
         gross_i = require_decimal(lot, "gross_usdc", where=lwhere)
         fee_i = require_decimal(lot, "fee", where=lwhere)
-        amount_i = require_decimal(lot, "amount_btc", where=lwhere)
+        amount_i = require_decimal(lot, "amount_base", where=lwhere)
         entry_price = nullable_decimal(lot, "entry_price", where=lwhere)
         pnl = nullable_decimal(lot, "pnl", where=lwhere)
         if amount_i <= zero:
             lots_ok = False
-            details.append(f"lot[{i}]: amount_btc {amount_i} non strictement positif")
+            details.append(f"lot[{i}]: amount_base {amount_i} non strictement positif")
         if price is None:
             lots_ok = False
             details.append(
@@ -1788,7 +2078,7 @@ def liquidation_identities(
     check(
         "lots_unknown_amount",
         unknown_amount == residual_trade,
-        f"Σ amount des lots inconnus {unknown_amount} != residual_trade_btc {residual_trade}",
+        f"Σ amount des lots inconnus {unknown_amount} != residual_trade_base {residual_trade}",
     )
     passed = all(v for v in checks.values() if v is not None)
     return {

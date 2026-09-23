@@ -6,6 +6,8 @@
 > Contexte complet : `PROJECT_CONTEXT.md` · verdict : `results/B4_bybit_backtest_report.md` (portée
 > requalifiée par l'addendum du 16/09 en tête du rapport — audit
 > `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md`) · journal des essais : `docs/RESEARCH_LOG.md`.
+> Critère d'arrêt pré-enregistré (clôture de famille, alpha-stop projet, kill-switch live) : § 10, adopté le
+> 2026-09-23 avec la révision v2.1 de `docs/protocole_c3.md`.
 
 ---
 
@@ -176,3 +178,67 @@ format du ticket d'entrée § 6, les sept points remplis. Toute proposition sans
 mécanisme explicite (§ 6.1) ou sans critère de falsification (§ 6.7) sera rejetée
 sans lecture du reste. Les recombinations d'indicateurs techniques sans mécanisme
 sont exclues d'office. »
+
+## 10. Critère d'arrêt — pré-enregistré le 2026-09-23
+
+Ce paragraphe dit d'avance ce qui fait s'arrêter une famille, ce qui fait s'arrêter la recherche d'alpha du
+projet, et ce qui doit exister avant tout ordre live. Il lit les événements que produit la chaîne C3
+(`docs/protocole_c3.md`, § H, § I.1) et **ne les réinterprète pas**. Il est appliqué par les deux revues
+(Astra, Claude) et par Bruno ; il ne se renégocie pas au vu d'un résultat. Auteur : Bruno, sur proposition
+Claude du 22/09 et 23/09 ; adopté le 2026-09-23 avec la révision v2.1 du protocole C3.
+
+### 10.1 Clôture de famille — un verdict compté, zéro retry
+
+**Une famille est un mécanisme** (§ 6.1). Un autre paramétrage, une autre fenêtre, une autre paire, une
+recombinaison d'indicateurs sont la même famille.
+
+**Un verdict compte** quand la chaîne est allée jusqu'à l'économie :
+
+| Issue C3 | Compte pour la famille |
+|---|---|
+| `validé`, `réfuté` | oui |
+| `inconclusif` — `A_BELOW_FLOOR`, `F_NOT_ESTIMABLE`, `F_CANNOT_SEPARATE` ; `A_NO_ADMISSIBLE_CANDIDATE` quand **aucun** candidat n'a été retiré par D1, D2 ou D6 | **oui** : le périmètre ou l'effet est le résultat (protocole § A.11) |
+| `inconclusif` — `A_NO_ADMISSIBLE_CANDIDATE` quand **au moins un** candidat a été retiré par D1, D2 ou D6 | **non** : l'ensemble a été vidé, au moins en partie, par un défaut de données ou d'instrument ; l'unique relance ci-dessous s'applique |
+| `inconclusif` — `R0_INVALID_RUN`, `P_PROVENANCE`, `D_WARMUP_PREFIX`, `D_WARMUP_ANCHOR`, `R1_NOT_NORMALISED`, `E_NO_BENCHMARK`, `E_STAMP_MISMATCH` ; sorties code 1 et 2 | **non** : défaut d'instrument, de données ou de manifeste |
+
+**Une seule relance** après correction d'instrument, par famille. Un second verdict non compté sur la même
+famille la déclare *non testable sous cet instrument* ; elle est alors **comptée dans le budget du § 10.2**,
+parce que ne pas savoir tester une famille est une information sur le projet.
+
+**Zéro retry-tuning.** Aucune seconde campagne comptée sur la même famille avec d'autres paramètres, une autre
+fenêtre ou un autre univers. Réouverture uniquement sur **hypothèse de mécanisme nouvelle**, documentée, passée
+au ticket § 6 — ce qui en fait, par définition, une autre famille.
+
+**Une seule voie de sortie, prospective.** Si l'issue est `inconclusif (F_CANNOT_SEPARATE)` **et** `Q1 ∧ Q2 ∧ Q3`
+passent **et** `Δ̂ > 0` dans les six combinaisons — seule la borne manque —, la configuration retenue, et elle
+seule, est inscrite à une **évaluation différée** au sens du protocole § D.1 (échantillon jamais consulté) :
+fenêtre `[fin du manifeste, date déclarée]`, sur données gelées après le verdict, **au moins 12 mois de
+données neuves**, mêmes paramètres, même procédure § F.2, une fois. La date et le manifeste sont écrits au
+moment du verdict, pas après. Elle ne consomme pas de budget de familles ; elle est la seule chose qui survit
+au cap temporel du § 10.2, parce que c'est une date à attendre, pas un chantier.
+
+### 10.2 Alpha-stop projet — trois familles ou le 2027-09-30
+
+- **Budget familles : trois**, à mécanisme distinct — grid (cycle en cours) + un cycle complet du cap § 7. Au
+  delà, la multiplicité que le protocole déclare ne pas corriger (§ F.3) cesse d'être négligeable.
+- **Budget temps : 12 mois à compter du gel de v2.1**, échéance **2027-09-30**. Le compteur démarre au gel et
+  non au premier verdict, pour que la construction d'instrument entre dans le budget qu'elle a déjà consommé.
+- **Jalon : premier verdict réel (grid) avant le 2027-01-31.** Manqué → **gel de l'instrument en l'état** :
+  plus aucun amendement, plus aucune exigence producteur, la campagne grid part dans les 30 jours avec ce qui
+  existe, et son verdict compte.
+- **Déclencheur** : trois familles comptées sans `validé`, **ou** le 2027-09-30 — le premier atteint.
+  Conséquence : le trader reste éteint définitivement sous ce dispositif ; le projet est requalifié
+  (plateforme de données, instrument de recherche, pièce de portfolio). Réouverture uniquement par décision
+  écrite, avec son auteur et son motif — jamais déduite d'un verdict.
+- **`validé`** suspend le compteur temps pendant le paper (règles B5, `ROADMAP.md`) et la décision qui le suit.
+  Un paper qui échoue à ses critères pré-enregistrés vaut verdict de la famille : comptée, close, compteur
+  relancé. Un `validé` ne rouvre pas le budget familles.
+
+### 10.3 Kill-switch live — structure exigée, chiffres dérivés
+
+Avant le premier ordre live, le ticket de déploiement fixe trois seuils, **dérivés de l'artefact de la campagne
+validée et d'aucune autre source** : (i) drawdown live rapporté au `max_drawdown_pct_daily` de la fenêtre
+d'évaluation ; (ii) rendement réalisé annualisé rapporté à la borne basse `LB` du § F.2 ; (iii) durée maximale
+sans cycle achevé rapportée à la cadence observée sur le préfixe. Les multiplicateurs et horizons sont écrits,
+gelés, et ne se renégocient pas. Aucun nombre n'est fixé ici : chacun sort des chiffres que la chaîne aura
+publiés.

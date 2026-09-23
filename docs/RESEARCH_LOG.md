@@ -159,8 +159,31 @@ Verdict de session : **aucune sélection, aucun verdict économique**. Les trois
 fixtures synthétiques (`C3_SYNTH_`). **C3a ≠ C3** : le protocole et l'outil existent ; aucune campagne existante ne
 les traverse.
 
+### Adoption du protocole C3 v2.1 et du critère d'arrêt (inscrite le 2026-09-23 — aucun run)
+
+Critère d'arrêt pré-enregistré, § 10 de `CONTRAINTES_POST_B4.md`, adopté avec v2.1 du protocole C3. Première
+campagne : famille grid, fenêtre 2021-03-01 → 2026-06-29, ancrage 70 %, BTC/ETH/SOL sur USDT Binance, manifeste à
+geler avant tout run.
+
+- **Protocole** : `docs/protocole_c3.md` v2.1, amendé le 2026-09-23 (vingt-huit amendements, adoptés par Bruno,
+  quatorze réserves — `docs/amendements_c3_v2.1.md`, section « Adoption ») ; sha256
+  **`9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129`** — celui que portera le manifeste de la
+  première campagne (v2.0, `9b62915069e59e9b…`, reste celui du livrable C3a). Branche `feat/c3-amendements-v2.1`.
+- **Ancrage de la première campagne** : `T = 2024-11-22T04:48:00Z` (préfixe 1362,2 j, période évaluée 583,8 j).
+- **Ce que la lecture des données laisse attendre, écrit avant tout run** (§ A.8 v2.1) :
+  - **SOL partiel ou absent** : au 2021-03-01, SOL n'a que 29 bougies 1 w (première le 2020-08-17 ; la 50ᵉ, qu'exige
+    le régime 1 w, tombe le 2021-07-26) — D2 retire les candidats SOL dont une porte lit le 1 w ;
+  - **D1 1 w échoue** sur les trois paires : six estampilles hebdomadaires manquent en 2022, dans le préfixe
+    (06-06, 07-04, 09-05, 10-03, 11-07, 12-05) — 188/194 = 96,9 % < 97 % ; **sans reconstruction, l'ensemble
+    admissible est vide** (`A_NO_ADMISSIBLE_CANDIDATE`, non compté au sens du § 10.1, retrait par D1). La décision de
+    reconstruire ces estampilles depuis le 1 d — chiffrée, en rows marquées dérivées, jamais silencieuse — est un
+    **prérequis du manifeste**.
+- **Aucune simulation lancée, aucune donnée produite, aucune sélection.** Le livrable réel de C3a
+  (`results/c3a_entry_validation/`, entrée 12) reste l'historique v2.0 ; sous v2.1, `c3_anchor` refuse son manifeste.
+
 ### Essais à venir (à inscrire avant lancement)
 
-_(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après le gate d'amendement du
-protocole et un producteur conforme (paquet 1). Manifeste gelé et inscription ici **avant** tout lancement. C3a est
-close : entrée 12 ci-dessus ; le rejeu diagnostic grid : entrée 11.)_
+_(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
+(paquet 1, contrat fixé par v2.1) et la décision de reconstruction 1 w. Manifeste gelé, portant le sha256 v2.1, et
+inscription ici **avant** tout lancement. C3a est close : entrée 12 ci-dessus ; le rejeu diagnostic grid : entrée 11 ;
+l'adoption de v2.1 : section précédente.)_

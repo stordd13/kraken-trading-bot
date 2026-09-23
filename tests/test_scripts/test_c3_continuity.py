@@ -1,8 +1,8 @@
 """C3 — le contrat de continuité (§ B) : cinq clauses, chacune avec l'état de sa vérifiabilité.
 
-Tout est synthétique (§ L.1 : aucune entrée réelle en C3a). Le témoin sain est une évaluation
-conforme au contrat (un seul appel, grille continue, liquidation prouvée par lot, amorçage
-suffisant à T) ; chaque contre-exemple en isole une clause. Acquis testé en clair : **aucune
+Tout est synthétique, hors les tests d'admission d'une évaluation déclarée réelle (§ L.1 v2.1). Le
+témoin sain est une évaluation conforme au contrat (un seul appel, grille continue, liquidation
+prouvée par lot, amorçage suffisant à T) ; chaque contre-exemple en isole une clause. Acquis testé en clair : **aucune
 déclaration ne produit VERIFIED** — la preuve de départ à plat la plus cohérente vaut DECLARED.
 """
 
@@ -123,7 +123,7 @@ def test_aucune_declaration_ne_produit_VERIFIED(tmp_path: Path) -> None:
     """La preuve de départ à plat la plus cohérente et une première exécution déclarée valent DECLARED."""
     w = _world(
         tmp_path,
-        flat_start_proof={"cash_at_T": "1000", "inventory_qty_at_T": "0", "pending_orders_at_T": 0},
+        flat_start_proof=fx.flat_start_proof(),
         first_fill_at=fx.ANCHOR + timedelta(minutes=10),
     )
     code, payload = _run(w)
@@ -138,19 +138,105 @@ def test_aucune_declaration_ne_produit_VERIFIED(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# § B.2 v2.1 (AM-10) — la preuve de départ à plat, spécifiée : {at, cash, qty, pending}
+# ---------------------------------------------------------------------------
+
+
+def test_c1_la_preuve_specifiee_au_texte_vaut_DECLARED(tmp_path: Path) -> None:
+    """§ B.2 v2.1 : « `flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}` » ; « Cette preuve vaut
+    `DÉCLARÉ`, jamais `VÉRIFIÉ` »."""
+    w = _world(tmp_path, flat_start_proof=fx.flat_start_proof())
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    assert _states(payload)["c1"] == "DECLARED"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("at", (fx.ANCHOR + timedelta(minutes=5)).isoformat()),
+        ("at", (fx.ANCHOR - timedelta(minutes=48)).isoformat()),
+        ("cash", "999.99"),
+        ("qty", "0.0001"),
+        ("pending", 1),
+    ],
+    ids=["at = T + 5 min", "at avant T", "cash ≠ C", "qty ≠ 0", "pending ≠ 0"],
+)
+def test_c1_une_preuve_incoherente_est_FAILED(tmp_path: Path, field: str, value: Any) -> None:
+    """§ B.2 v2.1 : « L'outillage contrôle la cohérence de l'objet (`at == T`, `cash == C` du manifeste,
+    `qty == 0`, `pending == 0`) » ; « un objet incohérent la met en échec »."""
+    proof = fx.flat_start_proof()
+    proof[field] = value
+    w = _world(tmp_path, flat_start_proof=proof)
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    assert _states(payload)["c1"] == "FAILED" and payload["state"] == "FAILED"
+
+
+@pytest.mark.parametrize(
+    "proof",
+    [
+        {"cash_at_T": "1000", "inventory_qty_at_T": "0", "pending_orders_at_T": 0},
+        {**fx.flat_start_proof(), "pending_orders_at_T": 0},
+    ],
+    ids=["noms v2.0", "noms v2.1 et un nom v2.0"],
+)
+def test_c1_les_noms_v20_de_la_preuve_sont_une_erreur_de_forme(
+    tmp_path: Path, proof: dict[str, Any], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ B.2 v2.1 : la preuve est `{at, cash, qty, pending}` ; un bloc portant les noms v2.0 n'est pas la
+    preuve spécifiée — erreur de forme (§ I.1, ligne 2), code 2, rien publié, et le message nomme les clés
+    du texte."""
+    w = _world(tmp_path, flat_start_proof=proof)
+    code, payload = _run(w)
+    assert code == 2 and payload is None
+    assert "{at, cash, qty, pending}" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# § L.1 v2.1 (AM-24) — admission d'une évaluation réelle, en tête de c3_continuity
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("kw", "missing"),
+    [
+        pytest.param({"first_fill_at": None}, "first_fill_at", id="sans first_fill_at"),
+        pytest.param({"flat_start_proof": None}, "flat_start_proof", id="sans flat_start_proof"),
+    ],
+)
+def test_une_evaluation_reelle_sans_porteur_est_refusee_en_tete(
+    tmp_path: Path, kw: dict[str, Any], missing: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.1 : une évaluation réelle est admise « si et seulement si elle porte `flat_start_proof`,
+    `invocation.single_call` et `first_fill_at` […] ; il lui en manque une → refus `R0_INVALID_RUN`, code 2,
+    rien publié, avec le nom de ce qui manque » — « la règle est appliquée en tête de `c3_continuity` »."""
+    eval_kw: dict[str, Any] = {"synthetic": False, "flat_start_proof": fx.flat_start_proof()}
+    eval_kw.update(kw)
+    w = _world(tmp_path, **eval_kw)
+    code, payload = _run(w)
+    assert code == 2 and payload is None
+    err = capsys.readouterr().err
+    assert "R0_INVALID_RUN" in err and missing in err
+
+
+def test_une_evaluation_reelle_avec_ses_porteurs_est_admise(tmp_path: Path) -> None:
+    """§ L.1 v2.1 : avec ses trois porteurs, l'évaluation réelle est admise ; ses clauses déclaratives
+    valent `DÉCLARÉ` (§ B.8) et la continuité dit `synthetic: false`."""
+    w = _world(tmp_path, synthetic=False, flat_start_proof=fx.flat_start_proof())
+    code, payload = _run(w)
+    assert code == 0 and payload is not None and payload["synthetic"] is False
+    states = _states(payload)
+    assert states["c1"] == states["c2"] == states["c5"] == "DECLARED"
+
+
+# ---------------------------------------------------------------------------
 # Chaque clause en échec, à sa place
 # ---------------------------------------------------------------------------
 
 
 def test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED(tmp_path: Path) -> None:
-    w = _world(
-        tmp_path,
-        flat_start_proof={
-            "cash_at_T": "990",
-            "inventory_qty_at_T": "0.001",
-            "pending_orders_at_T": 1,
-        },
-    )
+    w = _world(tmp_path, flat_start_proof=fx.flat_start_proof(cash="990", qty="0.001", pending=1))
     code, payload = _run(w)
     assert code == 0 and payload is not None
     assert _states(payload)["c1"] == "FAILED" and payload["state"] == "FAILED"
@@ -159,8 +245,10 @@ def test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED(tmp_path: Path) -> No
 @pytest.mark.parametrize(
     ("path", "value"),
     [
-        (("flat_start_proof", "cash_at_T"), None),
-        (("flat_start_proof", "pending_orders_at_T"), "0"),
+        (("flat_start_proof", "cash"), None),
+        (("flat_start_proof", "pending"), "0"),
+        (("flat_start_proof", "at"), None),
+        (("flat_start_proof", "at"), "hier"),
         (("invocation", "single_call"), "true"),
         (("invocation", "single_call"), None),
         (("invocation",), None),
@@ -170,6 +258,8 @@ def test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED(tmp_path: Path) -> No
     ids=[
         "cash null",
         "pending str",
+        "at null",
+        "at hors format",
         "single_call str",
         "single_call null",
         "invocation null",
@@ -180,10 +270,7 @@ def test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED(tmp_path: Path) -> No
 def test_chaque_champ_mal_type_ou_nul_refuse_l_entree(
     tmp_path: Path, path: tuple[str, ...], value: Any
 ) -> None:
-    w = _world(
-        tmp_path,
-        flat_start_proof={"cash_at_T": "1000", "inventory_qty_at_T": "0", "pending_orders_at_T": 0},
-    )
+    w = _world(tmp_path, flat_start_proof=fx.flat_start_proof())
 
     def mutate(data: dict[str, Any]) -> None:
         node: Any = data
@@ -244,18 +331,34 @@ def test_c3_sans_lots_est_NOT_VERIFIABLE_jamais_VERIFIED(tmp_path: Path) -> None
     assert payload["state"] == "NOT_VERIFIABLE"
 
 
+@pytest.mark.parametrize("field", fx.STAMP_AND_PRICE_FIELDS)
+def test_c3_un_bloc_contradictoire_a_l_evaluation_est_une_violation(
+    tmp_path: Path, field: str
+) -> None:
+    """§ B.3 v2.1 : « Un bloc de liquidation qui déclare `trades > 0` sans estampille, ou sans l'un des
+    champs de prix […], se contredit […]. C'est une violation — statut recalculé ≠ statut enregistré (§ I.1,
+    ligne 15), code 1 —, jamais `R1_NOT_NORMALISED` » — pas une clause 3 en échec : un diagnostic, sans
+    état de continuité publié."""
+    w = _world(tmp_path)
+    _mutate_eval(w, lambda d: d["liquidation"].__setitem__(field, None))
+    code, payload = _run(w)
+    assert code == 1 and payload is not None and payload["invalide"] is True
+    assert payload["state"] is None and payload["clauses"] == {}
+    assert any("contradictoire" in v for v in payload["violations"]), payload["violations"]
+
+
 def test_c3_quantite_de_lot_nulle_est_FAILED_via_la_preuve_partagee(tmp_path: Path) -> None:
     """Le correctif R3 a) s'applique ici aussi : `liquidation_identities` est la même fonction."""
     w = _world(tmp_path)
 
     def zero_amount(d: dict[str, Any]) -> None:
         for lot in d["liquidation"]["lots"]:
-            lot["amount_btc"] = "0"
+            lot["amount_base"] = "0"
 
     _mutate_eval(w, zero_amount)
     code, payload = _run(w)
     assert code == 0 and payload is not None and _states(payload)["c3"] == "FAILED"
-    assert any("amount_btc" in d for d in payload["d6_report"]["details"])
+    assert any("amount_base" in d for d in payload["d6_report"]["details"])
 
 
 def test_estampille_de_liquidation_hors_de_la_derniere_cellule(tmp_path: Path) -> None:
@@ -532,32 +635,32 @@ def test_revue_Fin_5_une_cle_absente_derriere_un_test_faux_est_une_erreur_d_entr
 
 
 # ---------------------------------------------------------------------------
-# Revue Fin 2 (1) — la table § 6.4 en liste close, côté producteur
+# Revue Fin 2 (1) — la table du § B.8 en liste close, côté producteur
 # ---------------------------------------------------------------------------
 
 
-#: Chaque (bloc, état hors liste) avec son appui — la colonne « États atteignables (C3a) » de § 6.4
+#: Chaque (bloc, état hors liste) avec son appui — la colonne « États admissibles » du § B.8
 #: pour les cinq clauses ; pour les deux blocs dérivables, la nature de ce qu'ils décident
 #: (§ B.4 : cellule située ou non ; § C.5 : conjonction vraie ou fausse).
 OUT_OF_LIST_PRODUCER: list[tuple[str, str, str]] = [
     (
         "c1",
         "VERIFIED",
-        "§ 6.4 c1 : {NOT_VERIFIABLE, DECLARED, FAILED} — déclarative, jamais VERIFIED",
+        "§ B.8 c1 : {NOT_VERIFIABLE, DECLARED, FAILED} — déclarative, jamais VERIFIED",
     ),
-    ("c2", "NOT_VERIFIABLE", "§ 6.4 c2 : {DECLARED, FAILED} — le bloc invocation est obligatoire"),
-    ("c2", "VERIFIED", "§ 6.4 c2 : {DECLARED, FAILED} — déclarative, jamais VERIFIED"),
+    ("c2", "NOT_VERIFIABLE", "§ B.8 c2 : {DECLARED, FAILED} — le bloc invocation est obligatoire"),
+    ("c2", "VERIFIED", "§ B.8 c2 : {DECLARED, FAILED} — déclarative, jamais VERIFIED"),
     (
         "c3",
         "DECLARED",
-        "§ 6.4 c3 : {VERIFIED, NOT_VERIFIABLE, FAILED} — seule la preuve par lot vérifie",
+        "§ B.8 c3 : {VERIFIED, NOT_VERIFIABLE, FAILED} — seule la preuve par lot vérifie",
     ),
-    ("c4", "NOT_VERIFIABLE", "§ 6.4 c4 : {VERIFIED, FAILED} — sufficient est recalculé"),
-    ("c4", "DECLARED", "§ 6.4 c4 : {VERIFIED, FAILED} — l'amorçage n'est jamais déclaré"),
+    ("c4", "NOT_VERIFIABLE", "§ B.8 c4 : {VERIFIED, FAILED} — sufficient est recalculé"),
+    ("c4", "DECLARED", "§ B.8 c4 : {VERIFIED, FAILED} — l'amorçage n'est jamais déclaré"),
     (
         "c5",
         "VERIFIED",
-        "§ 6.4 c5 : {NOT_VERIFIABLE, DECLARED, FAILED} — déclarative, jamais VERIFIED",
+        "§ B.8 c5 : {NOT_VERIFIABLE, DECLARED, FAILED} — déclarative, jamais VERIFIED",
     ),
     (
         "stamp_cell",
@@ -577,7 +680,7 @@ OUT_OF_LIST_PRODUCER: list[tuple[str, str, str]] = [
 def test_revue_Fin2_1_le_producteur_refuse_un_etat_hors_liste_close(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, clause: str, state: str, appui: str
 ) -> None:
-    """Un état hors de la colonne « États atteignables (C3a) » de § 6.4 est une valeur hors liste
+    """Un état hors de la colonne « États admissibles » du § B.8 est une valeur hors liste
     close : code 2, rien publié — même si une clause le produisait par erreur. Les deux blocs
     dérivables sont gardés de la même façon."""
     w = _world(tmp_path)
@@ -607,7 +710,7 @@ def test_revue_Fin2_1_le_temoin_sain_ne_produit_que_des_etats_admissibles(tmp_pa
     w = _world(tmp_path)
     code, payload = _run(w)
     assert code == 0 and payload is not None
-    # attendu écrit depuis la table § 6.4, pas depuis la constante du code
+    # attendu écrit depuis la table du § B.8, pas depuis la constante du code
     admissible_6_4 = {
         "c1": ("NOT_VERIFIABLE", "DECLARED", "FAILED"),
         "c2": ("DECLARED", "FAILED"),
@@ -618,14 +721,14 @@ def test_revue_Fin2_1_le_temoin_sain_ne_produit_que_des_etats_admissibles(tmp_pa
     for clause, block in payload["clauses"].items():
         assert block["state"] in admissible_6_4[clause], clause
     assert set(payload["clauses"]) == set(admissible_6_4)
-    assert payload["state"] != "VERIFIED", "agrégat VERIFIED inconstructible en C3a (§ 6.4)"
+    assert payload["state"] != "VERIFIED", "agrégat VERIFIED inconstructible (§ B.8)"
     assert SUMMARY_OF_C3 == cc.LIQUIDATION_NORMALISED_OF_C3
 
 
 def test_revue_Fin2_1_une_surcharge_de_series_vide_ne_verifie_pas_l_amorcage(
     tmp_path: Path,
 ) -> None:
-    """§ 6.4 c4 : VERIFIED = « sufficient recalculé … vrai sur chaque TF de décision » — sur zéro
+    """§ B.8 c4 : VERIFIED = « sufficient recalculé … vrai sur chaque TF de décision » — sur zéro
     série il n'y a rien de recalculé. La surcharge `decision_timeframes: []` d'un candidat est une
     liste vide là où la déclaration par stratégie exige au moins une série : erreur d'entrée."""
     with pytest.raises(cc.MissingEvidenceError, match="decision_timeframes"):
@@ -641,7 +744,7 @@ def test_revue_Fin2_1_une_surcharge_de_series_vide_ne_verifie_pas_l_amorcage(
 
 def test_agregat_prend_la_pire_clause_est_un_test_de_precedence_hors_perimetre() -> None:
     """`continuity_aggregate` sur des clés arbitraires : précédence seule. Vide ou hors vocabulaire
-    → erreur d'entrée, jamais un repli VERIFIED (l'état que § 6.4 rend inconstructible)."""
+    → erreur d'entrée, jamais un repli VERIFIED (l'état que le § B.8 rend inconstructible)."""
     with pytest.raises(cc.MissingEvidenceError):
         cc.continuity_aggregate({})
     with pytest.raises(cc.MissingEvidenceError):

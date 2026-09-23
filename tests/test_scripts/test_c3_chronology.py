@@ -4,7 +4,7 @@
 pour chaque candidat), scores, classement **complet** et choix ou abstention (raison comprise)
 sont **identiques, octet à octet après canonicalisation**. Trois témoins, exigence littérale du
 brief : le **préfixe seul** (aucun bloc hors liste blanche), le **même préfixe + futurs A**, le
-**même préfixe + futurs B** — les futurs restent présents et bien formés (§ A.12 l.652), ils sont
+**même préfixe + futurs B** — les futurs restent présents et bien formés (§ A.12 l.766, v2.1), ils sont
 écartés sans être lus. La comparaison porte sur l'artefact de sélection **entier** produit par
 `main()` sur fichiers, moins les seules empreintes de fichiers (différentes par construction) —
 `generated_at` compris, grâce à `--now`.

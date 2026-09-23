@@ -1,21 +1,21 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 22 septembre 2026, **à la clôture de C3a**. B4 close le 15 sept (merge `4c98b6b`
+> Dernière mise à jour : 23 septembre 2026, **à l'amendement v2.1 du protocole C3**. B4 close le 15 sept (merge `4c98b6b`
 > dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec
 > un instrument depuis invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ;
 > sélection paper vide. Instrument réparé : **C1 métriques** (tag `v2.9.0-c1-metrics`) et **C2 fidélité replay** (tag
 > `v2.10.0-c2-replay`) mergés. **Rejeu diagnostic grid clos le 20 sept** → **`inconclusif (F_CANNOT_SEPARATE)`** : la
 > famille grid n'est **ni validée ni dépriorisée** sous instrument réparé — pas de déploiement, pas de tuning
-> supplémentaire, périmètre non élargi (`results/rejeu_grid_report.md`). **C3a livrée et validée le 22 sept** (revues
-> croisées Astra / Claude, **806 tests C3**, suite 2 615 passés / 6 skippés, branche `feat/c3a-protocole` @ `acaeaf6`,
-> non mergée) : protocole `docs/protocole_c3.md` **gelé** (`d931293`), outillage complet ; **l'artefact réel du rejeu
-> est refusé à l'entrée** (§ D.3, `D_WARMUP_PREFIX`, 96/96). **Fait stratégique : aucune campagne existante ne peut
-> traverser la chaîne C3 sans un producteur conforme → chantier C3b.** **Phase courante : merge de C3a dans `dev`** (porte § L.5
-> **passée le 2026-09-22 au `6f7ed8e`** : 24/24 déterminisme serveur, `results/c3a_determinism_server/run_6f7ed8e/` ;
-> re-passe Astra consignée non faite, décision Bruno ; suite serveur non verte pour une cause hors C3a — rapport § 14)
-> **et préparation de C3b** (gate
-> d'amendement du protocole, chantier producteur). Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
+> supplémentaire, périmètre non élargi (`results/rejeu_grid_report.md`). **C3a mergée le 23 sept** (`64adede`, tag
+> `v2.11.0-c3a-protocole`) : protocole `docs/protocole_c3.md` gelé (`d931293`), outillage complet ; **l'artefact réel du
+> rejeu est refusé à l'entrée** (§ D.3, `D_WARMUP_PREFIX`, 96/96). **Protocole amendé en v2.1 le 23 sept**
+> (`docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129` ; branche `feat/c3-amendements-v2.1`, merge sous décision
+> humaine) : rejeu complet du § F.2 par la chaîne, évaluation réelle admise avec ses porteurs, c3 non normalisée →
+> `inconclusif (R1_NOT_NORMALISED)`, critère d'arrêt pré-enregistré (`docs/CONTRAINTES_POST_B4.md` § 10). **Fait
+> stratégique : aucune campagne existante ne peut traverser la chaîne C3 sans un producteur conforme → chantier C3b**,
+> dont v2.1 fixe le contrat ; sur la fenêtre de la première campagne, la reconstruction des estampilles 1 w de 2022
+> précède le manifeste (D1 à 188/194). Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
 > `docs/RESEARCH_LOG.md` obligatoire avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
 
 ---
@@ -113,7 +113,8 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   modes) est désormais **ce que D2 refuse mécaniquement à l'entrée** (`D_WARMUP_PREFIX`, 96/96) et relève du chantier
   producteur C3b. Tickets papier (`docs/CONTRAINTES_POST_B4.md` § 6) autorisés ; tout run s'inscrit d'abord dans
   `docs/RESEARCH_LOG.md`.
-- ✅ **C3a close (22 sept — branche `feat/c3a-protocole`, tip `acaeaf6`, non mergée, pas de tag)** : protocole
+- ✅ **C3a close (22 sept — branche `feat/c3a-protocole`, tip `6f7ed8e` ; mergée le 23 sept, `64adede`, tag
+  `v2.11.0-c3a-protocole` sur `ad3b1b1`)** : protocole
   `docs/protocole_c3.md` **gelé** au `d931293` (sha256 `9b62915069e59e9b…`), jamais modifié depuis ; outillage
   **complet**, liste fermée § L.4 — `scripts/audit/c3_{common,anchor,entry,benchmark,select,continuity,verdict}.py`,
   sous-commande `c3_verdict.py chain` (chaîne § L.2 à neuf champs), **806 tests** C3 (8 fichiers ; suite complète
@@ -125,16 +126,30 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   **Fait stratégique : aucune campagne existante (P6, P7, B4, C1, C2, rejeu) ne peut traverser la chaîne** — il manque
   un **producteur conforme** : export `lots` par segment (D6, clause 3), `exec_interval` (D5), artefact de couverture
   (D1), preuve de départ à plat à `T` (clause 1), `invocation.single_call` (clause 2), `first_fill_at` (clause 5),
-  amorçage suffisant au préfixe (D2) → **C3b**. `validé` / `réfuté` restent **structurellement inatteignables** sur
-  données réelles (§ L.1). Conventions d'outillage **datées** (21/09 : clause 3 `FAILED` → `UndefinedIssueError`,
-  code 2 ; 22/09 : preuve absente après violation → code 2, violations sur stderr) documentées dans
-  `skills/backtest.md` § « Validation C3 », **à ratifier par amendement** au gate C3b (avec la ligne run
-  `R1_NOT_NORMALISED`, E2 sur les six distributions, la tolérance MDD, l'énumération § L.1 / `candles.json`).
+  amorçage suffisant au préfixe (D2) → **C3b**. Conventions d'outillage datées de C3a (21/09 : clause 3 `FAILED` →
+  `UndefinedIssueError`, code 2 ; 22/09 : preuve absente après violation → code 2) : **tranchées par v2.1** — la
+  première abrogée (ligne 10 bis), la seconde ratifiée (§ I.1).
   **Porte pré-merge § L.5 passée le 2026-09-22 au `6f7ed8e`** (option 1 : 24/24 déterminisme serveur, recette C2,
   `results/c3a_determinism_server/run_6f7ed8e/` ; option 2 indisponible, `pyproject.toml` seul sur § L.3 ; re-passe Astra
   consignée non faite, décision humaine écrite ; suite serveur non verte pour une cause hors C3a — tests non hermétiques
-  Telegram, `mock_settings` sans `telegram` — rapport § 14). **Restent, hors C3a** : gate d'amendement, brief C3b, dette
-  d'hermétisme de la suite. Rapport : `agent/rapport_session_c3a_20260922.md`.
+  Telegram, `mock_settings` sans `telegram` — rapport § 14 ; dette 20, résolue le 23/09). Rapport :
+  `agent/rapport_session_c3a_20260922.md`.
+- ✅ **Protocole C3 v2.1 (amendé le 23 sept — branche `feat/c3-amendements-v2.1` depuis `dev` @ `f321ddd`, merge sous
+  décision humaine)** : vingt-huit amendements (AM-00 à AM-27) et le critère d'arrêt, adoptés par Bruno, quatorze
+  réserves d'application (R-01 à R-14) ; `docs/amendements_c3_v2.1.md` (section « Adoption » : décisions de gate,
+  réserves, écarts, empreinte) ; sha256 v2.1 `9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129`.
+  Ce qui change : fenêtre de la première campagne **2021-03-01 → 2026-06-29** (`T = 2024-11-22T04:48Z`) ; capital en
+  unités de cotation, transposition déclarée USDT → USDC ; clés `_base` ; `decision_timeframes` exportés par toute
+  observation ; E2 conjonctive et plafond par combinaison ; **rejeu complet du tirage § F.2** par la chaîne (égalité
+  au bit, environnement `{python, numpy, machine, libc}`, ordre des opérations `(Σ log1p(r) × 365) / n_jours`) ;
+  preuve de départ à plat `{at, cash, qty, pending}` ; `stamp_cell` sans estampille satisfaite à vide ; c3 en échec ou
+  non vérifiable → `inconclusif (R1_NOT_NORMALISED)` (ligne 10 bis), bloc de liquidation contradictoire → violation ;
+  § B.8 section d'origine des états de continuité ; évaluation réelle admise avec ses trois porteurs (§ L.1).
+  Outillage : 7 modules, **932 tests C3** ; diff de contrôle § L.3 vide ; livrable C3a intact (historique v2.0 — sous
+  v2.1, `c3_anchor` refuse son manifeste). **Faits de la fenêtre v2.1** : SOL n'a que 29 bougies 1 w au 2021-03-01
+  (50ᵉ le 2021-07-26) → partiel ou absent par D2 ; six estampilles 1 w manquent en 2022 sur les trois paires → D1 1 w à
+  188/194 = 96,9 % < 97 % : **sans reconstruction, l'ensemble admissible est vide** ; la reconstruction est un
+  prérequis du manifeste. Journal : `docs/RESEARCH_LOG.md` (adoption, aucun run).
 
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
@@ -385,10 +400,10 @@ Détail : `ROADMAP.md`.
   tag `v2.9.0-c1-metrics`).
 - ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`), C2 (mergé, `v2.10.0-c2-replay`), **rejeu
   diagnostic grid** (clos le 20 sept, verdict `inconclusif (F_CANNOT_SEPARATE)` — famille grid ni validée ni
-  dépriorisée) → **C3 validation chronologique** : **C3a close le 22 sept** (protocole gelé `d931293`, outillage 7
-  modules / 806 tests, artefact du rejeu refusé à l'entrée ; branche `feat/c3a-protocole` @ `6f7ed8e`, porte § L.5
-  passée le 2026-09-22, merge dans `dev` en cours) ; **C3b ouvert** (gate d'amendement + producteur conforme, puis campagne réelle sous la chaîne).
-  **Phase courante : merge C3a + préparation C3b.**
+  dépriorisée) → **C3 validation chronologique** : **C3a mergée le 23 sept** (`64adede`, tag `v2.11.0-c3a-protocole` ;
+  artefact du rejeu refusé à l'entrée) ; **protocole v2.1 amendé le 23 sept** (branche `feat/c3-amendements-v2.1`,
+  merge sous décision humaine) ; **C3b** : producteur conforme, décision de reconstruction 1 w, puis manifeste et
+  campagne réelle sous la chaîne. **Phase courante : merge de v2.1 + brief C3b.**
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
@@ -556,8 +571,11 @@ Détail : `ROADMAP.md`.
     transport de champs** : le dump `--equity-out` n'écrit que des états **postérieurs** au traitement d'une
     bougie, et à l'ancrage déclaré **aucun point n'existe à `T`** ; C3b doit **spécifier une preuve de départ à
     plat**. **État C3a** : `c3_continuity` clause 3 lit ce bloc — identités exactes **et** preuve par lot →
-    `VERIFIED` ; sans `lots` → `NOT_VERIFIABLE` ; bloc absent ou identité fausse → `FAILED`, issue non définie
-    (`UndefinedIssueError`, convention du 21/09, amendement `R1_NOT_NORMALISED` dû en C3b).
+    `VERIFIED` ; sans `lots` → `NOT_VERIFIABLE` ; bloc absent ou identité fausse → `FAILED`. **État v2.1** : c3 en
+    échec ou non vérifiable → `inconclusif (R1_NOT_NORMALISED)`, publié, code 0 (§ I.1 ligne 10 bis ; convention du
+    21/09 abrogée) ; bloc qui déclare `trades > 0` sans estampille ou sans prix → violation, code 1 (§ B.3) ; la
+    preuve de départ à plat est spécifiée (§ B.2). `scripts/backtest.py` reste hors liste tant que cette dette n'est
+    pas ouverte par une décision séparée (C4 du 23/09, § L.3).
 
 20. ✅ **Suite de tests non hermétique aux `TELEGRAM_*`** (incident de la porte pré-merge C3a, 22/09/2026, rapport
     `agent/rapport_session_c3a_20260922.md` § 14.2 — **résolu le 2026-09-23**, branche `fix/tests-telegram-hermetic`,
@@ -577,10 +595,19 @@ Détail : `ROADMAP.md`.
     `os.environ` au runtime (`settings.py:962`, `load_dotenv()` ; `reload_settings()` idem avec `override=True`, `:976`)
     — vecteur de fuite pour tout test qui l'appelle, hors périmètre de ce fix.
 
+21. **`chain --campaign` est un paramètre libre de la chaîne de verdict** (constat de la revue du 23/09, amendements
+    v2.1 — S-2). Le § L.2 dit « aucun paramètre libre, aucune entrée humaine : deux personnes exécutant le verdict
+    sur les mêmes artefacts obtiennent la même chaîne » ; or `--campaign NAME` entre tel quel dans le label
+    `C3_<campagne>` / `C3_SYNTH_<campagne>` (défaut `C3A`). Deux exécutions sur les mêmes artefacts avec deux noms
+    différents rendent deux chaînes. **Non traité en v2.1** (aucun amendement ne le couvre) : à trancher avant la
+    première campagne réelle — dériver le nom du manifeste (identifiant de variante ou champ déclaré et entré dans
+    l'empreinte), ou amender le § L.2. Sites : `scripts/audit/c3_verdict.py`, `--campaign` des deux parseurs (`build_parser`, `build_chain_parser`).
+
 **Note WF** (audit red-team 16/09, reformulée le 22 sept — **non déclarée résolue**) : la sélection top-5 de
 P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7
 **n'est pas** une validation chronologique. **État réel** : **nouvelle voie C3 chronologique** — protocole
-`docs/protocole_c3.md` **gelé** (`d931293`), outillage **livré** (C3a, `skills/backtest.md` § « Validation C3 »),
+`docs/protocole_c3.md` **v2.1** (amendé le 23/09, sha256 `9300f4e5…4129` ; v2.0 gelée au `d931293`), outillage **livré**
+(C3a, `skills/backtest.md` § « Validation C3 »),
 mais **aucune campagne existante ne le traverse** (refus à l'entrée, producteur conforme = chantier C3b) ;
 **ancienne phase 2 P7 conservée pour reproduction, impropre à une nouvelle validation chronologique** : les
 runners ne sont pas modifiés, la fuite de sélection y est donc toujours présente. La note sera déclarée résolue

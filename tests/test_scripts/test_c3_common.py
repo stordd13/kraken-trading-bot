@@ -16,8 +16,10 @@ accepté que sur une clé constante qui y figure.
 from __future__ import annotations
 
 import ast
+import hashlib
 import math
 from pathlib import Path
+import re
 import sys
 
 import pytest
@@ -152,6 +154,7 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "decision_timeframes",
             "exec_interval",
             "run_scope",
+            "deployment_pairs",
         }
     )
     assert cc.NULLABLE_FIELDS == frozenset(
@@ -171,6 +174,7 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "retained",
             "reason",
             "liquidation_normalised",
+            "bound",
         }
     )
     assert not (cc.OPTIONAL_FIELDS & cc.NULLABLE_FIELDS), (
@@ -421,6 +425,387 @@ def test_require_str_refuse_hors_liste_close() -> None:
 
 
 # ---------------------------------------------------------------------------
+# § A.6 v2.1 — transposition déclarée (AM-04) : validation sur une paire, déploiement sur une autre
+# ---------------------------------------------------------------------------
+
+
+def _with_deployment(mapping: object) -> dict[str, Any]:
+    payload = manifest()
+    payload["universe"]["deployment_pairs"] = mapping
+    return payload
+
+
+def test_une_transposition_de_cotation_entre_dans_l_empreinte_pas_dans_l_identite() -> None:
+    """§ A.6 v2.1 : « la paire de déploiement entre dans le manifeste, donc dans l'empreinte de la variante, et
+    **n'entre pas** dans l'identité du candidat » (§ A.2 : `pair = paire de validation`)."""
+    bare = manifest()
+    declared = _with_deployment({"BTC/USDC": "BTC/USDT"})
+    loaded = cc.load_manifest(declared)
+    assert dict(loaded.deployment_pairs) == {"BTC/USDC": "BTC/USDT"}
+    assert dict(cc.load_manifest(bare).deployment_pairs) == {}, (
+        "aucune transposition n'est présumée"
+    )
+    assert cc.sig(declared) != cc.sig(bare)
+    assert [c.identity for c in loaded.candidates] == [
+        c.identity for c in cc.load_manifest(bare).candidates
+    ]
+
+
+@pytest.mark.parametrize(
+    ("mapping", "fragment"),
+    [
+        pytest.param({"BTC/USDC": "ETH/USDT"}, "actif de base", id="actif de base différent"),
+        pytest.param({"BTC/USDC": "BTC/USDC"}, "même monnaie de cotation", id="même paire"),
+        pytest.param({"ETH/USDC": "ETH/USDT"}, "univers", id="paire hors univers"),
+        pytest.param({"BTC/USDC": "BTCUSDT"}, "forme", id="paire mal formée"),
+        pytest.param({"BTC/USDC": 1}, "chaîne attendue", id="valeur non chaîne"),
+        pytest.param(["BTC/USDT"], "bloc attendu", id="pas un bloc"),
+    ],
+)
+def test_une_transposition_hors_contrat_est_une_erreur_d_entree(
+    mapping: object, fragment: str
+) -> None:
+    """§ A.6 v2.1 : une paire de déploiement distincte « quand, et seulement quand, l'actif de base est le même
+    et seule la monnaie de cotation diffère » — tout autre couple est une erreur d'entrée (§ I.1, ligne 2)."""
+    with pytest.raises(cc.MissingEvidenceError, match=fragment):
+        cc.load_manifest(_with_deployment(mapping))
+
+
+# ---------------------------------------------------------------------------
+# § A.8 v2.1 — les nombres de l'encart « Conséquences de D2 et de D1 sur la fenêtre de v2.1 » (AM-05)
+# ---------------------------------------------------------------------------
+
+#: Encart § A.8 v2.1 : les six estampilles 1 w manquantes dans le préfixe, les mêmes sur les trois paires.
+V21_MISSING_1W_IN_PREFIX = (
+    (2022, 6, 6),
+    (2022, 7, 4),
+    (2022, 9, 5),
+    (2022, 10, 3),
+    (2022, 11, 7),
+    (2022, 12, 5),
+)
+
+
+def test_l_encart_v21_dit_ce_que_D1_mesure_sur_le_1w_du_prefixe() -> None:
+    """Encart § A.8 v2.1 : « Sur les 194 périodes hebdomadaires de (2021-03-01, T], 188 sont présentes, soit
+    96,9 %, sous les 97 % de D1 […] ; le trou maximal, 7 jours, reste sous la borne de 31 jours »."""
+    start = datetime(2021, 3, 1, tzinfo=UTC)
+    anchor = cc.anchor_of(start, datetime(2026, 6, 29, tzinfo=UTC))
+    missing = [datetime(y, m, d, tzinfo=UTC) for (y, m, d) in V21_MISSING_1W_IN_PREFIX]
+    assert all(start < stamp <= anchor for stamp in missing), "les six tombent dans le préfixe"
+    assert all(cc.last_stamp_at_or_before(s, cc.WEEK_MINUTES) == s for s in missing)
+    units = cc.expected_units(start, anchor, cc.WEEK_MINUTES)
+    assert units == 194
+    assert (units - len(missing)) / units < cc.COVERAGE_MIN_RATIO, "D1 échoue sur le 1 w"
+    prefix_days = (anchor - start).total_seconds() / 86400.0
+    assert cc.gap_days(1, cc.WEEK_MINUTES) == 7.0 <= cc.max_gap_days(prefix_days)
+
+
+# ---------------------------------------------------------------------------
+# § A.13 E2 v2.1 (AM-09) et § F.2 (e) v2.1 (AM-16) — au niveau fonction
+# ---------------------------------------------------------------------------
+
+#: § F.2 (h) : les six combinaisons `L × appariement`, `L ∈ {10, 21, 42}`, appariement en drawdown ou en
+#: écart-type — sous la forme `L:appariement` des clés de l'artefact d'évaluation.
+COMBINATIONS_F2H = ("10:dd", "10:sigma", "21:dd", "21:sigma", "42:dd", "42:sigma")
+
+
+def test_les_six_combinaisons_sont_celles_du_texte() -> None:
+    assert cc.COMBINATIONS == COMBINATIONS_F2H
+
+
+# ---------------------------------------------------------------------------
+# § H.1 v2.1 (AM-18) — la liste fermée des raisons, par ordre de priorité
+# ---------------------------------------------------------------------------
+
+#: § H.1 v2.1, recopiée du texte, ordre compris : « L'ordre ci-dessus est l'ordre de priorité, sans
+#: exception et sans départage à inventer ».
+REASONS_H1 = (
+    "R0_INVALID_RUN",
+    "P_PROVENANCE",
+    "D_WARMUP_PREFIX",
+    "A_NO_ADMISSIBLE_CANDIDATE",
+    "A_BELOW_FLOOR",
+    "D_WARMUP_ANCHOR",
+    "R1_NOT_NORMALISED",
+    "E_NO_BENCHMARK",
+    "E_STAMP_MISMATCH",
+    "F_NOT_ESTIMABLE",
+    "F_CANNOT_SEPARATE",
+    "D_NOT_ADMISSIBLE",
+    "C_COVERAGE",
+)
+
+
+# ---------------------------------------------------------------------------
+# En-tête v2.1 (AM-00, R-01) — l'empreinte du protocole, consignée hors du fichier
+# ---------------------------------------------------------------------------
+
+ADOPTED_PACKAGE = _project_root / "docs" / "amendements_c3_v2.1.md"
+
+
+def _adoption_section() -> str:
+    text = ADOPTED_PACKAGE.read_text(encoding="utf-8")
+    return text.split("## Adoption", 1)[1].split("\n## ", 1)[0]
+
+
+def test_le_sha_v21_consigne_hors_du_fichier_est_celui_du_protocole_livre() -> None:
+    """En-tête v2.1 (AM-00, R-01) : « Nouveau sha256 : consigné hors du fichier » — la ligne consignée à la
+    section « Adoption » du paquet adopté est l'empreinte du protocole livré, celle que `protocol_descriptor`
+    recalcule dans chaque artefact. Une retouche du protocole sans amendement daté la fait diverger."""
+    match = re.search(r"\*\*sha256 v2\.1 :\*\* `([0-9a-f]{64})`", _adoption_section())
+    assert match is not None
+    digest = hashlib.sha256((_project_root / cc.PROTOCOL_RELPATH).read_bytes()).hexdigest()
+    assert match.group(1) == digest == cc.protocol_descriptor()["sha256"]
+
+
+def test_aucun_sha_de_protocole_n_est_ecrit_en_dur_dans_l_outillage_ni_les_tests() -> None:
+    """AM-00 : « aucun sha en dur dans les tests » — les empreintes v2.0 et v2.1, lues dans le paquet adopté,
+    n'apparaissent dans aucun fichier Python de `scripts/` ni de `tests/` : l'outillage recalcule, il ne
+    recopie pas."""
+    shas = set(re.findall(r"`([0-9a-f]{64})`", _adoption_section()))
+    assert len(shas) == 2
+    for folder in ("scripts", "tests"):
+        for path in sorted((_project_root / folder).rglob("*.py")):
+            content = path.read_text(encoding="utf-8", errors="replace")
+            assert not any(sha[:12] in content for sha in shas), path
+
+
+def test_la_liste_recopiee_est_celle_du_bloc_du_texte() -> None:
+    """La copie ci-dessus est relue dans le bloc du § H.1 du protocole — une révision du texte sans
+    révision de la copie se voit ici, pas dans une issue."""
+    text = (_project_root / "docs" / "protocole_c3.md").read_text(encoding="utf-8")
+    block = text.split("Liste fermée des raisons, par ordre de priorité :", 1)[1]
+    block = block.split("```", 2)[1]
+    names = tuple(line.split()[0] for line in block.splitlines() if line[:1].isupper())
+    assert names == REASONS_H1
+
+
+def test_la_priorite_des_raisons_est_celle_du_texte() -> None:
+    """§ H.1 v2.1 (AM-18) : `R1_NOT_NORMALISED` à sa place de raison run, après `D_WARMUP_ANCHOR` et avant
+    `E_NO_BENCHMARK` ; « la chaîne porte la première raison qui s'applique »."""
+    assert cc.REASON_PRIORITY == REASONS_H1
+    assert cc.worst_reason("E_NO_BENCHMARK", "R1_NOT_NORMALISED") == "R1_NOT_NORMALISED"
+    assert cc.worst_reason("R1_NOT_NORMALISED", "D_WARMUP_ANCHOR") == "D_WARMUP_ANCHOR"
+
+
+def _suites(**overrides: tuple[list[float], int]) -> dict[str, tuple[list[float], int]]:
+    varying = [0.1 * i for i in range(50)]
+    suites = {c: (list(varying), 0) for c in COMBINATIONS_F2H}
+    suites.update(overrides)
+    return suites
+
+
+_ACTIVE = [0.01, -0.01] * 20
+
+
+def test_E2_se_calcule_sur_chacune_des_six_distributions() -> None:
+    """§ A.13 v2.1, E2 : « Une seule distribution constante suffit à faire échouer E2 »."""
+    est = cc.combined_estimability(_ACTIVE, _suites(**{"42:sigma": ([0.25] * 50, 0)}))
+    assert est.e1 is True
+    assert est.e2 is False and est.ok is False
+    assert [c for c, e in est.per_combination.items() if not e.e2] == ["42:sigma"]
+    assert cc.combined_estimability(_ACTIVE, _suites()).e2 is True
+
+
+def test_le_plafond_de_replications_ecartees_s_applique_par_combinaison() -> None:
+    """§ F.2 (e) v2.1 : au-delà de 10 écartées « sur l'une quelconque des six combinaisons », l'inférence est
+    inutilisable ; 10 reste tolérable (≤ 10 sur 10 000)."""
+    over = cc.combined_estimability(
+        _ACTIVE, _suites(**{"10:dd": ([0.1 * i for i in range(50)], 11)})
+    )
+    assert over.within_ceiling is False and over.ok is False
+    at = cc.combined_estimability(_ACTIVE, _suites(**{"10:dd": ([0.1 * i for i in range(50)], 10)}))
+    assert at.within_ceiling is True and at.ok is True
+
+
+# ---------------------------------------------------------------------------
+# § F.2 (b) à (d) v2.1 (AM-15) — le rejeu du noyau contre la procédure écrite depuis le texte
+# ---------------------------------------------------------------------------
+
+
+def test_le_rejeu_du_noyau_retrouve_la_procedure_ecrite_depuis_le_texte() -> None:
+    """§ F.2 (b), (c), (d) v2.1 : le rejeu de la chaîne retrouve, **bit à bit**, ce que fait un producteur
+    conforme — suites, écartées et bornes par combinaison, CAGR observé et Δ̂ par appariement."""
+    witness = witness_returns()
+    bench = {"dd": [0.0] * len(witness), "sigma": list(varying_returns(5))}
+    procedure = f2_procedure(witness, bench, seed=SEED, pair_index=1)
+    replay = cc.replay_bootstrap(witness, bench, seed=SEED, pair_index=1, days=EVAL_DAYS)
+    assert replay.cagr_config == procedure["cagr_config"]
+    assert dict(replay.delta_hat) == procedure["delta_hat"]
+    for combination, declared in procedure["replications"].items():
+        deltas, discarded, bound = replay.replications[combination]
+        assert list(deltas) == declared["delta_stars"], combination
+        assert discarded == declared["discarded"] and bound == declared["bound"], combination
+
+
+def _cagr_du_texte(returns: Sequence[float], indices: Any, n_jours: float) -> Any:
+    """§ F.2 (c) v2.1, l'expression du texte, recopiée telle quelle :
+    `(numpy.exp((numpy.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100`."""
+    r = np.asarray(returns, dtype=float)
+    return (np.exp((np.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100
+
+
+def test_le_CAGR_suit_l_ordre_des_operations_ecrit_au_texte() -> None:
+    """§ F.2 (c) v2.1 : « L'ordre des opérations fait partie de la définition : la somme est multipliée par
+    365, **puis** divisée par `n_jours` — une seule division, faite en dernier. `somme × (365 / n_jours)`
+    donne un autre nombre au dernier bit sur une part des réplications ». Le seul chemin de la chaîne rend, au
+    bit, l'expression du texte — sur la valeur observée (indices identité) comme sur les réplications."""
+    witness = witness_returns()
+    n = len(witness)
+    rng = np.random.default_rng([SEED, 0, 21])
+    starts = rng.integers(0, n, size=(cc.BOOTSTRAP_B, math.ceil(n / 21)))
+    replications = (starts[:, :, None] + np.arange(21)).reshape(cc.BOOTSTRAP_B, -1)[:, :n] % n
+    logs = np.log1p(np.asarray(witness, dtype=float))
+    for indices in (np.arange(n)[None, :], replications):
+        expected = _cagr_du_texte(witness, indices, EVAL_DAYS)
+        # Le cas sépare les deux ordres : l'autre ordre diffère ici au dernier bit (sinon il ne prouve rien).
+        other_order = (np.exp(logs[indices].sum(axis=1) * (365 / EVAL_DAYS)) - 1) * 100
+        assert np.any(other_order != expected)
+        assert np.array_equal(cc.cagr_rows(logs, indices, EVAL_DAYS), expected)
+
+
+def test_un_CAGR_de_moins_100_exactement_est_retenu_jamais_ecarte() -> None:
+    """§ F.2 (e) v2.1 : « Rien d'autre n'est écarté » que le Δ* non fini — « Un CAGR de −100 %/an
+    exactement — l'exponentielle sous-déborde vers 0 — est une valeur finie et légitime, celle du pire
+    chemin : la réplication est retenue ». La série est une entrée valide (tout rendement > −1) dont chaque
+    chemin rééchantillonné sous-déborde."""
+    n = N_EVAL_POINTS - 1
+    series = [0.0005] * n
+    for i in range(0, n, 4):
+        series[i] = -1 + 1e-15
+    cc.check_returns(series, label="configuration")  # > −1 partout : pas une entrée invalide
+    bench = {"dd": [0.0] * n, "sigma": [0.0] * n}
+    replay = cc.replay_bootstrap(series, bench, seed=SEED, pair_index=0, days=EVAL_DAYS)
+    assert replay.cagr_config == -100.0
+    procedure = f2_procedure(series, bench)
+    for combination in COMBINATIONS_F2H:
+        deltas, discarded, _bound = replay.replications[combination]
+        assert discarded == 0 and len(deltas) == cc.BOOTSTRAP_B, combination
+        assert set(deltas) == {-100.0}, combination
+        assert procedure["replications"][combination]["discarded"] == 0, combination
+
+
+#: § F.2 (b) v2.1 : les quatre champs de l'environnement, dans l'ordre du texte.
+REPLAY_ENVIRONMENT_FIELDS = ("python", "numpy", "machine", "libc")
+
+
+def test_l_environnement_du_rejeu_est_celui_du_texte() -> None:
+    """§ F.2 (b) v2.1 : l'environnement est déclaré « en quatre champs, et quatre seulement » — Python,
+    `numpy`, architecture, bibliothèque C, chacun avec sa source écrite au texte ; jamais la version du
+    noyau."""
+    assert cc.REPLAY_ENVIRONMENT_KEYS == REPLAY_ENVIRONMENT_FIELDS
+    assert cc.replay_environment() == environment()
+    assert tuple(cc.replay_environment()) == REPLAY_ENVIRONMENT_FIELDS
+
+
+def test_un_CAGR_observe_non_fini_est_une_entree_invalide() -> None:
+    """§ F.2 (e) v2.1 : une série dont le CAGR observé, par le chemin du § F.2 (c), n'est pas fini est une
+    entrée invalide (§ I.1, ligne 15) — pas une réplication à écarter : l'estimation elle-même n'existe pas."""
+    series = witness_returns()
+    series[100] = math.expm1(700.0)  # fini ; × 365 / 328,8 fait déborder exp
+    with pytest.raises(cc.InvalidValueError, match="non fini"):
+        cc.replay_bootstrap(
+            series,
+            {"dd": [0.0] * len(series), "sigma": [0.0] * len(series)},
+            seed=SEED,
+            pair_index=0,
+            days=EVAL_DAYS,
+        )
+
+
+def _resuffix_block(block: dict[str, Any], suffix: str) -> dict[str, Any]:
+    """Le bloc de liquidation, ses quatre quantités en actif de base portant le suffixe demandé (§ A.7)."""
+    out = {}
+    for key, value in block.items():
+        stem = next((s for s in BASE_QUANTITY_STEMS if key.startswith(f"{s}_")), None)
+        out[f"{stem}_{suffix}" if stem is not None else key] = value
+    if "lots" in out:
+        out["lots"] = [_resuffix_block(dict(lot), suffix) for lot in out["lots"]]
+    return out
+
+
+def _identities(block: dict[str, Any]) -> dict[str, Any]:
+    spread, slippage = (Decimal(x) for x in PAIR_COSTS["BTC/USDC"])
+    return cc.liquidation_identities(
+        block,
+        spread=spread,
+        slippage=slippage,
+        taker=Decimal(TAKER),
+        end=ANCHOR,
+        where="t.liquidation",
+    )
+
+
+def test_les_quantites_en_actif_de_base_sont_celles_du_texte() -> None:
+    """§ A.7 v2.1, ligne « Comptabilité » : `amount_base`, `residual_trade_base`, `dust_written_off_base`,
+    `inventory_divergence_base` — la liste recopiée du texte, épinglée à la constante du code."""
+    assert cc.BASE_QUANTITY_STEMS == BASE_QUANTITY_STEMS
+
+
+def test_un_bloc_de_liquidation_en_base_passe_les_identites_et_la_preuve_par_lot() -> None:
+    """§ A.7 v2.1 : les clés `amount_base`, `residual_trade_base`, `dust_written_off_base`,
+    `inventory_divergence_base`, « quelle que soit la paire »."""
+    block = _resuffix_block(liquidation_segment("BTC/USDC", reference_price="30000"), "base")
+    proof = _identities(block)
+    assert proof["passed"] is True and proof["lots_present"] is True
+    assert set(proof["reported"]) >= {"dust_written_off_base", "inventory_divergence_base"}
+
+
+@pytest.mark.parametrize("suffix", ["btc", "eth", "sol"])
+def test_un_bloc_suffixe_par_un_actif_est_une_erreur_de_forme(suffix: str) -> None:
+    """§ A.7 v2.1 : « un bloc qui porte une clé suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur
+    de forme (§ I.1, ligne 2) » — le message nomme la clé `_base` attendue."""
+    block = _resuffix_block(liquidation_segment("BTC/USDC", reference_price="30000"), suffix)
+    with pytest.raises(cc.MissingEvidenceError, match="_base"):
+        _identities(block)
+
+
+#: § B.3 v2.1 : « `trades > 0` sans estampille, ou sans l'un des champs de prix (`reference_price`,
+#: `price`, `spread_pct`, `slippage_pct`) ».
+STAMP_AND_PRICE_FIELDS = ("timestamp", "reference_price", "price", "spread_pct", "slippage_pct")
+
+
+@pytest.mark.parametrize("field", STAMP_AND_PRICE_FIELDS)
+def test_un_bloc_qui_liquide_sans_estampille_ou_sans_prix_est_une_violation(field: str) -> None:
+    """§ B.3 v2.1 : « Un bloc de liquidation qui déclare `trades > 0` sans estampille, ou sans l'un des
+    champs de prix […], se contredit […]. C'est une violation — statut recalculé ≠ statut enregistré (§ I.1,
+    ligne 15), code 1 —, jamais `R1_NOT_NORMALISED` » ; « la règle vaut partout où le bloc est lu » : la
+    fonction partagée par D6 et la clause 3 lève, elle ne rend pas une preuve en échec."""
+    block = liquidation_segment("BTC/USDC", reference_price="30000")
+    assert block["trades"] > 0
+    block[field] = None
+    with pytest.raises(cc.InvalidValueError, match="contradictoire"):
+        _identities(block)
+
+
+def test_un_bloc_qui_ne_liquide_rien_porte_ses_champs_nuls_sans_contradiction() -> None:
+    """§ B.4 v2.1 : le bloc présent qui ne liquide rien (`trades == 0`, estampille nulle) n'est pas
+    contradictoire — ses identités passent, sa preuve par lot (vide) est présente."""
+    block = liquidation_segment("BTC/USDC", reference_price="30000", positions=0)
+    assert block["trades"] == 0 and all(block[f] is None for f in STAMP_AND_PRICE_FIELDS)
+    proof = _identities(block)
+    assert proof["passed"] is True and proof["lots_present"] is True
+
+
+def test_un_bloc_portant_les_deux_suffixes_est_une_erreur_de_forme() -> None:
+    """§ A.7 v2.1 : une clé suffixée par un actif est une erreur de forme même à côté de sa jumelle `_base`."""
+    block = _resuffix_block(liquidation_segment("BTC/USDC", reference_price="30000"), "base")
+    block["dust_written_off_btc"] = block["dust_written_off_base"]
+    with pytest.raises(cc.MissingEvidenceError, match="dust_written_off_base"):
+        _identities(block)
+
+
+def test_l_encart_v21_dit_ce_que_D2_mesure_sur_le_1w_de_SOL() -> None:
+    """Encart § A.8 v2.1 : « Au 2021-03-01, SOL en porte 29 (première estampille 1 w le 2020-08-17) ; la 50ᵉ
+    tombe le 2021-07-26 » — le régime 1 w exige 50 bougies."""
+    first = datetime(2020, 8, 17, tzinfo=UTC)
+    start = datetime(2021, 3, 1, tzinfo=UTC)
+    assert cc.weekly_stamps_in(first - timedelta(days=7), start) == 29
+    assert first + timedelta(weeks=49) == datetime(2021, 7, 26, tzinfo=UTC), "la 50ᵉ estampille"
+
+
+# ---------------------------------------------------------------------------
 # Fixtures synthétiques partagées (§ D.4 : « générées en code ») — importées par les autres
 # `test_c3_*.py` sous `test_scripts.test_c3_common`. Un monde synthétique conforme au contrat : une
 # fenêtre gelée, deux paires, une stratégie grid, N candidats par paire, un préfixe `train` et deux
@@ -568,11 +953,20 @@ FIRST_EXEC_STAMP = cc.first_stamp_strictly_after(WINDOW_START, EXEC_INTERVAL)  #
 SEGMENT_FUTURE = ("test", "all")
 
 
+#: § A.7 v2.1 — les quatre quantités en actif de base, suffixées `_base` quelle que soit la paire.
+BASE_QUANTITY_STEMS: tuple[str, ...] = (
+    "amount",
+    "residual_trade",
+    "dust_written_off",
+    "inventory_divergence",
+)
+
+
 def base_asset(pair: str) -> str:
-    """Les clés `*_btc` du bloc `liquidation` sont littérales pour toutes les paires (convention
-    `btc_held` du moteur) : la fixture reproduit l'export réel, pas une lecture « par actif »."""
+    """§ A.7 v2.1 : les quantités en actif de base sont suffixées `_base` **quelle que soit la paire** —
+    la fixture reproduit l'export conforme (C3b), pas la convention littérale `_btc` du moteur."""
     del pair
-    return "btc"
+    return "base"
 
 
 def nav_path(
@@ -748,14 +1142,19 @@ def observation(
     cycles: int = 40,
     positions: int = 2,
     nav: list[float] | None = None,
+    decision_timeframes: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Une entrée d'observation conforme au contrat (C1/C2), préfixe `train` + futurs optionnels."""
+    """Une entrée d'observation conforme au contrat (C1/C2), préfixe `train` + futurs optionnels ;
+    elle exporte ses séries de décision (§ A.8 D2 v2.1), par défaut celles de la stratégie des fixtures."""
     values = nav if nav is not None else nav_path(pair, index)
     reference = f"{values[-1] * 33.5:.8f}"
     entry: dict[str, Any] = {
         "strategy": strategy,
         "pair": pair,
         "params": params,
+        "decision_timeframes": list(
+            decision_timeframes if decision_timeframes is not None else DECISION_TFS
+        ),
         "effective_params": {
             "strategy_class": "SynthGrid",
             "passed_params": {**params, "pair": pair},
@@ -858,8 +1257,14 @@ def observations(manifest_payload: dict[str, Any], **kw: Any) -> dict[str, dict[
         pair = cand["pair"]
         index = counters.get(pair, 0)
         counters[pair] = index + 1
+        # § A.8 D2 v2.1 : l'observation exporte la liste effective **du candidat** — sa surcharge au
+        # manifeste, sinon la déclaration de sa stratégie.
+        effective = (
+            cand.get("decision_timeframes")
+            or manifest_payload["strategies"][cand["strategy"]]["decision_timeframes"]
+        )
         out[observation_key(cand["strategy"], pair, index)] = observation(
-            cand["strategy"], pair, cand["params"], index, **kw
+            cand["strategy"], pair, cand["params"], index, decision_timeframes=effective, **kw
         )
     return out
 
@@ -1075,7 +1480,10 @@ def test_revue_R3b_le_plus_long_run_est_pris_parmi_plusieurs_trous() -> None:
 # Évaluation synthétique (§ L.1 : C3a n'exerce les étapes 5 et 6 que sur des fixtures)
 # ---------------------------------------------------------------------------
 
+from collections.abc import Mapping, Sequence  # noqa: E402
+import copy  # noqa: E402
 from functools import cache  # noqa: E402
+import platform  # noqa: E402
 
 import numpy as np  # noqa: E402
 
@@ -1084,27 +1492,137 @@ EVAL_DAYS = (WINDOW_END - ANCHOR).total_seconds() / 86400.0  # 328.8
 SEED = 20260921
 
 
+# ---------------------------------------------------------------------------
+# § F.2 (b), (c), (d) v2.1 — la procédure d'incertitude, écrite ICI depuis le texte, et non importée du
+# noyau de `c3_common` : c'est ce que fait un producteur conforme, et le rejeu de la chaîne doit la
+# retrouver bit à bit. Une divergence entre ce texte-ci et le noyau est un défaut de l'un ou de l'autre.
+# ---------------------------------------------------------------------------
+
+#: § F.2 (b) : les longueurs de bloc, en tête `L = 21` ; § F.2 (h) : les deux appariements.
+F2_BLOCK_LENGTHS: tuple[int, ...] = (10, 21, 42)
+F2_MATCHINGS: tuple[str, ...] = ("dd", "sigma")
+
+
+def environment() -> dict[str, str]:
+    """§ F.2 (b) v2.1 et § I.2 I-C : l'environnement du tirage, « en quatre champs, et quatre seulement » —
+    `python` = `platform.python_version()`, `numpy` = `numpy.__version__`, `machine` = `platform.machine()`,
+    `libc` = « la bibliothèque et sa version, séparées par une espace, espaces de bord retirées » ; jamais la
+    version du noyau."""
+    lib, version = platform.libc_ver()
+    return {
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "machine": platform.machine(),
+        "libc": f"{lib} {version}".strip(),
+    }
+
+
+def _f2_cagr_rows(log_returns: Any, idx: Any, days: float) -> Any:
+    """§ F.2 (c) v2.1, l'expression du texte recopiée :
+    `(numpy.exp((numpy.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100` — « la somme est multipliée
+    par 365, **puis** divisée par `n_jours` » ; un débordement rend la réplication non finie (§ F.2 e)."""
+    with np.errstate(over="ignore", invalid="ignore"):
+        return (np.exp((log_returns[idx].sum(axis=1) * 365) / days) - 1) * 100
+
+
 @cache
-def _bootstrap_cached(
-    cfg: tuple[float, ...], bch: tuple[float, ...]
-) -> tuple[tuple[float, ...], int]:
+def _f2_cached(
+    cfg: tuple[float, ...],
+    bench_dd: tuple[float, ...],
+    bench_sigma: tuple[float, ...],
+    seed: int,
+    pair_index: int,
+    days: float,
+    b: int,
+) -> dict[str, Any]:
     n = len(cfg)
-    rng = np.random.default_rng([SEED, 0, 21])
-    starts = cc.block_start_indices(rng, n, 21, cc.BOOTSTRAP_B)
-    idx = cc.block_indices(starts, 21, n)
-    deltas, discarded = cc.paired_delta_stars(cfg, bch, idx, float(EVAL_DAYS))
-    return tuple(float(x) for x in deltas), discarded
+    log_cfg = np.log1p(np.asarray(cfg, dtype=float))
+    log_bench = {
+        "dd": np.log1p(np.asarray(bench_dd, dtype=float)),
+        "sigma": np.log1p(np.asarray(bench_sigma, dtype=float)),
+    }
+    # § F.2 (c) v2.1 : le même chemin, appliqué aux indices identité, donne les valeurs observées.
+    identity = np.arange(n)[None, :]
+    cagr_config = float(_f2_cagr_rows(log_cfg, identity, days)[0])
+    delta_hat = {
+        m: cagr_config - float(_f2_cagr_rows(log_bench[m], identity, days)[0]) for m in F2_MATCHINGS
+    }
+    replications: dict[str, dict[str, Any]] = {}
+    for length in F2_BLOCK_LENGTHS:
+        # § F.2 (b) v2.1 : un tirage par `L`, en un seul appel ; les mêmes indices pour la configuration,
+        # le comparateur, et les deux appariements.
+        rng = np.random.default_rng([seed, pair_index, length])
+        starts = rng.integers(0, n, size=(b, math.ceil(n / length)))
+        idx = (starts[:, :, None] + np.arange(length)).reshape(b, -1)[:, :n] % n
+        rows_config = _f2_cagr_rows(log_cfg, idx, days)
+        for matching in F2_MATCHINGS:
+            with np.errstate(invalid="ignore"):
+                delta = rows_config - _f2_cagr_rows(log_bench[matching], idx, days)
+            finite = np.isfinite(delta)
+            kept = delta[finite]
+            centre = delta_hat[matching]
+            # § F.2 (d) : LB = Δ̂ − quantile_0,95(Δ* − Δ̂), `numpy.quantile(..., method="linear")` ;
+            # § F.2 (e) v2.1 : une combinaison sans réplication retenue ne porte pas de borne.
+            bound = (
+                None
+                if kept.size == 0
+                else centre - float(np.quantile(kept - centre, 0.95, method="linear"))
+            )
+            replications[f"{length}:{matching}"] = {
+                "delta_stars": [float(x) for x in kept],
+                "discarded": int((~finite).sum()),
+                "bound": bound,
+            }
+    return {"cagr_config": cagr_config, "delta_hat": delta_hat, "replications": replications}
 
 
-def bootstrap(returns_config: list[float], returns_bench: list[float]) -> tuple[list[float], int]:
-    """Le vrai chemin numérique du § F.2 à `B = BOOTSTRAP_B`, mémoïsé par séries."""
-    deltas, discarded = _bootstrap_cached(tuple(returns_config), tuple(returns_bench))
-    return list(deltas), discarded
+def f2_procedure(
+    returns_config: Sequence[float],
+    returns_bench: Mapping[str, Sequence[float]],
+    *,
+    seed: int = SEED,
+    pair_index: int = 0,
+    days: float = EVAL_DAYS,
+    b: int = cc.BOOTSTRAP_B,
+) -> dict[str, Any]:
+    """La procédure § F.2 v2.1 d'un producteur conforme, mémoïsée par séries ; renvoie une copie profonde
+    (les tests mutent leurs artefacts) : `cagr_config`, `delta_hat` par appariement, `replications`."""
+    cached = _f2_cached(
+        tuple(float(x) for x in returns_config),
+        tuple(float(x) for x in returns_bench["dd"]),
+        tuple(float(x) for x in returns_bench["sigma"]),
+        seed,
+        pair_index,
+        days,
+        b,
+    )
+    return copy.deepcopy(cached)
+
+
+def bench_by_matching(returns_bench: Any) -> dict[str, list[float]]:
+    """Une série de comparateur (les deux appariements) ou déjà une table `{dd, sigma}`."""
+    if isinstance(returns_bench, Mapping):
+        return {m: [float(x) for x in returns_bench[m]] for m in F2_MATCHINGS}
+    return {m: [float(x) for x in returns_bench] for m in F2_MATCHINGS}
+
+
+def witness_returns(n: int = N_EVAL_POINTS - 1) -> list[float]:
+    """Le témoin d'évaluation : dérive positive à faible bruit, N(0,0005 ; 0,002), graine 11. Contre du cash,
+    mesuré par la procédure ci-dessus : CAGR ≈ 22,3 %/an et six bornes ≈ 14,6 à 17,2 points de %/an."""
+    return list(np.random.default_rng(11).normal(0.0005, 0.002, n))
 
 
 def varying_returns(seed: int, n: int = N_EVAL_POINTS - 1) -> list[float]:
     rng = np.random.default_rng(seed)
     return list(rng.normal(0.0005, 0.02, n))
+
+
+def flat_start_proof(
+    *, at: datetime = ANCHOR, cash: str = "1000", qty: str = "0", pending: int = 0
+) -> dict[str, Any]:
+    """§ B.2 v2.1 (AM-10) : « `flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}` », capturée avant le
+    traitement de la première bougie du run d'évaluation — conforme par défaut (`C` = 1000, § 0.5)."""
+    return {"at": at.isoformat(), "cash": cash, "qty": qty, "pending": pending}
 
 
 def evaluation(
@@ -1114,33 +1632,45 @@ def evaluation(
     synthetic: bool = True,
     lots: bool = True,
     liquidation: bool = True,
+    liquidation_positions: int = 2,
     single_call: bool = True,
     sufficient: bool = True,
     first_fill_at: datetime | None = ANCHOR + timedelta(minutes=EXEC_INTERVAL * 2),
     flat_start_proof: dict[str, Any] | None = None,
-    returns_bench: list[float] | None = None,
+    returns_config: list[float] | None = None,
+    returns_bench: Any = None,
+    net_pnl: float = 42.0,
     metrics: dict[str, Any] | None = None,
     bounds: dict[str, float] | None = None,
 ) -> dict[str, Any]:
-    """Un artefact d'évaluation **synthétique** de la configuration retenue, sur [T, fin] :
-    le contrat lu par c3_verdict (§ F.2, § F.8) et les blocs que c3_continuity vérifie (§ B)."""
+    """Un artefact d'évaluation **synthétique** de la configuration retenue, sur [T, fin] : le contrat lu par
+    c3_verdict (§ F.2, § F.8) et les blocs que c3_continuity vérifie (§ B). Suites, bornes, `cagr_pct` et
+    `delta_dd` sont ceux de la procédure § F.2 v2.1 (graine du manifeste, index de la paire parmi les paires
+    triées de l'univers) ; seul `net_pnl` (Q1) est déclaré. Défaut : le témoin contre du cash."""
     cand = manifest_payload["universe"]["candidates"][candidate_index]
     pair = cand["pair"]
+    pairs = sorted({c["pair"] for c in manifest_payload["universe"]["candidates"]})
     values = nav_path(pair, candidate_index + 7, N_EVAL_POINTS, drift=0.0006)
-    returns_config = varying_returns(7)
-    deltas, discarded = bootstrap(
-        returns_config, returns_bench if returns_bench is not None else [0.0] * (N_EVAL_POINTS - 1)
+    config = returns_config if returns_config is not None else witness_returns()
+    bench = bench_by_matching(
+        returns_bench if returns_bench is not None else [0.0] * (N_EVAL_POINTS - 1)
     )
-    if bounds is None:
-        bounds = {
-            f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
-        }
+    procedure = f2_procedure(
+        config,
+        bench,
+        seed=manifest_payload["uncertainty"]["seed"],
+        pair_index=pairs.index(pair),
+        days=EVAL_DAYS,
+    )
+    replicated = procedure["replications"]
+    for combination, bound in (bounds or {}).items():
+        replicated[combination]["bound"] = bound
     reference = f"{values[-1] * 33.5:.8f}"
     liq = (
         liquidation_segment(
             pair,
             reference_price=reference,
-            positions=2,
+            positions=liquidation_positions,
             lots=lots,
             timestamp=WINDOW_END - timedelta(minutes=EXEC_INTERVAL),
         )
@@ -1163,14 +1693,18 @@ def evaluation(
         "invocation": {"single_call": single_call},
         "first_fill_at": None if first_fill_at is None else first_fill_at.isoformat(),
         "flat_start_proof": flat_start_proof,
-        "returns_config": returns_config,
-        "delta_stars": deltas,
-        "discarded": discarded,
+        "returns_config": list(config),
+        "returns_bench": bench,
+        "environment": environment(),
         "B": cc.BOOTSTRAP_B,
+        "replications": replicated,
         "metrics": metrics
         if metrics is not None
-        else {"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
-        "bounds": bounds,
+        else {
+            "net_pnl": net_pnl,
+            "cagr_pct": procedure["cagr_config"],
+            "delta_dd": procedure["delta_hat"]["dd"],
+        },
     }
     return out
 

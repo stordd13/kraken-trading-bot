@@ -62,7 +62,8 @@ def test_le_temoin_sain_rend_0_et_l_ancrage_declare(tmp_path: Path) -> None:
 
 
 def test_la_table_A4_est_donnee_par_la_regle_et_pas_ecrite_en_dur(tmp_path: Path) -> None:
-    """§ A.4 : les quatre valeurs sont ce que la règle « dernière estampille <= T » donne à l'ancrage."""
+    """§ A.4 : les quatre valeurs sont ce que la règle « dernière estampille <= T » donne à l'ancrage —
+    ici l'ancrage de la fenêtre de construction v2.0 que portent les fixtures (§ A.3 v2.1, « Historique »)."""
     _, payload = _run(tmp_path, fx.manifest())
     assert payload is not None
     assert payload["admissible_stamps_by_label"] == {
@@ -88,6 +89,75 @@ def test_un_ancrage_sur_une_estampille_retient_cette_estampille(tmp_path: Path) 
     assert out["anchor"] == "2024-04-01T00:00:00+00:00"
     assert set(out["admissible_stamps_by_label"].values()) == {"2024-04-01T00:00:00+00:00"}
     assert out["first_exec_stamp_after_anchor"] == "2024-04-01T00:05:00+00:00"
+
+
+# ---------------------------------------------------------------------------
+# § A.3 et § A.4 v2.1 — la fenêtre déclarée de la première campagne (valeurs recopiées du texte)
+# ---------------------------------------------------------------------------
+
+#: § A.3 v2.1, bloc de calcul : « fenêtre déclarée (v2.1, première campagne) : 2021-03-01T00:00:00Z →
+#: 2026-06-29T00:00:00Z ⇒ T = 2024-11-22T04:48:00Z (préfixe 1362,2 j · période évaluée 583,8 j · fenêtre 1946 j) ».
+V21_WINDOW = {"start": "2021-03-01T00:00:00+00:00", "end": "2026-06-29T00:00:00+00:00"}
+V21_ANCHOR = "2024-11-22T04:48:00+00:00"
+V21_PREFIX_DAYS = 1362.2
+V21_EVALUATION_DAYS = 583.8
+V21_WINDOW_DAYS = 1946.0
+#: § A.4 v2.1, table « Dernière observation admissible à T = 2024-11-22T04:48Z ».
+V21_STAMPS = {
+    "5m": "2024-11-22T04:45:00+00:00",
+    "4h": "2024-11-22T04:00:00+00:00",
+    "1d": "2024-11-22T00:00:00+00:00",
+    "1w": "2024-11-18T00:00:00+00:00",
+}
+
+
+def _campaign_v21_manifest() -> dict[str, Any]:
+    """La fixture de campagne v2.1 : le manifeste conforme des fixtures, sur la fenêtre déclarée du § A.3 v2.1."""
+    payload = fx.manifest()
+    payload["window"] = dict(V21_WINDOW)
+    return payload
+
+
+def test_la_fenetre_de_la_premiere_campagne_donne_l_ancrage_du_texte(tmp_path: Path) -> None:
+    """§ A.3 v2.1 : T recalculé depuis la règle sur la fenêtre déclarée, sans aucun arrondi de 04:48."""
+    code, payload = _run(tmp_path, _campaign_v21_manifest())
+    assert code == 0 and payload is not None
+    assert payload["window"] == V21_WINDOW
+    assert payload["anchor"] == V21_ANCHOR, "aucun arrondi implicite de 04:48 (§ A.3)"
+    assert payload["prefix_days"] == pytest.approx(V21_PREFIX_DAYS, abs=1e-9)
+    assert payload["evaluation_days"] == pytest.approx(V21_EVALUATION_DAYS, abs=1e-9)
+    assert payload["window_days"] == V21_WINDOW_DAYS
+
+
+def test_la_table_A4_v21_est_ce_que_la_regle_donne_a_l_ancrage_v21(tmp_path: Path) -> None:
+    """§ A.4 v2.1 : les quatre estampilles admissibles à T = 2024-11-22T04:48Z (le 1 w : le lundi 18 novembre)."""
+    code, payload = _run(tmp_path, _campaign_v21_manifest())
+    assert code == 0 and payload is not None
+    assert payload["admissible_stamps_by_label"] == V21_STAMPS
+    assert payload["first_exec_stamp_after_anchor"] == "2024-11-22T04:50:00+00:00"
+
+
+def test_une_transposition_d_actif_de_base_est_refusee_a_l_ancrage(tmp_path: Path) -> None:
+    """§ A.6 v2.1 (transposition déclarée) : seule la monnaie de cotation peut différer entre paire de validation
+    et paire de déploiement ; un autre actif de base est une erreur d'entrée — code 2, rien d'écrit (§ I.1 l.2)."""
+    payload = fx.manifest()
+    payload["universe"]["deployment_pairs"] = {"BTC/USDC": "ETH/USDT"}
+    code, out = _run(tmp_path, payload)
+    assert code == 2 and out is None
+    assert not (tmp_path / "variants.json").exists()
+    payload["universe"]["deployment_pairs"] = {"BTC/USDC": "BTC/USDT"}
+    code, out = _run(tmp_path, payload)
+    assert code == 0 and out is not None, "la transposition de cotation seule est admise"
+
+
+def test_un_ancrage_ecrit_dans_le_manifeste_n_est_jamais_lu(tmp_path: Path) -> None:
+    """§ A.3 : « T est recalculé par l'outil depuis la règle, jamais accepté comme paramètre libre » — une clé
+    d'ancrage déclarée en dur dans le manifeste est ignorée (elle change l'empreinte, pas T)."""
+    payload = _campaign_v21_manifest()
+    payload["anchor"] = "2025-01-01T00:00:00+00:00"
+    code, out = _run(tmp_path, payload)
+    assert code == 0 and out is not None
+    assert out["anchor"] == V21_ANCHOR and out["anchor"] != payload["anchor"]
 
 
 # ---------------------------------------------------------------------------

@@ -35,6 +35,7 @@ REAL_OBSERVATIONS = _project_root / "results" / "rejeu_grid_20260919" / "P7_phas
 REAL_DIR = _project_root / "results" / "c3a_entry_validation"
 REAL_MANIFEST = REAL_DIR / "manifest_rejeu_grid_20260919.json"
 REAL_ENTRY = REAL_DIR / "entry_rejeu_grid_20260919.json"
+REAL_ANCHOR = REAL_DIR / "anchor_rejeu_grid_20260919.json"
 
 
 def _anchor(w: dict[str, Any]) -> None:
@@ -80,7 +81,7 @@ def _entry_argv(
 def _run(w: dict[str, Any], **kw: Any) -> tuple[int, dict[str, Any]]:
     code = ce.main(_entry_argv(w, **kw))
     out = w["manifest"].parent / kw.get("output", "entry.json")
-    assert out.exists(), "c3_entry écrit toujours son artefact (§ I.1 l.1558)"
+    assert out.exists(), "c3_entry écrit toujours son artefact (§ I.1 l.1858, v2.1)"
     return code, cc.read_json(out)
 
 
@@ -335,6 +336,24 @@ def test_chaque_bloc_mal_type_refuse_l_entree_a_la_forme(
     assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
 
 
+def test_un_bloc_de_liquidation_suffixe_par_un_actif_refuse_l_entree_a_la_forme(
+    tmp_path: Path,
+) -> None:
+    """§ A.7 v2.1 : « un bloc qui porte une clé suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur
+    de forme (§ I.1, ligne 2) » — refus d'entrée à I-A.1, le détail nomme la clé `_base` attendue."""
+    w = _sound(tmp_path)
+
+    def to_btc(obs: dict[str, Any]) -> None:
+        for entry in obs.values():
+            for segment, block in entry["liquidation"].items():
+                entry["liquidation"][segment] = fx._resuffix_block(block, "btc")
+
+    _mutate_observations(w, to_btc)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+    assert "_base" in payload["refusal"]["detail"]
+
+
 def test_un_segment_futur_malforme_refuse_l_entree(tmp_path: Path) -> None:
     """§ A.12 : les futurs restent présents et bien formés — un futur cassé est une erreur de forme."""
     w = _sound(tmp_path)
@@ -457,6 +476,74 @@ def test_sufficient_declare_contredit_par_le_recalcul_est_une_violation(tmp_path
     code, payload = _run(w)
     assert code == 1 and payload["invalide"] is True
     assert any("sufficient" in v and "recalculé" in v for v in payload["violations"])
+
+
+# ---------------------------------------------------------------------------
+# § A.8 D2 v2.1 (AM-07) — la liste des timeframes de décision est exportée par l'observation et recoupée
+# ---------------------------------------------------------------------------
+
+
+def test_une_observation_sans_decision_timeframes_refuse_l_entree_a_la_forme(
+    tmp_path: Path,
+) -> None:
+    """§ A.8 D2 v2.1 : « Une observation sans `decision_timeframes` est une erreur d'entrée (§ I.1, ligne 2) :
+    D2 ne peut pas être mesurée sur une liste absente »."""
+    w = _sound(tmp_path)
+    _mutate_observations(w, lambda obs: _first(obs).pop("decision_timeframes", None))
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+    assert "decision_timeframes" in payload["refusal"]["detail"]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [[], ["4h", "4h"], ["2h"], "4h", [4], None],
+    ids=["vide", "doublon", "étiquette hors data.timeframes", "chaîne", "entier", "null"],
+)
+def test_une_liste_de_decision_mal_formee_refuse_l_entree_a_la_forme(
+    tmp_path: Path, value: Any
+) -> None:
+    """§ A.8 D2 v2.1 : la liste exportée est une suite **non vide d'étiquettes distinctes** de `data.timeframes` ;
+    toute autre forme est une erreur d'entrée (§ I.1, ligne 2)."""
+    w = _sound(tmp_path)
+    _mutate_observations(w, lambda obs: _first(obs).__setitem__("decision_timeframes", value))
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+
+
+def test_une_liste_exportee_differente_de_la_liste_du_manifeste_est_une_violation(
+    tmp_path: Path,
+) -> None:
+    """§ A.8 D2 v2.1 : « un désaccord entre la liste exportée et la liste déclarée est une violation (§ I.1,
+    ligne 15), jamais un arbitrage » — ici `("4h",)` exporté contre `("4h", "1d", "1w")` déclaré."""
+    w = _sound(tmp_path)
+    _mutate_observations(w, lambda obs: _first(obs).__setitem__("decision_timeframes", ["4h"]))
+    code, payload = _run(w)
+    assert code == 1 and payload["invalide"] is True
+    assert any("decision_timeframes" in v for v in payload["violations"])
+
+
+def test_la_liste_exportee_se_compare_en_ensemble(tmp_path: Path) -> None:
+    """§ A.8 D2 v2.1 : la liste nomme les séries qui alimentent une porte ; son ordre ne porte aucun sens."""
+    w = _sound(tmp_path)
+    _mutate_observations(
+        w, lambda obs: _first(obs).__setitem__("decision_timeframes", ["1w", "4h", "1d"])
+    )
+    code, payload = _run(w)
+    assert code == 0 and payload["violations"] == []
+
+
+def test_la_liste_exportee_se_compare_a_celle_du_candidat_apparie(tmp_path: Path) -> None:
+    """§ A.8 D2 v2.1 : la liste effective est celle **du candidat** — sa surcharge dans le manifeste, sinon la
+    déclaration de sa stratégie — jamais celle d'un autre candidat de la même stratégie."""
+    payload = fx.manifest()
+    # Le premier candidat surcharge la liste de sa stratégie ; les suivants, de même stratégie, ne la
+    # surchargent pas : chacun exporte sa propre liste effective, et aucune n'est comparée à celle d'un voisin.
+    payload["universe"]["candidates"][0]["decision_timeframes"] = ["4h", "1d"]
+    w = fx.world(tmp_path, payload)
+    _anchor(w)
+    code, out = _run(w)
+    assert code == 0 and out["violations"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -606,54 +693,63 @@ def test_entrees_illisibles_sortent_2_sans_ecrire(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# La sortie réelle : refus de l'artefact du rejeu (§ D.3), reproduit contre les fichiers committés
+# La sortie réelle de C3a : refus de l'artefact du rejeu (§ D.3) — un fait historique sous v2.0
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.skipif(
-    not (REAL_OBSERVATIONS.exists() and REAL_MANIFEST.exists() and REAL_ENTRY.exists()),
+    not (
+        REAL_OBSERVATIONS.exists()
+        and REAL_MANIFEST.exists()
+        and REAL_ENTRY.exists()
+        and REAL_ANCHOR.exists()
+    ),
     reason="artefact du rejeu ou livrable réel absent",
 )
-def test_l_artefact_du_rejeu_est_refuse_D_WARMUP_PREFIX_et_intact(tmp_path: Path) -> None:
-    before = cc.file_sha256(REAL_OBSERVATIONS)
-    w = {
-        "manifest": REAL_MANIFEST,
-        "registry": tmp_path / "variants.json",
-        "anchor": tmp_path / "anchor.json",
-        "observations": REAL_OBSERVATIONS,
-        "coverage": tmp_path / "none.json",
-    }
-    _anchor(w)
-    argv = _entry_argv(w, coverage=False, output="entry.json")
-    argv[argv.index("--output") + 1] = str(tmp_path / "entry.json")
-    code = ce.main(argv)
-    payload = cc.read_json(tmp_path / "entry.json")
-    assert code == 2
-    assert (
-        payload["refusal"]["reason"] == "D_WARMUP_PREFIX"
-        and payload["refusal"]["scope"] == "artefact"
+def test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """En-tête v2.1 : « le sha256 de v2.0 reste celui que porte tout manifeste C3a ; un manifeste v2.1 est une
+    nouvelle variante (§ A.6) ». Le refus de l'artefact du rejeu (§ D.3) a été produit sous v2.0 : le livrable
+    committé est cohérent avec lui-même et intact, et l'ancrage courant, qui asserte le sha256 du protocole parmi
+    les valeurs gelées (§ A.6), refuse de le rejouer — code 2, rien d'écrit (§ I.1, ligne 2)."""
+    declared = cc.read_json(REAL_MANIFEST)["protocol_sha256"]
+    committed_anchor = cc.read_json(REAL_ANCHOR)
+    committed_entry = cc.read_json(REAL_ENTRY)
+    # Le livrable historique est cohérent : un seul protocole, celui que le manifeste déclare.
+    assert committed_anchor["protocole"]["sha256"] == declared
+    assert committed_entry["protocole"]["sha256"] == declared
+    # Ce qu'il établit, lu dans le fichier (§ D.3) — jamais recalculé ici.
+    refusal = committed_entry["refusal"]
+    assert (refusal["reason"], refusal["scope"], refusal["assertion"]) == (
+        "D_WARMUP_PREFIX",
+        "artefact",
+        "I-A.8",
     )
-    assert payload["refusal"]["assertion"] == "I-A.8"
-    assert payload["n_candidates"] == 96 and payload["n_candidates_d2_failed"] == 96
-    assert {n["assertion"] for n in payload["not_assertable"]} == {"I-A.2", "I-A.7"}
-    assert payload["sentence"] == cc.NON_RECEVABLE_SENTENCE
-    assert payload["run_scope"], "la portée du run réel est dite dans l'artefact"
-    assert cc.file_sha256(REAL_OBSERVATIONS) == before, "l'artefact du rejeu reste intact"
-    committed = cc.read_json(REAL_ENTRY)
-    for key in (
-        "assertions",
-        "refusal",
-        "candidate_diagnostics",
-        "not_assertable",
-        "n_candidates",
-        "run_scope",
-        "universe_provenance",
-        "exit_code",
-    ):
-        assert payload[key] == committed[key], key
-    # Le chemin des observations est celui de l'invocation ; seule l'empreinte est comparable.
-    assert payload["observations"]["sha256"] == committed["observations"]["sha256"]
-    assert payload["observations"]["sha256"] == before
+    assert committed_entry["n_candidates"] == 96 and committed_entry["n_candidates_d2_failed"] == 96
+    assert committed_entry["exit_code"] == 2 and committed_entry["ok"] is False
+    assert committed_entry["sentence"] == cc.NON_RECEVABLE_SENTENCE
+    # L'artefact du rejeu est intact.
+    assert cc.file_sha256(REAL_OBSERVATIONS) == committed_entry["observations"]["sha256"]
+    # Le protocole courant n'est plus celui que ce manifeste déclare : l'ancrage refuse de le rejouer.
+    assert cc.protocol_descriptor()["sha256"] != declared, "le protocole courant est v2.1, pas v2.0"
+    out = tmp_path / "anchor.json"
+    registry = tmp_path / "variants.json"
+    code = ca.main(
+        [
+            "--manifest",
+            str(REAL_MANIFEST),
+            "--registry",
+            str(registry),
+            "--output",
+            str(out),
+            "--now",
+            fx.NOW,
+        ]
+    )
+    assert code == 2
+    assert not out.exists() and not registry.exists(), "un refus n'écrit rien (§ I.1, ligne 2)"
+    assert "protocol_sha256" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------
