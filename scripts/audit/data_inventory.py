@@ -48,15 +48,21 @@ Conventions fixées ici (et rapportées comme telles)
   ``[2022-01-01, 2023-07-01)``. « Même événement » : les deux bornes du trou d'un timeframe sont à
   au plus **un pas de ce timeframe** des bornes du trou de la série la plus fine (1 min).
 * Les seuils 14 / 50 / 200 sont des paramètres d'exploration, pas des exigences.
+* **``--pairs`` (2026-09-23)** restreint l'inventaire aux paires demandées, sur tous les exchanges,
+  sans changer la mesure (mêmes requêtes, mêmes trous) ; le filtre est inscrit dans l'artefact (clé
+  ``pairs``) et dans l'en-tête Markdown. Sans filtre, l'artefact est inchangé octet à octet
+  (reproductibilité de l'inventaire du 22/09). Une paire demandée sans aucune série en base est un
+  défaut d'entrée : code 2, rien publié.
 
 Usage::
 
     poetry run python scripts/audit/data_inventory.py \\
         --now 2026-09-22T21:00:00Z \\
         --output results/data_inventory_20260923/inventory.json \\
-        --markdown results/data_inventory_20260923/inventory.md [--skip-vision]
+        --markdown results/data_inventory_20260923/inventory.md [--skip-vision] \\
+        [--pairs BTC/USDT,ETH/USDT,SOL/USDT]
 
-Codes de sortie : 0 ok ; 2 usage ou base injoignable.
+Codes de sortie : 0 ok ; 2 usage, base injoignable, ou paire demandée sans série (``--pairs``).
 """
 
 from __future__ import annotations
@@ -363,6 +369,25 @@ def same_event(
     }
 
 
+def filter_series(
+    series: Sequence[Mapping[str, Any]], pairs: Sequence[str] | None
+) -> list[Mapping[str, Any]]:
+    """Restreint les séries aux paires demandées, sur tous les exchanges, sans toucher à la mesure.
+
+    ``None`` = pas de filtre (identité). Une paire demandée sans aucune série en base est un défaut
+    d'entrée (``ValueError``) : un inventaire vide qui « passe » ne prouve rien.
+    """
+    if pairs is None:
+        return list(series)
+    wanted = list(pairs)
+    present = {row["pair"] for row in series}
+    absent = [pair for pair in wanted if pair not in present]
+    if absent:
+        raise ValueError(f"no series in market_data_ohlc for pair(s): {', '.join(absent)}")
+    keep = set(wanted)
+    return [row for row in series if row["pair"] in keep]
+
+
 # ---------------------------------------------------------------------------
 # Artefact — pur, l'horloge est injectée
 # ---------------------------------------------------------------------------
@@ -551,10 +576,16 @@ def build_artifact(
     generated_at: datetime,
     vision: Mapping[str, Any] | None,
     session_info: Mapping[str, Any] | None = None,
+    pairs: Sequence[str] | None = None,
 ) -> dict[str, Any]:
-    """L'artefact ``inventory.json``. Pur : horloge, rows et sondes HTTP sont injectées."""
+    """L'artefact ``inventory.json``. Pur : horloge, rows et sondes HTTP sont injectées.
+
+    ``pairs`` (optionnel) restreint les séries via :func:`filter_series` et s'inscrit dans l'artefact
+    sous la clé ``pairs`` ; sans filtre la clé est absente et l'artefact est inchangé.
+    """
     now = _as_utc(generated_at)
-    return {
+    series = filter_series(series, pairs)
+    artifact: dict[str, Any] = {
         "generated_at": now.isoformat(),
         "observation_bound": now.isoformat(),
         "db_session": dict(session_info) if session_info else None,
@@ -592,6 +623,9 @@ def build_artifact(
         },
         "fact5_warmup": _fact5(series),
     }
+    if pairs is not None:
+        artifact["pairs"] = list(pairs)
+    return artifact
 
 
 # ---------------------------------------------------------------------------
@@ -888,6 +922,11 @@ def _fact5_md(artifact: Mapping[str, Any]) -> list[str]:
 
 def render_markdown(artifact: Mapping[str, Any], *, json_sha256: str, json_name: str) -> str:
     session = artifact.get("db_session") or {}
+    pairs_note = (
+        " · paires `" + ", ".join(artifact["pairs"]) + "` (`--pairs`)"
+        if "pairs" in artifact
+        else ""
+    )
     lines = [
         "# Inventaire de données — trous USDC 2022-2023, couverture par exchange, "
         "arithmétique d'amorçage",
@@ -896,7 +935,7 @@ def render_markdown(artifact: Mapping[str, Any], *, json_sha256: str, json_name:
         f"`timestamp <= {artifact['observation_bound']}` · lecture seule "
         f"(`transaction_read_only = {session.get('transaction_read_only', '?')}`, "
         f"`statement_timeout = {session.get('statement_timeout', '?')}`) · "
-        f"`{json_name}` sha256 `{json_sha256}`",
+        f"`{json_name}` sha256 `{json_sha256}`" + pairs_note,
         "",
         "Conventions : estampilles en fin de période (`timestamp = open + interval`) ; trous "
         "détectés côté SQL par `LAG` ; bougies manquantes = (fin − début) / pas − 1 ; pas "
@@ -1078,7 +1117,21 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Optionnel : P7_phase1_grid.json du rejeu ; recoupe warmup.train BTC sur stdout.",
     )
+    parser.add_argument(
+        "--pairs",
+        type=str,
+        default=None,
+        help=(
+            "Optionnel : paires à inventorier, séparées par des virgules (ex. BTC/USDT,ETH/USDT), sur "
+            "tous les exchanges ; défaut : toutes les séries. Inscrit dans l'artefact (clé pairs)."
+        ),
+    )
     args = parser.parse_args(argv)
+    if args.pairs is not None:
+        pairs = [pair.strip() for pair in args.pairs.split(",") if pair.strip()]
+        if not pairs:
+            parser.error("--pairs: at least one pair is required")
+        args.pairs = pairs
     if args.now is None:
         args.generated_at = datetime.now(UTC).replace(microsecond=0)
     else:
@@ -1120,10 +1173,21 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     series = collected["series"]
     print(f"  {len(series)} séries agrégées, borne timestamp <= {args.generated_at.isoformat()}")
+    try:
+        series = filter_series(series, args.pairs)
+    except ValueError as exc:  # paire demandée sans série = erreur d'entrée, code 2, rien publié
+        print(f"--pairs: {exc}", file=sys.stderr)
+        return 2
+    if args.pairs is not None:
+        print(f"  filtre --pairs {', '.join(args.pairs)} : {len(series)} séries retenues")
 
     vision = None if args.skip_vision else probe_vision()
     artifact = build_artifact(
-        series, generated_at=args.generated_at, vision=vision, session_info=collected["session"]
+        series,
+        generated_at=args.generated_at,
+        vision=vision,
+        session_info=collected["session"],
+        pairs=args.pairs,
     )
     digest = rc.write_json(args.output, artifact)
     print(f"inventory.json written: {args.output} (sha256 {digest})")
