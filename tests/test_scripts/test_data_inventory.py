@@ -370,3 +370,148 @@ def test_build_artifact_is_deterministic_for_the_same_inputs() -> None:
     assert a == b
     assert a["generated_at"] == "2026-09-22T21:00:00+00:00"
     assert a["fact4_vision"]["skipped"] is True
+
+
+# ---------------------------------------------------------------------------
+# Pair filter (``--pairs``) — added 2026-09-23 for the post-import inventory of the USDT series.
+# Written adverse first: every test below was red against the 8fdaa2a tree (no ``--pairs``,
+# no ``filter_series``). Expected values come from the brief « import des paires USDT » step 4
+# (« relancé sur les trois paires USDT … sans changer la mesure ») and from the reproducibility
+# property of the 2026-09-22 artifact (``results/INDEX.md``: deux passages identiques octet à
+# octet) — an unfiltered run must keep producing the same JSON, so the filter is recorded only
+# when one is given.
+# ---------------------------------------------------------------------------
+
+
+def _series_row(exchange: str, pair: str, interval: int = 1440) -> dict:
+    stamps = _grid(T0, 30, DAY)
+    return {
+        "exchange": exchange,
+        "pair": pair,
+        "interval": interval,
+        "first": stamps[0],
+        "last": stamps[-1],
+        "count": len(stamps),
+        "holes": [],
+        "count_2022_2023": 0,
+        "first_2022_2023": None,
+        "last_2022_2023": None,
+    }
+
+
+_NOW = datetime(2026, 9, 23, 12, tzinfo=UTC)
+
+
+def test_parse_args_without_pairs_filters_nothing() -> None:
+    args = di.parse_args(["--now", "2026-09-23T12:00:00Z", "--skip-vision"])
+    assert args.pairs is None
+
+
+def test_parse_args_pairs_is_a_comma_separated_list_stripped() -> None:
+    args = di.parse_args(
+        ["--pairs", "BTC/USDT, ETH/USDT,SOL/USDT", "--now", "2026-09-23T12:00:00Z"]
+    )
+    assert args.pairs == ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+
+
+def test_parse_args_empty_pairs_is_a_usage_error() -> None:
+    with pytest.raises(SystemExit) as exc:
+        di.parse_args(["--pairs", " , ", "--now", "2026-09-23T12:00:00Z"])
+    assert exc.value.code == 2
+
+
+def test_filter_series_keeps_only_the_requested_pairs_on_every_exchange() -> None:
+    """The filter is by pair, whatever the exchange: fact 3 (kraken / bybit) is filtered too."""
+    series = [
+        _series_row("binance", "BTC/USDC"),
+        _series_row("binance", "BTC/USDT"),
+        _series_row("binance", "BTC/USDT", 240),
+        _series_row("bybit", "BTC/USDC"),
+        _series_row("kraken", "XBT/USDC"),
+    ]
+    kept = di.filter_series(series, ["BTC/USDT"])
+    assert [(s["exchange"], s["pair"], s["interval"]) for s in kept] == [
+        ("binance", "BTC/USDT", 1440),
+        ("binance", "BTC/USDT", 240),
+    ]
+    assert all(k is s for k, s in zip(kept, series[1:3], strict=True))
+
+
+def test_filter_series_without_filter_is_the_identity() -> None:
+    series = [_series_row("binance", "BTC/USDC"), _series_row("bybit", "BTC/USDC")]
+    assert di.filter_series(series, None) == series
+
+
+def test_filter_series_refuses_a_pair_with_no_series() -> None:
+    """A requested pair absent from the base is an input defect, never a silent empty inventory
+    (a presence check that passes — see the 4 occurrences recorded in memory)."""
+    series = [_series_row("binance", "BTC/USDT")]
+    with pytest.raises(ValueError, match="ETH/USDT"):
+        di.filter_series(series, ["BTC/USDT", "ETH/USDT"])
+
+
+def test_unfiltered_artifact_is_unchanged_and_filtered_artifact_records_the_filter() -> None:
+    series = [_series_row("binance", "BTC/USDC"), _series_row("binance", "BTC/USDT")]
+    unfiltered = di.build_artifact(series, generated_at=_NOW, vision=None)
+    assert "pairs" not in unfiltered
+    assert sorted(unfiltered["fact1_binance"]) == ["BTC/USDC", "BTC/USDT"]
+    filtered = di.build_artifact(series, generated_at=_NOW, vision=None, pairs=["BTC/USDT"])
+    assert filtered["pairs"] == ["BTC/USDT"]
+    assert list(filtered["fact1_binance"]) == ["BTC/USDT"]
+    assert list(filtered["fact2_usdc_hole"]) == ["BTC/USDT"]
+    assert list(filtered["fact5_warmup"]) == ["BTC/USDT"]
+    # the measure itself is unchanged: the kept series is described identically in both artifacts
+    assert filtered["fact1_binance"]["BTC/USDT"] == unfiltered["fact1_binance"]["BTC/USDT"]
+
+
+def test_build_artifact_with_an_absent_pair_raises() -> None:
+    series = [_series_row("binance", "BTC/USDT")]
+    with pytest.raises(ValueError, match="SOL/USDT"):
+        di.build_artifact(series, generated_at=_NOW, vision=None, pairs=["SOL/USDT"])
+
+
+def test_markdown_header_names_the_filter_only_when_one_is_given() -> None:
+    series = [_series_row("binance", "BTC/USDC"), _series_row("binance", "BTC/USDT")]
+    unfiltered = di.build_artifact(series, generated_at=_NOW, vision=None)
+    filtered = di.build_artifact(series, generated_at=_NOW, vision=None, pairs=["BTC/USDT"])
+    md_unfiltered = di.render_markdown(unfiltered, json_sha256="x" * 64, json_name="inventory.json")
+    md_filtered = di.render_markdown(filtered, json_sha256="x" * 64, json_name="inventory.json")
+    header_unfiltered = md_unfiltered.splitlines()[2]
+    header_filtered = md_filtered.splitlines()[2]
+    assert "paires" not in header_unfiltered
+    assert "paires `BTC/USDT`" in header_filtered
+    assert "| BTC/USDC |" not in md_filtered
+    assert "| BTC/USDT |" in md_filtered
+
+
+def test_main_exits_2_and_writes_nothing_when_a_requested_pair_has_no_series(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Exit code 2 = input error (module docstring « Codes de sortie ») ; no artifact is published."""
+
+    async def fake_collect(now: datetime) -> dict:
+        return {
+            "series": [_series_row("binance", "BTC/USDT")],
+            "session": {"transaction_read_only": "on", "statement_timeout": "5min"},
+        }
+
+    monkeypatch.setattr(di, "collect", fake_collect)
+    monkeypatch.setattr(di, "load_dotenv", lambda *_a, **_k: False)
+    out = tmp_path / "inventory.json"
+    rc = di.main(
+        [
+            "--pairs",
+            "BTC/USDT,ETH/USDT",
+            "--skip-vision",
+            "--now",
+            "2026-09-23T12:00:00Z",
+            "--output",
+            str(out),
+            "--markdown",
+            str(tmp_path / "inventory.md"),
+        ]
+    )
+    assert rc == 2
+    assert not out.exists()
+    assert not (tmp_path / "inventory.md").exists()
+    assert "ETH/USDT" in capsys.readouterr().err
