@@ -1,0 +1,10 @@
+=== 2026-09-23T12:26:12Z canari start on 373da3f2c471915251772ef5f3569c81b8fe5c3f (dev)
+2026-09-23 12:26:14 [info     ] import_plan                    intervals=['1d'] months_count=1 pairs=['BTC/USDT'] total_files=1
+2026-09-23 12:26:14 [info     ] initializing_database          echo=False max_overflow=10 pool_size=5
+2026-09-23 12:26:14 [info     ] database_connection_successful
+2026-09-23 12:26:14 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-01.zip
+2026-09-23 12:26:14 [info     ] imported_batch                 batch=1/1 interval=1d month=1 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:26:14 [info     ] imported                       batches=1 interval=1d month=1 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:26:14 [info     ] database_closed
+2026-09-23 12:26:14 [info     ] import_complete                failed_files=0 processed_files=1 total_rows=31
+=== 2026-09-23T12:26:14Z canari exit=0

@@ -1,0 +1,6 @@
+=== 2026-09-23T12:24:41Z backup start -> /home/bruno/backups/krakenbot/krakenbot_20260923_pre_usdt2019.dump ; df: 53G free
+=== 2026-09-23T12:25:55Z pg_dump rc=0
+-rw-rw-r-- 1 bruno bruno 319059235 Sep 23 12:25 /home/bruno/backups/krakenbot/krakenbot_20260923_pre_usdt2019.dump
+2c94e92fac53ed72f84f721e26bd713f58801374f28c4e6fb28d4b31601eb2ec  /home/bruno/backups/krakenbot/krakenbot_20260923_pre_usdt2019.dump
+pg_restore --list entries: 1188
+=== 2026-09-23T12:25:56Z backup end rc=0 ; df: 52G free
