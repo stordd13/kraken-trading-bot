@@ -221,7 +221,8 @@ class EntryRefusedError(MissingEvidenceError):
 #: ``flat_start_proof`` et ``first_fill_at`` (§ B.2 et § B.6, non vérifiables sous les artefacts
 #: actuels) ; ``decision_timeframes`` (surcharge par candidat de la déclaration par stratégie) ;
 #: ``exec_interval`` (porteur de l'intervalle d'exécution dans une observation — absent de l'export
-#: réel, D5 le consigne ``not_assertable``) ; ``run_scope`` (note de portée d'un manifeste réel).
+#: réel, D5 le consigne ``not_assertable``) ; ``run_scope`` (note de portée d'un manifeste réel) ;
+#: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative).
 OPTIONAL_FIELDS: frozenset[str] = frozenset(
     {
         "estimability",
@@ -233,6 +234,7 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
         "decision_timeframes",
         "exec_interval",
         "run_scope",
+        "deployment_pairs",
     }
 )
 
@@ -1053,6 +1055,8 @@ class Manifest:
     research_log_entry: str
     protocol_sha256: str
     run_scope: str | None
+    #: § A.6 v2.1 — paire de validation → paire de déploiement ; même actif de base, autre cotation.
+    deployment_pairs: Mapping[str, str]
 
     @property
     def capital(self) -> Decimal:
@@ -1160,6 +1164,9 @@ def load_manifest(raw: Any) -> Manifest:
             )
         seen.add(identity)
         candidates.append(Candidate(strategy, pair, params, identity, tfs))
+    deployment_pairs = _deployment_pairs(
+        universe, {c.pair for c in candidates}, where=f"{where}.universe"
+    )
     rule = require_mapping(raw, "selection_rule", where=where)
     require_str(rule, "text", where=f"{where}.selection_rule")
     thresholds_block = require_mapping(rule, "thresholds", where=f"{where}.selection_rule")
@@ -1232,7 +1239,51 @@ def load_manifest(raw: Any) -> Manifest:
         research_log_entry=research_log_entry,
         protocol_sha256=protocol_sha,
         run_scope=run_scope,
+        deployment_pairs=deployment_pairs,
     )
+
+
+def _pair_parts(pair: str, *, where: str) -> tuple[str, str]:
+    """`BASE/COTATION`, deux parties non vides — la forme d'une paire du projet (`BTC/USDC`)."""
+    parts = pair.split("/")
+    if len(parts) != 2 or not all(parts):
+        raise MissingEvidenceError(f"{where}: {pair!r} n'a pas la forme BASE/COTATION (§ A.6)")
+    return parts[0], parts[1]
+
+
+def _deployment_pairs(
+    universe: Mapping[str, Any], universe_pairs: set[str], *, where: str
+) -> dict[str, str]:
+    """§ A.6 v2.1, transposition déclarée : par paire de l'univers, une paire de déploiement distincte
+    **quand, et seulement quand, l'actif de base est le même et seule la monnaie de cotation diffère**.
+    Facultative ; tout autre couple est une erreur d'entrée (§ I.1, ligne 2). Aucune autre lecture : la
+    déclaration entre dans l'empreinte de la variante par le manifeste haché, jamais dans l'identité
+    d'un candidat (§ A.2)."""
+    block = optional_mapping(universe, "deployment_pairs", where=where)
+    if block is None:
+        return {}
+    dwhere = f"{where}.deployment_pairs"
+    declared: dict[str, str] = {}
+    for validation in block:
+        deployment = require_str(block, validation, where=dwhere)
+        if validation not in universe_pairs:
+            raise MissingEvidenceError(
+                f"{dwhere}: {validation!r} n'est pas une paire de l'univers (§ A.6)"
+            )
+        base, quote = _pair_parts(validation, where=dwhere)
+        target_base, target_quote = _pair_parts(deployment, where=f"{dwhere}.{validation}")
+        if target_base != base:
+            raise MissingEvidenceError(
+                f"{dwhere}.{validation}: actif de base {target_base!r} ≠ {base!r} — seule la monnaie "
+                "de cotation peut différer (§ A.6)"
+            )
+        if target_quote == quote:
+            raise MissingEvidenceError(
+                f"{dwhere}.{validation}: même monnaie de cotation {quote!r} — ce n'est pas une "
+                "transposition (§ A.6)"
+            )
+        declared[validation] = deployment
+    return declared
 
 
 def _timeframe_labels(

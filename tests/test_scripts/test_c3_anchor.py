@@ -137,6 +137,19 @@ def test_la_table_A4_v21_est_ce_que_la_regle_donne_a_l_ancrage_v21(tmp_path: Pat
     assert payload["first_exec_stamp_after_anchor"] == "2024-11-22T04:50:00+00:00"
 
 
+def test_une_transposition_d_actif_de_base_est_refusee_a_l_ancrage(tmp_path: Path) -> None:
+    """§ A.6 v2.1 (transposition déclarée) : seule la monnaie de cotation peut différer entre paire de validation
+    et paire de déploiement ; un autre actif de base est une erreur d'entrée — code 2, rien d'écrit (§ I.1 l.2)."""
+    payload = fx.manifest()
+    payload["universe"]["deployment_pairs"] = {"BTC/USDC": "ETH/USDT"}
+    code, out = _run(tmp_path, payload)
+    assert code == 2 and out is None
+    assert not (tmp_path / "variants.json").exists()
+    payload["universe"]["deployment_pairs"] = {"BTC/USDC": "BTC/USDT"}
+    code, out = _run(tmp_path, payload)
+    assert code == 0 and out is not None, "la transposition de cotation seule est admise"
+
+
 def test_un_ancrage_ecrit_dans_le_manifeste_n_est_jamais_lu(tmp_path: Path) -> None:
     """§ A.3 : « T est recalculé par l'outil depuis la règle, jamais accepté comme paramètre libre » — une clé
     d'ancrage déclarée en dur dans le manifeste est ignorée (elle change l'empreinte, pas T)."""

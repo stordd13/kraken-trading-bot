@@ -152,6 +152,7 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "decision_timeframes",
             "exec_interval",
             "run_scope",
+            "deployment_pairs",
         }
     )
     assert cc.NULLABLE_FIELDS == frozenset(
@@ -418,6 +419,53 @@ def test_require_str_refuse_hors_liste_close() -> None:
     with pytest.raises(cc.MissingEvidenceError, match="hors liste close"):
         cc.require_str({"p": "propre"}, "p", where="t", allowed=cc.PROVENANCES)
     assert cc.require_str({"p": "clean"}, "p", where="t", allowed=cc.PROVENANCES) == "clean"
+
+
+# ---------------------------------------------------------------------------
+# § A.6 v2.1 — transposition déclarée (AM-04) : validation sur une paire, déploiement sur une autre
+# ---------------------------------------------------------------------------
+
+
+def _with_deployment(mapping: object) -> dict[str, Any]:
+    payload = manifest()
+    payload["universe"]["deployment_pairs"] = mapping
+    return payload
+
+
+def test_une_transposition_de_cotation_entre_dans_l_empreinte_pas_dans_l_identite() -> None:
+    """§ A.6 v2.1 : « la paire de déploiement entre dans le manifeste, donc dans l'empreinte de la variante, et
+    **n'entre pas** dans l'identité du candidat » (§ A.2 : `pair = paire de validation`)."""
+    bare = manifest()
+    declared = _with_deployment({"BTC/USDC": "BTC/USDT"})
+    loaded = cc.load_manifest(declared)
+    assert dict(loaded.deployment_pairs) == {"BTC/USDC": "BTC/USDT"}
+    assert dict(cc.load_manifest(bare).deployment_pairs) == {}, (
+        "aucune transposition n'est présumée"
+    )
+    assert cc.sig(declared) != cc.sig(bare)
+    assert [c.identity for c in loaded.candidates] == [
+        c.identity for c in cc.load_manifest(bare).candidates
+    ]
+
+
+@pytest.mark.parametrize(
+    ("mapping", "fragment"),
+    [
+        pytest.param({"BTC/USDC": "ETH/USDT"}, "actif de base", id="actif de base différent"),
+        pytest.param({"BTC/USDC": "BTC/USDC"}, "même monnaie de cotation", id="même paire"),
+        pytest.param({"ETH/USDC": "ETH/USDT"}, "univers", id="paire hors univers"),
+        pytest.param({"BTC/USDC": "BTCUSDT"}, "forme", id="paire mal formée"),
+        pytest.param({"BTC/USDC": 1}, "chaîne attendue", id="valeur non chaîne"),
+        pytest.param(["BTC/USDT"], "bloc attendu", id="pas un bloc"),
+    ],
+)
+def test_une_transposition_hors_contrat_est_une_erreur_d_entree(
+    mapping: object, fragment: str
+) -> None:
+    """§ A.6 v2.1 : une paire de déploiement distincte « quand, et seulement quand, l'actif de base est le même
+    et seule la monnaie de cotation diffère » — tout autre couple est une erreur d'entrée (§ I.1, ligne 2)."""
+    with pytest.raises(cc.MissingEvidenceError, match=fragment):
+        cc.load_manifest(_with_deployment(mapping))
 
 
 # ---------------------------------------------------------------------------

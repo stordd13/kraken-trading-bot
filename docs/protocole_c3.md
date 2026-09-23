@@ -323,6 +323,16 @@ sa forme machine.
   registre manque précisément ce qu'il existe pour tracer.
 - S'y ajoutent un **identifiant de variante déclaré par l'humain** et un **lien de parenté** vers la variante
   dont elle dérive.
+- **Transposition déclarée.** Un manifeste peut déclarer, par paire de l'univers, une **paire de
+  déploiement** distincte de la **paire de validation** quand, et seulement quand, l'actif de base est le
+  même et seule la monnaie de cotation diffère (première campagne : validation `BTC/USDT`, `ETH/USDT`,
+  `SOL/USDT` sur la base Binance ; déploiement `*/USDC` sur Bybit EU). La transposition est **écrite une fois,
+  ici, comme déclaration** : elle repose sur le même argument que la transposition de site Binance → Bybit
+  déjà admise par le projet — même actif de base, fees, spread et slippage de la cible mesurés sur la paire
+  de déploiement (`CONTRAINTES` § 2) et déclarés au manifeste. **L'écart de peg entre les deux stablecoins
+  n'est pas modélisé** : c'est un non-mesurable déclaré (§ J, item 11). L'identité du candidat (§ A.2) garde
+  `pair = paire de validation` ; la paire de déploiement entre dans le manifeste, donc dans l'empreinte de la
+  variante, et **n'entre pas** dans l'identité du candidat.
 - **Ré-exécuter le même manifeste est idempotent** : même empreinte, même enregistrement, aucun refus, aucun
   ordinal supplémentaire. Le registre trace des **essais de recherche**, il ne compte pas des appels de script.
 - Toute empreinte différente est **une nouvelle variante**, qui doit déclarer son parent. **C'est là que le
