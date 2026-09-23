@@ -294,6 +294,22 @@ def test_c3_sans_lots_est_NOT_VERIFIABLE_jamais_VERIFIED(tmp_path: Path) -> None
     assert payload["state"] == "NOT_VERIFIABLE"
 
 
+@pytest.mark.parametrize("field", fx.STAMP_AND_PRICE_FIELDS)
+def test_c3_un_bloc_contradictoire_a_l_evaluation_est_une_violation(
+    tmp_path: Path, field: str
+) -> None:
+    """§ B.3 v2.1 : « Un bloc de liquidation qui déclare `trades > 0` sans estampille, ou sans l'un des
+    champs de prix […], se contredit […]. C'est une violation — statut recalculé ≠ statut enregistré (§ I.1,
+    ligne 15), code 1 —, jamais `R1_NOT_NORMALISED` » — pas une clause 3 en échec : un diagnostic, sans
+    état de continuité publié."""
+    w = _world(tmp_path)
+    _mutate_eval(w, lambda d: d["liquidation"].__setitem__(field, None))
+    code, payload = _run(w)
+    assert code == 1 and payload is not None and payload["invalide"] is True
+    assert payload["state"] is None and payload["clauses"] == {}
+    assert any("contradictoire" in v for v in payload["violations"]), payload["violations"]
+
+
 def test_c3_quantite_de_lot_nulle_est_FAILED_via_la_preuve_partagee(tmp_path: Path) -> None:
     """Le correctif R3 a) s'applique ici aussi : `liquidation_identities` est la même fonction."""
     w = _world(tmp_path)

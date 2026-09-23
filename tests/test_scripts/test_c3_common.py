@@ -725,6 +725,33 @@ def test_un_bloc_suffixe_par_un_actif_est_une_erreur_de_forme(suffix: str) -> No
         _identities(block)
 
 
+#: § B.3 v2.1 : « `trades > 0` sans estampille, ou sans l'un des champs de prix (`reference_price`,
+#: `price`, `spread_pct`, `slippage_pct`) ».
+STAMP_AND_PRICE_FIELDS = ("timestamp", "reference_price", "price", "spread_pct", "slippage_pct")
+
+
+@pytest.mark.parametrize("field", STAMP_AND_PRICE_FIELDS)
+def test_un_bloc_qui_liquide_sans_estampille_ou_sans_prix_est_une_violation(field: str) -> None:
+    """§ B.3 v2.1 : « Un bloc de liquidation qui déclare `trades > 0` sans estampille, ou sans l'un des
+    champs de prix […], se contredit […]. C'est une violation — statut recalculé ≠ statut enregistré (§ I.1,
+    ligne 15), code 1 —, jamais `R1_NOT_NORMALISED` » ; « la règle vaut partout où le bloc est lu » : la
+    fonction partagée par D6 et la clause 3 lève, elle ne rend pas une preuve en échec."""
+    block = liquidation_segment("BTC/USDC", reference_price="30000")
+    assert block["trades"] > 0
+    block[field] = None
+    with pytest.raises(cc.InvalidValueError, match="contradictoire"):
+        _identities(block)
+
+
+def test_un_bloc_qui_ne_liquide_rien_porte_ses_champs_nuls_sans_contradiction() -> None:
+    """§ B.4 v2.1 : le bloc présent qui ne liquide rien (`trades == 0`, estampille nulle) n'est pas
+    contradictoire — ses identités passent, sa preuve par lot (vide) est présente."""
+    block = liquidation_segment("BTC/USDC", reference_price="30000", positions=0)
+    assert block["trades"] == 0 and all(block[f] is None for f in STAMP_AND_PRICE_FIELDS)
+    proof = _identities(block)
+    assert proof["passed"] is True and proof["lots_present"] is True
+
+
 def test_un_bloc_portant_les_deux_suffixes_est_une_erreur_de_forme() -> None:
     """§ A.7 v2.1 : une clé suffixée par un actif est une erreur de forme même à côté de sa jumelle `_base`."""
     block = _resuffix_block(liquidation_segment("BTC/USDC", reference_price="30000"), "base")

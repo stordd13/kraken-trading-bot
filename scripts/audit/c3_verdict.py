@@ -42,12 +42,12 @@ lit dans ``verdict`` / ``raison``. Donc ``verified: true`` avec un ``inconclusif
 chaîne ou non) **ou refus** — un refus sans violation ne publie rien (aucun ``verified`` à porter) ;
 un refus consigné après une violation publie un diagnostic, qui porte ``verified: false``.
 
-**Précédence violation → issue non définie (revue Fin 2).** Une contradiction déclaré / dérivé
-constatée est un diagnostic code 1 (``invalide: true``, violations listées), même quand la clause 3
-est en échec ; le refus 2 ``UndefinedIssueError`` reste réservé au cas cohérent (c3 en échec,
-résumés et agrégat concordants) — c'est lui que la convention datée couvre. **Règle générale :
-l'ordre de constat** — après une violation, la violation prime (diagnostic, code 1), qu'un refus ou
-une issue non définie survienne ensuite ; **sauf lecture inachevable** : une preuve obligatoire
+**Précédence violation → issue (revue Fin 2).** Une contradiction déclaré / dérivé constatée est un
+diagnostic code 1 (``invalide: true``, violations listées), même quand la clause 3 est en échec — et
+depuis v2.1 la clause 3 en échec cohérente est une issue publiée (§ I.1 ligne 10 bis), plus un refus :
+la précédence y est triviale. **Règle générale : l'ordre de constat** — après une violation, la
+violation prime (diagnostic, code 1), qu'un refus survienne ensuite ; **sauf lecture inachevable** :
+une preuve obligatoire
 absente, nulle, mal typée ou hors liste close constatée après une violation sort en code 2, rien
 publié, les violations dites sur stderr — **convention d'outillage datée du 22/09** (validation Fin),
 fondement : un diagnostic se bâtit sur une lecture complète ; clarification normative au paquet C3b.
@@ -59,13 +59,12 @@ hors contrat → 2), pas cet ordre de constat.
 et l'agrégat sont **dérivés des clauses par le consommateur** et recoupés au déclaré — une
 contradiction est une violation ; les actions se branchent sur les clauses, jamais sur les résumés.
 Clauses déclaratives c1/c2/c5 ``FAILED`` : l'artefact
-déclare lui-même une rupture du contrat § B → refus ``R0_INVALID_RUN``, code 2. Clause 3 ``FAILED``
-(liquidation terminale non normalisée) : § B.3 et § G.2 interdisent tout verdict directionnel et § I.1
-ne porte aucune ligne de portée run pour ce cas → ``UndefinedIssueError`` — **convention d'outillage
-datée du 21/09** (plan révisé § 6.1, hors dépôt, conduite (b) ; rapport de session § 7), une
-assignation de code hors table assumée comme telle ; l'amendement daté (a) est dû à l'ouverture de
-C3b. Sa sortie (code 2, rien publié) ne vaut que pour le cas **cohérent** — voir la précédence
-ci-dessus.
+déclare lui-même une rupture du contrat § B → refus ``R0_INVALID_RUN``, code 2. Clause 3 ``FAILED`` ou
+``NOT_VERIFIABLE`` (liquidation terminale de l'évaluation non normalisée) : ``inconclusif
+(R1_NOT_NORMALISED)``, portée run, publié, code 0 (§ I.1 v2.1, ligne 10 bis ; § B.3 v2.1, AM-19) — la
+convention d'outillage datée du 21/09 (``UndefinedIssueError``, code 2 hors table) est abrogée. Un bloc
+de liquidation contradictoire (``trades > 0`` sans estampille ou sans prix) n'arrive jamais jusqu'ici :
+``cc.liquidation_identities`` le lève en violation dès la continuité (§ B.3 v2.1).
 
 **Confinement des verdicts synthétiques (plan § 6.6, validé).** § L.1 : sur données réelles, C3a ne
 peut produire que non-recevabilité et abstention ; ``validé`` / ``réfuté`` sont structurellement
@@ -112,17 +111,6 @@ STEP = "verdict"
 INPUT_NAMES: tuple[str, ...] = ("entry", "anchor", "selection", "continuity", "evaluation")
 SYNTH_PREFIX = "C3_SYNTH_"
 PORTEE_SYNTH = "exercice synthétique de l'outillage — aucune portée économique (§ L.1)"
-#: Convention d'outillage datée du 21/09 (plan § 6.1, conduite (b)) — le message cité par le test.
-UNDEFINED_ISSUE_MOTIF = (
-    "issue non définie par le texte gelé, amendement pendant (§ 6.1) : liquidation terminale non "
-    "normalisée sur l'artefact d'évaluation — § B.3 et § G.2 interdisent tout verdict directionnel, "
-    "§ I.1 ne porte aucune ligne de portée run pour ce cas"
-)
-#: Le motif, puis la conduite (b) de la convention datée — celle-ci ne s'applique qu'au cas cohérent.
-UNDEFINED_ISSUE_MESSAGE = (
-    f"{UNDEFINED_ISSUE_MOTIF} ; convention d'outillage datée du 21/09 : "
-    "refus de produire une issue, code 2, rien publié"
-)
 ABSTENTION_REASONS: tuple[str, ...] = ("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR")
 REAL_EVALUATION_MESSAGE = (
     "évaluation réelle non exerçable par l'outillage C3a — § L.1 : l'exécution continue et la preuve "
@@ -634,12 +622,12 @@ def _continuity_view(
 def _continuity_actions(view: ContinuityView, *, retained: str) -> list[str]:
     """Ce que la continuité impose au verdict (table § 6.4) — sur les **clauses**, jamais sur les
     résumés : l'évaluation doit être celle de la configuration retenue (§ H.1, sinon refus R0) ;
-    c1, c2, c5 ``FAILED`` → refus R0 (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED``
-    → ``UndefinedIssueError`` (convention datée du 21/09, plan § 6.1) ; c4 ``FAILED`` →
+    c1, c2, c5 ``FAILED`` → refus R0 (l'artefact déclare une rupture du contrat § B) ; c3 ``FAILED`` ou
+    ``NOT_VERIFIABLE`` → ``R1_NOT_NORMALISED`` (§ I.1 v2.1, ligne 10 bis) ; c4 ``FAILED`` →
     ``D_WARMUP_ANCHOR`` ; comparateur ``FAILED`` → ``E_NO_BENCHMARK`` ; ``stamp_cell`` ``FAILED`` →
     ``E_STAMP_MISMATCH`` (§ I.1 l.10-12) — ``NOT_VERIFIABLE`` (aucune estampille) est satisfait à vide
-    (§ B.4 v2.1). Quand plusieurs clauses sont ``FAILED``,
-    le refus R0 précède l'issue non définie (§ H : R0 avant toute autre chose)."""
+    (§ B.4 v2.1). Quand plusieurs clauses sont ``FAILED``, le refus R0 précède toute raison (§ H : R0
+    avant toute autre chose) ; entre raisons, la chaîne porte la première de la liste du § H.1."""
     if view.derived_identity != retained:
         raise cc.EntryRefusedError(
             "R0_INVALID_RUN",
@@ -653,9 +641,11 @@ def _continuity_actions(view: ContinuityView, *, retained: str) -> list[str]:
                 f"clause {key} de continuité en échec — l'artefact déclare une rupture du contrat "
                 f"§ B : {view.details[key]}",
             )
-    if view.states["c3"] == "FAILED":
-        raise cc.UndefinedIssueError(UNDEFINED_ISSUE_MESSAGE)
     reasons: list[str] = []
+    # § I.1 v2.1, ligne 10 bis (AM-19) : la liquidation terminale de l'évaluation non normalisée — c3 en
+    # échec ou non vérifiable — est de portée run ; la priorité entre raisons est celle du § H.1.
+    if view.states["c3"] in ("FAILED", "NOT_VERIFIABLE"):
+        reasons.append("R1_NOT_NORMALISED")
     if view.states["c4"] == "FAILED":
         reasons.append("D_WARMUP_ANCHOR")
     if view.comparator_state == "FAILED":
@@ -674,8 +664,9 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     liste close — **erreur d'entrée** (§ I.1 ligne 2, code 2), pas un verdict — et
     ``InvalidValueError`` sur une valeur non finie ou hors domaine — **violation** (§ I.1 ligne 15,
     code 1), pas un verdict non plus. Aucun verdict économique n'est prononcé sur une preuve manquante
-    ou invalide. ``EntryRefusedError`` (refus) et ``UndefinedIssueError`` (clause 3 en échec) : sans
-    violation constatée, code 2 et rien publié ; après une violation, **l'ordre de constat** fait
+    ou invalide. ``EntryRefusedError`` (refus) et ``UndefinedIssueError`` (garde générique, sans site
+    c3 depuis v2.1) : sans violation constatée, code 2 et rien publié ; après une violation, **l'ordre
+    de constat** fait
     foi — la violation prime (§ I.1 l.15) et l'exception est consignée dans le diagnostic, code 1 —
     sauf lecture inachevable (``MissingEvidenceError`` après une violation → code 2, rien publié,
     violations dites sur stderr ; convention d'outillage datée du 22/09, voir ``run_verdict``).
@@ -1265,16 +1256,11 @@ def run_verdict(
         observations_sha256 = cc.require_str(recorded, "observations", where="entry.inputs_sha256")
         decision = decide(artifacts, violations=violations)
     except cc.UndefinedIssueError as exc:
+        # Garde générique (aucun site c3 ne la lève depuis v2.1, AM-19) : constatée après une violation,
+        # la violation prime (§ I.1 l.15) ; seule, aucune issue n'est publiée, code 2.
         if violations:
-            # Revue Fin 2 (2) — précédence : une contradiction déclaré / dérivé constatée avant
-            # est une violation (§ I.1 l.15) ; elle prime, l'issue non définie est consignée dans
-            # le diagnostic, code 1. Le refus 2 de la convention datée reste réservé au cas cohérent.
-            # Le diagnostic consigne le motif, pas la conduite (b) qui ne s'est pas appliquée.
-            violations.append(
-                f"issue non définie constatée après violation : {UNDEFINED_ISSUE_MOTIF}"
-            )
+            violations.append(f"issue non définie constatée après violation : {exc}")
         else:
-            # Convention datée du 21/09 (plan § 6.1) : aucune issue, code 2, rien publié.
             print(f"ISSUE NON DEFINIE {exc}", file=sys.stderr)
             return 2
     except cc.EntryRefusedError as exc:

@@ -689,6 +689,36 @@ def test_chaque_identite_exacte_de_D6_fausse_retire_le_candidat(
     )
 
 
+@pytest.mark.parametrize("field", fx.STAMP_AND_PRICE_FIELDS)
+def test_D6_un_bloc_contradictoire_au_prefixe_est_une_violation_pas_un_retrait(
+    tmp_path: Path, field: str
+) -> None:
+    """§ B.3 v2.1 : un bloc qui déclare `trades > 0` sans estampille ou sans l'un des champs de prix se
+    contredit — violation (§ I.1, ligne 15), code 1, « jamais `R1_NOT_NORMALISED` » ; « la règle vaut
+    partout où le bloc est lu, D6 au préfixe comme clause 3 à l'évaluation ». Dans la chaîne, le premier
+    lecteur du préfixe est `c3_benchmark` (pré-contrôle D6) ; la preuve D6 de `c3_select` lève de même."""
+    w = chain(tmp_path, mutate_observations=lambda obs: _liq(obs).__setitem__(field, None))
+    assert w["entry_code"] == 0, (
+        "la forme reste valide : la contradiction est une violation, pas un refus"
+    )
+    assert w["benchmark_code"] == 1
+    diagnostic = cc.read_json(w["benchmark"])
+    assert diagnostic["invalide"] is True
+    assert any("contradictoire" in v for v in diagnostic["violations"]), diagnostic["violations"]
+    obs = cc.read_json(w["observations"])
+    block = _liq(obs)
+    spread, slippage = (Decimal(x) for x in fx.PAIR_COSTS[obs[_first_key(obs)]["pair"]])
+    with pytest.raises(cc.InvalidValueError, match="contradictoire"):
+        cs.liquidation_proof(
+            block,
+            spread=spread,
+            slippage=slippage,
+            taker=Decimal(fx.TAKER),
+            anchor=fx.ANCHOR,
+            where="observations.liquidation",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Recoupements → violation ; refus → rien d'écrit
 # ---------------------------------------------------------------------------

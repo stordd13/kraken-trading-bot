@@ -902,6 +902,19 @@ fortiori* puisque le coût omis est positif. **Cette règle est fausse et n'est 
 Ce constat est **consigné comme dette du projet et prérequis C3b**, pas comme une clause de qualité d'une
 configuration : le défaut est dans l'instrument, pas dans les stratégies.
 
+**Ce que la chaîne en fait.** Sur le préfixe, un candidat sans liquidation costée sort par D6 (§ I.1,
+ligne 6). Sur l'évaluation, une clause 3 en échec **ou non vérifiable** est de **portée run** : l'issue est
+`inconclusif (R1_NOT_NORMALISED)`, publiée, code 0 (§ I.1, ligne 10 bis) — un résultat, pas un refus, parce
+que l'artefact est bien formé et dit vrai ; il est seulement hors d'usage décisionnel. Cette ligne abroge la
+convention d'outillage datée du 21/09, qui sortait ce cas par un refus code 2 hors table.
+
+**Un bloc contradictoire n'est pas « non normalisé ».** Un bloc de liquidation qui déclare `trades > 0` sans
+estampille, ou sans l'un des champs de prix (`reference_price`, `price`, `spread_pct`, `slippage_pct`), se
+contredit : il dit avoir liquidé sans porter ce que toute liquidation porte. C'est une **violation** — statut
+recalculé ≠ statut enregistré (§ I.1, ligne 15), code 1 —, jamais `R1_NOT_NORMALISED` : publier un
+`inconclusif` sur un artefact incohérent est ce que la précédence violation → issue interdit (§ I.1). La règle
+vaut partout où le bloc est lu, D6 au préfixe comme clause 3 à l'évaluation.
+
 ### B.4 Clause 2 — aucune réinitialisation interne
 
 *Énoncé.* L'évaluation est **un seul appel** `engine.run(pair, T, fin)`. Les statistiques périodiques se
@@ -1693,6 +1706,7 @@ Trois portées, et trois seulement :
 | 8 | Ensemble admissible vide après D1-D6 | **run** | `A_NO_ADMISSIBLE_CANDIDATE` | **0** | non ; c'est une **abstention**, donc un résultat publié |
 | 9 | Aucun survivant du plancher P1-P3 | **run** | `A_BELOW_FLOOR` | **0** | non ; abstention, résultat publié |
 | 10 | Benchmark non constructible ou non comparable | **run** | `E_NO_BENCHMARK` | **0** | non ; issue `inconclusif` |
+| 10 bis | **Liquidation terminale de l'évaluation non normalisée** : clause 3 du § B en échec **ou non vérifiable** sur l'artefact évalué | **run** | `R1_NOT_NORMALISED` | **0** | non ; issue `inconclusif` — aucun verdict directionnel n'est fondé sur cet artefact (§ B.3) |
 | 11 | Estampille de liquidation et borne finale en cellules distinctes | **run** | `E_STAMP_MISMATCH` | **0** | non ; issue `inconclusif` |
 | 12 | **Amorçage défaillant à l'ancrage d'évaluation** | **run** | `D_WARMUP_ANCHOR` | **0** | non ; issue `inconclusif` |
 | 13 | Estimabilité post-ancrage en défaut (§ A.13) | **run** | `F_NOT_ESTIMABLE` | **0** | non ; issue `inconclusif` |

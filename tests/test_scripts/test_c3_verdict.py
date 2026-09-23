@@ -1542,6 +1542,16 @@ TABLE_I1 = [
         id="L10 benchmark",
     ),
     pytest.param(
+        "10 bis",
+        lambda a: _coherent_continuity(a, "c3", "FAILED"),
+        cc.ISSUE_INCONCLUSIF,
+        "R1_NOT_NORMALISED",
+        0,
+        True,
+        True,
+        id="L10 bis liquidation d'évaluation non normalisée",
+    ),
+    pytest.param(
         11,
         lambda a: (
             a["continuity"]["stamp_cell"].__setitem__("state", "FAILED"),
@@ -1616,7 +1626,7 @@ TABLE_I1 = [
 )
 def test_table_I1_ligne_a_ligne(
     tmp_path: Path,
-    line: int,
+    line: int | str,
     mutate: Any,
     issue: Any,
     reason: Any,
@@ -1660,8 +1670,9 @@ def test_table_I1_ligne_a_ligne(
 def test_les_raisons_de_portee_candidat_sont_enumerees_sans_portee_exclusive() -> None:
     """Lignes 3 à 6 d'I.1 : leurs raisons sont énumérées — **pas** une table raison → portée.
 
-    `F_NOT_ESTIMABLE` y figure (ligne 6, D4) **et** est de portée run (ligne 13) : c'est la seule
-    de l'énumération que `decide()` émet, et il l'émet en portée run. Les lignes 3 à 6 elles-mêmes
+    `F_NOT_ESTIMABLE` y figure (ligne 6, D4) **et** est de portée run (ligne 13) ; `R1_NOT_NORMALISED`
+    y figure (ligne 6, D6) **et** est de portée run depuis v2.1 (ligne 10 bis, AM-19) : ce sont les deux
+    de l'énumération que `decide()` émet, et il les émet en portée run. Les lignes 3 à 6 elles-mêmes
     s'exercent dans `c3_select` / `c3_entry`, pas ici ; elles sont énumérées pour que nul ne les
     croie couvertes.
     """
@@ -1675,9 +1686,9 @@ def test_les_raisons_de_portee_candidat_sont_enumerees_sans_portee_exclusive() -
     # L'union des raisons des lignes 3 à 6 (clauses D1, D2, D3, D4, D6) est exactement cette liste.
     lines_3_to_6 = {cc.CLAUSE_REASON[c] for c in ("D1", "D2", "D3", "D4", "D6")}
     assert lines_3_to_6 == set(cc.CANDIDATE_REASONS)
-    # Ce que `decide()` émet (table I.1 paramétrée) n'en recoupe que `F_NOT_ESTIMABLE`, en portée run.
+    # Ce que `decide()` émet (table I.1 paramétrée) n'en recoupe que ces deux-là, en portée run.
     emitted = {row.values[3] for row in TABLE_I1 if row.values[3] is not None}
-    assert emitted & set(cc.CANDIDATE_REASONS) == {"F_NOT_ESTIMABLE"}
+    assert emitted & set(cc.CANDIDATE_REASONS) == {"F_NOT_ESTIMABLE", "R1_NOT_NORMALISED"}
 
 
 # ---------------------------------------------------------------------------
@@ -1848,34 +1859,29 @@ def test_une_evaluation_reelle_est_refusee_rien_publie(
 
 
 # ---------------------------------------------------------------------------
-# Continuité → verdict (plan § 6.4) ; clause 3 en échec = convention datée du 21/09 (§ 6.1)
+# Continuité → verdict ; clause 3 en échec ou non vérifiable : § I.1 v2.1, ligne 10 bis (AM-19)
 # ---------------------------------------------------------------------------
 
 
-def test_clause_3_en_echec_moteur_signal_a_l_evaluation_issue_non_definie(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+@pytest.mark.parametrize("state", ["FAILED", "NOT_VERIFIABLE"])
+def test_clause_3_non_normalisee_a_l_evaluation_est_un_inconclusif_R1_publie(
+    tmp_path: Path, state: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Fixture « moteur signal à l'évaluation » : liquidation terminale non normalisée, résumés et
-    agrégat **concordants**. Le texte gelé ne définit pas l'issue → `UndefinedIssueError`, code 2,
-    rien d'écrit, message cité (§ 6.1, convention datée du 21/09). Le cas contredit (résumé vrai
-    sur une clause en échec) n'est plus ce refus mais un diagnostic code 1 — revue Fin 2 (2),
-    testé sous `test_revue_Fin2_2_*`."""
+    """§ I.1 v2.1, ligne 10 bis : « clause 3 du § B en échec **ou non vérifiable** sur l'artefact évalué |
+    run | `R1_NOT_NORMALISED` | 0 | non ; issue `inconclusif` » ; § B.3 v2.1 : « un résultat, pas un refus,
+    parce que l'artefact est bien formé et dit vrai » — « cette ligne abroge la convention d'outillage datée
+    du 21/09 », qui sortait ce cas par un refus code 2."""
     artifacts = _sound()
-    artifacts["continuity"]["clauses"]["c3"] = {
-        "state": "FAILED",
-        "detail": "liquidation absente (moteur signal)",
-    }
-    artifacts["continuity"]["state"] = "FAILED"
-    artifacts["continuity"]["liquidation_normalised"] = False
-    with pytest.raises(cc.UndefinedIssueError) as info:
-        cv.decide(artifacts, violations=[])
-    assert str(info.value) == cv.UNDEFINED_ISSUE_MESSAGE
-    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
-    assert not (tmp_path / "verdict.json").exists()
-    err = capsys.readouterr().err
-    assert "ISSUE NON DEFINIE" in err
-    assert "issue non définie par le texte gelé, amendement pendant (§ 6.1)" in err
-    assert "convention d'outillage datée du 21/09" in err
+    _coherent_continuity(artifacts, "c3", state)
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "R1_NOT_NORMALISED"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "R1_NOT_NORMALISED"
+    assert payload["chain"]["verified"] is True
+    assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
 
 
 @pytest.mark.parametrize("clause", ["c1", "c2", "c5"])
@@ -2328,19 +2334,38 @@ def test_chain_sur_une_evaluation_reelle_s_arrete_au_verdict_rien_publie(tmp_pat
     assert not (w["out"] / "verdict.json").exists()
 
 
-def test_chain_moteur_signal_a_l_evaluation_clause_3_FAILED_rien_publie(
+def test_chain_moteur_signal_a_l_evaluation_clause_3_FAILED_inconclusif_R1_publie(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """La convention datée du 21/09 de bout en bout : `c3_continuity` rapporte c3 `FAILED`
-    (`liquidation` null), le verdict refuse de produire une issue, code 2, aucun `verdict.json`."""
+    """§ I.1 v2.1, ligne 10 bis, de bout en bout : `c3_continuity` rapporte c3 `FAILED` (`liquidation`
+    null, moteur signal), le verdict publie `inconclusif (R1_NOT_NORMALISED)`, code 0 — la convention du
+    21/09 (refus code 2, rien publié) est abrogée (§ B.3 v2.1)."""
     w = _chain_world(tmp_path, liquidation=False)
-    assert cv.main(_chain_argv(w)) == 2
+    assert cv.main(_chain_argv(w)) == 0
     continuity = cc.read_json(w["out"] / "continuity.json")
     assert continuity["clauses"]["c3"]["state"] == "FAILED"
     assert continuity["liquidation_normalised"] is False
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "R1_NOT_NORMALISED"
+    assert payload["chain"]["verified"] is True
+    assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
+
+
+def test_chain_un_bloc_de_liquidation_contradictoire_a_l_evaluation_s_arrete_en_violation(
+    tmp_path: Path,
+) -> None:
+    """§ B.3 v2.1 : un bloc qui déclare `trades > 0` sans estampille se contredit — violation (§ I.1,
+    ligne 15), code 1, « jamais `R1_NOT_NORMALISED` » : la continuité publie un diagnostic, la chaîne
+    s'arrête là, aucun verdict."""
+    w = _chain_world(tmp_path)
+    evaluation = cc.read_json(w["evaluation"])
+    evaluation["liquidation"]["timestamp"] = None
+    cc.write_json(w["evaluation"], evaluation)
+    assert cv.main(_chain_argv(w)) == 1
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["invalide"] is True
+    assert any("contradictoire" in v for v in continuity["violations"])
     assert not (w["out"] / "verdict.json").exists()
-    err = capsys.readouterr().err
-    assert "ISSUE NON DEFINIE" in err and "amendement pendant (§ 6.1)" in err
 
 
 @pytest.mark.skipif(
@@ -2599,7 +2624,7 @@ def _never_valide(artifacts: dict[str, Any]) -> tuple[Any, list[str]]:
     violations: list[str] = []
     try:
         decision = cv.decide(artifacts, violations=violations)
-    except (cc.EntryRefusedError, cc.UndefinedIssueError) as exc:
+    except cc.EntryRefusedError as exc:
         return exc, violations
     # Un artefact contredit ne publie jamais « validé » : soit l'issue calculée n'est pas validé,
     # soit une violation la retient dans un diagnostic (§ I.1 l.15) — la CLI rend 1, jamais 0.
@@ -2775,17 +2800,18 @@ def test_chain_une_evaluation_qui_ne_liquide_rien_peut_etre_validee(tmp_path: Pa
     assert payload["synthetic"] is True
 
 
-def test_revue_Fin_2_c3_FAILED_coherent_est_l_issue_non_definie_et_normalise_faux_seul_une_violation() -> (
-    None
-):
+def test_revue_Fin_2_c3_FAILED_coherent_est_R1_et_normalise_faux_seul_une_violation() -> None:
+    """§ I.1 v2.1, ligne 10 bis : c3 en échec, résumés cohérents → `R1_NOT_NORMALISED`, aucune violation ;
+    le résumé seul, contredit par la clause, est une violation (§ I.1, ligne 15)."""
     artifacts = _sound()
     c = artifacts["continuity"]
     c["clauses"]["c3"]["state"] = "FAILED"
     c["state"] = "FAILED"
     c["liquidation_normalised"] = False
-    with pytest.raises(cc.UndefinedIssueError):
-        cv.decide(artifacts, violations=[])
-    # Le résumé seul ne déclenche pas la convention : il est contredit par la clause → violation.
+    coherent: list[str] = []
+    decision = cv.decide(artifacts, violations=coherent)
+    assert coherent == [] and decision.reason == "R1_NOT_NORMALISED"
+    # Le résumé seul ne commande aucune action : il est contredit par la clause → violation.
     artifacts = _sound()
     artifacts["continuity"]["liquidation_normalised"] = False
     violations: list[str] = []
@@ -2824,8 +2850,8 @@ def _aggregate_6_4(states: dict[str, str]) -> str:
 
 #: Chaque ligne (clause, état) → issue attendue **et son appui**, la ligne § 6.4 qui la justifie.
 #: `calculee` = « issue calculée, continuite= le porte » ; `R0` = refus code 2 (l.1510) ;
-#: `undefined` = UndefinedIssueError (§ 6.1, convention datée du 21/09) ; `D_WARMUP_ANCHOR` = raison
-#: run (I.1 l.12) ; `hors_liste` = valeur hors liste close → code 2, rien publié (chantier 0).
+#: `R1_NOT_NORMALISED` = raison run (§ I.1 v2.1, ligne 10 bis) ; `D_WARMUP_ANCHOR` = raison run
+#: (I.1 l.12) ; `hors_liste` = valeur hors liste close → code 2, rien publié (chantier 0).
 TABLE_6_4: list[tuple[str, str, str, str]] = [
     (
         "c1",
@@ -2879,14 +2905,14 @@ TABLE_6_4: list[tuple[str, str, str, str]] = [
     (
         "c3",
         "NOT_VERIFIABLE",
-        "calculee",
-        "§ 6.4 c3 : NOT_VERIFIABLE (lots absents, § 6.5) → issue calculée, porté par continuite= ; § B.3 l.811-815",
+        "R1_NOT_NORMALISED",
+        "§ I.1 v2.1 ligne 10 bis : c3 non vérifiable (lots absents) → inconclusif R1_NOT_NORMALISED, publié, code 0 ; § B.3 « Ce que la chaîne en fait »",
     ),
     (
         "c3",
         "FAILED",
-        "undefined",
-        "§ 6.4 c3 : FAILED → UndefinedIssueError, code 2, rien publié (§ 6.1) ; § B.3 l.811-815, § G.2 l.1399",
+        "R1_NOT_NORMALISED",
+        "§ I.1 v2.1 ligne 10 bis : c3 en échec → inconclusif R1_NOT_NORMALISED, publié, code 0 (convention du 21/09 abrogée) ; § B.3 « Ce que la chaîne en fait »",
     ),
     (
         "c3",
@@ -3003,20 +3029,12 @@ def test_revue_Fin2_1_chaque_ligne_de_la_table_6_4_donne_l_issue_qu_elle_dit(
         assert info.value.reason == "R0_INVALID_RUN" and violations == [], appui
         assert cv.main(argv) == 2 and not out.exists(), appui
         return
-    if expected == "undefined":
-        with pytest.raises(cc.UndefinedIssueError):
-            cv.decide(artifacts, violations=violations)
-        assert violations == [], appui
-        assert cv.main(argv) == 2 and not out.exists(), appui
-        return
     decision = cv.decide(artifacts, violations=violations)
     assert violations == [], (appui, violations)
     assert decision.continuity_state == artifacts["continuity"]["state"], appui
-    if expected == "D_WARMUP_ANCHOR":
-        assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "D_WARMUP_ANCHOR", (
-            appui
-        )
-        assert cv.main(argv) == 0 and cc.read_json(out)["raison"] == "D_WARMUP_ANCHOR"
+    if expected in ("D_WARMUP_ANCHOR", "R1_NOT_NORMALISED"):
+        assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == expected, appui
+        assert cv.main(argv) == 0 and cc.read_json(out)["raison"] == expected, appui
         return
     assert expected == "calculee"
     # « issue calculée » : le témoin sain franchit E1/E2 et Q1-Q3 → validé, la clause n'y change rien.
@@ -3064,20 +3082,69 @@ def test_revue_Fin2_1_l_agregat_VERIFIED_est_inconstructible_en_C3a() -> None:
         try:
             decision = cv.decide(artifacts, violations=violations)
         except cc.EntryRefusedError:
-            # § 6.4 c1/c2/c5 : FAILED → R0 ; quand c3 est aussi FAILED, le refus R0 précède
-            # l'issue non définie (§ H : « R0 est évalué avant toute autre chose »).
+            # § 6.4 c1/c2/c5 : FAILED → R0, quel que soit c3 (§ H : « R0 est évalué avant toute
+            # autre chose »).
             assert declarative_failed, states
             continue
-        except cc.UndefinedIssueError:
-            # § 6.4 c3 : FAILED → UndefinedIssueError, seulement si aucune clause déclarative n'a
-            # déjà rompu le contrat.
-            assert states["c3"] == "FAILED" and not declarative_failed, states
-            continue
-        assert not declarative_failed and states["c3"] != "FAILED", states
+        assert not declarative_failed, states
         assert violations == [], (states, violations)
         assert decision.continuity_state in ("NOT_VERIFIABLE", "DECLARED", "FAILED"), states
         assert decision.continuity_state != "VERIFIED"
-        assert (decision.issue == cc.ISSUE_VALIDE) == ("FAILED" not in states.values()), states
+        # § H.1 v2.1 : la chaîne porte la première raison qui s'applique, dans l'ordre recopié du texte —
+        # c4 FAILED → D_WARMUP_ANCHOR (l.12) ; c3 FAILED ou NOT_VERIFIABLE → R1_NOT_NORMALISED (l.10 bis).
+        applicable = ["D_WARMUP_ANCHOR"] if states["c4"] == "FAILED" else []
+        applicable += ["R1_NOT_NORMALISED"] if states["c3"] != "VERIFIED" else []
+        expected = min(applicable, key=fx.REASONS_H1.index) if applicable else None
+        assert decision.reason == expected, states
+        # validé ⟺ aucun ÉCHEC et c3 VÉRIFIÉ (c1/c5 NON VÉRIFIABLE tolérés en exercice synthétique).
+        assert (decision.issue == cc.ISSUE_VALIDE) == (
+            "FAILED" not in states.values() and states["c3"] == "VERIFIED"
+        ), states
+
+
+@pytest.mark.parametrize(
+    ("mutate", "other"),
+    [
+        pytest.param(
+            lambda c: (
+                c["clauses"]["c4"].__setitem__("state", "FAILED"),
+                c.__setitem__("warmup_anchor_ok", False),
+            ),
+            "D_WARMUP_ANCHOR",
+            id="c3 + c4",
+        ),
+        pytest.param(
+            lambda c: (
+                c["stamp_cell"].__setitem__("state", "FAILED"),
+                c.__setitem__("stamp_same_daily_cell", False),
+            ),
+            "E_STAMP_MISMATCH",
+            id="c3 + estampille",
+        ),
+        pytest.param(
+            lambda c: (
+                c["comparator"].__setitem__("state", "FAILED"),
+                c["comparator"]["tests"].__setitem__("ff_ok", False),
+                c.__setitem__("benchmark_comparable", False),
+            ),
+            "E_NO_BENCHMARK",
+            id="c3 + comparateur",
+        ),
+    ],
+)
+def test_R1_d_evaluation_prend_sa_place_dans_la_liste_de_priorite(mutate: Any, other: str) -> None:
+    """§ H.1 v2.1 : « la chaîne porte la première raison qui s'applique » — c3 en échec avec une autre
+    raison de continuité : l'attendu se lit dans la liste recopiée du texte (`fx.REASONS_H1`), pas dans le
+    code — `D_WARMUP_ANCHOR` précède `R1_NOT_NORMALISED`, qui précède `E_NO_BENCHMARK` et
+    `E_STAMP_MISMATCH`."""
+    artifacts = _sound()
+    _coherent_continuity(artifacts, "c3", "FAILED")
+    mutate(artifacts["continuity"])
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    expected = min(("R1_NOT_NORMALISED", other), key=fx.REASONS_H1.index)
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == expected
 
 
 def test_revue_Fin_2_l_etat_du_comparateur_est_derive_de_ses_tests() -> None:
@@ -3541,8 +3608,8 @@ def test_revue_Fin2_1_les_portes_et_les_bornes_sont_lues_avant_tout_retour_antic
 
 
 # ---------------------------------------------------------------------------
-# Revue Fin 2 (2) — violation avant UndefinedIssue : une contradiction constatée est un
-# diagnostic code 1, même quand c3 est en échec ; le refus 2 reste réservé au cas cohérent
+# Revue Fin 2 (2) — une contradiction constatée est un diagnostic code 1, même quand c3 est en échec ;
+# depuis v2.1 (§ I.1 ligne 10 bis) c3 en échec cohérent est un inconclusif publié, plus un refus
 # ---------------------------------------------------------------------------
 
 
@@ -3557,23 +3624,20 @@ def test_revue_Fin2_2_c3_FAILED_et_resume_normalise_vrai_est_un_diagnostic_code_
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """Reproduction d'Astra : c3=FAILED + liquidation_normalised=true — contradiction déclaré/dérivé
-    → diagnostic code 1 (invalide: true, violations listées), pas le refus 2 de la convention
-    datée. Appui : revue Fin 2, item 2 (précédence fixée ; précédent du chantier 0 pour un refus
-    après violation) ; § I.1 l.15 (« c'est une violation, pas un résultat »)."""
+    → diagnostic code 1 (invalide: true, violations listées) ; § I.1 l.15 (« c'est une violation, pas un
+    résultat »). Depuis v2.1, c3 en échec n'est plus un refus (ligne 10 bis) : la précédence
+    violation → issue est triviale, et aucune « issue non définie » n'est plus consignée (AM-19)."""
     artifacts = _sound()
     _c3_failed(artifacts)
     artifacts["continuity"]["liquidation_normalised"] = True  # ment sur la clause en échec
     violations: list[str] = []
-    with pytest.raises(cc.UndefinedIssueError):
-        cv.decide(artifacts, violations=violations)
+    cv.decide(artifacts, violations=violations)
     assert any("liquidation_normalised" in v for v in violations)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
     payload = cc.read_json(tmp_path / "verdict.json")
     assert payload["invalide"] is True and payload["verdict"] is None
     assert any("liquidation_normalised" in v for v in payload["violations"])
-    assert any("issue non définie" in v for v in payload["violations"]), (
-        "la convention datée est consignée dans le diagnostic, pas exécutée"
-    )
+    assert not any("issue non définie" in v for v in payload["violations"])
     assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
 
 
@@ -3581,34 +3645,32 @@ def test_revue_Fin2_2_c3_FAILED_et_agregat_menteur_VERIFIED_est_un_diagnostic_co
     tmp_path: Path,
 ) -> None:
     """Reproduction d'Astra (item 2) : c3 en échec, résumé cohérent, agrégat déclaré VERIFIED →
-    contradiction déclaré/dérivé (dérivé FAILED, précédence § 6.4) → diagnostic code 1, jamais le
-    refus 2 — « le refus 2 reste réservé au cas cohérent »."""
+    contradiction déclaré/dérivé (dérivé FAILED, précédence § 6.4) → diagnostic code 1 (§ I.1 l.15)."""
     artifacts = _sound()
     _c3_failed(artifacts)
     artifacts["continuity"]["state"] = "VERIFIED"
     violations: list[str] = []
-    with pytest.raises(cc.UndefinedIssueError):
-        cv.decide(artifacts, violations=violations)
+    cv.decide(artifacts, violations=violations)
     assert any("continuity.state" in v for v in violations)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
     payload = cc.read_json(tmp_path / "verdict.json")
     assert payload["invalide"] is True and payload["chain"]["verified"] is False
 
 
-def test_revue_Fin2_2_c3_FAILED_coherent_reste_le_refus_2_de_la_convention_datee(
+def test_revue_Fin2_2_c3_FAILED_coherent_n_est_plus_un_refus_la_convention_datee_est_abrogee(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """Le cas que la convention datée du 21/09 couvre : c3 en échec, résumés et agrégat concordants
-    → UndefinedIssueError, code 2, rien publié (§ 6.1, conduite (b))."""
+    """Le cas que la convention datée du 21/09 couvrait : c3 en échec, résumés et agrégat concordants.
+    § B.3 v2.1 : « Cette ligne abroge la convention d'outillage datée du 21/09 » — `inconclusif
+    (R1_NOT_NORMALISED)`, publié, code 0 (§ I.1, ligne 10 bis)."""
     artifacts = _sound()
     _c3_failed(artifacts)
     violations: list[str] = []
-    with pytest.raises(cc.UndefinedIssueError):
-        cv.decide(artifacts, violations=violations)
-    assert violations == []
-    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
-    assert not (tmp_path / "verdict.json").exists()
-    assert "ISSUE NON DEFINIE" in capsys.readouterr().err
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.reason == "R1_NOT_NORMALISED"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    assert cc.read_json(tmp_path / "verdict.json")["raison"] == "R1_NOT_NORMALISED"
+    assert "ISSUE NON DEFINIE" not in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------
@@ -3764,12 +3826,14 @@ def test_revue_Fin2_2_une_preuve_absente_apres_violation_sort_2_et_la_violation_
 
 
 def test_revue_Fin2_2_le_diagnostic_ne_dit_pas_rien_publie(tmp_path: Path) -> None:
-    """Un artefact publié n'affirme pas de lui-même « code 2, rien publié » : le diagnostic consigne
-    le motif de l'issue non définie, pas la conduite (b) qui ne s'est pas appliquée."""
+    """Un artefact publié n'affirme pas de lui-même « code 2, rien publié » ; depuis v2.1 (AM-19), le
+    diagnostic d'un c3 contredit ne porte que la contradiction — aucune issue non définie à consigner."""
     artifacts = _sound()
     _c3_failed(artifacts)
     artifacts["continuity"]["liquidation_normalised"] = True
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
     payload = cc.read_json(tmp_path / "verdict.json")
-    undefined = [v for v in payload["violations"] if "issue non définie" in v]
-    assert undefined and all("rien publié" not in v for v in undefined), undefined
+    assert any("liquidation_normalised" in v for v in payload["violations"])
+    assert all(
+        "rien publié" not in v and "issue non définie" not in v for v in payload["violations"]
+    )

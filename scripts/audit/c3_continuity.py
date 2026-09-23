@@ -35,8 +35,9 @@ Le consommateur (`c3_verdict`) refait ces dérivations et recoupe chaque résum�
 contradiction est une violation.
 
 Ce que le verdict en fait est écrit là-bas, pas ici : une clause déclarative (c1, c2, c5) en échec
-rend l'artefact non recevable ; une clause 3 en échec n'a **aucune issue définie par le texte gelé**
-(``UndefinedIssueError``, convention datée du 21/09).
+rend l'artefact non recevable ; une clause 3 en échec ou non vérifiable porte ``R1_NOT_NORMALISED``,
+portée run (§ I.1 v2.1, ligne 10 bis). Un bloc de liquidation contradictoire (``trades > 0`` sans
+estampille ou sans prix) n'est pas une clause 3 en échec : c'est une violation, code 1 (§ B.3 v2.1).
 
 Pure, lecture seule hors de sa sortie. Aucun accès base.
 

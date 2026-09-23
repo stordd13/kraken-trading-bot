@@ -202,13 +202,10 @@ class InvalidValueError(ValueError):
 
 
 class UndefinedIssueError(ValueError):
-    """Convention d'outillage datée du 21/09 (plan § 6.1) : l'issue n'est **pas définie par le texte
-    gelé** — clause 3 de continuité en échec sur l'artefact d'évaluation. § B.3 et § G.2 interdisent
-    tout verdict directionnel ; § I.1 ne porte aucune ligne de portée run pour ce cas ; l'amendement
-    daté (a) est dû à l'ouverture de C3b. Conduite (b) : refus de produire une issue, code 2, rien
-    publié — une assignation de code hors table, assumée comme telle et consignée — **pour le cas
-    cohérent seulement** : une contradiction déclaré / dérivé constatée avant prime (§ I.1 l.15) et
-    l'issue non définie est consignée au diagnostic, code 1 (revue Fin 2, item 2 ; `c3_verdict`).
+    """Garde générique : une issue que le texte gelé ne définit pas — code 2, rien publié ; constatée
+    après une violation, la violation prime (§ I.1 l.15). **Aucun site c3 ne la lève depuis v2.1** :
+    la clause 3 en échec, qui en était le seul cas (convention datée du 21/09), a sa ligne au § I.1
+    (10 bis, ``R1_NOT_NORMALISED``, AM-19) et la convention est abrogée (§ B.3 v2.1).
     """
 
 
@@ -1871,6 +1868,11 @@ def liquidation_identities(
     coût connu = positions, Σ amount des lots inconnus = residual_trade_base. `lots` absent ⇒ la
     magnitude du taker est indécidable ⇒ non vérifié. Aucun seuil. Partagé par la sélection (D6 au
     préfixe) et la continuité (clause 3 à l'évaluation).
+
+    § B.3 v2.1 : un bloc qui déclare ``trades > 0`` sans estampille ou sans l'un des champs de prix
+    (``reference_price``, ``price``, ``spread_pct``, ``slippage_pct``) **se contredit** —
+    ``InvalidValueError``, violation (§ I.1 ligne 15, code 1), jamais une preuve en échec (qui rendrait
+    D6 faux ou la clause 3 en échec, donc ``R1_NOT_NORMALISED``). Partagée, la règle vaut aux deux sites.
     """
     zero = Decimal(0)
     one = Decimal(1)
@@ -1927,29 +1929,37 @@ def liquidation_identities(
         price = nullable_decimal(block, "price", where=where)
         spread_pct = nullable_decimal(block, "spread_pct", where=where)
         slippage_pct = nullable_decimal(block, "slippage_pct", where=where)
-        present = None not in (timestamp, reference, price, spread_pct, slippage_pct)
+        carried = {
+            "timestamp": timestamp,
+            "reference_price": reference,
+            "price": price,
+            "spread_pct": spread_pct,
+            "slippage_pct": slippage_pct,
+        }
+        missing = [name for name, value in carried.items() if value is None]
+        if missing:
+            # § B.3 v2.1 : un bloc qui déclare `trades > 0` sans estampille ou sans l'un des champs de prix
+            # se contredit — violation (§ I.1, ligne 15), jamais « non normalisé ». La règle vaut partout
+            # où le bloc est lu : D6 au préfixe comme clause 3 à l'évaluation (fonction partagée).
+            raise InvalidValueError(
+                f"{where}: bloc contradictoire — trades = {trades} > 0 sans {', '.join(missing)} : il "
+                "déclare avoir liquidé sans porter ce que toute liquidation porte ; statut recalculé ≠ "
+                "statut enregistré (§ B.3, § I.1 ligne 15)"
+            )
+        assert timestamp is not None and reference is not None and price is not None
+        check("spread_pct", spread_pct == spread, f"{spread_pct} != manifeste {spread}")
+        check("slippage_pct", slippage_pct == slippage, f"{slippage_pct} != manifeste {slippage}")
+        expected_price = reference * (one - spread - slippage)
         check(
-            "prix_presents",
-            present,
-            "timestamp / reference_price / price / spread_pct / slippage_pct requis quand trades > 0",
+            "price_identity",
+            price == expected_price,
+            f"price {price} != reference × (1 − spread − slippage) = {expected_price}",
         )
-        if present:
-            assert timestamp is not None and reference is not None and price is not None
-            check("spread_pct", spread_pct == spread, f"{spread_pct} != manifeste {spread}")
-            check(
-                "slippage_pct", slippage_pct == slippage, f"{slippage_pct} != manifeste {slippage}"
-            )
-            expected_price = reference * (one - spread - slippage)
-            check(
-                "price_identity",
-                price == expected_price,
-                f"price {price} != reference × (1 − spread − slippage) = {expected_price}",
-            )
-            check(
-                "timestamp_le_borne",
-                timestamp <= end,
-                f"{timestamp.isoformat()} > borne {end.isoformat()}",
-            )
+        check(
+            "timestamp_le_borne",
+            timestamp <= end,
+            f"{timestamp.isoformat()} > borne {end.isoformat()}",
+        )
         check("gross_positive", gross > zero, f"gross_usdc {gross} <= 0 avec trades > 0")
         check(
             "fees_positive",
