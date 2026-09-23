@@ -87,6 +87,22 @@ def _bootstrap(
     return deltas.copy(), discarded
 
 
+def _replications(returns_config, returns_bench, *, bound: float = 1.0) -> dict[str, Any]:
+    """Les six combinaisons `L × appariement` du § F.2 (h), au format v2.1 : par combinaison, la suite
+    `Δ*` retenue, le compte d'écartées et la borne déclarée. Une suite par `L` — tirée une fois par `L`
+    (§ F.2 b) — sert les deux appariements : les fixtures n'ont qu'une série de comparateur."""
+    out: dict[str, Any] = {}
+    for length in cc.BLOCK_LENGTHS:
+        deltas, discarded = _bootstrap(returns_config, returns_bench, block_length=length)
+        for matching in cc.MATCHINGS:
+            out[f"{length}:{matching}"] = {
+                "delta_stars": [float(x) for x in deltas],
+                "discarded": discarded,
+                "bound": bound,
+            }
+    return out
+
+
 def _artifacts(
     *,
     returns_config,
@@ -95,11 +111,9 @@ def _artifacts(
     bounds: dict[str, float] | None = None,
     provenance: str = cc.PROVENANCE_CLEAN,
 ) -> dict[str, dict[str, Any]]:
-    deltas, discarded = _bootstrap(returns_config, returns_bench)
-    if bounds is None:
-        bounds = {
-            f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
-        }
+    replications = _replications(returns_config, returns_bench)
+    for combination, bound in (bounds or {}).items():
+        replications[combination]["bound"] = bound
     identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
     window = {"start": fx.ANCHOR.isoformat(), "end": fx.WINDOW_END.isoformat()}
     return {
@@ -162,11 +176,9 @@ def _artifacts(
             "pair": "BTC/USDC",
             "params": {"a": 1},
             "returns_config": list(returns_config),
-            "delta_stars": [float(x) for x in deltas],
-            "discarded": discarded,
             "B": cc.BOOTSTRAP_B,
+            "replications": replications,
             "metrics": metrics,
-            "bounds": bounds,
         },
     }
 
@@ -315,7 +327,10 @@ def test_trajectoires_identiques_donnent_inconclusif_et_jamais_refute() -> None:
         returns_bench=same,
         metrics={"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": 0.0},
     )
-    assert len(artifacts["evaluation"]["delta_stars"]) == cc.BOOTSTRAP_B
+    assert all(
+        len(r["delta_stars"]) == cc.BOOTSTRAP_B
+        for r in artifacts["evaluation"]["replications"].values()
+    )
     violations: list[str] = []
     decision = cv.decide(artifacts, violations=violations)
 
@@ -430,7 +445,8 @@ def test_bloc_de_continuite_vide_refuse_l_entree_au_lieu_de_valider() -> None:
 def test_bornes_infinies_refusent_l_entree_au_lieu_de_valider() -> None:
     """Défaut reproduit : `float('inf') > 0` est vrai, donc `+inf` franchissait le plancher."""
     artifacts = _sound()
-    artifacts["evaluation"]["bounds"] = {k: float("inf") for k in artifacts["evaluation"]["bounds"]}
+    for replication in artifacts["evaluation"]["replications"].values():
+        replication["bound"] = float("inf")
     with pytest.raises(cc.InvalidValueError, match="non finie"):
         cv.decide(artifacts, violations=[])
 
@@ -623,14 +639,15 @@ MANDATORY: tuple[tuple[str, ...], ...] = (
     ("continuity", "identity"),
     ("evaluation", "synthetic"),
     ("evaluation", "returns_config"),
-    ("evaluation", "delta_stars"),
-    ("evaluation", "discarded"),
     ("evaluation", "B"),
+    ("evaluation", "replications"),
+    ("evaluation", "replications", "21:dd"),
+    ("evaluation", "replications", "21:dd", "delta_stars"),
+    ("evaluation", "replications", "21:dd", "discarded"),
     ("evaluation", "metrics"),
     ("evaluation", "metrics", "net_pnl"),
     ("evaluation", "metrics", "cagr_pct"),
     ("evaluation", "metrics", "delta_dd"),
-    ("evaluation", "bounds"),
 )
 
 
@@ -665,7 +682,7 @@ def test_chaque_preuve_obligatoire_absente_ou_nulle_refuse_l_entree(
         (("selection", "status"), "OK"),
         (("evaluation", "metrics", "net_pnl"), "42"),
         (("evaluation", "returns_config"), 0.01),
-        (("evaluation", "delta_stars"), {"a": 1}),
+        (("evaluation", "replications", "21:dd", "delta_stars"), {"a": 1}),
     ],
     ids=[
         "entry.ok=int",
@@ -692,17 +709,19 @@ def test_chaque_preuve_obligatoire_mal_typee_refuse_l_entree(
 
 def test_serie_contenant_un_non_fini_refuse_l_entree() -> None:
     artifacts = _sound()
-    artifacts["evaluation"]["delta_stars"][3] = float("nan")
+    artifacts["evaluation"]["replications"]["21:dd"]["delta_stars"][3] = float("nan")
     with pytest.raises(cc.InvalidValueError, match=r"delta_stars\[3\]"):
         cv.decide(artifacts, violations=[])
 
 
-def test_bornes_incompletes_refusent_l_entree() -> None:
+def test_une_combinaison_manquante_est_un_contrat_rompu() -> None:
+    """§ F.2 (b) v2.1 (AM-14) : « une combinaison manquante ou surnuméraire est un contrat rompu —
+    `R0_INVALID_RUN`, code 2 » ; le contrôle se fait avant toute lecture des séries."""
     artifacts = _sound()
-    keys = sorted(artifacts["evaluation"]["bounds"])
-    artifacts["evaluation"]["bounds"].pop(keys[0])
-    with pytest.raises(cc.MissingEvidenceError, match="exactement"):
+    artifacts["evaluation"]["replications"].pop("10:dd")
+    with pytest.raises(cc.EntryRefusedError, match="combinaisons") as info:
         cv.decide(artifacts, violations=[])
+    assert info.value.reason == "R0_INVALID_RUN"
 
 
 # ---------------------------------------------------------------------------
@@ -775,7 +794,10 @@ def test_cli_temoin_sain_sort_0_et_ecrit_la_chaine(tmp_path: Path) -> None:
     [
         pytest.param(lambda a: a.__setitem__("anchor", {}), id="provenance supprimée"),
         pytest.param(lambda a: a.__setitem__("continuity", {}), id="continuité vide"),
-        pytest.param(lambda a: a["evaluation"].pop("discarded"), id="discarded absent"),
+        pytest.param(
+            lambda a: a["evaluation"]["replications"]["21:dd"].pop("discarded"),
+            id="discarded absent",
+        ),
         pytest.param(
             lambda a: a["evaluation"].__setitem__("estimability", {"E1": "false"}),
             id="déclaration en chaîne 'false'",
@@ -795,9 +817,10 @@ def test_cli_refuse_l_entree_avec_exit_2_et_n_ecrit_rien(tmp_path: Path, mutate:
     "mutate",
     [
         pytest.param(
-            lambda a: a["evaluation"].__setitem__(
-                "bounds", {k: float("inf") for k in a["evaluation"]["bounds"]}
-            ),
+            lambda a: [
+                r.__setitem__("bound", float("inf"))
+                for r in a["evaluation"]["replications"].values()
+            ],
             id="bornes infinies",
         ),
         pytest.param(
@@ -808,7 +831,10 @@ def test_cli_refuse_l_entree_avec_exit_2_et_n_ecrit_rien(tmp_path: Path, mutate:
             lambda a: a["evaluation"]["returns_config"].__setitem__(5, -1.0),
             id="rendement exactement -1",
         ),
-        pytest.param(lambda a: a["evaluation"].__setitem__("discarded", 11), id="B incohérent"),
+        pytest.param(
+            lambda a: a["evaluation"]["replications"]["21:dd"].__setitem__("discarded", 11),
+            id="B incohérent",
+        ),
     ],
 )
 def test_cli_violation_sort_1_avec_un_diagnostic_sans_verdict(tmp_path: Path, mutate: Any) -> None:
@@ -895,7 +921,7 @@ def test_declaration_coherente_ne_produit_aucune_violation() -> None:
 def test_discarded_absent_est_une_erreur_d_entree_et_non_zero() -> None:
     """Défaut reproduit : `discarded` absent valait 0, donc `validé` là où 11 donnait `inconclusif`."""
     artifacts = _sound()
-    artifacts["evaluation"].pop("discarded")
+    artifacts["evaluation"]["replications"]["21:dd"].pop("discarded")
     with pytest.raises(cc.MissingEvidenceError, match="discarded"):
         cv.decide(artifacts, violations=[])
 
@@ -903,7 +929,8 @@ def test_discarded_absent_est_une_erreur_d_entree_et_non_zero() -> None:
 def test_discarded_incoherent_avec_B_est_une_violation() -> None:
     """`B` déclaré, `B_effectif` recalculé : un désaccord est une violation (§ I.1, ligne 15)."""
     artifacts = _sound()
-    artifacts["evaluation"]["discarded"] = 11  # B_effectif 10 000 + 11 != B 10 000
+    # B_effectif 10 000 + 11 != B 10 000, sur une combinaison
+    artifacts["evaluation"]["replications"]["21:dd"]["discarded"] = 11
     violations: list[str] = []
     cv.decide(artifacts, violations=violations)
     assert any("B déclaré" in v for v in violations)
@@ -955,10 +982,11 @@ def _with_replications(
     suite : seul, il vaut une violation (code 1) ; **avec un `B` hors contrat, c'est R0 qui prime**.
     """
     a["evaluation"]["B"] = b
-    a["evaluation"]["delta_stars"] = a["evaluation"]["delta_stars"][:n_deltas]
-    a["evaluation"]["discarded"] = discarded
+    for replication in a["evaluation"]["replications"].values():
+        replication["delta_stars"] = replication["delta_stars"][:n_deltas]
+        replication["discarded"] = discarded
     if nan_in_deltas:
-        a["evaluation"]["delta_stars"][3] = float("nan")
+        a["evaluation"]["replications"]["21:dd"]["delta_stars"][3] = float("nan")
 
 
 #: (B, len(delta_stars), discarded, non-fini dans delta_stars, code CLI, issue, raison)
@@ -1022,7 +1050,9 @@ def test_matrice_B_en_appel_direct(
     _with_replications(
         artifacts, b=b, n_deltas=n_deltas, discarded=discarded, nan_in_deltas=nan_in_deltas
     )
-    assert len(artifacts["evaluation"]["delta_stars"]) == n_deltas
+    assert all(
+        len(r["delta_stars"]) == n_deltas for r in artifacts["evaluation"]["replications"].values()
+    )
     violations: list[str] = []
     if code == 2:
         # `EntryRefusedError`, et pas `InvalidValueError` : le contrat est lu avant les séries.
@@ -1044,7 +1074,10 @@ def test_matrice_B_en_appel_direct(
     assert decision.reason == reason
     est = decision.estimability
     assert est is not None
-    assert (est["B"], est["B_effectif"], est["discarded"]) == (b, n_deltas, discarded)
+    assert est["B"] == b
+    assert {(c["B_effectif"], c["discarded"]) for c in est["combinations"].values()} == {
+        (n_deltas, discarded)
+    }
 
 
 @pytest.mark.parametrize(
@@ -1081,8 +1114,136 @@ def test_matrice_B_par_la_cli(
     assert payload["verdict"] == issue
     assert payload["raison"] == reason
     assert payload["estimabilite"]["B"] == b
-    assert payload["estimabilite"]["B_effectif"] == n_deltas
-    assert payload["estimabilite"]["discarded"] == discarded
+    assert {
+        (c["B_effectif"], c["discarded"]) for c in payload["estimabilite"]["combinations"].values()
+    } == {(n_deltas, discarded)}
+
+
+# ---------------------------------------------------------------------------
+# § A.13 E2 v2.1 (AM-09), § F.2 (b) v2.1 (AM-14), § F.2 (e) v2.1 (AM-16) — les six distributions
+# ---------------------------------------------------------------------------
+
+
+def test_six_distributions_variables_satisfont_E2() -> None:
+    """§ A.13 v2.1, E2 : « Chacune des six distributions rééchantillonnées de Δ* […] porte au moins deux
+    valeurs distinctes » — le témoin sain le satisfait sur les six."""
+    decision = cv.decide(_sound(), violations=[])
+    est = decision.estimability
+    assert est is not None and est["E2"] is True
+    assert sorted(est["combinations"]) == sorted(cc.COMBINATIONS)
+    assert all(
+        c["E2"] is True and c["within_ceiling"] is True for c in est["combinations"].values()
+    )
+
+
+def test_une_seule_distribution_constante_sur_six_fait_echouer_E2() -> None:
+    """§ A.13 v2.1, E2 : « Une seule distribution constante suffit à faire échouer E2 » ; la conjonction de six
+    tests dont un est inévaluable est inévaluable → `inconclusif (F_NOT_ESTIMABLE)` (§ H.0), jamais `validé`,
+    même avec six bornes positives et les portes Q franchies."""
+    artifacts = _sound()
+    artifacts["evaluation"]["replications"]["42:sigma"]["delta_stars"] = [0.25] * cc.BOOTSTRAP_B
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "F_NOT_ESTIMABLE"
+    assert decision.issue != cc.ISSUE_VALIDE
+    est = decision.estimability
+    assert est is not None and est["E2"] is False
+    assert est["combinations"]["42:sigma"]["E2"] is False
+    assert all(v["E2"] for k, v in est["combinations"].items() if k != "42:sigma")
+
+
+def test_une_combinaison_au_dela_du_plafond_rend_l_inference_inutilisable() -> None:
+    """§ F.2 (e) v2.1 : au-delà de 10 réplications écartées « sur l'une quelconque des six combinaisons »,
+    l'inférence est inutilisable — `inconclusif (F_NOT_ESTIMABLE)` ; `B_effectif` est publié par combinaison."""
+    artifacts = _sound()
+    replication = artifacts["evaluation"]["replications"]["10:dd"]
+    replication["delta_stars"] = replication["delta_stars"][: cc.BOOTSTRAP_B - 11]
+    replication["discarded"] = 11
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_INCONCLUSIF and decision.reason == "F_NOT_ESTIMABLE"
+    est = decision.estimability
+    assert est is not None and est["within_ceiling"] is False
+    assert est["combinations"]["10:dd"]["within_ceiling"] is False
+    assert est["combinations"]["10:dd"]["B_effectif"] == cc.BOOTSTRAP_B - 11
+    assert all(v["within_ceiling"] for k, v in est["combinations"].items() if k != "10:dd")
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda r: r.pop("42:dd"), id="cinq combinaisons"),
+        pytest.param(lambda r: r.__setitem__("15:dd", dict(r["21:dd"])), id="clé étrangère"),
+        pytest.param(
+            lambda r: r.__setitem__("21:max", r.pop("21:sigma")), id="appariement inconnu"
+        ),
+    ],
+)
+def test_un_ensemble_de_combinaisons_hors_contrat_est_un_refus_R0(
+    tmp_path: Path, mutate: Any
+) -> None:
+    """§ F.2 (b) v2.1 : « une combinaison manquante ou surnuméraire est un contrat rompu — R0_INVALID_RUN,
+    code 2, rien n'est publié (§ I.1, ligne 2) »."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"]["replications"])
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=[])
+    assert info.value.reason == "R0_INVALID_RUN"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_le_contrat_d_instrument_vient_avant_toute_lecture(tmp_path: Path) -> None:
+    """§ F.2 (b) v2.1 et § I.1 v2.1 : le refus de contrat est « fait avant toute lecture des séries » et
+    « vient en premier par construction » — un `B` hors contrat accompagné d'une contradiction de continuité
+    sort en refus R0, code 2, rien publié ; jamais en diagnostic par accident d'ordre de lecture."""
+    artifacts = _sound()
+    artifacts["continuity"]["warmup_anchor_ok"] = (
+        False  # contredit c4 VERIFIED : une violation, seule
+    )
+    artifacts["evaluation"]["B"] = 400
+    violations: list[str] = []
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=violations)
+    assert info.value.reason == "R0_INVALID_RUN" and "F.2" in str(info.value)
+    assert violations == [], "le contrat est évalué avant la lecture de la continuité"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(
+            lambda r: r["21:dd"].__setitem__("bound", None), id="borne nulle, suite non vide"
+        ),
+        pytest.param(
+            lambda r: r["21:dd"].update(
+                {"delta_stars": [], "discarded": cc.BOOTSTRAP_B, "bound": 1.0}
+            ),
+            id="borne déclarée, suite vide",
+        ),
+    ],
+)
+def test_une_borne_est_nulle_si_et_seulement_si_sa_suite_est_vide(mutate: Any) -> None:
+    """§ F.2 (e) v2.1 : une combinaison sans réplication retenue ne porte pas de borne — la borne est nulle si
+    et seulement si la suite retenue est vide ; l'écart, dans un sens ou dans l'autre, contredit l'artefact
+    (§ I.1, ligne 15)."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"]["replications"])
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any("21:dd" in v and "borne" in v for v in violations)
+
+
+def test_une_borne_absente_est_une_erreur_d_entree() -> None:
+    """§ I.1 v2.1, ligne 2 : une clé absente est une erreur de forme — la borne est nullable, jamais absente."""
+    artifacts = _sound()
+    artifacts["evaluation"]["replications"]["21:dd"].pop("bound")
+    with pytest.raises(cc.MissingEvidenceError, match="bound"):
+        cv.decide(artifacts, violations=[])
 
 
 # ---------------------------------------------------------------------------
@@ -1110,8 +1271,10 @@ def _abstention(reason: str) -> Any:
 
 
 def _all_discarded(a: dict[str, Any]) -> None:
-    a["evaluation"]["delta_stars"] = []
-    a["evaluation"]["discarded"] = cc.BOOTSTRAP_B
+    """§ F.2 (e) : toutes les réplications écartées sur chaque combinaison, compte cohérent ; une suite
+    vide ne porte pas de borne (nulle si et seulement si la suite est vide)."""
+    for replication in a["evaluation"]["replications"].values():
+        replication.update({"delta_stars": [], "discarded": cc.BOOTSTRAP_B, "bound": None})
 
 
 #: (ligne, fixture, issue attendue, raison attendue, code CLI attendu, artefact écrit ?, chaîne citable ?)
@@ -1214,9 +1377,7 @@ TABLE_I1 = [
     ),
     pytest.param(
         14,
-        lambda a: a["evaluation"].__setitem__(
-            "bounds", dict.fromkeys(a["evaluation"]["bounds"], -0.5)
-        ),
+        lambda a: [r.__setitem__("bound", -0.5) for r in a["evaluation"]["replications"].values()],
         cc.ISSUE_INCONCLUSIF,
         "F_CANNOT_SEPARATE",
         0,
@@ -3100,10 +3261,10 @@ def test_revue_Fin2_1_l_abstention_recoupe_la_continuite_et_porte_continuite_tir
     ("path", "mutate_eval"),
     [
         ("abstention", lambda e: e["metrics"].pop("delta_dd")),
-        ("abstention", lambda e: e.pop("bounds")),
+        ("abstention", lambda e: e["replications"]["21:dd"].pop("bound")),
         ("abstention", lambda e: e.__setitem__("B", 400)),
         ("F_NOT_ESTIMABLE", lambda e: e["metrics"].pop("delta_dd")),
-        ("F_NOT_ESTIMABLE", lambda e: e.pop("bounds")),
+        ("F_NOT_ESTIMABLE", lambda e: e["replications"]["21:dd"].pop("bound")),
         ("D_WARMUP_ANCHOR", lambda e: e["metrics"].pop("net_pnl")),
     ],
     ids=[
@@ -3250,7 +3411,9 @@ def test_revue_Fin2_3_chain_verified_vrai_avec_un_inconclusif_E_NO_BENCHMARK(
         ),
         (
             "violation_hors_chaine_non_fini",
-            lambda a: a["evaluation"]["delta_stars"].__setitem__(3, float("nan")),
+            lambda a: a["evaluation"]["replications"]["21:dd"]["delta_stars"].__setitem__(
+                3, float("nan")
+            ),
         ),
     ],
     ids=["estimabilite", "resume", "empreinte", "coherence", "protocole", "non_fini"],

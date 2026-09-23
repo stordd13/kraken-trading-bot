@@ -126,6 +126,11 @@ DISCARDED_MAX = _t("DISCARDED_MAX", 10, CLASS_DATA, "§ F.2 (e)")
 # Conventions non décisionnelles (pas des seuils) — ni classées, ni au registre.
 ANNUALISATION_DAYS = 365
 MATCHINGS: tuple[str, ...] = ("dd", "sigma")
+#: § F.2 (h) — les six combinaisons `L × appariement`, sous la forme `L:appariement` des clés de
+#: l'artefact d'évaluation (§ F.2 e v2.1 : suites, écartées et bornes y sont publiées par combinaison).
+COMBINATIONS: tuple[str, ...] = tuple(
+    f"{length}:{matching}" for length in BLOCK_LENGTHS for matching in MATCHINGS
+)
 RETURN_DOMAIN_FLOOR = -1.0  # log1p n'existe pas en deçà ; § A.8 D4, contrainte mathématique pure
 
 # Noms du rejeu qu'aucune source `c3_*` ne doit importer (§ 0.5, antériorité).
@@ -246,7 +251,9 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
 #: ``refusal`` — `entry.json` : ``null`` quand l'entrée est conforme, un bloc quand elle est refusée ;
 #: ``retained`` — `selection.json` : ``null`` en abstention, un bloc quand une configuration est retenue ;
 #: ``reason`` — `benchmark.pairs[].reason` et `selection.reason` : ``null`` quand rien n'est à signaler ;
-#: ``liquidation_normalised`` — `continuity.json` : ``true`` prouvé par lot, ``false`` en échec, ``null`` non vérifiable.
+#: ``liquidation_normalised`` — `continuity.json` : ``true`` prouvé par lot, ``false`` en échec, ``null`` non vérifiable ;
+#: ``bound`` — `evaluation.replications[combinaison]` : ``null`` si et seulement si la suite retenue est vide
+#: (§ F.2 e v2.1 : une combinaison sans réplication retenue ne porte pas de borne).
 NULLABLE_FIELDS: frozenset[str] = frozenset(
     {
         "stale_by_candles",
@@ -264,6 +271,7 @@ NULLABLE_FIELDS: frozenset[str] = frozenset(
         "retained",
         "reason",
         "liquidation_normalised",
+        "bound",
     }
 )
 
@@ -821,6 +829,45 @@ def estimability(
         nonzero_ratio=ratio,
         distinct_delta_stars=distinct,
         discarded=int(discarded),
+    )
+
+
+@dataclass(frozen=True)
+class CombinedEstimability:
+    """§ A.13 v2.1 et § F.2 (e) v2.1 : E1 sur la trajectoire évaluée, **E2 conjonctive** sur les six
+    distributions rééchantillonnées, plafond de réplications écartées **par combinaison**."""
+
+    e1: bool
+    nonzero_ratio: float
+    per_combination: Mapping[str, Estimability]
+
+    @property
+    def e2(self) -> bool:
+        return all(est.e2 for est in self.per_combination.values())
+
+    @property
+    def within_ceiling(self) -> bool:
+        return all(est.discarded <= DISCARDED_MAX for est in self.per_combination.values())
+
+    @property
+    def ok(self) -> bool:
+        return self.e1 and self.e2 and self.within_ceiling
+
+
+def combined_estimability(
+    returns_config: Sequence[float], suites: Mapping[str, tuple[Sequence[float], int]]
+) -> CombinedEstimability:
+    """`cc.estimability` appliquée à chaque combinaison (fonction inchangée), puis conjointe : une seule
+    distribution constante fait échouer E2, une seule combinaison au-delà du plafond rend l'inférence
+    inutilisable. E1, elle, ne porte que sur la trajectoire évaluée, unique."""
+    per = {
+        combination: estimability(returns_config, deltas, discarded)
+        for combination, (deltas, discarded) in suites.items()
+    }
+    cfg = np.asarray(list(returns_config), dtype=float)
+    ratio = float(np.count_nonzero(cfg)) / float(cfg.size) if cfg.size else 0.0
+    return CombinedEstimability(
+        e1=ratio >= E1_NONZERO_RATIO, nonzero_ratio=ratio, per_combination=per
     )
 
 

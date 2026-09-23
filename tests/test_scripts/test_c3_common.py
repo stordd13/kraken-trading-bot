@@ -172,6 +172,7 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "retained",
             "reason",
             "liquidation_normalised",
+            "bound",
         }
     )
     assert not (cc.OPTIONAL_FIELDS & cc.NULLABLE_FIELDS), (
@@ -496,6 +497,49 @@ def test_l_encart_v21_dit_ce_que_D1_mesure_sur_le_1w_du_prefixe() -> None:
     assert (units - len(missing)) / units < cc.COVERAGE_MIN_RATIO, "D1 échoue sur le 1 w"
     prefix_days = (anchor - start).total_seconds() / 86400.0
     assert cc.gap_days(1, cc.WEEK_MINUTES) == 7.0 <= cc.max_gap_days(prefix_days)
+
+
+# ---------------------------------------------------------------------------
+# § A.13 E2 v2.1 (AM-09) et § F.2 (e) v2.1 (AM-16) — au niveau fonction
+# ---------------------------------------------------------------------------
+
+#: § F.2 (h) : les six combinaisons `L × appariement`, `L ∈ {10, 21, 42}`, appariement en drawdown ou en
+#: écart-type — sous la forme `L:appariement` des clés de l'artefact d'évaluation.
+COMBINATIONS_F2H = ("10:dd", "10:sigma", "21:dd", "21:sigma", "42:dd", "42:sigma")
+
+
+def test_les_six_combinaisons_sont_celles_du_texte() -> None:
+    assert cc.COMBINATIONS == COMBINATIONS_F2H
+
+
+def _suites(**overrides: tuple[list[float], int]) -> dict[str, tuple[list[float], int]]:
+    varying = [0.1 * i for i in range(50)]
+    suites = {c: (list(varying), 0) for c in COMBINATIONS_F2H}
+    suites.update(overrides)
+    return suites
+
+
+_ACTIVE = [0.01, -0.01] * 20
+
+
+def test_E2_se_calcule_sur_chacune_des_six_distributions() -> None:
+    """§ A.13 v2.1, E2 : « Une seule distribution constante suffit à faire échouer E2 »."""
+    est = cc.combined_estimability(_ACTIVE, _suites(**{"42:sigma": ([0.25] * 50, 0)}))
+    assert est.e1 is True
+    assert est.e2 is False and est.ok is False
+    assert [c for c, e in est.per_combination.items() if not e.e2] == ["42:sigma"]
+    assert cc.combined_estimability(_ACTIVE, _suites()).e2 is True
+
+
+def test_le_plafond_de_replications_ecartees_s_applique_par_combinaison() -> None:
+    """§ F.2 (e) v2.1 : au-delà de 10 écartées « sur l'une quelconque des six combinaisons », l'inférence est
+    inutilisable ; 10 reste tolérable (≤ 10 sur 10 000)."""
+    over = cc.combined_estimability(
+        _ACTIVE, _suites(**{"10:dd": ([0.1 * i for i in range(50)], 11)})
+    )
+    assert over.within_ceiling is False and over.ok is False
+    at = cc.combined_estimability(_ACTIVE, _suites(**{"10:dd": ([0.1 * i for i in range(50)], 10)}))
+    assert at.within_ceiling is True and at.ok is True
 
 
 def _resuffix_block(block: dict[str, Any], suffix: str) -> dict[str, Any]:
@@ -1248,20 +1292,40 @@ SEED = 20260921
 
 @cache
 def _bootstrap_cached(
-    cfg: tuple[float, ...], bch: tuple[float, ...]
+    cfg: tuple[float, ...], bch: tuple[float, ...], block_length: int
 ) -> tuple[tuple[float, ...], int]:
     n = len(cfg)
-    rng = np.random.default_rng([SEED, 0, 21])
-    starts = cc.block_start_indices(rng, n, 21, cc.BOOTSTRAP_B)
-    idx = cc.block_indices(starts, 21, n)
+    rng = np.random.default_rng([SEED, 0, block_length])
+    starts = cc.block_start_indices(rng, n, block_length, cc.BOOTSTRAP_B)
+    idx = cc.block_indices(starts, block_length, n)
     deltas, discarded = cc.paired_delta_stars(cfg, bch, idx, float(EVAL_DAYS))
     return tuple(float(x) for x in deltas), discarded
 
 
-def bootstrap(returns_config: list[float], returns_bench: list[float]) -> tuple[list[float], int]:
-    """Le vrai chemin numérique du § F.2 à `B = BOOTSTRAP_B`, mémoïsé par séries."""
-    deltas, discarded = _bootstrap_cached(tuple(returns_config), tuple(returns_bench))
+def bootstrap(
+    returns_config: list[float], returns_bench: list[float], *, block_length: int = 21
+) -> tuple[list[float], int]:
+    """Le vrai chemin numérique du § F.2 à `B = BOOTSTRAP_B`, mémoïsé par séries et par `L`."""
+    deltas, discarded = _bootstrap_cached(tuple(returns_config), tuple(returns_bench), block_length)
     return list(deltas), discarded
+
+
+def replications(
+    returns_config: list[float], returns_bench: list[float], *, bound: float = 1.0
+) -> dict[str, dict[str, Any]]:
+    """Les six combinaisons `L × appariement` du § F.2 (h), format v2.1 : par combinaison, la suite `Δ*`
+    retenue, le compte d'écartées et la borne déclarée. Une suite par `L` (§ F.2 b) sert les deux
+    appariements : les fixtures n'ont qu'une série de comparateur."""
+    out: dict[str, dict[str, Any]] = {}
+    for length in cc.BLOCK_LENGTHS:
+        deltas, discarded = bootstrap(returns_config, returns_bench, block_length=length)
+        for matching in cc.MATCHINGS:
+            out[f"{length}:{matching}"] = {
+                "delta_stars": list(deltas),
+                "discarded": discarded,
+                "bound": bound,
+            }
+    return out
 
 
 def varying_returns(seed: int, n: int = N_EVAL_POINTS - 1) -> list[float]:
@@ -1290,13 +1354,11 @@ def evaluation(
     pair = cand["pair"]
     values = nav_path(pair, candidate_index + 7, N_EVAL_POINTS, drift=0.0006)
     returns_config = varying_returns(7)
-    deltas, discarded = bootstrap(
+    replicated = replications(
         returns_config, returns_bench if returns_bench is not None else [0.0] * (N_EVAL_POINTS - 1)
     )
-    if bounds is None:
-        bounds = {
-            f"{length}:{matching}": 1.0 for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS
-        }
+    for combination, bound in (bounds or {}).items():
+        replicated[combination]["bound"] = bound
     reference = f"{values[-1] * 33.5:.8f}"
     liq = (
         liquidation_segment(
@@ -1326,13 +1388,11 @@ def evaluation(
         "first_fill_at": None if first_fill_at is None else first_fill_at.isoformat(),
         "flat_start_proof": flat_start_proof,
         "returns_config": returns_config,
-        "delta_stars": deltas,
-        "discarded": discarded,
         "B": cc.BOOTSTRAP_B,
+        "replications": replicated,
         "metrics": metrics
         if metrics is not None
         else {"net_pnl": 42.0, "cagr_pct": 5.0, "delta_dd": 1.2},
-        "bounds": bounds,
     }
     return out
 

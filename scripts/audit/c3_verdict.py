@@ -174,52 +174,14 @@ def _gate_results(evaluation: Mapping[str, Any]) -> dict[str, bool]:
     }
 
 
-def _bounds_all_positive(evaluation: Mapping[str, Any]) -> bool:
-    """Les six combinaisons `L × appariement` du § F.2 (h), toutes **finies** et strictement positives.
-
-    La finitude est vérifiée **avant** la comparaison : sans elle, `+inf` franchirait le plancher et
-    un `NaN` le ferait échouer silencieusement.
-    """
-    bounds = cc.require_mapping(evaluation, "bounds", where="evaluation")
-    expected = {f"{length}:{matching}" for length in cc.BLOCK_LENGTHS for matching in cc.MATCHINGS}
-    missing = expected - set(bounds)
-    extra = set(bounds) - expected
-    if missing or extra:
-        raise cc.MissingEvidenceError(
-            f"evaluation.bounds: attendu exactement {len(expected)} combinaisons ; "
-            f"manquantes={sorted(missing)} en trop={sorted(extra)}"
-        )
-    values = [cc.require_float(bounds, key, where="evaluation.bounds") for key in sorted(expected)]
-    return all(v > 0.0 for v in values)
-
-
-def _estimability_of(
-    evaluation: Mapping[str, Any], *, violations: list[str]
-) -> tuple[bool, dict[str, Any]]:
-    """§ A.13, **recalculé depuis les séries**, puis recoupé contre toute valeur déclarée.
-
-    Le statut déclaré n'est **jamais** recopié : il est recalculé et comparé, et un désaccord est une
-    **violation** (§ I.1, ligne 15). Le bloc déclaré est optionnel ; **s'il est présent, chaque champ
-    est strictement typé** — une chaîne ``"false"`` est une erreur de type, pas un ``True``.
-
-    Le compteur ``discarded`` et le total ``B`` sont **obligatoires** : un compteur absent n'est pas
-    zéro. Deux contrôles sur ``B``, dans cet ordre :
-
-    1. **contrat, en tête de fonction, avant tout parsing** — ``B`` est un paramètre de la procédure
-       d'incertitude que le manifeste déclare (§ A.6) et que D5 asserte « égal à ce qui est déclaré » ;
-       la valeur gelée est ``BOOTSTRAP_B`` (§ F.2 b). Un ``B`` différent est un **contrat d'instrument
-       rompu** : ``R0_INVALID_RUN``, code 2, rien n'est publié (§ I.1, ligne 2). « ``R0_INVALID_RUN``
-       est évalué avant toute autre chose » (§ H) vaut aussi contre les erreurs de parsing des séries :
-       un ``B`` hors contrat accompagné d'un compteur contradictoire **ou** d'un non-fini dans
-       ``delta_stars`` sort en refus de contrat (2, rien d'écrit), jamais en violation (1) par accident
-       d'ordre de lecture. Précédent : ``rejeu_validate_analysis.b02_frozen_parameters``.
-    2. **cohérence** — ``B_effectif`` est recalculé comme ``len(delta_stars)`` ;
-       ``B != B_effectif + discarded`` est un désaccord recalculé / enregistré, donc une violation
-       (§ I.1, ligne 15).
-
-    Une suite ``delta_stars`` **vide mais documentée** (toutes les réplications écartées) n'est pas une
-    erreur d'entrée : elle mène à ``F_NOT_ESTIMABLE`` par le § F.2 (e), comme tout ``discarded`` au-delà
-    de ``DISCARDED_MAX`` avec un compte cohérent.
+def _evaluation_contract(evaluation: Mapping[str, Any]) -> None:
+    """§ F.2 (b) v2.1 — les paramètres de la procédure d'incertitude sont des **contrats d'instrument**,
+    contrôlés **avant toute lecture** (§ I.1 v2.1 : le refus de contrat « vient en premier par
+    construction ») : ``B`` égal à la valeur gelée ``BOOTSTRAP_B``, et **exactement** les six combinaisons
+    ``L × appariement`` du § F.2 (h) sous ``replications``. Tout écart est un contrat rompu —
+    ``R0_INVALID_RUN``, code 2, rien n'est publié (§ I.1, ligne 2) — même accompagné d'un compteur
+    contradictoire, d'un non-fini dans une suite ou d'une contradiction de continuité : jamais une violation
+    par accident d'ordre de lecture. Précédent : ``rejeu_validate_analysis.b02_frozen_parameters``.
     """
     total = cc.require_int(evaluation, "B", where="evaluation")
     if total != cc.BOOTSTRAP_B:
@@ -228,22 +190,109 @@ def _estimability_of(
             f"evaluation.B = {total} ; la valeur gelée du § F.2 (b) est {cc.BOOTSTRAP_B} "
             "— contrat d'instrument rompu, aucun verdict",
         )
+    replications = cc.require_mapping(evaluation, "replications", where="evaluation")
+    expected = set(cc.COMBINATIONS)
+    missing = sorted(expected - set(replications))
+    extra = sorted(set(replications) - expected)
+    if missing or extra:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            "evaluation.replications : les six combinaisons L × appariement du § F.2 (h) sont exigées, "
+            f"exactement ; manquantes={missing} en trop={extra} — contrat d'instrument rompu (§ F.2 b)",
+        )
+
+
+#: Une combinaison lue : la suite `Δ*` retenue, le compte d'écartées, la borne déclarée (nulle ⟺ suite vide).
+Replication = tuple[list[float], int, float | None]
+
+
+def _read_replications(evaluation: Mapping[str, Any]) -> dict[str, Replication]:
+    """Les six combinaisons, **lues strictement et entièrement** avant toute décision (§ F.2 e v2.1 : suites,
+    écartées et bornes sont publiées par combinaison). Le contrat sur l'ensemble des clés a été vérifié en
+    tête (``_evaluation_contract``) ; ici, chaque champ passe par l'accesseur strict."""
+    block = cc.require_mapping(evaluation, "replications", where="evaluation")
+    out: dict[str, Replication] = {}
+    for combination in cc.COMBINATIONS:
+        where = f"evaluation.replications.{combination}"
+        item = cc.require_mapping(block, combination, where="evaluation.replications")
+        deltas = cc.require_finite_series(item, "delta_stars", where=where, min_len=0)
+        discarded = cc.require_int(item, "discarded", where=where, minimum=0)
+        bound = cc.nullable_float(item, "bound", where=where)
+        out[combination] = (deltas, discarded, bound)
+    return out
+
+
+def _bounds_all_positive(replications: Mapping[str, Replication], *, violations: list[str]) -> bool:
+    """Les six bornes du § F.2 (h), toutes **finies** (garde de l'accesseur, avant toute comparaison :
+    sans elle `+inf` franchirait le plancher et un `NaN` le ferait échouer silencieusement) et strictement
+    positives. § F.2 (e) v2.1 : une combinaison sans réplication retenue ne porte pas de borne — la borne est
+    nulle **si et seulement si** la suite retenue est vide ; l'écart, dans un sens ou dans l'autre, contredit
+    l'artefact : violation (§ I.1, ligne 15)."""
+    positive = True
+    for combination, (deltas, _discarded, bound) in replications.items():
+        if (bound is None) != (len(deltas) == 0):
+            state = "nulle" if bound is None else "déclarée"
+            suite = "vide" if not deltas else "non vide"
+            violations.append(
+                f"réplications {combination} : borne {state} avec une suite retenue {suite} — une borne "
+                "est nulle si et seulement si sa suite retenue est vide (§ F.2 e)"
+            )
+        if bound is None or bound <= 0.0:
+            positive = False
+    return positive
+
+
+def _estimability_of(
+    evaluation: Mapping[str, Any],
+    replications: Mapping[str, Replication],
+    *,
+    violations: list[str],
+) -> tuple[bool, dict[str, Any]]:
+    """§ A.13 v2.1, **recalculé depuis les séries**, puis recoupé contre toute valeur déclarée.
+
+    E1 porte sur la trajectoire évaluée, unique ; **E2 est conjonctive sur les six distributions**
+    rééchantillonnées (§ A.13 v2.1 : une seule distribution constante suffit à la faire échouer) ; le
+    plafond de réplications écartées s'applique **par combinaison** (§ F.2 e v2.1). ``B`` a passé le
+    contrat en tête (``_evaluation_contract``) ; ici, par combinaison, ``B_effectif`` est recalculé comme
+    ``len(delta_stars)`` et ``B != B_effectif + discarded`` est un désaccord recalculé / enregistré, donc une
+    **violation** (§ I.1, ligne 15). Une suite **vide mais documentée** (toutes les réplications écartées)
+    n'est pas une erreur d'entrée : elle mène à ``F_NOT_ESTIMABLE`` par le plafond.
+
+    Le statut déclaré n'est **jamais** recopié : il est recalculé et comparé, et un désaccord est une
+    violation. Le bloc déclaré est optionnel ; **s'il est présent, chaque champ est strictement typé** — une
+    chaîne ``"false"`` est une erreur de type, pas un ``True``.
+    """
+    total = cc.require_int(evaluation, "B", where="evaluation")
     returns = cc.require_finite_series(
         evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
     )
-    deltas = cc.require_finite_series(evaluation, "delta_stars", where="evaluation", min_len=0)
-    discarded = cc.require_int(evaluation, "discarded", where="evaluation", minimum=0)
-    b_effectif = len(deltas)
-    if total != b_effectif + discarded:
-        violations.append(
-            f"réplications : B déclaré {total}, recalculé B_effectif {b_effectif} + écartées "
-            f"{discarded} = {b_effectif + discarded} — le compte recalculé fait foi"
-        )
-
-    est = cc.estimability(returns, deltas, discarded)
-    payload = est.to_dict()
-    payload["B"] = total
-    payload["B_effectif"] = b_effectif
+    for combination, (deltas, discarded, _bound) in replications.items():
+        if total != len(deltas) + discarded:
+            violations.append(
+                f"réplications {combination} : B déclaré {total}, recalculé B_effectif {len(deltas)} "
+                f"+ écartées {discarded} = {len(deltas) + discarded} — le compte recalculé fait foi"
+            )
+    est = cc.combined_estimability(
+        returns, {c: (deltas, discarded) for c, (deltas, discarded, _b) in replications.items()}
+    )
+    payload: dict[str, Any] = {
+        "E1": est.e1,
+        "E2": est.e2,
+        "nonzero_ratio": est.nonzero_ratio,
+        "B": total,
+        "within_ceiling": est.within_ceiling,
+        "ok": est.ok,
+        "combinations": {
+            combination: {
+                "E2": per.e2,
+                "distinct_delta_stars": per.distinct_delta_stars,
+                "B_effectif": len(replications[combination][0]),
+                "discarded": per.discarded,
+                "within_ceiling": per.discarded <= cc.DISCARDED_MAX,
+            }
+            for combination, per in est.per_combination.items()
+        },
+    }
 
     if "estimability" in evaluation and evaluation["estimability"] is not None:
         declared = cc.require_mapping(evaluation, "estimability", where="evaluation")
@@ -499,10 +548,11 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
 
     **Ordre : tout lire, puis décider** (revue Fin 5 et passe interne de la revue Fin 2). Le
     confinement (§ L.1, plan § 6.6) vient en tête — ``evaluation.synthetic`` strict, ``false``
-    refusé — puis le contrat d'entrée (refus R0 avant toute autre chose, § H), puis **la lecture
-    stricte complète des cinq artefacts** : ancre, sélection (listes, statut dérivé), continuité
-    (états contre leur liste close, résumés dérivés et recoupés), évaluation (``B`` contre le
-    contrat, séries, métriques des portes, six bornes). Aucun chemin de publication — abstention,
+    refusé — puis le **contrat d'instrument de l'évaluation** (``B`` et les six combinaisons, § F.2 b
+    v2.1 : avant toute lecture), puis le contrat d'entrée (refus R0 avant toute autre chose, § H), puis
+    **la lecture stricte complète des cinq artefacts** : ancre, sélection (listes, statut dérivé),
+    continuité (états contre leur liste close, résumés dérivés et recoupés), évaluation (séries, six
+    combinaisons, métriques des portes, six bornes). Aucun chemin de publication — abstention,
     inconclusif par raison run, réfuté, validé — ne précède cette lecture : une preuve manquante est
     un code 2, jamais un inconclusif publié. La décision suit ensuite l'ordre du § H : abstention,
     continuité (clauses), estimabilité (§ H.0), portes, bornes.
@@ -510,6 +560,8 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     # 0. Confinement, puis contrat d'entrée (R0 avant toute autre chose).
     evaluation = cc.require_mapping(artifacts, "evaluation", where="artefacts")
     synthetic = require_synthetic(evaluation)
+    # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument est évalué avant toute lecture.
+    _evaluation_contract(evaluation)
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
     _entry_contract(entry, violations=violations)
 
@@ -524,9 +576,12 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     )
     continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
     view = _continuity_view(continuity, evaluation=evaluation, anchor=anchor, violations=violations)
-    estimable, estimability_payload = _estimability_of(evaluation, violations=violations)
+    replications = _read_replications(evaluation)
+    estimable, estimability_payload = _estimability_of(
+        evaluation, replications, violations=violations
+    )
     gates = _gate_results(evaluation)
-    bounds_positive = _bounds_all_positive(evaluation)
+    bounds_positive = _bounds_all_positive(replications, violations=violations)
 
     # 2. La décision, dans l'ordre du § H.
     reasons: list[str] = []
@@ -952,8 +1007,15 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
     if est is not None:
         out.append(
             f"estimabilité : E1={est['E1']} E2={est['E2']} nnz={est['nonzero_ratio']:.3f} "
-            f"distincts={est['distinct_delta_stars']} B={est['B']} B_effectif={est['B_effectif']} "
-            f"écartées={est['discarded']}"
+            f"B={est['B']} plafond={est['within_ceiling']}"
+        )
+        out.append(
+            "  par combinaison : "
+            + " | ".join(
+                f"{c} distincts={v['distinct_delta_stars']} B_effectif={v['B_effectif']} "
+                f"écartées={v['discarded']}"
+                for c, v in sorted(est["combinations"].items())
+            )
         )
     gates = payload["portes_Q"]
     if gates:
@@ -1025,6 +1087,8 @@ def run_verdict(
         if not isinstance(artifacts["evaluation"], Mapping):
             raise cc.MissingEvidenceError("evaluation: bloc attendu")
         require_synthetic(artifacts["evaluation"])
+        # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument précède toute lecture, `verify_chain` compris.
+        _evaluation_contract(artifacts["evaluation"])
     except cc.EntryRefusedError as exc:
         print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
         return 2

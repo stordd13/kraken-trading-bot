@@ -749,7 +749,7 @@ prononcée :
 | # | Condition | Classe |
 |---|---|---|
 | **E1** | La trajectoire **évaluée** compte au moins **10 % de jours à rendement non nul** sur la fenêtre. **Le comparateur n'est pas soumis à E1** | qualité des données, **convention déclarée** |
-| **E2** | La distribution rééchantillonnée de `Δ*` porte **au moins deux valeurs distinctes** sur les réplications retenues | garde-fou méthodologique |
+| **E2** | **Chacune des six** distributions rééchantillonnées de `Δ*` — une par combinaison `L × appariement` du § F.2 (h) — porte **au moins deux valeurs distinctes** sur ses réplications retenues. Une seule distribution constante suffit à faire échouer E2 | garde-fou méthodologique |
 
 Un échec donne **`inconclusif (F_NOT_ESTIMABLE)`**, de portée run (§ I.1). **Ni `validé`, ni `réfuté`.**
 
@@ -782,6 +782,12 @@ précédente l'affirmait : elle transformait une condition **suffisante** en con
 condition opérationnelle d'E2 n'a pas changé ; seule son explication était fausse.)* E2 est un garde-fou étroit,
 et **c'est délibéré** : il refuse une borne sans information, il
 ne juge pas l'activité.
+
+**Pourquoi conjonctive.** `validé` exige une borne strictement positive dans les six combinaisons (§ H.1).
+Une distribution constante ne porte pas de borne estimable : sur cette combinaison-là, le test « borne > 0 »
+n'est ni vrai ni faux, il est **inévaluable**. Une conjonction de six tests dont un est inévaluable n'est pas
+« partiellement vraie » ; elle est inévaluable, et l'issue est `inconclusif (F_NOT_ESTIMABLE)`. E1, elle, ne
+porte que sur la trajectoire évaluée, unique, et reste une seule condition.
 
 **Ce contrôle n'est pas un repêchage** (§ A.11, section d'origine de cette interdiction). Un repêchage
 **remplace** un candidat écarté ou **relâche** une clause. E1 et E2 ne font ni l'un ni l'autre : ils
@@ -1268,6 +1274,13 @@ par `numpy.random.default_rng([graine, index de paire, L])` ; la graine est **d�
 évaluation et entre dans l'empreinte (§ A.6). Classe de `L` et de `B` : qualité des données ; classe de la
 graine : contrat.
 
+**Les valeurs de `L`, `B` et le niveau de la borne sont des contrats d'instrument au sens de D5** : un
+artefact d'évaluation qui déclare `B ≠ 10 000`, une longueur de bloc hors `{10, 21, 42}` ou une combinaison
+manquante ou surnuméraire est un **contrat rompu** — `R0_INVALID_RUN`, code 2, rien n'est publié (§ I.1,
+ligne 2) — et ce contrôle est fait **avant toute lecture**, séries comprises : un `B` hors contrat accompagné
+d'un compteur contradictoire ou d'un non-fini dans une suite rééchantillonnée sort en refus de contrat, jamais
+en violation par accident d'ordre de lecture. Précédent : `rejeu_validate_analysis.b02_frozen_parameters`.
+
 **(c) La reconstruction et l'annualisation.** Pour chaque réplication, la trajectoire est reconstruite par
 **produit cumulé** depuis le capital `C` (§ 0.5), puis le rendement géométrique annualisé est
 `CAGR = (exp(Σ log1p(r) × 365 / n_jours) − 1) × 100`, en %/an. `n_jours` est la durée de la fenêtre
@@ -1300,13 +1313,15 @@ non-finitudes dans les *entrées*, et les deux ne se recouvrent pas.**
 
 **Comment le quantile est calculé quand des réplications sont écartées.** Elles sont **exclues, comptées, et
 non remplacées** : pas de retirage, qui biaiserait la distribution vers les chemins qui se terminent bien. Le
-quantile du § F.2 (d) est calculé sur les **réplications retenues**, et l'artefact publie **`B_effectif`**, le
-nombre effectivement utilisé, à côté de `B`. Un rapport qui cite une borne sans citer `B_effectif` est
-incomplet.
+quantile du § F.2 (d) est calculé sur les **réplications retenues**, et l'artefact publie, **par
+combinaison** `L × appariement`, **`B_effectif`**, le nombre effectivement utilisé, à côté de `B`. Un rapport
+qui cite une borne sans le `B_effectif` de sa combinaison est incomplet. Une combinaison dont aucune
+réplication n'est retenue ne porte pas de borne : la borne déclarée est nulle **si et seulement si** sa suite
+retenue est vide, et l'écart, dans un sens ou dans l'autre, contredit l'artefact (§ I.1, ligne 15).
 
 **Le plafond, et ce qu'il vaut.** Au-delà de **10 réplications écartées sur 10 000** — soit un `B_effectif`
-inférieur à 9 990 — l'inférence est déclarée **inutilisable** : issue `inconclusif (F_NOT_ESTIMABLE)`, et
-**aucune borne n'est publiée**. Classe : qualité des données, **convention déclarée**. Le nombre est repris du
+inférieur à 9 990 — **sur l'une quelconque des six combinaisons** `L × appariement`, l'inférence est déclarée
+**inutilisable** : issue `inconclusif (F_NOT_ESTIMABLE)`, et **aucune borne n'est publiée**. Classe : qualité des données, **convention déclarée**. Le nombre est repris du
 précédent et **n'est pas dérivé** : il exprime qu'une poignée de chemins dégénérés est tolérable, et qu'au-delà
 la distribution n'est plus celle qu'on croit échantillonner.
 
