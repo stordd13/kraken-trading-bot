@@ -1667,6 +1667,19 @@ def test_table_I1_ligne_a_ligne(
         assert payload["invalide"] is (not citable)
 
 
+def test_un_diagnostic_ne_porte_ni_verdict_ni_raison_ni_chaine_citable(tmp_path: Path) -> None:
+    """§ I.1 v2.1, « Forme d'un diagnostic (ligne 15) » : « Un artefact de diagnostic est écrit, code 1, et
+    porte `invalide: true` et la liste des violations ; il ne porte ni verdict, ni raison, ni chaîne
+    citable »."""
+    artifacts = _sound()
+    artifacts["evaluation"]["metrics"]["cagr_pct"] += 0.1  # une valeur que le rejeu ne retrouve pas
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["violations"]
+    assert payload["verdict"] is None and payload["raison"] is None
+    assert payload["verdict_string"] is None
+
+
 def test_les_raisons_de_portee_candidat_sont_enumerees_sans_portee_exclusive() -> None:
     """Lignes 3 à 6 d'I.1 : leurs raisons sont énumérées — **pas** une table raison → portée.
 

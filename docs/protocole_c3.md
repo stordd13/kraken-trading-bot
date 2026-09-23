@@ -1188,7 +1188,7 @@ l'intérieur du passé*, et l'étiquette ci-dessus s'applique aussi.
 
 ### C.5 Tests de comparabilité — bloquants
 
-Paramétrés par la fenêtre considérée, jamais par une longueur en dur. Quatre tests, chacun avec ce qu'il
+Paramétrés par la fenêtre considérée, jamais par une longueur en dur. Cinq tests, chacun avec ce qu'il
 attrape :
 
 | Test | Borne | Ce qu'il attrape |
@@ -1197,8 +1197,15 @@ attrape :
 | Observation admissible aux deux bornes (§ A.4) | présence | un comparateur sans prix d'entrée ou sans prix de sortie |
 | Compte de rendements = `len(grille quotidienne) − 1` | égalité | **la ruine** : `resample_daily` cesse de définir un rendement dès qu'une NAV atteint 0 ou moins **[v]** `src/krakenbot/backtest_metrics.py:184-194`. Hors ce cas le test est vrai par construction, et il est conservé **uniquement** pour ce cas, qui est nommé |
 | Finitude | toutes valeurs finies | un NaN ou un infini entré dans la chaîne |
+| Fenêtre du comparateur d'évaluation | `[T, fin]` exactement, `T` recalculé par `c3_anchor` | un comparateur construit par le producteur sur une autre fenêtre — le producteur ne connaît pas `T`, il ne fait que déclarer ses bornes |
 
 Un échec donne `E_NO_BENCHMARK`, et **aucun repli sur `compute_benchmarks.py` n'est autorisé**.
+
+**Le producteur déclare, la chaîne recoupe.** Le comparateur d'évaluation est construit hors chaîne (§ L.1,
+pas 0) par un producteur qui ne connaît pas `T` ; il déclare ses bornes, et `c3_verdict` les compare à
+`[T, fin]`. Une discordance rend le comparateur **non comparable** (`E_NO_BENCHMARK`), **sans violation** : le
+producteur n'a pas menti, il a construit autre chose que ce que ce manifeste demande. Un `window_ok` déclaré qui
+contredit le recoupement est, lui, une violation (§ B.8, résumés dérivés).
 
 ### C.6 Cas non calculables
 
@@ -1708,6 +1715,17 @@ issue. `NOT_ESTIMABLE` (statut de candidat) et `F_NOT_ESTIMABLE` (raison) porten
 voisins et **ne sont pas la même chose** : le premier retire un candidat, le second n'apparaît que si le retrait
 de tous les candidats se fait par cette voie.
 
+**Comment le statut de sélection se calcule**, par `c3_select`, et se recoupe par `c3_verdict` :
+
+| Configuration retenue ? | Provenance | Statut | Raison de chaîne |
+|---|---|---|---|
+| oui | `clean` | `SÉLECTION_VALIDE` | — |
+| oui | `contaminated` ou `unknown` | `SÉLECTION_DESCRIPTIVE` | `P_PROVENANCE` |
+| non | quelconque | `ABSTENTION` | `A_NO_ADMISSIBLE_CANDIDATE` ou `A_BELOW_FLOOR` ; sous contamination, `P_PROVENANCE` la précède par priorité |
+
+Un statut déclaré par `c3_select` que `c3_verdict` ne redérive pas de la sélection et de la provenance est une
+violation (§ I.1, ligne 15).
+
 **Lecture de la liste.** L'ordre ci-dessus est **l'ordre de priorité**, sans exception et sans départage à
 inventer : la chaîne porte **la première raison qui s'applique**.
 
@@ -1801,12 +1819,40 @@ des données recevables : code 0, publiée. La non-recevabilité est un **refus 
 publié au-delà de la validation. Les confondre laisserait tourner la sélection sur un artefact que le protocole
 vient de déclarer inapte.
 
+**Forme d'un diagnostic (ligne 15).** Un artefact de diagnostic est écrit, code 1, et porte `invalide: true`
+et la liste des violations ; il ne porte **ni verdict, ni raison, ni chaîne citable** : une violation n'est pas
+un résultat, et rien de ce qu'un diagnostic contient ne se cite dans un rapport comme une issue.
+
+**Ligne 2 ou ligne 15, la frontière.** Une valeur **fournie** mais non finie ou hors domaine (un `NaN`, un
+infini, un rendement `≤ −1`, un `λ` hors `[0, 1]`) est une violation : ligne 15, code 1 ; de même un bloc qui
+se contredit (§ B.3) ou une valeur que le rejeu ne retrouve pas (§ F.2 d). Une valeur **absente, nulle, mal
+typée ou hors liste close** (une chaîne là où un booléen est attendu, un état hors de la liste de sa clause, une
+clé manquante) est une erreur de forme : ligne 2, code 2, **rien n'est écrit** — à l'exception de `c3_entry`,
+qui écrit toujours sa validation, refus compris (§ D.3) ; de même un contrat d'instrument rompu ou un rejeu
+inexécutable (§ F.2 b, d).
+
+**Ordre de constat.** Après une violation, la violation prime : un refus ou une issue constatés ensuite
+n'effacent pas le diagnostic (code 1). **Sauf lecture inachevable** : une preuve obligatoire absente, nulle,
+mal typée ou hors liste close constatée **après** une violation sort en code 2, rien publié, et les violations
+déjà constatées sont dites sur la sortie d'erreur — un diagnostic se bâtit sur une lecture complète, et une
+lecture inachevable n'en permet aucun. Le refus de contrat évalué **avant toute lecture** (§ F.2 b) n'est pas
+concerné par cet ordre : il vient en premier par construction. Ce paragraphe ratifie la convention d'outillage
+datée du 22/09 (preuve absente après violation → code 2), dont il devient la section d'origine ; celle du
+21/09 est abrogée (§ B.3, ligne 10 bis).
+
 ### I.2 Les trois étapes
 
 **I-A. Validité d'entrée** — forme de l'artefact, contrats de version (D5), bornes finissant exactement à
 l'ancrage, présence et forme des blocs d'amorçage **et de couverture**, provenance de l'univers, unicité des
 identités canoniques. Les assertions sont exécutées **dans un ordre gelé** et tout ce qui suit le premier échec
 est marqué **sauté, jamais vert**. Codes : § I.1.
+
+Une assertion dont l'artefact ne porte **aucun porteur** — un champ que l'export réel ne produit pas, par
+exemple l'intervalle d'exécution ou l'artefact de couverture — est consignée **non assertable**. Elle n'est
+**jamais verte**, elle ne bloque pas les assertions suivantes, et **en fin de I-A toute clause non assertable
+est un refus** `R0_INVALID_RUN` (§ I.1, ligne 2) : une entrée n'est validée pour sélection que si chaque clause
+est assertable et verte. « Non assertable » n'est pas un état intermédiaire tolérable ; c'est le nom exact de ce
+qui manque au producteur.
 
 **I-B. Validité de chronologie** — la propriété du § A.12, vérifiée par invariance et par contrôle négatif.
 
