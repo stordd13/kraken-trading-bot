@@ -1513,6 +1513,14 @@ def varying_returns(seed: int, n: int = N_EVAL_POINTS - 1) -> list[float]:
     return list(rng.normal(0.0005, 0.02, n))
 
 
+def flat_start_proof(
+    *, at: datetime = ANCHOR, cash: str = "1000", qty: str = "0", pending: int = 0
+) -> dict[str, Any]:
+    """§ B.2 v2.1 (AM-10) : « `flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}` », capturée avant le
+    traitement de la première bougie du run d'évaluation — conforme par défaut (`C` = 1000, § 0.5)."""
+    return {"at": at.isoformat(), "cash": cash, "qty": qty, "pending": pending}
+
+
 def evaluation(
     manifest_payload: dict[str, Any],
     *,

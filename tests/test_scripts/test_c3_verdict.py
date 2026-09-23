@@ -1891,6 +1891,24 @@ def test_clause_declarative_en_echec_est_un_refus_R0(tmp_path: Path, clause: str
     assert not (tmp_path / "verdict.json").exists()
 
 
+def test_chain_une_preuve_de_depart_capturee_apres_T_est_un_refus_R0(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ B.2 v2.1 : la preuve est capturée « avant le traitement de la première bougie », `at == T` ; un
+    objet incohérent — ici capturé à T + 5 min — met la clause en échec, « et l'artefact déclare alors
+    lui-même une rupture du contrat § B — refus `R0_INVALID_RUN` » : la continuité est publiée (c1 FAILED),
+    le verdict refuse, code 2, rien d'écrit."""
+    w = _chain_world(
+        tmp_path, flat_start_proof=fx.flat_start_proof(at=fx.ANCHOR + timedelta(minutes=5))
+    )
+    assert cv.main(_chain_argv(w)) == 2
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["clauses"]["c1"]["state"] == "FAILED"
+    assert not (w["out"] / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "R0_INVALID_RUN" in err and "clause c1" in err
+
+
 def test_l_evaluation_d_une_autre_configuration_est_refusee(tmp_path: Path) -> None:
     """L'évaluation (et sa continuité, cohérente) portent une autre configuration que la retenue :
     refus R0 (§ H.1). L'identité comparée est celle **dérivée** de l'évaluation (revue Fin 6)."""

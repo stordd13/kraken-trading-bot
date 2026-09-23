@@ -819,7 +819,8 @@ qu'un appel unique de trois ans fonctionne — ce qui sert la clause 2.
 *Énoncé.* Les positions fictives des simulations de sélection **ne passent jamais** dans le portefeuille évalué :
 celui-ci démarre plat à `T`, avec le capital déclaré et un inventaire nul.
 
-*État : **NON VÉRIFIABLE** sous les artefacts actuels.* Deux vérifications apparemment naturelles n'en sont pas :
+*État : **DÉCLARÉ**, sous la preuve spécifiée ci-dessous ; **NON VÉRIFIABLE** quand elle est absente.* Deux
+vérifications apparemment naturelles n'en sont pas :
 
 - **`equity_daily[...].values[0] == capital` ne prouve rien.** La valeur est **imposée** à l'ancre :
   `if k > 0: # the anchor is authoritative: points stamped <= start are ignored`, puis
@@ -840,11 +841,16 @@ décrit un **état postérieur**, pas l'état initial. Et à l'ancrage déclaré
 **aucune bougie n'est estampillée à `T = 04:48`** (§ A.4), donc **aucun point n'existe à `T`** — le premier
 point disponible est postérieur à l'instant dont on voudrait prouver l'état.
 
-**C3b doit donc spécifier une preuve de départ à plat, pas déplacer des colonnes.** Ce que cette preuve doit
-établir, sans quoi la clause reste non vérifiable : qu'à l'instant `T`, **avant** tout traitement, le cash vaut
-le capital déclaré, la quantité détenue est nulle, et aucun ordre n'est en attente. **Tant que cette preuve
-n'est pas spécifiée, C3b n'est pas un « simple changement de runner »**, et ce document ne le présente pas comme
-tel. Le travail reste sous gate humain et sous invariant de confinement `compare-ab --strict`.
+**La preuve de départ à plat — spécifiée ici, produite par C3b.** Le runner capture, **avant le traitement de
+la première bougie du run d'évaluation**, l'objet `flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}`,
+et exporte `first_fill_at`, l'estampille du premier remplissage du run, qui doit être **strictement postérieure
+à `T`** (§ C.3). L'outillage contrôle la cohérence de l'objet (`at == T`, `cash == C` du manifeste,
+`qty == 0`, `pending == 0`) et `first_fill_at > T`. **Cette preuve vaut `DÉCLARÉ`, jamais `VÉRIFIÉ`** : elle
+est produite par le programme dont elle décrit l'état, et l'outillage n'a aucun moyen indépendant de la
+recalculer. `validé` n'exige pas mieux que `DÉCLARÉ` sur cette clause (§ B.8), et le rapport le dit avec ce
+mot. Un objet absent laisse la clause `NON VÉRIFIABLE` ; un objet incohérent la met en échec, et l'artefact
+déclare alors lui-même une rupture du contrat § B — refus `R0_INVALID_RUN` (§ B.8). Le travail de C3b reste
+sous gate humain et sous invariant `compare-ab --strict`.
 
 ### B.3 Clause 3 — toute liquidation prévue paie ses coûts, et là où il n'y en a pas, le contrat le dit
 

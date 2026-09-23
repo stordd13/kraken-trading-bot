@@ -226,8 +226,9 @@ class EntryRefusedError(MissingEvidenceError):
 #: ``estimability`` (déclaration recoupée, § A.13) ; ``liquidation`` et ``dca_counters`` (le runner
 #: exporte ``null`` pour le moteur signal et hors DCA, `run_p7_grid_search.py:768-772` — D6 tranche,
 #: § A.8) ; ``lots`` (sous-clé de ``liquidation``, exigence C3b, preuve par lot de D6) ;
-#: ``flat_start_proof`` et ``first_fill_at`` (§ B.2 et § B.6, non vérifiables sous les artefacts
-#: actuels) ; ``decision_timeframes`` (surcharge par candidat de la déclaration par stratégie) ;
+#: ``flat_start_proof`` et ``first_fill_at`` (§ B.2 v2.1 et § B.6 : preuves déclarées par C3b ; absentes,
+#: la clause est ``NOT_VERIFIABLE``) ; ``decision_timeframes`` (surcharge par candidat de la déclaration par
+#: stratégie) ;
 #: ``exec_interval`` (porteur de l'intervalle d'exécution dans une observation — absent de l'export
 #: réel, D5 le consigne ``not_assertable``) ; ``run_scope`` (note de portée d'un manifeste réel) ;
 #: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative).

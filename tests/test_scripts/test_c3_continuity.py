@@ -123,7 +123,7 @@ def test_aucune_declaration_ne_produit_VERIFIED(tmp_path: Path) -> None:
     """La preuve de départ à plat la plus cohérente et une première exécution déclarée valent DECLARED."""
     w = _world(
         tmp_path,
-        flat_start_proof={"cash_at_T": "1000", "inventory_qty_at_T": "0", "pending_orders_at_T": 0},
+        flat_start_proof=fx.flat_start_proof(),
         first_fill_at=fx.ANCHOR + timedelta(minutes=10),
     )
     code, payload = _run(w)
@@ -138,19 +138,68 @@ def test_aucune_declaration_ne_produit_VERIFIED(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# § B.2 v2.1 (AM-10) — la preuve de départ à plat, spécifiée : {at, cash, qty, pending}
+# ---------------------------------------------------------------------------
+
+
+def test_c1_la_preuve_specifiee_au_texte_vaut_DECLARED(tmp_path: Path) -> None:
+    """§ B.2 v2.1 : « `flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}` » ; « Cette preuve vaut
+    `DÉCLARÉ`, jamais `VÉRIFIÉ` »."""
+    w = _world(tmp_path, flat_start_proof=fx.flat_start_proof())
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    assert _states(payload)["c1"] == "DECLARED"
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("at", (fx.ANCHOR + timedelta(minutes=5)).isoformat()),
+        ("at", (fx.ANCHOR - timedelta(minutes=48)).isoformat()),
+        ("cash", "999.99"),
+        ("qty", "0.0001"),
+        ("pending", 1),
+    ],
+    ids=["at = T + 5 min", "at avant T", "cash ≠ C", "qty ≠ 0", "pending ≠ 0"],
+)
+def test_c1_une_preuve_incoherente_est_FAILED(tmp_path: Path, field: str, value: Any) -> None:
+    """§ B.2 v2.1 : « L'outillage contrôle la cohérence de l'objet (`at == T`, `cash == C` du manifeste,
+    `qty == 0`, `pending == 0`) » ; « un objet incohérent la met en échec »."""
+    proof = fx.flat_start_proof()
+    proof[field] = value
+    w = _world(tmp_path, flat_start_proof=proof)
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    assert _states(payload)["c1"] == "FAILED" and payload["state"] == "FAILED"
+
+
+@pytest.mark.parametrize(
+    "proof",
+    [
+        {"cash_at_T": "1000", "inventory_qty_at_T": "0", "pending_orders_at_T": 0},
+        {**fx.flat_start_proof(), "pending_orders_at_T": 0},
+    ],
+    ids=["noms v2.0", "noms v2.1 et un nom v2.0"],
+)
+def test_c1_les_noms_v20_de_la_preuve_sont_une_erreur_de_forme(
+    tmp_path: Path, proof: dict[str, Any], capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ B.2 v2.1 : la preuve est `{at, cash, qty, pending}` ; un bloc portant les noms v2.0 n'est pas la
+    preuve spécifiée — erreur de forme (§ I.1, ligne 2), code 2, rien publié, et le message nomme les clés
+    du texte."""
+    w = _world(tmp_path, flat_start_proof=proof)
+    code, payload = _run(w)
+    assert code == 2 and payload is None
+    assert "{at, cash, qty, pending}" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
 # Chaque clause en échec, à sa place
 # ---------------------------------------------------------------------------
 
 
 def test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED(tmp_path: Path) -> None:
-    w = _world(
-        tmp_path,
-        flat_start_proof={
-            "cash_at_T": "990",
-            "inventory_qty_at_T": "0.001",
-            "pending_orders_at_T": 1,
-        },
-    )
+    w = _world(tmp_path, flat_start_proof=fx.flat_start_proof(cash="990", qty="0.001", pending=1))
     code, payload = _run(w)
     assert code == 0 and payload is not None
     assert _states(payload)["c1"] == "FAILED" and payload["state"] == "FAILED"
@@ -159,8 +208,10 @@ def test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED(tmp_path: Path) -> No
 @pytest.mark.parametrize(
     ("path", "value"),
     [
-        (("flat_start_proof", "cash_at_T"), None),
-        (("flat_start_proof", "pending_orders_at_T"), "0"),
+        (("flat_start_proof", "cash"), None),
+        (("flat_start_proof", "pending"), "0"),
+        (("flat_start_proof", "at"), None),
+        (("flat_start_proof", "at"), "hier"),
         (("invocation", "single_call"), "true"),
         (("invocation", "single_call"), None),
         (("invocation",), None),
@@ -170,6 +221,8 @@ def test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED(tmp_path: Path) -> No
     ids=[
         "cash null",
         "pending str",
+        "at null",
+        "at hors format",
         "single_call str",
         "single_call null",
         "invocation null",
@@ -180,10 +233,7 @@ def test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED(tmp_path: Path) -> No
 def test_chaque_champ_mal_type_ou_nul_refuse_l_entree(
     tmp_path: Path, path: tuple[str, ...], value: Any
 ) -> None:
-    w = _world(
-        tmp_path,
-        flat_start_proof={"cash_at_T": "1000", "inventory_qty_at_T": "0", "pending_orders_at_T": 0},
-    )
+    w = _world(tmp_path, flat_start_proof=fx.flat_start_proof())
 
     def mutate(data: dict[str, Any]) -> None:
         node: Any = data

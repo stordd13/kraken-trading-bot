@@ -12,7 +12,7 @@ une preuve fausse, qui n'est jamais admissible.
 
 | Clause | Ce qui la décide |
 |---|---|
-| c1 — départ à plat à `T` (§ B.2) | ``flat_start_proof`` absent → ``NOT_VERIFIABLE`` ; présent et cohérent (cash = C, quantité 0, aucun ordre en attente) → ``DECLARED`` ; incohérent → ``FAILED`` |
+| c1 — départ à plat à `T` (§ B.2) | ``flat_start_proof = {at, cash, qty, pending}`` (§ B.2 v2.1 ; un nom v2.0 est une erreur de forme) absent → ``NOT_VERIFIABLE`` ; présent et cohérent (``at == T``, cash = C, quantité 0, aucun ordre en attente) → ``DECLARED`` ; incohérent → ``FAILED`` |
 | c2 — aucune réinitialisation interne (§ B.4) | ``invocation.single_call`` vrai **et** grille quotidienne continue de `[T, fin]` → ``DECLARED`` ; faux ou grille rompue → ``FAILED`` |
 | c3 — liquidation terminale costée (§ B.3) | identités exactes **et preuve par lot** (``cc.liquidation_identities``, la même qu'en sélection) → ``VERIFIED`` ; identités exactes sans lots → ``NOT_VERIFIABLE`` ; bloc absent ou identité fausse → ``FAILED`` ; l'estampille de liquidation et la borne finale dans la même cellule quotidienne (§ B.4) sinon `E_STAMP_MISMATCH` |
 | c4 — amorçage à `T` (§ B.5, W-ancrage) | ``sufficient`` recalculé sur chaque série de décision → ``VERIFIED`` / ``FAILED`` ; déclaré ≠ recalculé = violation |
@@ -92,28 +92,52 @@ def _clause(state: str, detail: str) -> dict[str, str]:
 # ---------------------------------------------------------------------------
 
 
-def clause_1_flat_start(evaluation: Mapping[str, Any], *, capital: Decimal) -> dict[str, str]:
+#: § B.2 v2.1 (AM-10) — les noms v2.0 de la preuve, qui ne sont plus la preuve spécifiée.
+FLAT_START_FIELDS_V20: tuple[str, ...] = ("cash_at_T", "inventory_qty_at_T", "pending_orders_at_T")
+
+
+def clause_1_flat_start(
+    evaluation: Mapping[str, Any], *, capital: Decimal, anchor: datetime
+) -> dict[str, str]:
+    """§ B.2 v2.1 — la preuve spécifiée `flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}`, capturée
+    avant la première bougie du run d'évaluation. Absente → ``NOT_VERIFIABLE`` ; cohérente (``at == T``,
+    ``cash == C`` du manifeste, ``qty == 0``, ``pending == 0``) → ``DECLARED``, jamais ``VERIFIED`` (produite
+    par le programme qu'elle décrit) ; incohérente → ``FAILED``. Un nom v2.0 est une erreur de forme."""
     proof = cc.optional_mapping(evaluation, "flat_start_proof", where="evaluation")
     if proof is None:
         return _clause(
             "NOT_VERIFIABLE",
-            "aucune preuve de départ à plat : les runners n'exportent ni cash, ni quantité, ni ordres "
-            "en attente à T, et aucun point d'equity n'existe à T (§ B.2, § J.1) — C3b doit spécifier la preuve",
+            "aucune preuve de départ à plat (`flat_start_proof` absent, § B.2) : aucun point d'equity "
+            "n'existe à T, et rien d'autre ne décrit l'état initial",
         )
     where = "evaluation.flat_start_proof"
-    cash = cc.require_decimal(proof, "cash_at_T", where=where)
-    qty = cc.require_decimal(proof, "inventory_qty_at_T", where=where)
-    pending = cc.require_int(proof, "pending_orders_at_T", where=where, minimum=0)
-    if cash == capital and qty == Decimal(0) and pending == 0:
+    legacy = sorted(set(proof) & set(FLAT_START_FIELDS_V20))
+    if legacy:
+        raise cc.MissingEvidenceError(
+            f"{where}: clés v2.0 {legacy} — la preuve spécifiée v2.1 est {{at, cash, qty, pending}} (§ B.2)"
+        )
+    at = cc.require_datetime(proof, "at", where=where)
+    cash = cc.require_decimal(proof, "cash", where=where)
+    qty = cc.require_decimal(proof, "qty", where=where)
+    pending = cc.require_int(proof, "pending", where=where, minimum=0)
+    problems: list[str] = []
+    if at != anchor:
+        problems.append(f"capturée à {at.isoformat()}, pas à T = {anchor.isoformat()}")
+    if cash != capital:
+        problems.append(f"cash {cash} ≠ C = {capital}")
+    if qty != Decimal(0):
+        problems.append(f"quantité {qty} ≠ 0")
+    if pending != 0:
+        problems.append(f"{pending} ordre(s) en attente")
+    if problems:
         return _clause(
-            "DECLARED",
-            f"bloc déclaratif cohérent avec le contrat (cash {cash} = C, quantité 0, 0 ordre en attente) — "
-            "une déclaration ne vaut jamais VERIFIED",
+            "FAILED",
+            " ; ".join(problems) + " — le portefeuille évalué ne démarre pas à plat à T (§ B.2)",
         )
     return _clause(
-        "FAILED",
-        f"le bloc déclare cash {cash} (C = {capital}), quantité {qty}, {pending} ordre(s) en attente : "
-        "le portefeuille évalué ne démarre pas à plat",
+        "DECLARED",
+        f"preuve cohérente avec le contrat (at = T, cash {cash} = C, quantité 0, 0 ordre en attente) — "
+        "produite par le programme qu'elle décrit, elle vaut DECLARED, jamais VERIFIED",
     )
 
 
@@ -362,7 +386,7 @@ def run_continuity(
             "R0_INVALID_RUN", f"benchmark_eval.pair {bench_pair!r} != evaluation.pair {pair!r}"
         )
     spread, slippage = manifest.pair_costs[pair]
-    c1 = clause_1_flat_start(evaluation, capital=manifest.capital)
+    c1 = clause_1_flat_start(evaluation, capital=manifest.capital, anchor=anchor)
     c2 = clause_2_no_reset(evaluation, anchor=anchor, end=end)
     c3, d6_report, stamp_cell = clause_3_costed_liquidation(
         evaluation, spread=spread, slippage=slippage, taker=manifest.taker, anchor=anchor, end=end
