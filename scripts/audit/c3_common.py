@@ -1136,6 +1136,43 @@ LIQUIDATION_NORMALISED_OF_C3: dict[str, bool | None] = {
     "FAILED": False,
 }
 
+#: § L.1 v2.1 (AM-24) — les trois porteurs sans lesquels une évaluation déclarée réelle n'est pas admise : les
+#: trois clauses déclaratives du § B (§ B.2, § B.4, § C.3).
+REAL_EVALUATION_CARRIERS: tuple[str, ...] = (
+    "flat_start_proof",
+    "invocation.single_call",
+    "first_fill_at",
+)
+
+
+def evaluation_admission(evaluation: Mapping[str, Any]) -> bool:
+    """§ L.1 v2.1 (AM-24) — l'admission d'un artefact d'évaluation, **en tête** de `c3_continuity` comme de
+    `c3_verdict`, avant tout chemin de publication. ``synthetic`` est obligatoire et strictement typé (absent,
+    nul, mal typé → erreur de forme). ``true`` : exercice synthétique, admis. ``false`` : évaluation réelle,
+    admise **si et seulement si** elle porte ses trois porteurs ; il en manque un → refus ``R0_INVALID_RUN``,
+    code 2, rien publié, avec le nom de ce qui manque. Renvoie ``synthetic``."""
+    synthetic = require_bool(evaluation, "synthetic", where="evaluation")
+    if synthetic:
+        return True
+    missing: list[str] = []
+    if optional_mapping(evaluation, "flat_start_proof", where="evaluation") is None:
+        missing.append("flat_start_proof")
+    try:
+        invocation = require_mapping(evaluation, "invocation", where="evaluation")
+        require_bool(invocation, "single_call", where="evaluation.invocation")
+    except MissingEvidenceError:
+        missing.append("invocation.single_call")
+    if optional_str(evaluation, "first_fill_at", where="evaluation") is None:
+        missing.append("first_fill_at")
+    if missing:
+        raise EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"évaluation réelle (synthetic: false) sans {', '.join(missing)} — § L.1 v2.1 : admise si et "
+            "seulement si elle porte flat_start_proof, invocation.single_call et first_fill_at "
+            "(§ B.2, § B.4, § C.3)",
+        )
+    return False
+
 
 #: § C.5 — les tests de comparabilité du comparateur d'évaluation, liste close, **lus et typés tous
 #: avant la conjonction** (revue Fin, défaut 5) ; partagée par `c3_continuity` et `c3_verdict`.

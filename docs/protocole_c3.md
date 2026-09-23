@@ -1955,20 +1955,24 @@ Aucun pas n'est sauté ni réordonné.
 
 | # | Producteur | Artefact |
 |---|---|---|
-| 0 | **hors chaîne** | le **manifeste** (§ A.6), les **observations**, et l'**artefact de couverture** (§ A.7) — trois entrées, produites avant, jamais par l'outillage de ce protocole |
+| 0 | **hors chaîne** | six entrées, produites avant, jamais par l'outillage de ce protocole : le **manifeste** (§ A.6), les **observations**, l'**artefact de couverture** (§ A.7), l'**export de bougies** `candles.json` (lecture seule de la base), que `c3_benchmark` lit pour construire le comparateur du préfixe (§ C), l'**artefact d'évaluation** (§ F.2, produit par C3b) et le **comparateur d'évaluation** (§ C.5) |
 | 1 | `c3_anchor` | ancrage recalculé, estampilles admissibles, enregistrement au registre de variantes |
 | 2 | `c3_entry` | validité d'entrée (§ I-A) → `results/c3a_entry_validation/` — poursuite selon la table du § I.1 |
 | 3 | `c3_benchmark` | comparateur du préfixe, `λ` et son mode |
 | 4 | `c3_select` | projection, admissibilité, scores, classement, choix ou abstention |
-| 5 | `c3_continuity` | contrat du § B sur un artefact d'évaluation, avec l'état de vérifiabilité de chaque clause — **sans entrée réelle en C3a** |
+| 5 | `c3_continuity` | contrat du § B sur un artefact d'évaluation, avec l'état de vérifiabilité de chaque clause |
 | 6 | `c3_verdict` | l'issue et **la chaîne de verdict** |
 
-**Ce qui est réellement atteignable en C3a.** L'exécution continue post-ancrage et la procédure d'incertitude
-relèvent de **C3b** (§ B.4, § F.2), et tout artefact réel existant est refusé à l'entrée (§ D.3). En C3a, les
-étapes 5 et 6 ne sont donc exerçables que sur des **fixtures synthétiques**, et les seules issues qu'elles
-peuvent produire sur données réelles sont la **non-recevabilité** et l'**abstention**. `validé` et `réfuté` sont
-**structurellement inatteignables tant que C3b n'a pas livré l'exécution continue** — ce n'est pas un défaut du
-protocole, c'est le découpage en deux lots, et il est écrit pour qu'on ne le découvre pas à l'usage.
+**Ce qui était atteignable en C3a, et ce qui l'est depuis v2.1.** En C3a, les étapes 5 et 6 n'étaient
+exerçables que sur des fixtures synthétiques, et l'outillage refusait toute évaluation déclarée réelle
+(`evaluation.synthetic: false` → refus). **Ce confinement est levé par cette révision, sous deux conditions
+cumulatives** : le paquet v2.1 adopté (ce texte) **et** un producteur conforme livré par C3b. Une évaluation
+déclarée réelle (`synthetic: false`) est admise **si et seulement si** elle porte `flat_start_proof`,
+`invocation.single_call` et `first_fill_at` (§ B.2, § B.4, § C.3 — les trois clauses déclaratives, en état
+`DÉCLARÉ`) ; il lui en manque une → refus `R0_INVALID_RUN`, code 2, rien publié, avec le nom de ce qui manque.
+La règle est appliquée en tête de `c3_continuity` comme de `c3_verdict`. Une évaluation synthétique reste
+admise, préfixe `C3_SYNTH_` et ligne de portée en tête (§ L.2). `validé` et `réfuté` deviennent atteignables sur
+données réelles **par ce chemin et par aucun autre**.
 
 ### L.2 La chaîne de verdict
 

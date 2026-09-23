@@ -194,6 +194,43 @@ def test_c1_les_noms_v20_de_la_preuve_sont_une_erreur_de_forme(
 
 
 # ---------------------------------------------------------------------------
+# § L.1 v2.1 (AM-24) — admission d'une évaluation réelle, en tête de c3_continuity
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("kw", "missing"),
+    [
+        pytest.param({"first_fill_at": None}, "first_fill_at", id="sans first_fill_at"),
+        pytest.param({"flat_start_proof": None}, "flat_start_proof", id="sans flat_start_proof"),
+    ],
+)
+def test_une_evaluation_reelle_sans_porteur_est_refusee_en_tete(
+    tmp_path: Path, kw: dict[str, Any], missing: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.1 : une évaluation réelle est admise « si et seulement si elle porte `flat_start_proof`,
+    `invocation.single_call` et `first_fill_at` […] ; il lui en manque une → refus `R0_INVALID_RUN`, code 2,
+    rien publié, avec le nom de ce qui manque » — « la règle est appliquée en tête de `c3_continuity` »."""
+    eval_kw: dict[str, Any] = {"synthetic": False, "flat_start_proof": fx.flat_start_proof()}
+    eval_kw.update(kw)
+    w = _world(tmp_path, **eval_kw)
+    code, payload = _run(w)
+    assert code == 2 and payload is None
+    err = capsys.readouterr().err
+    assert "R0_INVALID_RUN" in err and missing in err
+
+
+def test_une_evaluation_reelle_avec_ses_porteurs_est_admise(tmp_path: Path) -> None:
+    """§ L.1 v2.1 : avec ses trois porteurs, l'évaluation réelle est admise ; ses clauses déclaratives
+    valent `DÉCLARÉ` (§ B.8) et la continuité dit `synthetic: false`."""
+    w = _world(tmp_path, synthetic=False, flat_start_proof=fx.flat_start_proof())
+    code, payload = _run(w)
+    assert code == 0 and payload is not None and payload["synthetic"] is False
+    states = _states(payload)
+    assert states["c1"] == states["c2"] == states["c5"] == "DECLARED"
+
+
+# ---------------------------------------------------------------------------
 # Chaque clause en échec, à sa place
 # ---------------------------------------------------------------------------
 

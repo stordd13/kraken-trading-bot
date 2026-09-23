@@ -1856,19 +1856,108 @@ def test_synthetic_absent_nul_ou_chaine_est_une_erreur_d_entree(tmp_path: Path, 
     assert not (tmp_path / "verdict.json").exists()
 
 
-def test_une_evaluation_reelle_est_refusee_rien_publie(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+#: § L.1 v2.1 : « `flat_start_proof`, `invocation.single_call` et `first_fill_at` » — les trois porteurs sans
+#: lesquels une évaluation déclarée réelle n'est pas admise.
+REAL_CARRIERS_L1 = ("flat_start_proof", "invocation.single_call", "first_fill_at")
+
+
+def _carry(evaluation: dict[str, Any], carriers: tuple[str, ...] = REAL_CARRIERS_L1) -> None:
+    """Pose sur l'évaluation les porteurs demandés, conformes (§ B.2, § B.4, § C.3)."""
+    if "flat_start_proof" in carriers:
+        evaluation["flat_start_proof"] = fx.flat_start_proof()
+    if "invocation.single_call" in carriers:
+        evaluation["invocation"] = {"single_call": True}
+    if "first_fill_at" in carriers:
+        evaluation["first_fill_at"] = (fx.ANCHOR + timedelta(minutes=10)).isoformat()
+
+
+def _real_with_carriers(artifacts: dict[str, Any]) -> None:
+    """§ L.1 v2.1 : une évaluation déclarée réelle portant ses trois porteurs, et la continuité qu'en tire
+    `c3_continuity` — c1, c2, c5 DÉCLARÉ (§ B.8), agrégat cohérent, `synthetic: false`."""
+    artifacts["evaluation"]["synthetic"] = False
+    _carry(artifacts["evaluation"])
+    continuity = artifacts["continuity"]
+    continuity["synthetic"] = False
+    continuity["clauses"]["c1"] = {"state": "DECLARED", "detail": "preuve cohérente"}
+    continuity["clauses"]["c5"] = {"state": "DECLARED", "detail": "premier remplissage après T"}
+    continuity["state"] = "DECLARED"
+
+
+@pytest.mark.parametrize(
+    "carried",
+    [
+        pytest.param((), id="aucun porteur"),
+        pytest.param(("invocation.single_call", "first_fill_at"), id="sans flat_start_proof"),
+        pytest.param(("flat_start_proof", "first_fill_at"), id="sans invocation.single_call"),
+        pytest.param(("flat_start_proof", "invocation.single_call"), id="sans first_fill_at"),
+    ],
+)
+def test_une_evaluation_reelle_sans_ses_porteurs_est_refusee_R0_avec_ce_qui_manque(
+    tmp_path: Path, carried: tuple[str, ...], capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """§ L.1 : `validé`/`réfuté` sont inatteignables sur données réelles en C3a — le code l'exécute."""
+    """§ L.1 v2.1 : une évaluation déclarée réelle est admise « si et seulement si elle porte
+    `flat_start_proof`, `invocation.single_call` et `first_fill_at` […] ; il lui en manque une → refus
+    `R0_INVALID_RUN`, code 2, rien publié, avec le nom de ce qui manque »."""
     artifacts = _sound()
     artifacts["evaluation"]["synthetic"] = False
+    _carry(artifacts["evaluation"], carried)
+    missing = [name for name in REAL_CARRIERS_L1 if name not in carried]
     with pytest.raises(cc.EntryRefusedError) as info:
         cv.decide(artifacts, violations=[])
     assert info.value.reason == "R0_INVALID_RUN"
-    assert "évaluation réelle non exerçable par l'outillage C3a" in str(info.value)
+    assert all(name in str(info.value) for name in missing), (missing, str(info.value))
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
     assert not (tmp_path / "verdict.json").exists()
-    assert "évaluation réelle non exerçable par l'outillage C3a — § L.1" in capsys.readouterr().err
+    err = capsys.readouterr().err
+    assert all(name in err for name in missing)
+
+
+def test_une_evaluation_reelle_avec_ses_porteurs_publie_une_chaine_C3_sans_portee(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.1 : « `validé` et `réfuté` deviennent atteignables sur données réelles par ce chemin et par
+    aucun autre » ; § L.2 : le préfixe `C3_SYNTH_` et la ligne de portée ne valent que pour l'exercice
+    synthétique."""
+    artifacts = _sound()
+    _real_with_carriers(artifacts)
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.synthetic is False
+    assert decision.issue == cc.ISSUE_VALIDE
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["synthetic"] is False and payload["portee"] is None
+    assert payload["verdict_string"].startswith("C3_C3A | verdict=validé")
+    assert not capsys.readouterr().out.startswith("PORTEE")
+
+
+def test_le_diagnostic_d_une_evaluation_reelle_dit_synthetic_faux(tmp_path: Path) -> None:
+    """§ L.1 v2.1 : le diagnostic d'une évaluation réelle n'est pas un exercice synthétique — `synthetic`
+    est tiré de l'évaluation, pas posé à vrai (§ I.1 : forme d'un diagnostic)."""
+    artifacts = _sound()
+    _real_with_carriers(artifacts)
+    artifacts["selection"]["provenance"] = "unknown"  # ≠ anchor → violation, chemin diagnostic
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True
+    assert payload["synthetic"] is False and payload["portee"] is None
+
+
+@pytest.mark.parametrize("clause", ["c1", "c5"])
+def test_c1_ou_c5_non_verifiable_sur_une_evaluation_reelle_est_une_violation(
+    tmp_path: Path, clause: str
+) -> None:
+    """§ B.8 v2.1, « Ce qu'exige validé » : c1 et c5 `DÉCLARÉ` sur une évaluation réelle — elle porte sa
+    preuve de départ à plat et son premier remplissage (§ L.1) ; une continuité qui les dit non vérifiables
+    contredit l'évaluation : violation (§ I.1, ligne 15), jamais `validé`."""
+    artifacts = _sound()
+    _real_with_carriers(artifacts)
+    artifacts["continuity"]["clauses"][clause] = {"state": "NOT_VERIFIABLE", "detail": "absent"}
+    artifacts["continuity"]["state"] = "NOT_VERIFIABLE"
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any(clause in v and "B.8" in v for v in violations), violations
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
 
 
 # ---------------------------------------------------------------------------
@@ -2338,13 +2427,34 @@ def test_chain_s_arrete_a_benchmark_sans_candles(
     assert "CHAINE ARRETEE à l'étape benchmark" in capsys.readouterr().err
 
 
-def test_chain_sur_une_evaluation_reelle_s_arrete_au_verdict_rien_publie(tmp_path: Path) -> None:
-    """§ 6.6 (2) de bout en bout : la continuité s'exécute, le verdict refuse, aucun `verdict.json`."""
+def test_chain_sur_une_evaluation_reelle_sans_porteur_s_arrete_a_la_continuite(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.1 de bout en bout : « La règle est appliquée en tête de `c3_continuity` comme de
+    `c3_verdict` » — une évaluation réelle sans `flat_start_proof` arrête la chaîne à l'étape 5, code 2, rien
+    publié à partir d'elle, le manque nommé."""
     w = _chain_world(tmp_path, synthetic=False)
     assert cv.main(_chain_argv(w)) == 2
-    assert (w["out"] / "continuity.json").exists()
-    assert cc.read_json(w["out"] / "continuity.json")["synthetic"] is False
+    assert not (w["out"] / "continuity.json").exists()
     assert not (w["out"] / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "CHAINE ARRETEE à l'étape continuity" in err and "flat_start_proof" in err
+
+
+def test_chain_sur_une_evaluation_reelle_avec_ses_porteurs_publie_un_verdict_C3(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.1 de bout en bout : évaluation réelle portant ses trois porteurs → c1, c2, c5 DÉCLARÉ
+    (§ B.8), verdict publié sous `C3_<campagne>`, sans ligne de portée synthétique (§ L.2)."""
+    w = _chain_world(tmp_path, synthetic=False, flat_start_proof=fx.flat_start_proof())
+    assert cv.main(_chain_argv(w)) == 0
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert continuity["synthetic"] is False
+    states = {k: v["state"] for k, v in continuity["clauses"].items()}
+    assert states["c1"] == states["c2"] == states["c5"] == "DECLARED"
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["synthetic"] is False and payload["portee"] is None
+    assert payload["verdict_string"].startswith("C3_C3A | verdict=")
 
 
 def test_chain_moteur_signal_a_l_evaluation_clause_3_FAILED_inconclusif_R1_publie(
@@ -2460,12 +2570,14 @@ def test_un_now_illisible_en_mode_chain_est_une_erreur_d_usage_rien_ecrit(tmp_pa
 
 
 # ---------------------------------------------------------------------------
-# Revue Fin (1) — confinement synthétique : aucun chemin de publication avant le contrôle
+# Revue Fin (1) — admission de l'évaluation (§ L.1 v2.1) : aucun chemin de publication avant le contrôle
 # ---------------------------------------------------------------------------
 
+#: `false` : évaluation réelle sans porteur (refus R0, § L.1 v2.1) ; `real` : réelle avec ses trois porteurs.
 SYNTH_VALUES: list[tuple[str, Any]] = [
     ("true", True),
     ("false", False),
+    ("false + porteurs", "real"),
     ("absent", "absent"),
     ("null", None),
     ("chaine", "true"),
@@ -2475,6 +2587,9 @@ SYNTH_VALUES: list[tuple[str, Any]] = [
 def _set_synthetic(evaluation: dict[str, Any], value: Any) -> None:
     if value == "absent":
         evaluation.pop("synthetic", None)
+    elif value == "real":
+        evaluation["synthetic"] = False
+        _carry(evaluation)
     else:
         evaluation["synthetic"] = value
 
@@ -2510,14 +2625,32 @@ PUBLICATION_PATHS: list[tuple[str, Any]] = [
 def test_revue_Fin_1_confinement_au_niveau_fonction(
     path: str, mutate: Any, label: str, value: Any
 ) -> None:
-    """Le contrôle `evaluation.synthetic` précède **tout** chemin : abstention, verdict calculé,
-    diagnostic. Vrai → la décision porte `synthetic=True` et la chaîne le préfixe ; faux → refus ;
-    absent / null / chaîne → erreur d'entrée."""
+    """Le contrôle d'admission (§ L.1 v2.1) précède **tout** chemin : abstention, verdict calculé,
+    diagnostic. Vrai → la décision porte `synthetic=True` et la chaîne le préfixe ; faux sans porteur →
+    refus R0 nommant ce qui manque ; faux avec ses porteurs → admise, chaîne `C3_` ; absent / null / chaîne
+    → erreur d'entrée."""
     artifacts = _sound()
     mutate(artifacts)
-    _set_synthetic(artifacts["evaluation"], value)
+    if value == "real":
+        _real_with_carriers(artifacts)
+    else:
+        _set_synthetic(artifacts["evaluation"], value)
     violations: list[str] = []
-    if value is True:
+    if value == "real":
+        decision = cv.decide(artifacts, violations=violations)
+        assert decision.synthetic is False, path
+        chain = cv.build_verdict_string(
+            "C3A",
+            decision,
+            cc.protocol_descriptor()["sha256"],
+            continuity_state=decision.continuity_state,
+            variant_key=VARIANT_KEY,
+            observations_sha256=OBSERVATIONS_SHA,
+            synthetic=decision.synthetic,
+        )
+        assert chain.startswith("C3_C3A | "), chain
+        assert (path == "diagnostic") == bool(violations)
+    elif value is True:
         decision = cv.decide(artifacts, violations=violations)
         assert decision.synthetic is True, path
         chain = cv.build_verdict_string(
@@ -2532,8 +2665,9 @@ def test_revue_Fin_1_confinement_au_niveau_fonction(
         assert chain.startswith("C3_SYNTH_C3A | "), chain
         assert (path == "diagnostic") == bool(violations)
     elif value is False:
-        with pytest.raises(cc.EntryRefusedError, match="évaluation réelle non exerçable"):
+        with pytest.raises(cc.EntryRefusedError, match="flat_start_proof") as info:
             cv.decide(artifacts, violations=violations)
+        assert info.value.reason == "R0_INVALID_RUN"
     else:
         with pytest.raises(cc.MissingEvidenceError, match="evaluation.synthetic"):
             cv.decide(artifacts, violations=violations)
@@ -2553,11 +2687,23 @@ def test_revue_Fin_1_confinement_au_niveau_cli(
 ) -> None:
     artifacts = _sound()
     mutate(artifacts)
-    _set_synthetic(artifacts["evaluation"], value)
+    if value == "real":
+        _real_with_carriers(artifacts)
+    else:
+        _set_synthetic(artifacts["evaluation"], value)
     code = cv.main(_write_cli_inputs(tmp_path, artifacts))
     out = tmp_path / "verdict.json"
     captured = capsys.readouterr()
-    if value is True:
+    if value == "real":
+        assert code == (1 if path == "diagnostic" else 0), captured.err
+        payload = cc.read_json(out)
+        assert payload["synthetic"] is False and payload["portee"] is None
+        assert not captured.out.startswith("PORTEE")
+        if path == "diagnostic":
+            assert payload["invalide"] is True and payload["verdict_string"] is None
+        else:
+            assert payload["verdict_string"].startswith("C3_C3A | ")
+    elif value is True:
         assert code == (1 if path == "diagnostic" else 0), captured.err
         payload = cc.read_json(out)
         assert payload["synthetic"] is True and payload["portee"] == cv.PORTEE_SYNTH
@@ -2570,7 +2716,7 @@ def test_revue_Fin_1_confinement_au_niveau_cli(
     else:
         assert code == 2 and not out.exists(), (path, label, captured.err)
         if value is False:
-            assert "évaluation réelle non exerçable par l'outillage C3a" in captured.err
+            assert "R0_INVALID_RUN" in captured.err and "flat_start_proof" in captured.err
 
 
 def _all_d3(obs: dict[str, Any]) -> None:
@@ -2611,20 +2757,26 @@ def test_revue_Fin_1_confinement_au_niveau_chain(
     code = cv.main(_chain_argv(w))
     out = w["out"] / "verdict.json"
     captured = capsys.readouterr()
-    if value is True:
+    if value is True or value == "real":
+        prefix = "C3_SYNTH_C3A | " if value is True else "C3_C3A | "
         assert code == (1 if path == "diagnostic" else 0), captured.err
         payload = cc.read_json(out)
-        assert payload["synthetic"] is True and payload["portee"] == cv.PORTEE_SYNTH
+        assert payload["synthetic"] is (value is True)
+        assert payload["portee"] == (cv.PORTEE_SYNTH if value is True else None)
         if path == "abstention":
             assert payload["verdict_string"].startswith(
-                "C3_SYNTH_C3A | verdict=inconclusif | raison=A_NO_ADMISSIBLE_CANDIDATE"
+                f"{prefix}verdict=inconclusif | raison=A_NO_ADMISSIBLE_CANDIDATE"
             )
         elif path == "verdict":
-            assert payload["verdict_string"].startswith("C3_SYNTH_C3A | ")
+            assert payload["verdict_string"].startswith(prefix)
         else:
             assert payload["invalide"] is True and payload["verdict_string"] is None
     else:
         assert code == 2 and not out.exists(), (path, label, captured.err)
+        # § L.1 v2.1 : l'admission est contrôlée en tête de `c3_continuity` — la chaîne s'y arrête.
+        assert "CHAINE ARRETEE à l'étape continuity" in captured.err, captured.err
+        if value is False:
+            assert "flat_start_proof" in captured.err
 
 
 # ---------------------------------------------------------------------------

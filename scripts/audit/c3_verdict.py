@@ -66,14 +66,14 @@ convention d'outillage datée du 21/09 (``UndefinedIssueError``, code 2 hors tab
 de liquidation contradictoire (``trades > 0`` sans estampille ou sans prix) n'arrive jamais jusqu'ici :
 ``cc.liquidation_identities`` le lève en violation dès la continuité (§ B.3 v2.1).
 
-**Confinement des verdicts synthétiques (plan § 6.6, validé).** § L.1 : sur données réelles, C3a ne
-peut produire que non-recevabilité et abstention ; ``validé`` / ``réfuté`` sont structurellement
-inatteignables tant que C3b n'a pas livré l'exécution continue et la preuve de départ à plat.
-L'outillage l'exécute : ``evaluation.synthetic`` est **obligatoire et strictement typé** ; ``false``
-(évaluation réelle) est **refusé** (code 2, rien publié) ; ``true`` préfixe la chaîne ``C3_SYNTH_``
-et écrit ``portee`` en première ligne. Ce contrôle est le **premier** de ``decide()`` et de
-``run_verdict()`` : aucun chemin de publication — verdict calculé, abstention, diagnostic — ne le
-précède (revue Fin, défaut 1).
+**Admission de l'évaluation (§ L.1 v2.1, AM-24 ; ex-confinement synthétique, plan § 6.6).**
+``evaluation.synthetic`` est **obligatoire et strictement typé** (``cc.evaluation_admission``, partagé
+avec ``c3_continuity``). ``true`` : exercice synthétique, chaîne ``C3_SYNTH_``, ``portee`` en première
+ligne. ``false`` : évaluation réelle, admise **si et seulement si** elle porte ``flat_start_proof``,
+``invocation.single_call`` et ``first_fill_at`` — sinon refus ``R0_INVALID_RUN``, code 2, rien publié,
+le manque nommé ; admise, chaîne ``C3_<campagne>`` sans ligne de portée, et le diagnostic dit
+``synthetic: false``. Ce contrôle est le **premier** de ``decide()`` et de ``run_verdict()`` : aucun
+chemin de publication — verdict calculé, abstention, diagnostic — ne le précède (revue Fin, défaut 1).
 
 Pure, read-only hors de sa sortie. Aucun accès base de données.
 
@@ -112,24 +112,6 @@ INPUT_NAMES: tuple[str, ...] = ("entry", "anchor", "selection", "continuity", "e
 SYNTH_PREFIX = "C3_SYNTH_"
 PORTEE_SYNTH = "exercice synthétique de l'outillage — aucune portée économique (§ L.1)"
 ABSTENTION_REASONS: tuple[str, ...] = ("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR")
-REAL_EVALUATION_MESSAGE = (
-    "évaluation réelle non exerçable par l'outillage C3a — § L.1 : l'exécution continue et la preuve "
-    "de départ à plat relèvent de C3b ; seule une évaluation déclarée synthétique est admise"
-)
-
-
-def require_synthetic(evaluation: Mapping[str, Any]) -> bool:
-    """Le confinement des verdicts synthétiques (§ L.1, plan § 6.6), **avant tout chemin de publication**.
-
-    ``evaluation.synthetic`` est une déclaration non dérivable, exigée explicite et strictement
-    typée : absent / null / ``"true"`` → erreur d'entrée (code 2, rien écrit) ; ``false`` → une
-    évaluation réelle n'est pas exerçable par l'outillage C3a → refus ``R0_INVALID_RUN`` (code 2,
-    rien publié — ni verdict, ni abstention, ni diagnostic). Renvoie ``True`` ou lève.
-    """
-    synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
-    if not synthetic:
-        raise cc.EntryRefusedError("R0_INVALID_RUN", REAL_EVALUATION_MESSAGE)
-    return True
 
 
 @dataclass(frozen=True)
@@ -564,10 +546,22 @@ def _continuity_view(
         )
     if pair != pair_eval:
         violations.append(f"{where}.pair {pair!r} != evaluation.pair {pair_eval!r}")
-    if synthetic is not True:
+    # § L.1 v2.1 : la déclaration de l'évaluation fait foi — la continuité la redit, elle ne la choisit pas.
+    evaluation_synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
+    if synthetic is not evaluation_synthetic:
         violations.append(
-            f"{where}.synthetic déclaré {synthetic!r} alors que evaluation.synthetic est vrai"
+            f"{where}.synthetic déclaré {synthetic!r}, evaluation.synthetic {evaluation_synthetic!r} — "
+            "la déclaration de l'évaluation fait foi (§ L.1)"
         )
+    # § B.8 v2.1, « Ce qu'exige validé » : sur une évaluation réelle, admise avec ses porteurs (§ L.1), c1 et
+    # c5 valent DÉCLARÉ ou ÉCHEC ; une continuité qui les dit non vérifiables contredit l'évaluation.
+    if not evaluation_synthetic:
+        for key in ("c1", "c5"):
+            if states[key] == "NOT_VERIFIABLE":
+                violations.append(
+                    f"{where}.clauses.{key} NOT_VERIFIABLE sur une évaluation réelle, qui porte sa preuve "
+                    "(§ L.1) — § B.8 : c1 et c5 DÉCLARÉ sur une évaluation réelle"
+                )
     if evaluation_window != (anchor_t, window_end):
         violations.append(
             f"{where}.evaluation_window {_iso(evaluation_window)} != [anchor.anchor, anchor.window.end] "
@@ -689,7 +683,7 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     """
     # 0. Confinement, puis contrat d'entrée (R0 avant toute autre chose).
     evaluation = cc.require_mapping(artifacts, "evaluation", where="artefacts")
-    synthetic = require_synthetic(evaluation)
+    synthetic = cc.evaluation_admission(evaluation)
     # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument est évalué avant toute lecture.
     _evaluation_contract(evaluation)
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
@@ -1100,6 +1094,7 @@ def build_diagnostic_payload(
     inputs: Mapping[str, Path],
     partial: Decision | None,
     chain: Mapping[str, Any],
+    synthetic: bool,
 ) -> dict[str, Any]:
     """L'artefact **diagnostic** d'une violation (§ I.1, ligne 15) : explicitement invalide.
 
@@ -1111,10 +1106,10 @@ def build_diagnostic_payload(
     payload.update(
         {
             "campagne": campaign,
-            # Le confinement a été franchi avant toute publication : un diagnostic est lui aussi un
-            # exercice synthétique, et il le dit.
-            "synthetic": True,
-            "portee": PORTEE_SYNTH,
+            # § L.1 v2.1 : l'admission a été franchie avant toute publication ; le diagnostic dit ce
+            # que l'évaluation déclare — exercice synthétique ou évaluation réelle —, jamais une constante.
+            "synthetic": synthetic,
+            "portee": PORTEE_SYNTH if synthetic else None,
             "verdict": None,
             "raison": None,
             "verdict_string": None,
@@ -1225,7 +1220,7 @@ def run_verdict(
     try:
         if not isinstance(artifacts["evaluation"], Mapping):
             raise cc.MissingEvidenceError("evaluation: bloc attendu")
-        require_synthetic(artifacts["evaluation"])
+        synthetic = cc.evaluation_admission(artifacts["evaluation"])
         # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument précède toute lecture, `verify_chain` compris.
         _evaluation_contract(artifacts["evaluation"])
     except cc.EntryRefusedError as exc:
@@ -1295,7 +1290,13 @@ def run_verdict(
         # revue Fin 2 ; revue Fin 3) ; les `checks` disent quels recoupements ont passé ou échoué.
         chain["verified"] = False
         payload = build_diagnostic_payload(
-            violations, campaign=campaign, now=now, inputs=inputs, partial=decision, chain=chain
+            violations,
+            campaign=campaign,
+            now=now,
+            inputs=inputs,
+            partial=decision,
+            chain=chain,
+            synthetic=synthetic,
         )
         digest = cc.write_json(output, payload)
         print("\n".join(render_lines(payload)))

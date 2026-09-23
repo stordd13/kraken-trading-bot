@@ -1,9 +1,11 @@
 """C3 — le contrat de continuité du portefeuille (§ B), cinq clauses avec l'état de leur vérifiabilité.
 
-Étape 5 de la chaîne du § L.1, **sans entrée réelle en C3a** : l'exécution continue post-ancrage
-relève de C3b, et cette étape ne s'exerce que sur des fixtures synthétiques. Elle lit le manifeste,
-l'ancrage, un artefact d'évaluation et le bloc de comparabilité du comparateur d'évaluation, et
-écrit ``continuity.json`` — l'état de chaque clause, **jamais une issue**.
+Étape 5 de la chaîne du § L.1. Depuis v2.1 (AM-24), une évaluation déclarée réelle est admise si et
+seulement si elle porte ses trois porteurs (``flat_start_proof``, ``invocation.single_call``,
+``first_fill_at``) — contrôle en tête, refus R0 sinon ; une évaluation synthétique reste admise.
+Elle lit le manifeste, l'ancrage, un artefact d'évaluation et le bloc de comparabilité du
+comparateur d'évaluation, et écrit ``continuity.json`` — l'état de chaque clause, **jamais une
+issue**.
 
 **Ce que vaut chaque état** (plan § 6.4, validé) : ``VERIFIED`` ne naît que d'identités recalculées ;
 **aucune déclaration ne produit ``VERIFIED``** — un bloc déclaratif cohérent avec le contrat vaut
@@ -354,6 +356,9 @@ def run_continuity(
     *,
     violations: list[str],
 ) -> dict[str, Any]:
+    # § L.1 v2.1 (AM-24) : l'admission de l'évaluation, en tête — une évaluation réelle sans l'un de ses trois
+    # porteurs est refusée R0, code 2, rien publié, avec le nom de ce qui manque.
+    synthetic = cc.evaluation_admission(evaluation)
     anchor = manifest.anchor()
     declared_anchor = cc.require_datetime(anchor_raw, "anchor", where="anchor")
     if declared_anchor != anchor:
@@ -361,7 +366,6 @@ def run_continuity(
             f"anchor.anchor déclaré {declared_anchor.isoformat()}, recalculé {anchor.isoformat()}"
         )
     end = manifest.window_end
-    synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
     strategy = cc.require_str(evaluation, "strategy", where="evaluation")
     pair = cc.require_str(evaluation, "pair", where="evaluation")
     params = cc.require_mapping(evaluation, "params", where="evaluation")
