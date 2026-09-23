@@ -596,6 +596,15 @@ D1 → D6. Son score décisionnel n'est pas publié : on ne calcule pas quand m�
 - **L'ordre d'entrée n'influence rien** : permuter les candidats dans le fichier ne déplace ni un score, ni un
   rang, ni le choix.
 
+**D'où viennent les quantités de risque.** Le drawdown quotidien du candidat, son écart-type quotidien, et les
+mêmes grandeurs du comparateur et de tout blend apparié (§ C.4) sont **recalculés par l'outillage sur
+`equity_daily` du préfixe**, avec la même fonction et le même échantillonnage des deux côtés. La valeur
+`max_drawdown_pct_daily` enregistrée dans le bloc de métriques est **rapportée** à côté du recalcul, avec
+l'écart ; **cet écart n'est ni classé ni borné** — la NAV exportée est un `float`, l'écart est un résidu de
+représentation, et lui donner un seuil serait inventer une classe (§ 0.5) pour un nombre qui ne décide de
+rien. Le drawdown du moteur (`max_drawdown_pct_engine`, intra-bougie), que porte le bloc de métriques, n'est lu
+par aucune règle de la chaîne et **n'entre dans aucune comparaison** (§ J, item 4).
+
 ### A.10 Le plancher, et **la séquence de sélection**
 
 **C'est la section d'origine de la séquence de sélection (§ 0.7). Aucun autre passage ne la redit ; tous y
@@ -1648,7 +1657,8 @@ paramètres, graines et versions consignés dans l'artefact.
    aucune voie alternative fondée sur l'exposition n'est ouverte.
 4. **Le drawdown intrabar.** Non reconstructible (contrat C1). → Toute comparaison de drawdown est
    quotidien-contre-quotidien des deux côtés ; `max_drawdown_pct_engine` reste diagnostic et n'est jamais un
-   critère inter-familles.
+   critère inter-familles. L'origine des quantités de risque décisionnelles, recalculées sur `equity_daily`,
+   est au § A.9.
 5. **File d'attente, non-exécutions, remplissages partiels, sélection adverse.** Non modélisés, amplitude
    inconnue (`CONTRAINTES` § 2). → **Aucun substitut chiffré**, et la conditionnalité au modèle de remplissage
    est écrite dans chaque issue.
