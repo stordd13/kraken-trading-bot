@@ -15,6 +15,9 @@ Ce qu'il fait, dans l'ordre gelé :
 * **§ H.0 — la préséance de l'estimabilité sur le verdict économique.** Tant que `E1` et `E2` ne
   sont pas satisfaites, **ni ``validé`` ni ``réfuté``** ne peuvent être prononcés, quel que soit le
   résultat des portes `Q1`, `Q2`, `Q3` : l'issue est ``inconclusif (F_NOT_ESTIMABLE)``.
+* § F.2 (d) v2.1 — **le tirage est rejoué** (graine du manifeste, index de paire, ``n_jours``, dans
+  l'environnement déclaré) : suites, écartées, CAGR observé, `Δ̂` par appariement et six bornes sont
+  recalculés, un écart au déclaré est une violation, et `Q2`, `Q3` et les bornes décident sur le rejoué.
 * § H.1 — les trois issues en conditions nécessaires et suffisantes.
 * § A.5 — un univers ``contaminated`` **ou ``unknown``** ne peut porter ni ``validé`` ni ``réfuté``.
 
@@ -157,20 +160,18 @@ class Decision:
     synthetic: bool | None = None
 
 
-def _gate_results(evaluation: Mapping[str, Any]) -> dict[str, bool]:
+def _gate_results(*, net_pnl: float, cagr_pct: float, delta_dd: float) -> dict[str, bool]:
     """`Q1`, `Q2`, `Q3` du § F.8, évaluées sur la fenêtre d'évaluation.
 
     `Q1` et `Q2` lisent le **résultat propre** de la configuration ; seule `Q3` lit le comparateur.
     Les seuils viennent du § A.10 via ``c3_common`` ; les redire ici les ferait diverger (§ 0.7).
-    Les trois métriques sont **obligatoires et finies**, et jamais une porte en échec : absente,
-    nulle ou mal typée → erreur d'entrée (code 2) ; `NaN` ou infinie → violation (code 1, § I.1 l.15).
+    § F.2 (c) et (d) v2.1 : `Q2` et `Q3` décident sur les valeurs **rejouées** (CAGR observé, `Δ̂` dd) ;
+    `Q1` sur `net_pnl`, déclaré, qu'aucune série de l'artefact ne permet de recalculer.
     """
-    metrics = cc.require_mapping(evaluation, "metrics", where="evaluation")
-    where = "evaluation.metrics"
     return {
-        "Q1": cc.require_float(metrics, "net_pnl", where=where) > cc.FLOOR_NET_PNL,
-        "Q2": cc.require_float(metrics, "cagr_pct", where=where) >= cc.FLOOR_CAGR_PCT,
-        "Q3": cc.require_float(metrics, "delta_dd", where=where) > cc.FLOOR_DELTA_DD,
+        "Q1": net_pnl > cc.FLOOR_NET_PNL,
+        "Q2": cagr_pct >= cc.FLOOR_CAGR_PCT,
+        "Q3": delta_dd > cc.FLOOR_DELTA_DD,
     }
 
 
@@ -200,6 +201,30 @@ def _evaluation_contract(evaluation: Mapping[str, Any]) -> None:
             "evaluation.replications : les six combinaisons L × appariement du § F.2 (h) sont exigées, "
             f"exactement ; manquantes={missing} en trop={extra} — contrat d'instrument rompu (§ F.2 b)",
         )
+    # § F.2 (b) v2.1 : le tirage n'est exact que dans l'environnement qui l'a produit — un autre
+    # environnement est un contrat rompu, jamais une comparaison tolérante.
+    environment = cc.require_mapping(evaluation, "environment", where="evaluation")
+    declared = {
+        key: cc.require_str(environment, key, where="evaluation.environment")
+        for key in cc.REPLAY_ENVIRONMENT_KEYS
+    }
+    unexpected = sorted(set(environment) - set(cc.REPLAY_ENVIRONMENT_KEYS))
+    current = cc.replay_environment()
+    if unexpected or declared != current:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"evaluation.environment : déclaré {declared} (champs en trop {unexpected}), courant "
+            f"{current} — le rejeu du § F.2 n'est exact que dans l'environnement du tirage ; "
+            "contrat d'instrument rompu (§ F.2 b)",
+        )
+    # § F.2 (d) v2.1 : le rejeu exige la série du comparateur de chacun des deux appariements.
+    bench = cc.require_mapping(evaluation, "returns_bench", where="evaluation")
+    if set(bench) != set(cc.MATCHINGS):
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"evaluation.returns_bench : les appariements {list(cc.MATCHINGS)} sont exigés, exactement ; "
+            f"déclarés {sorted(bench)} — contrat d'instrument rompu (§ F.2 b)",
+        )
 
 
 #: Une combinaison lue : la suite `Δ*` retenue, le compte d'écartées, la borne déclarée (nulle ⟺ suite vide).
@@ -222,13 +247,115 @@ def _read_replications(evaluation: Mapping[str, Any]) -> dict[str, Replication]:
     return out
 
 
-def _bounds_all_positive(replications: Mapping[str, Replication], *, violations: list[str]) -> bool:
+def _read_series(evaluation: Mapping[str, Any]) -> tuple[list[float], dict[str, list[float]]]:
+    """Les séries quotidiennes que la procédure consomme (§ F.2 a) : la configuration et le comparateur de
+    chaque appariement, **toutes finies et dans le domaine** (`r > −1`, sinon violation, § F.2 e), **de
+    même longueur** (sinon le rejeu est inexécutable : erreur d'entrée, § I.1, ligne 2)."""
+    returns = cc.require_finite_series(
+        evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
+    )
+    bench_block = cc.require_mapping(evaluation, "returns_bench", where="evaluation")
+    bench = {
+        matching: cc.require_finite_series(
+            bench_block,
+            matching,
+            where="evaluation.returns_bench",
+            domain_floor=cc.RETURN_DOMAIN_FLOOR,
+        )
+        for matching in cc.MATCHINGS
+    }
+    for matching, series in bench.items():
+        if len(series) != len(returns):
+            raise cc.MissingEvidenceError(
+                f"evaluation.returns_bench.{matching} : {len(series)} rendements, la configuration en "
+                f"porte {len(returns)} — indices appariés impossibles, rejeu inexécutable (§ F.2 a)"
+            )
+    return returns, bench
+
+
+def _replay(
+    evaluation: Mapping[str, Any],
+    anchor: Mapping[str, Any],
+    returns: Sequence[float],
+    bench: Mapping[str, Sequence[float]],
+) -> tuple[cc.Replay, dict[str, Any]]:
+    """§ F.2 (d) v2.1 : la chaîne rejoue le tirage — graine du manifeste (``anchor.uncertainty.seed``), index
+    de la paire évaluée dans les paires **triées** de l'univers (``anchor.pairs``), ``n_jours = (fin − T)`` en
+    secondes / 86 400, jamais ``evaluation_days`` (§ F.2 b, c)."""
+    uncertainty = cc.require_mapping(anchor, "uncertainty", where="anchor")
+    seed = cc.require_int(uncertainty, "seed", where="anchor.uncertainty", minimum=0)
+    listed = cc.require_sequence(anchor, "pairs", where="anchor", min_len=1)
+    pairs = sorted(
+        cc.require_str({"pair": item}, "pair", where="anchor.pairs[]") for item in listed
+    )
+    pair = cc.require_str(evaluation, "pair", where="evaluation")
+    if pair not in pairs:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"la paire évaluée {pair!r} n'est pas une paire de l'univers {pairs} — ce n'est pas "
+            "l'évaluation de la configuration retenue (§ H.1)",
+        )
+    start = cc.require_datetime(anchor, "anchor", where="anchor")
+    end = cc.require_datetime(
+        cc.require_mapping(anchor, "window", where="anchor"), "end", where="anchor.window"
+    )
+    days = (end - start).total_seconds() / 86400.0
+    replay = cc.replay_bootstrap(returns, bench, seed=seed, pair_index=pairs.index(pair), days=days)
+    return replay, {"seed": seed, "pair_index": pairs.index(pair), "days": days}
+
+
+def _cross_check_replay(
+    replications: Mapping[str, Replication],
+    replay: cc.Replay,
+    evaluation: Mapping[str, Any],
+    *,
+    violations: list[str],
+) -> None:
+    """§ F.2 (d) v2.1 : toute différence entre ce que l'artefact déclare et ce que le rejeu retrouve —
+    suites, écartées, bornes, CAGR observé, `Δ̂` dd — est une violation (§ I.1, ligne 15), jamais un
+    arbitrage : les décisions lisent les valeurs rejouées."""
+    for combination, (deltas, discarded, bound) in replications.items():
+        replayed, replayed_discarded, replayed_bound = replay.replications[combination]
+        if tuple(deltas) != replayed:
+            first = next(
+                (i for i, (a, b) in enumerate(zip(deltas, replayed, strict=False)) if a != b),
+                min(len(deltas), len(replayed)),
+            )
+            violations.append(
+                f"rejeu {combination} : la suite Δ* déclarée ({len(deltas)} réplications) n'est pas celle "
+                f"du tirage rejoué ({len(replayed)}) — première différence à la réplication {first} (§ F.2 d)"
+            )
+        if discarded != replayed_discarded:
+            violations.append(
+                f"rejeu {combination} : {discarded} réplications écartées déclarées, "
+                f"{replayed_discarded} au rejeu (§ F.2 e)"
+            )
+        if bound != replayed_bound:
+            violations.append(
+                f"rejeu {combination} : borne déclarée {bound!r}, rejouée {replayed_bound!r} (§ F.2 d)"
+            )
+    metrics = cc.require_mapping(evaluation, "metrics", where="evaluation")
+    cagr = cc.require_float(metrics, "cagr_pct", where="evaluation.metrics")
+    delta_dd = cc.require_float(metrics, "delta_dd", where="evaluation.metrics")
+    if cagr != replay.cagr_config:
+        violations.append(
+            f"rejeu : metrics.cagr_pct déclaré {cagr!r}, CAGR rejoué {replay.cagr_config!r} (§ F.2 c)"
+        )
+    if delta_dd != replay.delta_hat["dd"]:
+        violations.append(
+            f"rejeu : metrics.delta_dd déclaré {delta_dd!r}, Δ̂ dd rejoué {replay.delta_hat['dd']!r} "
+            "(§ F.2 c)"
+        )
+
+
+def _bounds_all_positive(
+    replications: Mapping[str, Replication], replay: cc.Replay, *, violations: list[str]
+) -> bool:
     """Les six bornes du § F.2 (h), toutes **finies** (garde de l'accesseur, avant toute comparaison :
     sans elle `+inf` franchirait le plancher et un `NaN` le ferait échouer silencieusement) et strictement
     positives. § F.2 (e) v2.1 : une combinaison sans réplication retenue ne porte pas de borne — la borne est
     nulle **si et seulement si** la suite retenue est vide ; l'écart, dans un sens ou dans l'autre, contredit
     l'artefact : violation (§ I.1, ligne 15)."""
-    positive = True
     for combination, (deltas, _discarded, bound) in replications.items():
         if (bound is None) != (len(deltas) == 0):
             state = "nulle" if bound is None else "déclarée"
@@ -237,14 +364,14 @@ def _bounds_all_positive(replications: Mapping[str, Replication], *, violations:
                 f"réplications {combination} : borne {state} avec une suite retenue {suite} — une borne "
                 "est nulle si et seulement si sa suite retenue est vide (§ F.2 e)"
             )
-        if bound is None or bound <= 0.0:
-            positive = False
-    return positive
+    # § F.2 (d) v2.1 : la décision lit les bornes rejouées.
+    return all(bound is not None and bound > 0.0 for _d, _k, bound in replay.replications.values())
 
 
 def _estimability_of(
     evaluation: Mapping[str, Any],
     replications: Mapping[str, Replication],
+    replay: cc.Replay,
     *,
     violations: list[str],
 ) -> tuple[bool, dict[str, Any]]:
@@ -272,8 +399,13 @@ def _estimability_of(
                 f"réplications {combination} : B déclaré {total}, recalculé B_effectif {len(deltas)} "
                 f"+ écartées {discarded} = {len(deltas) + discarded} — le compte recalculé fait foi"
             )
+    # § F.2 (d) v2.1 : E2 et le plafond lisent les suites **rejouées** (égales aux déclarées sans violation).
     est = cc.combined_estimability(
-        returns, {c: (deltas, discarded) for c, (deltas, discarded, _b) in replications.items()}
+        returns,
+        {
+            c: (list(deltas), discarded)
+            for c, (deltas, discarded, _b) in replay.replications.items()
+        },
     )
     payload: dict[str, Any] = {
         "E1": est.e1,
@@ -286,7 +418,7 @@ def _estimability_of(
             combination: {
                 "E2": per.e2,
                 "distinct_delta_stars": per.distinct_delta_stars,
-                "B_effectif": len(replications[combination][0]),
+                "B_effectif": len(replay.replications[combination][0]),
                 "discarded": per.discarded,
                 "within_ceiling": per.discarded <= cc.DISCARDED_MAX,
             }
@@ -577,11 +709,20 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
     view = _continuity_view(continuity, evaluation=evaluation, anchor=anchor, violations=violations)
     replications = _read_replications(evaluation)
+    returns, bench = _read_series(evaluation)
+    replay, replay_meta = _replay(evaluation, anchor, returns, bench)
+    _cross_check_replay(replications, replay, evaluation, violations=violations)
     estimable, estimability_payload = _estimability_of(
-        evaluation, replications, violations=violations
+        evaluation, replications, replay, violations=violations
     )
-    gates = _gate_results(evaluation)
-    bounds_positive = _bounds_all_positive(replications, violations=violations)
+    estimability_payload["rejeu"] = replay_meta
+    metrics = cc.require_mapping(evaluation, "metrics", where="evaluation")
+    gates = _gate_results(
+        net_pnl=cc.require_float(metrics, "net_pnl", where="evaluation.metrics"),
+        cagr_pct=replay.cagr_config,
+        delta_dd=replay.delta_hat["dd"],
+    )
+    bounds_positive = _bounds_all_positive(replications, replay, violations=violations)
 
     # 2. La décision, dans l'ordre du § H.
     reasons: list[str] = []
@@ -1147,8 +1288,10 @@ def run_verdict(
             print(f"VIOLATION {violation}", file=sys.stderr)
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
         return 2
-    except (cc.InvalidValueError, cc.NonFiniteValueError) as exc:
+    except (cc.InvalidValueError, cc.NonFiniteValueError, cc.InvalidInputError) as exc:
         # § F.7 -> § I.1, ligne 15 — non-finitude ou domaine : violation, code 1, diagnostic écrit.
+        # `InvalidInputError` (noyau § F.2) ne peut plus être atteinte après les pré-contrôles des
+        # séries : filet, routé comme une entrée invalide (§ F.2 e).
         # `NonFiniteValueError` (levée par `canon`) n'est pas une `InvalidValueError` : routée ici
         # explicitement, comme dans les quatre autres modules (revue R3 d).
         violations.append(str(exc))

@@ -270,7 +270,7 @@ def test_configuration_inactive_echouerait_les_portes_Q_si_on_les_lisait() -> No
 
     Sans le § H.0, cette configuration serait ``réfuté`` sur une absence d'observation.
     """
-    gates = cv._gate_results({"metrics": {"net_pnl": 0.0, "cagr_pct": 0.0, "delta_dd": -1.5}})
+    gates = cv._gate_results(net_pnl=0.0, cagr_pct=0.0, delta_dd=-1.5)
     assert gates == {"Q1": False, "Q2": False, "Q3": False}
 
 
@@ -1253,6 +1253,115 @@ def test_une_borne_absente_est_une_erreur_d_entree() -> None:
     artifacts["evaluation"]["replications"]["21:dd"].pop("bound")
     with pytest.raises(cc.MissingEvidenceError, match="bound"):
         cv.decide(artifacts, violations=[])
+
+
+# ---------------------------------------------------------------------------
+# § F.2 (d) v2.1 (AM-15) — la chaîne rejoue le tirage et recalcule tout ce qui en dérive
+# ---------------------------------------------------------------------------
+
+
+def test_le_rejeu_du_temoin_concorde_sans_violation() -> None:
+    """§ F.2 (d) v2.1 : le témoin est l'artefact d'un producteur conforme — le rejeu retrouve ses suites, ses
+    écartées, son CAGR, ses Δ̂ et ses six bornes ; aucune violation, et l'issue est `validé`."""
+    violations: list[str] = []
+    decision = cv.decide(_sound(), violations=violations)
+    assert violations == [] and decision.issue == cc.ISSUE_VALIDE
+
+
+@pytest.mark.parametrize(
+    ("mutate", "fragment"),
+    [
+        pytest.param(
+            lambda e: e["replications"]["21:dd"]["delta_stars"].__setitem__(
+                5, e["replications"]["21:dd"]["delta_stars"][5] + 1e-9
+            ),
+            "21:dd",
+            id="une réplication de Δ*",
+        ),
+        pytest.param(
+            lambda e: e["replications"]["10:sigma"].__setitem__(
+                "bound", e["replications"]["10:sigma"]["bound"] + 0.5
+            ),
+            "10:sigma",
+            id="une borne",
+        ),
+        pytest.param(
+            lambda e: e["metrics"].__setitem__("delta_dd", e["metrics"]["delta_dd"] + 0.1),
+            "delta_dd",
+            id="Δ̂ dd (Q3)",
+        ),
+        pytest.param(
+            lambda e: e["metrics"].__setitem__("cagr_pct", e["metrics"]["cagr_pct"] + 0.1),
+            "cagr_pct",
+            id="CAGR (Q2)",
+        ),
+    ],
+)
+def test_une_valeur_declaree_que_le_rejeu_ne_retrouve_pas_est_une_violation(
+    tmp_path: Path, mutate: Any, fragment: str
+) -> None:
+    """§ F.2 (d) v2.1 : la chaîne rejoue le tirage et recalcule suites, écartées, Δ̂, CAGR et bornes ; « toute
+    différence avec ce que l'artefact déclare est une violation (§ I.1, ligne 15) » — diagnostic, code 1."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"])
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any(fragment in v and "rejeu" in v for v in violations), violations
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict_string"] is None
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda e: e["returns_bench"].pop("sigma"), id="appariement σ absent"),
+        pytest.param(lambda e: e.pop("returns_bench"), id="comparateur absent"),
+        pytest.param(lambda e: e["returns_bench"]["dd"].pop(), id="longueurs différentes"),
+        pytest.param(lambda e: e["environment"].__setitem__("numpy", "0.0.0"), id="autre numpy"),
+        pytest.param(
+            lambda e: e["environment"].__setitem__("machine", "vax"), id="autre architecture"
+        ),
+        pytest.param(lambda e: e.pop("environment"), id="environnement absent"),
+    ],
+)
+def test_un_rejeu_inexecutable_est_une_erreur_d_entree_code_2(tmp_path: Path, mutate: Any) -> None:
+    """§ F.2 (b) à (d) v2.1 : le rejeu exige la série du comparateur de chaque appariement, de la longueur de
+    celle de la configuration, et l'environnement déclaré du tirage — un environnement différent est un
+    contrat rompu, jamais une comparaison tolérante ; sans eux le rejeu est inexécutable : § I.1, ligne 2,
+    code 2, rien n'est publié."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"])
+    with pytest.raises(cc.MissingEvidenceError):
+        cv.decide(artifacts, violations=[])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+def test_refute_par_Q2_sur_une_serie_qui_rend_moins_de_2_pct_par_an() -> None:
+    """§ F.8 : `Q2` lit le rendement géométrique **recalculé** de la configuration (§ F.2 c v2.1) — une série
+    à dérive quasi nulle, N(0,00001 ; 0,002), rend un CAGR sous le plancher de 2 %/an : `réfuté`."""
+    artifacts = _sound()
+    _reseries(
+        artifacts, list(np.random.default_rng(7).normal(0.00001, 0.002, N_DAYS)), [0.0] * N_DAYS
+    )
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_REFUTE and decision.gates["Q2"] is False
+
+
+def test_refute_par_Q3_quand_le_comparateur_en_drawdown_fait_mieux() -> None:
+    """§ F.8 : `Q3` lit `Δ̂` en drawdown **recalculé** (§ F.2 c v2.1) — le comparateur dd rend 0,02 %/jour de
+    plus que la configuration : `Q2` passe, `Q3` échoue, `réfuté`."""
+    artifacts = _sound()
+    witness = _witness()
+    _reseries(artifacts, witness, {"dd": [x + 0.0002 for x in witness], "sigma": [0.0] * N_DAYS})
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == []
+    assert decision.issue == cc.ISSUE_REFUTE
+    assert decision.gates["Q2"] is True and decision.gates["Q3"] is False
 
 
 # ---------------------------------------------------------------------------

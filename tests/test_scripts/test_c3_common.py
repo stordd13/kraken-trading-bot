@@ -542,6 +542,47 @@ def test_le_plafond_de_replications_ecartees_s_applique_par_combinaison() -> Non
     assert at.within_ceiling is True and at.ok is True
 
 
+# ---------------------------------------------------------------------------
+# § F.2 (b) à (d) v2.1 (AM-15) — le rejeu du noyau contre la procédure écrite depuis le texte
+# ---------------------------------------------------------------------------
+
+
+def test_le_rejeu_du_noyau_retrouve_la_procedure_ecrite_depuis_le_texte() -> None:
+    """§ F.2 (b), (c), (d) v2.1 : le rejeu de la chaîne retrouve, **bit à bit**, ce que fait un producteur
+    conforme — suites, écartées et bornes par combinaison, CAGR observé et Δ̂ par appariement."""
+    witness = witness_returns()
+    bench = {"dd": [0.0] * len(witness), "sigma": list(varying_returns(5))}
+    procedure = f2_procedure(witness, bench, seed=SEED, pair_index=1)
+    replay = cc.replay_bootstrap(witness, bench, seed=SEED, pair_index=1, days=EVAL_DAYS)
+    assert replay.cagr_config == procedure["cagr_config"]
+    assert dict(replay.delta_hat) == procedure["delta_hat"]
+    for combination, declared in procedure["replications"].items():
+        deltas, discarded, bound = replay.replications[combination]
+        assert list(deltas) == declared["delta_stars"], combination
+        assert discarded == declared["discarded"] and bound == declared["bound"], combination
+
+
+def test_l_environnement_du_rejeu_est_celui_du_texte() -> None:
+    """§ F.2 (b) v2.1 : Python, numpy, architecture, bibliothèque C — jamais la version du noyau."""
+    assert cc.replay_environment() == environment()
+    assert set(cc.replay_environment()) == {"python", "numpy", "machine", "libc"}
+
+
+def test_un_CAGR_observe_non_fini_est_une_entree_invalide() -> None:
+    """§ F.2 (e) v2.1 : une série dont le CAGR observé, par le chemin du § F.2 (c), n'est pas fini est une
+    entrée invalide (§ I.1, ligne 15) — pas une réplication à écarter : l'estimation elle-même n'existe pas."""
+    series = witness_returns()
+    series[100] = math.expm1(700.0)  # fini ; × 365 / 328,8 fait déborder exp
+    with pytest.raises(cc.InvalidValueError, match="non fini"):
+        cc.replay_bootstrap(
+            series,
+            {"dd": [0.0] * len(series), "sigma": [0.0] * len(series)},
+            seed=SEED,
+            pair_index=0,
+            days=EVAL_DAYS,
+        )
+
+
 def _resuffix_block(block: dict[str, Any], suffix: str) -> dict[str, Any]:
     """Le bloc de liquidation, ses quatre quantités en actif de base portant le suffixe demandé (§ A.7)."""
     out = {}

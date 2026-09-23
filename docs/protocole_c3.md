@@ -1319,6 +1319,18 @@ liquidation — les deux bornes diffèrent, et la différence peut changer le si
 qu'employait le précédent (`LB_j = Δ̂_j − q`). **Le choix est déclaré ici parce qu'il est décisionnel**, pas
 parce qu'il est neutre. Classe : préférence méthodologique déclarée.
 
+**Qui calcule, et ce que la chaîne rejoue.** La procédure est **exécutée par le producteur d'évaluation**
+(C3b), qui exporte les séries quotidiennes de la configuration et du comparateur de chaque appariement, et, par
+combinaison, la suite `Δ*` retenue, le compte de réplications écartées et la borne. La chaîne (§ L.1)
+**rejoue le tirage** — graine du manifeste, index de paire, `n_jours`, tirage et chemin de calcul des
+§ F.2 (b) et (c) — et **recalcule** les six suites, les comptes d'écartées, `Δ̂` par appariement, le `CAGR` de
+la configuration et les six bornes. **Toute différence avec ce que l'artefact déclare est une violation**
+(§ I.1, ligne 15), et les portes `Q2`, `Q3` et les bornes décident sur les valeurs **rejouées**. Le rejeu
+n'est exécuté que dans l'environnement que l'artefact déclare (§ F.2 b) : un environnement différent est un
+**contrat rompu** (§ I.1, ligne 2), jamais une comparaison tolérante. **Ce qui reste déclaratif** : les
+séries quotidiennes elles-mêmes et `net_pnl` (porte `Q1`), qu'aucune série de l'artefact ne permet de
+recalculer (§ J, item 12).
+
 **(e) Entrées invalides et échecs numériques — deux choses distinctes, une seule règle.**
 
 **C'est la section d'origine du traitement des non-finitudes pendant le bootstrap (§ 0.7) ; le § F.7 traite les
@@ -1326,7 +1338,7 @@ non-finitudes dans les *entrées*, et les deux ne se recouvrent pas.**
 
 | | Ce que c'est | Quand | Traitement |
 |---|---|---|---|
-| **Entrée invalide** | un `NaN`, un infini, un `λ` non fini ou un rendement `≤ −1` **dans les données fournies** à la procédure | **avant** tout tirage | **erreur d'entrée** : § I.1, ligne 15. Aucun bootstrap n'est lancé |
+| **Entrée invalide** | un `NaN`, un infini, un `λ` non fini ou un rendement `≤ −1` **dans les données fournies** à la procédure, ou une série dont le `CAGR` **observé** — chemin du § F.2 (c), indices identité — n'est pas fini : l'estimation elle-même n'existe pas, il n'y a rien à écarter | **avant** tout tirage | **erreur d'entrée** : § I.1, ligne 15. Aucun bootstrap n'est lancé |
 | **Échec numérique** | une **réplication** produit un `Δ*` non fini, ou un rendement rééchantillonné conduit la trajectoire à zéro | **pendant** le tirage | la réplication est **écartée et comptée** |
 
 **Comment le quantile est calculé quand des réplications sont écartées.** Elles sont **exclues, comptées, et

@@ -27,11 +27,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
+import functools
 import hashlib
 import math
 from pathlib import Path
+import platform
 import statistics
 import sys
+from types import MappingProxyType
 from typing import Any
 
 import numpy as np
@@ -754,14 +757,19 @@ def paired_delta_stars(
     bch = np.asarray(list(returns_bench), dtype=float)
     if cfg.shape != bch.shape:
         raise InvalidInputError("les deux séries doivent avoir la même longueur (appariement)")
-    log_cfg = np.log1p(cfg)
-    log_bch = np.log1p(bch)
-    scale = ANNUALISATION_DAYS / days
-    cagr_cfg = (np.exp(log_cfg[idx].sum(axis=1) * scale) - 1.0) * 100.0
-    cagr_bch = (np.exp(log_bch[idx].sum(axis=1) * scale) - 1.0) * 100.0
-    delta = cagr_cfg - cagr_bch
+    with np.errstate(over="ignore", invalid="ignore"):
+        delta = cagr_rows(np.log1p(cfg), idx, days) - cagr_rows(np.log1p(bch), idx, days)
     finite = np.isfinite(delta)
     return delta[finite], int((~finite).sum())
+
+
+def cagr_rows(log_returns: np.ndarray, idx: np.ndarray, days: float) -> np.ndarray:
+    """§ F.2 (c) v2.1 — **le seul chemin de calcul** du CAGR : `(exp(Σ log1p(r) × 365 / n_jours) − 1) × 100`,
+    par `numpy`, ligne par ligne sur les indices `idx` — ceux d'une réplication, ou les indices identité pour
+    la valeur observée. Un débordement rend une valeur non finie (une réplication écartée, § F.2 e), jamais
+    un avertissement."""
+    with np.errstate(over="ignore", invalid="ignore"):
+        return (np.exp(log_returns[idx].sum(axis=1) * (ANNUALISATION_DAYS / days)) - 1.0) * 100.0
 
 
 def pivotal_lower_bound(
@@ -778,6 +786,111 @@ def pivotal_lower_bound(
         raise InvalidInputError("aucune réplication retenue")
     q = float(np.quantile(arr - float(delta_hat), level, method="linear"))
     return float(delta_hat) - q
+
+
+#: § F.2 (b) v2.1 — les champs de l'environnement du tirage ; jamais la version du noyau du système.
+REPLAY_ENVIRONMENT_KEYS: tuple[str, ...] = ("python", "numpy", "machine", "libc")
+
+
+def replay_environment() -> dict[str, str]:
+    """§ F.2 (b) v2.1 et § I.2 I-C : l'environnement dans lequel le tirage est exact — version de Python, de
+    `numpy`, architecture, bibliothèque C (bibliothèque et version, séparées par une espace)."""
+    lib, version = platform.libc_ver()
+    return {
+        "python": platform.python_version(),
+        "numpy": np.__version__,
+        "machine": platform.machine(),
+        "libc": f"{lib} {version}".strip(),
+    }
+
+
+@dataclass(frozen=True)
+class Replay:
+    """Le rejeu du § F.2 (d) v2.1 : CAGR observé de la configuration (porte `Q2`), `Δ̂` par appariement
+    (`dd` : porte `Q3`), et par combinaison `(suite Δ* retenue, écartées, borne ou None)`."""
+
+    cagr_config: float
+    delta_hat: Mapping[str, float]
+    replications: Mapping[str, tuple[tuple[float, ...], int, float | None]]
+
+
+def replay_bootstrap(
+    returns_config: Sequence[float],
+    returns_bench: Mapping[str, Sequence[float]],
+    *,
+    seed: int,
+    pair_index: int,
+    days: float,
+    b: int = BOOTSTRAP_B,
+) -> Replay:
+    """§ F.2 (b) à (d) v2.1 — la chaîne **rejoue** le tirage du producteur : générateur
+    `numpy.random.default_rng([graine, index de paire, L])`, départs en un seul appel, indices circulaires
+    tronqués, **les mêmes** pour la configuration, le comparateur et les deux appariements d'un même `L` ;
+    `CAGR` par le seul chemin `cagr_rows`, indices identité pour les valeurs observées ; borne pivotale.
+
+    Fonction pure, mémoïsée sur ses entrées ; ce qu'elle rend est immuable. Un CAGR **observé** non fini —
+    de la configuration ou d'un comparateur — est une entrée invalide (§ F.2 e v2.1 ; § I.1, ligne 15) :
+    l'estimation elle-même n'existe pas, il n'y a rien à écarter.
+    """
+    return _replay_cached(
+        tuple(float(x) for x in returns_config),
+        tuple(float(x) for x in returns_bench["dd"]),
+        tuple(float(x) for x in returns_bench["sigma"]),
+        int(seed),
+        int(pair_index),
+        float(days),
+        int(b),
+    )
+
+
+@functools.lru_cache(maxsize=32)
+def _replay_cached(
+    cfg: tuple[float, ...],
+    bench_dd: tuple[float, ...],
+    bench_sigma: tuple[float, ...],
+    seed: int,
+    pair_index: int,
+    days: float,
+    b: int,
+) -> Replay:
+    n = len(cfg)
+    log_cfg = np.log1p(np.asarray(cfg, dtype=float))
+    log_bench = {
+        "dd": np.log1p(np.asarray(bench_dd, dtype=float)),
+        "sigma": np.log1p(np.asarray(bench_sigma, dtype=float)),
+    }
+    identity = np.arange(n)[None, :]
+    cagr_config = float(cagr_rows(log_cfg, identity, days)[0])
+    observed = {m: float(cagr_rows(log_bench[m], identity, days)[0]) for m in MATCHINGS}
+    for label, value in (("de la configuration", cagr_config),) + tuple(
+        (f"du comparateur {m}", v) for m, v in observed.items()
+    ):
+        if not math.isfinite(value):
+            raise InvalidValueError(
+                f"rejeu : CAGR observé {label} non fini ({value!r}) — entrée invalide (§ F.2 e)"
+            )
+    delta_hat = {m: cagr_config - observed[m] for m in MATCHINGS}
+    replications: dict[str, tuple[tuple[float, ...], int, float | None]] = {}
+    for length in BLOCK_LENGTHS:
+        rng = np.random.default_rng([seed, pair_index, length])
+        idx = block_indices(block_start_indices(rng, n, length, b), length, n)
+        rows_config = cagr_rows(log_cfg, idx, days)
+        for matching in MATCHINGS:
+            with np.errstate(invalid="ignore"):
+                delta = rows_config - cagr_rows(log_bench[matching], idx, days)
+            finite = np.isfinite(delta)
+            kept = delta[finite]
+            bound = None if kept.size == 0 else pivotal_lower_bound(delta_hat[matching], kept)
+            replications[f"{length}:{matching}"] = (
+                tuple(float(x) for x in kept),
+                int((~finite).sum()),
+                bound,
+            )
+    return Replay(
+        cagr_config=cagr_config,
+        delta_hat=MappingProxyType(delta_hat),
+        replications=MappingProxyType(replications),
+    )
 
 
 @dataclass(frozen=True)
