@@ -184,6 +184,12 @@ par un test. Au commit 8c, les fixtures suivent l'expression du texte, et le noy
 tests de la suite C3 ; les témoins de 8c sont vérifiés par mutation (six mutants, six détectés), comme les deux
 tests de chaîne réécrits au commit 8a (deux mutants, détectés).
 
+### Note postérieure au gel (2026-09-23, hors protocole — le sha v2.1 ne bouge pas)
+
+§ F.8 dit "seuls les domaines de mesure changent" entre P2/P3 et Q2/Q3 ; depuis 8c la sélection calcule par
+cc.cagr_pct (math.fsum) et l'évaluation par le chemin numpy du § F.2 (c). Sans effet décisionnel (seuil
+2 %/an, fenêtres disjointes) ; candidat à un v2.2, non corrigé en v2.1 pour ne pas re-geler.
+
 ---
 
 ## Table de correspondance brief → amendements

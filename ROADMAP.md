@@ -147,6 +147,10 @@ la première campagne 2021-03-01 → 2026-06-29 (`T = 2024-11-22T04:48Z`) ; 932 
      longueur), `replications` par combinaison `{delta_stars (ordre b = 1 … B), discarded, bound}`, `B`,
      `environment {python, numpy, machine, libc}`, `metrics {net_pnl, cagr_pct, delta_dd}` ; producteur et chaîne
      sur le serveur (§ J item 12) ;
+   - **`returns_config` recalculé par la chaîne** depuis `evaluation.equity_daily` — `r_t = E_t / E_{t−1} − 1`,
+     formule exacte (ordre des opérations, précision) à écrire au brief C3b — et **recoupé au bit** avec la série
+     exportée (ex-S-3 de la revue du 23/09) ; le § J item 12 (séries quotidiennes déclaratives) se resserre
+     d'autant, par amendement daté ;
    - amorçage suffisant au préfixe (D2) ;
    - **décision de reconstruction** des six estampilles 1 w manquantes de 2022 (D1 1 w à 188/194 < 97 % : sans elle,
      l'ensemble admissible est vide) — **prérequis du manifeste** ; SOL partiel ou absent par D2 (29 bougies 1 w
@@ -157,6 +161,12 @@ la première campagne 2021-03-01 → 2026-06-29 (`T = 2024-11-22T04:48Z`) ; 932 
 2. **Campagne réelle sous la chaîne** : inscription à `docs/RESEARCH_LOG.md` avant lancement, manifeste gelé portant
    le sha256 v2.1, `c3_verdict.py chain` — les trois issues ne deviennent atteignables qu'alors ; le verdict est lu
    par le critère d'arrêt (`docs/CONTRAINTES_POST_B4.md` § 10).
+
+**Signalés, non traités** (revue du 23/09 ; S-2 est devenu la dette 21, S-3 l'exigence ci-dessus) : **S-1**
+`gross_usdc` et `min_order_usdc` nomment l'USDC alors que les paires de validation sont en USDT — même classe de
+défaut que les clés `_btc` ; **S-4** la CI ne lance `ruff` que sur `src/` (les `scripts/audit/rejeu_*.py` et leurs
+tests ne sont pas formatés) ; **S-5** `write_json(default=str)` convertit en chaîne, sans le signaler, tout type non
+JSON (`scripts/audit/rejeu_common.py:340`, réexporté par `c3_common` : les artefacts C3 sont concernés).
 
 **Conséquence opérationnelle : aucune sélection possible aujourd'hui** — non plus parce que l'outillage est incomplet,
 mais parce qu'**aucune campagne existante ne traverse la chaîne** sans producteur conforme. Les conditions de démarrage
