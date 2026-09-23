@@ -562,10 +562,64 @@ def test_le_rejeu_du_noyau_retrouve_la_procedure_ecrite_depuis_le_texte() -> Non
         assert discarded == declared["discarded"] and bound == declared["bound"], combination
 
 
+def _cagr_du_texte(returns: Sequence[float], indices: Any, n_jours: float) -> Any:
+    """§ F.2 (c) v2.1, l'expression du texte, recopiée telle quelle :
+    `(numpy.exp((numpy.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100`."""
+    r = np.asarray(returns, dtype=float)
+    return (np.exp((np.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100
+
+
+def test_le_CAGR_suit_l_ordre_des_operations_ecrit_au_texte() -> None:
+    """§ F.2 (c) v2.1 : « L'ordre des opérations fait partie de la définition : la somme est multipliée par
+    365, **puis** divisée par `n_jours` — une seule division, faite en dernier. `somme × (365 / n_jours)`
+    donne un autre nombre au dernier bit sur une part des réplications ». Le seul chemin de la chaîne rend, au
+    bit, l'expression du texte — sur la valeur observée (indices identité) comme sur les réplications."""
+    witness = witness_returns()
+    n = len(witness)
+    rng = np.random.default_rng([SEED, 0, 21])
+    starts = rng.integers(0, n, size=(cc.BOOTSTRAP_B, math.ceil(n / 21)))
+    replications = (starts[:, :, None] + np.arange(21)).reshape(cc.BOOTSTRAP_B, -1)[:, :n] % n
+    logs = np.log1p(np.asarray(witness, dtype=float))
+    for indices in (np.arange(n)[None, :], replications):
+        expected = _cagr_du_texte(witness, indices, EVAL_DAYS)
+        # Le cas sépare les deux ordres : l'autre ordre diffère ici au dernier bit (sinon il ne prouve rien).
+        other_order = (np.exp(logs[indices].sum(axis=1) * (365 / EVAL_DAYS)) - 1) * 100
+        assert np.any(other_order != expected)
+        assert np.array_equal(cc.cagr_rows(logs, indices, EVAL_DAYS), expected)
+
+
+def test_un_CAGR_de_moins_100_exactement_est_retenu_jamais_ecarte() -> None:
+    """§ F.2 (e) v2.1 : « Rien d'autre n'est écarté » que le Δ* non fini — « Un CAGR de −100 %/an
+    exactement — l'exponentielle sous-déborde vers 0 — est une valeur finie et légitime, celle du pire
+    chemin : la réplication est retenue ». La série est une entrée valide (tout rendement > −1) dont chaque
+    chemin rééchantillonné sous-déborde."""
+    n = N_EVAL_POINTS - 1
+    series = [0.0005] * n
+    for i in range(0, n, 4):
+        series[i] = -1 + 1e-15
+    cc.check_returns(series, label="configuration")  # > −1 partout : pas une entrée invalide
+    bench = {"dd": [0.0] * n, "sigma": [0.0] * n}
+    replay = cc.replay_bootstrap(series, bench, seed=SEED, pair_index=0, days=EVAL_DAYS)
+    assert replay.cagr_config == -100.0
+    procedure = f2_procedure(series, bench)
+    for combination in COMBINATIONS_F2H:
+        deltas, discarded, _bound = replay.replications[combination]
+        assert discarded == 0 and len(deltas) == cc.BOOTSTRAP_B, combination
+        assert set(deltas) == {-100.0}, combination
+        assert procedure["replications"][combination]["discarded"] == 0, combination
+
+
+#: § F.2 (b) v2.1 : les quatre champs de l'environnement, dans l'ordre du texte.
+REPLAY_ENVIRONMENT_FIELDS = ("python", "numpy", "machine", "libc")
+
+
 def test_l_environnement_du_rejeu_est_celui_du_texte() -> None:
-    """§ F.2 (b) v2.1 : Python, numpy, architecture, bibliothèque C — jamais la version du noyau."""
+    """§ F.2 (b) v2.1 : l'environnement est déclaré « en quatre champs, et quatre seulement » — Python,
+    `numpy`, architecture, bibliothèque C, chacun avec sa source écrite au texte ; jamais la version du
+    noyau."""
+    assert cc.REPLAY_ENVIRONMENT_KEYS == REPLAY_ENVIRONMENT_FIELDS
     assert cc.replay_environment() == environment()
-    assert set(cc.replay_environment()) == {"python", "numpy", "machine", "libc"}
+    assert tuple(cc.replay_environment()) == REPLAY_ENVIRONMENT_FIELDS
 
 
 def test_un_CAGR_observe_non_fini_est_une_entree_invalide() -> None:
@@ -1346,8 +1400,10 @@ F2_MATCHINGS: tuple[str, ...] = ("dd", "sigma")
 
 
 def environment() -> dict[str, str]:
-    """§ F.2 (b) v2.1 et § I.2 I-C : l'environnement du tirage — Python, numpy, architecture et bibliothèque
-    C (bibliothèque et version, séparées par une espace) ; jamais la chaîne noyau."""
+    """§ F.2 (b) v2.1 et § I.2 I-C : l'environnement du tirage, « en quatre champs, et quatre seulement » —
+    `python` = `platform.python_version()`, `numpy` = `numpy.__version__`, `machine` = `platform.machine()`,
+    `libc` = « la bibliothèque et sa version, séparées par une espace, espaces de bord retirées » ; jamais la
+    version du noyau."""
     lib, version = platform.libc_ver()
     return {
         "python": platform.python_version(),
@@ -1358,10 +1414,11 @@ def environment() -> dict[str, str]:
 
 
 def _f2_cagr_rows(log_returns: Any, idx: Any, days: float) -> Any:
-    """§ F.2 (c) v2.1 : `(exp(Σ log1p(r) × 365 / n_jours) − 1) × 100` par `numpy` — `log1p` élément par
-    élément, somme par ligne, `exp` ; un débordement rend la réplication non finie (§ F.2 e)."""
+    """§ F.2 (c) v2.1, l'expression du texte recopiée :
+    `(numpy.exp((numpy.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100` — « la somme est multipliée
+    par 365, **puis** divisée par `n_jours` » ; un débordement rend la réplication non finie (§ F.2 e)."""
     with np.errstate(over="ignore", invalid="ignore"):
-        return (np.exp(log_returns[idx].sum(axis=1) * (365 / days)) - 1.0) * 100.0
+        return (np.exp((log_returns[idx].sum(axis=1) * 365) / days) - 1) * 100
 
 
 @cache

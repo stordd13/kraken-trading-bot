@@ -751,7 +751,8 @@ def paired_delta_stars(
     """`Δ*` par réplication, indices **appariés**, plus le compte de réplications écartées.
 
     § F.2 (e) : une réplication qui produit un `Δ*` non fini est **écartée et comptée**, jamais
-    remplacée — un retirage biaiserait la distribution vers les chemins qui se terminent bien.
+    remplacée — un retirage biaiserait la distribution vers les chemins qui se terminent bien. **Rien d'autre
+    n'est écarté** (v2.1) : un CAGR de −100 exactement (l'exponentielle sous-déborde vers 0) est fini, retenu.
     """
     cfg = np.asarray(list(returns_config), dtype=float)
     bch = np.asarray(list(returns_bench), dtype=float)
@@ -764,12 +765,14 @@ def paired_delta_stars(
 
 
 def cagr_rows(log_returns: np.ndarray, idx: np.ndarray, days: float) -> np.ndarray:
-    """§ F.2 (c) v2.1 — **le seul chemin de calcul** du CAGR : `(exp(Σ log1p(r) × 365 / n_jours) − 1) × 100`,
-    par `numpy`, ligne par ligne sur les indices `idx` — ceux d'une réplication, ou les indices identité pour
-    la valeur observée. Un débordement rend une valeur non finie (une réplication écartée, § F.2 e), jamais
-    un avertissement."""
+    """§ F.2 (c) v2.1 — **le seul chemin de calcul** du CAGR, l'expression du texte :
+    `(numpy.exp((numpy.log1p(r)[indices].sum(axis=1) * 365) / n_jours) - 1) * 100`, sur les indices `idx` —
+    ceux des réplications, ou les indices identité pour la valeur observée. **L'ordre des opérations fait
+    partie de la définition** : la somme est multipliée par 365, puis divisée par `n_jours` (l'ordre de
+    `cagr_pct`) ; `somme × (365 / n_jours)` est un autre nombre au dernier bit. Un débordement rend une valeur
+    non finie (une réplication écartée, § F.2 e), jamais un avertissement."""
     with np.errstate(over="ignore", invalid="ignore"):
-        return (np.exp(log_returns[idx].sum(axis=1) * (ANNUALISATION_DAYS / days)) - 1.0) * 100.0
+        return (np.exp((log_returns[idx].sum(axis=1) * ANNUALISATION_DAYS) / days) - 1.0) * 100.0
 
 
 def pivotal_lower_bound(
@@ -793,8 +796,10 @@ REPLAY_ENVIRONMENT_KEYS: tuple[str, ...] = ("python", "numpy", "machine", "libc"
 
 
 def replay_environment() -> dict[str, str]:
-    """§ F.2 (b) v2.1 et § I.2 I-C : l'environnement dans lequel le tirage est exact — version de Python, de
-    `numpy`, architecture, bibliothèque C (bibliothèque et version, séparées par une espace)."""
+    """§ F.2 (b) v2.1 et § I.2 I-C : l'environnement dans lequel le tirage est exact, « en quatre champs, et
+    quatre seulement » — `platform.python_version()`, `numpy.__version__`, `platform.machine()`, et la
+    bibliothèque C de `platform.libc_ver()` (bibliothèque et version, séparées par une espace, espaces de bord
+    retirées : vide sur macOS, § J item 12)."""
     lib, version = platform.libc_ver()
     return {
         "python": platform.python_version(),

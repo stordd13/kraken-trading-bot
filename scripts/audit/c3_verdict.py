@@ -178,8 +178,11 @@ def _gate_results(*, net_pnl: float, cagr_pct: float, delta_dd: float) -> dict[s
 def _evaluation_contract(evaluation: Mapping[str, Any]) -> None:
     """§ F.2 (b) v2.1 — les paramètres de la procédure d'incertitude sont des **contrats d'instrument**,
     contrôlés **avant toute lecture** (§ I.1 v2.1 : le refus de contrat « vient en premier par
-    construction ») : ``B`` égal à la valeur gelée ``BOOTSTRAP_B``, et **exactement** les six combinaisons
-    ``L × appariement`` du § F.2 (h) sous ``replications``. Tout écart est un contrat rompu —
+    construction ») : ``B`` égal à la valeur gelée ``BOOTSTRAP_B``, **exactement** les six combinaisons
+    ``L × appariement`` du § F.2 (h) sous ``replications``, un environnement **exactement** égal à celui où la
+    chaîne rejoue (les quatre champs du § F.2 b, aucun en trop), et un comparateur portant **exactement** les
+    deux appariements ``dd`` et ``sigma``. Un bloc absent est une erreur de forme, non un contrat rompu.
+    Tout écart déclaré est un contrat rompu —
     ``R0_INVALID_RUN``, code 2, rien n'est publié (§ I.1, ligne 2) — même accompagné d'un compteur
     contradictoire, d'un non-fini dans une suite ou d'une contradiction de continuité : jamais une violation
     par accident d'ordre de lecture. Précédent : ``rejeu_validate_analysis.b02_frozen_parameters``.
@@ -250,7 +253,8 @@ def _read_replications(evaluation: Mapping[str, Any]) -> dict[str, Replication]:
 def _read_series(evaluation: Mapping[str, Any]) -> tuple[list[float], dict[str, list[float]]]:
     """Les séries quotidiennes que la procédure consomme (§ F.2 a) : la configuration et le comparateur de
     chaque appariement, **toutes finies et dans le domaine** (`r > −1`, sinon violation, § F.2 e), **de
-    même longueur** (sinon le rejeu est inexécutable : erreur d'entrée, § I.1, ligne 2)."""
+    même longueur `n`** (§ F.2 d v2.1 : sinon « le rejeu est inexécutable, erreur d'entrée (§ I.1, ligne 2),
+    code 2 »)."""
     returns = cc.require_finite_series(
         evaluation, "returns_config", where="evaluation", domain_floor=cc.RETURN_DOMAIN_FLOOR
     )

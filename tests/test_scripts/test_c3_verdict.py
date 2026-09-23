@@ -1180,6 +1180,30 @@ def test_au_dela_du_plafond_de_replications_ecartees_l_inference_est_inutilisabl
         assert v["B_effectif"] == cc.BOOTSTRAP_B - v["discarded"]
 
 
+def test_au_dela_du_plafond_l_evaluation_porte_ses_bornes_et_le_verdict_n_en_cite_aucune(
+    tmp_path: Path,
+) -> None:
+    """§ F.2 (e) v2.1 : au-delà du plafond, « aucune borne n'est citée par le verdict. L'artefact
+    d'évaluation, lui, porte la borne de toute combinaison dont la suite retenue n'est pas vide […], et la
+    chaîne la recoupe au rejeu comme les autres » — un producteur qui annule ses bornes au-delà du plafond
+    contredit l'artefact (§ I.1, ligne 15)."""
+    artifacts = _sound()
+    extreme = _witness()
+    extreme[100] = math.expm1(300.0)
+    _reseries(artifacts, extreme, [0.0] * N_DAYS)
+    replications = artifacts["evaluation"]["replications"]
+    assert all(r["delta_stars"] and r["bound"] is not None for r in replications.values())
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "F_NOT_ESTIMABLE"
+    assert payload["bornes_toutes_positives"] is None
+    assert all("bound" not in c for c in payload["estimabilite"]["combinations"].values())
+    replications["21:dd"]["bound"] = None
+    violations: list[str] = []
+    cv.decide(artifacts, violations=violations)
+    assert any("21:dd" in v and "borne" in v for v in violations), violations
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
@@ -1295,13 +1319,26 @@ def test_le_rejeu_du_temoin_concorde_sans_violation() -> None:
             "cagr_pct",
             id="CAGR (Q2)",
         ),
+        pytest.param(
+            lambda e: e["replications"]["21:dd"]["delta_stars"].reverse(),
+            "21:dd",
+            id="suite dans un autre ordre",
+        ),
+        pytest.param(
+            lambda e: _to_15_digits(e["replications"]["42:sigma"]["delta_stars"]),
+            "42:sigma",
+            id="Δ* écrit à 15 chiffres",
+        ),
     ],
 )
 def test_une_valeur_declaree_que_le_rejeu_ne_retrouve_pas_est_une_violation(
     tmp_path: Path, mutate: Any, fragment: str
 ) -> None:
     """§ F.2 (d) v2.1 : la chaîne rejoue le tirage et recalcule suites, écartées, Δ̂, CAGR et bornes ; « toute
-    différence avec ce que l'artefact déclare est une violation (§ I.1, ligne 15) » — diagnostic, code 1."""
+    différence avec ce que l'artefact déclare est une violation (§ I.1, ligne 15) — la comparaison est une
+    égalité au bit, ordre des suites compris » — diagnostic, code 1. La suite est publiée « dans l'ordre des
+    réplications b = 1 … B » et chaque valeur « sérialisée par le repr le plus court qui se relit à
+    l'identique […], jamais avec assez de décimales »."""
     artifacts = _sound()
     mutate(artifacts["evaluation"])
     violations: list[str] = []
@@ -1312,28 +1349,71 @@ def test_une_valeur_declaree_que_le_rejeu_ne_retrouve_pas_est_une_violation(
     assert payload["invalide"] is True and payload["verdict_string"] is None
 
 
+def _to_15_digits(values: list[float]) -> None:
+    """Réécrit, en place, la première valeur que 15 chiffres significatifs ne relisent pas à l'identique —
+    ce que produirait une sérialisation « avec assez de décimales » (§ F.2 d v2.1)."""
+    for i, value in enumerate(values):
+        rounded = float(f"{value:.15g}")
+        if rounded != value:
+            values[i] = rounded
+            return
+    raise AssertionError("aucune valeur ne change à 15 chiffres : le cas ne mordrait pas")
+
+
 @pytest.mark.parametrize(
     "mutate",
     [
         pytest.param(lambda e: e["returns_bench"].pop("sigma"), id="appariement σ absent"),
-        pytest.param(lambda e: e.pop("returns_bench"), id="comparateur absent"),
-        pytest.param(lambda e: e["returns_bench"]["dd"].pop(), id="longueurs différentes"),
+        pytest.param(
+            lambda e: e["returns_bench"].__setitem__("cash", list(e["returns_bench"]["dd"])),
+            id="appariement surnuméraire",
+        ),
+        pytest.param(lambda e: e["environment"].__setitem__("python", "2.7.18"), id="autre python"),
         pytest.param(lambda e: e["environment"].__setitem__("numpy", "0.0.0"), id="autre numpy"),
         pytest.param(
             lambda e: e["environment"].__setitem__("machine", "vax"), id="autre architecture"
         ),
+        pytest.param(
+            lambda e: e["environment"].__setitem__("libc", "musl 1.2.5"),
+            id="autre bibliothèque C",
+        ),
+        pytest.param(
+            lambda e: e["environment"].__setitem__("kernel", "6.8.0-45-generic"),
+            id="champ en trop",
+        ),
+    ],
+)
+def test_un_contrat_de_rejeu_rompu_est_un_refus_R0(tmp_path: Path, mutate: Any) -> None:
+    """§ F.2 (b) v2.1 : « un comparateur qui ne porte pas exactement les deux appariements dd et σ, ou un
+    environnement qui n'est pas exactement celui où la chaîne rejoue — un champ en trop compris — est un
+    contrat rompu : R0_INVALID_RUN, code 2, rien n'est publié (§ I.1, ligne 2) »."""
+    artifacts = _sound()
+    mutate(artifacts["evaluation"])
+    with pytest.raises(cc.EntryRefusedError) as info:
+        cv.decide(artifacts, violations=[])
+    assert info.value.reason == "R0_INVALID_RUN"
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
+    assert not (tmp_path / "verdict.json").exists()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        pytest.param(lambda e: e.pop("returns_bench"), id="comparateur absent"),
         pytest.param(lambda e: e.pop("environment"), id="environnement absent"),
+        pytest.param(lambda e: e["returns_bench"]["dd"].pop(), id="longueurs différentes"),
     ],
 )
 def test_un_rejeu_inexecutable_est_une_erreur_d_entree_code_2(tmp_path: Path, mutate: Any) -> None:
-    """§ F.2 (b) à (d) v2.1 : le rejeu exige la série du comparateur de chaque appariement, de la longueur de
-    celle de la configuration, et l'environnement déclaré du tirage — un environnement différent est un
-    contrat rompu, jamais une comparaison tolérante ; sans eux le rejeu est inexécutable : § I.1, ligne 2,
-    code 2, rien n'est publié."""
+    """§ F.2 (d) v2.1 : le producteur exporte les séries « de chaque appariement — toutes de même longueur
+    n » et déclare son environnement ; une preuve absente est une erreur de forme, et « des séries de
+    longueurs différentes rendent les indices appariés impossibles : le rejeu est inexécutable, erreur
+    d'entrée (§ I.1, ligne 2), code 2 » — pas un contrat rompu, rien n'est publié."""
     artifacts = _sound()
     mutate(artifacts["evaluation"])
-    with pytest.raises(cc.MissingEvidenceError):
+    with pytest.raises(cc.MissingEvidenceError) as info:
         cv.decide(artifacts, violations=[])
+    assert not isinstance(info.value, cc.EntryRefusedError)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 2
     assert not (tmp_path / "verdict.json").exists()
 
