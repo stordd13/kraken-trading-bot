@@ -65,7 +65,7 @@ Attendu (septembre 2026) :
 
 | `exchange` | Rows | Rôle |
 |---|---|---|
-| `binance` | **11 288 569** au 2026-09-23 = 8 712 718 `*/USDC` (figé) + 2 575 851 `*/USDT` | Base de backtest : `*/USDC` 2021-01 → 2026-04, 3 paires × 7 TF, figée (trou 2022-09-29 → 2023-03-12 / 2023-12-28) ; `*/USDT` 2021-01 → 2026-08, 3 paires × 6 TF (pas de 1m), contiguë, importée le 2026-09-23 (`skills/binance_import.md` § « Séries USDT »). End-stampée. |
+| `binance` | **11 952 972** au 2026-09-23 12:43 UTC = 8 712 718 `*/USDC` (figé) + 3 240 254 `*/USDT` | Base de backtest : `*/USDC` 2021-01 → 2026-04, 3 paires × 7 TF, figée (trou 2022-09-29 → 2023-03-12 / 2023-12-28) ; `*/USDT` **2019-01 → 2026-08** (BTC/ETH ; SOL depuis 2020-08-11), 3 paires × 6 TF (pas de 1m), contiguë, importée le 2026-09-23 en deux passes (`skills/binance_import.md` § « Séries USDT » et « Prolongation 2019-2020 »). End-stampée. |
 | `kraken` | 1 181 469 | Legacy, à supprimer une fois Bybit validé en live. |
 | `bybit` | 2 572 097 au 16/09/2026 13:42 (croît en continu) | Données live Bybit EU (historique depuis 2025-06-11 + WS + backfill). Cible de production. |
 
@@ -132,6 +132,7 @@ Règle : **jamais plus de 5000 rows par execute**. Utiliser `ON CONFLICT DO NOTH
 |---|---|---|---|
 | 2026-09-07 | `~/Backups/krakenbot/krakenbot_20260907.dump` (Mac de Bruno) | 203 Mo | DB complète (format custom `pg_dump -Fc`), avant arrêt des services |
 | 2026-09-23 | `~/backups/krakenbot/krakenbot_20260923_pre_usdt.dump` (serveur, hors rotation du cron) | 255 Mo | DB complète (`pg_dump -Fc --no-owner --no-acl`) **avant l'import USDT** ; sha256 `c9449cae…`, 1 188 entrées `pg_restore -l` — `results/binance_usdt_import_report.md` § 4 |
+| 2026-09-23 | `~/backups/krakenbot/krakenbot_20260923_pre_usdt2019.dump` (serveur, hors rotation du cron) | 319 Mo | DB complète (`pg_dump -Fc --no-owner --no-acl`) **avant l'import complémentaire USDT 2019-2020** (contient les 18 séries USDT 2021+) ; sha256 `2c94e92f…`, 1 188 entrées `pg_restore -l` — `results/binance_usdt_import_2019_report.md` § 4 |
 
 **Backup récurrent en place depuis le 16/09/2026** (cron serveur, `scripts/backup_db.sh`) :
 

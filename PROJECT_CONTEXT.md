@@ -313,30 +313,35 @@ Contexte historique : les backtests P6 et P7 phase 1 ont été faits avec les fe
   (`results/B4_1_timestamp_restamp_report.md`)
 
 **Volumes (23 septembre 2026)** :
-- `exchange='binance'` : **11 288 569 rows, 39 séries** =
+- `exchange='binance'` : **11 952 972 rows, 39 séries** (12:43 UTC, après l'import complémentaire 2019-2020) =
   - `*/USDC` : 8 712 718 rows (BTC/ETH/SOL × 7 TF, 2021-01-01 → 2026-04-01 00:00, 1w → 2026-04-06) — **base de backtest
     historique, figée**, **end-stamped depuis B4.1** (dette 11 résolue ; counts inchangés par le re-stamp) ; **trou USDC**
     `2022-09-29T03:00Z → 2023-03-12` (BTC/ETH, 164 j) et `→ 2023-12-28` (SOL, 455 j), non backfillable (Vision 404,
     `results/data_inventory_20260923/`) ;
-  - `*/USDT` : **2 575 851 rows, 18 séries** (BTC/ETH/SOL × **6 TF** : 5m, 15m, 1h, 4h, 1d, 1w — **pas de 1m**, aucun
-    moteur ne le lit, ajoutable plus tard), importées le **2026-09-23** depuis Binance Vision (`BTCUSDT`, `ETHUSDT`,
-    `SOLUSDT`) pour disposer d'une **base contiguë 2021-01 → 2026-08** : 2021-01-01 → **2026-09-01 00:00** (borne de fin =
-    dernier mois Vision complet, 2026-08, pas 2026-04), 858 617 rows par paire, trous = les 6 fenêtres de maintenance 2021
-    + la panne du 2023-03-24 (identiques à la base USDC, ≤ 5 h) + 8 bougies 1w isolées (artefact Vision, consignées) ;
-    **écart de fin de série 1w : `2026-07-06`** contre `2026-09-01` pour les cinq autres TF (fichiers Vision 1w 2026-07 et
-    2026-08 absents au 23/09) — reprise à faire hors chantier : `--intervals 1w --start-date 2026-07-01 --end-date 2026-08-31`
-    quand Vision les publiera (idempotent, `ON CONFLICT DO NOTHING`). Rapport `results/binance_usdt_import_report.md`,
-    inventaire post-import `results/data_inventory_usdt_20260923/`. **Aucune comparabilité USDC ↔ USDT mesurée, aucune
-    sélection ; la transposition USDT → USDC relève du gate d'amendement C3.**
+  - `*/USDT` : **3 240 254 rows, 18 séries** (BTC/ETH/SOL × **6 TF** : 5m, 15m, 1h, 4h, 1d, 1w — **pas de 1m**, aucun
+    moteur ne le lit, ajoutable plus tard), importées le **2026-09-23** en deux passes depuis Binance Vision (`BTCUSDT`,
+    `ETHUSDT`, `SOLUSDT`) pour disposer d'une **base contiguë 2019-01 → 2026-08** : première passe 2021-01 → 2026-08
+    (2 575 851 rows, `results/binance_usdt_import_report.md`), seconde passe **2019-01 → 2020-12** (664 403 rows, profondeur
+    d'amorçage 1w, `results/binance_usdt_import_2019_report.md`). Bornes : BTC/ETH depuis **`2019-01-01T00:05Z`** (1w
+    `2019-01-14`), SOL depuis son premier stamp réel Vision **`2020-08-11T06:05Z`** (1w `2020-08-17`) ; fin **2026-09-01 00:00**
+    (dernier mois Vision complet, 2026-08) ; 1 161 236 rows par paire BTC/ETH, 917 782 SOL. Jointure au 2021-01-01 **sans trou**
+    (inventaire). Trous = 14 fenêtres de maintenance 2019-2020 (≤ 10 h, la plus longue le 2019-05-15 ; identiques sur BTC/ETH,
+    SOL partage les trois de nov.–déc. 2020) + les 6 fenêtres 2021 + la panne du 2023-03-24 (identiques à la base USDC) + 8
+    bougies 1w isolées (artefact Vision, consignées) ; aucun trou sur 1d, 5 bougies 4h manquantes 2019-2020 (dont 2 consécutives
+    le 2019-05-15) ; **écart de fin de série 1w : `2026-07-06`** contre `2026-09-01` pour les cinq autres TF (fichiers Vision 1w
+    2026-07 et 2026-08 absents au 23/09) — reprise à faire hors chantier : `--intervals 1w --start-date 2026-07-01 --end-date
+    2026-08-31` quand Vision les publiera (idempotent, `ON CONFLICT DO NOTHING`). Inventaires post-import
+    `results/data_inventory_usdt_20260923/` (39 séries) et `results/data_inventory_usdt_2019_20260923/` (18 séries USDT).
+    **Aucune comparabilité USDC ↔ USDT mesurée, aucune sélection ; la transposition USDT → USDC relève du gate d'amendement C3.**
 - `exchange='kraken'` : 1 181 469 rows (legacy, à supprimer quand Bybit est validé en live)
-- `exchange='bybit'` : **2 609 671 rows au 2026-09-23 07:43 UTC** (B3, 2026-09-11 : 3 paires × 7 TF depuis 2025-06-11 09:21 UTC, + WS en continu, + backfill nocturne)
+- `exchange='bybit'` : **2 610 832 rows au 2026-09-23 12:43 UTC** (B3, 2026-09-11 : 3 paires × 7 TF depuis 2025-06-11 09:21 UTC, + WS en continu, + backfill nocturne)
 
 **Filtre obligatoire** : le code de production filtre sur `settings.exchange_name` (cible `bybit`) ; les
 backtests lisent explicitement `exchange='binance'`.
 
 ### Import de données
 
-- Binance Vision (historique) : `scripts/binance_vision_import.py` — `skills/binance_import.md` (USDC figé ; USDT importé le 2026-09-23, § « Séries USDT »).
+- Binance Vision (historique) : `scripts/binance_vision_import.py` — `skills/binance_import.md` (USDC figé ; USDT importé le 2026-09-23 en deux passes, 2021-01 → 2026-08 puis 2019-01 → 2020-12, § « Séries USDT »).
 - Bybit (B3) : `scripts/bybit_kline_import.py` (REST brut v5 paginé, reprise `MAX(timestamp)`, batch 1000)
   et `scripts/backfill_gap.py` (gaps, `--dry-run`) — runbooks dans `skills/bybit.md`.
 

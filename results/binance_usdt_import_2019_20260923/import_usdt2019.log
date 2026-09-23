@@ -1,0 +1,1197 @@
+=== 2026-09-23T12:32:48Z import start on 373da3f2c471915251772ef5f3569c81b8fe5c3f (dev) ; df: 52G free
+2026-09-23 12:32:50 [info     ] import_plan                    intervals=['5m', '15m', '1h', '4h', '1d', '1w'] months_count=24 pairs=['BTC/USDT', 'ETH/USDT', 'SOL/USDT'] total_files=432
+2026-09-23 12:32:50 [info     ] initializing_database          echo=False max_overflow=10 pool_size=5
+2026-09-23 12:32:50 [info     ] database_connection_successful
+2026-09-23 12:32:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-01.zip
+2026-09-23 12:32:55 [info     ] imported_batch                 batch=9/9 interval=5m month=1 pair=BTC/USDT rows=8928 year=2019
+2026-09-23 12:32:55 [info     ] imported                       batches=9 interval=5m month=1 pair=BTC/USDT rows=8928 year=2019
+2026-09-23 12:32:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-02.zip
+2026-09-23 12:33:00 [info     ] imported_batch                 batch=9/9 interval=5m month=2 pair=BTC/USDT rows=8064 year=2019
+2026-09-23 12:33:00 [info     ] imported                       batches=9 interval=5m month=2 pair=BTC/USDT rows=8064 year=2019
+2026-09-23 12:33:00 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-03.zip
+2026-09-23 12:33:04 [info     ] imported_batch                 batch=9/9 interval=5m month=3 pair=BTC/USDT rows=8856 year=2019
+2026-09-23 12:33:04 [info     ] imported                       batches=9 interval=5m month=3 pair=BTC/USDT rows=8856 year=2019
+2026-09-23 12:33:04 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-04.zip
+2026-09-23 12:33:09 [info     ] imported_batch                 batch=9/9 interval=5m month=4 pair=BTC/USDT rows=8640 year=2019
+2026-09-23 12:33:09 [info     ] imported                       batches=9 interval=5m month=4 pair=BTC/USDT rows=8640 year=2019
+2026-09-23 12:33:09 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-05.zip
+2026-09-23 12:33:13 [info     ] imported_batch                 batch=9/9 interval=5m month=5 pair=BTC/USDT rows=8808 year=2019
+2026-09-23 12:33:13 [info     ] imported                       batches=9 interval=5m month=5 pair=BTC/USDT rows=8808 year=2019
+2026-09-23 12:33:13 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-06.zip
+2026-09-23 12:33:17 [info     ] imported_batch                 batch=9/9 interval=5m month=6 pair=BTC/USDT rows=8628 year=2019
+2026-09-23 12:33:17 [info     ] imported                       batches=9 interval=5m month=6 pair=BTC/USDT rows=8628 year=2019
+2026-09-23 12:33:17 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-07.zip
+2026-09-23 12:33:22 [info     ] imported_batch                 batch=9/9 interval=5m month=7 pair=BTC/USDT rows=8928 year=2019
+2026-09-23 12:33:22 [info     ] imported                       batches=9 interval=5m month=7 pair=BTC/USDT rows=8928 year=2019
+2026-09-23 12:33:22 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-08.zip
+2026-09-23 12:33:27 [info     ] imported_batch                 batch=9/9 interval=5m month=8 pair=BTC/USDT rows=8832 year=2019
+2026-09-23 12:33:27 [info     ] imported                       batches=9 interval=5m month=8 pair=BTC/USDT rows=8832 year=2019
+2026-09-23 12:33:27 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-09.zip
+2026-09-23 12:33:31 [info     ] imported_batch                 batch=9/9 interval=5m month=9 pair=BTC/USDT rows=8640 year=2019
+2026-09-23 12:33:31 [info     ] imported                       batches=9 interval=5m month=9 pair=BTC/USDT rows=8640 year=2019
+2026-09-23 12:33:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-10.zip
+2026-09-23 12:33:36 [info     ] imported_batch                 batch=9/9 interval=5m month=10 pair=BTC/USDT rows=8928 year=2019
+2026-09-23 12:33:36 [info     ] imported                       batches=9 interval=5m month=10 pair=BTC/USDT rows=8928 year=2019
+2026-09-23 12:33:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-11.zip
+2026-09-23 12:33:39 [info     ] imported_batch                 batch=9/9 interval=5m month=11 pair=BTC/USDT rows=8588 year=2019
+2026-09-23 12:33:39 [info     ] imported                       batches=9 interval=5m month=11 pair=BTC/USDT rows=8588 year=2019
+2026-09-23 12:33:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2019-12.zip
+2026-09-23 12:33:44 [info     ] imported_batch                 batch=9/9 interval=5m month=12 pair=BTC/USDT rows=8928 year=2019
+2026-09-23 12:33:44 [info     ] imported                       batches=9 interval=5m month=12 pair=BTC/USDT rows=8928 year=2019
+2026-09-23 12:33:44 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-01.zip
+2026-09-23 12:33:48 [info     ] imported_batch                 batch=9/9 interval=5m month=1 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:33:48 [info     ] imported                       batches=9 interval=5m month=1 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:33:48 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-02.zip
+2026-09-23 12:33:52 [info     ] imported_batch                 batch=9/9 interval=5m month=2 pair=BTC/USDT rows=8270 year=2020
+2026-09-23 12:33:52 [info     ] imported                       batches=9 interval=5m month=2 pair=BTC/USDT rows=8270 year=2020
+2026-09-23 12:33:52 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-03.zip
+2026-09-23 12:33:58 [info     ] imported_batch                 batch=9/9 interval=5m month=3 pair=BTC/USDT rows=8903 year=2020
+2026-09-23 12:33:58 [info     ] imported                       batches=9 interval=5m month=3 pair=BTC/USDT rows=8903 year=2020
+2026-09-23 12:33:58 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-04.zip
+2026-09-23 12:34:02 [info     ] imported_batch                 batch=9/9 interval=5m month=4 pair=BTC/USDT rows=8610 year=2020
+2026-09-23 12:34:02 [info     ] imported                       batches=9 interval=5m month=4 pair=BTC/USDT rows=8610 year=2020
+2026-09-23 12:34:02 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-05.zip
+2026-09-23 12:34:06 [info     ] imported_batch                 batch=9/9 interval=5m month=5 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:34:06 [info     ] imported                       batches=9 interval=5m month=5 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:34:06 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-06.zip
+2026-09-23 12:34:11 [info     ] imported_batch                 batch=9/9 interval=5m month=6 pair=BTC/USDT rows=8598 year=2020
+2026-09-23 12:34:11 [info     ] imported                       batches=9 interval=5m month=6 pair=BTC/USDT rows=8598 year=2020
+2026-09-23 12:34:11 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-07.zip
+2026-09-23 12:34:15 [info     ] imported_batch                 batch=9/9 interval=5m month=7 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:34:15 [info     ] imported                       batches=9 interval=5m month=7 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:34:15 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-08.zip
+2026-09-23 12:34:20 [info     ] imported_batch                 batch=9/9 interval=5m month=8 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:34:20 [info     ] imported                       batches=9 interval=5m month=8 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:34:20 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-09.zip
+2026-09-23 12:34:25 [info     ] imported_batch                 batch=9/9 interval=5m month=9 pair=BTC/USDT rows=8640 year=2020
+2026-09-23 12:34:25 [info     ] imported                       batches=9 interval=5m month=9 pair=BTC/USDT rows=8640 year=2020
+2026-09-23 12:34:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-10.zip
+2026-09-23 12:34:29 [info     ] imported_batch                 batch=9/9 interval=5m month=10 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:34:29 [info     ] imported                       batches=9 interval=5m month=10 pair=BTC/USDT rows=8928 year=2020
+2026-09-23 12:34:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-11.zip
+2026-09-23 12:34:33 [info     ] imported_batch                 batch=9/9 interval=5m month=11 pair=BTC/USDT rows=8628 year=2020
+2026-09-23 12:34:33 [info     ] imported                       batches=9 interval=5m month=11 pair=BTC/USDT rows=8628 year=2020
+2026-09-23 12:34:33 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/5m/BTCUSDT-5m-2020-12.zip
+2026-09-23 12:34:37 [info     ] imported_batch                 batch=9/9 interval=5m month=12 pair=BTC/USDT rows=8870 year=2020
+2026-09-23 12:34:37 [info     ] imported                       batches=9 interval=5m month=12 pair=BTC/USDT rows=8870 year=2020
+2026-09-23 12:34:37 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-01.zip
+2026-09-23 12:34:40 [info     ] imported_batch                 batch=3/3 interval=15m month=1 pair=BTC/USDT rows=2976 year=2019
+2026-09-23 12:34:40 [info     ] imported                       batches=3 interval=15m month=1 pair=BTC/USDT rows=2976 year=2019
+2026-09-23 12:34:40 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-02.zip
+2026-09-23 12:34:42 [info     ] imported_batch                 batch=3/3 interval=15m month=2 pair=BTC/USDT rows=2688 year=2019
+2026-09-23 12:34:42 [info     ] imported                       batches=3 interval=15m month=2 pair=BTC/USDT rows=2688 year=2019
+2026-09-23 12:34:42 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-03.zip
+2026-09-23 12:34:44 [info     ] imported_batch                 batch=3/3 interval=15m month=3 pair=BTC/USDT rows=2952 year=2019
+2026-09-23 12:34:44 [info     ] imported                       batches=3 interval=15m month=3 pair=BTC/USDT rows=2952 year=2019
+2026-09-23 12:34:44 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-04.zip
+2026-09-23 12:34:47 [info     ] imported_batch                 batch=3/3 interval=15m month=4 pair=BTC/USDT rows=2880 year=2019
+2026-09-23 12:34:47 [info     ] imported                       batches=3 interval=15m month=4 pair=BTC/USDT rows=2880 year=2019
+2026-09-23 12:34:47 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-05.zip
+2026-09-23 12:34:49 [info     ] imported_batch                 batch=3/3 interval=15m month=5 pair=BTC/USDT rows=2936 year=2019
+2026-09-23 12:34:49 [info     ] imported                       batches=3 interval=15m month=5 pair=BTC/USDT rows=2936 year=2019
+2026-09-23 12:34:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-06.zip
+2026-09-23 12:34:52 [info     ] imported_batch                 batch=3/3 interval=15m month=6 pair=BTC/USDT rows=2876 year=2019
+2026-09-23 12:34:52 [info     ] imported                       batches=3 interval=15m month=6 pair=BTC/USDT rows=2876 year=2019
+2026-09-23 12:34:52 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-07.zip
+2026-09-23 12:34:55 [info     ] imported_batch                 batch=3/3 interval=15m month=7 pair=BTC/USDT rows=2976 year=2019
+2026-09-23 12:34:55 [info     ] imported                       batches=3 interval=15m month=7 pair=BTC/USDT rows=2976 year=2019
+2026-09-23 12:34:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-08.zip
+2026-09-23 12:34:57 [info     ] imported_batch                 batch=3/3 interval=15m month=8 pair=BTC/USDT rows=2944 year=2019
+2026-09-23 12:34:57 [info     ] imported                       batches=3 interval=15m month=8 pair=BTC/USDT rows=2944 year=2019
+2026-09-23 12:34:57 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-09.zip
+2026-09-23 12:34:59 [info     ] imported_batch                 batch=3/3 interval=15m month=9 pair=BTC/USDT rows=2880 year=2019
+2026-09-23 12:34:59 [info     ] imported                       batches=3 interval=15m month=9 pair=BTC/USDT rows=2880 year=2019
+2026-09-23 12:34:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-10.zip
+2026-09-23 12:35:02 [info     ] imported_batch                 batch=3/3 interval=15m month=10 pair=BTC/USDT rows=2976 year=2019
+2026-09-23 12:35:02 [info     ] imported                       batches=3 interval=15m month=10 pair=BTC/USDT rows=2976 year=2019
+2026-09-23 12:35:02 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-11.zip
+2026-09-23 12:35:05 [info     ] imported_batch                 batch=3/3 interval=15m month=11 pair=BTC/USDT rows=2863 year=2019
+2026-09-23 12:35:05 [info     ] imported                       batches=3 interval=15m month=11 pair=BTC/USDT rows=2863 year=2019
+2026-09-23 12:35:05 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2019-12.zip
+2026-09-23 12:35:07 [info     ] imported_batch                 batch=3/3 interval=15m month=12 pair=BTC/USDT rows=2976 year=2019
+2026-09-23 12:35:07 [info     ] imported                       batches=3 interval=15m month=12 pair=BTC/USDT rows=2976 year=2019
+2026-09-23 12:35:07 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-01.zip
+2026-09-23 12:35:09 [info     ] imported_batch                 batch=3/3 interval=15m month=1 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:09 [info     ] imported                       batches=3 interval=15m month=1 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:09 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-02.zip
+2026-09-23 12:35:11 [info     ] imported_batch                 batch=3/3 interval=15m month=2 pair=BTC/USDT rows=2757 year=2020
+2026-09-23 12:35:11 [info     ] imported                       batches=3 interval=15m month=2 pair=BTC/USDT rows=2757 year=2020
+2026-09-23 12:35:11 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-03.zip
+2026-09-23 12:35:14 [info     ] imported_batch                 batch=3/3 interval=15m month=3 pair=BTC/USDT rows=2968 year=2020
+2026-09-23 12:35:14 [info     ] imported                       batches=3 interval=15m month=3 pair=BTC/USDT rows=2968 year=2020
+2026-09-23 12:35:14 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-04.zip
+2026-09-23 12:35:16 [info     ] imported_batch                 batch=3/3 interval=15m month=4 pair=BTC/USDT rows=2870 year=2020
+2026-09-23 12:35:16 [info     ] imported                       batches=3 interval=15m month=4 pair=BTC/USDT rows=2870 year=2020
+2026-09-23 12:35:16 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-05.zip
+2026-09-23 12:35:19 [info     ] imported_batch                 batch=3/3 interval=15m month=5 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:19 [info     ] imported                       batches=3 interval=15m month=5 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:19 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-06.zip
+2026-09-23 12:35:21 [info     ] imported_batch                 batch=3/3 interval=15m month=6 pair=BTC/USDT rows=2866 year=2020
+2026-09-23 12:35:21 [info     ] imported                       batches=3 interval=15m month=6 pair=BTC/USDT rows=2866 year=2020
+2026-09-23 12:35:21 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-07.zip
+2026-09-23 12:35:24 [info     ] imported_batch                 batch=3/3 interval=15m month=7 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:24 [info     ] imported                       batches=3 interval=15m month=7 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:24 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-08.zip
+2026-09-23 12:35:25 [info     ] imported_batch                 batch=3/3 interval=15m month=8 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:25 [info     ] imported                       batches=3 interval=15m month=8 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-09.zip
+2026-09-23 12:35:28 [info     ] imported_batch                 batch=3/3 interval=15m month=9 pair=BTC/USDT rows=2880 year=2020
+2026-09-23 12:35:28 [info     ] imported                       batches=3 interval=15m month=9 pair=BTC/USDT rows=2880 year=2020
+2026-09-23 12:35:28 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-10.zip
+2026-09-23 12:35:30 [info     ] imported_batch                 batch=3/3 interval=15m month=10 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:30 [info     ] imported                       batches=3 interval=15m month=10 pair=BTC/USDT rows=2976 year=2020
+2026-09-23 12:35:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-11.zip
+2026-09-23 12:35:32 [info     ] imported_batch                 batch=3/3 interval=15m month=11 pair=BTC/USDT rows=2876 year=2020
+2026-09-23 12:35:32 [info     ] imported                       batches=3 interval=15m month=11 pair=BTC/USDT rows=2876 year=2020
+2026-09-23 12:35:32 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/15m/BTCUSDT-15m-2020-12.zip
+2026-09-23 12:35:34 [info     ] imported_batch                 batch=3/3 interval=15m month=12 pair=BTC/USDT rows=2957 year=2020
+2026-09-23 12:35:34 [info     ] imported                       batches=3 interval=15m month=12 pair=BTC/USDT rows=2957 year=2020
+2026-09-23 12:35:34 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-01.zip
+2026-09-23 12:35:35 [info     ] imported_batch                 batch=1/1 interval=1h month=1 pair=BTC/USDT rows=744 year=2019
+2026-09-23 12:35:35 [info     ] imported                       batches=1 interval=1h month=1 pair=BTC/USDT rows=744 year=2019
+2026-09-23 12:35:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-02.zip
+2026-09-23 12:35:36 [info     ] imported_batch                 batch=1/1 interval=1h month=2 pair=BTC/USDT rows=672 year=2019
+2026-09-23 12:35:36 [info     ] imported                       batches=1 interval=1h month=2 pair=BTC/USDT rows=672 year=2019
+2026-09-23 12:35:36 [info     ] progress                       pct=11.6% processed=50 total=432 total_rows=281320
+2026-09-23 12:35:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-03.zip
+2026-09-23 12:35:38 [info     ] imported_batch                 batch=1/1 interval=1h month=3 pair=BTC/USDT rows=738 year=2019
+2026-09-23 12:35:38 [info     ] imported                       batches=1 interval=1h month=3 pair=BTC/USDT rows=738 year=2019
+2026-09-23 12:35:38 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-04.zip
+2026-09-23 12:35:39 [info     ] imported_batch                 batch=1/1 interval=1h month=4 pair=BTC/USDT rows=720 year=2019
+2026-09-23 12:35:39 [info     ] imported                       batches=1 interval=1h month=4 pair=BTC/USDT rows=720 year=2019
+2026-09-23 12:35:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-05.zip
+2026-09-23 12:35:40 [info     ] imported_batch                 batch=1/1 interval=1h month=5 pair=BTC/USDT rows=734 year=2019
+2026-09-23 12:35:40 [info     ] imported                       batches=1 interval=1h month=5 pair=BTC/USDT rows=734 year=2019
+2026-09-23 12:35:40 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-06.zip
+2026-09-23 12:35:41 [info     ] imported_batch                 batch=1/1 interval=1h month=6 pair=BTC/USDT rows=720 year=2019
+2026-09-23 12:35:41 [info     ] imported                       batches=1 interval=1h month=6 pair=BTC/USDT rows=720 year=2019
+2026-09-23 12:35:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-07.zip
+2026-09-23 12:35:42 [info     ] imported_batch                 batch=1/1 interval=1h month=7 pair=BTC/USDT rows=744 year=2019
+2026-09-23 12:35:42 [info     ] imported                       batches=1 interval=1h month=7 pair=BTC/USDT rows=744 year=2019
+2026-09-23 12:35:42 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-08.zip
+2026-09-23 12:35:43 [info     ] imported_batch                 batch=1/1 interval=1h month=8 pair=BTC/USDT rows=736 year=2019
+2026-09-23 12:35:43 [info     ] imported                       batches=1 interval=1h month=8 pair=BTC/USDT rows=736 year=2019
+2026-09-23 12:35:43 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-09.zip
+2026-09-23 12:35:45 [info     ] imported_batch                 batch=1/1 interval=1h month=9 pair=BTC/USDT rows=720 year=2019
+2026-09-23 12:35:45 [info     ] imported                       batches=1 interval=1h month=9 pair=BTC/USDT rows=720 year=2019
+2026-09-23 12:35:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-10.zip
+2026-09-23 12:35:45 [info     ] imported_batch                 batch=1/1 interval=1h month=10 pair=BTC/USDT rows=744 year=2019
+2026-09-23 12:35:45 [info     ] imported                       batches=1 interval=1h month=10 pair=BTC/USDT rows=744 year=2019
+2026-09-23 12:35:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-11.zip
+2026-09-23 12:35:46 [info     ] imported_batch                 batch=1/1 interval=1h month=11 pair=BTC/USDT rows=716 year=2019
+2026-09-23 12:35:46 [info     ] imported                       batches=1 interval=1h month=11 pair=BTC/USDT rows=716 year=2019
+2026-09-23 12:35:46 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2019-12.zip
+2026-09-23 12:35:47 [info     ] imported_batch                 batch=1/1 interval=1h month=12 pair=BTC/USDT rows=744 year=2019
+2026-09-23 12:35:47 [info     ] imported                       batches=1 interval=1h month=12 pair=BTC/USDT rows=744 year=2019
+2026-09-23 12:35:47 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-01.zip
+2026-09-23 12:35:48 [info     ] imported_batch                 batch=1/1 interval=1h month=1 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:48 [info     ] imported                       batches=1 interval=1h month=1 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:48 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-02.zip
+2026-09-23 12:35:49 [info     ] imported_batch                 batch=1/1 interval=1h month=2 pair=BTC/USDT rows=690 year=2020
+2026-09-23 12:35:49 [info     ] imported                       batches=1 interval=1h month=2 pair=BTC/USDT rows=690 year=2020
+2026-09-23 12:35:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-03.zip
+2026-09-23 12:35:50 [info     ] imported_batch                 batch=1/1 interval=1h month=3 pair=BTC/USDT rows=743 year=2020
+2026-09-23 12:35:50 [info     ] imported                       batches=1 interval=1h month=3 pair=BTC/USDT rows=743 year=2020
+2026-09-23 12:35:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-04.zip
+2026-09-23 12:35:51 [info     ] imported_batch                 batch=1/1 interval=1h month=4 pair=BTC/USDT rows=718 year=2020
+2026-09-23 12:35:51 [info     ] imported                       batches=1 interval=1h month=4 pair=BTC/USDT rows=718 year=2020
+2026-09-23 12:35:51 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-05.zip
+2026-09-23 12:35:52 [info     ] imported_batch                 batch=1/1 interval=1h month=5 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:52 [info     ] imported                       batches=1 interval=1h month=5 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:52 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-06.zip
+2026-09-23 12:35:53 [info     ] imported_batch                 batch=1/1 interval=1h month=6 pair=BTC/USDT rows=717 year=2020
+2026-09-23 12:35:53 [info     ] imported                       batches=1 interval=1h month=6 pair=BTC/USDT rows=717 year=2020
+2026-09-23 12:35:53 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-07.zip
+2026-09-23 12:35:54 [info     ] imported_batch                 batch=1/1 interval=1h month=7 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:54 [info     ] imported                       batches=1 interval=1h month=7 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:54 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-08.zip
+2026-09-23 12:35:55 [info     ] imported_batch                 batch=1/1 interval=1h month=8 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:55 [info     ] imported                       batches=1 interval=1h month=8 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-09.zip
+2026-09-23 12:35:57 [info     ] imported_batch                 batch=1/1 interval=1h month=9 pair=BTC/USDT rows=720 year=2020
+2026-09-23 12:35:57 [info     ] imported                       batches=1 interval=1h month=9 pair=BTC/USDT rows=720 year=2020
+2026-09-23 12:35:57 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-10.zip
+2026-09-23 12:35:58 [info     ] imported_batch                 batch=1/1 interval=1h month=10 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:58 [info     ] imported                       batches=1 interval=1h month=10 pair=BTC/USDT rows=744 year=2020
+2026-09-23 12:35:58 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-11.zip
+2026-09-23 12:35:59 [info     ] imported_batch                 batch=1/1 interval=1h month=11 pair=BTC/USDT rows=719 year=2020
+2026-09-23 12:35:59 [info     ] imported                       batches=1 interval=1h month=11 pair=BTC/USDT rows=719 year=2020
+2026-09-23 12:35:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1h/BTCUSDT-1h-2020-12.zip
+2026-09-23 12:36:00 [info     ] imported_batch                 batch=1/1 interval=1h month=12 pair=BTC/USDT rows=740 year=2020
+2026-09-23 12:36:00 [info     ] imported                       batches=1 interval=1h month=12 pair=BTC/USDT rows=740 year=2020
+2026-09-23 12:36:00 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-01.zip
+2026-09-23 12:36:01 [info     ] imported_batch                 batch=1/1 interval=4h month=1 pair=BTC/USDT rows=186 year=2019
+2026-09-23 12:36:01 [info     ] imported                       batches=1 interval=4h month=1 pair=BTC/USDT rows=186 year=2019
+2026-09-23 12:36:01 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-02.zip
+2026-09-23 12:36:02 [info     ] imported_batch                 batch=1/1 interval=4h month=2 pair=BTC/USDT rows=168 year=2019
+2026-09-23 12:36:02 [info     ] imported                       batches=1 interval=4h month=2 pair=BTC/USDT rows=168 year=2019
+2026-09-23 12:36:02 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-03.zip
+2026-09-23 12:36:03 [info     ] imported_batch                 batch=1/1 interval=4h month=3 pair=BTC/USDT rows=185 year=2019
+2026-09-23 12:36:03 [info     ] imported                       batches=1 interval=4h month=3 pair=BTC/USDT rows=185 year=2019
+2026-09-23 12:36:03 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-04.zip
+2026-09-23 12:36:03 [info     ] imported_batch                 batch=1/1 interval=4h month=4 pair=BTC/USDT rows=180 year=2019
+2026-09-23 12:36:03 [info     ] imported                       batches=1 interval=4h month=4 pair=BTC/USDT rows=180 year=2019
+2026-09-23 12:36:03 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-05.zip
+2026-09-23 12:36:04 [info     ] imported_batch                 batch=1/1 interval=4h month=5 pair=BTC/USDT rows=184 year=2019
+2026-09-23 12:36:04 [info     ] imported                       batches=1 interval=4h month=5 pair=BTC/USDT rows=184 year=2019
+2026-09-23 12:36:04 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-06.zip
+2026-09-23 12:36:05 [info     ] imported_batch                 batch=1/1 interval=4h month=6 pair=BTC/USDT rows=180 year=2019
+2026-09-23 12:36:05 [info     ] imported                       batches=1 interval=4h month=6 pair=BTC/USDT rows=180 year=2019
+2026-09-23 12:36:05 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-07.zip
+2026-09-23 12:36:05 [info     ] imported_batch                 batch=1/1 interval=4h month=7 pair=BTC/USDT rows=186 year=2019
+2026-09-23 12:36:05 [info     ] imported                       batches=1 interval=4h month=7 pair=BTC/USDT rows=186 year=2019
+2026-09-23 12:36:05 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-08.zip
+2026-09-23 12:36:06 [info     ] imported_batch                 batch=1/1 interval=4h month=8 pair=BTC/USDT rows=185 year=2019
+2026-09-23 12:36:06 [info     ] imported                       batches=1 interval=4h month=8 pair=BTC/USDT rows=185 year=2019
+2026-09-23 12:36:06 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-09.zip
+2026-09-23 12:36:07 [info     ] imported_batch                 batch=1/1 interval=4h month=9 pair=BTC/USDT rows=180 year=2019
+2026-09-23 12:36:07 [info     ] imported                       batches=1 interval=4h month=9 pair=BTC/USDT rows=180 year=2019
+2026-09-23 12:36:07 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-10.zip
+2026-09-23 12:36:08 [info     ] imported_batch                 batch=1/1 interval=4h month=10 pair=BTC/USDT rows=186 year=2019
+2026-09-23 12:36:08 [info     ] imported                       batches=1 interval=4h month=10 pair=BTC/USDT rows=186 year=2019
+2026-09-23 12:36:08 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-11.zip
+2026-09-23 12:36:08 [info     ] imported_batch                 batch=1/1 interval=4h month=11 pair=BTC/USDT rows=180 year=2019
+2026-09-23 12:36:08 [info     ] imported                       batches=1 interval=4h month=11 pair=BTC/USDT rows=180 year=2019
+2026-09-23 12:36:08 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2019-12.zip
+2026-09-23 12:36:09 [info     ] imported_batch                 batch=1/1 interval=4h month=12 pair=BTC/USDT rows=186 year=2019
+2026-09-23 12:36:09 [info     ] imported                       batches=1 interval=4h month=12 pair=BTC/USDT rows=186 year=2019
+2026-09-23 12:36:09 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-01.zip
+2026-09-23 12:36:10 [info     ] imported_batch                 batch=1/1 interval=4h month=1 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:10 [info     ] imported                       batches=1 interval=4h month=1 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:10 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-02.zip
+2026-09-23 12:36:10 [info     ] imported_batch                 batch=1/1 interval=4h month=2 pair=BTC/USDT rows=173 year=2020
+2026-09-23 12:36:10 [info     ] imported                       batches=1 interval=4h month=2 pair=BTC/USDT rows=173 year=2020
+2026-09-23 12:36:10 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-03.zip
+2026-09-23 12:36:11 [info     ] imported_batch                 batch=1/1 interval=4h month=3 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:11 [info     ] imported                       batches=1 interval=4h month=3 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:11 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-04.zip
+2026-09-23 12:36:12 [info     ] imported_batch                 batch=1/1 interval=4h month=4 pair=BTC/USDT rows=180 year=2020
+2026-09-23 12:36:12 [info     ] imported                       batches=1 interval=4h month=4 pair=BTC/USDT rows=180 year=2020
+2026-09-23 12:36:12 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-05.zip
+2026-09-23 12:36:12 [info     ] imported_batch                 batch=1/1 interval=4h month=5 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:12 [info     ] imported                       batches=1 interval=4h month=5 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:12 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-06.zip
+2026-09-23 12:36:13 [info     ] imported_batch                 batch=1/1 interval=4h month=6 pair=BTC/USDT rows=180 year=2020
+2026-09-23 12:36:13 [info     ] imported                       batches=1 interval=4h month=6 pair=BTC/USDT rows=180 year=2020
+2026-09-23 12:36:13 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-07.zip
+2026-09-23 12:36:14 [info     ] imported_batch                 batch=1/1 interval=4h month=7 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:14 [info     ] imported                       batches=1 interval=4h month=7 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:14 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-08.zip
+2026-09-23 12:36:14 [info     ] imported_batch                 batch=1/1 interval=4h month=8 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:14 [info     ] imported                       batches=1 interval=4h month=8 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:14 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-09.zip
+2026-09-23 12:36:15 [info     ] imported_batch                 batch=1/1 interval=4h month=9 pair=BTC/USDT rows=180 year=2020
+2026-09-23 12:36:15 [info     ] imported                       batches=1 interval=4h month=9 pair=BTC/USDT rows=180 year=2020
+2026-09-23 12:36:15 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-10.zip
+2026-09-23 12:36:15 [info     ] imported_batch                 batch=1/1 interval=4h month=10 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:15 [info     ] imported                       batches=1 interval=4h month=10 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:15 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-11.zip
+2026-09-23 12:36:16 [info     ] imported_batch                 batch=1/1 interval=4h month=11 pair=BTC/USDT rows=180 year=2020
+2026-09-23 12:36:16 [info     ] imported                       batches=1 interval=4h month=11 pair=BTC/USDT rows=180 year=2020
+2026-09-23 12:36:16 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/4h/BTCUSDT-4h-2020-12.zip
+2026-09-23 12:36:17 [info     ] imported_batch                 batch=1/1 interval=4h month=12 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:17 [info     ] imported                       batches=1 interval=4h month=12 pair=BTC/USDT rows=186 year=2020
+2026-09-23 12:36:17 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-01.zip
+2026-09-23 12:36:18 [info     ] imported_batch                 batch=1/1 interval=1d month=1 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:18 [info     ] imported                       batches=1 interval=1d month=1 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:18 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-02.zip
+2026-09-23 12:36:19 [info     ] imported_batch                 batch=1/1 interval=1d month=2 pair=BTC/USDT rows=28 year=2019
+2026-09-23 12:36:19 [info     ] imported                       batches=1 interval=1d month=2 pair=BTC/USDT rows=28 year=2019
+2026-09-23 12:36:19 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-03.zip
+2026-09-23 12:36:20 [info     ] imported_batch                 batch=1/1 interval=1d month=3 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:20 [info     ] imported                       batches=1 interval=1d month=3 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:20 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-04.zip
+2026-09-23 12:36:20 [info     ] imported_batch                 batch=1/1 interval=1d month=4 pair=BTC/USDT rows=30 year=2019
+2026-09-23 12:36:20 [info     ] imported                       batches=1 interval=1d month=4 pair=BTC/USDT rows=30 year=2019
+2026-09-23 12:36:20 [info     ] progress                       pct=23.1% processed=100 total=432 total_rows=301904
+2026-09-23 12:36:20 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-05.zip
+2026-09-23 12:36:21 [info     ] imported_batch                 batch=1/1 interval=1d month=5 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:21 [info     ] imported                       batches=1 interval=1d month=5 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:21 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-06.zip
+2026-09-23 12:36:22 [info     ] imported_batch                 batch=1/1 interval=1d month=6 pair=BTC/USDT rows=30 year=2019
+2026-09-23 12:36:22 [info     ] imported                       batches=1 interval=1d month=6 pair=BTC/USDT rows=30 year=2019
+2026-09-23 12:36:22 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-07.zip
+2026-09-23 12:36:22 [info     ] imported_batch                 batch=1/1 interval=1d month=7 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:22 [info     ] imported                       batches=1 interval=1d month=7 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:22 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-08.zip
+2026-09-23 12:36:23 [info     ] imported_batch                 batch=1/1 interval=1d month=8 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:23 [info     ] imported                       batches=1 interval=1d month=8 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:23 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-09.zip
+2026-09-23 12:36:24 [info     ] imported_batch                 batch=1/1 interval=1d month=9 pair=BTC/USDT rows=30 year=2019
+2026-09-23 12:36:24 [info     ] imported                       batches=1 interval=1d month=9 pair=BTC/USDT rows=30 year=2019
+2026-09-23 12:36:24 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-10.zip
+2026-09-23 12:36:25 [info     ] imported_batch                 batch=1/1 interval=1d month=10 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:25 [info     ] imported                       batches=1 interval=1d month=10 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-11.zip
+2026-09-23 12:36:25 [info     ] imported_batch                 batch=1/1 interval=1d month=11 pair=BTC/USDT rows=30 year=2019
+2026-09-23 12:36:25 [info     ] imported                       batches=1 interval=1d month=11 pair=BTC/USDT rows=30 year=2019
+2026-09-23 12:36:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2019-12.zip
+2026-09-23 12:36:26 [info     ] imported_batch                 batch=1/1 interval=1d month=12 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:26 [info     ] imported                       batches=1 interval=1d month=12 pair=BTC/USDT rows=31 year=2019
+2026-09-23 12:36:26 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-01.zip
+2026-09-23 12:36:27 [info     ] imported_batch                 batch=1/1 interval=1d month=1 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:27 [info     ] imported                       batches=1 interval=1d month=1 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:27 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-02.zip
+2026-09-23 12:36:28 [info     ] imported_batch                 batch=1/1 interval=1d month=2 pair=BTC/USDT rows=29 year=2020
+2026-09-23 12:36:28 [info     ] imported                       batches=1 interval=1d month=2 pair=BTC/USDT rows=29 year=2020
+2026-09-23 12:36:28 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-03.zip
+2026-09-23 12:36:29 [info     ] imported_batch                 batch=1/1 interval=1d month=3 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:29 [info     ] imported                       batches=1 interval=1d month=3 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-04.zip
+2026-09-23 12:36:29 [info     ] imported_batch                 batch=1/1 interval=1d month=4 pair=BTC/USDT rows=30 year=2020
+2026-09-23 12:36:29 [info     ] imported                       batches=1 interval=1d month=4 pair=BTC/USDT rows=30 year=2020
+2026-09-23 12:36:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-05.zip
+2026-09-23 12:36:30 [info     ] imported_batch                 batch=1/1 interval=1d month=5 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:30 [info     ] imported                       batches=1 interval=1d month=5 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-06.zip
+2026-09-23 12:36:30 [info     ] imported_batch                 batch=1/1 interval=1d month=6 pair=BTC/USDT rows=30 year=2020
+2026-09-23 12:36:30 [info     ] imported                       batches=1 interval=1d month=6 pair=BTC/USDT rows=30 year=2020
+2026-09-23 12:36:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-07.zip
+2026-09-23 12:36:31 [info     ] imported_batch                 batch=1/1 interval=1d month=7 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:31 [info     ] imported                       batches=1 interval=1d month=7 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-08.zip
+2026-09-23 12:36:32 [info     ] imported_batch                 batch=1/1 interval=1d month=8 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:32 [info     ] imported                       batches=1 interval=1d month=8 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:32 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-09.zip
+2026-09-23 12:36:32 [info     ] imported_batch                 batch=1/1 interval=1d month=9 pair=BTC/USDT rows=30 year=2020
+2026-09-23 12:36:32 [info     ] imported                       batches=1 interval=1d month=9 pair=BTC/USDT rows=30 year=2020
+2026-09-23 12:36:32 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-10.zip
+2026-09-23 12:36:33 [info     ] imported_batch                 batch=1/1 interval=1d month=10 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:33 [info     ] imported                       batches=1 interval=1d month=10 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:33 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-11.zip
+2026-09-23 12:36:34 [info     ] imported_batch                 batch=1/1 interval=1d month=11 pair=BTC/USDT rows=30 year=2020
+2026-09-23 12:36:34 [info     ] imported                       batches=1 interval=1d month=11 pair=BTC/USDT rows=30 year=2020
+2026-09-23 12:36:34 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2020-12.zip
+2026-09-23 12:36:35 [info     ] imported_batch                 batch=1/1 interval=1d month=12 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:35 [info     ] imported                       batches=1 interval=1d month=12 pair=BTC/USDT rows=31 year=2020
+2026-09-23 12:36:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-01.zip
+2026-09-23 12:36:36 [info     ] imported_batch                 batch=1/1 interval=1w month=1 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:36 [info     ] imported                       batches=1 interval=1w month=1 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-02.zip
+2026-09-23 12:36:36 [info     ] imported_batch                 batch=1/1 interval=1w month=2 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:36 [info     ] imported                       batches=1 interval=1w month=2 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-03.zip
+2026-09-23 12:36:37 [info     ] imported_batch                 batch=1/1 interval=1w month=3 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:37 [info     ] imported                       batches=1 interval=1w month=3 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:37 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-04.zip
+2026-09-23 12:36:38 [info     ] imported_batch                 batch=1/1 interval=1w month=4 pair=BTC/USDT rows=5 year=2019
+2026-09-23 12:36:38 [info     ] imported                       batches=1 interval=1w month=4 pair=BTC/USDT rows=5 year=2019
+2026-09-23 12:36:38 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-05.zip
+2026-09-23 12:36:38 [info     ] imported_batch                 batch=1/1 interval=1w month=5 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:38 [info     ] imported                       batches=1 interval=1w month=5 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:38 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-06.zip
+2026-09-23 12:36:39 [info     ] imported_batch                 batch=1/1 interval=1w month=6 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:39 [info     ] imported                       batches=1 interval=1w month=6 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-07.zip
+2026-09-23 12:36:40 [info     ] imported_batch                 batch=1/1 interval=1w month=7 pair=BTC/USDT rows=5 year=2019
+2026-09-23 12:36:40 [info     ] imported                       batches=1 interval=1w month=7 pair=BTC/USDT rows=5 year=2019
+2026-09-23 12:36:40 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-08.zip
+2026-09-23 12:36:41 [info     ] imported_batch                 batch=1/1 interval=1w month=8 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:41 [info     ] imported                       batches=1 interval=1w month=8 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-09.zip
+2026-09-23 12:36:41 [info     ] imported_batch                 batch=1/1 interval=1w month=9 pair=BTC/USDT rows=5 year=2019
+2026-09-23 12:36:41 [info     ] imported                       batches=1 interval=1w month=9 pair=BTC/USDT rows=5 year=2019
+2026-09-23 12:36:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-10.zip
+2026-09-23 12:36:42 [info     ] imported_batch                 batch=1/1 interval=1w month=10 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:42 [info     ] imported                       batches=1 interval=1w month=10 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:42 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-11.zip
+2026-09-23 12:36:42 [info     ] imported_batch                 batch=1/1 interval=1w month=11 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:42 [info     ] imported                       batches=1 interval=1w month=11 pair=BTC/USDT rows=4 year=2019
+2026-09-23 12:36:42 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2019-12.zip
+2026-09-23 12:36:43 [info     ] imported_batch                 batch=1/1 interval=1w month=12 pair=BTC/USDT rows=5 year=2019
+2026-09-23 12:36:43 [info     ] imported                       batches=1 interval=1w month=12 pair=BTC/USDT rows=5 year=2019
+2026-09-23 12:36:43 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-01.zip
+2026-09-23 12:36:44 [info     ] imported_batch                 batch=1/1 interval=1w month=1 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:44 [info     ] imported                       batches=1 interval=1w month=1 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:44 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-02.zip
+2026-09-23 12:36:44 [info     ] imported_batch                 batch=1/1 interval=1w month=2 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:45 [info     ] imported                       batches=1 interval=1w month=2 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-03.zip
+2026-09-23 12:36:45 [info     ] imported_batch                 batch=1/1 interval=1w month=3 pair=BTC/USDT rows=5 year=2020
+2026-09-23 12:36:45 [info     ] imported                       batches=1 interval=1w month=3 pair=BTC/USDT rows=5 year=2020
+2026-09-23 12:36:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-04.zip
+2026-09-23 12:36:45 [info     ] imported_batch                 batch=1/1 interval=1w month=4 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:45 [info     ] imported                       batches=1 interval=1w month=4 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-05.zip
+2026-09-23 12:36:46 [info     ] imported_batch                 batch=1/1 interval=1w month=5 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:46 [info     ] imported                       batches=1 interval=1w month=5 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:46 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-06.zip
+2026-09-23 12:36:47 [info     ] imported_batch                 batch=1/1 interval=1w month=6 pair=BTC/USDT rows=5 year=2020
+2026-09-23 12:36:47 [info     ] imported                       batches=1 interval=1w month=6 pair=BTC/USDT rows=5 year=2020
+2026-09-23 12:36:47 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-07.zip
+2026-09-23 12:36:48 [info     ] imported_batch                 batch=1/1 interval=1w month=7 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:48 [info     ] imported                       batches=1 interval=1w month=7 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:48 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-08.zip
+2026-09-23 12:36:48 [info     ] imported_batch                 batch=1/1 interval=1w month=8 pair=BTC/USDT rows=5 year=2020
+2026-09-23 12:36:48 [info     ] imported                       batches=1 interval=1w month=8 pair=BTC/USDT rows=5 year=2020
+2026-09-23 12:36:48 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-09.zip
+2026-09-23 12:36:49 [info     ] imported_batch                 batch=1/1 interval=1w month=9 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:49 [info     ] imported                       batches=1 interval=1w month=9 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-10.zip
+2026-09-23 12:36:49 [info     ] imported_batch                 batch=1/1 interval=1w month=10 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:49 [info     ] imported                       batches=1 interval=1w month=10 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-11.zip
+2026-09-23 12:36:50 [info     ] imported_batch                 batch=1/1 interval=1w month=11 pair=BTC/USDT rows=5 year=2020
+2026-09-23 12:36:50 [info     ] imported                       batches=1 interval=1w month=11 pair=BTC/USDT rows=5 year=2020
+2026-09-23 12:36:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2020-12.zip
+2026-09-23 12:36:50 [info     ] imported_batch                 batch=1/1 interval=1w month=12 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:50 [info     ] imported                       batches=1 interval=1w month=12 pair=BTC/USDT rows=4 year=2020
+2026-09-23 12:36:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-01.zip
+2026-09-23 12:36:55 [info     ] imported_batch                 batch=9/9 interval=5m month=1 pair=ETH/USDT rows=8928 year=2019
+2026-09-23 12:36:55 [info     ] imported                       batches=9 interval=5m month=1 pair=ETH/USDT rows=8928 year=2019
+2026-09-23 12:36:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-02.zip
+2026-09-23 12:36:59 [info     ] imported_batch                 batch=9/9 interval=5m month=2 pair=ETH/USDT rows=8064 year=2019
+2026-09-23 12:36:59 [info     ] imported                       batches=9 interval=5m month=2 pair=ETH/USDT rows=8064 year=2019
+2026-09-23 12:36:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-03.zip
+2026-09-23 12:37:05 [info     ] imported_batch                 batch=9/9 interval=5m month=3 pair=ETH/USDT rows=8856 year=2019
+2026-09-23 12:37:05 [info     ] imported                       batches=9 interval=5m month=3 pair=ETH/USDT rows=8856 year=2019
+2026-09-23 12:37:05 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-04.zip
+2026-09-23 12:37:10 [info     ] imported_batch                 batch=9/9 interval=5m month=4 pair=ETH/USDT rows=8640 year=2019
+2026-09-23 12:37:10 [info     ] imported                       batches=9 interval=5m month=4 pair=ETH/USDT rows=8640 year=2019
+2026-09-23 12:37:10 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-05.zip
+2026-09-23 12:37:15 [info     ] imported_batch                 batch=9/9 interval=5m month=5 pair=ETH/USDT rows=8808 year=2019
+2026-09-23 12:37:15 [info     ] imported                       batches=9 interval=5m month=5 pair=ETH/USDT rows=8808 year=2019
+2026-09-23 12:37:15 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-06.zip
+2026-09-23 12:37:20 [info     ] imported_batch                 batch=9/9 interval=5m month=6 pair=ETH/USDT rows=8628 year=2019
+2026-09-23 12:37:20 [info     ] imported                       batches=9 interval=5m month=6 pair=ETH/USDT rows=8628 year=2019
+2026-09-23 12:37:20 [info     ] progress                       pct=34.7% processed=150 total=432 total_rows=354543
+2026-09-23 12:37:20 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-07.zip
+2026-09-23 12:37:25 [info     ] imported_batch                 batch=9/9 interval=5m month=7 pair=ETH/USDT rows=8928 year=2019
+2026-09-23 12:37:25 [info     ] imported                       batches=9 interval=5m month=7 pair=ETH/USDT rows=8928 year=2019
+2026-09-23 12:37:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-08.zip
+2026-09-23 12:37:30 [info     ] imported_batch                 batch=9/9 interval=5m month=8 pair=ETH/USDT rows=8832 year=2019
+2026-09-23 12:37:30 [info     ] imported                       batches=9 interval=5m month=8 pair=ETH/USDT rows=8832 year=2019
+2026-09-23 12:37:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-09.zip
+2026-09-23 12:37:33 [info     ] imported_batch                 batch=9/9 interval=5m month=9 pair=ETH/USDT rows=8640 year=2019
+2026-09-23 12:37:33 [info     ] imported                       batches=9 interval=5m month=9 pair=ETH/USDT rows=8640 year=2019
+2026-09-23 12:37:33 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-10.zip
+2026-09-23 12:37:37 [info     ] imported_batch                 batch=9/9 interval=5m month=10 pair=ETH/USDT rows=8928 year=2019
+2026-09-23 12:37:37 [info     ] imported                       batches=9 interval=5m month=10 pair=ETH/USDT rows=8928 year=2019
+2026-09-23 12:37:37 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-11.zip
+2026-09-23 12:37:41 [info     ] imported_batch                 batch=9/9 interval=5m month=11 pair=ETH/USDT rows=8588 year=2019
+2026-09-23 12:37:41 [info     ] imported                       batches=9 interval=5m month=11 pair=ETH/USDT rows=8588 year=2019
+2026-09-23 12:37:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2019-12.zip
+2026-09-23 12:37:46 [info     ] imported_batch                 batch=9/9 interval=5m month=12 pair=ETH/USDT rows=8928 year=2019
+2026-09-23 12:37:46 [info     ] imported                       batches=9 interval=5m month=12 pair=ETH/USDT rows=8928 year=2019
+2026-09-23 12:37:46 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-01.zip
+2026-09-23 12:37:50 [info     ] imported_batch                 batch=9/9 interval=5m month=1 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:37:50 [info     ] imported                       batches=9 interval=5m month=1 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:37:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-02.zip
+2026-09-23 12:37:55 [info     ] imported_batch                 batch=9/9 interval=5m month=2 pair=ETH/USDT rows=8270 year=2020
+2026-09-23 12:37:55 [info     ] imported                       batches=9 interval=5m month=2 pair=ETH/USDT rows=8270 year=2020
+2026-09-23 12:37:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-03.zip
+2026-09-23 12:37:59 [info     ] imported_batch                 batch=9/9 interval=5m month=3 pair=ETH/USDT rows=8903 year=2020
+2026-09-23 12:37:59 [info     ] imported                       batches=9 interval=5m month=3 pair=ETH/USDT rows=8903 year=2020
+2026-09-23 12:37:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-04.zip
+2026-09-23 12:38:04 [info     ] imported_batch                 batch=9/9 interval=5m month=4 pair=ETH/USDT rows=8610 year=2020
+2026-09-23 12:38:04 [info     ] imported                       batches=9 interval=5m month=4 pair=ETH/USDT rows=8610 year=2020
+2026-09-23 12:38:04 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-05.zip
+2026-09-23 12:38:08 [info     ] imported_batch                 batch=9/9 interval=5m month=5 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:38:08 [info     ] imported                       batches=9 interval=5m month=5 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:38:08 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-06.zip
+2026-09-23 12:38:13 [info     ] imported_batch                 batch=9/9 interval=5m month=6 pair=ETH/USDT rows=8598 year=2020
+2026-09-23 12:38:13 [info     ] imported                       batches=9 interval=5m month=6 pair=ETH/USDT rows=8598 year=2020
+2026-09-23 12:38:13 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-07.zip
+2026-09-23 12:38:17 [info     ] imported_batch                 batch=9/9 interval=5m month=7 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:38:17 [info     ] imported                       batches=9 interval=5m month=7 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:38:17 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-08.zip
+2026-09-23 12:38:21 [info     ] imported_batch                 batch=9/9 interval=5m month=8 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:38:21 [info     ] imported                       batches=9 interval=5m month=8 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:38:21 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-09.zip
+2026-09-23 12:38:26 [info     ] imported_batch                 batch=9/9 interval=5m month=9 pair=ETH/USDT rows=8640 year=2020
+2026-09-23 12:38:26 [info     ] imported                       batches=9 interval=5m month=9 pair=ETH/USDT rows=8640 year=2020
+2026-09-23 12:38:26 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-10.zip
+2026-09-23 12:38:31 [info     ] imported_batch                 batch=9/9 interval=5m month=10 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:38:31 [info     ] imported                       batches=9 interval=5m month=10 pair=ETH/USDT rows=8928 year=2020
+2026-09-23 12:38:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-11.zip
+2026-09-23 12:38:35 [info     ] imported_batch                 batch=9/9 interval=5m month=11 pair=ETH/USDT rows=8628 year=2020
+2026-09-23 12:38:35 [info     ] imported                       batches=9 interval=5m month=11 pair=ETH/USDT rows=8628 year=2020
+2026-09-23 12:38:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/5m/ETHUSDT-5m-2020-12.zip
+2026-09-23 12:38:39 [info     ] imported_batch                 batch=9/9 interval=5m month=12 pair=ETH/USDT rows=8870 year=2020
+2026-09-23 12:38:39 [info     ] imported                       batches=9 interval=5m month=12 pair=ETH/USDT rows=8870 year=2020
+2026-09-23 12:38:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-01.zip
+2026-09-23 12:38:41 [info     ] imported_batch                 batch=3/3 interval=15m month=1 pair=ETH/USDT rows=2976 year=2019
+2026-09-23 12:38:41 [info     ] imported                       batches=3 interval=15m month=1 pair=ETH/USDT rows=2976 year=2019
+2026-09-23 12:38:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-02.zip
+2026-09-23 12:38:43 [info     ] imported_batch                 batch=3/3 interval=15m month=2 pair=ETH/USDT rows=2688 year=2019
+2026-09-23 12:38:43 [info     ] imported                       batches=3 interval=15m month=2 pair=ETH/USDT rows=2688 year=2019
+2026-09-23 12:38:43 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-03.zip
+2026-09-23 12:38:45 [info     ] imported_batch                 batch=3/3 interval=15m month=3 pair=ETH/USDT rows=2952 year=2019
+2026-09-23 12:38:45 [info     ] imported                       batches=3 interval=15m month=3 pair=ETH/USDT rows=2952 year=2019
+2026-09-23 12:38:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-04.zip
+2026-09-23 12:38:47 [info     ] imported_batch                 batch=3/3 interval=15m month=4 pair=ETH/USDT rows=2880 year=2019
+2026-09-23 12:38:47 [info     ] imported                       batches=3 interval=15m month=4 pair=ETH/USDT rows=2880 year=2019
+2026-09-23 12:38:47 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-05.zip
+2026-09-23 12:38:49 [info     ] imported_batch                 batch=3/3 interval=15m month=5 pair=ETH/USDT rows=2936 year=2019
+2026-09-23 12:38:49 [info     ] imported                       batches=3 interval=15m month=5 pair=ETH/USDT rows=2936 year=2019
+2026-09-23 12:38:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-06.zip
+2026-09-23 12:38:51 [info     ] imported_batch                 batch=3/3 interval=15m month=6 pair=ETH/USDT rows=2876 year=2019
+2026-09-23 12:38:51 [info     ] imported                       batches=3 interval=15m month=6 pair=ETH/USDT rows=2876 year=2019
+2026-09-23 12:38:51 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-07.zip
+2026-09-23 12:38:54 [info     ] imported_batch                 batch=3/3 interval=15m month=7 pair=ETH/USDT rows=2976 year=2019
+2026-09-23 12:38:54 [info     ] imported                       batches=3 interval=15m month=7 pair=ETH/USDT rows=2976 year=2019
+2026-09-23 12:38:54 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-08.zip
+2026-09-23 12:38:56 [info     ] imported_batch                 batch=3/3 interval=15m month=8 pair=ETH/USDT rows=2944 year=2019
+2026-09-23 12:38:56 [info     ] imported                       batches=3 interval=15m month=8 pair=ETH/USDT rows=2944 year=2019
+2026-09-23 12:38:56 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-09.zip
+2026-09-23 12:38:59 [info     ] imported_batch                 batch=3/3 interval=15m month=9 pair=ETH/USDT rows=2880 year=2019
+2026-09-23 12:38:59 [info     ] imported                       batches=3 interval=15m month=9 pair=ETH/USDT rows=2880 year=2019
+2026-09-23 12:38:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-10.zip
+2026-09-23 12:39:01 [info     ] imported_batch                 batch=3/3 interval=15m month=10 pair=ETH/USDT rows=2976 year=2019
+2026-09-23 12:39:01 [info     ] imported                       batches=3 interval=15m month=10 pair=ETH/USDT rows=2976 year=2019
+2026-09-23 12:39:01 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-11.zip
+2026-09-23 12:39:04 [info     ] imported_batch                 batch=3/3 interval=15m month=11 pair=ETH/USDT rows=2863 year=2019
+2026-09-23 12:39:04 [info     ] imported                       batches=3 interval=15m month=11 pair=ETH/USDT rows=2863 year=2019
+2026-09-23 12:39:04 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2019-12.zip
+2026-09-23 12:39:06 [info     ] imported_batch                 batch=3/3 interval=15m month=12 pair=ETH/USDT rows=2976 year=2019
+2026-09-23 12:39:06 [info     ] imported                       batches=3 interval=15m month=12 pair=ETH/USDT rows=2976 year=2019
+2026-09-23 12:39:06 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-01.zip
+2026-09-23 12:39:08 [info     ] imported_batch                 batch=3/3 interval=15m month=1 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:08 [info     ] imported                       batches=3 interval=15m month=1 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:08 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-02.zip
+2026-09-23 12:39:10 [info     ] imported_batch                 batch=3/3 interval=15m month=2 pair=ETH/USDT rows=2757 year=2020
+2026-09-23 12:39:10 [info     ] imported                       batches=3 interval=15m month=2 pair=ETH/USDT rows=2757 year=2020
+2026-09-23 12:39:10 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-03.zip
+2026-09-23 12:39:13 [info     ] imported_batch                 batch=3/3 interval=15m month=3 pair=ETH/USDT rows=2968 year=2020
+2026-09-23 12:39:13 [info     ] imported                       batches=3 interval=15m month=3 pair=ETH/USDT rows=2968 year=2020
+2026-09-23 12:39:13 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-04.zip
+2026-09-23 12:39:16 [info     ] imported_batch                 batch=3/3 interval=15m month=4 pair=ETH/USDT rows=2870 year=2020
+2026-09-23 12:39:16 [info     ] imported                       batches=3 interval=15m month=4 pair=ETH/USDT rows=2870 year=2020
+2026-09-23 12:39:16 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-05.zip
+2026-09-23 12:39:18 [info     ] imported_batch                 batch=3/3 interval=15m month=5 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:18 [info     ] imported                       batches=3 interval=15m month=5 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:18 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-06.zip
+2026-09-23 12:39:20 [info     ] imported_batch                 batch=3/3 interval=15m month=6 pair=ETH/USDT rows=2866 year=2020
+2026-09-23 12:39:20 [info     ] imported                       batches=3 interval=15m month=6 pair=ETH/USDT rows=2866 year=2020
+2026-09-23 12:39:20 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-07.zip
+2026-09-23 12:39:22 [info     ] imported_batch                 batch=3/3 interval=15m month=7 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:22 [info     ] imported                       batches=3 interval=15m month=7 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:22 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-08.zip
+2026-09-23 12:39:25 [info     ] imported_batch                 batch=3/3 interval=15m month=8 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:25 [info     ] imported                       batches=3 interval=15m month=8 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-09.zip
+2026-09-23 12:39:27 [info     ] imported_batch                 batch=3/3 interval=15m month=9 pair=ETH/USDT rows=2880 year=2020
+2026-09-23 12:39:27 [info     ] imported                       batches=3 interval=15m month=9 pair=ETH/USDT rows=2880 year=2020
+2026-09-23 12:39:27 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-10.zip
+2026-09-23 12:39:29 [info     ] imported_batch                 batch=3/3 interval=15m month=10 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:29 [info     ] imported                       batches=3 interval=15m month=10 pair=ETH/USDT rows=2976 year=2020
+2026-09-23 12:39:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-11.zip
+2026-09-23 12:39:31 [info     ] imported_batch                 batch=3/3 interval=15m month=11 pair=ETH/USDT rows=2876 year=2020
+2026-09-23 12:39:31 [info     ] imported                       batches=3 interval=15m month=11 pair=ETH/USDT rows=2876 year=2020
+2026-09-23 12:39:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/15m/ETHUSDT-15m-2020-12.zip
+2026-09-23 12:39:34 [info     ] imported_batch                 batch=3/3 interval=15m month=12 pair=ETH/USDT rows=2957 year=2020
+2026-09-23 12:39:34 [info     ] imported                       batches=3 interval=15m month=12 pair=ETH/USDT rows=2957 year=2020
+2026-09-23 12:39:34 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-01.zip
+2026-09-23 12:39:35 [info     ] imported_batch                 batch=1/1 interval=1h month=1 pair=ETH/USDT rows=744 year=2019
+2026-09-23 12:39:35 [info     ] imported                       batches=1 interval=1h month=1 pair=ETH/USDT rows=744 year=2019
+2026-09-23 12:39:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-02.zip
+2026-09-23 12:39:36 [info     ] imported_batch                 batch=1/1 interval=1h month=2 pair=ETH/USDT rows=672 year=2019
+2026-09-23 12:39:36 [info     ] imported                       batches=1 interval=1h month=2 pair=ETH/USDT rows=672 year=2019
+2026-09-23 12:39:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-03.zip
+2026-09-23 12:39:37 [info     ] imported_batch                 batch=1/1 interval=1h month=3 pair=ETH/USDT rows=738 year=2019
+2026-09-23 12:39:37 [info     ] imported                       batches=1 interval=1h month=3 pair=ETH/USDT rows=738 year=2019
+2026-09-23 12:39:37 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-04.zip
+2026-09-23 12:39:39 [info     ] imported_batch                 batch=1/1 interval=1h month=4 pair=ETH/USDT rows=720 year=2019
+2026-09-23 12:39:39 [info     ] imported                       batches=1 interval=1h month=4 pair=ETH/USDT rows=720 year=2019
+2026-09-23 12:39:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-05.zip
+2026-09-23 12:39:40 [info     ] imported_batch                 batch=1/1 interval=1h month=5 pair=ETH/USDT rows=734 year=2019
+2026-09-23 12:39:40 [info     ] imported                       batches=1 interval=1h month=5 pair=ETH/USDT rows=734 year=2019
+2026-09-23 12:39:40 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-06.zip
+2026-09-23 12:39:41 [info     ] imported_batch                 batch=1/1 interval=1h month=6 pair=ETH/USDT rows=720 year=2019
+2026-09-23 12:39:41 [info     ] imported                       batches=1 interval=1h month=6 pair=ETH/USDT rows=720 year=2019
+2026-09-23 12:39:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-07.zip
+2026-09-23 12:39:42 [info     ] imported_batch                 batch=1/1 interval=1h month=7 pair=ETH/USDT rows=744 year=2019
+2026-09-23 12:39:42 [info     ] imported                       batches=1 interval=1h month=7 pair=ETH/USDT rows=744 year=2019
+2026-09-23 12:39:42 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-08.zip
+2026-09-23 12:39:43 [info     ] imported_batch                 batch=1/1 interval=1h month=8 pair=ETH/USDT rows=736 year=2019
+2026-09-23 12:39:43 [info     ] imported                       batches=1 interval=1h month=8 pair=ETH/USDT rows=736 year=2019
+2026-09-23 12:39:43 [info     ] progress                       pct=46.3% processed=200 total=432 total_rows=588331
+2026-09-23 12:39:43 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-09.zip
+2026-09-23 12:39:44 [info     ] imported_batch                 batch=1/1 interval=1h month=9 pair=ETH/USDT rows=720 year=2019
+2026-09-23 12:39:44 [info     ] imported                       batches=1 interval=1h month=9 pair=ETH/USDT rows=720 year=2019
+2026-09-23 12:39:44 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-10.zip
+2026-09-23 12:39:45 [info     ] imported_batch                 batch=1/1 interval=1h month=10 pair=ETH/USDT rows=744 year=2019
+2026-09-23 12:39:45 [info     ] imported                       batches=1 interval=1h month=10 pair=ETH/USDT rows=744 year=2019
+2026-09-23 12:39:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-11.zip
+2026-09-23 12:39:46 [info     ] imported_batch                 batch=1/1 interval=1h month=11 pair=ETH/USDT rows=716 year=2019
+2026-09-23 12:39:46 [info     ] imported                       batches=1 interval=1h month=11 pair=ETH/USDT rows=716 year=2019
+2026-09-23 12:39:46 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2019-12.zip
+2026-09-23 12:39:47 [info     ] imported_batch                 batch=1/1 interval=1h month=12 pair=ETH/USDT rows=744 year=2019
+2026-09-23 12:39:47 [info     ] imported                       batches=1 interval=1h month=12 pair=ETH/USDT rows=744 year=2019
+2026-09-23 12:39:47 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-01.zip
+2026-09-23 12:39:49 [info     ] imported_batch                 batch=1/1 interval=1h month=1 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:49 [info     ] imported                       batches=1 interval=1h month=1 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-02.zip
+2026-09-23 12:39:50 [info     ] imported_batch                 batch=1/1 interval=1h month=2 pair=ETH/USDT rows=690 year=2020
+2026-09-23 12:39:50 [info     ] imported                       batches=1 interval=1h month=2 pair=ETH/USDT rows=690 year=2020
+2026-09-23 12:39:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-03.zip
+2026-09-23 12:39:51 [info     ] imported_batch                 batch=1/1 interval=1h month=3 pair=ETH/USDT rows=743 year=2020
+2026-09-23 12:39:51 [info     ] imported                       batches=1 interval=1h month=3 pair=ETH/USDT rows=743 year=2020
+2026-09-23 12:39:51 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-04.zip
+2026-09-23 12:39:53 [info     ] imported_batch                 batch=1/1 interval=1h month=4 pair=ETH/USDT rows=718 year=2020
+2026-09-23 12:39:53 [info     ] imported                       batches=1 interval=1h month=4 pair=ETH/USDT rows=718 year=2020
+2026-09-23 12:39:53 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-05.zip
+2026-09-23 12:39:53 [info     ] imported_batch                 batch=1/1 interval=1h month=5 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:53 [info     ] imported                       batches=1 interval=1h month=5 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:53 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-06.zip
+2026-09-23 12:39:54 [info     ] imported_batch                 batch=1/1 interval=1h month=6 pair=ETH/USDT rows=717 year=2020
+2026-09-23 12:39:54 [info     ] imported                       batches=1 interval=1h month=6 pair=ETH/USDT rows=717 year=2020
+2026-09-23 12:39:54 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-07.zip
+2026-09-23 12:39:55 [info     ] imported_batch                 batch=1/1 interval=1h month=7 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:55 [info     ] imported                       batches=1 interval=1h month=7 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-08.zip
+2026-09-23 12:39:56 [info     ] imported_batch                 batch=1/1 interval=1h month=8 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:56 [info     ] imported                       batches=1 interval=1h month=8 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:56 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-09.zip
+2026-09-23 12:39:57 [info     ] imported_batch                 batch=1/1 interval=1h month=9 pair=ETH/USDT rows=720 year=2020
+2026-09-23 12:39:57 [info     ] imported                       batches=1 interval=1h month=9 pair=ETH/USDT rows=720 year=2020
+2026-09-23 12:39:57 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-10.zip
+2026-09-23 12:39:58 [info     ] imported_batch                 batch=1/1 interval=1h month=10 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:58 [info     ] imported                       batches=1 interval=1h month=10 pair=ETH/USDT rows=744 year=2020
+2026-09-23 12:39:58 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-11.zip
+2026-09-23 12:39:59 [info     ] imported_batch                 batch=1/1 interval=1h month=11 pair=ETH/USDT rows=719 year=2020
+2026-09-23 12:39:59 [info     ] imported                       batches=1 interval=1h month=11 pair=ETH/USDT rows=719 year=2020
+2026-09-23 12:39:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1h/ETHUSDT-1h-2020-12.zip
+2026-09-23 12:40:01 [info     ] imported_batch                 batch=1/1 interval=1h month=12 pair=ETH/USDT rows=740 year=2020
+2026-09-23 12:40:01 [info     ] imported                       batches=1 interval=1h month=12 pair=ETH/USDT rows=740 year=2020
+2026-09-23 12:40:01 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-01.zip
+2026-09-23 12:40:02 [info     ] imported_batch                 batch=1/1 interval=4h month=1 pair=ETH/USDT rows=186 year=2019
+2026-09-23 12:40:02 [info     ] imported                       batches=1 interval=4h month=1 pair=ETH/USDT rows=186 year=2019
+2026-09-23 12:40:02 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-02.zip
+2026-09-23 12:40:02 [info     ] imported_batch                 batch=1/1 interval=4h month=2 pair=ETH/USDT rows=168 year=2019
+2026-09-23 12:40:02 [info     ] imported                       batches=1 interval=4h month=2 pair=ETH/USDT rows=168 year=2019
+2026-09-23 12:40:02 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-03.zip
+2026-09-23 12:40:03 [info     ] imported_batch                 batch=1/1 interval=4h month=3 pair=ETH/USDT rows=185 year=2019
+2026-09-23 12:40:03 [info     ] imported                       batches=1 interval=4h month=3 pair=ETH/USDT rows=185 year=2019
+2026-09-23 12:40:03 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-04.zip
+2026-09-23 12:40:04 [info     ] imported_batch                 batch=1/1 interval=4h month=4 pair=ETH/USDT rows=180 year=2019
+2026-09-23 12:40:04 [info     ] imported                       batches=1 interval=4h month=4 pair=ETH/USDT rows=180 year=2019
+2026-09-23 12:40:04 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-05.zip
+2026-09-23 12:40:04 [info     ] imported_batch                 batch=1/1 interval=4h month=5 pair=ETH/USDT rows=184 year=2019
+2026-09-23 12:40:04 [info     ] imported                       batches=1 interval=4h month=5 pair=ETH/USDT rows=184 year=2019
+2026-09-23 12:40:04 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-06.zip
+2026-09-23 12:40:05 [info     ] imported_batch                 batch=1/1 interval=4h month=6 pair=ETH/USDT rows=180 year=2019
+2026-09-23 12:40:05 [info     ] imported                       batches=1 interval=4h month=6 pair=ETH/USDT rows=180 year=2019
+2026-09-23 12:40:05 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-07.zip
+2026-09-23 12:40:06 [info     ] imported_batch                 batch=1/1 interval=4h month=7 pair=ETH/USDT rows=186 year=2019
+2026-09-23 12:40:06 [info     ] imported                       batches=1 interval=4h month=7 pair=ETH/USDT rows=186 year=2019
+2026-09-23 12:40:06 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-08.zip
+2026-09-23 12:40:07 [info     ] imported_batch                 batch=1/1 interval=4h month=8 pair=ETH/USDT rows=185 year=2019
+2026-09-23 12:40:07 [info     ] imported                       batches=1 interval=4h month=8 pair=ETH/USDT rows=185 year=2019
+2026-09-23 12:40:07 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-09.zip
+2026-09-23 12:40:07 [info     ] imported_batch                 batch=1/1 interval=4h month=9 pair=ETH/USDT rows=180 year=2019
+2026-09-23 12:40:07 [info     ] imported                       batches=1 interval=4h month=9 pair=ETH/USDT rows=180 year=2019
+2026-09-23 12:40:07 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-10.zip
+2026-09-23 12:40:08 [info     ] imported_batch                 batch=1/1 interval=4h month=10 pair=ETH/USDT rows=186 year=2019
+2026-09-23 12:40:08 [info     ] imported                       batches=1 interval=4h month=10 pair=ETH/USDT rows=186 year=2019
+2026-09-23 12:40:08 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-11.zip
+2026-09-23 12:40:08 [info     ] imported_batch                 batch=1/1 interval=4h month=11 pair=ETH/USDT rows=180 year=2019
+2026-09-23 12:40:08 [info     ] imported                       batches=1 interval=4h month=11 pair=ETH/USDT rows=180 year=2019
+2026-09-23 12:40:08 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2019-12.zip
+2026-09-23 12:40:09 [info     ] imported_batch                 batch=1/1 interval=4h month=12 pair=ETH/USDT rows=186 year=2019
+2026-09-23 12:40:09 [info     ] imported                       batches=1 interval=4h month=12 pair=ETH/USDT rows=186 year=2019
+2026-09-23 12:40:09 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-01.zip
+2026-09-23 12:40:10 [info     ] imported_batch                 batch=1/1 interval=4h month=1 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:10 [info     ] imported                       batches=1 interval=4h month=1 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:10 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-02.zip
+2026-09-23 12:40:11 [info     ] imported_batch                 batch=1/1 interval=4h month=2 pair=ETH/USDT rows=173 year=2020
+2026-09-23 12:40:11 [info     ] imported                       batches=1 interval=4h month=2 pair=ETH/USDT rows=173 year=2020
+2026-09-23 12:40:11 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-03.zip
+2026-09-23 12:40:12 [info     ] imported_batch                 batch=1/1 interval=4h month=3 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:12 [info     ] imported                       batches=1 interval=4h month=3 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:12 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-04.zip
+2026-09-23 12:40:13 [info     ] imported_batch                 batch=1/1 interval=4h month=4 pair=ETH/USDT rows=180 year=2020
+2026-09-23 12:40:13 [info     ] imported                       batches=1 interval=4h month=4 pair=ETH/USDT rows=180 year=2020
+2026-09-23 12:40:13 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-05.zip
+2026-09-23 12:40:13 [info     ] imported_batch                 batch=1/1 interval=4h month=5 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:13 [info     ] imported                       batches=1 interval=4h month=5 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:13 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-06.zip
+2026-09-23 12:40:14 [info     ] imported_batch                 batch=1/1 interval=4h month=6 pair=ETH/USDT rows=180 year=2020
+2026-09-23 12:40:14 [info     ] imported                       batches=1 interval=4h month=6 pair=ETH/USDT rows=180 year=2020
+2026-09-23 12:40:14 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-07.zip
+2026-09-23 12:40:15 [info     ] imported_batch                 batch=1/1 interval=4h month=7 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:15 [info     ] imported                       batches=1 interval=4h month=7 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:15 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-08.zip
+2026-09-23 12:40:15 [info     ] imported_batch                 batch=1/1 interval=4h month=8 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:15 [info     ] imported                       batches=1 interval=4h month=8 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:15 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-09.zip
+2026-09-23 12:40:16 [info     ] imported_batch                 batch=1/1 interval=4h month=9 pair=ETH/USDT rows=180 year=2020
+2026-09-23 12:40:16 [info     ] imported                       batches=1 interval=4h month=9 pair=ETH/USDT rows=180 year=2020
+2026-09-23 12:40:16 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-10.zip
+2026-09-23 12:40:17 [info     ] imported_batch                 batch=1/1 interval=4h month=10 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:17 [info     ] imported                       batches=1 interval=4h month=10 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:17 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-11.zip
+2026-09-23 12:40:18 [info     ] imported_batch                 batch=1/1 interval=4h month=11 pair=ETH/USDT rows=180 year=2020
+2026-09-23 12:40:18 [info     ] imported                       batches=1 interval=4h month=11 pair=ETH/USDT rows=180 year=2020
+2026-09-23 12:40:18 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/4h/ETHUSDT-4h-2020-12.zip
+2026-09-23 12:40:19 [info     ] imported_batch                 batch=1/1 interval=4h month=12 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:19 [info     ] imported                       batches=1 interval=4h month=12 pair=ETH/USDT rows=186 year=2020
+2026-09-23 12:40:19 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-01.zip
+2026-09-23 12:40:19 [info     ] imported_batch                 batch=1/1 interval=1d month=1 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:19 [info     ] imported                       batches=1 interval=1d month=1 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:19 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-02.zip
+2026-09-23 12:40:20 [info     ] imported_batch                 batch=1/1 interval=1d month=2 pair=ETH/USDT rows=28 year=2019
+2026-09-23 12:40:20 [info     ] imported                       batches=1 interval=1d month=2 pair=ETH/USDT rows=28 year=2019
+2026-09-23 12:40:20 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-03.zip
+2026-09-23 12:40:21 [info     ] imported_batch                 batch=1/1 interval=1d month=3 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:21 [info     ] imported                       batches=1 interval=1d month=3 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:21 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-04.zip
+2026-09-23 12:40:22 [info     ] imported_batch                 batch=1/1 interval=1d month=4 pair=ETH/USDT rows=30 year=2019
+2026-09-23 12:40:22 [info     ] imported                       batches=1 interval=1d month=4 pair=ETH/USDT rows=30 year=2019
+2026-09-23 12:40:22 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-05.zip
+2026-09-23 12:40:23 [info     ] imported_batch                 batch=1/1 interval=1d month=5 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:23 [info     ] imported                       batches=1 interval=1d month=5 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:23 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-06.zip
+2026-09-23 12:40:23 [info     ] imported_batch                 batch=1/1 interval=1d month=6 pair=ETH/USDT rows=30 year=2019
+2026-09-23 12:40:24 [info     ] imported                       batches=1 interval=1d month=6 pair=ETH/USDT rows=30 year=2019
+2026-09-23 12:40:24 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-07.zip
+2026-09-23 12:40:24 [info     ] imported_batch                 batch=1/1 interval=1d month=7 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:24 [info     ] imported                       batches=1 interval=1d month=7 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:24 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-08.zip
+2026-09-23 12:40:25 [info     ] imported_batch                 batch=1/1 interval=1d month=8 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:25 [info     ] imported                       batches=1 interval=1d month=8 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-09.zip
+2026-09-23 12:40:26 [info     ] imported_batch                 batch=1/1 interval=1d month=9 pair=ETH/USDT rows=30 year=2019
+2026-09-23 12:40:26 [info     ] imported                       batches=1 interval=1d month=9 pair=ETH/USDT rows=30 year=2019
+2026-09-23 12:40:26 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-10.zip
+2026-09-23 12:40:27 [info     ] imported_batch                 batch=1/1 interval=1d month=10 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:27 [info     ] imported                       batches=1 interval=1d month=10 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:27 [info     ] progress                       pct=57.9% processed=250 total=432 total_rows=604707
+2026-09-23 12:40:27 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-11.zip
+2026-09-23 12:40:27 [info     ] imported_batch                 batch=1/1 interval=1d month=11 pair=ETH/USDT rows=30 year=2019
+2026-09-23 12:40:28 [info     ] imported                       batches=1 interval=1d month=11 pair=ETH/USDT rows=30 year=2019
+2026-09-23 12:40:28 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2019-12.zip
+2026-09-23 12:40:28 [info     ] imported_batch                 batch=1/1 interval=1d month=12 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:28 [info     ] imported                       batches=1 interval=1d month=12 pair=ETH/USDT rows=31 year=2019
+2026-09-23 12:40:28 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-01.zip
+2026-09-23 12:40:28 [info     ] imported_batch                 batch=1/1 interval=1d month=1 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:28 [info     ] imported                       batches=1 interval=1d month=1 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:28 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-02.zip
+2026-09-23 12:40:29 [info     ] imported_batch                 batch=1/1 interval=1d month=2 pair=ETH/USDT rows=29 year=2020
+2026-09-23 12:40:29 [info     ] imported                       batches=1 interval=1d month=2 pair=ETH/USDT rows=29 year=2020
+2026-09-23 12:40:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-03.zip
+2026-09-23 12:40:30 [info     ] imported_batch                 batch=1/1 interval=1d month=3 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:30 [info     ] imported                       batches=1 interval=1d month=3 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-04.zip
+2026-09-23 12:40:30 [info     ] imported_batch                 batch=1/1 interval=1d month=4 pair=ETH/USDT rows=30 year=2020
+2026-09-23 12:40:30 [info     ] imported                       batches=1 interval=1d month=4 pair=ETH/USDT rows=30 year=2020
+2026-09-23 12:40:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-05.zip
+2026-09-23 12:40:31 [info     ] imported_batch                 batch=1/1 interval=1d month=5 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:31 [info     ] imported                       batches=1 interval=1d month=5 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-06.zip
+2026-09-23 12:40:31 [info     ] imported_batch                 batch=1/1 interval=1d month=6 pair=ETH/USDT rows=30 year=2020
+2026-09-23 12:40:31 [info     ] imported                       batches=1 interval=1d month=6 pair=ETH/USDT rows=30 year=2020
+2026-09-23 12:40:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-07.zip
+2026-09-23 12:40:31 [info     ] imported_batch                 batch=1/1 interval=1d month=7 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:31 [info     ] imported                       batches=1 interval=1d month=7 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-08.zip
+2026-09-23 12:40:32 [info     ] imported_batch                 batch=1/1 interval=1d month=8 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:32 [info     ] imported                       batches=1 interval=1d month=8 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:32 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-09.zip
+2026-09-23 12:40:33 [info     ] imported_batch                 batch=1/1 interval=1d month=9 pair=ETH/USDT rows=30 year=2020
+2026-09-23 12:40:33 [info     ] imported                       batches=1 interval=1d month=9 pair=ETH/USDT rows=30 year=2020
+2026-09-23 12:40:33 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-10.zip
+2026-09-23 12:40:33 [info     ] imported_batch                 batch=1/1 interval=1d month=10 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:33 [info     ] imported                       batches=1 interval=1d month=10 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:33 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-11.zip
+2026-09-23 12:40:34 [info     ] imported_batch                 batch=1/1 interval=1d month=11 pair=ETH/USDT rows=30 year=2020
+2026-09-23 12:40:34 [info     ] imported                       batches=1 interval=1d month=11 pair=ETH/USDT rows=30 year=2020
+2026-09-23 12:40:34 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2020-12.zip
+2026-09-23 12:40:35 [info     ] imported_batch                 batch=1/1 interval=1d month=12 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:35 [info     ] imported                       batches=1 interval=1d month=12 pair=ETH/USDT rows=31 year=2020
+2026-09-23 12:40:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-01.zip
+2026-09-23 12:40:36 [info     ] imported_batch                 batch=1/1 interval=1w month=1 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:36 [info     ] imported                       batches=1 interval=1w month=1 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-02.zip
+2026-09-23 12:40:36 [info     ] imported_batch                 batch=1/1 interval=1w month=2 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:36 [info     ] imported                       batches=1 interval=1w month=2 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-03.zip
+2026-09-23 12:40:37 [info     ] imported_batch                 batch=1/1 interval=1w month=3 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:37 [info     ] imported                       batches=1 interval=1w month=3 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:37 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-04.zip
+2026-09-23 12:40:38 [info     ] imported_batch                 batch=1/1 interval=1w month=4 pair=ETH/USDT rows=5 year=2019
+2026-09-23 12:40:38 [info     ] imported                       batches=1 interval=1w month=4 pair=ETH/USDT rows=5 year=2019
+2026-09-23 12:40:38 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-05.zip
+2026-09-23 12:40:38 [info     ] imported_batch                 batch=1/1 interval=1w month=5 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:38 [info     ] imported                       batches=1 interval=1w month=5 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:38 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-06.zip
+2026-09-23 12:40:38 [info     ] imported_batch                 batch=1/1 interval=1w month=6 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:38 [info     ] imported                       batches=1 interval=1w month=6 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:38 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-07.zip
+2026-09-23 12:40:39 [info     ] imported_batch                 batch=1/1 interval=1w month=7 pair=ETH/USDT rows=5 year=2019
+2026-09-23 12:40:39 [info     ] imported                       batches=1 interval=1w month=7 pair=ETH/USDT rows=5 year=2019
+2026-09-23 12:40:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-08.zip
+2026-09-23 12:40:40 [info     ] imported_batch                 batch=1/1 interval=1w month=8 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:40 [info     ] imported                       batches=1 interval=1w month=8 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:40 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-09.zip
+2026-09-23 12:40:40 [info     ] imported_batch                 batch=1/1 interval=1w month=9 pair=ETH/USDT rows=5 year=2019
+2026-09-23 12:40:40 [info     ] imported                       batches=1 interval=1w month=9 pair=ETH/USDT rows=5 year=2019
+2026-09-23 12:40:40 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-10.zip
+2026-09-23 12:40:41 [info     ] imported_batch                 batch=1/1 interval=1w month=10 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:41 [info     ] imported                       batches=1 interval=1w month=10 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-11.zip
+2026-09-23 12:40:41 [info     ] imported_batch                 batch=1/1 interval=1w month=11 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:41 [info     ] imported                       batches=1 interval=1w month=11 pair=ETH/USDT rows=4 year=2019
+2026-09-23 12:40:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2019-12.zip
+2026-09-23 12:40:42 [info     ] imported_batch                 batch=1/1 interval=1w month=12 pair=ETH/USDT rows=5 year=2019
+2026-09-23 12:40:42 [info     ] imported                       batches=1 interval=1w month=12 pair=ETH/USDT rows=5 year=2019
+2026-09-23 12:40:42 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-01.zip
+2026-09-23 12:40:43 [info     ] imported_batch                 batch=1/1 interval=1w month=1 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:43 [info     ] imported                       batches=1 interval=1w month=1 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:43 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-02.zip
+2026-09-23 12:40:44 [info     ] imported_batch                 batch=1/1 interval=1w month=2 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:44 [info     ] imported                       batches=1 interval=1w month=2 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:44 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-03.zip
+2026-09-23 12:40:45 [info     ] imported_batch                 batch=1/1 interval=1w month=3 pair=ETH/USDT rows=5 year=2020
+2026-09-23 12:40:45 [info     ] imported                       batches=1 interval=1w month=3 pair=ETH/USDT rows=5 year=2020
+2026-09-23 12:40:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-04.zip
+2026-09-23 12:40:45 [info     ] imported_batch                 batch=1/1 interval=1w month=4 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:45 [info     ] imported                       batches=1 interval=1w month=4 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-05.zip
+2026-09-23 12:40:46 [info     ] imported_batch                 batch=1/1 interval=1w month=5 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:46 [info     ] imported                       batches=1 interval=1w month=5 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:46 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-06.zip
+2026-09-23 12:40:47 [info     ] imported_batch                 batch=1/1 interval=1w month=6 pair=ETH/USDT rows=5 year=2020
+2026-09-23 12:40:47 [info     ] imported                       batches=1 interval=1w month=6 pair=ETH/USDT rows=5 year=2020
+2026-09-23 12:40:47 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-07.zip
+2026-09-23 12:40:48 [info     ] imported_batch                 batch=1/1 interval=1w month=7 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:48 [info     ] imported                       batches=1 interval=1w month=7 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:48 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-08.zip
+2026-09-23 12:40:48 [info     ] imported_batch                 batch=1/1 interval=1w month=8 pair=ETH/USDT rows=5 year=2020
+2026-09-23 12:40:48 [info     ] imported                       batches=1 interval=1w month=8 pair=ETH/USDT rows=5 year=2020
+2026-09-23 12:40:48 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-09.zip
+2026-09-23 12:40:49 [info     ] imported_batch                 batch=1/1 interval=1w month=9 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:49 [info     ] imported                       batches=1 interval=1w month=9 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-10.zip
+2026-09-23 12:40:49 [info     ] imported_batch                 batch=1/1 interval=1w month=10 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:49 [info     ] imported                       batches=1 interval=1w month=10 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-11.zip
+2026-09-23 12:40:50 [info     ] imported_batch                 batch=1/1 interval=1w month=11 pair=ETH/USDT rows=5 year=2020
+2026-09-23 12:40:50 [info     ] imported                       batches=1 interval=1w month=11 pair=ETH/USDT rows=5 year=2020
+2026-09-23 12:40:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2020-12.zip
+2026-09-23 12:40:51 [info     ] imported_batch                 batch=1/1 interval=1w month=12 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:51 [info     ] imported                       batches=1 interval=1w month=12 pair=ETH/USDT rows=4 year=2020
+2026-09-23 12:40:51 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-01.zip
+2026-09-23 12:40:51 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-01.zip
+2026-09-23 12:40:51 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-02.zip
+2026-09-23 12:40:52 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-02.zip
+2026-09-23 12:40:52 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-03.zip
+2026-09-23 12:40:53 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-03.zip
+2026-09-23 12:40:53 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-04.zip
+2026-09-23 12:40:53 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-04.zip
+2026-09-23 12:40:53 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-05.zip
+2026-09-23 12:40:54 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-05.zip
+2026-09-23 12:40:54 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-06.zip
+2026-09-23 12:40:55 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-06.zip
+2026-09-23 12:40:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-07.zip
+2026-09-23 12:40:55 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-07.zip
+2026-09-23 12:40:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-08.zip
+2026-09-23 12:40:56 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-08.zip
+2026-09-23 12:40:56 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-09.zip
+2026-09-23 12:40:56 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-09.zip
+2026-09-23 12:40:56 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-10.zip
+2026-09-23 12:40:57 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-10.zip
+2026-09-23 12:40:57 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-11.zip
+2026-09-23 12:40:58 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-11.zip
+2026-09-23 12:40:58 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-12.zip
+2026-09-23 12:40:59 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2019-12.zip
+2026-09-23 12:40:59 [info     ] progress                       pct=69.4% processed=300 total=432 total_rows=605238
+2026-09-23 12:40:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-01.zip
+2026-09-23 12:40:59 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-01.zip
+2026-09-23 12:40:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-02.zip
+2026-09-23 12:41:00 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-02.zip
+2026-09-23 12:41:00 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-03.zip
+2026-09-23 12:41:00 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-03.zip
+2026-09-23 12:41:00 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-04.zip
+2026-09-23 12:41:01 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-04.zip
+2026-09-23 12:41:01 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-05.zip
+2026-09-23 12:41:01 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-05.zip
+2026-09-23 12:41:01 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-06.zip
+2026-09-23 12:41:02 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-06.zip
+2026-09-23 12:41:02 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-07.zip
+2026-09-23 12:41:03 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-07.zip
+2026-09-23 12:41:03 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-08.zip
+2026-09-23 12:41:06 [info     ] imported_batch                 batch=6/6 interval=5m month=8 pair=SOL/USDT rows=5976 year=2020
+2026-09-23 12:41:06 [info     ] imported                       batches=6 interval=5m month=8 pair=SOL/USDT rows=5976 year=2020
+2026-09-23 12:41:06 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-09.zip
+2026-09-23 12:41:11 [info     ] imported_batch                 batch=9/9 interval=5m month=9 pair=SOL/USDT rows=8640 year=2020
+2026-09-23 12:41:11 [info     ] imported                       batches=9 interval=5m month=9 pair=SOL/USDT rows=8640 year=2020
+2026-09-23 12:41:11 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-10.zip
+2026-09-23 12:41:16 [info     ] imported_batch                 batch=9/9 interval=5m month=10 pair=SOL/USDT rows=8928 year=2020
+2026-09-23 12:41:16 [info     ] imported                       batches=9 interval=5m month=10 pair=SOL/USDT rows=8928 year=2020
+2026-09-23 12:41:16 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-11.zip
+2026-09-23 12:41:20 [info     ] imported_batch                 batch=9/9 interval=5m month=11 pair=SOL/USDT rows=8628 year=2020
+2026-09-23 12:41:20 [info     ] imported                       batches=9 interval=5m month=11 pair=SOL/USDT rows=8628 year=2020
+2026-09-23 12:41:20 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/5m/SOLUSDT-5m-2020-12.zip
+2026-09-23 12:41:24 [info     ] imported_batch                 batch=9/9 interval=5m month=12 pair=SOL/USDT rows=8870 year=2020
+2026-09-23 12:41:24 [info     ] imported                       batches=9 interval=5m month=12 pair=SOL/USDT rows=8870 year=2020
+2026-09-23 12:41:24 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-01.zip
+2026-09-23 12:41:25 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-01.zip
+2026-09-23 12:41:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-02.zip
+2026-09-23 12:41:25 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-02.zip
+2026-09-23 12:41:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-03.zip
+2026-09-23 12:41:26 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-03.zip
+2026-09-23 12:41:26 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-04.zip
+2026-09-23 12:41:27 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-04.zip
+2026-09-23 12:41:27 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-05.zip
+2026-09-23 12:41:27 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-05.zip
+2026-09-23 12:41:27 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-06.zip
+2026-09-23 12:41:28 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-06.zip
+2026-09-23 12:41:28 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-07.zip
+2026-09-23 12:41:29 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-07.zip
+2026-09-23 12:41:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-08.zip
+2026-09-23 12:41:30 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-08.zip
+2026-09-23 12:41:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-09.zip
+2026-09-23 12:41:30 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-09.zip
+2026-09-23 12:41:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-10.zip
+2026-09-23 12:41:31 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-10.zip
+2026-09-23 12:41:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-11.zip
+2026-09-23 12:41:31 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-11.zip
+2026-09-23 12:41:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-12.zip
+2026-09-23 12:41:32 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2019-12.zip
+2026-09-23 12:41:32 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-01.zip
+2026-09-23 12:41:32 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-01.zip
+2026-09-23 12:41:32 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-02.zip
+2026-09-23 12:41:33 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-02.zip
+2026-09-23 12:41:33 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-03.zip
+2026-09-23 12:41:34 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-03.zip
+2026-09-23 12:41:34 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-04.zip
+2026-09-23 12:41:34 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-04.zip
+2026-09-23 12:41:34 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-05.zip
+2026-09-23 12:41:35 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-05.zip
+2026-09-23 12:41:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-06.zip
+2026-09-23 12:41:35 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-06.zip
+2026-09-23 12:41:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-07.zip
+2026-09-23 12:41:35 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-07.zip
+2026-09-23 12:41:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-08.zip
+2026-09-23 12:41:36 [info     ] imported_batch                 batch=2/2 interval=15m month=8 pair=SOL/USDT rows=1992 year=2020
+2026-09-23 12:41:36 [info     ] imported                       batches=2 interval=15m month=8 pair=SOL/USDT rows=1992 year=2020
+2026-09-23 12:41:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-09.zip
+2026-09-23 12:41:39 [info     ] imported_batch                 batch=3/3 interval=15m month=9 pair=SOL/USDT rows=2880 year=2020
+2026-09-23 12:41:39 [info     ] imported                       batches=3 interval=15m month=9 pair=SOL/USDT rows=2880 year=2020
+2026-09-23 12:41:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-10.zip
+2026-09-23 12:41:41 [info     ] imported_batch                 batch=3/3 interval=15m month=10 pair=SOL/USDT rows=2976 year=2020
+2026-09-23 12:41:41 [info     ] imported                       batches=3 interval=15m month=10 pair=SOL/USDT rows=2976 year=2020
+2026-09-23 12:41:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-11.zip
+2026-09-23 12:41:44 [info     ] imported_batch                 batch=3/3 interval=15m month=11 pair=SOL/USDT rows=2876 year=2020
+2026-09-23 12:41:44 [info     ] imported                       batches=3 interval=15m month=11 pair=SOL/USDT rows=2876 year=2020
+2026-09-23 12:41:44 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/15m/SOLUSDT-15m-2020-12.zip
+2026-09-23 12:41:45 [info     ] imported_batch                 batch=3/3 interval=15m month=12 pair=SOL/USDT rows=2957 year=2020
+2026-09-23 12:41:45 [info     ] imported                       batches=3 interval=15m month=12 pair=SOL/USDT rows=2957 year=2020
+2026-09-23 12:41:45 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-01.zip
+2026-09-23 12:41:46 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-01.zip
+2026-09-23 12:41:46 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-02.zip
+2026-09-23 12:41:47 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-02.zip
+2026-09-23 12:41:47 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-03.zip
+2026-09-23 12:41:47 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-03.zip
+2026-09-23 12:41:47 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-04.zip
+2026-09-23 12:41:48 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-04.zip
+2026-09-23 12:41:48 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-05.zip
+2026-09-23 12:41:48 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-05.zip
+2026-09-23 12:41:48 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-06.zip
+2026-09-23 12:41:49 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-06.zip
+2026-09-23 12:41:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-07.zip
+2026-09-23 12:41:49 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-07.zip
+2026-09-23 12:41:49 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-08.zip
+2026-09-23 12:41:50 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-08.zip
+2026-09-23 12:41:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-09.zip
+2026-09-23 12:41:50 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-09.zip
+2026-09-23 12:41:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-10.zip
+2026-09-23 12:41:50 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-10.zip
+2026-09-23 12:41:50 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-11.zip
+2026-09-23 12:41:51 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-11.zip
+2026-09-23 12:41:51 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-12.zip
+2026-09-23 12:41:51 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2019-12.zip
+2026-09-23 12:41:51 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-01.zip
+2026-09-23 12:41:52 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-01.zip
+2026-09-23 12:41:52 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-02.zip
+2026-09-23 12:41:53 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-02.zip
+2026-09-23 12:41:53 [info     ] progress                       pct=81.0% processed=350 total=432 total_rows=659961
+2026-09-23 12:41:53 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-03.zip
+2026-09-23 12:41:53 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-03.zip
+2026-09-23 12:41:53 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-04.zip
+2026-09-23 12:41:54 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-04.zip
+2026-09-23 12:41:54 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-05.zip
+2026-09-23 12:41:54 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-05.zip
+2026-09-23 12:41:54 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-06.zip
+2026-09-23 12:41:55 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-06.zip
+2026-09-23 12:41:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-07.zip
+2026-09-23 12:41:55 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-07.zip
+2026-09-23 12:41:55 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-08.zip
+2026-09-23 12:41:56 [info     ] imported_batch                 batch=1/1 interval=1h month=8 pair=SOL/USDT rows=498 year=2020
+2026-09-23 12:41:56 [info     ] imported                       batches=1 interval=1h month=8 pair=SOL/USDT rows=498 year=2020
+2026-09-23 12:41:56 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-09.zip
+2026-09-23 12:41:58 [info     ] imported_batch                 batch=1/1 interval=1h month=9 pair=SOL/USDT rows=720 year=2020
+2026-09-23 12:41:58 [info     ] imported                       batches=1 interval=1h month=9 pair=SOL/USDT rows=720 year=2020
+2026-09-23 12:41:58 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-10.zip
+2026-09-23 12:41:59 [info     ] imported_batch                 batch=1/1 interval=1h month=10 pair=SOL/USDT rows=744 year=2020
+2026-09-23 12:41:59 [info     ] imported                       batches=1 interval=1h month=10 pair=SOL/USDT rows=744 year=2020
+2026-09-23 12:41:59 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-11.zip
+2026-09-23 12:42:00 [info     ] imported_batch                 batch=1/1 interval=1h month=11 pair=SOL/USDT rows=719 year=2020
+2026-09-23 12:42:00 [info     ] imported                       batches=1 interval=1h month=11 pair=SOL/USDT rows=719 year=2020
+2026-09-23 12:42:00 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1h/SOLUSDT-1h-2020-12.zip
+2026-09-23 12:42:01 [info     ] imported_batch                 batch=1/1 interval=1h month=12 pair=SOL/USDT rows=740 year=2020
+2026-09-23 12:42:01 [info     ] imported                       batches=1 interval=1h month=12 pair=SOL/USDT rows=740 year=2020
+2026-09-23 12:42:01 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-01.zip
+2026-09-23 12:42:02 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-01.zip
+2026-09-23 12:42:02 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-02.zip
+2026-09-23 12:42:02 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-02.zip
+2026-09-23 12:42:02 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-03.zip
+2026-09-23 12:42:03 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-03.zip
+2026-09-23 12:42:03 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-04.zip
+2026-09-23 12:42:04 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-04.zip
+2026-09-23 12:42:04 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-05.zip
+2026-09-23 12:42:04 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-05.zip
+2026-09-23 12:42:04 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-06.zip
+2026-09-23 12:42:05 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-06.zip
+2026-09-23 12:42:05 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-07.zip
+2026-09-23 12:42:05 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-07.zip
+2026-09-23 12:42:05 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-08.zip
+2026-09-23 12:42:06 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-08.zip
+2026-09-23 12:42:06 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-09.zip
+2026-09-23 12:42:06 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-09.zip
+2026-09-23 12:42:06 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-10.zip
+2026-09-23 12:42:07 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-10.zip
+2026-09-23 12:42:07 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-11.zip
+2026-09-23 12:42:08 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-11.zip
+2026-09-23 12:42:08 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-12.zip
+2026-09-23 12:42:09 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2019-12.zip
+2026-09-23 12:42:09 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-01.zip
+2026-09-23 12:42:09 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-01.zip
+2026-09-23 12:42:09 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-02.zip
+2026-09-23 12:42:09 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-02.zip
+2026-09-23 12:42:09 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-03.zip
+2026-09-23 12:42:10 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-03.zip
+2026-09-23 12:42:10 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-04.zip
+2026-09-23 12:42:10 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-04.zip
+2026-09-23 12:42:10 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-05.zip
+2026-09-23 12:42:11 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-05.zip
+2026-09-23 12:42:11 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-06.zip
+2026-09-23 12:42:12 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-06.zip
+2026-09-23 12:42:12 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-07.zip
+2026-09-23 12:42:12 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-07.zip
+2026-09-23 12:42:12 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-08.zip
+2026-09-23 12:42:13 [info     ] imported_batch                 batch=1/1 interval=4h month=8 pair=SOL/USDT rows=125 year=2020
+2026-09-23 12:42:13 [info     ] imported                       batches=1 interval=4h month=8 pair=SOL/USDT rows=125 year=2020
+2026-09-23 12:42:13 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-09.zip
+2026-09-23 12:42:14 [info     ] imported_batch                 batch=1/1 interval=4h month=9 pair=SOL/USDT rows=180 year=2020
+2026-09-23 12:42:14 [info     ] imported                       batches=1 interval=4h month=9 pair=SOL/USDT rows=180 year=2020
+2026-09-23 12:42:14 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-10.zip
+2026-09-23 12:42:15 [info     ] imported_batch                 batch=1/1 interval=4h month=10 pair=SOL/USDT rows=186 year=2020
+2026-09-23 12:42:15 [info     ] imported                       batches=1 interval=4h month=10 pair=SOL/USDT rows=186 year=2020
+2026-09-23 12:42:15 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-11.zip
+2026-09-23 12:42:16 [info     ] imported_batch                 batch=1/1 interval=4h month=11 pair=SOL/USDT rows=180 year=2020
+2026-09-23 12:42:16 [info     ] imported                       batches=1 interval=4h month=11 pair=SOL/USDT rows=180 year=2020
+2026-09-23 12:42:16 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/4h/SOLUSDT-4h-2020-12.zip
+2026-09-23 12:42:17 [info     ] imported_batch                 batch=1/1 interval=4h month=12 pair=SOL/USDT rows=186 year=2020
+2026-09-23 12:42:17 [info     ] imported                       batches=1 interval=4h month=12 pair=SOL/USDT rows=186 year=2020
+2026-09-23 12:42:17 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-01.zip
+2026-09-23 12:42:17 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-01.zip
+2026-09-23 12:42:17 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-02.zip
+2026-09-23 12:42:18 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-02.zip
+2026-09-23 12:42:18 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-03.zip
+2026-09-23 12:42:18 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-03.zip
+2026-09-23 12:42:18 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-04.zip
+2026-09-23 12:42:19 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-04.zip
+2026-09-23 12:42:19 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-05.zip
+2026-09-23 12:42:19 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-05.zip
+2026-09-23 12:42:19 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-06.zip
+2026-09-23 12:42:19 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-06.zip
+2026-09-23 12:42:19 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-07.zip
+2026-09-23 12:42:20 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-07.zip
+2026-09-23 12:42:20 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-08.zip
+2026-09-23 12:42:21 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-08.zip
+2026-09-23 12:42:21 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-09.zip
+2026-09-23 12:42:21 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-09.zip
+2026-09-23 12:42:21 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-10.zip
+2026-09-23 12:42:22 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-10.zip
+2026-09-23 12:42:22 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-11.zip
+2026-09-23 12:42:22 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-11.zip
+2026-09-23 12:42:22 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-12.zip
+2026-09-23 12:42:23 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2019-12.zip
+2026-09-23 12:42:23 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-01.zip
+2026-09-23 12:42:23 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-01.zip
+2026-09-23 12:42:23 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-02.zip
+2026-09-23 12:42:24 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-02.zip
+2026-09-23 12:42:24 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-03.zip
+2026-09-23 12:42:24 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-03.zip
+2026-09-23 12:42:24 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-04.zip
+2026-09-23 12:42:25 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-04.zip
+2026-09-23 12:42:25 [info     ] progress                       pct=92.6% processed=400 total=432 total_rows=664239
+2026-09-23 12:42:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-05.zip
+2026-09-23 12:42:25 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-05.zip
+2026-09-23 12:42:25 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-06.zip
+2026-09-23 12:42:26 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-06.zip
+2026-09-23 12:42:26 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-07.zip
+2026-09-23 12:42:26 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-07.zip
+2026-09-23 12:42:26 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-08.zip
+2026-09-23 12:42:27 [info     ] imported_batch                 batch=1/1 interval=1d month=8 pair=SOL/USDT rows=21 year=2020
+2026-09-23 12:42:27 [info     ] imported                       batches=1 interval=1d month=8 pair=SOL/USDT rows=21 year=2020
+2026-09-23 12:42:27 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-09.zip
+2026-09-23 12:42:28 [info     ] imported_batch                 batch=1/1 interval=1d month=9 pair=SOL/USDT rows=30 year=2020
+2026-09-23 12:42:28 [info     ] imported                       batches=1 interval=1d month=9 pair=SOL/USDT rows=30 year=2020
+2026-09-23 12:42:28 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-10.zip
+2026-09-23 12:42:29 [info     ] imported_batch                 batch=1/1 interval=1d month=10 pair=SOL/USDT rows=31 year=2020
+2026-09-23 12:42:29 [info     ] imported                       batches=1 interval=1d month=10 pair=SOL/USDT rows=31 year=2020
+2026-09-23 12:42:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-11.zip
+2026-09-23 12:42:29 [info     ] imported_batch                 batch=1/1 interval=1d month=11 pair=SOL/USDT rows=30 year=2020
+2026-09-23 12:42:29 [info     ] imported                       batches=1 interval=1d month=11 pair=SOL/USDT rows=30 year=2020
+2026-09-23 12:42:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1d/SOLUSDT-1d-2020-12.zip
+2026-09-23 12:42:29 [info     ] imported_batch                 batch=1/1 interval=1d month=12 pair=SOL/USDT rows=31 year=2020
+2026-09-23 12:42:29 [info     ] imported                       batches=1 interval=1d month=12 pair=SOL/USDT rows=31 year=2020
+2026-09-23 12:42:29 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-01.zip
+2026-09-23 12:42:30 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-01.zip
+2026-09-23 12:42:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-02.zip
+2026-09-23 12:42:30 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-02.zip
+2026-09-23 12:42:30 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-03.zip
+2026-09-23 12:42:31 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-03.zip
+2026-09-23 12:42:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-04.zip
+2026-09-23 12:42:31 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-04.zip
+2026-09-23 12:42:31 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-05.zip
+2026-09-23 12:42:32 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-05.zip
+2026-09-23 12:42:32 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-06.zip
+2026-09-23 12:42:33 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-06.zip
+2026-09-23 12:42:33 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-07.zip
+2026-09-23 12:42:34 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-07.zip
+2026-09-23 12:42:34 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-08.zip
+2026-09-23 12:42:35 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-08.zip
+2026-09-23 12:42:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-09.zip
+2026-09-23 12:42:35 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-09.zip
+2026-09-23 12:42:35 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-10.zip
+2026-09-23 12:42:36 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-10.zip
+2026-09-23 12:42:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-11.zip
+2026-09-23 12:42:36 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-11.zip
+2026-09-23 12:42:36 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-12.zip
+2026-09-23 12:42:37 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2019-12.zip
+2026-09-23 12:42:37 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-01.zip
+2026-09-23 12:42:38 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-01.zip
+2026-09-23 12:42:38 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-02.zip
+2026-09-23 12:42:39 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-02.zip
+2026-09-23 12:42:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-03.zip
+2026-09-23 12:42:39 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-03.zip
+2026-09-23 12:42:39 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-04.zip
+2026-09-23 12:42:40 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-04.zip
+2026-09-23 12:42:40 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-05.zip
+2026-09-23 12:42:40 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-05.zip
+2026-09-23 12:42:40 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-06.zip
+2026-09-23 12:42:41 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-06.zip
+2026-09-23 12:42:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-07.zip
+2026-09-23 12:42:41 [debug    ] file_not_found                 url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-07.zip
+2026-09-23 12:42:41 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-08.zip
+2026-09-23 12:42:42 [info     ] imported_batch                 batch=1/1 interval=1w month=8 pair=SOL/USDT rows=4 year=2020
+2026-09-23 12:42:42 [info     ] imported                       batches=1 interval=1w month=8 pair=SOL/USDT rows=4 year=2020
+2026-09-23 12:42:42 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-09.zip
+2026-09-23 12:42:43 [info     ] imported_batch                 batch=1/1 interval=1w month=9 pair=SOL/USDT rows=4 year=2020
+2026-09-23 12:42:43 [info     ] imported                       batches=1 interval=1w month=9 pair=SOL/USDT rows=4 year=2020
+2026-09-23 12:42:43 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-10.zip
+2026-09-23 12:42:44 [info     ] imported_batch                 batch=1/1 interval=1w month=10 pair=SOL/USDT rows=4 year=2020
+2026-09-23 12:42:44 [info     ] imported                       batches=1 interval=1w month=10 pair=SOL/USDT rows=4 year=2020
+2026-09-23 12:42:44 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-11.zip
+2026-09-23 12:42:44 [info     ] imported_batch                 batch=1/1 interval=1w month=11 pair=SOL/USDT rows=5 year=2020
+2026-09-23 12:42:44 [info     ] imported                       batches=1 interval=1w month=11 pair=SOL/USDT rows=5 year=2020
+2026-09-23 12:42:44 [info     ] downloading                    url=https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2020-12.zip
+2026-09-23 12:42:45 [info     ] imported_batch                 batch=1/1 interval=1w month=12 pair=SOL/USDT rows=4 year=2020
+2026-09-23 12:42:45 [info     ] imported                       batches=1 interval=1w month=12 pair=SOL/USDT rows=4 year=2020
+2026-09-23 12:42:45 [info     ] database_closed
+2026-09-23 12:42:45 [info     ] import_complete                failed_files=0 processed_files=432 total_rows=664403
+=== 2026-09-23T12:42:46Z import exit=0 ; df: 52G free

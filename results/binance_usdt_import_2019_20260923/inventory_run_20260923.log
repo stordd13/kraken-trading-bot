@@ -1,0 +1,9 @@
+=== 2026-09-23T12:44:05Z inventory start ; HEAD 373da3f2c471915251772ef5f3569c81b8fe5c3f (dev) ; data_inventory.py sha256 1b3b87f02c7a37dd3422a1fe13c670fc0fc4301d928fb0255c7e07f47f040c63
+2026-09-23 12:44:07 [info     ] initializing_database          echo=False max_overflow=10 pool_size=5
+2026-09-23 12:44:07 [info     ] database_connection_successful
+2026-09-23 12:44:59 [info     ] database_closed
+  74 séries agrégées, borne timestamp <= 2026-09-23T12:43:00+00:00
+  filtre --pairs BTC/USDT, ETH/USDT, SOL/USDT : 18 séries retenues
+inventory.json written: /home/bruno/usdt2019_inventory_out/inventory.json (sha256 cd5ad866c9e34e2633348c8e36b7b3399119e24e012972ee2eff11d9d634c23f)
+markdown written: /home/bruno/usdt2019_inventory_out/inventory.md
+=== 2026-09-23T12:45:00Z inventory exit=0

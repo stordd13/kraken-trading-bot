@@ -5,13 +5,14 @@
 > Binance a suspendu ses services UE le 1er juillet 2026, aucune mise à jour n'est prévue. Ce skill
 > documente comment elles ont été importées, pour référence et pour le futur import Bybit (B3,
 > `scripts/bybit_kline_import.py`, même modèle mais REST paginé — voir `skills/bybit.md`).
-> **Depuis le 2026-09-23, la même table porte aussi 18 séries `*/USDT`** (2,58 M rows, 6 TF, 2021-01 → 2026-08,
-> contiguës) — section « Séries USDT » ci-dessous. Total `binance` : **11 288 569 rows, 39 séries**.
+> **Depuis le 2026-09-23, la même table porte aussi 18 séries `*/USDT`** (3,24 M rows, 6 TF, **2019-01 → 2026-08** pour
+> BTC/ETH, 2020-08 → 2026-08 pour SOL, contiguës, en deux passes le même jour) — section « Séries USDT » ci-dessous. Total
+> `binance` : **11 952 972 rows, 39 séries**.
 
 ## Avant tout : vérifier ce qui est en DB
 
 Les données sont déjà là. **Ne pas relancer l'import.** Script de vérification dans
-`skills/database.md` (attendu `binance: 11 288 569` depuis le 2026-09-23 — 8 712 718 `*/USDC` + 2 575 851 `*/USDT`).
+`skills/database.md` (attendu `binance: 11 952 972` depuis le 2026-09-23, seconde passe — 8 712 718 `*/USDC` + 3 240 254 `*/USDT`).
 
 ## Le script
 
@@ -78,9 +79,9 @@ FROM market_data_ohlc WHERE exchange = 'binance'
 GROUP BY pair, interval ORDER BY pair, interval;
 ```
 
-Si tu vois 39 séries et 11 288 569 rows (21 séries `*/USDC` = 8 712 718, 18 séries `*/USDT` = 2 575 851), l'import
+Si tu vois 39 séries et 11 952 972 rows (21 séries `*/USDC` = 8 712 718, 18 séries `*/USDT` = 3 240 254), l'import
 est déjà fait. Le script est idempotent mais re-télécharger 1260 fichiers ZIP prend inutilement 1-3h. (L'accès à
-`data.binance.vision` depuis le serveur Hetzner a été **vérifié le 2026-09-23** : 1 218 fichiers téléchargés sans échec.)
+`data.binance.vision` depuis le serveur Hetzner a été **vérifié le 2026-09-23** : 1 218 + 318 fichiers téléchargés sans échec.)
 
 ### Timestamps : millisecondes vs microsecondes (leçon apprise dans la douleur)
 
@@ -142,13 +143,14 @@ Vérifier :
 - 39 lignes = 21 `*/USDC` (3 paires × 7 intervals) + 18 `*/USDT` (3 paires × 6 intervals, pas de 1m)
 - USDC : BTC et ETH commencent le 2021-01-01, SOL le 2021-09-24 ; toutes finissent le 2026-04-01 00:00 (fin de période de la
   dernière candle de mars 2026 ; 1w : 2026-04-06) ; 8 712 718 rows
-- USDT : les trois paires commencent le 2021-01-01 et finissent le 2026-09-01 00:00 (1w : 2026-07-06, voir « Séries USDT ») ;
-  2 575 851 rows
-- Total 11 288 569 rows
+- USDT : BTC et ETH commencent le 2019-01-01 00:05 (1w : 2019-01-14), SOL le 2020-08-11 06:05 (1w : 2020-08-17, premier
+  fichier Vision 2020-08) ; toutes finissent le 2026-09-01 00:00 (1w : 2026-07-06, voir « Séries USDT ») ; 3 240 254 rows
+- Total 11 952 972 rows
 
 Inventaire complet (trous, attendus, séries) : `scripts/audit/data_inventory.py` (lecture seule, `--now` = borne
 d'observation ; `--pairs` pour restreindre) — artefacts de référence `results/data_inventory_20260923/` (22/09, USDC) et
-`results/data_inventory_usdt_20260923/` (23/09, post-import, toutes séries).
+`results/data_inventory_usdt_20260923/` (23/09, post-import, toutes séries) et `results/data_inventory_usdt_2019_20260923/`
+(23/09, après la seconde passe, `--pairs BTC/USDT,ETH/USDT,SOL/USDT --skip-vision`).
 
 ## Séries USDT (import du 2026-09-23)
 
@@ -203,6 +205,47 @@ poetry run python scripts/binance_vision_import.py --pairs BTC/USDT,ETH/USDT,SOL
 
 Le mois d'août 2026 est aussi le dernier mois complet pour les autres TF : toute extension au-delà de 2026-08 est une nouvelle
 décision (même commande, `--start-date 2026-09-01`).
+
+### Prolongation 2019-2020 (seconde passe du 2026-09-23) — borne de début
+
+Décision Bruno (23/09) : une porte 1w avec EMA 50 exige 50 semaines d'amorçage ; avec des séries qui commencent au 2021-01-01,
+aucune fenêtre ne peut débuter avant ~2021-12. Les 18 séries `*/USDT` ont été **prolongées vers l'arrière** avec le même script,
+non modifié, idempotent (rapport `results/binance_usdt_import_2019_report.md`, artefacts
+`results/binance_usdt_import_2019_20260923/`, backup `~/backups/krakenbot/krakenbot_20260923_pre_usdt2019.dump`) :
+
+```bash
+poetry run python scripts/binance_vision_import.py --pairs BTC/USDT,ETH/USDT,SOL/USDT \
+    --intervals 5m,15m,1h,4h,1d,1w --start-date 2019-01-01 --end-date 2020-12-31
+```
+
+**Bornes de début des séries USDT** (à ne pas confondre avec ce que Vision propose) :
+- **BTC/USDT, ETH/USDT : `2019-01-01`** (`--start-date 2019-01-01`, premier stamp `2019-01-01T00:05Z`, 1w `2019-01-14T00:00Z`).
+  Vision publie `BTCUSDT` / `ETHUSDT` depuis 2017-08 : **les mois antérieurs à 2019-01 ne sont pas importés** ; toute extension
+  est une nouvelle décision (même commande, `--end-date 2018-12-31`).
+- **SOL/USDT : premier fichier Vision existant, `2020-08`** (cotation `2020-08-11T06:00Z`, premier stamp 5m `2020-08-11T06:05Z`,
+  1w `2020-08-17T00:00Z`). Les 19 mois 2019-01 → 2020-07 répondent 404 : **114 `file_not_found` attendus** (19 × 6 TF), constatés
+  par `HEAD` avant l'import et comptés dans le journal — ce n'est pas une erreur.
+
+**Résultat** : 432 fichiers traités, 318 importés, 0 `download_failed`, 0 `month_failed`, 664 403 rows (BTC = ETH = 302 619,
+SOL = 59 165) ; chaque série = count du 23/09 (2021+) + rows importées, rows 2021+ intactes (diff vide à cinq champs : count, min,
+max, `sum(close)`, `sum(volume)`), USDC intactes ; **jointure au 2021-01-01 sans trou** (le fichier 2020-12 apporte les stamps
+`2021-01-01T00:00Z` et `2021-01-04T00:00Z` pour la 1w).
+
+| TF | BTC, ETH importées (grille 731 j) | manquantes | SOL importées (grille depuis 2020-08-11T06:00Z) | manquantes |
+|---|---|---|---|---|
+| 5m | 209 927 (210 528) | 601 | 41 042 (41 112) | 70 |
+| 15m | 69 977 (70 176) | 199 | 13 681 (13 704) | 23 |
+| 1h | 17 499 (17 544) | 45 | 3 421 (3 426) | 5 |
+| 4h | 4 381 (4 386) | 5 | 857 (857) | 0 |
+| 1d | 731 (731) | 0 | 143 (143) | 0 |
+| 1w | 104 (104) | 0 | 21 (21) | 0 |
+
+Trous 2019-2020 (maintenances Binance, mesurées par `data_inventory.py`, identiques sur BTC/ETH, SOL partage les trois de
+nov.–déc. 2020) : 2019-03-12 (6 h), **2019-05-15 (10 h, la plus longue)**, 2019-06-07 (1 h), 2019-08-15 (8 h), 2019-11-13 (2 h 20),
+2019-11-25 (2 h), 2020-02-09 (1 h), 2020-02-19 (5 h 50), 2020-03-04 (2 h 05), 2020-04-25 (2 h 30), 2020-06-28 (3 h 30), 2020-11-30
+(1 h), 2020-12-21 (3 h 50), 2020-12-25 (1 h) — **consignés, jamais comblés** ; aucun sur 1d / 1w ; sur 4h, 5 bougies manquantes
+(2019-03-12, 2019-05-15 × 2 consécutives, 2019-08-15, 2020-02-19). Ce n'est pas une validation : rien de backtesté, aucune
+comparabilité USDC ↔ USDT mesurée.
 
 ## Trous récents (backfill)
 

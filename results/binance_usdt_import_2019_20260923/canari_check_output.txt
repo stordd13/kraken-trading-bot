@@ -1,0 +1,32 @@
+# canari_check — 2026-09-23T12:26:43Z, lecture seule, attendu 31 rows BTC/USDT 1440, 2019-01-02T00:00Z -> 2019-02-01T00:00Z ; série 1d = 2 100 ; USDC 8 712 718 ; USDT 2021+ 2 575 851
+SELECT pair, interval, count(*), min(timestamp), max(timestamp) FROM market_data_ohlc WHERE exchange='binance' AND pair='BTC/USDT' AND interval=1440 AND timestamp <= '2019-02-01 00:00:00+00' GROUP BY 1,2;
+   pair   | interval | count |          min           |          max           
+----------+----------+-------+------------------------+------------------------
+ BTC/USDT |     1440 |    31 | 2019-01-02 00:00:00+00 | 2019-02-01 00:00:00+00
+(1 row)
+
+SELECT pair, interval, count(*), min(timestamp), max(timestamp) FROM market_data_ohlc WHERE exchange='binance' AND pair='BTC/USDT' AND interval=1440 GROUP BY 1,2;
+   pair   | interval | count |          min           |          max           
+----------+----------+-------+------------------------+------------------------
+ BTC/USDT |     1440 |  2100 | 2019-01-02 00:00:00+00 | 2026-09-01 00:00:00+00
+(1 row)
+
+(SELECT timestamp, open, high, low, close, volume, trades_count, vwap FROM market_data_ohlc WHERE exchange='binance' AND pair='BTC/USDT' AND interval=1440 AND timestamp <= '2019-02-01 00:00:00+00' ORDER BY timestamp LIMIT 3)
+UNION ALL
+(SELECT * FROM (SELECT timestamp, open, high, low, close, volume, trades_count, vwap FROM market_data_ohlc WHERE exchange='binance' AND pair='BTC/USDT' AND interval=1440 AND timestamp <= '2019-02-01 00:00:00+00' ORDER BY timestamp DESC LIMIT 3) t ORDER BY timestamp);
+       timestamp        |     open      |     high      |      low      |     close     |     volume     | trades_count | vwap 
+------------------------+---------------+---------------+---------------+---------------+----------------+--------------+------
+ 2019-01-02 00:00:00+00 | 3701.23000000 | 3810.16000000 | 3642.00000000 | 3797.14000000 | 23741.68703300 |       154227 |     
+ 2019-01-03 00:00:00+00 | 3796.45000000 | 3882.14000000 | 3750.45000000 | 3858.56000000 | 35156.46336900 |       218538 |     
+ 2019-01-04 00:00:00+00 | 3857.57000000 | 3862.74000000 | 3730.00000000 | 3766.78000000 | 29406.94835900 |       199812 |     
+ 2019-01-30 00:00:00+00 | 3434.00000000 | 3443.45000000 | 3349.92000000 | 3411.04000000 | 29544.92897700 |       189650 |     
+ 2019-01-31 00:00:00+00 | 3410.04000000 | 3478.00000000 | 3387.10000000 | 3458.18000000 | 23968.26024300 |       180820 |     
+ 2019-02-01 00:00:00+00 | 3457.50000000 | 3489.20000000 | 3418.80000000 | 3434.10000000 | 29607.19025300 |       198100 |     
+(6 rows)
+
+SELECT count(*) FILTER (WHERE pair LIKE '%/USDC') AS usdc_rows, count(*) FILTER (WHERE pair LIKE '%/USDT' AND timestamp > '2021-01-01 00:00:00+00') AS usdt_rows_2021_plus FROM market_data_ohlc WHERE exchange='binance';
+ usdc_rows | usdt_rows_2021_plus 
+-----------+---------------------
+   8712718 |             2575851
+(1 row)
+
