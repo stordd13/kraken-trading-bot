@@ -603,6 +603,15 @@ Détail : `ROADMAP.md`.
     première campagne réelle — dériver le nom du manifeste (identifiant de variante ou champ déclaré et entré dans
     l'empreinte), ou amender le § L.2. Sites : `scripts/audit/c3_verdict.py`, `--campaign` des deux parseurs (`build_parser`, `build_chain_parser`).
 
+22. **`write_json(default=str)` convertit en chaîne tout type non JSON sans signaler**
+    (`rejeu_common.py:344`, réexporté par `scripts/audit/c3_common.py`, donc utilisé par tous les
+    artefacts C3). Constat 24/09 (application v2.1, S-5). Incompatible avec le § F.2 (d) v2.1 :
+    les suites `Δ*` et les bornes sont sérialisées en `repr` exact et recoupées au bit par la chaîne ;
+    un `numpy.float64` ou un `Decimal` glissé dans un artefact serait écrit comme texte, et le rejeu
+    échouerait en violation sans cause lisible. **Fix (C3b)** : `default` qui lève `TypeError` en nommant
+    la clé ; les conversions légitimes (`Decimal` → `str`, `datetime` → ISO) faites explicitement au
+    site d'écriture. Test rouge-avant : un `numpy.float64` dans un artefact → erreur, pas une chaîne.
+
 **Note WF** (audit red-team 16/09, reformulée le 22 sept — **non déclarée résolue**) : la sélection top-5 de
 P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7
 **n'est pas** une validation chronologique. **État réel** : **nouvelle voie C3 chronologique** — protocole
