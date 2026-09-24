@@ -1,0 +1,7 @@
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+FAILED tests/test_strategies/test_grid_atr_v4_backward_compat.py::test_grid_atr_v4_backward_compat_hash[binance]
+FAILED tests/test_strategies/test_grid_atr_v4_backward_compat.py::test_grid_atr_v4_backward_compat_hash[bybit]
+2 failed, 2842 passed, 6 skipped, 25 deselected in 509.12s (0:08:29)
+exit=1

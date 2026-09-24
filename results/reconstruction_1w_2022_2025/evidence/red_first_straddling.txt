@@ -1,0 +1,4 @@
+tests/test_scripts/test_reconstruct_1w.py:401: AttributeError
+=========================== short test summary info ============================
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_straddling_weeks_are_those_ending_in_another_month
+1 failed, 36 deselected in 0.17s

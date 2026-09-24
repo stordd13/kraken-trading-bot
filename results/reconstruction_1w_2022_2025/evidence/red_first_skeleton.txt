@@ -1,0 +1,953 @@
+FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF.                                     [100%]
+=================================== FAILURES ===================================
+___________________ test_expected_missing_is_the_brief_list ____________________
+
+    def test_expected_missing_is_the_brief_list() -> None:
+>       assert r1w.EXPECTED_MISSING == BRIEF_MISSING
+               ^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reconstruct_1w' has no attribute 'EXPECTED_MISSING'
+
+
+tests/test_scripts/test_reconstruct_1w.py:104: AttributeError
+________________ test_window_and_anchor_are_the_protocol_values ________________
+
+    def test_window_and_anchor_are_the_protocol_values() -> None:
+>       assert (r1w.WINDOW_START, r1w.WINDOW_END) == (PROTOCOL_START, PROTOCOL_END)
+                ^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reconstruct_1w' has no attribute 'WINDOW_START'
+
+
+tests/test_scripts/test_reconstruct_1w.py:109: AttributeError
+___________________ test_grid_helpers_are_reused_by_identity ___________________
+
+    def test_grid_helpers_are_reused_by_identity() -> None:
+>       assert r1w.WEEK_MINUTES is cc.WEEK_MINUTES
+               ^^^^^^^^^^^^^^^^
+E       AttributeError: module 'reconstruct_1w' has no attribute 'WEEK_MINUTES'
+
+
+tests/test_scripts/test_reconstruct_1w.py:116: AttributeError
+__________________ test_source_stamps_are_s_minus_6_days_to_s __________________
+
+    def test_source_stamps_are_s_minus_6_days_to_s() -> None:
+        """Brief § 2 : stamps ``S − 6 j … S`` ; the row stamped Tuesday 00:00 is Monday's candle."""
+        expected = tuple(datetime(2022, m, d, tzinfo=UTC) for m, d in (
+            (5, 31), (6, 1), (6, 2), (6, 3), (6, 4), (6, 5), (6, 6)
+        ))
+>       got = r1w.source_stamps(S)
+              ^^^^^^^^^^^^^^^^^^^^
+
+expected   = (datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 6, 1, 0, 0, tzinfo=dateti...022, 6, 4, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 6, 5, 0, 0, tzinfo=datetime.timezone.utc), ...)
+
+tests/test_scripts/test_reconstruct_1w.py:133: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc),)
+kwargs = {}
+
+    def source_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc),)
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:27: NotImplementedError
+______________ test_source_stamps_refuse_a_non_week_stamp[stamp0] ______________
+
+stamp = datetime.datetime(2022, 6, 7, 0, 0, tzinfo=datetime.timezone.utc)
+
+    @pytest.mark.parametrize(
+        "stamp",
+        [
+            datetime(2022, 6, 7, tzinfo=UTC),  # a Tuesday
+            datetime(2022, 6, 6, 1, 0, tzinfo=UTC),  # Monday, not 00:00
+        ],
+    )
+    def test_source_stamps_refuse_a_non_week_stamp(stamp: datetime) -> None:
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.source_stamps(stamp)
+
+stamp      = datetime.datetime(2022, 6, 7, 0, 0, tzinfo=datetime.timezone.utc)
+
+tests/test_scripts/test_reconstruct_1w.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 7, 0, 0, tzinfo=datetime.timezone.utc),)
+kwargs = {}
+
+    def source_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 7, 0, 0, tzinfo=datetime.timezone.utc),)
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:27: NotImplementedError
+______________ test_source_stamps_refuse_a_non_week_stamp[stamp1] ______________
+
+stamp = datetime.datetime(2022, 6, 6, 1, 0, tzinfo=datetime.timezone.utc)
+
+    @pytest.mark.parametrize(
+        "stamp",
+        [
+            datetime(2022, 6, 7, tzinfo=UTC),  # a Tuesday
+            datetime(2022, 6, 6, 1, 0, tzinfo=UTC),  # Monday, not 00:00
+        ],
+    )
+    def test_source_stamps_refuse_a_non_week_stamp(stamp: datetime) -> None:
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.source_stamps(stamp)
+
+stamp      = datetime.datetime(2022, 6, 6, 1, 0, tzinfo=datetime.timezone.utc)
+
+tests/test_scripts/test_reconstruct_1w.py:148: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 1, 0, tzinfo=datetime.timezone.utc),)
+kwargs = {}
+
+    def source_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 1, 0, tzinfo=datetime.timezone.utc),)
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:27: NotImplementedError
+__________________ test_source_stamps_refuse_a_naive_datetime __________________
+
+    def test_source_stamps_refuse_a_naive_datetime() -> None:
+        with pytest.raises(ValueError):
+>           r1w.source_stamps(datetime(2022, 6, 6))
+
+
+tests/test_scripts/test_reconstruct_1w.py:153: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0),), kwargs = {}
+
+    def source_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0),)
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:27: NotImplementedError
+_____________________ test_aggregate_week_ohlcv_and_trades _____________________
+
+    def test_aggregate_week_ohlcv_and_trades() -> None:
+>       rebuilt = r1w.aggregate_week(S, _week_rows())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+tests/test_scripts/test_reconstruct_1w.py:162: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+___________________ test_aggregate_week_ignores_input_order ____________________
+
+    def test_aggregate_week_ignores_input_order() -> None:
+        """``open`` is the open of the first *stamp*, not of the first row handed in."""
+        rows = list(reversed(_week_rows()))
+>       rebuilt = r1w.aggregate_week(S, rows)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('96.00000000'), high...Decimal('103.00000000'), close=Decimal('108.00000000'), volume=Decimal('2.25000000'), trades_count=20, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:177: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 6, 6, 0,...ecimal('103.00000000'), close=Decimal('108.00000000'), volume=Decimal('2.25000000'), trades_count=20, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 6, 6, 0,...ecimal('103.00000000'), close=Decimal('108.00000000'), volume=Decimal('2.25000000'), trades_count=20, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+______________________ test_trades_count_null_propagates _______________________
+
+    def test_trades_count_null_propagates() -> None:
+        rows = _week_rows()
+        rows[4] = _candle(S - 2 * DAY, "90", "95", "89", "94", "0.5", None)
+>       assert r1w.aggregate_week(S, rows).trades_count is None
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:184: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+______________________________ test_vwap_policies ______________________________
+
+    def test_vwap_policies() -> None:
+        """Brief § 2 (c) : weighted = Σ(vwap_d·vol_d)/Σvol_d. Six days at vwap 10 vol 1, the last at vwap 20 vol 4 :
+        (60 + 80) / 10 = 14."""
+        rows = [
+            _candle(stamp, "1", "1", "1", "1", "4" if stamp == S else "1", 1, "20" if stamp == S else "10")
+            for stamp in (S - k * DAY for k in range(7))
+        ]
+>       assert r1w.aggregate_week(S, rows, vwap_policy="null").vwap is None
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('1'), high=Decimal('...high=Decimal('1'), low=Decimal('1'), close=Decimal('1'), volume=Decimal('1'), trades_count=1, vwap=Decimal('10')), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:194: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 6, 6, 0,...igh=Decimal('1'), low=Decimal('1'), close=Decimal('1'), volume=Decimal('1'), trades_count=1, vwap=Decimal('10')), ...])
+kwargs = {'vwap_policy': 'null'}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 6, 6, 0,...igh=Decimal('1'), low=Decimal('1'), close=Decimal('1'), volume=Decimal('1'), trades_count=1, vwap=Decimal('10')), ...])
+kwargs     = {'vwap_policy': 'null'}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+____ test_aggregate_week_refuses_anything_but_the_seven_grid_rows[six-rows] ____
+
+rows = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...), low=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None)]
+
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            pytest.param(_drop(_week_rows(), 3), id="six-rows"),
+            pytest.param(_week_rows() + [_candle(S + DAY, "1", "1", "1", "1", "1")], id="eight-rows"),
+            pytest.param(
+                _drop(_week_rows(), 3) + [_week_rows()[2]], id="duplicate-stamp"
+            ),
+            pytest.param(
+                _drop(_week_rows(), 3)
+                + [_candle(S - 3 * DAY + timedelta(hours=1), "1", "1", "1", "1", "1")],
+                id="off-grid-stamp",
+            ),
+            pytest.param(
+                _drop(_week_rows(), 6) + [_candle(S - WEEK, "1", "1", "1", "1", "1")],
+                id="previous-monday-instead-of-s",
+            ),
+        ],
+    )
+    def test_aggregate_week_refuses_anything_but_the_seven_grid_rows(rows: list[r1w.Candle]) -> None:
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.aggregate_week(S, rows)
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...), low=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None)]
+
+tests/test_scripts/test_reconstruct_1w.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0..., low=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None)])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0..., low=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None)])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+___ test_aggregate_week_refuses_anything_but_the_seven_grid_rows[eight-rows] ___
+
+rows = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...]
+
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            pytest.param(_drop(_week_rows(), 3), id="six-rows"),
+            pytest.param(_week_rows() + [_candle(S + DAY, "1", "1", "1", "1", "1")], id="eight-rows"),
+            pytest.param(
+                _drop(_week_rows(), 3) + [_week_rows()[2]], id="duplicate-stamp"
+            ),
+            pytest.param(
+                _drop(_week_rows(), 3)
+                + [_candle(S - 3 * DAY + timedelta(hours=1), "1", "1", "1", "1", "1")],
+                id="off-grid-stamp",
+            ),
+            pytest.param(
+                _drop(_week_rows(), 6) + [_candle(S - WEEK, "1", "1", "1", "1", "1")],
+                id="previous-monday-instead-of-s",
+            ),
+        ],
+    )
+    def test_aggregate_week_refuses_anything_but_the_seven_grid_rows(rows: list[r1w.Candle]) -> None:
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.aggregate_week(S, rows)
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+_ test_aggregate_week_refuses_anything_but_the_seven_grid_rows[duplicate-stamp] _
+
+rows = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None), ...]
+
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            pytest.param(_drop(_week_rows(), 3), id="six-rows"),
+            pytest.param(_week_rows() + [_candle(S + DAY, "1", "1", "1", "1", "1")], id="eight-rows"),
+            pytest.param(
+                _drop(_week_rows(), 3) + [_week_rows()[2]], id="duplicate-stamp"
+            ),
+            pytest.param(
+                _drop(_week_rows(), 3)
+                + [_candle(S - 3 * DAY + timedelta(hours=1), "1", "1", "1", "1", "1")],
+                id="off-grid-stamp",
+            ),
+            pytest.param(
+                _drop(_week_rows(), 6) + [_candle(S - WEEK, "1", "1", "1", "1", "1")],
+                id="previous-monday-instead-of-s",
+            ),
+        ],
+    )
+    def test_aggregate_week_refuses_anything_but_the_seven_grid_rows(rows: list[r1w.Candle]) -> None:
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.aggregate_week(S, rows)
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+_ test_aggregate_week_refuses_anything_but_the_seven_grid_rows[off-grid-stamp] _
+
+rows = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None), ...]
+
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            pytest.param(_drop(_week_rows(), 3), id="six-rows"),
+            pytest.param(_week_rows() + [_candle(S + DAY, "1", "1", "1", "1", "1")], id="eight-rows"),
+            pytest.param(
+                _drop(_week_rows(), 3) + [_week_rows()[2]], id="duplicate-stamp"
+            ),
+            pytest.param(
+                _drop(_week_rows(), 3)
+                + [_candle(S - 3 * DAY + timedelta(hours=1), "1", "1", "1", "1", "1")],
+                id="off-grid-stamp",
+            ),
+            pytest.param(
+                _drop(_week_rows(), 6) + [_candle(S - WEEK, "1", "1", "1", "1", "1")],
+                id="previous-monday-instead-of-s",
+            ),
+        ],
+    )
+    def test_aggregate_week_refuses_anything_but_the_seven_grid_rows(rows: list[r1w.Candle]) -> None:
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.aggregate_week(S, rows)
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('95.00000000'), close=Decimal('98.75000000'), volume=Decimal('0.75000000'), trades_count=70, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+_ test_aggregate_week_refuses_anything_but_the_seven_grid_rows[previous-monday-instead-of-s] _
+
+rows = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...]
+
+    @pytest.mark.parametrize(
+        "rows",
+        [
+            pytest.param(_drop(_week_rows(), 3), id="six-rows"),
+            pytest.param(_week_rows() + [_candle(S + DAY, "1", "1", "1", "1", "1")], id="eight-rows"),
+            pytest.param(
+                _drop(_week_rows(), 3) + [_week_rows()[2]], id="duplicate-stamp"
+            ),
+            pytest.param(
+                _drop(_week_rows(), 3)
+                + [_candle(S - 3 * DAY + timedelta(hours=1), "1", "1", "1", "1", "1")],
+                id="off-grid-stamp",
+            ),
+            pytest.param(
+                _drop(_week_rows(), 6) + [_candle(S - WEEK, "1", "1", "1", "1", "1")],
+                id="previous-monday-instead-of-s",
+            ),
+        ],
+    )
+    def test_aggregate_week_refuses_anything_but_the_seven_grid_rows(rows: list[r1w.Candle]) -> None:
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.aggregate_week(S, rows)
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:227: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+___________________ test_aggregate_week_refuses_a_null_price ___________________
+
+    def test_aggregate_week_refuses_a_null_price() -> None:
+        rows = _week_rows()
+        rows[4] = r1w.Candle(S - 2 * DAY, D("90"), D("95"), None, D("94"), D("0.5"), 50)
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.aggregate_week(S, rows)
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:234: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+_________________ test_aggregate_week_refuses_a_non_week_stamp _________________
+
+    def test_aggregate_week_refuses_a_non_week_stamp() -> None:
+        with pytest.raises(r1w.NotReconstructibleError):
+>           r1w.aggregate_week(S + DAY, _week_rows())
+
+
+tests/test_scripts/test_reconstruct_1w.py:239: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 7, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 7, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+__________________ test_candle_refuses_float_and_naive_stamp ___________________
+
+    def test_candle_refuses_float_and_naive_stamp() -> None:
+>       with pytest.raises(TypeError):
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE <class 'TypeError'>
+
+
+tests/test_scripts/test_reconstruct_1w.py:243: Failed
+______________ test_source_sha256_is_stable_and_order_independent ______________
+
+    def test_source_sha256_is_stable_and_order_independent() -> None:
+        rows = _week_rows()
+>       digest = r1w.source_sha256("BTC/USDT", rows)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:256: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('BTC/USDT', [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def source_sha256(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = ('BTC/USDT', [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:43: NotImplementedError
+_____________ test_source_sha256_changes_with_a_value_or_the_pair ______________
+
+    def test_source_sha256_changes_with_a_value_or_the_pair() -> None:
+        rows = _week_rows()
+>       digest = r1w.source_sha256("BTC/USDT", rows)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+rows       = [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.00000000'), hi...w=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...]
+
+tests/test_scripts/test_reconstruct_1w.py:265: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('BTC/USDT', [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def source_sha256(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = ('BTC/USDT', [Candle(timestamp=datetime.datetime(2022, 5, 31, 0, 0, tzinfo=datetime.timezone.utc), open=Decimal('100.0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:43: NotImplementedError
+_____________________ test_compare_week_identical_is_empty _____________________
+
+    def test_compare_week_identical_is_empty() -> None:
+>       rebuilt = r1w.aggregate_week(S, _week_rows())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+tests/test_scripts/test_reconstruct_1w.py:278: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+________________ test_compare_week_reports_each_column_by_kind _________________
+
+    def test_compare_week_reports_each_column_by_kind() -> None:
+>       rebuilt = r1w.aggregate_week(S, _week_rows())
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+tests/test_scripts/test_reconstruct_1w.py:283: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs = {}
+
+    def aggregate_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), [Candle(timestamp=datetime.datetime(2022, 5, 31, 0...=Decimal('93.00000000'), close=Decimal('96.00000000'), volume=Decimal('1.00000000'), trades_count=60, vwap=None), ...])
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:39: NotImplementedError
+_______________ test_expected_week_stamps_on_the_campaign_window _______________
+
+    def test_expected_week_stamps_on_the_campaign_window() -> None:
+        """2021-03-01 → 2026-06-29 = 1946 days = 278 weeks : 278 Monday stamps in ``(start, end]`` (brief § 2 (c) :
+        « ≈ 270 par paire » present = 278 − 8)."""
+>       grid = r1w.expected_week_stamps(PROTOCOL_START, PROTOCOL_END)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+tests/test_scripts/test_reconstruct_1w.py:302: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs = {}
+
+    def expected_week_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:31: NotImplementedError
+_____________ test_missing_week_stamps_splits_missing_and_off_grid _____________
+
+    def test_missing_week_stamps_splits_missing_and_off_grid() -> None:
+        start, end = datetime(2022, 5, 1, tzinfo=UTC), datetime(2022, 7, 31, tzinfo=UTC)
+        grid = [datetime(2022, 5, 2, tzinfo=UTC) + k * WEEK for k in range(13)]
+        present = [s for s in grid if s != S] + [
+            datetime(2022, 6, 14, tzinfo=UTC),  # a Tuesday: off grid
+            datetime(2022, 4, 25, tzinfo=UTC),  # before the window: ignored
+        ]
+>       missing, off_grid = r1w.missing_week_stamps(present, start, end)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+end        = datetime.datetime(2022, 7, 31, 0, 0, tzinfo=datetime.timezone.utc)
+grid       = [datetime.datetime(2022, 5, 2, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 5, 9, 0, 0, tzinfo=datetim...22, 5, 30, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), ...]
+present    = [datetime.datetime(2022, 5, 2, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 5, 9, 0, 0, tzinfo=datetim...2, 5, 30, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 6, 13, 0, 0, tzinfo=datetime.timezone.utc), ...]
+start      = datetime.datetime(2022, 5, 1, 0, 0, tzinfo=datetime.timezone.utc)
+
+tests/test_scripts/test_reconstruct_1w.py:316: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ([datetime.datetime(2022, 5, 2, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 5, 9, 0, 0, tzinfo=dateti...me(2022, 5, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 31, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs = {}
+
+    def missing_week_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = ([datetime.datetime(2022, 5, 2, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 5, 9, 0, 0, tzinfo=dateti...me(2022, 5, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 31, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:35: NotImplementedError
+_________________ test_d1_week_reproduces_the_protocol_figure __________________
+
+    def test_d1_week_reproduces_the_protocol_figure() -> None:
+        """Protocol § A.8 v2.1 : 188/194 = 96,9 % < 97 %, longest gap 7 days → D1 fails."""
+>       d1 = r1w.d1_week(_present_without(BRIEF_MISSING), start=PROTOCOL_START, end=PROTOCOL_T)
+                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+tests/test_scripts/test_reconstruct_1w.py:327: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_scripts/test_reconstruct_1w.py:322: in _present_without
+    return [s for s in r1w.expected_week_stamps(PROTOCOL_START, PROTOCOL_END) if s not in stamps]
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        stamps     = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 4, 0, 0, tzinfo=datetim...2, 11, 7, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 12, 5, 0, 0, tzinfo=datetime.timezone.utc), ...)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs = {}
+
+    def expected_week_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:31: NotImplementedError
+_______________ test_d1_week_after_reconstruction_is_194_of_194 ________________
+
+    def test_d1_week_after_reconstruction_is_194_of_194() -> None:
+        """Brief § 3.2 : after the write, D1 1 w on the prefix = 194/194."""
+>       d1 = r1w.d1_week(_present_without(()), start=PROTOCOL_START, end=PROTOCOL_T)
+                         ^^^^^^^^^^^^^^^^^^^^
+
+
+tests/test_scripts/test_reconstruct_1w.py:336: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_scripts/test_reconstruct_1w.py:322: in _present_without
+    return [s for s in r1w.expected_week_stamps(PROTOCOL_START, PROTOCOL_END) if s not in stamps]
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        stamps     = ()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs = {}
+
+    def expected_week_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:31: NotImplementedError
+________________________ test_evaluated_period_coverage ________________________
+
+    def test_evaluated_period_coverage() -> None:
+        """``(T, 2026-06-29]`` : first stamp 2024-11-25, last 2026-06-29 = 581 days = 83 weeks → 84 stamps ; the two
+        2025 stamps of the brief fall there → 82/84."""
+>       cov = r1w.d1_week(_present_without(BRIEF_MISSING), start=PROTOCOL_T, end=PROTOCOL_END)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+tests/test_scripts/test_reconstruct_1w.py:343: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_scripts/test_reconstruct_1w.py:322: in _present_without
+    return [s for s in r1w.expected_week_stamps(PROTOCOL_START, PROTOCOL_END) if s not in stamps]
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        stamps     = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 4, 0, 0, tzinfo=datetim...2, 11, 7, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 12, 5, 0, 0, tzinfo=datetime.timezone.utc), ...)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs = {}
+
+    def expected_week_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:31: NotImplementedError
+_______________ test_d1_week_is_the_rule_of_c3_select[missing0] ________________
+
+missing = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 4, 0, 0, tzinfo=datetim...2, 11, 7, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 12, 5, 0, 0, tzinfo=datetime.timezone.utc), ...)
+
+    @pytest.mark.parametrize("missing", [BRIEF_MISSING, (), BRIEF_MISSING[:3]])
+    def test_d1_week_is_the_rule_of_c3_select(missing: tuple[datetime, ...]) -> None:
+        """``d1_week`` must read exactly what ``c3_select.d1_for_pair`` reads for the 1 w series."""
+>       present = _present_without(missing)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+missing    = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 4, 0, 0, tzinfo=datetim...2, 11, 7, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 12, 5, 0, 0, tzinfo=datetime.timezone.utc), ...)
+
+tests/test_scripts/test_reconstruct_1w.py:367: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_scripts/test_reconstruct_1w.py:322: in _present_without
+    return [s for s in r1w.expected_week_stamps(PROTOCOL_START, PROTOCOL_END) if s not in stamps]
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        stamps     = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 4, 0, 0, tzinfo=datetim...2, 11, 7, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 12, 5, 0, 0, tzinfo=datetime.timezone.utc), ...)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs = {}
+
+    def expected_week_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:31: NotImplementedError
+_______________ test_d1_week_is_the_rule_of_c3_select[missing1] ________________
+
+missing = ()
+
+    @pytest.mark.parametrize("missing", [BRIEF_MISSING, (), BRIEF_MISSING[:3]])
+    def test_d1_week_is_the_rule_of_c3_select(missing: tuple[datetime, ...]) -> None:
+        """``d1_week`` must read exactly what ``c3_select.d1_for_pair`` reads for the 1 w series."""
+>       present = _present_without(missing)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+missing    = ()
+
+tests/test_scripts/test_reconstruct_1w.py:367: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_scripts/test_reconstruct_1w.py:322: in _present_without
+    return [s for s in r1w.expected_week_stamps(PROTOCOL_START, PROTOCOL_END) if s not in stamps]
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        stamps     = ()
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs = {}
+
+    def expected_week_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:31: NotImplementedError
+_______________ test_d1_week_is_the_rule_of_c3_select[missing2] ________________
+
+missing = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 4, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 9, 5, 0, 0, tzinfo=datetime.timezone.utc))
+
+    @pytest.mark.parametrize("missing", [BRIEF_MISSING, (), BRIEF_MISSING[:3]])
+    def test_d1_week_is_the_rule_of_c3_select(missing: tuple[datetime, ...]) -> None:
+        """``d1_week`` must read exactly what ``c3_select.d1_for_pair`` reads for the 1 w series."""
+>       present = _present_without(missing)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+missing    = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 4, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 9, 5, 0, 0, tzinfo=datetime.timezone.utc))
+
+tests/test_scripts/test_reconstruct_1w.py:367: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_scripts/test_reconstruct_1w.py:322: in _present_without
+    return [s for s in r1w.expected_week_stamps(PROTOCOL_START, PROTOCOL_END) if s not in stamps]
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        stamps     = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 7, 4, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2022, 9, 5, 0, 0, tzinfo=datetime.timezone.utc))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs = {}
+
+    def expected_week_stamps(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2021, 3, 1, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 29, 0, 0, tzinfo=datetime.timezone.utc))
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:31: NotImplementedError
+____________ test_vision_months_are_the_opening_and_closing_months _____________
+
+    def test_vision_months_are_the_opening_and_closing_months() -> None:
+>       assert r1w.vision_months_for_week(S) == [(2022, 5), (2022, 6)]  # 2022-05-30 → 2022-06-05
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+
+tests/test_scripts/test_reconstruct_1w.py:387: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc),)
+kwargs = {}
+
+    def vision_months_for_week(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (datetime.datetime(2022, 6, 6, 0, 0, tzinfo=datetime.timezone.utc),)
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:59: NotImplementedError
+_________________ test_vision_url_follows_the_importer_scheme __________________
+
+    def test_vision_url_follows_the_importer_scheme() -> None:
+>       assert r1w.vision_url("BTC/USDT", 2022, 5) == (
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-05.zip"
+        )
+
+
+tests/test_scripts/test_reconstruct_1w.py:393: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = ('BTC/USDT', 2022, 5), kwargs = {}
+
+    def vision_url(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = ('BTC/USDT', 2022, 5)
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:63: NotImplementedError
+____________ test_vision_week_rows_end_stamps_and_keeps_the_raw_row ____________
+
+    def test_vision_week_rows_end_stamps_and_keeps_the_raw_row() -> None:
+        """Importer ``:136-141`` : ``row[0]`` is the open time (ms, or µs for 2025+ files), stored stamp = open + 1 w."""
+        line_a = [str(_ms(datetime(2022, 5, 23, tzinfo=UTC))), "1", "2", "0.5", "1.5", "10", "0", "0", "7", "0", "0", "0"]
+        line_b = [str(_ms(datetime(2022, 5, 30, tzinfo=UTC)) * 1000), "3", "4", "2", "3.5", "20", "0", "0", "9", "0", "0", "0"]
+        csv_bytes = ("\n".join(",".join(line) for line in (line_a, line_b)) + "\n").encode()
+>       rows = r1w.vision_week_rows(csv_bytes, "BTC/USDT")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+csv_bytes  = b'1653264000000,1,2,0.5,1.5,10,0,0,7,0,0,0\n1653868800000000,3,4,2,3.5,20,0,0,9,0,0,0\n'
+line_a     = ['1653264000000', '1', '2', '0.5', '1.5', '10', ...]
+line_b     = ['1653868800000000', '3', '4', '2', '3.5', '20', ...]
+
+tests/test_scripts/test_reconstruct_1w.py:407: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (b'1653264000000,1,2,0.5,1.5,10,0,0,7,0,0,0\n1653868800000000,3,4,2,3.5,20,0,0,9,0,0,0\n', 'BTC/USDT')
+kwargs = {}
+
+    def vision_week_rows(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (b'1653264000000,1,2,0.5,1.5,10,0,0,7,0,0,0\n1653868800000000,3,4,2,3.5,20,0,0,9,0,0,0\n', 'BTC/USDT')
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:67: NotImplementedError
+______________ test_write_json_strict_refuses_a_non_native_value _______________
+
+tmp_path = PosixPath('<tmp>')
+
+    def test_write_json_strict_refuses_a_non_native_value(tmp_path: Path) -> None:
+        """Debt 22 : no ``default=str`` — a Decimal that was not converted must raise, not be stringified silently."""
+        with pytest.raises(TypeError):
+>           r1w.write_json_strict(tmp_path / "x.json", {"volume": D("1")})
+
+tmp_path   = PosixPath('<tmp>')
+
+tests/test_scripts/test_reconstruct_1w.py:420: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+args = (PosixPath('<tmp>'), {'volume': Decimal('1')})
+kwargs = {}
+
+    def write_json_strict(*args, **kwargs):
+>       raise NotImplementedError
+E       NotImplementedError
+
+args       = (PosixPath('<tmp>'), {'volume': Decimal('1')})
+kwargs     = {}
+
+scripts/audit/reconstruct_1w.py:71: NotImplementedError
+=========================== short test summary info ============================
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_expected_missing_is_the_brief_list
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_window_and_anchor_are_the_protocol_values
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_grid_helpers_are_reused_by_identity
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_source_stamps_are_s_minus_6_days_to_s
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_source_stamps_refuse_a_non_week_stamp[stamp0]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_source_stamps_refuse_a_non_week_stamp[stamp1]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_source_stamps_refuse_a_naive_datetime
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_ohlcv_and_trades
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_ignores_input_order
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_trades_count_null_propagates
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_vwap_policies - NotImp...
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_refuses_anything_but_the_seven_grid_rows[six-rows]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_refuses_anything_but_the_seven_grid_rows[eight-rows]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_refuses_anything_but_the_seven_grid_rows[duplicate-stamp]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_refuses_anything_but_the_seven_grid_rows[off-grid-stamp]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_refuses_anything_but_the_seven_grid_rows[previous-monday-instead-of-s]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_refuses_a_null_price
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_refuses_a_non_week_stamp
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_candle_refuses_float_and_naive_stamp
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_source_sha256_is_stable_and_order_independent
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_source_sha256_changes_with_a_value_or_the_pair
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_compare_week_identical_is_empty
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_compare_week_reports_each_column_by_kind
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_expected_week_stamps_on_the_campaign_window
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_missing_week_stamps_splits_missing_and_off_grid
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_d1_week_reproduces_the_protocol_figure
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_d1_week_after_reconstruction_is_194_of_194
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_evaluated_period_coverage
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_d1_week_is_the_rule_of_c3_select[missing0]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_d1_week_is_the_rule_of_c3_select[missing1]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_d1_week_is_the_rule_of_c3_select[missing2]
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_vision_months_are_the_opening_and_closing_months
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_vision_url_follows_the_importer_scheme
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_vision_week_rows_end_stamps_and_keeps_the_raw_row
+FAILED tests/test_scripts/test_reconstruct_1w.py::test_write_json_strict_refuses_a_non_native_value
+35 failed, 1 passed in 0.29s

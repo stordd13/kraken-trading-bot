@@ -1,0 +1,3886 @@
+{
+  "argv": [
+    "scripts/audit/reconstruct_1w.py",
+    "check",
+    "--output",
+    "results/reconstruction_1w_2022_2025/check_report.json",
+    "--markdown",
+    "results/reconstruction_1w_2022_2025/check_report.md"
+  ],
+  "artifact": "reconstruct_1w.check",
+  "d_vision_probe": {
+    "files_read": 33,
+    "files_requested": 33,
+    "inconclusive": [],
+    "positive": [],
+    "skipped": false,
+    "targets": [
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 02 Jun 2022 05:14:06 GMT",
+            "month": "2022-05",
+            "served_row": null,
+            "stamps_served": [
+              "2022-05-09T00:00:00+00:00",
+              "2022-05-16T00:00:00+00:00",
+              "2022-05-23T00:00:00+00:00",
+              "2022-05-30T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-05.zip",
+            "zip_sha256": "d4e55ddaad509a27ca348529c92eeebfb8838a9a3052a6fb2037d71735ef4b37"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 01 Jul 2022 04:34:47 GMT",
+            "month": "2022-06",
+            "served_row": null,
+            "stamps_served": [
+              "2022-06-13T00:00:00+00:00",
+              "2022-06-20T00:00:00+00:00",
+              "2022-06-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-06.zip",
+            "zip_sha256": "e527d1cfce95677a22f537879688556092ce4a923eca165013bc64d1dfb0c585"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "BTC/USDT",
+        "week": "2022-06-06T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 01 Jul 2022 04:34:47 GMT",
+            "month": "2022-06",
+            "served_row": null,
+            "stamps_served": [
+              "2022-06-13T00:00:00+00:00",
+              "2022-06-20T00:00:00+00:00",
+              "2022-06-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-06.zip",
+            "zip_sha256": "e527d1cfce95677a22f537879688556092ce4a923eca165013bc64d1dfb0c585"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 01 Aug 2022 08:59:16 GMT",
+            "month": "2022-07",
+            "served_row": null,
+            "stamps_served": [
+              "2022-07-11T00:00:00+00:00",
+              "2022-07-18T00:00:00+00:00",
+              "2022-07-25T00:00:00+00:00",
+              "2022-08-01T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-07.zip",
+            "zip_sha256": "b967d644fb24e8bea0bb5535592987e34e958bf466fbe4ebb9dee1c5d061dd49"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "BTC/USDT",
+        "week": "2022-07-04T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 01 Sep 2022 05:35:08 GMT",
+            "month": "2022-08",
+            "served_row": null,
+            "stamps_served": [
+              "2022-08-08T00:00:00+00:00",
+              "2022-08-15T00:00:00+00:00",
+              "2022-08-22T00:00:00+00:00",
+              "2022-08-29T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-08.zip",
+            "zip_sha256": "732f4811de2cb3b52930ca5075275c8a708cb2b83d3634c46a59408e1e7aaedd"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 03 Oct 2022 05:42:35 GMT",
+            "month": "2022-09",
+            "served_row": null,
+            "stamps_served": [
+              "2022-09-12T00:00:00+00:00",
+              "2022-09-19T00:00:00+00:00",
+              "2022-09-26T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-09.zip",
+            "zip_sha256": "fd6d960111d56248a725202b1b8d3fdb0abe48122f64cf809474884fd1bf7850"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "BTC/USDT",
+        "week": "2022-09-05T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 03 Oct 2022 05:42:35 GMT",
+            "month": "2022-09",
+            "served_row": null,
+            "stamps_served": [
+              "2022-09-12T00:00:00+00:00",
+              "2022-09-19T00:00:00+00:00",
+              "2022-09-26T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-09.zip",
+            "zip_sha256": "fd6d960111d56248a725202b1b8d3fdb0abe48122f64cf809474884fd1bf7850"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 03 Nov 2022 13:56:04 GMT",
+            "month": "2022-10",
+            "served_row": null,
+            "stamps_served": [
+              "2022-10-10T00:00:00+00:00",
+              "2022-10-17T00:00:00+00:00",
+              "2022-10-24T00:00:00+00:00",
+              "2022-10-31T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-10.zip",
+            "zip_sha256": "035e1405f36f5398c525e8ab77ce6f911df792f012fdfab6ad3bb4a60592f35f"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "BTC/USDT",
+        "week": "2022-10-03T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 03 Nov 2022 13:56:04 GMT",
+            "month": "2022-10",
+            "served_row": null,
+            "stamps_served": [
+              "2022-10-10T00:00:00+00:00",
+              "2022-10-17T00:00:00+00:00",
+              "2022-10-24T00:00:00+00:00",
+              "2022-10-31T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-10.zip",
+            "zip_sha256": "035e1405f36f5398c525e8ab77ce6f911df792f012fdfab6ad3bb4a60592f35f"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 02 Dec 2022 09:21:31 GMT",
+            "month": "2022-11",
+            "served_row": null,
+            "stamps_served": [
+              "2022-11-14T00:00:00+00:00",
+              "2022-11-21T00:00:00+00:00",
+              "2022-11-28T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-11.zip",
+            "zip_sha256": "3858f1390176912f60f4efc64067a6b6af179a91ab87bafcd8fb0988310ed886"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "BTC/USDT",
+        "week": "2022-11-07T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 02 Dec 2022 09:21:31 GMT",
+            "month": "2022-11",
+            "served_row": null,
+            "stamps_served": [
+              "2022-11-14T00:00:00+00:00",
+              "2022-11-21T00:00:00+00:00",
+              "2022-11-28T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-11.zip",
+            "zip_sha256": "3858f1390176912f60f4efc64067a6b6af179a91ab87bafcd8fb0988310ed886"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Wed, 04 Jan 2023 04:45:49 GMT",
+            "month": "2022-12",
+            "served_row": null,
+            "stamps_served": [
+              "2022-12-12T00:00:00+00:00",
+              "2022-12-19T00:00:00+00:00",
+              "2022-12-26T00:00:00+00:00",
+              "2023-01-02T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [
+              "2023-01-02T00:00:00+00:00"
+            ],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2022-12.zip",
+            "zip_sha256": "40130dfa765c44cfe1c1fa099f14a0a5aa75d97feaedf4523f187845a1609280"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "BTC/USDT",
+        "week": "2022-12-05T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:35:11 GMT",
+            "month": "2025-01",
+            "served_row": null,
+            "stamps_served": [
+              "2025-01-13T00:00:00+00:00",
+              "2025-01-20T00:00:00+00:00",
+              "2025-01-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2025-01.zip",
+            "zip_sha256": "e8f8425aebe0234b5adb4e9d76dd9d29ff28ff07e2df8bcd0c1d64f062936028"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:35:12 GMT",
+            "month": "2025-02",
+            "served_row": null,
+            "stamps_served": [
+              "2025-02-10T00:00:00+00:00",
+              "2025-02-17T00:00:00+00:00",
+              "2025-02-24T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2025-02.zip",
+            "zip_sha256": "344896b6bd6ffdcb962a81b611f18372ea417361d61499efe87f044ae2794d5c"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "BTC/USDT",
+        "week": "2025-02-03T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:35:12 GMT",
+            "month": "2025-02",
+            "served_row": null,
+            "stamps_served": [
+              "2025-02-10T00:00:00+00:00",
+              "2025-02-17T00:00:00+00:00",
+              "2025-02-24T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2025-02.zip",
+            "zip_sha256": "344896b6bd6ffdcb962a81b611f18372ea417361d61499efe87f044ae2794d5c"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Wed, 08 Oct 2025 11:53:22 GMT",
+            "month": "2025-03",
+            "served_row": null,
+            "stamps_served": [
+              "2025-03-10T00:00:00+00:00",
+              "2025-03-17T00:00:00+00:00",
+              "2025-03-24T00:00:00+00:00",
+              "2025-03-31T00:00:00+00:00",
+              "2025-04-07T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [
+              "2025-04-07T00:00:00+00:00"
+            ],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/BTCUSDT/1w/BTCUSDT-1w-2025-03.zip",
+            "zip_sha256": "f5117f20d32a6495f47b3163c47f53e5b6a1412d7945f4a05da8a92d520220da"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "BTC/USDT",
+        "week": "2025-03-03T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 02 Jun 2022 05:14:09 GMT",
+            "month": "2022-05",
+            "served_row": null,
+            "stamps_served": [
+              "2022-05-09T00:00:00+00:00",
+              "2022-05-16T00:00:00+00:00",
+              "2022-05-23T00:00:00+00:00",
+              "2022-05-30T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-05.zip",
+            "zip_sha256": "1cc8764f3253de1124987a1162f5f02f1afc4adaa8f769d9df3f42779a3f8c7f"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 01 Jul 2022 04:34:49 GMT",
+            "month": "2022-06",
+            "served_row": null,
+            "stamps_served": [
+              "2022-06-13T00:00:00+00:00",
+              "2022-06-20T00:00:00+00:00",
+              "2022-06-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-06.zip",
+            "zip_sha256": "414a46af6a63f902e9d6fc52541087bf2077c6f24c5f08557b69d6721147ad14"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "ETH/USDT",
+        "week": "2022-06-06T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 01 Jul 2022 04:34:49 GMT",
+            "month": "2022-06",
+            "served_row": null,
+            "stamps_served": [
+              "2022-06-13T00:00:00+00:00",
+              "2022-06-20T00:00:00+00:00",
+              "2022-06-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-06.zip",
+            "zip_sha256": "414a46af6a63f902e9d6fc52541087bf2077c6f24c5f08557b69d6721147ad14"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 01 Aug 2022 08:59:20 GMT",
+            "month": "2022-07",
+            "served_row": null,
+            "stamps_served": [
+              "2022-07-11T00:00:00+00:00",
+              "2022-07-18T00:00:00+00:00",
+              "2022-07-25T00:00:00+00:00",
+              "2022-08-01T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-07.zip",
+            "zip_sha256": "2b7b2b9a99aa6a3db8dcb9d84600a9185f43d95b34908e5f11c1edc898f8868c"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "ETH/USDT",
+        "week": "2022-07-04T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 01 Sep 2022 05:35:11 GMT",
+            "month": "2022-08",
+            "served_row": null,
+            "stamps_served": [
+              "2022-08-08T00:00:00+00:00",
+              "2022-08-15T00:00:00+00:00",
+              "2022-08-22T00:00:00+00:00",
+              "2022-08-29T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-08.zip",
+            "zip_sha256": "5b7a058e0dc7a3d192cfadaeb848cc847a4aa85778e2e15b89d5afea1da361c5"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 03 Oct 2022 06:02:11 GMT",
+            "month": "2022-09",
+            "served_row": null,
+            "stamps_served": [
+              "2022-09-12T00:00:00+00:00",
+              "2022-09-19T00:00:00+00:00",
+              "2022-09-26T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-09.zip",
+            "zip_sha256": "924f28103eda99d5cac29709d2ce3f06c925bfcf8357d54b9d3c88e26068d0b0"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "ETH/USDT",
+        "week": "2022-09-05T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 03 Oct 2022 06:02:11 GMT",
+            "month": "2022-09",
+            "served_row": null,
+            "stamps_served": [
+              "2022-09-12T00:00:00+00:00",
+              "2022-09-19T00:00:00+00:00",
+              "2022-09-26T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-09.zip",
+            "zip_sha256": "924f28103eda99d5cac29709d2ce3f06c925bfcf8357d54b9d3c88e26068d0b0"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 03 Nov 2022 20:50:02 GMT",
+            "month": "2022-10",
+            "served_row": null,
+            "stamps_served": [
+              "2022-10-10T00:00:00+00:00",
+              "2022-10-17T00:00:00+00:00",
+              "2022-10-24T00:00:00+00:00",
+              "2022-10-31T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-10.zip",
+            "zip_sha256": "b24b8e23c3029997b75537affe3ba70f52c99c36dcede8708b59d982cf102331"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "ETH/USDT",
+        "week": "2022-10-03T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 03 Nov 2022 20:50:02 GMT",
+            "month": "2022-10",
+            "served_row": null,
+            "stamps_served": [
+              "2022-10-10T00:00:00+00:00",
+              "2022-10-17T00:00:00+00:00",
+              "2022-10-24T00:00:00+00:00",
+              "2022-10-31T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-10.zip",
+            "zip_sha256": "b24b8e23c3029997b75537affe3ba70f52c99c36dcede8708b59d982cf102331"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 02 Dec 2022 09:42:50 GMT",
+            "month": "2022-11",
+            "served_row": null,
+            "stamps_served": [
+              "2022-11-14T00:00:00+00:00",
+              "2022-11-21T00:00:00+00:00",
+              "2022-11-28T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-11.zip",
+            "zip_sha256": "54476cb14b94872927db9e2936e7348235120d812beebaffc5df33e13d50f980"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "ETH/USDT",
+        "week": "2022-11-07T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 02 Dec 2022 09:42:50 GMT",
+            "month": "2022-11",
+            "served_row": null,
+            "stamps_served": [
+              "2022-11-14T00:00:00+00:00",
+              "2022-11-21T00:00:00+00:00",
+              "2022-11-28T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-11.zip",
+            "zip_sha256": "54476cb14b94872927db9e2936e7348235120d812beebaffc5df33e13d50f980"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Wed, 04 Jan 2023 05:08:00 GMT",
+            "month": "2022-12",
+            "served_row": null,
+            "stamps_served": [
+              "2022-12-12T00:00:00+00:00",
+              "2022-12-19T00:00:00+00:00",
+              "2022-12-26T00:00:00+00:00",
+              "2023-01-02T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [
+              "2023-01-02T00:00:00+00:00"
+            ],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2022-12.zip",
+            "zip_sha256": "e4ba495b1bd64a4a9e671b4a28d4c9ec604424cd453d6ee59f58eda226a92fde"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "ETH/USDT",
+        "week": "2022-12-05T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:58:50 GMT",
+            "month": "2025-01",
+            "served_row": null,
+            "stamps_served": [
+              "2025-01-13T00:00:00+00:00",
+              "2025-01-20T00:00:00+00:00",
+              "2025-01-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2025-01.zip",
+            "zip_sha256": "04d3a82bef873d22244eb6b29838bb7bdd7ff343d631b188bea7c4617dee6885"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:58:50 GMT",
+            "month": "2025-02",
+            "served_row": null,
+            "stamps_served": [
+              "2025-02-10T00:00:00+00:00",
+              "2025-02-17T00:00:00+00:00",
+              "2025-02-24T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2025-02.zip",
+            "zip_sha256": "34757bbb406c864bb01a491d23cec8f397233b3b49240a8ea2575d4948bc8876"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "ETH/USDT",
+        "week": "2025-02-03T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:58:50 GMT",
+            "month": "2025-02",
+            "served_row": null,
+            "stamps_served": [
+              "2025-02-10T00:00:00+00:00",
+              "2025-02-17T00:00:00+00:00",
+              "2025-02-24T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2025-02.zip",
+            "zip_sha256": "34757bbb406c864bb01a491d23cec8f397233b3b49240a8ea2575d4948bc8876"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Wed, 08 Oct 2025 12:02:32 GMT",
+            "month": "2025-03",
+            "served_row": null,
+            "stamps_served": [
+              "2025-03-10T00:00:00+00:00",
+              "2025-03-17T00:00:00+00:00",
+              "2025-03-24T00:00:00+00:00",
+              "2025-03-31T00:00:00+00:00",
+              "2025-04-07T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [
+              "2025-04-07T00:00:00+00:00"
+            ],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/ETHUSDT/1w/ETHUSDT-1w-2025-03.zip",
+            "zip_sha256": "3b023880e3c24604cf225f5ef2fe3829c6e91b502cbc22f92d55ee390ba5ddb0"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "ETH/USDT",
+        "week": "2025-03-03T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 02 Jun 2022 05:30:15 GMT",
+            "month": "2022-05",
+            "served_row": null,
+            "stamps_served": [
+              "2022-05-09T00:00:00+00:00",
+              "2022-05-16T00:00:00+00:00",
+              "2022-05-23T00:00:00+00:00",
+              "2022-05-30T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-05.zip",
+            "zip_sha256": "1ec54ab03c0218e3bc846bf38ee45b524426f93c3c49d07fb42c391c40528fc0"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 01 Jul 2022 04:48:49 GMT",
+            "month": "2022-06",
+            "served_row": null,
+            "stamps_served": [
+              "2022-06-13T00:00:00+00:00",
+              "2022-06-20T00:00:00+00:00",
+              "2022-06-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-06.zip",
+            "zip_sha256": "db662a8c5518efc9130e20196c29b25998488aa5024564915a5b3e719b2c45f8"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "SOL/USDT",
+        "week": "2022-06-06T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 01 Jul 2022 04:48:49 GMT",
+            "month": "2022-06",
+            "served_row": null,
+            "stamps_served": [
+              "2022-06-13T00:00:00+00:00",
+              "2022-06-20T00:00:00+00:00",
+              "2022-06-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-06.zip",
+            "zip_sha256": "db662a8c5518efc9130e20196c29b25998488aa5024564915a5b3e719b2c45f8"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 01 Aug 2022 09:17:23 GMT",
+            "month": "2022-07",
+            "served_row": null,
+            "stamps_served": [
+              "2022-07-11T00:00:00+00:00",
+              "2022-07-18T00:00:00+00:00",
+              "2022-07-25T00:00:00+00:00",
+              "2022-08-01T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-07.zip",
+            "zip_sha256": "e0f60042c699aac6ea5eaf412866d5a662f1982e6566228c8d7644975c00fca3"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "SOL/USDT",
+        "week": "2022-07-04T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 01 Sep 2022 05:52:56 GMT",
+            "month": "2022-08",
+            "served_row": null,
+            "stamps_served": [
+              "2022-08-08T00:00:00+00:00",
+              "2022-08-15T00:00:00+00:00",
+              "2022-08-22T00:00:00+00:00",
+              "2022-08-29T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-08.zip",
+            "zip_sha256": "a949aebdf6a79f96af23137ea11999b5b0fc14a737b4cf7a42e3202b8356fc44"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 03 Oct 2022 05:22:57 GMT",
+            "month": "2022-09",
+            "served_row": null,
+            "stamps_served": [
+              "2022-09-12T00:00:00+00:00",
+              "2022-09-19T00:00:00+00:00",
+              "2022-09-26T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-09.zip",
+            "zip_sha256": "be5f9cd2c815663fa2dd0c559d640a484dadfc73b6bab30f792bdb97e53aa2a6"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "SOL/USDT",
+        "week": "2022-09-05T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Mon, 03 Oct 2022 05:22:57 GMT",
+            "month": "2022-09",
+            "served_row": null,
+            "stamps_served": [
+              "2022-09-12T00:00:00+00:00",
+              "2022-09-19T00:00:00+00:00",
+              "2022-09-26T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-09.zip",
+            "zip_sha256": "be5f9cd2c815663fa2dd0c559d640a484dadfc73b6bab30f792bdb97e53aa2a6"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 03 Nov 2022 06:45:26 GMT",
+            "month": "2022-10",
+            "served_row": null,
+            "stamps_served": [
+              "2022-10-10T00:00:00+00:00",
+              "2022-10-17T00:00:00+00:00",
+              "2022-10-24T00:00:00+00:00",
+              "2022-10-31T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-10.zip",
+            "zip_sha256": "a1b89eea05bbc39c74eca34805a705660efce77f386d2a46b557bfe588575725"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "SOL/USDT",
+        "week": "2022-10-03T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Thu, 03 Nov 2022 06:45:26 GMT",
+            "month": "2022-10",
+            "served_row": null,
+            "stamps_served": [
+              "2022-10-10T00:00:00+00:00",
+              "2022-10-17T00:00:00+00:00",
+              "2022-10-24T00:00:00+00:00",
+              "2022-10-31T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-10.zip",
+            "zip_sha256": "a1b89eea05bbc39c74eca34805a705660efce77f386d2a46b557bfe588575725"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 02 Dec 2022 08:52:59 GMT",
+            "month": "2022-11",
+            "served_row": null,
+            "stamps_served": [
+              "2022-11-14T00:00:00+00:00",
+              "2022-11-21T00:00:00+00:00",
+              "2022-11-28T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-11.zip",
+            "zip_sha256": "c44e23799c9904bfd01ac5b132c557babc76c0de19e94e46825c8f3ca441a390"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "SOL/USDT",
+        "week": "2022-11-07T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Fri, 02 Dec 2022 08:52:59 GMT",
+            "month": "2022-11",
+            "served_row": null,
+            "stamps_served": [
+              "2022-11-14T00:00:00+00:00",
+              "2022-11-21T00:00:00+00:00",
+              "2022-11-28T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-11.zip",
+            "zip_sha256": "c44e23799c9904bfd01ac5b132c557babc76c0de19e94e46825c8f3ca441a390"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Wed, 04 Jan 2023 04:20:13 GMT",
+            "month": "2022-12",
+            "served_row": null,
+            "stamps_served": [
+              "2022-12-12T00:00:00+00:00",
+              "2022-12-19T00:00:00+00:00",
+              "2022-12-26T00:00:00+00:00",
+              "2023-01-02T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [
+              "2023-01-02T00:00:00+00:00"
+            ],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2022-12.zip",
+            "zip_sha256": "7c4c10f82445cd977aed71ff56457f08992c2d30362f7530ee3ea8571d89c170"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "SOL/USDT",
+        "week": "2022-12-05T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:10:52 GMT",
+            "month": "2025-01",
+            "served_row": null,
+            "stamps_served": [
+              "2025-01-13T00:00:00+00:00",
+              "2025-01-20T00:00:00+00:00",
+              "2025-01-27T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2025-01.zip",
+            "zip_sha256": "0963dda9a9b1e2b703772dd4783dd2accfd8cdfa4b25f5ad2d9f4a9817c0e57b"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:10:52 GMT",
+            "month": "2025-02",
+            "served_row": null,
+            "stamps_served": [
+              "2025-02-10T00:00:00+00:00",
+              "2025-02-17T00:00:00+00:00",
+              "2025-02-24T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2025-02.zip",
+            "zip_sha256": "a4e1cc7b7e07cd7064558569f30ced912e811a73e9bf7c22635cb2c223d8dd0c"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "SOL/USDT",
+        "week": "2025-02-03T00:00:00+00:00"
+      },
+      {
+        "files": [
+          {
+            "contains_target": false,
+            "last_modified": "Tue, 04 Mar 2025 10:10:52 GMT",
+            "month": "2025-02",
+            "served_row": null,
+            "stamps_served": [
+              "2025-02-10T00:00:00+00:00",
+              "2025-02-17T00:00:00+00:00",
+              "2025-02-24T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2025-02.zip",
+            "zip_sha256": "a4e1cc7b7e07cd7064558569f30ced912e811a73e9bf7c22635cb2c223d8dd0c"
+          },
+          {
+            "contains_target": false,
+            "last_modified": "Wed, 08 Oct 2025 11:44:14 GMT",
+            "month": "2025-03",
+            "served_row": null,
+            "stamps_served": [
+              "2025-03-10T00:00:00+00:00",
+              "2025-03-17T00:00:00+00:00",
+              "2025-03-24T00:00:00+00:00",
+              "2025-03-31T00:00:00+00:00",
+              "2025-04-07T00:00:00+00:00"
+            ],
+            "status": 200,
+            "straddling_served": [
+              "2025-04-07T00:00:00+00:00"
+            ],
+            "url": "https://data.binance.vision/data/spot/monthly/klines/SOLUSDT/1w/SOLUSDT-1w-2025-03.zip",
+            "zip_sha256": "0ad639eaa7289f968c457962a43f64d6d9bd9b1439cdb0ef77dd4558e1c984c0"
+          }
+        ],
+        "found": false,
+        "inconclusive": false,
+        "pair": "SOL/USDT",
+        "week": "2025-03-03T00:00:00+00:00"
+      }
+    ]
+  },
+  "database": {
+    "database": "krakenbot",
+    "host": "localhost",
+    "port": 5433,
+    "transaction_read_only": "on"
+  },
+  "e_idempotence": {
+    "clause_lines": [
+      {
+        "line": 200,
+        "text": "stmt = stmt.on_conflict_do_nothing("
+      },
+      {
+        "line": 201,
+        "text": "index_elements=[\"timestamp\", \"pair\", \"interval\", \"exchange\"]"
+      }
+    ],
+    "importer": "scripts/binance_vision_import.py",
+    "importer_sha256": "63575e0f36d65bfc02fd8b4d1a53a3ebc5fe070d342b36c29cda554550db0514"
+  },
+  "generated_at": "2026-09-24T15:12:01.289375+00:00",
+  "ohlc_derived_table_exists": false,
+  "pairs": {
+    "BTC/USDT": {
+      "a_diagnostic": {
+        "coverage_evaluated": {
+          "covered_units": 82,
+          "expected_units": 84,
+          "gap_max_days": 17.514,
+          "longest_gap_days": 7.0,
+          "missing": [
+            "2025-02-03T00:00:00+00:00",
+            "2025-03-03T00:00:00+00:00"
+          ],
+          "ok": true,
+          "ratio": 0.9761904761904762,
+          "unit": "week"
+        },
+        "d1_prefix": {
+          "covered_units": 188,
+          "expected_units": 194,
+          "gap_max_days": 31.0,
+          "longest_gap_days": 7.0,
+          "missing": [
+            "2022-06-06T00:00:00+00:00",
+            "2022-07-04T00:00:00+00:00",
+            "2022-09-05T00:00:00+00:00",
+            "2022-10-03T00:00:00+00:00",
+            "2022-11-07T00:00:00+00:00",
+            "2022-12-05T00:00:00+00:00"
+          ],
+          "ok": false,
+          "ratio": 0.9690721649484536,
+          "unit": "week"
+        },
+        "expected_in_window": 278,
+        "missing": [
+          "2022-06-06T00:00:00+00:00",
+          "2022-07-04T00:00:00+00:00",
+          "2022-09-05T00:00:00+00:00",
+          "2022-10-03T00:00:00+00:00",
+          "2022-11-07T00:00:00+00:00",
+          "2022-12-05T00:00:00+00:00",
+          "2025-02-03T00:00:00+00:00",
+          "2025-03-03T00:00:00+00:00"
+        ],
+        "missing_equals_brief": true,
+        "off_grid": [],
+        "present_in_window": 270,
+        "weekly_stamps_evaluated": 84,
+        "weekly_stamps_prefix": 194
+      },
+      "b_availability": [
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "29919.21000000",
+            "high": "32399.00000000",
+            "low": "29282.36000000",
+            "open": "29468.10000000",
+            "timestamp": "2022-06-06T00:00:00+00:00",
+            "trades_count": 7249030,
+            "volume": "422401.40352000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "f37e1f8c53214f279b316122ab702283fc6cf20d19d5691c3a92f4a0aa56980b",
+          "source_stamps": [
+            "2022-05-31T00:00:00+00:00",
+            "2022-06-01T00:00:00+00:00",
+            "2022-06-02T00:00:00+00:00",
+            "2022-06-03T00:00:00+00:00",
+            "2022-06-04T00:00:00+00:00",
+            "2022-06-05T00:00:00+00:00",
+            "2022-06-06T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "31734.22000000",
+              "high": "32222.00000000",
+              "low": "29299.62000000",
+              "open": "29468.10000000",
+              "timestamp": "2022-05-31T00:00:00+00:00",
+              "trades_count": 1380410,
+              "volume": "96785.94760000",
+              "vwap": null
+            },
+            {
+              "close": "31801.04000000",
+              "high": "32399.00000000",
+              "low": "31200.01000000",
+              "open": "31734.23000000",
+              "timestamp": "2022-06-01T00:00:00+00:00",
+              "trades_count": 1161340,
+              "volume": "62433.11632000",
+              "vwap": null
+            },
+            {
+              "close": "29805.83000000",
+              "high": "31982.97000000",
+              "low": "29301.00000000",
+              "open": "31801.05000000",
+              "timestamp": "2022-06-02T00:00:00+00:00",
+              "trades_count": 1404611,
+              "volume": "103395.63382000",
+              "vwap": null
+            },
+            {
+              "close": "30452.62000000",
+              "high": "30689.00000000",
+              "low": "29594.55000000",
+              "open": "29805.84000000",
+              "timestamp": "2022-06-03T00:00:00+00:00",
+              "trades_count": 1086183,
+              "volume": "56961.42928000",
+              "vwap": null
+            },
+            {
+              "close": "29700.21000000",
+              "high": "30699.00000000",
+              "low": "29282.36000000",
+              "open": "30452.63000000",
+              "timestamp": "2022-06-04T00:00:00+00:00",
+              "trades_count": 993769,
+              "volume": "54067.44727000",
+              "vwap": null
+            },
+            {
+              "close": "29864.04000000",
+              "high": "29988.88000000",
+              "low": "29485.00000000",
+              "open": "29700.21000000",
+              "timestamp": "2022-06-05T00:00:00+00:00",
+              "trades_count": 618037,
+              "volume": "25617.90113000",
+              "vwap": null
+            },
+            {
+              "close": "29919.21000000",
+              "high": "30189.00000000",
+              "low": "29531.42000000",
+              "open": "29864.03000000",
+              "timestamp": "2022-06-06T00:00:00+00:00",
+              "trades_count": 604680,
+              "volume": "23139.92810000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-06-06T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "19315.83000000",
+            "high": "21539.85000000",
+            "low": "18626.00000000",
+            "open": "21038.08000000",
+            "timestamp": "2022-07-04T00:00:00+00:00",
+            "trades_count": 8098167,
+            "volume": "508544.13970000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "b4c927dcf3a6d5e0f5492ef549c0c9505fcfdcb61356281716e819a678305c1a",
+          "source_stamps": [
+            "2022-06-28T00:00:00+00:00",
+            "2022-06-29T00:00:00+00:00",
+            "2022-06-30T00:00:00+00:00",
+            "2022-07-01T00:00:00+00:00",
+            "2022-07-02T00:00:00+00:00",
+            "2022-07-03T00:00:00+00:00",
+            "2022-07-04T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "20742.56000000",
+              "high": "21539.85000000",
+              "low": "20510.00000000",
+              "open": "21038.08000000",
+              "timestamp": "2022-06-28T00:00:00+00:00",
+              "trades_count": 1002214,
+              "volume": "64475.00130000",
+              "vwap": null
+            },
+            {
+              "close": "20281.29000000",
+              "high": "21212.10000000",
+              "low": "20202.01000000",
+              "open": "20742.57000000",
+              "timestamp": "2022-06-29T00:00:00+00:00",
+              "trades_count": 1064497,
+              "volume": "63801.08320000",
+              "vwap": null
+            },
+            {
+              "close": "20123.01000000",
+              "high": "20432.31000000",
+              "low": "19854.92000000",
+              "open": "20281.28000000",
+              "timestamp": "2022-06-30T00:00:00+00:00",
+              "trades_count": 1210636,
+              "volume": "77309.04379000",
+              "vwap": null
+            },
+            {
+              "close": "19942.21000000",
+              "high": "20179.08000000",
+              "low": "18626.00000000",
+              "open": "20123.00000000",
+              "timestamp": "2022-07-01T00:00:00+00:00",
+              "trades_count": 1438163,
+              "volume": "93846.64806000",
+              "vwap": null
+            },
+            {
+              "close": "19279.80000000",
+              "high": "20918.35000000",
+              "low": "18975.00000000",
+              "open": "19942.21000000",
+              "timestamp": "2022-07-02T00:00:00+00:00",
+              "trades_count": 1668363,
+              "volume": "111844.59494000",
+              "vwap": null
+            },
+            {
+              "close": "19252.81000000",
+              "high": "19467.39000000",
+              "low": "18977.01000000",
+              "open": "19279.80000000",
+              "timestamp": "2022-07-03T00:00:00+00:00",
+              "trades_count": 833508,
+              "volume": "46180.30210000",
+              "vwap": null
+            },
+            {
+              "close": "19315.83000000",
+              "high": "19647.63000000",
+              "low": "18781.00000000",
+              "open": "19252.82000000",
+              "timestamp": "2022-07-04T00:00:00+00:00",
+              "trades_count": 880786,
+              "volume": "51087.46631000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-07-04T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "20000.30000000",
+            "high": "20576.25000000",
+            "low": "19540.00000000",
+            "open": "19555.61000000",
+            "timestamp": "2022-09-05T00:00:00+00:00",
+            "trades_count": 38080138,
+            "volume": "1527594.84529000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "651fdae82f0e5ea6481bb9c7429fb72eec36337eec45ac00299fff9389e36656",
+          "source_stamps": [
+            "2022-08-30T00:00:00+00:00",
+            "2022-08-31T00:00:00+00:00",
+            "2022-09-01T00:00:00+00:00",
+            "2022-09-02T00:00:00+00:00",
+            "2022-09-03T00:00:00+00:00",
+            "2022-09-04T00:00:00+00:00",
+            "2022-09-05T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "20285.73000000",
+              "high": "20433.62000000",
+              "low": "19550.79000000",
+              "open": "19555.61000000",
+              "timestamp": "2022-08-30T00:00:00+00:00",
+              "trades_count": 5840323,
+              "volume": "210509.49545000",
+              "vwap": null
+            },
+            {
+              "close": "19811.66000000",
+              "high": "20576.25000000",
+              "low": "19540.00000000",
+              "open": "20287.20000000",
+              "timestamp": "2022-08-31T00:00:00+00:00",
+              "trades_count": 6593178,
+              "volume": "256634.35529000",
+              "vwap": null
+            },
+            {
+              "close": "20050.02000000",
+              "high": "20490.00000000",
+              "low": "19797.94000000",
+              "open": "19813.03000000",
+              "timestamp": "2022-09-01T00:00:00+00:00",
+              "trades_count": 6389133,
+              "volume": "276946.60765000",
+              "vwap": null
+            },
+            {
+              "close": "20131.46000000",
+              "high": "20208.37000000",
+              "low": "19565.66000000",
+              "open": "20048.44000000",
+              "timestamp": "2022-09-02T00:00:00+00:00",
+              "trades_count": 5937975,
+              "volume": "245289.97263000",
+              "vwap": null
+            },
+            {
+              "close": "19951.86000000",
+              "high": "20441.26000000",
+              "low": "19755.29000000",
+              "open": "20132.64000000",
+              "timestamp": "2022-09-03T00:00:00+00:00",
+              "trades_count": 5740705,
+              "volume": "245986.60330000",
+              "vwap": null
+            },
+            {
+              "close": "19831.90000000",
+              "high": "20055.93000000",
+              "low": "19652.72000000",
+              "open": "19950.98000000",
+              "timestamp": "2022-09-04T00:00:00+00:00",
+              "trades_count": 3739909,
+              "volume": "146639.03204000",
+              "vwap": null
+            },
+            {
+              "close": "20000.30000000",
+              "high": "20029.23000000",
+              "low": "19583.10000000",
+              "open": "19832.45000000",
+              "timestamp": "2022-09-05T00:00:00+00:00",
+              "trades_count": 3838915,
+              "volume": "145588.77893000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-09-05T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "19056.80000000",
+            "high": "20385.86000000",
+            "low": "18471.28000000",
+            "open": "18809.13000000",
+            "timestamp": "2022-10-03T00:00:00+00:00",
+            "trades_count": 39023576,
+            "volume": "2777070.91238000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "6e85d88381dd8c047bc0b226ed12ca0a2bc700faf5ad10018d382d404364f4fc",
+          "source_stamps": [
+            "2022-09-27T00:00:00+00:00",
+            "2022-09-28T00:00:00+00:00",
+            "2022-09-29T00:00:00+00:00",
+            "2022-09-30T00:00:00+00:00",
+            "2022-10-01T00:00:00+00:00",
+            "2022-10-02T00:00:00+00:00",
+            "2022-10-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "19227.82000000",
+              "high": "19318.96000000",
+              "low": "18680.72000000",
+              "open": "18809.13000000",
+              "timestamp": "2022-09-27T00:00:00+00:00",
+              "trades_count": 5837041,
+              "volume": "439239.21943000",
+              "vwap": null
+            },
+            {
+              "close": "19079.13000000",
+              "high": "20385.86000000",
+              "low": "18816.32000000",
+              "open": "19226.68000000",
+              "timestamp": "2022-09-28T00:00:00+00:00",
+              "trades_count": 8152473,
+              "volume": "593260.74161000",
+              "vwap": null
+            },
+            {
+              "close": "19412.82000000",
+              "high": "19790.00000000",
+              "low": "18471.28000000",
+              "open": "19078.10000000",
+              "timestamp": "2022-09-29T00:00:00+00:00",
+              "trades_count": 7357437,
+              "volume": "521385.45547000",
+              "vwap": null
+            },
+            {
+              "close": "19591.51000000",
+              "high": "19645.52000000",
+              "low": "18843.01000000",
+              "open": "19412.82000000",
+              "timestamp": "2022-09-30T00:00:00+00:00",
+              "trades_count": 5631615,
+              "volume": "406424.93256000",
+              "vwap": null
+            },
+            {
+              "close": "19422.61000000",
+              "high": "20185.00000000",
+              "low": "19155.36000000",
+              "open": "19590.54000000",
+              "timestamp": "2022-10-01T00:00:00+00:00",
+              "trades_count": 6254203,
+              "volume": "444322.95340000",
+              "vwap": null
+            },
+            {
+              "close": "19310.95000000",
+              "high": "19484.00000000",
+              "low": "19159.42000000",
+              "open": "19422.61000000",
+              "timestamp": "2022-10-02T00:00:00+00:00",
+              "trades_count": 2470590,
+              "volume": "165625.13959000",
+              "vwap": null
+            },
+            {
+              "close": "19056.80000000",
+              "high": "19395.91000000",
+              "low": "18920.35000000",
+              "open": "19312.24000000",
+              "timestamp": "2022-10-03T00:00:00+00:00",
+              "trades_count": 3320217,
+              "volume": "206812.47032000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-10-03T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "20905.58000000",
+            "high": "21480.65000000",
+            "low": "20031.24000000",
+            "open": "20627.48000000",
+            "timestamp": "2022-11-07T00:00:00+00:00",
+            "trades_count": 47012044,
+            "volume": "2205754.83045000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "1220a890dc0f55a908d927bb3fcf34916590992a1e7f9da861411e7777fdd141",
+          "source_stamps": [
+            "2022-11-01T00:00:00+00:00",
+            "2022-11-02T00:00:00+00:00",
+            "2022-11-03T00:00:00+00:00",
+            "2022-11-04T00:00:00+00:00",
+            "2022-11-05T00:00:00+00:00",
+            "2022-11-06T00:00:00+00:00",
+            "2022-11-07T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "20490.74000000",
+              "high": "20845.92000000",
+              "low": "20237.95000000",
+              "open": "20627.48000000",
+              "timestamp": "2022-11-01T00:00:00+00:00",
+              "trades_count": 6571526,
+              "volume": "303567.61628000",
+              "vwap": null
+            },
+            {
+              "close": "20483.62000000",
+              "high": "20700.00000000",
+              "low": "20330.74000000",
+              "open": "20490.74000000",
+              "timestamp": "2022-11-02T00:00:00+00:00",
+              "trades_count": 5971938,
+              "volume": "279932.43771000",
+              "vwap": null
+            },
+            {
+              "close": "20151.84000000",
+              "high": "20800.00000000",
+              "low": "20048.04000000",
+              "open": "20482.81000000",
+              "timestamp": "2022-11-03T00:00:00+00:00",
+              "trades_count": 7431698,
+              "volume": "373716.27299000",
+              "vwap": null
+            },
+            {
+              "close": "20207.82000000",
+              "high": "20393.32000000",
+              "low": "20031.24000000",
+              "open": "20151.84000000",
+              "timestamp": "2022-11-04T00:00:00+00:00",
+              "trades_count": 6948227,
+              "volume": "319185.15440000",
+              "vwap": null
+            },
+            {
+              "close": "21148.52000000",
+              "high": "21302.05000000",
+              "low": "20180.96000000",
+              "open": "20207.12000000",
+              "timestamp": "2022-11-05T00:00:00+00:00",
+              "trades_count": 9249613,
+              "volume": "453694.39165000",
+              "vwap": null
+            },
+            {
+              "close": "21299.37000000",
+              "high": "21480.65000000",
+              "low": "21080.65000000",
+              "open": "21148.52000000",
+              "timestamp": "2022-11-06T00:00:00+00:00",
+              "trades_count": 5570832,
+              "volume": "245621.98525000",
+              "vwap": null
+            },
+            {
+              "close": "20905.58000000",
+              "high": "21365.27000000",
+              "low": "20886.13000000",
+              "open": "21299.37000000",
+              "timestamp": "2022-11-07T00:00:00+00:00",
+              "trades_count": 5268210,
+              "volume": "230036.97217000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-11-07T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "17105.70000000",
+            "high": "17324.00000000",
+            "low": "15995.27000000",
+            "open": "16428.77000000",
+            "timestamp": "2022-12-05T00:00:00+00:00",
+            "trades_count": 33957294,
+            "volume": "1572173.55626000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "115aaab6a831d96586110eae438a657a80777204d0f0586f590b310422757897",
+          "source_stamps": [
+            "2022-11-29T00:00:00+00:00",
+            "2022-11-30T00:00:00+00:00",
+            "2022-12-01T00:00:00+00:00",
+            "2022-12-02T00:00:00+00:00",
+            "2022-12-03T00:00:00+00:00",
+            "2022-12-04T00:00:00+00:00",
+            "2022-12-05T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "16212.91000000",
+              "high": "16487.04000000",
+              "low": "15995.27000000",
+              "open": "16428.77000000",
+              "timestamp": "2022-11-29T00:00:00+00:00",
+              "trades_count": 5570407,
+              "volume": "252695.40367000",
+              "vwap": null
+            },
+            {
+              "close": "16442.53000000",
+              "high": "16548.71000000",
+              "low": "16100.00000000",
+              "open": "16212.18000000",
+              "timestamp": "2022-11-30T00:00:00+00:00",
+              "trades_count": 5206638,
+              "volume": "248106.25009000",
+              "vwap": null
+            },
+            {
+              "close": "17163.64000000",
+              "high": "17249.00000000",
+              "low": "16428.30000000",
+              "open": "16442.91000000",
+              "timestamp": "2022-12-01T00:00:00+00:00",
+              "trades_count": 6519330,
+              "volume": "303019.80719000",
+              "vwap": null
+            },
+            {
+              "close": "16977.37000000",
+              "high": "17324.00000000",
+              "low": "16855.01000000",
+              "open": "17165.53000000",
+              "timestamp": "2022-12-02T00:00:00+00:00",
+              "trades_count": 5097720,
+              "volume": "232818.18218000",
+              "vwap": null
+            },
+            {
+              "close": "17092.74000000",
+              "high": "17105.73000000",
+              "low": "16787.85000000",
+              "open": "16978.00000000",
+              "timestamp": "2022-12-03T00:00:00+00:00",
+              "trades_count": 4305515,
+              "volume": "202372.20620000",
+              "vwap": null
+            },
+            {
+              "close": "16885.20000000",
+              "high": "17188.98000000",
+              "low": "16858.74000000",
+              "open": "17092.13000000",
+              "timestamp": "2022-12-04T00:00:00+00:00",
+              "trades_count": 3308694,
+              "volume": "154542.57306000",
+              "vwap": null
+            },
+            {
+              "close": "17105.70000000",
+              "high": "17202.84000000",
+              "low": "16878.25000000",
+              "open": "16885.20000000",
+              "timestamp": "2022-12-05T00:00:00+00:00",
+              "trades_count": 3948990,
+              "volume": "178619.13387000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-12-05T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "97700.59000000",
+            "high": "106457.44000000",
+            "low": "96150.00000000",
+            "open": "102620.01000000",
+            "timestamp": "2025-02-03T00:00:00+00:00",
+            "trades_count": 38100357,
+            "volume": "184203.26328000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "28247f55e6815045222ed9948a5e48bf9bed4aad3d63c87a45d85f7746be7c6b",
+          "source_stamps": [
+            "2025-01-28T00:00:00+00:00",
+            "2025-01-29T00:00:00+00:00",
+            "2025-01-30T00:00:00+00:00",
+            "2025-01-31T00:00:00+00:00",
+            "2025-02-01T00:00:00+00:00",
+            "2025-02-02T00:00:00+00:00",
+            "2025-02-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "102082.83000000",
+              "high": "103260.00000000",
+              "low": "97777.77000000",
+              "open": "102620.01000000",
+              "timestamp": "2025-01-28T00:00:00+00:00",
+              "trades_count": 9368910,
+              "volume": "50758.13410000",
+              "vwap": null
+            },
+            {
+              "close": "101335.52000000",
+              "high": "103800.00000000",
+              "low": "100272.68000000",
+              "open": "102082.83000000",
+              "timestamp": "2025-01-29T00:00:00+00:00",
+              "trades_count": 5428644,
+              "volume": "22022.05765000",
+              "vwap": null
+            },
+            {
+              "close": "103733.24000000",
+              "high": "104782.68000000",
+              "low": "101328.01000000",
+              "open": "101335.52000000",
+              "timestamp": "2025-01-30T00:00:00+00:00",
+              "trades_count": 5189699,
+              "volume": "23155.35802000",
+              "vwap": null
+            },
+            {
+              "close": "104722.94000000",
+              "high": "106457.44000000",
+              "low": "103278.54000000",
+              "open": "103733.25000000",
+              "timestamp": "2025-01-31T00:00:00+00:00",
+              "trades_count": 3990075,
+              "volume": "19374.07472000",
+              "vwap": null
+            },
+            {
+              "close": "102429.56000000",
+              "high": "106012.00000000",
+              "low": "101560.00000000",
+              "open": "104722.94000000",
+              "timestamp": "2025-02-01T00:00:00+00:00",
+              "trades_count": 4331904,
+              "volume": "21983.18193000",
+              "vwap": null
+            },
+            {
+              "close": "100635.65000000",
+              "high": "102783.71000000",
+              "low": "100279.51000000",
+              "open": "102429.56000000",
+              "timestamp": "2025-02-02T00:00:00+00:00",
+              "trades_count": 2588786,
+              "volume": "12290.95747000",
+              "vwap": null
+            },
+            {
+              "close": "97700.59000000",
+              "high": "101456.60000000",
+              "low": "96150.00000000",
+              "open": "100635.66000000",
+              "timestamp": "2025-02-03T00:00:00+00:00",
+              "trades_count": 7202339,
+              "volume": "34619.49939000",
+              "vwap": null
+            }
+          ],
+          "week": "2025-02-03T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "94270.00000000",
+            "high": "96500.00000000",
+            "low": "78258.52000000",
+            "open": "96258.00000000",
+            "timestamp": "2025-03-03T00:00:00+00:00",
+            "trades_count": 52557578,
+            "volume": "373604.39736000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "babab334ec52e7714fc1cb6a6d8b419e44e464108bfb33065c66002c2fdf1b6b",
+          "source_stamps": [
+            "2025-02-25T00:00:00+00:00",
+            "2025-02-26T00:00:00+00:00",
+            "2025-02-27T00:00:00+00:00",
+            "2025-02-28T00:00:00+00:00",
+            "2025-03-01T00:00:00+00:00",
+            "2025-03-02T00:00:00+00:00",
+            "2025-03-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "91552.88000000",
+              "high": "96500.00000000",
+              "low": "91349.26000000",
+              "open": "96258.00000000",
+              "timestamp": "2025-02-25T00:00:00+00:00",
+              "trades_count": 4972684,
+              "volume": "31550.10299000",
+              "vwap": null
+            },
+            {
+              "close": "88680.40000000",
+              "high": "92540.69000000",
+              "low": "86050.99000000",
+              "open": "91552.88000000",
+              "timestamp": "2025-02-26T00:00:00+00:00",
+              "trades_count": 10289145,
+              "volume": "78333.11111000",
+              "vwap": null
+            },
+            {
+              "close": "84250.09000000",
+              "high": "89414.15000000",
+              "low": "82256.01000000",
+              "open": "88680.39000000",
+              "timestamp": "2025-02-27T00:00:00+00:00",
+              "trades_count": 8490006,
+              "volume": "56893.54409000",
+              "vwap": null
+            },
+            {
+              "close": "84708.58000000",
+              "high": "87078.46000000",
+              "low": "82716.49000000",
+              "open": "84250.09000000",
+              "timestamp": "2025-02-28T00:00:00+00:00",
+              "trades_count": 6357581,
+              "volume": "42505.45439000",
+              "vwap": null
+            },
+            {
+              "close": "84349.94000000",
+              "high": "85120.00000000",
+              "low": "78258.52000000",
+              "open": "84708.57000000",
+              "timestamp": "2025-03-01T00:00:00+00:00",
+              "trades_count": 11344216,
+              "volume": "83648.03969000",
+              "vwap": null
+            },
+            {
+              "close": "86064.53000000",
+              "high": "86558.00000000",
+              "low": "83824.78000000",
+              "open": "84349.95000000",
+              "timestamp": "2025-03-02T00:00:00+00:00",
+              "trades_count": 3700728,
+              "volume": "25785.05464000",
+              "vwap": null
+            },
+            {
+              "close": "94270.00000000",
+              "high": "95000.00000000",
+              "low": "85050.60000000",
+              "open": "86064.54000000",
+              "timestamp": "2025-03-03T00:00:00+00:00",
+              "trades_count": 7403218,
+              "volume": "54889.09045000",
+              "vwap": null
+            }
+          ],
+          "week": "2025-03-03T00:00:00+00:00"
+        }
+      ],
+      "c_control": {
+        "not_controllable": [],
+        "ohlcv_mismatches": [],
+        "trades_count": {
+          "compared": 270,
+          "mismatches": [],
+          "with_null": 0
+        },
+        "vwap": {
+          "compared": 0,
+          "max_abs_gap": null,
+          "rebuilt_non_null": 0,
+          "stored_non_null": 0
+        },
+        "weeks_compared": 270
+      }
+    },
+    "ETH/USDT": {
+      "a_diagnostic": {
+        "coverage_evaluated": {
+          "covered_units": 82,
+          "expected_units": 84,
+          "gap_max_days": 17.514,
+          "longest_gap_days": 7.0,
+          "missing": [
+            "2025-02-03T00:00:00+00:00",
+            "2025-03-03T00:00:00+00:00"
+          ],
+          "ok": true,
+          "ratio": 0.9761904761904762,
+          "unit": "week"
+        },
+        "d1_prefix": {
+          "covered_units": 188,
+          "expected_units": 194,
+          "gap_max_days": 31.0,
+          "longest_gap_days": 7.0,
+          "missing": [
+            "2022-06-06T00:00:00+00:00",
+            "2022-07-04T00:00:00+00:00",
+            "2022-09-05T00:00:00+00:00",
+            "2022-10-03T00:00:00+00:00",
+            "2022-11-07T00:00:00+00:00",
+            "2022-12-05T00:00:00+00:00"
+          ],
+          "ok": false,
+          "ratio": 0.9690721649484536,
+          "unit": "week"
+        },
+        "expected_in_window": 278,
+        "missing": [
+          "2022-06-06T00:00:00+00:00",
+          "2022-07-04T00:00:00+00:00",
+          "2022-09-05T00:00:00+00:00",
+          "2022-10-03T00:00:00+00:00",
+          "2022-11-07T00:00:00+00:00",
+          "2022-12-05T00:00:00+00:00",
+          "2025-02-03T00:00:00+00:00",
+          "2025-03-03T00:00:00+00:00"
+        ],
+        "missing_equals_brief": true,
+        "off_grid": [],
+        "present_in_window": 270,
+        "weekly_stamps_evaluated": 84,
+        "weekly_stamps_prefix": 194
+      },
+      "b_availability": [
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "1806.23000000",
+            "high": "2016.45000000",
+            "low": "1737.00000000",
+            "open": "1813.64000000",
+            "timestamp": "2022-06-06T00:00:00+00:00",
+            "trades_count": 5019674,
+            "volume": "4894188.42940000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "30e77723c9788d30194571acfa4365d225df9b505475a91481feceea63cacaa5",
+          "source_stamps": [
+            "2022-05-31T00:00:00+00:00",
+            "2022-06-01T00:00:00+00:00",
+            "2022-06-02T00:00:00+00:00",
+            "2022-06-03T00:00:00+00:00",
+            "2022-06-04T00:00:00+00:00",
+            "2022-06-05T00:00:00+00:00",
+            "2022-06-06T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "1998.78000000",
+              "high": "2013.00000000",
+              "low": "1803.18000000",
+              "open": "1813.64000000",
+              "timestamp": "2022-05-31T00:00:00+00:00",
+              "trades_count": 848129,
+              "volume": "814922.83590000",
+              "vwap": null
+            },
+            {
+              "close": "1941.90000000",
+              "high": "2016.45000000",
+              "low": "1925.00000000",
+              "open": "1998.78000000",
+              "timestamp": "2022-06-01T00:00:00+00:00",
+              "trades_count": 791367,
+              "volume": "751103.42260000",
+              "vwap": null
+            },
+            {
+              "close": "1817.95000000",
+              "high": "1972.58000000",
+              "low": "1763.75000000",
+              "open": "1941.90000000",
+              "timestamp": "2022-06-02T00:00:00+00:00",
+              "trades_count": 973159,
+              "volume": "1037841.27060000",
+              "vwap": null
+            },
+            {
+              "close": "1834.08000000",
+              "high": "1853.05000000",
+              "low": "1782.42000000",
+              "open": "1817.96000000",
+              "timestamp": "2022-06-03T00:00:00+00:00",
+              "trades_count": 793304,
+              "volume": "788784.40170000",
+              "vwap": null
+            },
+            {
+              "close": "1775.12000000",
+              "high": "1843.91000000",
+              "low": "1737.00000000",
+              "open": "1834.09000000",
+              "timestamp": "2022-06-04T00:00:00+00:00",
+              "trades_count": 807046,
+              "volume": "741282.53460000",
+              "vwap": null
+            },
+            {
+              "close": "1804.58000000",
+              "high": "1816.00000000",
+              "low": "1748.43000000",
+              "open": "1775.13000000",
+              "timestamp": "2022-06-05T00:00:00+00:00",
+              "trades_count": 402734,
+              "volume": "388279.45790000",
+              "vwap": null
+            },
+            {
+              "close": "1806.23000000",
+              "high": "1830.17000000",
+              "low": "1773.05000000",
+              "open": "1804.58000000",
+              "timestamp": "2022-06-06T00:00:00+00:00",
+              "trades_count": 403935,
+              "volume": "371974.50610000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-06-06T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "1074.26000000",
+            "high": "1238.93000000",
+            "low": "998.00000000",
+            "open": "1197.79000000",
+            "timestamp": "2022-07-04T00:00:00+00:00",
+            "trades_count": 6463507,
+            "volume": "7610801.14680000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "38b6d193ac72bf03aa7d2c13a56f01a2c6ca285b0403e1a9716e83731f306cd6",
+          "source_stamps": [
+            "2022-06-28T00:00:00+00:00",
+            "2022-06-29T00:00:00+00:00",
+            "2022-06-30T00:00:00+00:00",
+            "2022-07-01T00:00:00+00:00",
+            "2022-07-02T00:00:00+00:00",
+            "2022-07-03T00:00:00+00:00",
+            "2022-07-04T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "1192.51000000",
+              "high": "1238.93000000",
+              "low": "1172.49000000",
+              "open": "1197.79000000",
+              "timestamp": "2022-06-28T00:00:00+00:00",
+              "trades_count": 794157,
+              "volume": "868734.20610000",
+              "vwap": null
+            },
+            {
+              "close": "1144.05000000",
+              "high": "1237.99000000",
+              "low": "1136.32000000",
+              "open": "1192.51000000",
+              "timestamp": "2022-06-29T00:00:00+00:00",
+              "trades_count": 952584,
+              "volume": "1104065.22110000",
+              "vwap": null
+            },
+            {
+              "close": "1100.21000000",
+              "high": "1156.80000000",
+              "low": "1087.42000000",
+              "open": "1144.05000000",
+              "timestamp": "2022-06-30T00:00:00+00:00",
+              "trades_count": 1145867,
+              "volume": "1295517.79600000",
+              "vwap": null
+            },
+            {
+              "close": "1071.01000000",
+              "high": "1106.62000000",
+              "low": "998.00000000",
+              "open": "1100.21000000",
+              "timestamp": "2022-07-01T00:00:00+00:00",
+              "trades_count": 1180758,
+              "volume": "1420670.36560000",
+              "vwap": null
+            },
+            {
+              "close": "1059.73000000",
+              "high": "1117.00000000",
+              "low": "1033.44000000",
+              "open": "1071.02000000",
+              "timestamp": "2022-07-02T00:00:00+00:00",
+              "trades_count": 1218279,
+              "volume": "1562255.14390000",
+              "vwap": null
+            },
+            {
+              "close": "1067.01000000",
+              "high": "1078.88000000",
+              "low": "1028.29000000",
+              "open": "1059.73000000",
+              "timestamp": "2022-07-03T00:00:00+00:00",
+              "trades_count": 608900,
+              "volume": "714812.08040000",
+              "vwap": null
+            },
+            {
+              "close": "1074.26000000",
+              "high": "1088.34000000",
+              "low": "1040.78000000",
+              "open": "1067.01000000",
+              "timestamp": "2022-07-04T00:00:00+00:00",
+              "trades_count": 562962,
+              "volume": "644746.33370000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-07-04T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "1579.28000000",
+            "high": "1650.00000000",
+            "low": "1422.08000000",
+            "open": "1426.76000000",
+            "timestamp": "2022-09-05T00:00:00+00:00",
+            "trades_count": 7303513,
+            "volume": "5044263.25510000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "cae400030b1e122bf78c4f4c7871e4f83159dd85311e7166f58ddc81eb116183",
+          "source_stamps": [
+            "2022-08-30T00:00:00+00:00",
+            "2022-08-31T00:00:00+00:00",
+            "2022-09-01T00:00:00+00:00",
+            "2022-09-02T00:00:00+00:00",
+            "2022-09-03T00:00:00+00:00",
+            "2022-09-04T00:00:00+00:00",
+            "2022-09-05T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "1551.80000000",
+              "high": "1559.99000000",
+              "low": "1422.08000000",
+              "open": "1426.76000000",
+              "timestamp": "2022-08-30T00:00:00+00:00",
+              "trades_count": 1099487,
+              "volume": "826252.08310000",
+              "vwap": null
+            },
+            {
+              "close": "1524.59000000",
+              "high": "1606.13000000",
+              "low": "1473.61000000",
+              "open": "1551.79000000",
+              "timestamp": "2022-08-31T00:00:00+00:00",
+              "trades_count": 1292499,
+              "volume": "1003075.01720000",
+              "vwap": null
+            },
+            {
+              "close": "1554.10000000",
+              "high": "1619.78000000",
+              "low": "1524.59000000",
+              "open": "1524.59000000",
+              "timestamp": "2022-09-01T00:00:00+00:00",
+              "trades_count": 1471691,
+              "volume": "949227.67750000",
+              "vwap": null
+            },
+            {
+              "close": "1586.16000000",
+              "high": "1599.00000000",
+              "low": "1512.77000000",
+              "open": "1554.11000000",
+              "timestamp": "2022-09-02T00:00:00+00:00",
+              "trades_count": 1195229,
+              "volume": "728710.48200000",
+              "vwap": null
+            },
+            {
+              "close": "1575.35000000",
+              "high": "1650.00000000",
+              "low": "1546.41000000",
+              "open": "1586.17000000",
+              "timestamp": "2022-09-03T00:00:00+00:00",
+              "trades_count": 1160858,
+              "volume": "919009.65980000",
+              "vwap": null
+            },
+            {
+              "close": "1557.46000000",
+              "high": "1582.71000000",
+              "low": "1534.28000000",
+              "open": "1575.35000000",
+              "timestamp": "2022-09-04T00:00:00+00:00",
+              "trades_count": 562893,
+              "volume": "321397.21890000",
+              "vwap": null
+            },
+            {
+              "close": "1579.28000000",
+              "high": "1583.66000000",
+              "low": "1540.66000000",
+              "open": "1557.45000000",
+              "timestamp": "2022-09-05T00:00:00+00:00",
+              "trades_count": 520856,
+              "volume": "296591.11660000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-09-05T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "1276.72000000",
+            "high": "1400.00000000",
+            "low": "1253.20000000",
+            "open": "1294.62000000",
+            "timestamp": "2022-10-03T00:00:00+00:00",
+            "trades_count": 5752095,
+            "volume": "4714233.48760000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "eed4d2a11775ce1df5c8f393c2a52c0608fa513d59106f18831b44eaacbf0baa",
+          "source_stamps": [
+            "2022-09-27T00:00:00+00:00",
+            "2022-09-28T00:00:00+00:00",
+            "2022-09-29T00:00:00+00:00",
+            "2022-09-30T00:00:00+00:00",
+            "2022-10-01T00:00:00+00:00",
+            "2022-10-02T00:00:00+00:00",
+            "2022-10-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "1336.17000000",
+              "high": "1340.42000000",
+              "low": "1277.85000000",
+              "open": "1294.62000000",
+              "timestamp": "2022-09-27T00:00:00+00:00",
+              "trades_count": 934159,
+              "volume": "799166.43330000",
+              "vwap": null
+            },
+            {
+              "close": "1328.02000000",
+              "high": "1400.00000000",
+              "low": "1303.75000000",
+              "open": "1336.17000000",
+              "timestamp": "2022-09-28T00:00:00+00:00",
+              "trades_count": 1055212,
+              "volume": "860584.89440000",
+              "vwap": null
+            },
+            {
+              "close": "1337.20000000",
+              "high": "1355.70000000",
+              "low": "1253.20000000",
+              "open": "1328.01000000",
+              "timestamp": "2022-09-29T00:00:00+00:00",
+              "trades_count": 1075441,
+              "volume": "919314.91310000",
+              "vwap": null
+            },
+            {
+              "close": "1335.70000000",
+              "high": "1352.02000000",
+              "low": "1288.52000000",
+              "open": "1337.20000000",
+              "timestamp": "2022-09-30T00:00:00+00:00",
+              "trades_count": 950476,
+              "volume": "770591.68950000",
+              "vwap": null
+            },
+            {
+              "close": "1328.72000000",
+              "high": "1373.19000000",
+              "low": "1313.35000000",
+              "open": "1335.69000000",
+              "timestamp": "2022-10-01T00:00:00+00:00",
+              "trades_count": 926935,
+              "volume": "740753.61100000",
+              "vwap": null
+            },
+            {
+              "close": "1311.79000000",
+              "high": "1333.69000000",
+              "low": "1302.68000000",
+              "open": "1328.71000000",
+              "timestamp": "2022-10-02T00:00:00+00:00",
+              "trades_count": 347396,
+              "volume": "252081.90560000",
+              "vwap": null
+            },
+            {
+              "close": "1276.72000000",
+              "high": "1317.93000000",
+              "low": "1270.00000000",
+              "open": "1311.79000000",
+              "timestamp": "2022-10-03T00:00:00+00:00",
+              "trades_count": 462476,
+              "volume": "371740.04070000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-10-03T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "1568.29000000",
+            "high": "1680.00000000",
+            "low": "1502.32000000",
+            "open": "1590.45000000",
+            "timestamp": "2022-11-07T00:00:00+00:00",
+            "trades_count": 5675381,
+            "volume": "4581252.75080000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "503b08dbc90def615f4f67021ab5981076e120aa3859ccbf31f656ffd76ed108",
+          "source_stamps": [
+            "2022-11-01T00:00:00+00:00",
+            "2022-11-02T00:00:00+00:00",
+            "2022-11-03T00:00:00+00:00",
+            "2022-11-04T00:00:00+00:00",
+            "2022-11-05T00:00:00+00:00",
+            "2022-11-06T00:00:00+00:00",
+            "2022-11-07T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "1572.69000000",
+              "high": "1635.80000000",
+              "low": "1545.43000000",
+              "open": "1590.45000000",
+              "timestamp": "2022-11-01T00:00:00+00:00",
+              "trades_count": 1024808,
+              "volume": "810334.24140000",
+              "vwap": null
+            },
+            {
+              "close": "1578.48000000",
+              "high": "1612.92000000",
+              "low": "1563.69000000",
+              "open": "1572.69000000",
+              "timestamp": "2022-11-02T00:00:00+00:00",
+              "trades_count": 702747,
+              "volume": "527539.29650000",
+              "vwap": null
+            },
+            {
+              "close": "1518.34000000",
+              "high": "1621.68000000",
+              "low": "1502.32000000",
+              "open": "1578.47000000",
+              "timestamp": "2022-11-03T00:00:00+00:00",
+              "trades_count": 1171091,
+              "volume": "981395.36480000",
+              "vwap": null
+            },
+            {
+              "close": "1531.01000000",
+              "high": "1559.01000000",
+              "low": "1515.17000000",
+              "open": "1518.33000000",
+              "timestamp": "2022-11-04T00:00:00+00:00",
+              "trades_count": 678608,
+              "volume": "560202.88130000",
+              "vwap": null
+            },
+            {
+              "close": "1644.78000000",
+              "high": "1680.00000000",
+              "low": "1528.40000000",
+              "open": "1531.01000000",
+              "timestamp": "2022-11-05T00:00:00+00:00",
+              "trades_count": 1072186,
+              "volume": "935531.47810000",
+              "vwap": null
+            },
+            {
+              "close": "1626.98000000",
+              "high": "1666.97000000",
+              "low": "1621.42000000",
+              "open": "1644.78000000",
+              "timestamp": "2022-11-06T00:00:00+00:00",
+              "trades_count": 480888,
+              "volume": "351385.53620000",
+              "vwap": null
+            },
+            {
+              "close": "1568.29000000",
+              "high": "1639.02000000",
+              "low": "1564.39000000",
+              "open": "1626.98000000",
+              "timestamp": "2022-11-07T00:00:00+00:00",
+              "trades_count": 545053,
+              "volume": "414863.95250000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-11-07T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "1279.41000000",
+            "high": "1309.77000000",
+            "low": "1151.02000000",
+            "open": "1193.88000000",
+            "timestamp": "2022-12-05T00:00:00+00:00",
+            "trades_count": 4710731,
+            "volume": "3279474.59660000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "3142d762f15bbf2bb10348b83634edeff173d2851dac9194d03150cd0c72885b",
+          "source_stamps": [
+            "2022-11-29T00:00:00+00:00",
+            "2022-11-30T00:00:00+00:00",
+            "2022-12-01T00:00:00+00:00",
+            "2022-12-02T00:00:00+00:00",
+            "2022-12-03T00:00:00+00:00",
+            "2022-12-04T00:00:00+00:00",
+            "2022-12-05T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "1167.77000000",
+              "high": "1199.25000000",
+              "low": "1151.02000000",
+              "open": "1193.88000000",
+              "timestamp": "2022-11-29T00:00:00+00:00",
+              "trades_count": 708380,
+              "volume": "478795.60930000",
+              "vwap": null
+            },
+            {
+              "close": "1216.49000000",
+              "high": "1228.37000000",
+              "low": "1158.27000000",
+              "open": "1167.77000000",
+              "timestamp": "2022-11-30T00:00:00+00:00",
+              "trades_count": 789552,
+              "volume": "512143.58610000",
+              "vwap": null
+            },
+            {
+              "close": "1294.46000000",
+              "high": "1309.77000000",
+              "low": "1212.50000000",
+              "open": "1216.49000000",
+              "timestamp": "2022-12-01T00:00:00+00:00",
+              "trades_count": 985173,
+              "volume": "815679.27170000",
+              "vwap": null
+            },
+            {
+              "close": "1276.41000000",
+              "high": "1299.90000000",
+              "low": "1262.77000000",
+              "open": "1294.46000000",
+              "timestamp": "2022-12-02T00:00:00+00:00",
+              "trades_count": 587711,
+              "volume": "430018.73910000",
+              "vwap": null
+            },
+            {
+              "close": "1295.59000000",
+              "high": "1297.18000000",
+              "low": "1265.24000000",
+              "open": "1276.40000000",
+              "timestamp": "2022-12-03T00:00:00+00:00",
+              "trades_count": 547512,
+              "volume": "371559.58500000",
+              "vwap": null
+            },
+            {
+              "close": "1240.51000000",
+              "high": "1309.00000000",
+              "low": "1236.26000000",
+              "open": "1295.58000000",
+              "timestamp": "2022-12-04T00:00:00+00:00",
+              "trades_count": 594082,
+              "volume": "347148.25880000",
+              "vwap": null
+            },
+            {
+              "close": "1279.41000000",
+              "high": "1287.19000000",
+              "low": "1240.10000000",
+              "open": "1240.50000000",
+              "timestamp": "2022-12-05T00:00:00+00:00",
+              "trades_count": 498321,
+              "volume": "324129.54660000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-12-05T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "2869.68000000",
+            "high": "3437.31000000",
+            "low": "2750.71000000",
+            "open": "3232.61000000",
+            "timestamp": "2025-02-03T00:00:00+00:00",
+            "trades_count": 26191788,
+            "volume": "3917894.04870000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "20339266cbc1657bba01004116d83abfcce79789cd9658f7241001c2e07c7a07",
+          "source_stamps": [
+            "2025-01-28T00:00:00+00:00",
+            "2025-01-29T00:00:00+00:00",
+            "2025-01-30T00:00:00+00:00",
+            "2025-01-31T00:00:00+00:00",
+            "2025-02-01T00:00:00+00:00",
+            "2025-02-02T00:00:00+00:00",
+            "2025-02-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "3182.44000000",
+              "high": "3253.91000000",
+              "low": "3020.01000000",
+              "open": "3232.61000000",
+              "timestamp": "2025-01-28T00:00:00+00:00",
+              "trades_count": 4888504,
+              "volume": "753004.75290000",
+              "vwap": null
+            },
+            {
+              "close": "3077.72000000",
+              "high": "3223.01000000",
+              "low": "3040.03000000",
+              "open": "3182.44000000",
+              "timestamp": "2025-01-29T00:00:00+00:00",
+              "trades_count": 2936974,
+              "volume": "350959.71730000",
+              "vwap": null
+            },
+            {
+              "close": "3113.90000000",
+              "high": "3182.52000000",
+              "low": "3054.06000000",
+              "open": "3077.72000000",
+              "timestamp": "2025-01-30T00:00:00+00:00",
+              "trades_count": 3277369,
+              "volume": "409737.25760000",
+              "vwap": null
+            },
+            {
+              "close": "3247.39000000",
+              "high": "3283.43000000",
+              "low": "3091.06000000",
+              "open": "3113.90000000",
+              "timestamp": "2025-01-31T00:00:00+00:00",
+              "trades_count": 2410789,
+              "volume": "350639.48230000",
+              "vwap": null
+            },
+            {
+              "close": "3300.99000000",
+              "high": "3437.31000000",
+              "low": "3213.80000000",
+              "open": "3247.38000000",
+              "timestamp": "2025-02-01T00:00:00+00:00",
+              "trades_count": 3802893,
+              "volume": "648681.65610000",
+              "vwap": null
+            },
+            {
+              "close": "3117.54000000",
+              "high": "3331.98000000",
+              "low": "3101.70000000",
+              "open": "3300.99000000",
+              "timestamp": "2025-02-02T00:00:00+00:00",
+              "trades_count": 2900696,
+              "volume": "354065.25250000",
+              "vwap": null
+            },
+            {
+              "close": "2869.68000000",
+              "high": "3163.20000000",
+              "low": "2750.71000000",
+              "open": "3117.54000000",
+              "timestamp": "2025-02-03T00:00:00+00:00",
+              "trades_count": 5974563,
+              "volume": "1050805.93000000",
+              "vwap": null
+            }
+          ],
+          "week": "2025-02-03T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "2518.11000000",
+            "high": "2839.95000000",
+            "low": "2076.26000000",
+            "open": "2819.70000000",
+            "timestamp": "2025-03-03T00:00:00+00:00",
+            "trades_count": 34415210,
+            "volume": "6704218.92400000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "5eeb540db97a0e99ad96abc7e4d8112bdef16e9f03254043a0a6d5685606baed",
+          "source_stamps": [
+            "2025-02-25T00:00:00+00:00",
+            "2025-02-26T00:00:00+00:00",
+            "2025-02-27T00:00:00+00:00",
+            "2025-02-28T00:00:00+00:00",
+            "2025-03-01T00:00:00+00:00",
+            "2025-03-02T00:00:00+00:00",
+            "2025-03-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "2513.52000000",
+              "high": "2839.95000000",
+              "low": "2470.33000000",
+              "open": "2819.70000000",
+              "timestamp": "2025-02-25T00:00:00+00:00",
+              "trades_count": 4737903,
+              "volume": "876876.37070000",
+              "vwap": null
+            },
+            {
+              "close": "2495.70000000",
+              "high": "2533.49000000",
+              "low": "2313.49000000",
+              "open": "2513.52000000",
+              "timestamp": "2025-02-26T00:00:00+00:00",
+              "trades_count": 7076645,
+              "volume": "1322016.87180000",
+              "vwap": null
+            },
+            {
+              "close": "2336.37000000",
+              "high": "2507.50000000",
+              "low": "2253.77000000",
+              "open": "2495.69000000",
+              "timestamp": "2025-02-27T00:00:00+00:00",
+              "trades_count": 5495972,
+              "volume": "863087.21330000",
+              "vwap": null
+            },
+            {
+              "close": "2307.72000000",
+              "high": "2381.60000000",
+              "low": "2230.57000000",
+              "open": "2336.38000000",
+              "timestamp": "2025-02-28T00:00:00+00:00",
+              "trades_count": 3906903,
+              "volume": "637583.91060000",
+              "vwap": null
+            },
+            {
+              "close": "2237.59000000",
+              "high": "2314.18000000",
+              "low": "2076.26000000",
+              "open": "2307.72000000",
+              "timestamp": "2025-03-01T00:00:00+00:00",
+              "trades_count": 5708556,
+              "volume": "1291539.05570000",
+              "vwap": null
+            },
+            {
+              "close": "2217.39000000",
+              "high": "2281.14000000",
+              "low": "2142.73000000",
+              "open": "2237.59000000",
+              "timestamp": "2025-03-02T00:00:00+00:00",
+              "trades_count": 2511839,
+              "volume": "446430.72710000",
+              "vwap": null
+            },
+            {
+              "close": "2518.11000000",
+              "high": "2550.58000000",
+              "low": "2172.04000000",
+              "open": "2217.40000000",
+              "timestamp": "2025-03-03T00:00:00+00:00",
+              "trades_count": 4977392,
+              "volume": "1266684.77480000",
+              "vwap": null
+            }
+          ],
+          "week": "2025-03-03T00:00:00+00:00"
+        }
+      ],
+      "c_control": {
+        "not_controllable": [],
+        "ohlcv_mismatches": [],
+        "trades_count": {
+          "compared": 270,
+          "mismatches": [],
+          "with_null": 0
+        },
+        "vwap": {
+          "compared": 0,
+          "max_abs_gap": null,
+          "rebuilt_non_null": 0,
+          "stored_non_null": 0
+        },
+        "weeks_compared": 270
+      }
+    },
+    "SOL/USDT": {
+      "a_diagnostic": {
+        "coverage_evaluated": {
+          "covered_units": 82,
+          "expected_units": 84,
+          "gap_max_days": 17.514,
+          "longest_gap_days": 7.0,
+          "missing": [
+            "2025-02-03T00:00:00+00:00",
+            "2025-03-03T00:00:00+00:00"
+          ],
+          "ok": true,
+          "ratio": 0.9761904761904762,
+          "unit": "week"
+        },
+        "d1_prefix": {
+          "covered_units": 188,
+          "expected_units": 194,
+          "gap_max_days": 31.0,
+          "longest_gap_days": 7.0,
+          "missing": [
+            "2022-06-06T00:00:00+00:00",
+            "2022-07-04T00:00:00+00:00",
+            "2022-09-05T00:00:00+00:00",
+            "2022-10-03T00:00:00+00:00",
+            "2022-11-07T00:00:00+00:00",
+            "2022-12-05T00:00:00+00:00"
+          ],
+          "ok": false,
+          "ratio": 0.9690721649484536,
+          "unit": "week"
+        },
+        "expected_in_window": 278,
+        "missing": [
+          "2022-06-06T00:00:00+00:00",
+          "2022-07-04T00:00:00+00:00",
+          "2022-09-05T00:00:00+00:00",
+          "2022-10-03T00:00:00+00:00",
+          "2022-11-07T00:00:00+00:00",
+          "2022-12-05T00:00:00+00:00",
+          "2025-02-03T00:00:00+00:00",
+          "2025-03-03T00:00:00+00:00"
+        ],
+        "missing_equals_brief": true,
+        "off_grid": [],
+        "present_in_window": 270,
+        "weekly_stamps_evaluated": 84,
+        "weekly_stamps_prefix": 194
+      },
+      "b_availability": [
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "38.52000000",
+            "high": "48.39000000",
+            "low": "35.71000000",
+            "open": "44.98000000",
+            "timestamp": "2022-06-06T00:00:00+00:00",
+            "trades_count": 2209771,
+            "volume": "31680429.89000000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "d82b5b8b76c27c8b5682892a82cb54df2998ad40824f9018f81e8559c1efc835",
+          "source_stamps": [
+            "2022-05-31T00:00:00+00:00",
+            "2022-06-01T00:00:00+00:00",
+            "2022-06-02T00:00:00+00:00",
+            "2022-06-03T00:00:00+00:00",
+            "2022-06-04T00:00:00+00:00",
+            "2022-06-05T00:00:00+00:00",
+            "2022-06-06T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "47.22000000",
+              "high": "48.39000000",
+              "low": "44.27000000",
+              "open": "44.98000000",
+              "timestamp": "2022-05-31T00:00:00+00:00",
+              "trades_count": 349733,
+              "volume": "5476313.14000000",
+              "vwap": null
+            },
+            {
+              "close": "45.77000000",
+              "high": "48.24000000",
+              "low": "44.56000000",
+              "open": "47.22000000",
+              "timestamp": "2022-06-01T00:00:00+00:00",
+              "trades_count": 309278,
+              "volume": "4479536.73000000",
+              "vwap": null
+            },
+            {
+              "close": "40.11000000",
+              "high": "46.12000000",
+              "low": "39.51000000",
+              "open": "45.78000000",
+              "timestamp": "2022-06-02T00:00:00+00:00",
+              "trades_count": 336469,
+              "volume": "4778696.94000000",
+              "vwap": null
+            },
+            {
+              "close": "40.85000000",
+              "high": "41.65000000",
+              "low": "38.13000000",
+              "open": "40.11000000",
+              "timestamp": "2022-06-03T00:00:00+00:00",
+              "trades_count": 360847,
+              "volume": "5153870.27000000",
+              "vwap": null
+            },
+            {
+              "close": "38.28000000",
+              "high": "41.54000000",
+              "low": "37.63000000",
+              "open": "40.86000000",
+              "timestamp": "2022-06-04T00:00:00+00:00",
+              "trades_count": 344798,
+              "volume": "4437324.64000000",
+              "vwap": null
+            },
+            {
+              "close": "39.00000000",
+              "high": "39.50000000",
+              "low": "35.71000000",
+              "open": "38.28000000",
+              "timestamp": "2022-06-05T00:00:00+00:00",
+              "trades_count": 265233,
+              "volume": "3736176.79000000",
+              "vwap": null
+            },
+            {
+              "close": "38.52000000",
+              "high": "40.22000000",
+              "low": "37.85000000",
+              "open": "39.02000000",
+              "timestamp": "2022-06-06T00:00:00+00:00",
+              "trades_count": 243413,
+              "volume": "3618511.38000000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-06-06T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "33.39000000",
+            "high": "41.25000000",
+            "low": "30.92000000",
+            "open": "39.39000000",
+            "timestamp": "2022-07-04T00:00:00+00:00",
+            "trades_count": 2064570,
+            "volume": "32137486.49000000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "df7003e9b0ed8d2f1d16b225f63f27d97bcf9e3701c230bb1128ed831a05bbf7",
+          "source_stamps": [
+            "2022-06-28T00:00:00+00:00",
+            "2022-06-29T00:00:00+00:00",
+            "2022-06-30T00:00:00+00:00",
+            "2022-07-01T00:00:00+00:00",
+            "2022-07-02T00:00:00+00:00",
+            "2022-07-03T00:00:00+00:00",
+            "2022-07-04T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "38.52000000",
+              "high": "41.25000000",
+              "low": "37.90000000",
+              "open": "39.39000000",
+              "timestamp": "2022-06-28T00:00:00+00:00",
+              "trades_count": 289594,
+              "volume": "4172937.40000000",
+              "vwap": null
+            },
+            {
+              "close": "35.35000000",
+              "high": "39.90000000",
+              "low": "35.02000000",
+              "open": "38.50000000",
+              "timestamp": "2022-06-29T00:00:00+00:00",
+              "trades_count": 361164,
+              "volume": "5581335.85000000",
+              "vwap": null
+            },
+            {
+              "close": "34.05000000",
+              "high": "36.12000000",
+              "low": "33.10000000",
+              "open": "35.34000000",
+              "timestamp": "2022-06-30T00:00:00+00:00",
+              "trades_count": 362853,
+              "volume": "5755278.44000000",
+              "vwap": null
+            },
+            {
+              "close": "33.76000000",
+              "high": "34.20000000",
+              "low": "30.92000000",
+              "open": "34.06000000",
+              "timestamp": "2022-07-01T00:00:00+00:00",
+              "trades_count": 344452,
+              "volume": "5337105.46000000",
+              "vwap": null
+            },
+            {
+              "close": "32.84000000",
+              "high": "35.40000000",
+              "low": "31.82000000",
+              "open": "33.76000000",
+              "timestamp": "2022-07-02T00:00:00+00:00",
+              "trades_count": 368256,
+              "volume": "6155756.76000000",
+              "vwap": null
+            },
+            {
+              "close": "33.36000000",
+              "high": "34.14000000",
+              "low": "31.87000000",
+              "open": "32.85000000",
+              "timestamp": "2022-07-03T00:00:00+00:00",
+              "trades_count": 183520,
+              "volume": "2740500.19000000",
+              "vwap": null
+            },
+            {
+              "close": "33.39000000",
+              "high": "33.77000000",
+              "low": "32.14000000",
+              "open": "33.36000000",
+              "timestamp": "2022-07-04T00:00:00+00:00",
+              "trades_count": 154731,
+              "volume": "2394572.39000000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-07-04T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "32.16000000",
+            "high": "33.16000000",
+            "low": "30.00000000",
+            "open": "30.43000000",
+            "timestamp": "2022-09-05T00:00:00+00:00",
+            "trades_count": 1074135,
+            "volume": "16639278.09000000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "ba491e5483a7f21cc6430c0a1817cd83500314e231c558b2f87e6057b4d58bec",
+          "source_stamps": [
+            "2022-08-30T00:00:00+00:00",
+            "2022-08-31T00:00:00+00:00",
+            "2022-09-01T00:00:00+00:00",
+            "2022-09-02T00:00:00+00:00",
+            "2022-09-03T00:00:00+00:00",
+            "2022-09-04T00:00:00+00:00",
+            "2022-09-05T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "32.42000000",
+              "high": "32.64000000",
+              "low": "30.00000000",
+              "open": "30.43000000",
+              "timestamp": "2022-08-30T00:00:00+00:00",
+              "trades_count": 219480,
+              "volume": "3758900.71000000",
+              "vwap": null
+            },
+            {
+              "close": "31.47000000",
+              "high": "33.16000000",
+              "low": "30.64000000",
+              "open": "32.42000000",
+              "timestamp": "2022-08-31T00:00:00+00:00",
+              "trades_count": 216107,
+              "volume": "3466845.37000000",
+              "vwap": null
+            },
+            {
+              "close": "31.50000000",
+              "high": "32.95000000",
+              "low": "31.18000000",
+              "open": "31.47000000",
+              "timestamp": "2022-09-01T00:00:00+00:00",
+              "trades_count": 194947,
+              "volume": "2705795.29000000",
+              "vwap": null
+            },
+            {
+              "close": "31.61000000",
+              "high": "31.79000000",
+              "low": "30.44000000",
+              "open": "31.49000000",
+              "timestamp": "2022-09-02T00:00:00+00:00",
+              "trades_count": 154540,
+              "volume": "2304167.56000000",
+              "vwap": null
+            },
+            {
+              "close": "31.23000000",
+              "high": "32.38000000",
+              "low": "30.76000000",
+              "open": "31.61000000",
+              "timestamp": "2022-09-03T00:00:00+00:00",
+              "trades_count": 145103,
+              "volume": "2327194.21000000",
+              "vwap": null
+            },
+            {
+              "close": "31.12000000",
+              "high": "31.29000000",
+              "low": "30.80000000",
+              "open": "31.23000000",
+              "timestamp": "2022-09-04T00:00:00+00:00",
+              "trades_count": 56763,
+              "volume": "773414.20000000",
+              "vwap": null
+            },
+            {
+              "close": "32.16000000",
+              "high": "32.20000000",
+              "low": "31.02000000",
+              "open": "31.11000000",
+              "timestamp": "2022-09-05T00:00:00+00:00",
+              "trades_count": 87195,
+              "volume": "1302960.75000000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-09-05T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "32.06000000",
+            "high": "35.41000000",
+            "low": "31.65000000",
+            "open": "32.33000000",
+            "timestamp": "2022-10-03T00:00:00+00:00",
+            "trades_count": 1237324,
+            "volume": "20717720.17000000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "a00f24cd4b22bbf19ee09bb57a20a4e80c0a1c766c14c01cfe971317096a6891",
+          "source_stamps": [
+            "2022-09-27T00:00:00+00:00",
+            "2022-09-28T00:00:00+00:00",
+            "2022-09-29T00:00:00+00:00",
+            "2022-09-30T00:00:00+00:00",
+            "2022-10-01T00:00:00+00:00",
+            "2022-10-02T00:00:00+00:00",
+            "2022-10-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "33.88000000",
+              "high": "33.95000000",
+              "low": "31.87000000",
+              "open": "32.33000000",
+              "timestamp": "2022-09-27T00:00:00+00:00",
+              "trades_count": 194936,
+              "volume": "3284142.93000000",
+              "vwap": null
+            },
+            {
+              "close": "32.69000000",
+              "high": "35.41000000",
+              "low": "32.08000000",
+              "open": "33.89000000",
+              "timestamp": "2022-09-28T00:00:00+00:00",
+              "trades_count": 260817,
+              "volume": "4411114.63000000",
+              "vwap": null
+            },
+            {
+              "close": "33.22000000",
+              "high": "33.81000000",
+              "low": "31.65000000",
+              "open": "32.68000000",
+              "timestamp": "2022-09-29T00:00:00+00:00",
+              "trades_count": 177327,
+              "volume": "3091106.50000000",
+              "vwap": null
+            },
+            {
+              "close": "33.93000000",
+              "high": "34.42000000",
+              "low": "32.65000000",
+              "open": "33.23000000",
+              "timestamp": "2022-09-30T00:00:00+00:00",
+              "trades_count": 189694,
+              "volume": "2735381.21000000",
+              "vwap": null
+            },
+            {
+              "close": "33.25000000",
+              "high": "35.22000000",
+              "low": "32.62000000",
+              "open": "33.94000000",
+              "timestamp": "2022-10-01T00:00:00+00:00",
+              "trades_count": 228264,
+              "volume": "4264290.42000000",
+              "vwap": null
+            },
+            {
+              "close": "32.44000000",
+              "high": "33.25000000",
+              "low": "32.34000000",
+              "open": "33.25000000",
+              "timestamp": "2022-10-02T00:00:00+00:00",
+              "trades_count": 93100,
+              "volume": "1458835.24000000",
+              "vwap": null
+            },
+            {
+              "close": "32.06000000",
+              "high": "33.00000000",
+              "low": "31.90000000",
+              "open": "32.44000000",
+              "timestamp": "2022-10-03T00:00:00+00:00",
+              "trades_count": 93186,
+              "volume": "1472849.24000000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-10-03T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "32.62000000",
+            "high": "38.79000000",
+            "low": "30.24000000",
+            "open": "32.93000000",
+            "timestamp": "2022-11-07T00:00:00+00:00",
+            "trades_count": 1806932,
+            "volume": "27119839.35000000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "89598089bf868ca9670cc2fe6cb3be3a6f4abb1603386d21d2bf65c6946620d2",
+          "source_stamps": [
+            "2022-11-01T00:00:00+00:00",
+            "2022-11-02T00:00:00+00:00",
+            "2022-11-03T00:00:00+00:00",
+            "2022-11-04T00:00:00+00:00",
+            "2022-11-05T00:00:00+00:00",
+            "2022-11-06T00:00:00+00:00",
+            "2022-11-07T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "32.56000000",
+              "high": "34.39000000",
+              "low": "32.20000000",
+              "open": "32.93000000",
+              "timestamp": "2022-11-01T00:00:00+00:00",
+              "trades_count": 217549,
+              "volume": "3082485.07000000",
+              "vwap": null
+            },
+            {
+              "close": "32.20000000",
+              "high": "33.39000000",
+              "low": "32.15000000",
+              "open": "32.57000000",
+              "timestamp": "2022-11-02T00:00:00+00:00",
+              "trades_count": 120950,
+              "volume": "2015730.52000000",
+              "vwap": null
+            },
+            {
+              "close": "30.80000000",
+              "high": "32.95000000",
+              "low": "30.24000000",
+              "open": "32.20000000",
+              "timestamp": "2022-11-03T00:00:00+00:00",
+              "trades_count": 222708,
+              "volume": "3423829.13000000",
+              "vwap": null
+            },
+            {
+              "close": "30.85000000",
+              "high": "32.25000000",
+              "low": "30.61000000",
+              "open": "30.81000000",
+              "timestamp": "2022-11-04T00:00:00+00:00",
+              "trades_count": 140610,
+              "volume": "2302866.46000000",
+              "vwap": null
+            },
+            {
+              "close": "33.74000000",
+              "high": "34.20000000",
+              "low": "30.66000000",
+              "open": "30.86000000",
+              "timestamp": "2022-11-05T00:00:00+00:00",
+              "trades_count": 257544,
+              "volume": "4106770.60000000",
+              "vwap": null
+            },
+            {
+              "close": "36.90000000",
+              "high": "38.79000000",
+              "low": "33.66000000",
+              "open": "33.73000000",
+              "timestamp": "2022-11-06T00:00:00+00:00",
+              "trades_count": 523661,
+              "volume": "7466083.52000000",
+              "vwap": null
+            },
+            {
+              "close": "32.62000000",
+              "high": "37.06000000",
+              "low": "32.31000000",
+              "open": "36.90000000",
+              "timestamp": "2022-11-07T00:00:00+00:00",
+              "trades_count": 323910,
+              "volume": "4722074.05000000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-11-07T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "13.71000000",
+            "high": "14.32000000",
+            "low": "12.78000000",
+            "open": "14.11000000",
+            "timestamp": "2022-12-05T00:00:00+00:00",
+            "trades_count": 775159,
+            "volume": "20094104.49000000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "0034857c08909b75590129d680eb3906b0911a33ff7d1912aa1ffff7799f24aa",
+          "source_stamps": [
+            "2022-11-29T00:00:00+00:00",
+            "2022-11-30T00:00:00+00:00",
+            "2022-12-01T00:00:00+00:00",
+            "2022-12-02T00:00:00+00:00",
+            "2022-12-03T00:00:00+00:00",
+            "2022-12-04T00:00:00+00:00",
+            "2022-12-05T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "13.32000000",
+              "high": "14.17000000",
+              "low": "12.78000000",
+              "open": "14.11000000",
+              "timestamp": "2022-11-29T00:00:00+00:00",
+              "trades_count": 186525,
+              "volume": "4718682.44000000",
+              "vwap": null
+            },
+            {
+              "close": "13.34000000",
+              "high": "13.96000000",
+              "low": "13.14000000",
+              "open": "13.33000000",
+              "timestamp": "2022-11-30T00:00:00+00:00",
+              "trades_count": 109799,
+              "volume": "2605636.41000000",
+              "vwap": null
+            },
+            {
+              "close": "14.16000000",
+              "high": "14.32000000",
+              "low": "13.21000000",
+              "open": "13.35000000",
+              "timestamp": "2022-12-01T00:00:00+00:00",
+              "trades_count": 141333,
+              "volume": "3599962.88000000",
+              "vwap": null
+            },
+            {
+              "close": "13.51000000",
+              "high": "14.19000000",
+              "low": "13.40000000",
+              "open": "14.17000000",
+              "timestamp": "2022-12-02T00:00:00+00:00",
+              "trades_count": 102314,
+              "volume": "2567835.92000000",
+              "vwap": null
+            },
+            {
+              "close": "13.71000000",
+              "high": "13.84000000",
+              "low": "13.33000000",
+              "open": "13.51000000",
+              "timestamp": "2022-12-03T00:00:00+00:00",
+              "trades_count": 104197,
+              "volume": "2865008.71000000",
+              "vwap": null
+            },
+            {
+              "close": "13.29000000",
+              "high": "13.77000000",
+              "low": "13.20000000",
+              "open": "13.71000000",
+              "timestamp": "2022-12-04T00:00:00+00:00",
+              "trades_count": 65671,
+              "volume": "1958859.38000000",
+              "vwap": null
+            },
+            {
+              "close": "13.71000000",
+              "high": "13.75000000",
+              "low": "13.27000000",
+              "open": "13.29000000",
+              "timestamp": "2022-12-05T00:00:00+00:00",
+              "trades_count": 65320,
+              "volume": "1778118.75000000",
+              "vwap": null
+            }
+          ],
+          "week": "2022-12-05T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "203.51000000",
+            "high": "244.70000000",
+            "low": "192.31000000",
+            "open": "240.49000000",
+            "timestamp": "2025-02-03T00:00:00+00:00",
+            "trades_count": 25323947,
+            "volume": "32632945.29000000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "7972ada504d09bfda135f2848b9f2e75f51011baa09db8ca97079451e207db28",
+          "source_stamps": [
+            "2025-01-28T00:00:00+00:00",
+            "2025-01-29T00:00:00+00:00",
+            "2025-01-30T00:00:00+00:00",
+            "2025-01-31T00:00:00+00:00",
+            "2025-02-01T00:00:00+00:00",
+            "2025-02-02T00:00:00+00:00",
+            "2025-02-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "234.89000000",
+              "high": "242.68000000",
+              "low": "220.89000000",
+              "open": "240.49000000",
+              "timestamp": "2025-01-28T00:00:00+00:00",
+              "trades_count": 6699907,
+              "volume": "8916620.84200000",
+              "vwap": null
+            },
+            {
+              "close": "227.06000000",
+              "high": "244.00000000",
+              "low": "225.01000000",
+              "open": "234.90000000",
+              "timestamp": "2025-01-29T00:00:00+00:00",
+              "trades_count": 3282972,
+              "volume": "3483450.08700000",
+              "vwap": null
+            },
+            {
+              "close": "228.16000000",
+              "high": "238.49000000",
+              "low": "222.63000000",
+              "open": "227.06000000",
+              "timestamp": "2025-01-30T00:00:00+00:00",
+              "trades_count": 3509070,
+              "volume": "3844193.83800000",
+              "vwap": null
+            },
+            {
+              "close": "238.31000000",
+              "high": "244.70000000",
+              "low": "226.84000000",
+              "open": "228.16000000",
+              "timestamp": "2025-01-31T00:00:00+00:00",
+              "trades_count": 2468882,
+              "volume": "3341265.97300000",
+              "vwap": null
+            },
+            {
+              "close": "231.77000000",
+              "high": "241.82000000",
+              "low": "228.24000000",
+              "open": "238.30000000",
+              "timestamp": "2025-02-01T00:00:00+00:00",
+              "trades_count": 2082835,
+              "volume": "2942165.56700000",
+              "vwap": null
+            },
+            {
+              "close": "213.03000000",
+              "high": "236.46000000",
+              "low": "212.74000000",
+              "open": "231.77000000",
+              "timestamp": "2025-02-02T00:00:00+00:00",
+              "trades_count": 1972665,
+              "volume": "2849748.65000000",
+              "vwap": null
+            },
+            {
+              "close": "203.51000000",
+              "high": "218.90000000",
+              "low": "192.31000000",
+              "open": "213.03000000",
+              "timestamp": "2025-02-03T00:00:00+00:00",
+              "trades_count": 5307616,
+              "volume": "7255500.33300000",
+              "vwap": null
+            }
+          ],
+          "week": "2025-02-03T00:00:00+00:00"
+        },
+        {
+          "absent": [],
+          "already_present_in_1w": false,
+          "present": 7,
+          "rebuilt": {
+            "close": "178.71000000",
+            "high": "179.85000000",
+            "low": "125.55000000",
+            "open": "167.94000000",
+            "timestamp": "2025-03-03T00:00:00+00:00",
+            "trades_count": 28665318,
+            "volume": "57102095.79500000",
+            "vwap": null
+          },
+          "reconstructible": true,
+          "source_sha256": "4ae87eafaf771fdfc80d01be8fef1821c596049349dbc578c8a41aeab2af64fd",
+          "source_stamps": [
+            "2025-02-25T00:00:00+00:00",
+            "2025-02-26T00:00:00+00:00",
+            "2025-02-27T00:00:00+00:00",
+            "2025-02-28T00:00:00+00:00",
+            "2025-03-01T00:00:00+00:00",
+            "2025-03-02T00:00:00+00:00",
+            "2025-03-03T00:00:00+00:00"
+          ],
+          "sources": [
+            {
+              "close": "141.81000000",
+              "high": "169.69000000",
+              "low": "138.00000000",
+              "open": "167.94000000",
+              "timestamp": "2025-02-25T00:00:00+00:00",
+              "trades_count": 4109967,
+              "volume": "7997237.91500000",
+              "vwap": null
+            },
+            {
+              "close": "144.33000000",
+              "high": "147.09000000",
+              "low": "131.91000000",
+              "open": "141.81000000",
+              "timestamp": "2025-02-26T00:00:00+00:00",
+              "trades_count": 6188432,
+              "volume": "11747010.14500000",
+              "vwap": null
+            },
+            {
+              "close": "135.32000000",
+              "high": "145.19000000",
+              "low": "130.65000000",
+              "open": "144.33000000",
+              "timestamp": "2025-02-27T00:00:00+00:00",
+              "trades_count": 3159238,
+              "volume": "5368401.05900000",
+              "vwap": null
+            },
+            {
+              "close": "137.68000000",
+              "high": "142.90000000",
+              "low": "134.71000000",
+              "open": "135.33000000",
+              "timestamp": "2025-02-28T00:00:00+00:00",
+              "trades_count": 2490511,
+              "volume": "4322990.45900000",
+              "vwap": null
+            },
+            {
+              "close": "148.18000000",
+              "high": "148.72000000",
+              "low": "125.55000000",
+              "open": "137.68000000",
+              "timestamp": "2025-03-01T00:00:00+00:00",
+              "trades_count": 4567953,
+              "volume": "10039960.61300000",
+              "vwap": null
+            },
+            {
+              "close": "143.66000000",
+              "high": "151.25000000",
+              "low": "138.57000000",
+              "open": "148.18000000",
+              "timestamp": "2025-03-02T00:00:00+00:00",
+              "trades_count": 1658774,
+              "volume": "4151855.75800000",
+              "vwap": null
+            },
+            {
+              "close": "178.71000000",
+              "high": "179.85000000",
+              "low": "140.04000000",
+              "open": "143.66000000",
+              "timestamp": "2025-03-03T00:00:00+00:00",
+              "trades_count": 6490443,
+              "volume": "13474639.84600000",
+              "vwap": null
+            }
+          ],
+          "week": "2025-03-03T00:00:00+00:00"
+        }
+      ],
+      "c_control": {
+        "not_controllable": [],
+        "ohlcv_mismatches": [],
+        "trades_count": {
+          "compared": 270,
+          "mismatches": [],
+          "with_null": 0
+        },
+        "vwap": {
+          "compared": 0,
+          "max_abs_gap": null,
+          "rebuilt_non_null": 0,
+          "stored_non_null": 0
+        },
+        "weeks_compared": 270
+      }
+    }
+  },
+  "provenance": {
+    "branch": "feat/c3b-reconstruction-1w",
+    "git_sha": "35b06ce03ce180d9769ae4731b13d82085af6876",
+    "provisional": false,
+    "script": "scripts/audit/reconstruct_1w.py",
+    "script_sha256": "1a96b958e3ce9bd4be7ef44a593ed6474a4f10cbd9f316afe2b5af985e81a24b",
+    "script_tracked": true,
+    "tracked_tree_clean": true
+  },
+  "scope": {
+    "anchor": "2024-11-22T04:48:00+00:00",
+    "exchange": "binance",
+    "expected_missing": [
+      "2022-06-06T00:00:00+00:00",
+      "2022-07-04T00:00:00+00:00",
+      "2022-09-05T00:00:00+00:00",
+      "2022-10-03T00:00:00+00:00",
+      "2022-11-07T00:00:00+00:00",
+      "2022-12-05T00:00:00+00:00",
+      "2025-02-03T00:00:00+00:00",
+      "2025-03-03T00:00:00+00:00"
+    ],
+    "method": "agg_1d_v1",
+    "pairs": [
+      "BTC/USDT",
+      "ETH/USDT",
+      "SOL/USDT"
+    ],
+    "source_interval": 1440,
+    "target_interval": 10080,
+    "window": {
+      "end": "2026-06-29T00:00:00+00:00",
+      "start": "2021-03-01T00:00:00+00:00"
+    }
+  },
+  "summary": {
+    "ohlcv_mismatches": 0,
+    "ok": true,
+    "targets_reconstructible": "24/24",
+    "violations": [],
+    "vision_positive": [],
+    "weeks_compared": 810
+  },
+  "timescale": {
+    "compression_enabled": false,
+    "target_chunks": [
+      {
+        "chunks": [
+          {
+            "chunk": "_hyper_2_3280_chunk",
+            "is_compressed": false,
+            "range_end": "2022-06-27T00:00:00+00:00",
+            "range_start": "2022-05-28T00:00:00+00:00"
+          }
+        ],
+        "week": "2022-06-06T00:00:00+00:00"
+      },
+      {
+        "chunks": [
+          {
+            "chunk": "_hyper_2_3281_chunk",
+            "is_compressed": false,
+            "range_end": "2022-07-27T00:00:00+00:00",
+            "range_start": "2022-06-27T00:00:00+00:00"
+          }
+        ],
+        "week": "2022-07-04T00:00:00+00:00"
+      },
+      {
+        "chunks": [
+          {
+            "chunk": "_hyper_2_3283_chunk",
+            "is_compressed": false,
+            "range_end": "2022-09-25T00:00:00+00:00",
+            "range_start": "2022-08-26T00:00:00+00:00"
+          }
+        ],
+        "week": "2022-09-05T00:00:00+00:00"
+      },
+      {
+        "chunks": [
+          {
+            "chunk": "_hyper_2_3284_chunk",
+            "is_compressed": false,
+            "range_end": "2022-10-25T00:00:00+00:00",
+            "range_start": "2022-09-25T00:00:00+00:00"
+          }
+        ],
+        "week": "2022-10-03T00:00:00+00:00"
+      },
+      {
+        "chunks": [
+          {
+            "chunk": "_hyper_2_3285_chunk",
+            "is_compressed": false,
+            "range_end": "2022-11-24T00:00:00+00:00",
+            "range_start": "2022-10-25T00:00:00+00:00"
+          }
+        ],
+        "week": "2022-11-07T00:00:00+00:00"
+      },
+      {
+        "chunks": [
+          {
+            "chunk": "_hyper_2_3286_chunk",
+            "is_compressed": false,
+            "range_end": "2022-12-24T00:00:00+00:00",
+            "range_start": "2022-11-24T00:00:00+00:00"
+          }
+        ],
+        "week": "2022-12-05T00:00:00+00:00"
+      },
+      {
+        "chunks": [
+          {
+            "chunk": "_hyper_2_3312_chunk",
+            "is_compressed": false,
+            "range_end": "2025-02-11T00:00:00+00:00",
+            "range_start": "2025-01-12T00:00:00+00:00"
+          }
+        ],
+        "week": "2025-02-03T00:00:00+00:00"
+      },
+      {
+        "chunks": [
+          {
+            "chunk": "_hyper_2_3254_chunk",
+            "is_compressed": false,
+            "range_end": "2025-03-13T00:00:00+00:00",
+            "range_start": "2025-02-11T00:00:00+00:00"
+          }
+        ],
+        "week": "2025-03-03T00:00:00+00:00"
+      }
+    ]
+  },
+  "vwap": {
+    "decided": false,
+    "population_binance": [
+      {
+        "first": "2021-01-02T00:00:00+00:00",
+        "interval": 1440,
+        "last": "2026-04-01T00:00:00+00:00",
+        "pair": "BTC/USDC",
+        "rows": 1753,
+        "trades_count_non_null": 1753,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2021-01-11T00:00:00+00:00",
+        "interval": 10080,
+        "last": "2026-04-06T00:00:00+00:00",
+        "pair": "BTC/USDC",
+        "rows": 246,
+        "trades_count_non_null": 246,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2019-01-02T00:00:00+00:00",
+        "interval": 1440,
+        "last": "2026-09-01T00:00:00+00:00",
+        "pair": "BTC/USDT",
+        "rows": 2800,
+        "trades_count_non_null": 2800,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2019-01-14T00:00:00+00:00",
+        "interval": 10080,
+        "last": "2026-07-06T00:00:00+00:00",
+        "pair": "BTC/USDT",
+        "rows": 383,
+        "trades_count_non_null": 383,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2021-01-02T00:00:00+00:00",
+        "interval": 1440,
+        "last": "2026-04-01T00:00:00+00:00",
+        "pair": "ETH/USDC",
+        "rows": 1753,
+        "trades_count_non_null": 1753,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2021-01-11T00:00:00+00:00",
+        "interval": 10080,
+        "last": "2026-04-06T00:00:00+00:00",
+        "pair": "ETH/USDC",
+        "rows": 246,
+        "trades_count_non_null": 246,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2019-01-02T00:00:00+00:00",
+        "interval": 1440,
+        "last": "2026-09-01T00:00:00+00:00",
+        "pair": "ETH/USDT",
+        "rows": 2800,
+        "trades_count_non_null": 2800,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2019-01-14T00:00:00+00:00",
+        "interval": 10080,
+        "last": "2026-07-06T00:00:00+00:00",
+        "pair": "ETH/USDT",
+        "rows": 383,
+        "trades_count_non_null": 383,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2021-09-25T00:00:00+00:00",
+        "interval": 1440,
+        "last": "2026-04-01T00:00:00+00:00",
+        "pair": "SOL/USDC",
+        "rows": 1196,
+        "trades_count_non_null": 1196,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2021-09-27T00:00:00+00:00",
+        "interval": 10080,
+        "last": "2026-04-06T00:00:00+00:00",
+        "pair": "SOL/USDC",
+        "rows": 168,
+        "trades_count_non_null": 168,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2020-08-12T00:00:00+00:00",
+        "interval": 1440,
+        "last": "2026-09-01T00:00:00+00:00",
+        "pair": "SOL/USDT",
+        "rows": 2212,
+        "trades_count_non_null": 2212,
+        "vwap_non_null": 0
+      },
+      {
+        "first": "2020-08-17T00:00:00+00:00",
+        "interval": 10080,
+        "last": "2026-07-06T00:00:00+00:00",
+        "pair": "SOL/USDT",
+        "rows": 300,
+        "trades_count_non_null": 300,
+        "vwap_non_null": 0
+      }
+    ],
+    "proposal": "null",
+    "readers_scan": {
+      "absent_paths": [
+        "src/krakenbot/backtesting"
+      ],
+      "hits": [
+        {
+          "file": "src/krakenbot/indicators/__init__.py",
+          "line": 22,
+          "text": "from krakenbot.indicators.vwap import VWAPIndicator"
+        },
+        {
+          "file": "src/krakenbot/indicators/multi_timeframe.py",
+          "line": 36,
+          "text": "from krakenbot.indicators.vwap import VWAPIndicator"
+        },
+        {
+          "file": "src/krakenbot/indicators/multi_timeframe.py",
+          "line": 230,
+          "text": "\"vwap\": {},  # Lazy - created on first get_vwap() call"
+        },
+        {
+          "file": "src/krakenbot/indicators/multi_timeframe.py",
+          "line": 378,
+          "text": "for indicator in tf_ind.get(\"vwap\", {}).values():"
+        },
+        {
+          "file": "src/krakenbot/indicators/multi_timeframe.py",
+          "line": 740,
+          "text": "vwap_dict = tf_ind.setdefault(\"vwap\", {})"
+        },
+        {
+          "file": "src/krakenbot/indicators/multi_timeframe.py",
+          "line": 868,
+          "text": "vwap = self.get_vwap(20, tf)"
+        },
+        {
+          "file": "src/krakenbot/indicators/multi_timeframe.py",
+          "line": 869,
+          "text": "if vwap is not None and close is not None and close > _ZERO:"
+        },
+        {
+          "file": "src/krakenbot/indicators/multi_timeframe.py",
+          "line": 870,
+          "text": "features[\"vwap_deviation\"] = float((close - vwap) / close)"
+        }
+      ],
+      "paths": [
+        "scripts/backtest.py",
+        "scripts/run_p6_backtests.py",
+        "scripts/run_p6_walkforward.py",
+        "scripts/run_p7_grid_search.py",
+        "scripts/p7_grids.py",
+        "scripts/compute_benchmarks.py",
+        "scripts/audit/c3_*.py",
+        "src/krakenbot/backtesting",
+        "src/krakenbot/backtest_metrics.py",
+        "src/krakenbot/replay_contract.py",
+        "src/krakenbot/strategies",
+        "src/krakenbot/indicators"
+      ]
+    },
+    "reason": "la colonne vwap n'est peuplée sur aucune row 1 d des séries USDT : la formule pondérée n'a pas d'entrée, seule la politique null est calculable",
+    "usdt_daily_vwap_non_null": 0,
+    "usdt_weekly_vwap_non_null": 0
+  }
+}

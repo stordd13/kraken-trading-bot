@@ -1,0 +1,16 @@
+[2m2026-09-24T14:54:02.481817Z[0m [[32m[1minfo     [0m] [1minitializing_database         [0m [[0m[1m[34mkrakenbot.core.database[0m][0m [36mecho[0m=[35mFalse[0m [36mmax_overflow[0m=[35m10[0m [36mpool_size[0m=[35m5[0m
+[2m2026-09-24T14:54:28.035061Z[0m [[31m[1merror    [0m] [1mdatabase_connection_failed    [0m [[0m[1m[34mkrakenbot.core.database[0m][0m [36merror[0m=[35m'[Errno 54] Connection reset by peer'[0m
+------------------------------ Captured log call -------------------------------
+INFO     krakenbot.config.settings:settings.py:872 Loaded strategies.yaml: 1 strategies enabled
+INFO     krakenbot.core.database:database.py:122 {'pool_size': 5, 'max_overflow': 10, 'echo': False, 'event': 'initializing_database', 'level': 'info', 'logger': 'krakenbot.core.database', 'timestamp': '2026-09-24T14:54:02.481817Z'}
+ERROR    krakenbot.core.database:database.py:151 {'error': '[Errno 54] Connection reset by peer', 'event': 'database_connection_failed', 'level': 'error', 'logger': 'krakenbot.core.database', 'timestamp': '2026-09-24T14:54:28.035061Z'}
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:99: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:108: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:114: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+FAILED tests/test_scripts/test_c2_replay_fidelity_db.py::test_grid_quick_window_decision_inputs_db
+1 failed, 2824 passed, 6 skipped, 25 deselected in 493.47s (0:08:13)
+exit=1

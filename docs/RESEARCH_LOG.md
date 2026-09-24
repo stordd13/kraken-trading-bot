@@ -220,6 +220,20 @@ Bruno du 24/09 (périmètre, marquage, D1, gate de l'étape 1).
   Vision servie plus tard pour une des 8 estampilles **n'écraserait pas** la row dérivée ; la remplacer exige un
   `DELETE` explicite de la row OHLC et de sa provenance, puis le réimport.
 
+### Issue de l'entrée 13 (inscrite après l'écriture)
+
+Migration `c1ae7a1c0001 → c3bd1e7a0001` appliquée par le tunnel le 2026-09-24 à 15:47:07-15:47:12Z ; `write` exécuté au
+`4866c7d` de 15:47:19 à 15:47:26Z, `vwap_policy = null`.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 13 | Contrôle (c) rejoué dans la transaction avant les INSERT : 810 semaines, **0 mismatch OHLCV**, 0 mismatch `trades_count` ; **24 rows `market_data_ohlc` + 24 rows `ohlc_derived`** écrites, valeurs identiques à celles reconstruites par `check` au `35b06ce` | `results/reconstruction_1w_2022_2025/write_report.md` |
+| 13 | Relecture sur connexion neuve : **D1 1 w préfixe 194/194** (passe) sur BTC/USDT, ETH/USDT et SOL/USDT, période évaluée 84/84, 0 estampille manquante sur `(2021-03-01, 2026-06-29]`, 278 semaines contrôlées par paire, 0 mismatch ; `count(*) ohlc_derived` = 24, chaque `source_sha256` rejoué égal, chaque row OHLC égale à l'agrégat rejoué | idem |
+| 13 | Contrôle SQL indépendant du script : `binance` 11 952 996 rows (= 11 952 972 + 24), 1 w USDT 391 / 391 / 308, un seul `git_sha` dans `ohlc_derived`, 0 provenance sans row OHLC, `alembic_version` = `c3bd1e7a0001` | `results/reconstruction_1w_2022_2025/evidence/independent_counts.txt` |
+
+Reste avant le merge sur `dev` : les 24 tests `_full` sur le serveur (diff § L.3 non vide sur `src/`, option A), sur
+signal de Bruno ; aucune commande alembic sur le serveur avant le merge. Rapport : `results/reconstruction_1w_2022_2025/report.md`.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
