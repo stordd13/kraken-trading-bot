@@ -181,6 +181,45 @@ geler avant tout run.
 - **Aucune simulation lancée, aucune donnée produite, aucune sélection.** Le livrable réel de C3a
   (`results/c3a_entry_validation/`, entrée 12) reste l'historique v2.0 ; sous v2.1, `c3_anchor` refuse son manifeste.
 
+### Reconstruction des 8 estampilles 1 w USDT (inscrite le 24/09/2026, avant l'écriture)
+
+Opération de **données**, pas un essai : aucune simulation, aucune sélection, hors quota. Elle lève le
+prérequis que le § A.8 v2.1 du protocole pose au manifeste de la première campagne (D1 1 w à 188/194 sur le
+préfixe `(2021-03-01, T = 2024-11-22T04:48Z]`). Brief `agent/agent_reconstruction_1w.md` ; décisions de
+Bruno du 24/09 (périmètre, marquage, D1, gate de l'étape 1).
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 13 | 2026-09-24 | C3b, données — reconstruction des estampilles 1 w manquantes depuis le 1 d (`scripts/audit/reconstruct_1w.py write --vwap-policy null`), **aucune simulation** | `exchange='binance'`, `BTC/USDT`, `ETH/USDT`, `SOL/USDT`, `interval = 10080` : **8 estampilles × 3 paires = 24 rows** — 2022-06-06, 2022-07-04, 2022-09-05, 2022-10-03, 2022-11-07, 2022-12-05 (préfixe), 2025-02-03, 2025-03-03 (période évaluée) | sources : rows 1 d Binance Vision USDT, 7 par semaine (`S − 6 j … S`) ; contrôle sur `(2021-03-01, 2026-06-29]` | branche `feat/c3b-reconstruction-1w` : check `2bee227`, exécuté au `35b06ce` ; write `9b59c26`, exécuté au commit de cette entrée (SHA consigné par row dans `ohlc_derived.git_sha` et dans `write_report.json`) ; migration `c3bd1e7a0001` ; métriques : sans objet | sans objet | 24 rows `market_data_ohlc` + 24 rows `ohlc_derived`, contrôle rejoué vert avant les INSERT ; D1 1 w préfixe **188/194 → 194/194** sur les trois paires, période évaluée 82/84 → 84/84 | manifeste de la première campagne : les 8 estampilles dérivées y sont **listées**, lues dans `ohlc_derived` | `results/reconstruction_1w_2022_2025/` (`check_report.*`, `write_report.*`, `report.md`) |
+
+- **Méthode `agg_1d_v1`** (fonction pure, `Decimal`, sommes exactes) : `open` du premier jour, `close` du dernier,
+  `high` max, `low` min, `volume` Σ, `trades_count` Σ ; exactement 7 rows 1 d sur la grille `S − k j`, sinon
+  semaine non reconstructible. Marquage : table de provenance `ohlc_derived` (une row ⟺ la row OHLC de même clé
+  n'est pas une donnée d'exchange), `source_sha256` rejouable depuis les 7 rows 1 d ; aucune colonne ajoutée à
+  `market_data_ohlc`, aucune valeur `exchange` spéciale.
+- **Contrôle d'exactitude (c)**, mesuré avant cette entrée (`check` au `35b06ce`, 2026-09-24T15:12:01Z,
+  `check_report.json` sha256 `f41b45f16ad8…`) : la méthode appliquée aux **810** semaines 1 w Vision présentes de la
+  fenêtre (270 × 3) redonne la row Vision **au `Decimal` près** — **0 mismatch OHLCV, 0 mismatch `trades_count`** ;
+  24/24 cibles reconstructibles (7/7 rows 1 d, sans NULL). `write` rejoue ce contrôle dans sa transaction et refuse
+  sur un seul mismatch.
+- **vwap** : la colonne est **NULL sur toutes les rows `binance` 1 d et 1 w, USDC comme USDT** (0 non NULL sur les
+  12 séries) ; **aucun lecteur** ne l'utilise sur le chemin backtest / C3 — le VWAP des stratégies est recalculé depuis
+  `close` et `volume` (`indicators/multi_timeframe.py:378-379`, `get_vwap:868`). Décision Bruno (24/09) :
+  `vwap_policy = null`, les 24 rows dérivées portent `vwap` NULL.
+- **Décision D1** (Bruno, 24/09) : les rows dérivées sont **comptées comme observées** par D1 ; le manifeste liste les
+  8 estampilles dérivées.
+- **Cause** (probe des 33 fichiers mensuels Vision 1 w des cibles, tous HTTP 200) : les 24 bougies sont absentes du
+  fichier du mois d'ouverture **et** de celui du mois de clôture. La **règle de génération de Vision a changé** : le
+  fichier `2025-03`, **régénéré le 08/10/2025**, sert la semaine à cheval `2025-04-07` ; les fichiers de 2022
+  (Last-Modified entre le 02/06/2022 et le 04/01/2023) et de 2025-01 / 2025-02 (04/03/2025) **n'ont pas été régénérés**
+  et omettent la semaine à cheval qui finit le 2 du mois suivant ou plus tard. L'import n'y est pour rien (il insère
+  tout ce que le fichier sert). **Conséquence** : la reprise 1 w 2026-07/08 (skill `binance_import.md`) ne devrait pas
+  exiger de reconstruction — **à vérifier par un contrôle au moment de la reprise** (le `check` de ce chantier est borné
+  à la fenêtre de la campagne et aux 8 cibles : la vérification portera sur les estampilles 1 w reprises).
+- **Idempotence** : l'import Vision fait `ON CONFLICT DO NOTHING` (`binance_vision_import.py:200-201`) — une vraie row
+  Vision servie plus tard pour une des 8 estampilles **n'écraserait pas** la row dérivée ; la remplacer exige un
+  `DELETE` explicite de la row OHLC et de sa provenance, puis le réimport.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
