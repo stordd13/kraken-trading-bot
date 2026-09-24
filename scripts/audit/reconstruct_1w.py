@@ -26,6 +26,18 @@ Transaction ``READ ONLY`` (assertée), rien n'est écrit en base. Mesures, par p
 (e) **idempotence** — la clause ``ON CONFLICT DO NOTHING`` de l'import Vision, relevée dans sa source, et sa
     conséquence pour des rows dérivées.
 
+Sous-commande ``write`` — écriture (après le gate humain)
+---------------------------------------------------------
+Exige ``--vwap-policy`` (décision humaine) et ``--note`` (entrée RESEARCH_LOG), un script committé sur un tree
+suivi propre, et la table ``ohlc_derived`` (migration ``c3bd1e7a0001``). Dans **une** transaction : lecture des
+séries et des clés déjà dérivées, ``plan_write`` (pur) rejoue le contrôle (c) — un seul mismatch OHLCV, une cible
+déjà présente dans ``market_data_ohlc`` ou ``ohlc_derived``, une cible non reconstructible ou une valeur hors
+``DECIMAL(18, 8)`` sans arrondi → refus, **aucun INSERT** —, puis deux INSERT **simples** : les 24 rows OHLC
+(``exchange='binance'``), puis leurs 24 rows de provenance ; un conflit de clé lève et annule tout. Relecture sur
+une connexion neuve, en lecture seule : D1 1 w préfixe (attendu 194/194), couverture évaluée, contrôle sur toutes
+les semaines, ``count(*)`` de ``ohlc_derived``, et chaque provenance **rejouée** (``source_sha256`` recalculé
+depuis les rows 1 d, row OHLC égale à l'agrégat).
+
 Méthode ``agg_1d_v1`` (``aggregate_week``, pure)
 ------------------------------------------------
 Pour la semaine d'estampille ``S`` (lundi 00:00 UTC, fin de période) : les 7 rows 1 d d'estampilles ``S − 6 j … S``
@@ -46,9 +58,17 @@ Usage::
         --output results/reconstruction_1w_2022_2025/check_report.json \\
         --markdown results/reconstruction_1w_2022_2025/check_report.md [--skip-vision]
 
-Codes de sortie : 0 contrôle vert ; 1 violation (ensemble manquant inattendu, estampille hors grille, cible non
-reconstructible ou déjà présente, mismatch OHLCV, semaine présente non contrôlable) — le rapport est écrit ; 2 usage,
-tree non propre, ancrage recalculé différent, ``DATABASE_URL`` absente, base injoignable — rien n'est publié.
+    poetry run python scripts/audit/reconstruct_1w.py write --vwap-policy null \\
+        --note "docs/RESEARCH_LOG.md — entrée 13" \\
+        --output results/reconstruction_1w_2022_2025/write_report.json \\
+        --markdown results/reconstruction_1w_2022_2025/write_report.md
+
+Codes de sortie de ``check`` : 0 contrôle vert ; 1 violation (ensemble manquant inattendu, estampille hors grille,
+cible non reconstructible ou déjà présente, mismatch OHLCV, semaine présente non contrôlable) — le rapport est
+écrit ; 2 usage, tree non propre, ancrage recalculé différent, ``DATABASE_URL`` absente, base injoignable — rien
+n'est publié. Codes de ``write`` : 0 écrit et vérifié ; 1 refusé avant tout INSERT (rapport écrit, rien en base) ou
+écrit mais relecture en échec (rapport écrit, ``status: written``) ; 2 usage, table absente, erreur avant commit
+(transaction annulée, rien publié).
 """
 
 from __future__ import annotations
@@ -59,7 +79,7 @@ from collections.abc import Iterable, Mapping, Sequence
 import csv
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from decimal import Decimal, Inexact, Rounded, localcontext
+from decimal import Decimal, Inexact, InvalidOperation, Rounded, localcontext
 import hashlib
 import io
 import json
@@ -80,10 +100,12 @@ sys.path.insert(0, str(_ROOT / "scripts" / "audit"))
 import binance_vision_import as bvi  # noqa: E402
 import c3_common as cc  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
-from sqlalchemy import bindparam, text  # noqa: E402
+from sqlalchemy import bindparam, insert, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncConnection, create_async_engine  # noqa: E402
 import structlog  # noqa: E402
+
+from krakenbot.models.market_data import OHLCData, OHLCDerived  # noqa: E402
 
 logger = structlog.get_logger()
 
@@ -967,6 +989,502 @@ def build_report(
 
 
 # ---------------------------------------------------------------------------
+# Étape 2 — `write` : garde-fous purs (`plan_write`), puis deux INSERT simples dans une transaction
+# ---------------------------------------------------------------------------
+
+_Q8 = Decimal("1E-8")
+_NUMERIC_18_8_MAX = Decimal("9999999999.99999999")
+
+
+def fits_numeric_18_8(value: Decimal) -> bool:
+    """Tient dans ``DECIMAL(18, 8)`` sans arrondi ni dépassement (au-delà, Postgres arrondit ou lève)."""
+    if not value.is_finite():
+        return False
+    try:
+        exact = value.quantize(_Q8) == value
+    except InvalidOperation:
+        return False
+    return exact and abs(value) <= _NUMERIC_18_8_MAX
+
+
+class WriteRefusedError(Exception):
+    """Écriture refusée **avant tout INSERT** : ``code`` 1 = violation (contrôle, cible présente, non
+    reconstructible, hors DECIMAL(18, 8)), 2 = usage (politique, note, table de provenance absente)."""
+
+    def __init__(self, code: int, reasons: Sequence[str]) -> None:
+        super().__init__(" ; ".join(reasons))
+        self.code = code
+        self.reasons = list(reasons)
+
+
+@dataclass(frozen=True)
+class WriteState:
+    """Ce que ``write`` lit avant d'écrire, dans la même transaction."""
+
+    weekly: Mapping[str, Mapping[datetime, Candle]]
+    daily: Mapping[str, Mapping[datetime, Candle]]
+    derived_keys: frozenset[tuple[str, datetime]]
+    derived_table_exists: bool
+
+
+@dataclass(frozen=True)
+class WritePlan:
+    ohlc_rows: list[dict[str, Any]]
+    provenance_rows: list[dict[str, Any]]
+    control: dict[str, Any]
+    d1_before: dict[str, Any]
+    coverage_evaluated_before: dict[str, Any]
+
+
+def plan_write(
+    state: WriteState,
+    *,
+    vwap_policy: str,
+    note: str,
+    provenance: Mapping[str, Any],
+    created_at: datetime,
+) -> WritePlan:
+    """Rejoue le contrôle (c), vérifie chaque cible, construit les 24 + 24 rows — ou refuse sans rien écrire."""
+    if vwap_policy not in VWAP_POLICIES:
+        raise WriteRefusedError(2, [f"vwap_policy {vwap_policy!r} hors de {VWAP_POLICIES}"])
+    if not note.strip():
+        raise WriteRefusedError(2, ["note vide : la référence RESEARCH_LOG est exigée"])
+    if not state.derived_table_exists:
+        raise WriteRefusedError(
+            2,
+            [
+                "table ohlc_derived absente : `alembic upgrade head` d'abord (migration c3bd1e7a0001)"
+            ],
+        )
+    anchor = cc.anchor_of(WINDOW_START, WINDOW_END)
+    reasons: list[str] = []
+    control_summary: dict[str, Any] = {}
+    d1_before: dict[str, Any] = {}
+    evaluated_before: dict[str, Any] = {}
+    ohlc_rows: list[dict[str, Any]] = []
+    provenance_rows: list[dict[str, Any]] = []
+    for pair in PAIRS:
+        weekly = state.weekly.get(pair, {})
+        daily = state.daily.get(pair, {})
+        _, off_grid = missing_week_stamps(weekly, WINDOW_START, WINDOW_END)
+        if off_grid:
+            reasons.append(f"{pair} (a) : estampilles 1 w hors grille {_iso_list(off_grid)}")
+        else:
+            d1_before[pair] = d1_week(weekly, start=WINDOW_START, end=anchor)
+            evaluated_before[pair] = d1_week(weekly, start=anchor, end=WINDOW_END)
+        ctrl = control(weekly, daily)
+        control_summary[pair] = {
+            "weeks_compared": ctrl["weeks_compared"],
+            "ohlcv_mismatches": len(ctrl["ohlcv_mismatches"]),
+            "trades_count_mismatches": len(ctrl["trades_count"]["mismatches"]),
+            "not_controllable": len(ctrl["not_controllable"]),
+        }
+        if ctrl["ohlcv_mismatches"]:
+            first = ctrl["ohlcv_mismatches"][0]
+            reasons.append(
+                f"{pair} (c) : {len(ctrl['ohlcv_mismatches'])} mismatch(es) OHLCV, premier "
+                f"{first['week'][:10]} {first['column']} Vision {first['vision']} ≠ {first['rebuilt']}"
+            )
+        if ctrl["not_controllable"]:
+            reasons.append(
+                f"{pair} (c) : {len(ctrl['not_controllable'])} semaine(s) non contrôlable(s)"
+            )
+        for stamp in EXPECTED_MISSING:
+            where = f"{pair} {stamp.isoformat()}"
+            if stamp in weekly:
+                reasons.append(f"{where} : déjà présente dans market_data_ohlc")
+                continue
+            if (pair, stamp) in state.derived_keys:
+                reasons.append(f"{where} : déjà présente dans ohlc_derived")
+                continue
+            sources = source_stamps(stamp)
+            rows = [daily[s] for s in sources if s in daily]
+            try:
+                rebuilt = aggregate_week(stamp, rows, vwap_policy=vwap_policy)
+            except NotReconstructibleError as exc:
+                reasons.append(f"{where} (b) : {exc}")
+                continue
+            values = {column: rebuilt.price(column) for column in OHLCV_COLUMNS}
+            if rebuilt.vwap is not None:
+                values["vwap"] = rebuilt.vwap
+            unfit = sorted(
+                column for column, value in values.items() if not fits_numeric_18_8(value)
+            )
+            if unfit:
+                reasons.append(f"{where} : hors DECIMAL(18, 8) sans arrondi : {', '.join(unfit)}")
+                continue
+            key = {"timestamp": stamp, "pair": pair, "interval": WEEK_MINUTES, "exchange": EXCHANGE}
+            ohlc_rows.append(
+                {**key, **values, "vwap": rebuilt.vwap, "trades_count": rebuilt.trades_count}
+            )
+            provenance_rows.append(
+                {
+                    **key,
+                    "method": METHOD,
+                    "source_interval": SOURCE_INTERVAL,
+                    "source_stamps": _iso_list(sources),
+                    "source_sha256": source_sha256(pair, rows),
+                    "vwap_policy": vwap_policy,
+                    "script_sha256": provenance["script_sha256"],
+                    "git_sha": provenance["git_sha"],
+                    "created_at": created_at,
+                    "note": note,
+                }
+            )
+    if reasons:
+        raise WriteRefusedError(1, reasons)
+    expected = len(PAIRS) * len(EXPECTED_MISSING)
+    if len(ohlc_rows) != expected or len(provenance_rows) != expected:
+        raise WriteRefusedError(1, [f"{len(ohlc_rows)} rows planifiées, {expected} attendues"])
+    return WritePlan(
+        ohlc_rows=ohlc_rows,
+        provenance_rows=provenance_rows,
+        control=control_summary,
+        d1_before=d1_before,
+        coverage_evaluated_before=evaluated_before,
+    )
+
+
+DERIVED_KEYS_SQL = text(
+    """
+    SELECT pair, timestamp FROM ohlc_derived
+    WHERE exchange = :exchange AND interval = :interval AND pair IN :pairs
+    """
+).bindparams(bindparam("pairs", expanding=True))
+
+DERIVED_ROWS_SQL = text(
+    """
+    SELECT d.timestamp, d.pair, d.interval, d.exchange, d.method, d.source_interval, d.source_stamps,
+           d.source_sha256, d.vwap_policy, d.script_sha256, d.git_sha, d.created_at, d.note,
+           o.open, o.high, o.low, o.close, o.volume, o.trades_count, o.vwap
+    FROM ohlc_derived d
+    LEFT JOIN market_data_ohlc o
+      ON o.timestamp = d.timestamp AND o.pair = d.pair AND o.interval = d.interval
+     AND o.exchange = d.exchange
+    ORDER BY d.pair, d.timestamp
+    """
+)
+
+DERIVED_COUNT_SQL = text("SELECT COUNT(*) FROM ohlc_derived")
+
+
+async def load_write_state(conn: AsyncConnection) -> WriteState:
+    exists = bool((await conn.execute(DERIVED_TABLE_SQL)).scalar_one())
+    weekly = await _read_series(conn, WEEK_MINUTES, WINDOW_START, WINDOW_END)
+    daily = await _read_series(
+        conn, SOURCE_INTERVAL, WINDOW_START - timedelta(days=DAYS_PER_WEEK), WINDOW_END
+    )
+    keys: frozenset[tuple[str, datetime]] = frozenset()
+    if exists:
+        result = await conn.execute(
+            DERIVED_KEYS_SQL,
+            {"exchange": EXCHANGE, "interval": WEEK_MINUTES, "pairs": list(PAIRS)},
+        )
+        keys = frozenset((row.pair, row.timestamp) for row in result)
+    return WriteState(weekly=weekly, daily=daily, derived_keys=keys, derived_table_exists=exists)
+
+
+async def perform_write(
+    conn: Any,
+    *,
+    load: Any,
+    vwap_policy: str,
+    note: str,
+    provenance: Mapping[str, Any],
+    created_at: datetime,
+) -> WritePlan:
+    """Lit, planifie (refus sans rien exécuter), puis deux INSERT **simples** : OHLC puis provenance.
+
+    Un conflit de clé lève et annule la transaction : la présence des cibles vient d'être vérifiée, un
+    ``ON CONFLICT DO NOTHING`` masquerait une course au lieu de la signaler (gate du 24/09).
+    """
+    state = await load(conn)
+    plan = plan_write(
+        state, vwap_policy=vwap_policy, note=note, provenance=provenance, created_at=created_at
+    )
+    await conn.execute(insert(OHLCData), plan.ohlc_rows)
+    await conn.execute(insert(OHLCDerived), plan.provenance_rows)
+    return plan
+
+
+async def verify_after_write(conn: AsyncConnection) -> dict[str, Any]:
+    """Relecture sur une connexion neuve, en lecture seule : couverture, contrôle, provenance rejouée."""
+    await conn.execute(text("SET TRANSACTION READ ONLY"))
+    anchor = cc.anchor_of(WINDOW_START, WINDOW_END)
+    weekly = await _read_series(conn, WEEK_MINUTES, WINDOW_START, WINDOW_END)
+    daily = await _read_series(
+        conn, SOURCE_INTERVAL, WINDOW_START - timedelta(days=DAYS_PER_WEEK), WINDOW_END
+    )
+    count = int((await conn.execute(DERIVED_COUNT_SQL)).scalar_one())
+    derived = list(await conn.execute(DERIVED_ROWS_SQL))
+    await conn.rollback()
+    problems: list[str] = []
+    pairs: dict[str, Any] = {}
+    for pair in PAIRS:
+        missing, off_grid = missing_week_stamps(weekly[pair], WINDOW_START, WINDOW_END)
+        ctrl = control(weekly[pair], daily[pair])
+        d1_after = d1_week(weekly[pair], start=WINDOW_START, end=anchor)
+        evaluated_after = d1_week(weekly[pair], start=anchor, end=WINDOW_END)
+        pairs[pair] = {
+            "missing_in_window": _iso_list(missing),
+            "off_grid": _iso_list(off_grid),
+            "d1_prefix_after": d1_after,
+            "coverage_evaluated_after": evaluated_after,
+            "weeks_compared": ctrl["weeks_compared"],
+            "ohlcv_mismatches": len(ctrl["ohlcv_mismatches"]),
+            "trades_count_mismatches": len(ctrl["trades_count"]["mismatches"]),
+        }
+        if missing or off_grid:
+            problems.append(
+                f"{pair} : manquantes {_iso_list(missing)}, hors grille {_iso_list(off_grid)}"
+            )
+        if not d1_after["ok"] or d1_after["covered_units"] != d1_after["expected_units"]:
+            problems.append(
+                f"{pair} : D1 1 w préfixe {d1_after['covered_units']}/{d1_after['expected_units']}"
+            )
+        if ctrl["ohlcv_mismatches"] or ctrl["not_controllable"]:
+            problems.append(f"{pair} : contrôle après écriture non vert")
+    rows: list[dict[str, Any]] = []
+    for row in derived:
+        sources = source_stamps(row.timestamp)
+        source_rows = [daily[row.pair][s] for s in sources if s in daily[row.pair]]
+        replayed_sha = source_sha256(row.pair, source_rows)
+        stored = None if row.open is None else _candle_from_row(row)
+        try:
+            rebuilt = aggregate_week(row.timestamp, source_rows, vwap_policy=row.vwap_policy)
+        except NotReconstructibleError as exc:
+            rebuilt = None
+            problems.append(
+                f"{row.pair} {row.timestamp.isoformat()} : sources non rejouables — {exc}"
+            )
+        same = (
+            stored is not None
+            and rebuilt is not None
+            and not compare_week(stored, rebuilt)
+            and stored.vwap == rebuilt.vwap
+        )
+        if stored is None:
+            problems.append(f"{row.pair} {row.timestamp.isoformat()} : provenance sans row OHLC")
+        if replayed_sha != row.source_sha256:
+            problems.append(
+                f"{row.pair} {row.timestamp.isoformat()} : source_sha256 rejoué différent"
+            )
+        if not same:
+            problems.append(f"{row.pair} {row.timestamp.isoformat()} : row OHLC ≠ agrégat rejoué")
+        rows.append(
+            {
+                "pair": row.pair,
+                "week": row.timestamp.isoformat(),
+                "interval": row.interval,
+                "exchange": row.exchange,
+                "method": row.method,
+                "source_interval": row.source_interval,
+                "source_stamps": list(row.source_stamps),
+                "source_sha256": row.source_sha256,
+                "source_sha256_replayed_equal": replayed_sha == row.source_sha256,
+                "vwap_policy": row.vwap_policy,
+                "script_sha256": row.script_sha256,
+                "git_sha": row.git_sha,
+                "created_at": row.created_at.isoformat(),
+                "note": row.note,
+                "ohlc": None if stored is None else stored.as_record(),
+                "ohlc_equals_replayed_aggregate": same,
+            }
+        )
+    expected = len(PAIRS) * len(EXPECTED_MISSING)
+    if count != expected or len(rows) != expected:
+        problems.append(f"ohlc_derived : {count} rows ({len(rows)} jointes), {expected} attendues")
+    return {
+        "ok": not problems,
+        "problems": problems,
+        "ohlc_derived_count": count,
+        "pairs": pairs,
+        "rows": rows,
+    }
+
+
+async def run_write(
+    url: str,
+    *,
+    vwap_policy: str,
+    note: str,
+    provenance: Mapping[str, Any],
+    created_at: datetime,
+) -> dict[str, Any]:
+    """Une transaction d'écriture (commit à la sortie du bloc), puis la relecture sur une connexion neuve.
+
+    Une ``WriteRefusedError`` ou toute erreur avant le commit annule tout : rien n'est écrit. Une erreur de
+    la relecture est rapportée avec ``written: True`` — les rows sont en base, la vérification ne l'est pas.
+    """
+    engine = create_async_engine(url)
+    try:
+        async with engine.connect() as conn:
+            async with conn.begin():
+                await conn.execute(text("SET LOCAL statement_timeout = '120s'"))
+                plan = await perform_write(
+                    conn,
+                    load=load_write_state,
+                    vwap_policy=vwap_policy,
+                    note=note,
+                    provenance=provenance,
+                    created_at=created_at,
+                )
+        logger.info(
+            "write_committed",
+            ohlc_rows=len(plan.ohlc_rows),
+            provenance_rows=len(plan.provenance_rows),
+        )
+        try:
+            async with engine.connect() as conn:
+                verification = await verify_after_write(conn)
+        except Exception as exc:  # noqa: BLE001 - écrit mais non vérifié : rapporté, jamais masqué
+            verification = {
+                "ok": False,
+                "problems": [f"relecture impossible : {type(exc).__name__}: {exc}"],
+            }
+    finally:
+        await engine.dispose()
+    return {"written": True, "plan": plan, "verification": verification}
+
+
+def _plan_record(plan: WritePlan) -> dict[str, Any]:
+    def row_record(row: Mapping[str, Any]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in row.items():
+            if isinstance(value, datetime):
+                out[key] = value.isoformat()
+            elif isinstance(value, Decimal):
+                out[key] = str(value)
+            else:
+                out[key] = value
+        return out
+
+    return {
+        "control_before": plan.control,
+        "d1_prefix_before": plan.d1_before,
+        "coverage_evaluated_before": plan.coverage_evaluated_before,
+        "ohlc_rows": [row_record(r) for r in plan.ohlc_rows],
+        "provenance_rows": [row_record(r) for r in plan.provenance_rows],
+    }
+
+
+def render_write_markdown(report: Mapping[str, Any], *, json_name: str, json_sha256: str) -> str:
+    prov = report["provenance"]
+    db = report["database"]
+    lines = ["# Reconstruction 1 w USDT — écriture (étape 2)", ""]
+    if report["status"] == "refused":
+        lines.append(f"**REFUSÉ — rien n'a été écrit** (code {report['refusal']['code']}) :")
+        lines.extend(f"- {r}" for r in report["refusal"]["reasons"])
+    else:
+        verification = report["verification"]
+        head = "ÉCRIT ET VÉRIFIÉ" if verification["ok"] else "ÉCRIT — VÉRIFICATION EN ÉCHEC"
+        lines.append(
+            f"**{head}** — {len(report['plan']['ohlc_rows'])} rows `market_data_ohlc` + "
+            f"{len(report['plan']['provenance_rows'])} rows `ohlc_derived`, `vwap_policy = "
+            f'"{report["vwap_policy"]}"`.'
+        )
+        lines.extend(f"- {p}" for p in verification["problems"])
+    lines.extend(
+        [
+            "",
+            f"- Généré : `{report['generated_at']}` · commande : `{' '.join(report['argv'])}`",
+            f"- git `{prov['git_sha']}` (branche `{prov['branch']}`), tree suivi propre : "
+            f"{prov['tracked_tree_clean']} · `{prov['script']}` sha256 `{prov['script_sha256']}`",
+            f"- Base : `{db['host']}:{db['port']}/{db['database']}` · note : « {report['note']} » · "
+            f"created_at `{report['created_at']}`",
+            f"- Artefact : `{json_name}` sha256 `{json_sha256}`",
+        ]
+    )
+    if report["status"] == "refused":
+        lines.append("")
+        return "\n".join(lines)
+    plan = report["plan"]
+    verification = report["verification"]
+    lines.extend(
+        [
+            "",
+            "## Contrôle (c) rejoué dans la transaction, avant les INSERT",
+            "",
+            "| Paire | semaines comparées | mismatches OHLCV | mismatches trades_count | non contrôlables |",
+            "|---|---|---|---|---|",
+        ]
+    )
+    for pair, c in plan["control_before"].items():
+        lines.append(
+            f"| {pair} | {c['weeks_compared']} | **{c['ohlcv_mismatches']}** | "
+            f"{c['trades_count_mismatches']} | {c['not_controllable']} |"
+        )
+    lines.extend(
+        [
+            "",
+            "## Couverture 1 w, avant / après (relue sur une connexion neuve)",
+            "",
+            "| Paire | D1 préfixe avant | D1 préfixe après | évaluée avant | évaluée après | manquantes après | "
+            "semaines contrôlées après | mismatches OHLCV après |",
+            "|---|---|---|---|---|---|---|---|",
+        ]
+    )
+    for pair in PAIRS:
+        before = plan["d1_prefix_before"].get(pair)
+        ev_before = plan["coverage_evaluated_before"].get(pair)
+        after = verification.get("pairs", {}).get(pair)
+        if before is None or ev_before is None or after is None:
+            lines.append(f"| {pair} | — | — | — | — | — | — | — |")
+            continue
+        d1a = after["d1_prefix_after"]
+        eva = after["coverage_evaluated_after"]
+        lines.append(
+            f"| {pair} | {before['covered_units']}/{before['expected_units']} "
+            f"({'passe' if before['ok'] else 'échoue'}) | {d1a['covered_units']}/{d1a['expected_units']} "
+            f"({'passe' if d1a['ok'] else 'échoue'}) | {ev_before['covered_units']}/{ev_before['expected_units']} | "
+            f"{eva['covered_units']}/{eva['expected_units']} | {len(after['missing_in_window'])} | "
+            f"{after['weeks_compared']} | {after['ohlcv_mismatches']} |"
+        )
+    lines.extend(
+        [
+            "",
+            f"## Les {len(verification.get('rows', []))} rows dérivées, relues "
+            f"(`SELECT count(*) FROM ohlc_derived` = {verification.get('ohlc_derived_count')})",
+            "",
+            "| Paire | Semaine | open | high | low | close | volume | trades | vwap | source_sha256 | sha rejoué | "
+            "= agrégat rejoué |",
+            "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        ]
+    )
+    for row in verification.get("rows", []):
+        o = row["ohlc"] or {}
+        lines.append(
+            f"| {row['pair']} | {row['week'][:10]} | {o.get('open')} | {o.get('high')} | {o.get('low')} | "
+            f"{o.get('close')} | {o.get('volume')} | {o.get('trades_count')} | {o.get('vwap') or 'NULL'} | "
+            f"`{row['source_sha256'][:16]}…` | {'oui' if row['source_sha256_replayed_equal'] else '**NON**'} | "
+            f"{'oui' if row['ohlc_equals_replayed_aggregate'] else '**NON**'} |"
+        )
+    first = (verification.get("rows") or [{}])[0]
+    lines.extend(
+        [
+            "",
+            f"Provenance commune : `method = {first.get('method')}`, `source_interval = {first.get('source_interval')}`, "
+            f"`vwap_policy = {first.get('vwap_policy')}`, `git_sha = {first.get('git_sha')}`, "
+            f"`script_sha256 = {first.get('script_sha256')}`.",
+            "",
+            "## Retour arrière (non exécuté)",
+            "",
+            "```sql",
+            "BEGIN;",
+            "DELETE FROM market_data_ohlc o USING ohlc_derived d",
+            " WHERE o.timestamp = d.timestamp AND o.pair = d.pair AND o.interval = d.interval",
+            f"   AND o.exchange = d.exchange AND d.method = '{METHOD}';",
+            f"DELETE FROM ohlc_derived WHERE method = '{METHOD}';",
+            "COMMIT;",
+            "-- puis, si la table doit disparaître : alembic downgrade c1ae7a1c0001",
+            "```",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
 # Sorties
 # ---------------------------------------------------------------------------
 
@@ -1273,25 +1791,102 @@ def _parse_iso(value: str) -> datetime:
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Reconstruction des 8 estampilles 1 w USDT depuis le 1 d — check (lecture seule)."
+        description="Reconstruction des 8 estampilles 1 w USDT depuis le 1 d — check (lecture seule) ou write."
     )
-    parser.add_argument("command", nargs="?", default="check", choices=("check",))
+    parser.add_argument("command", nargs="?", default="check", choices=("check", "write"))
     parser.add_argument(
-        "--output", type=Path, required=True, help="Artefact JSON (check_report.json)."
+        "--output", type=Path, required=True, help="Artefact JSON (check_report / write_report)."
     )
+    parser.add_argument("--markdown", type=Path, default=None, help="Rendu Markdown.")
     parser.add_argument(
-        "--markdown", type=Path, default=None, help="Rendu Markdown (check_report.md)."
-    )
-    parser.add_argument(
-        "--skip-vision", action="store_true", help="Ne pas interroger Binance Vision (d)."
+        "--skip-vision", action="store_true", help="check : ne pas interroger Binance Vision (d)."
     )
     parser.add_argument(
         "--allow-uncommitted",
         action="store_true",
-        help="Développement seulement : accepte un script non committé, en-tête marqué PROVISOIRE.",
+        help="check, développement seulement : accepte un script non committé, en-tête PROVISOIRE.",
     )
     parser.add_argument("--generated-at", type=_parse_iso, default=None)
-    return parser.parse_args(argv)
+    parser.add_argument(
+        "--vwap-policy",
+        choices=VWAP_POLICIES,
+        default=None,
+        help="write : politique vwap, explicite (décision humaine).",
+    )
+    parser.add_argument("--note", default=None, help="write : référence de l'entrée RESEARCH_LOG.")
+    args = parser.parse_args(argv)
+    if args.command == "write":
+        if args.vwap_policy is None or args.note is None:
+            parser.error("write exige --vwap-policy et --note")
+        if args.allow_uncommitted:
+            parser.error("write refuse --allow-uncommitted : le script écrit doit être committé")
+    return args
+
+
+def _database(url: str) -> dict[str, Any]:
+    parsed = make_url(url)
+    return {"host": parsed.host, "port": parsed.port, "database": parsed.database}
+
+
+def main_write(
+    args: argparse.Namespace, provenance: dict[str, Any], url: str, argv: Sequence[str]
+) -> int:
+    created_at = datetime.now(UTC)
+    report: dict[str, Any] = {
+        "artifact": "reconstruct_1w.write",
+        "generated_at": (args.generated_at or created_at).isoformat(),
+        "argv": list(argv),
+        "provenance": provenance,
+        "database": _database(url),
+        "vwap_policy": args.vwap_policy,
+        "note": args.note,
+        "created_at": created_at.isoformat(),
+    }
+    try:
+        outcome = asyncio.run(
+            run_write(
+                url,
+                vwap_policy=args.vwap_policy,
+                note=args.note,
+                provenance=provenance,
+                created_at=created_at,
+            )
+        )
+    except WriteRefusedError as exc:
+        logger.error("write_refused", code=exc.code, reasons=exc.reasons)
+        if exc.code == 2:
+            return 2
+        report.update({"status": "refused", "refusal": {"code": exc.code, "reasons": exc.reasons}})
+        code = 1
+    except Exception as exc:  # noqa: BLE001 - erreur avant commit : transaction annulée, rien d'écrit
+        logger.error("write_failed_rolled_back", error=f"{type(exc).__name__}: {exc}")
+        return 2
+    else:
+        verification = outcome["verification"]
+        report.update(
+            {
+                "status": "written",
+                "plan": _plan_record(outcome["plan"]),
+                "verification": verification,
+            }
+        )
+        code = 0 if verification["ok"] else 1
+    digest = write_json_strict(args.output, report)
+    logger.info("write_report_json", path=str(args.output), sha256=digest)
+    if args.markdown is not None:
+        args.markdown.parent.mkdir(parents=True, exist_ok=True)
+        args.markdown.write_text(
+            render_write_markdown(report, json_name=args.output.name, json_sha256=digest),
+            encoding="utf-8",
+        )
+        logger.info("write_report_markdown", path=str(args.markdown))
+    logger.info(
+        "write_summary",
+        status=report["status"],
+        verified=report.get("verification", {}).get("ok"),
+        problems=report.get("verification", {}).get("problems"),
+    )
+    return code
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1319,8 +1914,10 @@ def main(argv: list[str] | None = None) -> int:
     if not url:
         logger.error("database_url_missing")
         return 2
-    parsed = make_url(url)
-    database = {"host": parsed.host, "port": parsed.port, "database": parsed.database}
+    run_argv = sys.argv if argv is None else ["reconstruct_1w.py", *argv]
+    if args.command == "write":
+        return main_write(args, provenance, url, run_argv)
+    database = _database(url)
     try:
         collected = asyncio.run(collect(url))
     except Exception as exc:  # noqa: BLE001 - base injoignable ou contrat de lecture violé = code 2

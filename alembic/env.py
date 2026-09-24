@@ -32,6 +32,7 @@ from krakenbot.ml.db_models import MLExternalData, MLFeatureRow  # noqa: E402, F
 from krakenbot.models import (  # noqa: E402, F401
     BotState,
     OHLCData,
+    OHLCDerived,
     Order,
     TickData,
     Trade,

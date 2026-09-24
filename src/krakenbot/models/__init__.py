@@ -13,7 +13,7 @@ from krakenbot.models.base import (
     TradeSide,
     TradeStatus,
 )
-from krakenbot.models.market_data import OHLCData, TickData
+from krakenbot.models.market_data import OHLCData, OHLCDerived, TickData
 from krakenbot.models.orders import Order
 from krakenbot.models.trades import BotState, PaperBalance, Trade
 
@@ -25,6 +25,7 @@ __all__ = [
     "MLExternalData",
     "MLFeatureRow",
     "OHLCData",
+    "OHLCDerived",
     # Order enums
     "OrderStatus",
     "OrderType",
