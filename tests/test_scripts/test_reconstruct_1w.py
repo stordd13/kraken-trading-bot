@@ -490,3 +490,366 @@ def test_import_does_not_mutate_environ() -> None:
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
     assert json.loads(proc.stdout.strip().splitlines()[-1]) == []
+
+
+# ===========================================================================
+# Step 2 — write guards, provenance, model and migration (brief § 3, amended plan)
+# ===========================================================================
+#
+# Expected values come from brief § 3.1 (table ``ohlc_derived`` : columns, types, comment), § 3.2 (the write
+# replays control (c) before writing — one OHLCV mismatch aborts ; any target already present aborts ; 24 OHLC rows
+# then 24 provenance rows, in one transaction) and Bruno's gate of 24/09 (plain INSERT, ``--vwap-policy`` explicit).
+# The synthetic state below is a conforming witness (agent rule 2) : its weekly rows are the exact aggregates of its
+# daily rows, the 8 brief stamps are missing, nothing is derived yet.
+
+NOW = datetime(2026, 9, 24, 12, 0, tzinfo=UTC)
+PROVENANCE = {"git_sha": "a" * 40, "script_sha256": "b" * 64}
+NOTE = "docs/RESEARCH_LOG.md — entrée 13"
+#: Brief § 3.1, table comment (the Markdown backticks around the table name are formatting, not content).
+BRIEF_TABLE_COMMENT = (
+    "Rows de market_data_ohlc non observées, dérivées par agrégation. Une row ici ⟺ la row OHLC "
+    "correspondante n'est pas une donnée d'exchange."
+)
+
+
+def _synthetic_state(missing: tuple[datetime, ...] = BRIEF_MISSING) -> r1w.WriteState:
+    daily: dict[str, dict[datetime, r1w.Candle]] = {}
+    weekly: dict[str, dict[datetime, r1w.Candle]] = {}
+    for index, pair in enumerate(r1w.PAIRS):
+        days: dict[datetime, r1w.Candle] = {}
+        stamp, k = PROTOCOL_START - WEEK, 0
+        while stamp <= PROTOCOL_END:
+            base = D(100 + 1000 * index + k % 97)
+            days[stamp] = r1w.Candle(
+                stamp,
+                base,
+                base + D("5.5"),
+                base - D("3.25"),
+                base + D("1.125"),
+                D("10.00000001") + D(k % 7),
+                100 + k % 13,
+            )
+            stamp, k = stamp + DAY, k + 1
+        daily[pair] = days
+        weekly[pair] = {
+            week: r1w.aggregate_week(week, [days[s] for s in r1w.source_stamps(week)])
+            for week in r1w.expected_week_stamps(PROTOCOL_START, PROTOCOL_END)
+            if week not in missing
+        }
+    return r1w.WriteState(
+        weekly=weekly, daily=daily, derived_keys=frozenset(), derived_table_exists=True
+    )
+
+
+@pytest.fixture(scope="module")
+def healthy_state() -> r1w.WriteState:
+    return _synthetic_state()
+
+
+def _variant(state: r1w.WriteState, **changes: object) -> r1w.WriteState:
+    weekly = {pair: dict(series) for pair, series in state.weekly.items()}
+    daily = {pair: dict(series) for pair, series in state.daily.items()}
+    fields = {
+        "weekly": weekly,
+        "daily": daily,
+        "derived_keys": state.derived_keys,
+        "derived_table_exists": state.derived_table_exists,
+    }
+    fields.update(changes)
+    return r1w.WriteState(**fields)  # type: ignore[arg-type]
+
+
+def _plan(state: r1w.WriteState, policy: str = "null") -> r1w.WritePlan:
+    return r1w.plan_write(
+        state, vwap_policy=policy, note=NOTE, provenance=PROVENANCE, created_at=NOW
+    )
+
+
+def test_plan_write_builds_24_ohlc_rows_and_24_provenance_rows(
+    healthy_state: r1w.WriteState,
+) -> None:
+    plan = _plan(healthy_state)
+    assert len(plan.ohlc_rows) == 24 and len(plan.provenance_rows) == 24
+    keys = {(row["pair"], row["timestamp"]) for row in plan.ohlc_rows}
+    assert keys == {(pair, stamp) for pair in r1w.PAIRS for stamp in BRIEF_MISSING}
+    assert {(row["pair"], row["timestamp"]) for row in plan.provenance_rows} == keys
+    # One row checked against the method's text (brief § 2), from the daily rows directly.
+    row = next(r for r in plan.ohlc_rows if r["pair"] == "ETH/USDT" and r["timestamp"] == S)
+    days = [healthy_state.daily["ETH/USDT"][S + k * DAY] for k in range(-6, 1)]
+    assert row["interval"] == 10080 and row["exchange"] == "binance"
+    assert row["open"] == days[0].open and row["close"] == days[-1].close
+    assert row["high"] == max(d.high for d in days) and row["low"] == min(d.low for d in days)
+    assert row["volume"] == sum((d.volume for d in days), D(0))
+    assert row["trades_count"] == sum(d.trades_count for d in days)
+    assert row["vwap"] is None
+
+
+def test_provenance_rows_carry_the_brief_columns(healthy_state: r1w.WriteState) -> None:
+    """Brief § 3.1 : method ``agg_1d_v1``, source_interval 1440, the 7 daily stamps in ISO, the replayable sha,
+    the vwap policy, the script sha, the git sha, created_at, and a note referencing the RESEARCH_LOG."""
+    plan = _plan(healthy_state)
+    prov = next(r for r in plan.provenance_rows if r["pair"] == "SOL/USDT" and r["timestamp"] == S)
+    days = [healthy_state.daily["SOL/USDT"][S + k * DAY] for k in range(-6, 1)]
+    assert prov["interval"] == 10080 and prov["exchange"] == "binance"
+    assert prov["method"] == "agg_1d_v1" and prov["source_interval"] == 1440
+    assert prov["source_stamps"] == [(S + k * DAY).isoformat() for k in range(-6, 1)]
+    assert prov["source_sha256"] == r1w.source_sha256("SOL/USDT", days)
+    assert prov["vwap_policy"] == "null"
+    assert (prov["git_sha"], prov["script_sha256"]) == (
+        PROVENANCE["git_sha"],
+        PROVENANCE["script_sha256"],
+    )
+    assert (prov["created_at"], prov["note"]) == (NOW, NOTE)
+
+
+def test_plan_write_reports_d1_before(healthy_state: r1w.WriteState) -> None:
+    plan = _plan(healthy_state)
+    assert {
+        pair: (d["covered_units"], d["expected_units"]) for pair, d in plan.d1_before.items()
+    } == dict.fromkeys(r1w.PAIRS, (188, 194))
+
+
+def test_plan_write_refuses_an_ohlcv_mismatch(healthy_state: r1w.WriteState) -> None:
+    """Brief § 3.2 : control (c) is replayed before writing ; one OHLCV mismatch → abort."""
+    state = _variant(healthy_state)
+    week = datetime(2023, 5, 8, tzinfo=UTC)
+    stored = state.weekly["BTC/USDT"][week]
+    state.weekly["BTC/USDT"][week] = r1w.Candle(
+        week,
+        stored.open,
+        stored.high,
+        stored.low,
+        stored.close + D("0.00000001"),
+        stored.volume,
+        stored.trades_count,
+    )
+    with pytest.raises(r1w.WriteRefusedError) as exc:
+        _plan(state)
+    assert exc.value.code == 1
+    assert any("(c)" in reason and "BTC/USDT" in reason for reason in exc.value.reasons)
+
+
+def test_plan_write_refuses_a_target_already_in_ohlc(healthy_state: r1w.WriteState) -> None:
+    state = _variant(healthy_state)
+    target = BRIEF_MISSING[0]
+    days = [state.daily["ETH/USDT"][s] for s in r1w.source_stamps(target)]
+    state.weekly["ETH/USDT"][target] = r1w.aggregate_week(target, days)
+    with pytest.raises(r1w.WriteRefusedError) as exc:
+        _plan(state)
+    assert exc.value.code == 1
+
+
+def test_plan_write_refuses_a_target_already_derived(healthy_state: r1w.WriteState) -> None:
+    state = _variant(healthy_state, derived_keys=frozenset({("SOL/USDT", BRIEF_MISSING[7])}))
+    with pytest.raises(r1w.WriteRefusedError) as exc:
+        _plan(state)
+    assert exc.value.code == 1
+
+
+def test_plan_write_refuses_a_six_of_seven_target(healthy_state: r1w.WriteState) -> None:
+    state = _variant(healthy_state)
+    del state.daily["BTC/USDT"][BRIEF_MISSING[3] - 2 * DAY]
+    with pytest.raises(r1w.WriteRefusedError) as exc:
+        _plan(state)
+    assert exc.value.code == 1
+
+
+def test_plan_write_refuses_without_the_provenance_table(healthy_state: r1w.WriteState) -> None:
+    with pytest.raises(r1w.WriteRefusedError) as exc:
+        _plan(_variant(healthy_state, derived_table_exists=False))
+    assert exc.value.code == 2
+
+
+def test_plan_write_refuses_an_unknown_vwap_policy(healthy_state: r1w.WriteState) -> None:
+    with pytest.raises(r1w.WriteRefusedError) as exc:
+        _plan(healthy_state, policy="mean")
+    assert exc.value.code == 2
+
+
+def test_numeric_fit_of_decimal_18_8() -> None:
+    """``DECIMAL(18, 8)`` (``OHLCData``) : at most 8 decimals and 10 integer digits — beyond, Postgres rounds or
+    overflows, and a derived row must never be rounded silently."""
+    assert r1w.fits_numeric_18_8(D("9999999999.99999999"))
+    assert r1w.fits_numeric_18_8(D("57102095.79500000"))
+    assert not r1w.fits_numeric_18_8(D("1.123456789"))
+    assert not r1w.fits_numeric_18_8(D("10000000000"))
+
+
+def test_plan_write_refuses_a_value_that_does_not_fit(healthy_state: r1w.WriteState) -> None:
+    state = _variant(healthy_state)
+    target = BRIEF_MISSING[1]
+    for stamp in r1w.source_stamps(target):
+        d = state.daily["SOL/USDT"][stamp]
+        state.daily["SOL/USDT"][stamp] = r1w.Candle(
+            stamp, d.open, d.high, d.low, d.close, D("5000000000"), d.trades_count
+        )
+    with pytest.raises(r1w.WriteRefusedError) as exc:
+        _plan(state)
+    assert exc.value.code == 1
+
+
+class _FakeConn:
+    """Records every statement ; the write must not execute anything before the plan is accepted."""
+
+    def __init__(self) -> None:
+        self.executed: list[tuple[object, object]] = []
+
+    async def execute(self, statement: object, parameters: object = None) -> None:
+        self.executed.append((statement, parameters))
+
+
+async def test_perform_write_refuses_a_mismatch_without_any_insert(
+    healthy_state: r1w.WriteState,
+) -> None:
+    """Brief § 4 : ``write`` refuses when the control returns a mismatch (mock) — and nothing is executed."""
+    state = _variant(healthy_state)
+    week = datetime(2024, 1, 8, tzinfo=UTC)
+    stored = state.weekly["SOL/USDT"][week]
+    state.weekly["SOL/USDT"][week] = r1w.Candle(
+        week,
+        stored.open,
+        stored.high + D("1"),
+        stored.low,
+        stored.close,
+        stored.volume,
+        stored.trades_count,
+    )
+
+    async def load(_conn: object) -> r1w.WriteState:
+        return state
+
+    conn = _FakeConn()
+    with pytest.raises(r1w.WriteRefusedError):
+        await r1w.perform_write(
+            conn, load=load, vwap_policy="null", note=NOTE, provenance=PROVENANCE, created_at=NOW
+        )
+    assert conn.executed == []
+
+
+async def test_perform_write_inserts_ohlc_then_provenance(healthy_state: r1w.WriteState) -> None:
+    async def load(_conn: object) -> r1w.WriteState:
+        return healthy_state
+
+    conn = _FakeConn()
+    plan = await r1w.perform_write(
+        conn, load=load, vwap_policy="null", note=NOTE, provenance=PROVENANCE, created_at=NOW
+    )
+    assert [statement.table.name for statement, _ in conn.executed] == [  # type: ignore[attr-defined]
+        "market_data_ohlc",
+        "ohlc_derived",
+    ]
+    assert conn.executed[0][1] == plan.ohlc_rows and conn.executed[1][1] == plan.provenance_rows
+    # Plain INSERT (gate 24/09) : no ON CONFLICT clause on either statement.
+    assert all("ON CONFLICT" not in str(statement) for statement, _ in conn.executed)
+
+
+def test_ohlc_derived_model_is_the_brief_table() -> None:
+    from sqlalchemy import TIMESTAMP, Integer, String, Text
+    from sqlalchemy.dialects.postgresql import JSONB
+
+    from krakenbot.models.market_data import OHLCData, OHLCDerived
+
+    table = OHLCDerived.__table__
+    assert table.name == "ohlc_derived"
+    assert [c.name for c in table.primary_key.columns] == [
+        "timestamp",
+        "pair",
+        "interval",
+        "exchange",
+    ]
+    for name in ("timestamp", "pair", "interval", "exchange"):  # « mêmes types que OHLCData »
+        assert repr(table.c[name].type) == repr(OHLCData.__table__.c[name].type), name
+    assert set(table.c.keys()) == {
+        "timestamp",
+        "pair",
+        "interval",
+        "exchange",
+        "method",
+        "source_interval",
+        "source_stamps",
+        "source_sha256",
+        "vwap_policy",
+        "script_sha256",
+        "git_sha",
+        "created_at",
+        "note",
+    }
+    assert isinstance(table.c.method.type, String)
+    assert isinstance(table.c.source_interval.type, Integer)
+    assert isinstance(table.c.source_stamps.type, JSONB)
+    assert (table.c.source_sha256.type.length, table.c.script_sha256.type.length) == (64, 64)
+    assert table.c.git_sha.type.length == 40
+    assert isinstance(table.c.vwap_policy.type, String)
+    assert isinstance(table.c.created_at.type, TIMESTAMP) and table.c.created_at.type.timezone
+    assert isinstance(table.c.note.type, Text)
+    assert table.comment == BRIEF_TABLE_COMMENT
+    assert not table.foreign_keys  # logical FK only : the target is a hypertable
+
+
+def _load_migration() -> object:
+    import importlib.util
+
+    matches = sorted((_PROJECT_ROOT / "alembic" / "versions").glob("*_ohlc_derived_provenance.py"))
+    assert len(matches) == 1, matches
+    spec = importlib.util.spec_from_file_location("ohlc_derived_migration", matches[0])
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_migration_creates_only_the_provenance_table() -> None:
+    """Brief § 3.1 : a new table only — no ALTER on ``market_data_ohlc`` ; downgrade drops it."""
+    from unittest.mock import MagicMock
+
+    from krakenbot.models.market_data import OHLCDerived
+
+    migration = _load_migration()
+    assert migration.down_revision == "c1ae7a1c0001"  # type: ignore[attr-defined]
+    op = MagicMock()
+    migration.op = op  # type: ignore[attr-defined]
+    migration.upgrade()  # type: ignore[attr-defined]
+    assert [call[0] for call in op.method_calls] == ["create_table"]
+    args, kwargs = op.create_table.call_args
+    assert args[0] == "ohlc_derived"
+    columns = {c.name: c for c in args[1:] if hasattr(c, "type")}
+    model = OHLCDerived.__table__
+    assert set(columns) == set(model.c.keys())
+    for name, column in columns.items():
+        assert repr(column.type) == repr(model.c[name].type), name
+        assert column.nullable == model.c[name].nullable, name
+    pk = [a for a in args[1:] if a.__class__.__name__ == "PrimaryKeyConstraint"]
+    assert len(pk) == 1 and list(pk[0]._pending_colargs) == [
+        "timestamp",
+        "pair",
+        "interval",
+        "exchange",
+    ]
+    assert kwargs.get("comment") == BRIEF_TABLE_COMMENT
+    op.reset_mock()
+    migration.downgrade()  # type: ignore[attr-defined]
+    assert op.method_calls == [(("drop_table"), ("ohlc_derived",), {})]
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["write", "--output", "w.json", "--note", NOTE],  # no --vwap-policy
+        ["write", "--output", "w.json", "--vwap-policy", "null"],  # no --note
+        ["write", "--output", "w.json", "--vwap-policy", "mean", "--note", NOTE],
+        [
+            "write",
+            "--output",
+            "w.json",
+            "--vwap-policy",
+            "null",
+            "--note",
+            NOTE,
+            "--allow-uncommitted",
+        ],
+    ],
+)
+def test_write_cli_requires_an_explicit_policy_and_note(argv: list[str]) -> None:
+    with pytest.raises(SystemExit) as exc:
+        r1w.parse_args(argv)
+    assert exc.value.code == 2
