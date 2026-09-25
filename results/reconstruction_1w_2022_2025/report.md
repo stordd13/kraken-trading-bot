@@ -13,7 +13,8 @@ committée **avant** l'écriture (`4866c7d`).
 
 ## 1. Chronologie, commits, commandes exactes
 
-Branche `feat/c3b-reconstruction-1w`, depuis `dev` @ `b43515a` ; **non poussée, non mergée**.
+Branche `feat/c3b-reconstruction-1w`, depuis `dev` @ `b43515a` ; **mergée dans `dev` le 2026-09-24 (`00ad09a`, merge
+commit, arbre identique au `5cb8a24` testé)** après la porte serveur (§ 6).
 
 | Étape | Commit / instant (UTC) | Objet |
 |---|---|---|
@@ -188,14 +189,21 @@ déjà présent au moment du run ; `4866c7d` ne touche que `docs/RESEARCH_LOG.md
 modèle `OHLCDerived`, +95 / −1 lignes), `src/krakenbot/models/__init__.py` (export), et hors liste § L.3 `alembic/env.py`
 (import) et `alembic/versions/20260924_c3bd1e7a0001_ohlc_derived_provenance.py`. Aucun comportement de backtest n'est
 touché (ajout d'une table ; aucun moteur ne la lit), mais la condition 2 du § L.5 ne peut plus s'appuyer sur un SHA
-antérieur pour `src/`. **Les 24 tests `_full` (`test_determinism_parallel_vs_serial_full`, ≈ 1 h 15) tournent sur le
-serveur après les commits et avant le merge, sur signal de Bruno — non lancés à ce stade.** Ils lisent les paires USDC
-(`runner.PAIRS`) : les 24 rows dérivées (USDT) ne peuvent pas les affecter ; la porte vérifie le seul changement de `src/`.
+antérieur pour `src/`. **Les 24 tests `_full` (`test_determinism_parallel_vs_serial_full`) sont VERTS sur le serveur au
+`5cb8a24e7e594d9dbd93d4f39af8654a9891e3a4`** : `tests=24 failures=0 errors=0 skipped=0`, 2026-09-24 20:36:25Z →
+21:47:17Z (70 min 52 s), lancés sur signal de Bruno après les commits et avant le merge. Recette de C2 / C3a : checkout
+isolé `~/r1w-determinism/repo` à HEAD détaché, alimenté par `git bundle b43515a..feat/c3b-reconstruction-1w` (sha256
+`8541b0a74c061adb319470fcd97ad81a2984db3fa3261abedbcd7d6946ea0d36` des deux côtés — la branche n'était pas poussée),
+`.venv` propre au répertoire (Python 3.12.3, pytest 9.0.2), `.env` copié de l'arbre du service, base en accès local,
+`nice -n 5`, tmux ; une invocation `pytest` par combo, arrêt au premier échec (non servi). Preuves :
+`determinism_server/` (pilote versionné `run24.sh`, `run24.log`, 24 × `comboN.xml` / `comboN.log`, `README.md`). Ils
+lisent les paires USDC (`runner.PAIRS`) : les 24 rows dérivées (USDT) ne peuvent pas les affecter ; la porte vérifie le
+seul changement de `src/`. Collector actif, `NRestarts=0`, arbre du service intact pendant le run.
 
-**Base et checkout serveur.** La migration `c3bd1e7a0001` est appliquée sur la base de production (par le tunnel, le
-2026-09-24 à 15:47Z) ; le checkout serveur (`b43515a`) ne connaît pas encore cette révision — `alembic current` y
-échouerait jusqu'au merge sur `dev` et au `pull`. Aucun automatisme ne lit la révision (`deploy.yml` ne lance pas
-d'alembic) ; Bruno : merge sur `dev` dans la journée, aucune commande alembic sur le serveur avant.
+**Base et checkout serveur.** La migration `c3bd1e7a0001` a été appliquée sur la base de production par le tunnel, le
+2026-09-24 à 15:47Z ; aucune commande alembic n'a tourné sur le serveur avant le merge (consigne de Bruno). Après le
+merge (`00ad09a`) et le push de `dev` : `git pull --ff-only` sur le serveur → `00ad09a`, puis `poetry run alembic
+current` → **`c3bd1e7a0001 (head)`**, sans upgrade ; pas de restart, collector actif, `NRestarts=0`.
 
 ## 7. Retour arrière (non exécuté)
 
@@ -218,8 +226,7 @@ COMMIT;
   exemple `data_inventory.py` sur les séries USDT).
 - **`skills/binance_import.md:194`** donnait `10-10`, `11-14`, `12-12` au lieu de `10-03`, `11-07`, `12-05` (les
   estampilles présentes qui suivent les trous) : corrigé dans le commit docs final (accord de Bruno).
-- **`PROJECT_CONTEXT.md`** (§ 1 état, § 6 volumes : `binance` 11 952 996) et `ROADMAP.md` ne sont pas mis à jour par ce
-  chantier (hors de la liste du brief) — à faire au merge.
+- **`PROJECT_CONTEXT.md`** et `ROADMAP.md` : mis à jour après le merge, dans un commit docs séparé sur `dev`.
 - Une autre session `kraken-trading-bot` était ouverte, inactive, pendant tout le chantier ; branche assertée avant
   chaque commit.
 
@@ -230,4 +237,5 @@ COMMIT;
 | `check_report.json` · `check_report.md` | Étape 1, au `35b06ce` : (a)–(e), vwap, probe Vision, chunks |
 | `write_report.json` · `write_report.md` | Étape 2, au `4866c7d` : contrôle rejoué, rows planifiées, relecture, provenance rejouée, retour arrière |
 | `evidence/` | Tests rouges d'abord, mutants, passes de la suite, sortie d'`alembic upgrade`, sortie de `write`, contrôle indépendant |
+| `determinism_server/` | Porte serveur : les 24 `_full` au `5cb8a24` — pilote `run24.sh`, `run24.log`, JUnit et journaux par combo, `README.md` |
 | `report.md` | Ce rapport |
