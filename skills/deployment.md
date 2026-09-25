@@ -175,3 +175,11 @@ Si le serveur OOM-kill des process (symptôme : migration qui hang, process qui 
 silencieusement), il manque de RAM : stopper les services non essentiels, augmenter le swap, ou
 rescaler le serveur Hetzner. Les backtests P6/P7 en parallèle sur le serveur : max 4 workers (~1 GB
 par worker pandas).
+
+### Convention chantier serveur (25/09/2026)
+
+Tout chantier serveur (rejeu, import, sonde) travaille dans `~/runs/<chantier>/` — clone isolé, venv, scripts,
+journaux. Une session tmux porte le nom du chantier et sa date de fin prévue. La clôture du chantier inclut :
+preuves committées dans `results/<chantier>/`, puis `rm -rf ~/runs/<chantier>/` et `tmux kill-session`.
+Le 25/09, six chantiers non nettoyés encombraient le home (b4, usdt, c2, c3a, rejeu-grid, r1w) — c'est ce qui
+a motivé la règle. Rien n'est jamais rangé dans `~/docker/` (données Postgres de prod, dette 23).

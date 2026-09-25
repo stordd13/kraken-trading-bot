@@ -281,3 +281,13 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
 - [ ] P6.8 — Optimisation backtest speedup (priorité basse) : DB locale ou cache OHLC Parquet pour éliminer
       la contention tunnel SSH ; cible 5-6× (vs 3× actuel) ; à faire avant P11 (ML)
 - [x] `.env.example` : template Bybit (B1) · [x] `deploy.yml` : `EXCHANGE_NAME` + `BYBIT_*` (B2 ; secrets GitHub à créer) · [x] `deploy.yml` découplé du trader (16/09, voir ci-dessus)
+
+**Dettes ajoutées le 25/09/2026 (ménage serveur post-chantier 1 w) :**
+- **Dette 23 — données Postgres de prod en bind mount dans `/home/bruno/docker/postgres/data`.** Un `rm -rf` dans le home
+  détruit la base. À migrer vers un volume Docker nommé ou `/var/lib/krakenbot/postgres`, avec dump vérifié et
+  restauration testée avant, service arrêté, jamais à chaud. Non urgent, fragile.
+- **Dette 24 — spread/slippage du backtest à recaler avant le manifeste.** `ExchangeFees` suppose 0,02 % + 0,01 % ;
+  la sonde Bybit EU du 14/09 (`results/bybit_spread_probe_20260914/`) mesure jusqu'à 0,11 % sur ETH et SOL.
+  Sur une grid à forte rotation, l'écart change le profit factor. Décision chiffrée à prendre au manifeste.
+- **Dette 25 — preuves de déterminisme C2 rapatriées après coup** (`results/c2_determinism_server/`) ; recette
+  d'archivage désormais systématique (C3a, chantier 1 w). Rien à faire, consigné pour l'historique.

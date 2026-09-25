@@ -1,0 +1,25 @@
+# C2 pre-merge gate — checks at the delivered SHA
+# SHA: f585e8bb676ad194753305da86db953d425de97c
+# date: 2026-09-19T14:02:16Z
+# host: server, local database, isolated checkout ~/c2-determinism/repo
+
+$ poetry run pytest -q -p no:cacheprovider --ignore=tests/test_scripts/test_run_p6_determinism.py
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+1514 passed, 6 skipped in 32.72s
+
+$ poetry run pytest -q -p no:cacheprovider -k "not full" tests/test_scripts/test_run_p6_determinism.py
+......                                                                   [100%]
+6 passed, 24 deselected in 25.18s
+
+$ poetry run pytest -q -p no:cacheprovider tests/test_strategies/test_grid_atr_v4_backward_compat.py
+..                                                                       [100%]
+2 passed in 6.53s
+
+$ poetry run ruff check . ; poetry run ruff format --check .
+All checks passed!
+2 files would be reformatted, 241 files already formatted
+
+$ poetry run mypy src/ ; poetry run mypy src/ --ignore-missing-imports
+Found 65 errors in 18 files (checked 83 source files)
+Found 64 errors in 18 files (checked 83 source files)
