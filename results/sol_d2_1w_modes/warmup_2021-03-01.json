@@ -1,0 +1,815 @@
+{
+  "analyzer_reads": [
+    {
+      "call": "get_regime",
+      "feeds": "porte de pause 1 w si pause_1w_strong_bear, sinon logs seulement",
+      "runs": "chaque décision 4 h",
+      "tf": "1w"
+    },
+    {
+      "call": "get_regime",
+      "feeds": "porte de pause 1 d",
+      "runs": "si bear_protection_1d_enabled",
+      "tf": "1d"
+    },
+    {
+      "call": "get_atr",
+      "feeds": "porte HOLD (None ou <= 0) et espacement",
+      "runs": "hors pause",
+      "tf": "4h"
+    },
+    {
+      "call": "get_regime",
+      "feeds": "biais directionnel si bias_live, sinon logs seulement",
+      "runs": "hors pause, ATR disponible",
+      "tf": "1d"
+    }
+  ],
+  "argv": [
+    "scripts/audit/warmup_at.py",
+    "--output",
+    "/home/bruno/runs/sol_d2/out/warmup_2021-03-01.json"
+  ],
+  "classes": [
+    {
+      "bear_1d": false,
+      "bias_live": true,
+      "decision_tfs": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "modes": [
+        "bear_protection_mode = '1w_only'",
+        "bear_protection_mode = None, pause_1w_strong_bear vrai (défaut de classe)"
+      ],
+      "name": "C1",
+      "pause_1w": true,
+      "read_tfs": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "static_minus_decision": []
+    },
+    {
+      "bear_1d": false,
+      "bias_live": false,
+      "decision_tfs": [
+        "1w",
+        "4h"
+      ],
+      "modes": [
+        "bear_protection_mode = '1w_only'",
+        "bear_protection_mode = None, pause_1w_strong_bear vrai (défaut de classe)"
+      ],
+      "name": "C2",
+      "pause_1w": true,
+      "read_tfs": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "static_minus_decision": [
+        "1d"
+      ]
+    },
+    {
+      "bear_1d": true,
+      "bias_live": true,
+      "decision_tfs": [
+        "1d",
+        "4h"
+      ],
+      "modes": [
+        "bear_protection_mode = '1d_only'"
+      ],
+      "name": "C3",
+      "pause_1w": false,
+      "read_tfs": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "static_minus_decision": [
+        "1w"
+      ]
+    },
+    {
+      "bear_1d": true,
+      "bias_live": false,
+      "decision_tfs": [
+        "1d",
+        "4h"
+      ],
+      "modes": [
+        "bear_protection_mode = '1d_only'"
+      ],
+      "name": "C4",
+      "pause_1w": false,
+      "read_tfs": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "static_minus_decision": [
+        "1w"
+      ]
+    },
+    {
+      "bear_1d": false,
+      "bias_live": true,
+      "decision_tfs": [
+        "1d",
+        "4h"
+      ],
+      "modes": [
+        "bear_protection_mode = 'none'",
+        "bear_protection_mode = None, pause_1w_strong_bear faux"
+      ],
+      "name": "C5",
+      "pause_1w": false,
+      "read_tfs": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "static_minus_decision": [
+        "1w"
+      ]
+    },
+    {
+      "bear_1d": false,
+      "bias_live": false,
+      "decision_tfs": [
+        "4h"
+      ],
+      "modes": [
+        "bear_protection_mode = 'none'",
+        "bear_protection_mode = None, pause_1w_strong_bear faux"
+      ],
+      "name": "C6",
+      "pause_1w": false,
+      "read_tfs": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "static_minus_decision": [
+        "1d",
+        "1w"
+      ]
+    }
+  ],
+  "controls": {
+    "alembic_unchanged": {
+      "after": [
+        "c3bd1e7a0001"
+      ],
+      "before": [
+        "c3bd1e7a0001"
+      ],
+      "expected": [
+        "c3bd1e7a0001"
+      ],
+      "ok": true,
+      "source": "agent/agent_sol_d2_1w_modes.md § Validation"
+    },
+    "db_row_count_binance": {
+      "expected": 11952996,
+      "observed": 11952996,
+      "ok": true,
+      "source": "results/reconstruction_1w_2022_2025/evidence/independent_counts.txt:1"
+    },
+    "derived_rows_in_warmup": {
+      "expected": 0,
+      "observed": 0,
+      "ok": true,
+      "source": "results/reconstruction_1w_2022_2025/report.md — 8 estampilles, toutes > AT"
+    },
+    "sol_1w_at_start": {
+      "expected": {
+        "first": "2020-08-17T00:00:00+00:00",
+        "loaded": 29
+      },
+      "observed": {
+        "first": "2020-08-17T00:00:00+00:00",
+        "loaded": 29
+      },
+      "ok": true,
+      "source": "docs/protocole_c3.md § A.8 l.603-604"
+    }
+  },
+  "controls_ok": true,
+  "d2": {
+    "C1": {
+      "BTC/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "ETH/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "SOL/USDT": {
+        "failing": [
+          {
+            "largest_gap_candles": 0,
+            "loaded": 29,
+            "required": 50,
+            "stale_by_candles": 0,
+            "tf": "1w"
+          }
+        ],
+        "label": "fail(1w: 29/50)",
+        "status": "fail"
+      }
+    },
+    "C2": {
+      "BTC/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "ETH/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "SOL/USDT": {
+        "failing": [
+          {
+            "largest_gap_candles": 0,
+            "loaded": 29,
+            "required": 50,
+            "stale_by_candles": 0,
+            "tf": "1w"
+          }
+        ],
+        "label": "fail(1w: 29/50)",
+        "status": "fail"
+      }
+    },
+    "C3": {
+      "BTC/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "ETH/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "SOL/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      }
+    },
+    "C4": {
+      "BTC/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "ETH/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "SOL/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      }
+    },
+    "C5": {
+      "BTC/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "ETH/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "SOL/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      }
+    },
+    "C6": {
+      "BTC/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "ETH/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      },
+      "SOL/USDT": {
+        "failing": [],
+        "label": "pass",
+        "status": "pass"
+      }
+    }
+  },
+  "d2_summary": {
+    "BTC/USDT": {
+      "fail": [],
+      "pass": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6"
+      ],
+      "survivors_empty": false
+    },
+    "ETH/USDT": {
+      "fail": [],
+      "pass": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6"
+      ],
+      "survivors_empty": false
+    },
+    "SOL/USDT": {
+      "fail": [
+        "C1",
+        "C2"
+      ],
+      "pass": [
+        "C3",
+        "C4",
+        "C5",
+        "C6"
+      ],
+      "survivors_empty": false
+    }
+  },
+  "database": {
+    "alembic_version_after": [
+      "c3bd1e7a0001"
+    ],
+    "alembic_version_before": [
+      "c3bd1e7a0001"
+    ],
+    "database": "krakenbot",
+    "host": "localhost",
+    "port": 5432,
+    "transaction_read_only": "on"
+  },
+  "db_row_count_binance": 11952996,
+  "decision_shape": {
+    "classes_without_4h": [],
+    "distinct_sets": [
+      [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      [
+        "1d",
+        "4h"
+      ],
+      [
+        "1w",
+        "4h"
+      ],
+      [
+        "4h"
+      ]
+    ],
+    "empty_classes": []
+  },
+  "engine_args": [
+    {
+      "context": false,
+      "end": "2024-11-22T04:48:00+00:00",
+      "interval": 5,
+      "start": "2021-03-01T00:00:00+00:00",
+      "tf": "5m",
+      "window_start": "2021-03-01T00:00:00+00:00"
+    },
+    {
+      "context": true,
+      "end": "2024-11-22T04:48:00+00:00",
+      "interval": 240,
+      "start": "2021-03-01T00:00:00+00:00",
+      "tf": "4h",
+      "window_start": "2021-02-14T00:00:00+00:00"
+    },
+    {
+      "context": true,
+      "end": "2024-11-22T04:48:00+00:00",
+      "interval": 1440,
+      "start": "2021-03-01T00:00:00+00:00",
+      "tf": "1d",
+      "window_start": "2020-06-24T00:00:00+00:00"
+    },
+    {
+      "context": true,
+      "end": "2024-11-22T04:48:00+00:00",
+      "interval": 10080,
+      "start": "2021-03-01T00:00:00+00:00",
+      "tf": "1w",
+      "window_start": "2020-01-26T00:00:00+00:00"
+    }
+  ],
+  "generated_at": "2026-09-25T11:39:19.379458+00:00",
+  "git_sha": "c38d7183315ed9b28ce7cb859ed8262a03095143",
+  "measure": {
+    "at": "2021-03-01T00:00:00+00:00",
+    "exchange": "binance",
+    "pairs": [
+      "BTC/USDT",
+      "ETH/USDT",
+      "SOL/USDT"
+    ]
+  },
+  "ohlc_derived": {
+    "rows": [
+      {
+        "interval": 10080,
+        "pair": "BTC/USDT",
+        "timestamp": "2022-06-06T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "BTC/USDT",
+        "timestamp": "2022-07-04T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "BTC/USDT",
+        "timestamp": "2022-09-05T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "BTC/USDT",
+        "timestamp": "2022-10-03T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "BTC/USDT",
+        "timestamp": "2022-11-07T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "BTC/USDT",
+        "timestamp": "2022-12-05T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "BTC/USDT",
+        "timestamp": "2025-02-03T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "BTC/USDT",
+        "timestamp": "2025-03-03T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "ETH/USDT",
+        "timestamp": "2022-06-06T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "ETH/USDT",
+        "timestamp": "2022-07-04T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "ETH/USDT",
+        "timestamp": "2022-09-05T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "ETH/USDT",
+        "timestamp": "2022-10-03T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "ETH/USDT",
+        "timestamp": "2022-11-07T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "ETH/USDT",
+        "timestamp": "2022-12-05T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "ETH/USDT",
+        "timestamp": "2025-02-03T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "ETH/USDT",
+        "timestamp": "2025-03-03T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "SOL/USDT",
+        "timestamp": "2022-06-06T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "SOL/USDT",
+        "timestamp": "2022-07-04T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "SOL/USDT",
+        "timestamp": "2022-09-05T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "SOL/USDT",
+        "timestamp": "2022-10-03T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "SOL/USDT",
+        "timestamp": "2022-11-07T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "SOL/USDT",
+        "timestamp": "2022-12-05T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "SOL/USDT",
+        "timestamp": "2025-02-03T00:00:00+00:00"
+      },
+      {
+        "interval": 10080,
+        "pair": "SOL/USDT",
+        "timestamp": "2025-03-03T00:00:00+00:00"
+      }
+    ],
+    "rows_binance": 24
+  },
+  "provenance": {
+    "branch": "",
+    "git_sha": "c38d7183315ed9b28ce7cb859ed8262a03095143",
+    "provisional": false,
+    "script": "scripts/audit/warmup_at.py",
+    "script_sha256": "57ebfe8ff236d806a9556e54343562e170813789c8330761242d63612ae6d1be",
+    "script_tracked": true,
+    "tracked_tree_clean": true
+  },
+  "read_tfs": [
+    "1d",
+    "1w",
+    "4h"
+  ],
+  "requirements": {
+    "required": {
+      "1d": 50,
+      "1w": 50,
+      "4h": 14,
+      "5m": 0
+    },
+    "static_tfs": [
+      "1d",
+      "1w",
+      "4h"
+    ]
+  },
+  "schema": "warmup_at/1",
+  "series": {
+    "BTC/USDT": {
+      "1d": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2020-06-24T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 1440,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 251,
+        "ready_at": "2020-08-12T00:00:00+00:00",
+        "required": 50,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      },
+      "1w": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2020-01-27T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 10080,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 58,
+        "ready_at": "2021-01-04T00:00:00+00:00",
+        "required": 50,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      },
+      "4h": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2021-02-14T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 240,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 91,
+        "ready_at": "2021-02-16T04:00:00+00:00",
+        "required": 14,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      },
+      "5m": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2021-03-01T00:00:00+00:00",
+        "in_requirements": false,
+        "interval": 5,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 1,
+        "ready_at": null,
+        "required": 0,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      }
+    },
+    "ETH/USDT": {
+      "1d": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2020-06-24T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 1440,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 251,
+        "ready_at": "2020-08-12T00:00:00+00:00",
+        "required": 50,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      },
+      "1w": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2020-01-27T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 10080,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 58,
+        "ready_at": "2021-01-04T00:00:00+00:00",
+        "required": 50,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      },
+      "4h": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2021-02-14T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 240,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 91,
+        "ready_at": "2021-02-16T04:00:00+00:00",
+        "required": 14,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      },
+      "5m": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2021-03-01T00:00:00+00:00",
+        "in_requirements": false,
+        "interval": 5,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 1,
+        "ready_at": null,
+        "required": 0,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      }
+    },
+    "SOL/USDT": {
+      "1d": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2020-08-12T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 1440,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 202,
+        "ready_at": "2020-09-30T00:00:00+00:00",
+        "required": 50,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      },
+      "1w": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2020-08-17T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 10080,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 29,
+        "ready_at": "2021-07-26T00:00:00+00:00",
+        "required": 50,
+        "short_by": 21,
+        "stale_by_candles": 0,
+        "sufficient": false,
+        "sufficient_recomputed_by_chain": false
+      },
+      "4h": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2021-02-14T00:00:00+00:00",
+        "in_requirements": true,
+        "interval": 240,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 91,
+        "ready_at": "2021-02-16T04:00:00+00:00",
+        "required": 14,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      },
+      "5m": {
+        "derived_rows_in_history": [],
+        "extended_by": 0,
+        "first": "2021-03-01T00:00:00+00:00",
+        "in_requirements": false,
+        "interval": 5,
+        "largest_gap_candles": 0,
+        "last": "2021-03-01T00:00:00+00:00",
+        "loaded": 1,
+        "ready_at": null,
+        "required": 0,
+        "short_by": 0,
+        "stale_by_candles": 0,
+        "sufficient": true,
+        "sufficient_recomputed_by_chain": true
+      }
+    }
+  },
+  "strategy": {
+    "class": "C1",
+    "effective": {
+      "atr_period": 14,
+      "bear_protection_1d_enabled": false,
+      "bias_1d": "0.2",
+      "bias_live": true,
+      "grid_levels": 12,
+      "pause_1w_strong_bear": true
+    },
+    "name": "grok_grid_atr_adaptive_v4",
+    "params": "défauts de classe"
+  },
+  "window": {
+    "anchor": "2024-11-22T04:48:00+00:00",
+    "anchor_fraction": 0.7,
+    "end": "2026-06-29T00:00:00+00:00",
+    "start": "2021-03-01T00:00:00+00:00"
+  }
+}

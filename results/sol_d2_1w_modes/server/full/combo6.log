@@ -1,0 +1,6 @@
+.                                                                        [100%]
+============================== slowest durations ===============================
+57.90s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo6]
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+1 passed in 57.98s

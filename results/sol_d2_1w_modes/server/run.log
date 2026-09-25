@@ -1,0 +1,83 @@
+=== guard=0 sha=c38d7183315ed9b28ce7cb859ed8262a03095143
+=== start=2026-09-25T11:38:16Z
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+c3bd1e7a0001 (head)
+=== alembic_before=0
+2026-09-25 11:38:22 [info     ] grok_grid_atr_v4_initialized   atr_multiplier=4.0 bear_protection_1d_enabled=False bias_1d=0.2 bot_id=grok_grid_atr_adaptive_v4 grid_levels=12 max_allocation_pct=20.0 max_spacing_pct=0.05 min_spacing_pct=0.015 order_size_usdc=25.0 pause_1w_strong_bear=True recalc_hours=6
+2026-09-25 11:38:40 [info     ] series_measured                loaded=1 pair=BTC/USDT required=0 sufficient=True tf=5m
+2026-09-25 11:38:41 [info     ] series_measured                loaded=91 pair=BTC/USDT required=14 sufficient=True tf=4h
+2026-09-25 11:38:43 [info     ] series_measured                loaded=251 pair=BTC/USDT required=50 sufficient=True tf=1d
+2026-09-25 11:38:43 [info     ] series_measured                loaded=58 pair=BTC/USDT required=50 sufficient=True tf=1w
+2026-09-25 11:38:58 [info     ] series_measured                loaded=1 pair=ETH/USDT required=0 sufficient=True tf=5m
+2026-09-25 11:39:00 [info     ] series_measured                loaded=91 pair=ETH/USDT required=14 sufficient=True tf=4h
+2026-09-25 11:39:01 [info     ] series_measured                loaded=251 pair=ETH/USDT required=50 sufficient=True tf=1d
+2026-09-25 11:39:02 [info     ] series_measured                loaded=58 pair=ETH/USDT required=50 sufficient=True tf=1w
+2026-09-25 11:39:16 [info     ] series_measured                loaded=1 pair=SOL/USDT required=0 sufficient=True tf=5m
+2026-09-25 11:39:18 [info     ] series_measured                loaded=91 pair=SOL/USDT required=14 sufficient=True tf=4h
+2026-09-25 11:39:18 [info     ] series_measured                loaded=202 pair=SOL/USDT required=50 sufficient=True tf=1d
+2026-09-25 11:39:19 [info     ] series_measured                loaded=29 pair=SOL/USDT required=50 sufficient=False tf=1w
+2026-09-25 11:39:19 [info     ] database_closed
+2026-09-25 11:39:19 [info     ] warmup_json                    path=/home/bruno/runs/sol_d2/out/warmup_2021-03-01.json sha256=566beeb457309d5a17a1bc167087a17b6c76becb463551256efd68b4017dd35d
+2026-09-25 11:39:19 [info     ] control                        name=sol_1w_at_start ok=True
+2026-09-25 11:39:19 [info     ] control                        name=derived_rows_in_warmup ok=True
+2026-09-25 11:39:19 [info     ] control                        name=db_row_count_binance ok=True
+2026-09-25 11:39:19 [info     ] control                        name=alembic_unchanged ok=True
+2026-09-25 11:39:19 [info     ] d2_summary                     failing=[] pair=BTC/USDT passing=['C1', 'C2', 'C3', 'C4', 'C5', 'C6']
+2026-09-25 11:39:19 [info     ] d2_summary                     failing=[] pair=ETH/USDT passing=['C1', 'C2', 'C3', 'C4', 'C5', 'C6']
+2026-09-25 11:39:19 [info     ] d2_summary                     failing=['C1', 'C2'] pair=SOL/USDT passing=['C3', 'C4', 'C5', 'C6']
+=== warmup_at=0 at=2026-09-25T11:39:19Z
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+c3bd1e7a0001 (head)
+=== alembic_after=0
+--- combo0 start 2026-09-25T11:39:21Z
+=== combo0=0 at=2026-09-25T11:43:28Z
+--- combo1 start 2026-09-25T11:43:28Z
+=== combo1=0 at=2026-09-25T11:47:39Z
+--- combo2 start 2026-09-25T11:47:39Z
+=== combo2=0 at=2026-09-25T11:50:59Z
+--- combo3 start 2026-09-25T11:50:59Z
+=== combo3=0 at=2026-09-25T11:51:58Z
+--- combo4 start 2026-09-25T11:51:58Z
+=== combo4=0 at=2026-09-25T11:52:56Z
+--- combo5 start 2026-09-25T11:52:56Z
+=== combo5=0 at=2026-09-25T11:53:42Z
+--- combo6 start 2026-09-25T11:53:42Z
+=== combo6=0 at=2026-09-25T11:54:43Z
+--- combo7 start 2026-09-25T11:54:43Z
+=== combo7=0 at=2026-09-25T11:55:43Z
+--- combo8 start 2026-09-25T11:55:43Z
+=== combo8=0 at=2026-09-25T11:56:33Z
+--- combo9 start 2026-09-25T11:56:33Z
+=== combo9=0 at=2026-09-25T11:57:26Z
+--- combo10 start 2026-09-25T11:57:26Z
+=== combo10=0 at=2026-09-25T11:58:18Z
+--- combo11 start 2026-09-25T11:58:18Z
+=== combo11=0 at=2026-09-25T11:59:01Z
+--- combo12 start 2026-09-25T11:59:01Z
+=== combo12=0 at=2026-09-25T11:59:57Z
+--- combo13 start 2026-09-25T11:59:57Z
+=== combo13=0 at=2026-09-25T12:00:53Z
+--- combo14 start 2026-09-25T12:00:53Z
+=== combo14=0 at=2026-09-25T12:01:38Z
+--- combo15 start 2026-09-25T12:01:38Z
+=== combo15=0 at=2026-09-25T12:07:23Z
+--- combo16 start 2026-09-25T12:07:23Z
+=== combo16=0 at=2026-09-25T12:13:04Z
+--- combo17 start 2026-09-25T12:13:04Z
+=== combo17=0 at=2026-09-25T12:17:22Z
+--- combo18 start 2026-09-25T12:17:22Z
+=== combo18=0 at=2026-09-25T12:22:38Z
+--- combo19 start 2026-09-25T12:22:38Z
+=== combo19=0 at=2026-09-25T12:27:55Z
+--- combo20 start 2026-09-25T12:27:55Z
+=== combo20=0 at=2026-09-25T12:31:56Z
+--- combo21 start 2026-09-25T12:31:56Z
+=== combo21=0 at=2026-09-25T12:38:51Z
+--- combo22 start 2026-09-25T12:38:51Z
+=== combo22=0 at=2026-09-25T12:45:52Z
+--- combo23 start 2026-09-25T12:45:52Z
+=== combo23=0 at=2026-09-25T12:51:10Z
+=== full=0
+=== end=2026-09-25T12:51:10Z
