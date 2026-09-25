@@ -41,7 +41,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | **C1** | Métriques fiables (module partagé, dual MaxDD, PF net, equity export, A/B vs tag) | 3-5 j | `results/C1_metrics_report.md`, gold hashes re-baselinés sur tableau A/B approuvé | ✅ 16 sept — mergé dans `dev`, tag `v2.9.0-c1-metrics` |
 | **C2** | Fidélité replay (grid 4h réels, préenregistrement EMA200 DCA, compteurs de rejets, dette 14 avec review) | 2-4 j | `results/C2_replay_report.md`, gold hashes grid re-baselinés sur tableau approuvé, preuves de déterminisme `results/c2_replay/determinism_server/` | ✅ 19 sept — mergé dans `dev`, tag `v2.10.0-c2-replay` |
 | **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | `results/rejeu_grid_report.md`, pré-spécification gelée `docs/rejeu_grid_prespec.md`, artefacts `results/rejeu_grid_20260919/` | ✅ 20 sept — **`inconclusif (F_CANNOT_SEPARATE)`** : 16 configs BTC passent les gates ponctuels, aucune ne tient les six bornes simultanées ; SOL descriptif (données insuffisantes). Ni candidat, ni dépriorisation : **pas de déploiement, pas de tuning supplémentaire**, périmètre non élargi. Suite → C3 |
-| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole gelé + outillé ; puis campagne réelle sous la chaîne | ✅ **C3a mergée le 23 sept** (`64adede`, tag `v2.11.0-c3a-protocole`) — outillage complet, artefact du rejeu **refusé à l'entrée** (`D_WARMUP_PREFIX`, 96/96). ✅ **Protocole amendé en v2.1 le 23 sept** (`docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129` ; branche `feat/c3-amendements-v2.1`, merge sous décision humaine ; 932 tests C3). 📋 **C3b ouvert** : (1) producteur conforme, contrat fixé par v2.1, et décision de reconstruction 1 w ; (2) campagne réelle sous la chaîne. Détail : § « C3 — Validation chronologique » |
+| **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole gelé + outillé ; puis campagne réelle sous la chaîne | ✅ **C3a mergée le 23 sept** (`64adede`, tag `v2.11.0-c3a-protocole`) — outillage complet, artefact du rejeu **refusé à l'entrée** (`D_WARMUP_PREFIX`, 96/96). ✅ **Protocole amendé en v2.1 le 23 sept** (`docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129` ; branche `feat/c3-amendements-v2.1`, merge sous décision humaine ; 932 tests C3). 📋 **C3b ouvert** : (1) producteur conforme, contrat fixé par v2.1 — ✅ reconstruction 1 w **faite** (24/09, D1 1 w 194/194) ; (2) campagne réelle sous la chaîne. Détail : § « C3 — Validation chronologique » |
 | **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
 | P11+ | ML, scalping eval, RL | Mois | — | 🔮 |
@@ -152,8 +152,10 @@ la première campagne 2021-03-01 → 2026-06-29 (`T = 2024-11-22T04:48Z`) ; 932 
      exportée (ex-S-3 de la revue du 23/09) ; le § J item 12 (séries quotidiennes déclaratives) se resserre
      d'autant, par amendement daté ;
    - amorçage suffisant au préfixe (D2) ;
-   - **décision de reconstruction** des six estampilles 1 w manquantes de 2022 (D1 1 w à 188/194 < 97 % : sans elle,
-     l'ensemble admissible est vide) — **prérequis du manifeste** ; SOL partiel ou absent par D2 (29 bougies 1 w
+   - ✅ **reconstruction 1 w avant manifeste — faite le 24/09** : les 8 estampilles 1 w manquantes × 3 paires = 24 rows
+     dérivées du 1 d, table de provenance `ohlc_derived` (migration `c3bd1e7a0001`), D1 1 w 188/194 → **194/194**
+     (`results/reconstruction_1w_2022_2025/`, RESEARCH_LOG entrée 13) ; **le manifeste de la première campagne doit
+     lister les 8 estampilles dérivées, lues dans `ohlc_derived`** ; SOL partiel ou absent par D2 (29 bougies 1 w
      au 2021-03-01) ;
    - dettes : 19 (hors première campagne), 21 (`--campaign`, paramètre libre de la chaîne, à trancher avant la
      campagne), 15(c).
@@ -257,6 +259,11 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
       storage box Hetzner restant à faire
 - [x] **Découplage `deploy.yml`** (16/09) : le workflow activait et redémarrait `krakenbot` puis exigeait qu'il tourne ;
       neutralisé tant que le trader est off (marqueurs `# B5: re-enable trader`, collector seul) ; trader masqué sur le serveur
+- [ ] **Tests de suite dépendants de la base par le tunnel, à isoler par marqueur `db`** :
+      `test_grid_atr_v4_backward_compat_hash[binance|bybit]` et `test_c2_replay_fidelity_db` dépendent de la base par le
+      tunnel ; échec hash 2/2844 le 24/09, cause non établie (journal non conservé ; signature non conservée (hash
+      différent ou échec du run : indiscernable dans le journal gardé) ; une session concurrente sur le même tree était
+      ouverte). À isoler par marqueur db ; garder le journal complet de toute passe de suite désormais.
 - [ ] **Test dette 13** : test one-off prouvant que le chemin live/router résout les params de stratégie par instance
       (`class:` dans `strategies.yaml`), prérequis B5
 - [x] **Cron de collecte orderbook élargie** (16/09) : horaire, bid + ask, 2 profondeurs, 24/7 (week-ends et heures US

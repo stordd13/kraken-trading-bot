@@ -151,6 +151,14 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   188/194 = 96,9 % < 97 % : **sans reconstruction, l'ensemble admissible est vide** ; la reconstruction est un
   prérequis du manifeste. Journal : `docs/RESEARCH_LOG.md` (adoption, aucun run).
 
+- ✅ **Reconstruction 1 w (24 sept) — D1 1 w résolu** : les 8 estampilles 1 w manquantes des séries Binance USDT
+  (2022-06-06, 07-04, 09-05, 10-03, 11-07, 12-05, 2025-02-03, 2025-03-03 × BTC/ETH/SOL) reconstruites depuis le 1 d =
+  **24 rows dérivées** dans `market_data_ohlc`, marquées dans la table de provenance **`ohlc_derived`** (migration
+  `c3bd1e7a0001`) ; contrôle : la méthode redonne les 810 semaines Vision de la fenêtre au `Decimal` près ; **D1 1 w
+  sur le préfixe de la première campagne 188/194 → 194/194** (BTC, ETH, SOL). Mergé dans `dev` (`00ad09a`) après les
+  24 tests de déterminisme full-range verts sur le serveur. Rapport : `results/reconstruction_1w_2022_2025/` ; journal :
+  `docs/RESEARCH_LOG.md`, entrée 13.
+
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
   `# B5: re-enable trader`) ; **trader masqué** sur le serveur (`systemctl mask krakenbot`). Reste ouvert : test dette 13.
