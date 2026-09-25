@@ -1,6 +1,6 @@
 # KrakenBot — Roadmap (Septembre 2026)
 
-> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 23 septembre 2026 (post-audit B4, C1 et C2 mergés, **C3a mergée, protocole C3 amendé en v2.1**, C3b ouvert).
+> Roadmap consolidée post-pivot Bybit EU. Mise à jour : 25 septembre 2026 (post-audit B4, C1 et C2 mergés, **C3a mergée, protocole C3 amendé en v2.1**, C3b ouvert).
 > Décisions de pivot : `docs/archive/PIVOT_BYBIT_PLAN.md` · audit Bybit : `results/bybit_integration_audit.md` ·
 > audit red-team B4 (portée des conclusions) : `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` + addendum en tête de
 > `results/B4_bybit_backtest_report.md`.
@@ -141,6 +141,13 @@ la première campagne 2021-03-01 → 2026-06-29 (`T = 2024-11-22T04:48Z`) ; 932 
    - export du bloc `liquidation[seg]` avec `lots` et clés **`_base`** (D6, clause 3, § A.7) ; `exec_interval` (D5) ;
      artefact de couverture (D1) ;
    - **`decision_timeframes` par observation**, dérivés par une méthode de classe pure de la stratégie (§ A.8 D2) ;
+     - mesuré le 25/09 (`results/sol_d2_1w_modes/report.md`) : la liste statique d'`indicator_requirements`
+       (`{1d, 1w, 4h}` pour la grid, `scripts/backtest.py:420-425`) **n'est pas** la liste de décision — six classes,
+       quatre ensembles (`{1d,1w,4h}`, `{1w,4h}`, `{1d,4h}`, `{4h}`). La méthode prend **`grid_levels`** en entrée et
+       classe `bias_live` **par l'oracle**, jamais par la forme fermée (rapport § 8.2-2 ; candidat amendement v2.2 sur
+       § A.8 l.515, rapport § 8.1) ;
+     - **refuser à l'entrée un `pause_1w_strong_bear` non booléen** : la chaîne `"false"` est vraie à `:384` et fait
+       vivre la porte 1 w d'un candidat déclaré sans protection (rapport § 8.2-1) ;
    - **`flat_start_proof = {at: T, cash: C, qty: 0, pending: 0}`** capturée avant la première bougie du run
      d'évaluation (§ B.2), `invocation.single_call` (§ B.4), `first_fill_at` (§ C.3) ;
    - l'**évaluation du § F.2**, rejouable au bit par la chaîne : `returns_config`, `returns_bench {dd, sigma}` (même
@@ -152,6 +159,9 @@ la première campagne 2021-03-01 → 2026-06-29 (`T = 2024-11-22T04:48Z`) ; 932 
      exportée (ex-S-3 de la revue du 23/09) ; le § J item 12 (séries quotidiennes déclaratives) se resserre
      d'autant, par amendement daté ;
    - amorçage suffisant au préfixe (D2) ;
+     - mesuré le 25/09 : BTC/ETH suffisants sur toutes les séries ; SOL 1 w 29/50 (prêt le 2021-07-26) → les
+       candidats SOL **sortent dans C1-C2** (porte 1 w vivante) et **survivent dans C3-C6** ; 24 `_full` verts au
+       serveur au `c38d718` ;
    - ✅ **reconstruction 1 w avant manifeste — faite le 24/09** : les 8 estampilles 1 w manquantes × 3 paires = 24 rows
      dérivées du 1 d, table de provenance `ohlc_derived` (migration `c3bd1e7a0001`), D1 1 w 188/194 → **194/194**
      (`results/reconstruction_1w_2022_2025/`, RESEARCH_LOG entrée 13) ; **le manifeste de la première campagne doit

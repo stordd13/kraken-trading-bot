@@ -234,6 +234,26 @@ Migration `c1ae7a1c0001 → c3bd1e7a0001` appliquée par le tunnel le 2026-09-24
 Reste avant le merge sur `dev` : les 24 tests `_full` sur le serveur (diff § L.3 non vide sur `src/`, option A), sur
 signal de Bruno ; aucune commande alembic sur le serveur avant le merge. Rapport : `results/reconstruction_1w_2022_2025/report.md`.
 
+### Mesure SOL/D2 — classes `decision_timeframes` et amorçage au 2021-03-01 (inscrite le 25/09/2026, après la mesure — aucun run de backtest)
+
+Mesure en **lecture seule**, pas un essai : aucune simulation, aucune sélection, hors quota. Brief
+`agent/agent_sol_d2_1w_modes.md`. Dernière mesure avant le manifeste de la première campagne (§ A.8 D2 sur SOL).
+Inscrite parce qu'elle porte un fait nouveau (brief, § Livrables).
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Issue mesurée | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 14 | 2026-09-25 | C3b, mesure — amorçage C2 du moteur grid au début du préfixe (`scripts/audit/warmup_at.py`), **aucune simulation** | `grok_grid_atr_adaptive_v4`, six classes d'équivalence de `decision_timeframes` (C1-C6) × `BTC/USDT`, `ETH/USDT`, `SOL/USDT` | `exchange='binance'`, 5 m / 4 h / 1 d / 1 w, amorçage au 2021-03-01, `end = T = 2024-11-22T04:48Z` | `c38d718` (branche `feat/c3b-sol-d2`), serveur, lecture seule garantie par Postgres ; métriques : sans objet | sans objet | contrôles verts (SOL 1 w 29 bougies, première 2020-08-17, prête 2021-07-26 ; 0 row dérivée dans l'amorçage ; 11 952 996 rows binance ; alembic `c3bd1e7a0001` inchangé) ; D2 : BTC/ETH pass dans les six classes ; **SOL survit dans C3-C6, sort dans C1-C2** (`fail(1w: 29/50)`), ensemble survivant non vide | aucune ici ; entrées de la conversation manifeste : `decision_timeframes` par candidat dès que l'univers couvre plus d'une classe (rapport § 8), candidats amendement v2.2 (§ 8.1), dettes C3b (§ 8.2) | `results/sol_d2_1w_modes/report.md`, `warmup_2021-03-01.json` (sha256 `566beeb4…d35d`) |
+
+- **Fait nouveau** : l'axe pressenti « `bias_1d ≠ 0` » est faux ; **`grid_levels` est un axe** de
+  `decision_timeframes`. `regime_1d` décide si et seulement si `_get_directional_bias` n'est pas constante sur le
+  domaine de `get_regime` ; `bias_1d ≠ 0` n'est ni suffisant ni nécessaire. Candidats amendement v2.2 : rapport § 8.1,
+  items 1 et 2. Dettes C3b : rapport § 8.2, items 1 et 2. Non redits ici.
+- **Tunnel** : la suite complète locale du 25/09 a perdu les 24 `_full` sur une coupure du tunnel à 11:23:48Z ; les
+  mêmes 24 passent au serveur au même SHA (`full=0`). C'est une **occurrence d'instabilité du tunnel, distincte du
+  hash divergent 2/2844 du 24/09**, qui reste ouvert (rapport § 9.3-9.4).
+- L'item « décision de reconstruction 1 w » de « Essais à venir » est clos par l'entrée 13 ; le paragraphe n'est pas
+  réécrit (ajout seul).
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
