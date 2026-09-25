@@ -56,6 +56,7 @@ coverage.xml
 
 # Logs
 *.log
+!results/**/*.log
 logs/
 
 # MyPy

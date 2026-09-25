@@ -1,7 +1,7 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 23 septembre 2026, **à l'amendement v2.1 du protocole C3**. B4 close le 15 sept (merge `4c98b6b`
+> Dernière mise à jour : 24 septembre 2026, **à la reconstruction 1 w** (amendement v2.1 du protocole C3 le 23 septembre). B4 close le 15 sept (merge `4c98b6b`
 > dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec
 > un instrument depuis invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ;
 > sélection paper vide. Instrument réparé : **C1 métriques** (tag `v2.9.0-c1-metrics`) et **C2 fidélité replay** (tag
@@ -14,8 +14,8 @@
 > humaine) : rejeu complet du § F.2 par la chaîne, évaluation réelle admise avec ses porteurs, c3 non normalisée →
 > `inconclusif (R1_NOT_NORMALISED)`, critère d'arrêt pré-enregistré (`docs/CONTRAINTES_POST_B4.md` § 10). **Fait
 > stratégique : aucune campagne existante ne peut traverser la chaîne C3 sans un producteur conforme → chantier C3b**,
-> dont v2.1 fixe le contrat ; sur la fenêtre de la première campagne, la reconstruction des estampilles 1 w de 2022
-> précède le manifeste (D1 à 188/194). Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
+> dont v2.1 fixe le contrat ; sur la fenêtre de la première campagne, **D1 1 w est résolu** (24 sept : 24 rows 1 w
+> dérivées du 1 d, table `ohlc_derived`, **194/194**, `results/reconstruction_1w_2022_2025/`). Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
 > `docs/RESEARCH_LOG.md` obligatoire avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
 
 ---
@@ -336,12 +336,13 @@ Contexte historique : les backtests P6 et P7 phase 1 ont été faits avec les fe
   (`results/B4_1_timestamp_restamp_report.md`)
 
 **Volumes (23 septembre 2026)** :
-- `exchange='binance'` : **11 952 972 rows, 39 séries** (12:43 UTC, après l'import complémentaire 2019-2020) =
+- `exchange='binance'` : **11 952 996 rows, 39 séries** (11 952 972 importées au 2026-09-23 12:43 UTC, après l'import
+  complémentaire 2019-2020, + **24 rows 1 w dérivées** le 2026-09-24, listées dans `ohlc_derived`) =
   - `*/USDC` : 8 712 718 rows (BTC/ETH/SOL × 7 TF, 2021-01-01 → 2026-04-01 00:00, 1w → 2026-04-06) — **base de backtest
     historique, figée**, **end-stamped depuis B4.1** (dette 11 résolue ; counts inchangés par le re-stamp) ; **trou USDC**
     `2022-09-29T03:00Z → 2023-03-12` (BTC/ETH, 164 j) et `→ 2023-12-28` (SOL, 455 j), non backfillable (Vision 404,
     `results/data_inventory_20260923/`) ;
-  - `*/USDT` : **3 240 254 rows, 18 séries** (BTC/ETH/SOL × **6 TF** : 5m, 15m, 1h, 4h, 1d, 1w — **pas de 1m**, aucun
+  - `*/USDT` : **3 240 254 rows importées + 24 dérivées, 18 séries** (BTC/ETH/SOL × **6 TF** : 5m, 15m, 1h, 4h, 1d, 1w — **pas de 1m**, aucun
     moteur ne le lit, ajoutable plus tard), importées le **2026-09-23** en deux passes depuis Binance Vision (`BTCUSDT`,
     `ETHUSDT`, `SOLUSDT`) pour disposer d'une **base contiguë 2019-01 → 2026-08** : première passe 2021-01 → 2026-08
     (2 575 851 rows, `results/binance_usdt_import_report.md`), seconde passe **2019-01 → 2020-12** (664 403 rows, profondeur
@@ -350,7 +351,7 @@ Contexte historique : les backtests P6 et P7 phase 1 ont été faits avec les fe
     (dernier mois Vision complet, 2026-08) ; 1 161 236 rows par paire BTC/ETH, 917 782 SOL. Jointure au 2021-01-01 **sans trou**
     (inventaire). Trous = 14 fenêtres de maintenance 2019-2020 (≤ 10 h, la plus longue le 2019-05-15 ; identiques sur BTC/ETH,
     SOL partage les trois de nov.–déc. 2020) + les 6 fenêtres 2021 + la panne du 2023-03-24 (identiques à la base USDC) + 8
-    bougies 1w isolées (artefact Vision, consignées) ; aucun trou sur 1d, 5 bougies 4h manquantes 2019-2020 (dont 2 consécutives
+    bougies 1w isolées (fichiers Vision, **reconstruites le 24/09** depuis le 1 d, `ohlc_derived` — D1 1 w 194/194) ; aucun trou sur 1d, 5 bougies 4h manquantes 2019-2020 (dont 2 consécutives
     le 2019-05-15) ; **écart de fin de série 1w : `2026-07-06`** contre `2026-09-01` pour les cinq autres TF (fichiers Vision 1w
     2026-07 et 2026-08 absents au 23/09) — reprise à faire hors chantier : `--intervals 1w --start-date 2026-07-01 --end-date
     2026-08-31` quand Vision les publiera (idempotent, `ON CONFLICT DO NOTHING`). Inventaires post-import

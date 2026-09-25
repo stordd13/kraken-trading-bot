@@ -12,7 +12,7 @@ l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Inst
 `v2.9.0-c1-metrics`) et C2 (replay, `v2.10.0-c2-replay`) mergés ; rejeu grid clos `inconclusif` (20/09). **C3a mergée
 (23/09, `v2.11.0-c3a-protocole`)** : outillage complet, artefact du rejeu **refusé à l'entrée**. **Protocole amendé en
 v2.1 (23/09, `docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129`)** sur `feat/c3-amendements-v2.1`, merge sous
-décision humaine. Phase suivante : C3b (producteur conforme ; reconstruction 1 w avant le manifeste de la première
+décision humaine. Phase suivante : C3b (producteur conforme ; mesure SOL/D2 et modes lisant le 1 w avant le manifeste de la première
 campagne) ; aucune sélection, rien à trader ; R&D sur le papier
 (`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
 `docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
