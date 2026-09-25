@@ -1,0 +1,8 @@
+M1 off-by-one S-7d..S-1d: exit=1 first_failed=['tests/test_scripts/test_reconstruct_1w.py::test_source_stamps_are_s_minus_6_days_to_s']
+M2 sha without sort: exit=1 first_failed=['tests/test_scripts/test_reconstruct_1w.py::test_source_sha256_is_stable_and_order_independent']
+M3 NULL trades as 0: exit=1 first_failed=['tests/test_scripts/test_reconstruct_1w.py::test_trades_count_null_propagates']
+M4 no row-count check: exit=1 first_failed=['tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_refuses_anything_but_the_seven_grid_rows[six-rows]']
+M5 open from input order: exit=1 first_failed=['tests/test_scripts/test_reconstruct_1w.py::test_aggregate_week_ignores_input_order']
+M6 load_dotenv at import: exit=1 first_failed=['tests/test_scripts/test_reconstruct_1w.py::test_import_does_not_mutate_environ']
+M7 D1 threshold copied 0.96: exit=1 first_failed=['tests/test_scripts/test_reconstruct_1w.py::test_d1_week_reproduces_the_protocol_figure']
+restored: True

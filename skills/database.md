@@ -65,7 +65,7 @@ Attendu (septembre 2026) :
 
 | `exchange` | Rows | Rôle |
 |---|---|---|
-| `binance` | **11 952 972** au 2026-09-23 12:43 UTC = 8 712 718 `*/USDC` (figé) + 3 240 254 `*/USDT` | Base de backtest : `*/USDC` 2021-01 → 2026-04, 3 paires × 7 TF, figée (trou 2022-09-29 → 2023-03-12 / 2023-12-28) ; `*/USDT` **2019-01 → 2026-08** (BTC/ETH ; SOL depuis 2020-08-11), 3 paires × 6 TF (pas de 1m), contiguë, importée le 2026-09-23 en deux passes (`skills/binance_import.md` § « Séries USDT » et « Prolongation 2019-2020 »). End-stampée. |
+| `binance` | **11 952 996** au 2026-09-24 = 8 712 718 `*/USDC` (figé) + 3 240 254 `*/USDT` importées + **24 rows 1 w USDT dérivées** (`ohlc_derived`, § « Rows dérivées ») | Base de backtest : `*/USDC` 2021-01 → 2026-04, 3 paires × 7 TF, figée (trou 2022-09-29 → 2023-03-12 / 2023-12-28) ; `*/USDT` **2019-01 → 2026-08** (BTC/ETH ; SOL depuis 2020-08-11), 3 paires × 6 TF (pas de 1m), contiguë, importée le 2026-09-23 en deux passes (`skills/binance_import.md` § « Séries USDT » et « Prolongation 2019-2020 »). End-stampée. |
 | `kraken` | 1 181 469 | Legacy, à supprimer une fois Bybit validé en live. |
 | `bybit` | 2 572 097 au 16/09/2026 13:42 (croît en continu) | Données live Bybit EU (historique depuis 2025-06-11 + WS + backfill). Cible de production. |
 
@@ -104,6 +104,39 @@ Bybit `end + 1 ms`). Historique : les rows `binance` (import Vision) étaient st
 `results/B4_1_timestamp_restamp_report.md`, scripts `scripts/audit/b4_*.py`, manifeste
 `results/b4_binance_stamp_boundaries.json`. `scripts/binance_vision_import.py` écrit la fin de période depuis
 B4.1. Les 8.7 M rows `binance` finissent le `2026-04-01 00:00` (1w : `2026-04-06`).
+
+## Rows dérivées — table `ohlc_derived`
+
+Depuis le 2026-09-24 (migration `c3bd1e7a0001`), `market_data_ohlc` porte des rows **non observées**, dérivées par
+agrégation. Elles restent dans `market_data_ohlc` sous leur `exchange` réel (aucune colonne ni valeur `exchange`
+spéciale) ; **une row dans `ohlc_derived` ⟺ la row `market_data_ohlc` de même clé `(timestamp, pair, interval, exchange)`
+n'est pas une donnée d'exchange**. FK logique seulement (la cible est une hypertable). Colonnes : `method`
+(`agg_1d_v1`), `source_interval`, `source_stamps` (JSONB, ISO), `source_sha256` (preuve rejouable depuis les rows
+sources), `vwap_policy`, `script_sha256`, `git_sha`, `created_at`, `note` (entrée RESEARCH_LOG).
+
+Contenu : **24 rows** — les 8 estampilles 1 w manquantes des séries Binance `BTC/USDT`, `ETH/USDT`, `SOL/USDT`
+(2022-06-06, 07-04, 09-05, 10-03, 11-07, 12-05, 2025-02-03, 2025-03-03), reconstruites depuis leurs 7 rows 1 d par
+`scripts/audit/reconstruct_1w.py write` (contrôle : la méthode redonne les 810 semaines Vision de la fenêtre au
+`Decimal` près ; `vwap` NULL). Rapport : `results/reconstruction_1w_2022_2025/report.md` ; RESEARCH_LOG entrée 13. Le
+protocole C3 les **compte comme observées** pour D1 ; le manifeste de la première campagne les liste.
+
+```sql
+-- Les rows dérivées, avec leurs valeurs
+SELECT d.pair, d.interval, d.timestamp, d.method, o.open, o.close, o.volume
+FROM ohlc_derived d JOIN market_data_ohlc o
+  ON (o.timestamp, o.pair, o.interval, o.exchange) = (d.timestamp, d.pair, d.interval, d.exchange)
+ORDER BY d.pair, d.timestamp;
+
+-- Les seules rows observées (exclure les dérivées)
+SELECT o.* FROM market_data_ohlc o
+WHERE o.exchange = 'binance' AND o.pair = 'BTC/USDT' AND o.interval = 10080
+  AND NOT EXISTS (SELECT 1 FROM ohlc_derived d
+                  WHERE (d.timestamp, d.pair, d.interval, d.exchange) = (o.timestamp, o.pair, o.interval, o.exchange));
+```
+
+**Idempotence** : l'import Vision fait `ON CONFLICT DO NOTHING` — une vraie row servie plus tard pour une de ces
+estampilles **n'écrase pas** la row dérivée. La remplacer est une action explicite : `DELETE` de la row OHLC **et** de
+sa row `ohlc_derived`, dans la même transaction, puis réimport. Retour arrière complet : `report.md` § 7.
 
 ## Inserts — TOUJOURS BATCHER
 
@@ -264,5 +297,7 @@ UPDATE alembic_version SET version_num = '<new_revision_id>';
 "
 ```
 
-Dernière migration connue : `f7a8b9c0d1e2` (colonne `exchange` + PK 4 colonnes). TimescaleDB a
+Dernière migration : `c3bd1e7a0001` (2026-09-24, table `ohlc_derived`, `create_table` seul — appliquée par le tunnel,
+table neuve et vide). Chaîne récente : `f7a8b9c0d1e2` (colonne `exchange` + PK 4 colonnes) → `b4c0ffee0001` (B4.1,
+commentaire `timestamp`) → `c1ae7a1c0001` (C1, `backtest_runs`) → `c3bd1e7a0001`. TimescaleDB a
 besoin de `max_locks_per_transaction >= 512` pour les grosses requêtes multi-chunks (9 ans).

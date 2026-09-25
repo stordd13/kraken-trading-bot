@@ -2,6 +2,7 @@
 
 This module defines the database models for storing market data:
 - OHLCData: Candlestick data (hypertable for TimescaleDB)
+- OHLCDerived: Provenance of the OHLCData rows that are derived, not observed
 - TickData: Individual trade ticks
 """
 
@@ -10,7 +11,8 @@ from __future__ import annotations
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import DECIMAL, TIMESTAMP, Enum, Index, Integer, String
+from sqlalchemy import DECIMAL, TIMESTAMP, Enum, Index, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from krakenbot.core.database import Base
@@ -164,6 +166,98 @@ class OHLCData(Base):
             True if bearish.
         """
         return self.close < self.open
+
+
+class OHLCDerived(Base):
+    """Provenance of the ``market_data_ohlc`` rows that are derived, not observed.
+
+    A row here ⟺ the ``market_data_ohlc`` row with the same key is not exchange data: it was derived by
+    aggregation (``method``, e.g. ``agg_1d_v1`` = a 1 w candle rebuilt from its 7 daily candles, see
+    ``scripts/audit/reconstruct_1w.py``). The link is a logical foreign key only, with no constraint: the
+    target is a TimescaleDB hypertable. ``source_sha256`` makes the derivation replayable from the source
+    rows.
+
+    Attributes:
+        timestamp: Period-end timestamp of the derived row (UTC, primary key).
+        pair: Trading pair of the derived row.
+        interval: Interval of the derived row, in minutes.
+        exchange: Exchange of the derived row.
+        method: Derivation method.
+        source_interval: Interval of the source rows, in minutes.
+        source_stamps: Period-end stamps of the source rows (ISO strings).
+        source_sha256: sha256 of the serialised source rows.
+        vwap_policy: How ``vwap`` was derived (``null`` or ``weighted``).
+        script_sha256: sha256 of the script that wrote the row.
+        git_sha: Commit the script was run from.
+        created_at: When the row was written (UTC).
+        note: Reference to the research log entry that registered the derivation.
+    """
+
+    __tablename__ = "ohlc_derived"
+
+    timestamp: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        primary_key=True,
+        nullable=False,
+        comment="Period-end timestamp of the derived market_data_ohlc row (UTC)",
+    )
+    pair: Mapped[str] = mapped_column(
+        String(20), primary_key=True, nullable=False, comment="Trading pair of the derived row"
+    )
+    interval: Mapped[int] = mapped_column(
+        Integer, primary_key=True, nullable=False, comment="Interval of the derived row (minutes)"
+    )
+    exchange: Mapped[str] = mapped_column(
+        String(20), primary_key=True, nullable=False, comment="Exchange of the derived row"
+    )
+    method: Mapped[str] = mapped_column(
+        String(32), nullable=False, comment="Derivation method (e.g. agg_1d_v1)"
+    )
+    source_interval: Mapped[int] = mapped_column(
+        Integer, nullable=False, comment="Interval of the source rows (minutes)"
+    )
+    source_stamps: Mapped[list[str]] = mapped_column(
+        JSONB, nullable=False, comment="Period-end stamps of the source rows (ISO)"
+    )
+    source_sha256: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        comment="sha256 of the serialised source rows (replayable proof)",
+    )
+    vwap_policy: Mapped[str] = mapped_column(
+        String(16), nullable=False, comment="How vwap was derived: null or weighted"
+    )
+    script_sha256: Mapped[str] = mapped_column(
+        String(64), nullable=False, comment="sha256 of the script that wrote the row"
+    )
+    git_sha: Mapped[str] = mapped_column(
+        String(40), nullable=False, comment="Commit the script was run from"
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        comment="When the row was written (UTC)",
+    )
+    note: Mapped[str] = mapped_column(
+        Text, nullable=False, comment="Reference to the research log entry"
+    )
+
+    __table_args__ = (
+        {
+            "comment": (
+                "Rows de market_data_ohlc non observées, dérivées par agrégation. Une row ici ⟺ la row "
+                "OHLC correspondante n'est pas une donnée d'exchange."
+            ),
+        },
+    )
+
+    def __repr__(self) -> str:
+        """Return string representation of the provenance row."""
+        return (
+            f"OHLCDerived(timestamp={self.timestamp!r}, pair={self.pair!r}, "
+            f"interval={self.interval}, exchange={self.exchange!r}, method={self.method!r})"
+        )
 
 
 class TickData(Base):

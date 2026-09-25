@@ -1,0 +1,16 @@
+W1 CLI: policy/note not required: exit=1 failed=['test_write_cli_requires_an_explicit_policy_and_note[argv0]', 'test_write_cli_requires_an_explicit_policy_and_note[argv1]']
+W2 CLI: --allow-uncommitted accepted for write: exit=1 failed=['test_write_cli_requires_an_explicit_policy_and_note[argv3]']
+W3 CLI: no choices on --vwap-policy: exit=1 failed=['test_write_cli_requires_an_explicit_policy_and_note[argv2]']
+W4 plan: OHLCV mismatches ignored: exit=1 failed=['test_plan_write_refuses_an_ohlcv_mismatch', 'test_perform_write_refuses_a_mismatch_without_any_insert']
+W5 plan: derived keys ignored: exit=1 failed=['test_plan_write_refuses_a_target_already_derived']
+W6 fits: no scale check: exit=1 failed=['test_numeric_fit_of_decimal_18_8']
+Traceback (most recent call last):
+  File "<scratch> line 18, in <module>
+    assert src.count(old) == 1, (name, src.count(old))
+           ^^^^^^^^^^^^^^^^^^^
+AssertionError: ('W7 provenance: stamps reversed', 2)
+W7 provenance: stamps reversed: exit=1 failed=['test_provenance_rows_carry_the_brief_columns']
+W8 insert ON CONFLICT DO NOTHING: exit=1 failed=['test_perform_write_inserts_ohlc_then_provenance']
+W9 migration: no table comment: exit=1 failed=['test_migration_creates_only_the_provenance_table']
+W10 plan: target present in OHLC ignored: exit=1 failed=['test_plan_write_refuses_a_target_already_in_ohlc']
+restored: True

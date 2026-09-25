@@ -1,0 +1,4 @@
+2026-09-24 17:47:24 [info     ] write_committed                ohlc_rows=24 provenance_rows=24
+2026-09-24 17:47:26 [info     ] write_report_json              path=results/reconstruction_1w_2022_2025/write_report.json sha256=b0f1acecda841091790af0a81b90b2a054812dd01cab27c00a893903fb04e743
+2026-09-24 17:47:26 [info     ] write_report_markdown          path=results/reconstruction_1w_2022_2025/write_report.md
+2026-09-24 17:47:26 [info     ] write_summary                  problems=[] status=written verified=True

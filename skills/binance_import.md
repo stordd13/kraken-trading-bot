@@ -7,12 +7,14 @@
 > `scripts/bybit_kline_import.py`, même modèle mais REST paginé — voir `skills/bybit.md`).
 > **Depuis le 2026-09-23, la même table porte aussi 18 séries `*/USDT`** (3,24 M rows, 6 TF, **2019-01 → 2026-08** pour
 > BTC/ETH, 2020-08 → 2026-08 pour SOL, contiguës, en deux passes le même jour) — section « Séries USDT » ci-dessous. Total
-> `binance` : **11 952 972 rows, 39 séries**.
+> `binance` : **11 952 972 rows importées, 39 séries** — **11 952 996** en base depuis le 2026-09-24 (+ 24 rows 1 w USDT
+> **dérivées**, listées dans `ohlc_derived`, voir « Séries USDT »).
 
 ## Avant tout : vérifier ce qui est en DB
 
 Les données sont déjà là. **Ne pas relancer l'import.** Script de vérification dans
-`skills/database.md` (attendu `binance: 11 952 972` depuis le 2026-09-23, seconde passe — 8 712 718 `*/USDC` + 3 240 254 `*/USDT`).
+`skills/database.md` (attendu `binance: 11 952 996` depuis le 2026-09-24 — 8 712 718 `*/USDC` + 3 240 254 `*/USDT` importées +
+24 rows 1 w USDT dérivées, `ohlc_derived`).
 
 ## Le script
 
@@ -79,7 +81,8 @@ FROM market_data_ohlc WHERE exchange = 'binance'
 GROUP BY pair, interval ORDER BY pair, interval;
 ```
 
-Si tu vois 39 séries et 11 952 972 rows (21 séries `*/USDC` = 8 712 718, 18 séries `*/USDT` = 3 240 254), l'import
+Si tu vois 39 séries et 11 952 996 rows (21 séries `*/USDC` = 8 712 718, 18 séries `*/USDT` = 3 240 254 importées + 24 rows
+1 w dérivées le 2026-09-24), l'import
 est déjà fait. Le script est idempotent mais re-télécharger 1260 fichiers ZIP prend inutilement 1-3h. (L'accès à
 `data.binance.vision` depuis le serveur Hetzner a été **vérifié le 2026-09-23** : 1 218 + 318 fichiers téléchargés sans échec.)
 
@@ -145,7 +148,7 @@ Vérifier :
   dernière candle de mars 2026 ; 1w : 2026-04-06) ; 8 712 718 rows
 - USDT : BTC et ETH commencent le 2019-01-01 00:05 (1w : 2019-01-14), SOL le 2020-08-11 06:05 (1w : 2020-08-17, premier
   fichier Vision 2020-08) ; toutes finissent le 2026-09-01 00:00 (1w : 2026-07-06, voir « Séries USDT ») ; 3 240 254 rows
-- Total 11 952 972 rows
+- Total 11 952 996 rows = 11 952 972 importées + 24 rows 1 w USDT dérivées (`SELECT count(*) FROM ohlc_derived` = 24)
 
 Inventaire complet (trous, attendus, séries) : `scripts/audit/data_inventory.py` (lecture seule, `--now` = borne
 d'observation ; `--pairs` pour restreindre) — artefacts de référence `results/data_inventory_20260923/` (22/09, USDC) et
@@ -191,8 +194,12 @@ fichier : `--pairs BTC/USDT --intervals 1d --start-date 2021-01-01 --end-date 20
 
 Trous 5m / 15m / 1h = les six fenêtres de maintenance Binance 2021 (02-11, 03-06, 04-20, 04-25, 08-13, 09-29) + la panne du
 2023-03-24 12:40 → 14:05, **à l'identique de la base USDC** ; 4h et 1d sans aucun trou ; 1w : 8 bougies isolées manquantes
-(2022-06-06, 07-04, 09-05, 10-10, 11-14, 12-12, 2025-02-03, 2025-03-03 — artefact Vision probable, **consignées, pas
-corrigées**).
+(2022-06-06, 07-04, 09-05, 10-03, 11-07, 12-05, 2025-02-03, 2025-03-03 — consignées à l'import ; **reconstruites le
+2026-09-24** depuis le 1 d, rows marquées dans `ohlc_derived`, `results/reconstruction_1w_2022_2025/report.md`). Cause :
+les fichiers mensuels 1 w de 2022 et de 2025-01/02 omettent la semaine à cheval qui finit le 2 du mois suivant ou plus
+tard ; le fichier 2025-03, régénéré le 08/10/2025, la sert — règle de génération de Vision changée, fichiers 2022 non
+régénérés. *(Une version précédente de ce paragraphe écrivait 10-10, 11-14, 12-12 : ce sont les estampilles présentes
+qui suivent les trous.)*
 
 **Écart de fin de série 1w** : la 1w s'arrête au `2026-07-06` (bougie ouverte le 2026-06-29) alors que les cinq autres TF
 vont au `2026-09-01`, parce que Vision n'avait pas publié les fichiers mensuels 1w de 2026-07 et 2026-08 au 23/09. **Reprise
@@ -202,6 +209,11 @@ vont au `2026-09-01`, parce que Vision n'avait pas publié les fichiers mensuels
 poetry run python scripts/binance_vision_import.py --pairs BTC/USDT,ETH/USDT,SOL/USDT \
     --intervals 1w --start-date 2026-07-01 --end-date 2026-08-31    # idempotent, ON CONFLICT DO NOTHING
 ```
+
+Après la reprise, **vérifier les estampilles 1 w reprises** (aucune semaine à cheval manquante : `2026-08-03`, et
+`2026-09-07` si le fichier 2026-08 la sert) : la règle de génération actuelle de Vision sert les semaines à cheval (constat
+du 24/09, RESEARCH_LOG entrée 13 — la dernière estampille en base, `2026-07-06`, est déjà une semaine à cheval servie par
+le fichier 2026-06), une reconstruction ne devrait donc pas être nécessaire — à constater, pas à supposer.
 
 Le mois d'août 2026 est aussi le dernier mois complet pour les autres TF : toute extension au-delà de 2026-08 est une nouvelle
 décision (même commande, `--start-date 2026-09-01`).

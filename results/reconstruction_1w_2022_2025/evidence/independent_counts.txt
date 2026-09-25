@@ -1,0 +1,7 @@
+binance total: 11952996
+1w BTC/USDT 391
+1w ETH/USDT 391
+1w SOL/USDT 308
+ohlc_derived: (24, 1, datetime.datetime(2026, 9, 24, 15, 47, 20, 274794, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 9, 24, 15, 47, 20, 274794, tzinfo=datetime.timezone.utc))
+alembic: c3bd1e7a0001
+orphans (provenance sans row OHLC): 0
