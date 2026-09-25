@@ -40,17 +40,26 @@ Sell attribution (C2, dette 14):
     always passes the id; the live/paper path cannot reject an executed fill, it only
     signals it. The former ``|sell_level - price| < 1 USD`` proximity match (the SOL
     "double pop" of B4) is gone.
+
+Decision timeframes (C3b):
+    ``decision_timeframes(params)`` derives, from the params alone, the timeframes whose value
+    can change a 4h decision — the list the C3 protocol reads for its warmup gate (§ A.8, D2).
+    It refuses a ``pause_1w_strong_bear`` that is not a ``bool``, which ``__init__`` keeps as
+    given and ``_handle_ohlc`` tests for truthiness (``"false"`` would pause).
 """
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from typing import TYPE_CHECKING, Any
+from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 
 from krakenbot.core.event_bus import EventType
 from krakenbot.core.logger import get_logger
+from krakenbot.indicators.multi_timeframe import MarketRegime
 from krakenbot.models.base import SignalType
 from krakenbot.strategies.base import BaseStrategy, TradingSignal
 
@@ -64,6 +73,11 @@ logger = get_logger(__name__)
 _ZERO = Decimal("0")
 _ONE = Decimal("1")
 _HUNDRED = Decimal("100")
+
+#: Every value ``MultiTimeframeAnalyzer.get_regime`` can return (``multi_timeframe.py:750-777``):
+#: ``None`` when the EMAs are missing or not ready, else ``_classify_regime(...).value``, a
+#: ``MarketRegime`` member (``:880-900``).
+_REGIME_DOMAIN: tuple[str | None, ...] = (*(regime.value for regime in MarketRegime), None)
 
 
 @dataclass
@@ -203,6 +217,68 @@ class GrokGridATRAdaptiveV4(BaseStrategy):
             pause_1w_strong_bear=self.pause_1w_strong_bear,
             bear_protection_1d_enabled=self.bear_protection_1d_enabled,
         )
+
+    # ------------------------------------------------------------------
+    # Decision timeframes (C3b)
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def decision_timeframes(cls, params: Mapping[str, Any]) -> tuple[str, ...]:
+        """Timeframes whose value can change a 4h decision, derived from ``params`` alone.
+
+        Pure: no instance, no analyzer, no I/O. The params are read and coerced exactly as
+        ``__init__`` reads them; ``bear_protection_1d_enabled`` comes from no parameter.
+
+        - ``"4h"`` always: the ATR gate of ``_handle_ohlc`` holds in every configuration.
+        - ``"1w"`` iff the effective weekly pause flag is on (the setter of ``__init__`` replayed).
+        - ``"1d"`` iff the effective daily pause flag is on, or the daily regime can change the
+          buy / sell split — decided by running ``_get_directional_bias`` itself on every value
+          ``get_regime`` can return, never by a closed form (``float`` truncation, ``max(1, ·)``
+          clamps at ``grid_levels = 1``).
+
+        Raises:
+            TypeError: ``pause_1w_strong_bear`` is not a ``bool`` — even when
+                ``bear_protection_mode`` overrides it: ``__init__`` keeps the value as given and
+                ``_handle_ohlc`` tests its truthiness, so ``"false"`` would pause.
+            ValueError: invalid ``bear_protection_mode`` (the error of ``__init__``).
+
+        Returns:
+            The timeframe labels (``"4h"``, ``"1d"``, ``"1w"``), sorted.
+        """
+        grid_levels = int(params.get("grid_levels", 12))
+        bias_1d = Decimal(str(params.get("bias_1d", 0.2)))
+        pause_1w = params.get("pause_1w_strong_bear", True)
+        if type(pause_1w) is not bool:
+            raise TypeError(
+                f"pause_1w_strong_bear must be a bool, got {type(pause_1w).__name__}: {pause_1w!r}"
+            )
+        bear_1d = False
+        bear_protection_mode = params.get("bear_protection_mode")
+        if bear_protection_mode is not None:
+            if bear_protection_mode == "none":
+                pause_1w, bear_1d = False, False
+            elif bear_protection_mode == "1w_only":
+                pause_1w, bear_1d = True, False
+            elif bear_protection_mode == "1d_only":
+                pause_1w, bear_1d = False, True
+            else:
+                raise ValueError(
+                    f"Invalid bear_protection_mode: {bear_protection_mode!r}. "
+                    "Expected one of: 'none', '1w_only', '1d_only', or None."
+                )
+
+        # The two attributes _get_directional_bias reads, on a probe: no instance is built.
+        probe = cast(
+            "GrokGridATRAdaptiveV4", SimpleNamespace(grid_levels=grid_levels, bias_1d=bias_1d)
+        )
+        splits = {cls._get_directional_bias(probe, regime) for regime in _REGIME_DOMAIN}
+
+        timeframes = {"4h"}
+        if pause_1w:
+            timeframes.add("1w")
+        if bear_1d or len(splits) > 1:
+            timeframes.add("1d")
+        return tuple(sorted(timeframes))
 
     # ------------------------------------------------------------------
     # Grid construction

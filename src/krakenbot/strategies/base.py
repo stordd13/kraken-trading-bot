@@ -19,7 +19,7 @@ Example:
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
@@ -240,6 +240,19 @@ class BaseStrategy(ABC):
             Dictionary with all configuration parameters.
         """
         pass
+
+    @classmethod
+    def decision_timeframes(cls, params: Mapping[str, Any]) -> tuple[str, ...]:
+        """Return the timeframes whose value can change a trading decision under ``params``.
+
+        Read by the C3 producer for the warmup gate (``docs/protocole_c3.md`` § A.8, D2: the
+        list is derived from the strategy, never declared). A strategy that does not implement
+        it cannot enter a C3 campaign.
+
+        Raises:
+            NotImplementedError: on every strategy that does not override it.
+        """
+        raise NotImplementedError(f"{cls.__name__} does not implement decision_timeframes")
 
     async def start(self) -> None:
         """Start the strategy.
