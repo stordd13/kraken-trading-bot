@@ -1,0 +1,333 @@
+# Extrait de pytest_full_20260925_local.log — 59949 lignes, sha256 7792be0a16b37b4e62208dc49ffe48374245c8527118d210dd391831befa6e90
+# Produit par extract_pytest_log.py pytest_full_20260925_local.log 2026-09-25T11:23:40Z 2026-09-25T11:23:50Z ; numéros = lignes du brut.
+
+## 1. En-tête du brut
+     1: HEAD 98b3e501fdb99174d8fae7deaf7bbe80450046b9 branche feat/c3b-sol-d2
+     2: ?? agent/addendum_passation_c3a_20260921.md
+     3: ?? agent/agent_reconstruction_1w.md
+     4: ?? agent/agent_sol_d2_1w_modes.md
+     5: ?? agent/amendements_c3_v2.1.md
+     6: ?? agent/brief_reprise_c3a_20260921.md
+     7: ?? agent/c3b_spec_F2_v2.1.md
+     8: ?? agent/prompt_cloture_docs_c3a.md
+     9: ?? scripts/audit/warmup_at.py
+    10: ?? tests/test_scripts/test_warmup_at.py
+    11: début 2026-09-25T11:00:12Z
+
+## 2. Résumé final
+ 59924: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo0]
+ 59925: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo1]
+ 59926: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo2]
+ 59927: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo3]
+ 59928: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo4]
+ 59929: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo5]
+ 59930: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo6]
+ 59931: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo7]
+ 59932: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo8]
+ 59933: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo9]
+ 59934: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo10]
+ 59935: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo11]
+ 59936: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo12]
+ 59937: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo13]
+ 59938: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo14]
+ 59939: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo15]
+ 59940: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo16]
+ 59941: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo17]
+ 59942: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo18]
+ 59943: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo19]
+ 59944: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo20]
+ 59945: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo21]
+ 59946: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo22]
+ 59947: FAILED tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo23]
+ 59948: 24 failed, 2938 passed, 6 skipped in 1482.41s (0:24:42)
+ 59949: fin 2026-09-25T11:24:56Z pytest exit 1
+
+## 3. Chaque échec, tronqué à sa ligne d'erreur réseau
+
+    55: _______________ test_determinism_parallel_vs_serial_full[combo0] _______________
+    57: combo = ('grok_grid_atr_adaptive_v4', 'BTC/USDC')
+    92: tests/test_scripts/test_run_p6_determinism.py:218: 
+   123: E           AssertionError: run failed for grok_grid_atr_adaptive_v4 BTC/USDC
+   124: E           assert 1 == 0
+ 34716: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="DBAPIError: (sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.ConnectionDoesNotExistError'>: connection was closed in the middle of operation\n(Background on this error at: https://sqlalche.me/e/20/dbapi)" key=grok_grid_atr_adaptive_v4_BTC_USDC
+
+ 57755: _______________ test_determinism_parallel_vs_serial_full[combo1] _______________
+ 57757: combo = ('grok_grid_atr_adaptive_v4', 'ETH/USDC')
+ 57783: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 57814: E           AssertionError: run failed for grok_grid_atr_adaptive_v4 ETH/USDC
+ 57815: E           assert 1 == 0
+ 57834: 2026-09-25T11:23:48.281705Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 57849: _______________ test_determinism_parallel_vs_serial_full[combo2] _______________
+ 57851: combo = ('grok_grid_atr_adaptive_v4', 'SOL/USDC')
+ 57877: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 57908: E           AssertionError: run failed for grok_grid_atr_adaptive_v4 SOL/USDC
+ 57909: E           assert 1 == 0
+ 57928: 2026-09-25T11:23:48.293035Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 57943: _______________ test_determinism_parallel_vs_serial_full[combo3] _______________
+ 57945: combo = ('grok_supertrend_4h', 'BTC/USDC')
+ 57971: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58002: E           AssertionError: run failed for grok_supertrend_4h BTC/USDC
+ 58003: E           assert 1 == 0
+ 58022: 2026-09-25T11:23:48.299592Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58037: _______________ test_determinism_parallel_vs_serial_full[combo4] _______________
+ 58039: combo = ('grok_supertrend_4h', 'ETH/USDC')
+ 58065: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58096: E           AssertionError: run failed for grok_supertrend_4h ETH/USDC
+ 58097: E           assert 1 == 0
+ 58116: 2026-09-25T11:23:48.305802Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58131: _______________ test_determinism_parallel_vs_serial_full[combo5] _______________
+ 58133: combo = ('grok_supertrend_4h', 'SOL/USDC')
+ 58159: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58190: E           AssertionError: run failed for grok_supertrend_4h SOL/USDC
+ 58191: E           assert 1 == 0
+ 58210: 2026-09-25T11:23:48.312263Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58225: _______________ test_determinism_parallel_vs_serial_full[combo6] _______________
+ 58227: combo = ('grok_ema_adx_atr', 'BTC/USDC')
+ 58253: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58284: E           AssertionError: run failed for grok_ema_adx_atr BTC/USDC
+ 58285: E           assert 1 == 0
+ 58304: 2026-09-25T11:23:48.318492Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58319: _______________ test_determinism_parallel_vs_serial_full[combo7] _______________
+ 58321: combo = ('grok_ema_adx_atr', 'ETH/USDC')
+ 58347: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58378: E           AssertionError: run failed for grok_ema_adx_atr ETH/USDC
+ 58379: E           assert 1 == 0
+ 58398: 2026-09-25T11:23:48.324946Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58413: _______________ test_determinism_parallel_vs_serial_full[combo8] _______________
+ 58415: combo = ('grok_ema_adx_atr', 'SOL/USDC')
+ 58441: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58472: E           AssertionError: run failed for grok_ema_adx_atr SOL/USDC
+ 58473: E           assert 1 == 0
+ 58492: 2026-09-25T11:23:48.331135Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58507: _______________ test_determinism_parallel_vs_serial_full[combo9] _______________
+ 58509: combo = ('grok_adaptive_dca_weekly', 'BTC/USDC')
+ 58535: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58566: E           AssertionError: run failed for grok_adaptive_dca_weekly BTC/USDC
+ 58567: E           assert 1 == 0
+ 58586: 2026-09-25T11:23:48.337166Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58601: ______________ test_determinism_parallel_vs_serial_full[combo10] _______________
+ 58603: combo = ('grok_adaptive_dca_weekly', 'ETH/USDC')
+ 58629: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58660: E           AssertionError: run failed for grok_adaptive_dca_weekly ETH/USDC
+ 58661: E           assert 1 == 0
+ 58680: 2026-09-25T11:23:48.343203Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58695: ______________ test_determinism_parallel_vs_serial_full[combo11] _______________
+ 58697: combo = ('grok_adaptive_dca_weekly', 'SOL/USDC')
+ 58723: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58754: E           AssertionError: run failed for grok_adaptive_dca_weekly SOL/USDC
+ 58755: E           assert 1 == 0
+ 58774: 2026-09-25T11:23:48.349099Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58789: ______________ test_determinism_parallel_vs_serial_full[combo12] _______________
+ 58791: combo = ('grok_donchian_breakout_4h', 'BTC/USDC')
+ 58817: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58848: E           AssertionError: run failed for grok_donchian_breakout_4h BTC/USDC
+ 58849: E           assert 1 == 0
+ 58868: 2026-09-25T11:23:48.355158Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58883: ______________ test_determinism_parallel_vs_serial_full[combo13] _______________
+ 58885: combo = ('grok_donchian_breakout_4h', 'ETH/USDC')
+ 58911: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 58942: E           AssertionError: run failed for grok_donchian_breakout_4h ETH/USDC
+ 58943: E           assert 1 == 0
+ 58962: 2026-09-25T11:23:48.361306Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 58977: ______________ test_determinism_parallel_vs_serial_full[combo14] _______________
+ 58979: combo = ('grok_donchian_breakout_4h', 'SOL/USDC')
+ 59005: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59036: E           AssertionError: run failed for grok_donchian_breakout_4h SOL/USDC
+ 59037: E           assert 1 == 0
+ 59056: 2026-09-25T11:23:48.367322Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59071: ______________ test_determinism_parallel_vs_serial_full[combo15] _______________
+ 59073: combo = ('gemini_scalping_volatilite', 'BTC/USDC')
+ 59099: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59130: E           AssertionError: run failed for gemini_scalping_volatilite BTC/USDC
+ 59131: E           assert 1 == 0
+ 59150: 2026-09-25T11:23:48.373372Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59165: ______________ test_determinism_parallel_vs_serial_full[combo16] _______________
+ 59167: combo = ('gemini_scalping_volatilite', 'ETH/USDC')
+ 59193: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59224: E           AssertionError: run failed for gemini_scalping_volatilite ETH/USDC
+ 59225: E           assert 1 == 0
+ 59244: 2026-09-25T11:23:48.379397Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59259: ______________ test_determinism_parallel_vs_serial_full[combo17] _______________
+ 59261: combo = ('gemini_scalping_volatilite', 'SOL/USDC')
+ 59287: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59318: E           AssertionError: run failed for gemini_scalping_volatilite SOL/USDC
+ 59319: E           assert 1 == 0
+ 59338: 2026-09-25T11:23:48.385364Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59353: ______________ test_determinism_parallel_vs_serial_full[combo18] _______________
+ 59355: combo = ('gemini_suivi_tendance_momentum', 'BTC/USDC')
+ 59381: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59412: E           AssertionError: run failed for gemini_suivi_tendance_momentum BTC/USDC
+ 59413: E           assert 1 == 0
+ 59432: 2026-09-25T11:23:48.391316Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59447: ______________ test_determinism_parallel_vs_serial_full[combo19] _______________
+ 59449: combo = ('gemini_suivi_tendance_momentum', 'ETH/USDC')
+ 59475: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59506: E           AssertionError: run failed for gemini_suivi_tendance_momentum ETH/USDC
+ 59507: E           assert 1 == 0
+ 59526: 2026-09-25T11:23:48.397382Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59541: ______________ test_determinism_parallel_vs_serial_full[combo20] _______________
+ 59543: combo = ('gemini_suivi_tendance_momentum', 'SOL/USDC')
+ 59569: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59600: E           AssertionError: run failed for gemini_suivi_tendance_momentum SOL/USDC
+ 59601: E           assert 1 == 0
+ 59620: 2026-09-25T11:23:48.403407Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59635: ______________ test_determinism_parallel_vs_serial_full[combo21] _______________
+ 59637: combo = ('gemini_retour_moyenne', 'BTC/USDC')
+ 59663: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59694: E           AssertionError: run failed for gemini_retour_moyenne BTC/USDC
+ 59695: E           assert 1 == 0
+ 59714: 2026-09-25T11:23:48.409332Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59729: ______________ test_determinism_parallel_vs_serial_full[combo22] _______________
+ 59731: combo = ('gemini_retour_moyenne', 'ETH/USDC')
+ 59757: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59788: E           AssertionError: run failed for gemini_retour_moyenne ETH/USDC
+ 59789: E           assert 1 == 0
+ 59808: 2026-09-25T11:23:48.415226Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+ 59823: ______________ test_determinism_parallel_vs_serial_full[combo23] _______________
+ 59825: combo = ('gemini_retour_moyenne', 'SOL/USDC')
+ 59851: tests/test_scripts/test_run_p6_determinism.py:210: 
+ 59882: E           AssertionError: run failed for gemini_retour_moyenne SOL/USDC
+ 59883: E           assert 1 == 0
+ 59902: 2026-09-25T11:23:48.421257Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+
+## 4. Estampilles de 2026-09-25T11:23:40Z à 2026-09-25T11:23:50Z (lignes structlog, captures « INFO/ERROR » dupliquées exclues)
+ 34714: 2026-09-25 13:22:35 [info     ] grid_terminal_liquidation      component=grid_backtest divergence_btc=0.0 dust_btc=-7e-31 pnl=-14.520312708478224 positions=4 price=68219.687952 reference_price=68240.16 trades=4   <- dernière ligne avant la fenêtre
+ 34715: 2026-09-25 13:23:48 [info     ] database_closed
+ 34716: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="DBAPIError: (sqlalchemy.dialects.postgresql.asyncpg.Error) <class 'asyncpg.exceptions.ConnectionDoesNotExistError'>: connection was closed in the middle of operation\n(Background on this error at: https://sqlalche.me/e/20/dbapi)" key=grok_grid_atr_adaptive_v4_BTC_USDC
+ 57831: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s4/grok_grid_atr_adaptive_v4_ETH_USDC_serial.json pending=1
+ 57832: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_grid_atr_adaptive_v4_ETH_USDC mode=serial
+ 57833: 2026-09-25T11:23:48.280177Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 57834: 2026-09-25T11:23:48.281705Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 57835: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_grid_atr_adaptive_v4_ETH_USDC
+ 57925: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s5/grok_grid_atr_adaptive_v4_SOL_USDC_serial.json pending=1
+ 57926: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_grid_atr_adaptive_v4_SOL_USDC mode=serial
+ 57927: 2026-09-25T11:23:48.291956Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 57928: 2026-09-25T11:23:48.293035Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 57929: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_grid_atr_adaptive_v4_SOL_USDC
+ 58019: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s6/grok_supertrend_4h_BTC_USDC_serial.json pending=1
+ 58020: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_supertrend_4h_BTC_USDC mode=serial
+ 58021: 2026-09-25T11:23:48.298685Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58022: 2026-09-25T11:23:48.299592Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58023: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_supertrend_4h_BTC_USDC
+ 58113: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s7/grok_supertrend_4h_ETH_USDC_serial.json pending=1
+ 58114: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_supertrend_4h_ETH_USDC mode=serial
+ 58115: 2026-09-25T11:23:48.304975Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58116: 2026-09-25T11:23:48.305802Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58117: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_supertrend_4h_ETH_USDC
+ 58207: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s8/grok_supertrend_4h_SOL_USDC_serial.json pending=1
+ 58208: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_supertrend_4h_SOL_USDC mode=serial
+ 58209: 2026-09-25T11:23:48.311319Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58210: 2026-09-25T11:23:48.312263Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58211: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_supertrend_4h_SOL_USDC
+ 58301: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s9/grok_ema_adx_atr_BTC_USDC_serial.json pending=1
+ 58302: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_ema_adx_atr_BTC_USDC mode=serial
+ 58303: 2026-09-25T11:23:48.317687Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58304: 2026-09-25T11:23:48.318492Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58305: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_ema_adx_atr_BTC_USDC
+ 58395: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s10/grok_ema_adx_atr_ETH_USDC_serial.json pending=1
+ 58396: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_ema_adx_atr_ETH_USDC mode=serial
+ 58397: 2026-09-25T11:23:48.324079Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58398: 2026-09-25T11:23:48.324946Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58399: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_ema_adx_atr_ETH_USDC
+ 58489: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s11/grok_ema_adx_atr_SOL_USDC_serial.json pending=1
+ 58490: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_ema_adx_atr_SOL_USDC mode=serial
+ 58491: 2026-09-25T11:23:48.330300Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58492: 2026-09-25T11:23:48.331135Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58493: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_ema_adx_atr_SOL_USDC
+ 58583: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s12/grok_adaptive_dca_weekly_BTC_USDC_serial.json pending=1
+ 58584: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_adaptive_dca_weekly_BTC_USDC mode=serial
+ 58585: 2026-09-25T11:23:48.336278Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58586: 2026-09-25T11:23:48.337166Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58587: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_adaptive_dca_weekly_BTC_USDC
+ 58677: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s13/grok_adaptive_dca_weekly_ETH_USDC_serial.json pending=1
+ 58678: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_adaptive_dca_weekly_ETH_USDC mode=serial
+ 58679: 2026-09-25T11:23:48.342383Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58680: 2026-09-25T11:23:48.343203Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58681: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_adaptive_dca_weekly_ETH_USDC
+ 58771: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s14/grok_adaptive_dca_weekly_SOL_USDC_serial.json pending=1
+ 58772: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_adaptive_dca_weekly_SOL_USDC mode=serial
+ 58773: 2026-09-25T11:23:48.348307Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58774: 2026-09-25T11:23:48.349099Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58775: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_adaptive_dca_weekly_SOL_USDC
+ 58865: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s15/grok_donchian_breakout_4h_BTC_USDC_serial.json pending=1
+ 58866: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_donchian_breakout_4h_BTC_USDC mode=serial
+ 58867: 2026-09-25T11:23:48.354301Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58868: 2026-09-25T11:23:48.355158Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58869: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_donchian_breakout_4h_BTC_USDC
+ 58959: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s16/grok_donchian_breakout_4h_ETH_USDC_serial.json pending=1
+ 58960: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_donchian_breakout_4h_ETH_USDC mode=serial
+ 58961: 2026-09-25T11:23:48.360377Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 58962: 2026-09-25T11:23:48.361306Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 58963: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_donchian_breakout_4h_ETH_USDC
+ 59053: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s17/grok_donchian_breakout_4h_SOL_USDC_serial.json pending=1
+ 59054: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=grok_donchian_breakout_4h_SOL_USDC mode=serial
+ 59055: 2026-09-25T11:23:48.366471Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59056: 2026-09-25T11:23:48.367322Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59057: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=grok_donchian_breakout_4h_SOL_USDC
+ 59147: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s18/gemini_scalping_volatilite_BTC_USDC_serial.json pending=1
+ 59148: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_scalping_volatilite_BTC_USDC mode=serial
+ 59149: 2026-09-25T11:23:48.372538Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59150: 2026-09-25T11:23:48.373372Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59151: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_scalping_volatilite_BTC_USDC
+ 59241: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s19/gemini_scalping_volatilite_ETH_USDC_serial.json pending=1
+ 59242: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_scalping_volatilite_ETH_USDC mode=serial
+ 59243: 2026-09-25T11:23:48.378613Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59244: 2026-09-25T11:23:48.379397Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59245: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_scalping_volatilite_ETH_USDC
+ 59335: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s20/gemini_scalping_volatilite_SOL_USDC_serial.json pending=1
+ 59336: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_scalping_volatilite_SOL_USDC mode=serial
+ 59337: 2026-09-25T11:23:48.384528Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59338: 2026-09-25T11:23:48.385364Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59339: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_scalping_volatilite_SOL_USDC
+ 59429: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s21/gemini_suivi_tendance_momentum_BTC_USDC_serial.json pending=1
+ 59430: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_suivi_tendance_momentum_BTC_USDC mode=serial
+ 59431: 2026-09-25T11:23:48.390515Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59432: 2026-09-25T11:23:48.391316Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59433: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_suivi_tendance_momentum_BTC_USDC
+ 59523: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s22/gemini_suivi_tendance_momentum_ETH_USDC_serial.json pending=1
+ 59524: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_suivi_tendance_momentum_ETH_USDC mode=serial
+ 59525: 2026-09-25T11:23:48.396599Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59526: 2026-09-25T11:23:48.397382Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59527: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_suivi_tendance_momentum_ETH_USDC
+ 59617: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s23/gemini_suivi_tendance_momentum_SOL_USDC_serial.json pending=1
+ 59618: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_suivi_tendance_momentum_SOL_USDC mode=serial
+ 59619: 2026-09-25T11:23:48.402572Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59620: 2026-09-25T11:23:48.403407Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59621: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_suivi_tendance_momentum_SOL_USDC
+ 59711: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s24/gemini_retour_moyenne_BTC_USDC_serial.json pending=1
+ 59712: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_retour_moyenne_BTC_USDC mode=serial
+ 59713: 2026-09-25T11:23:48.408509Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59714: 2026-09-25T11:23:48.409332Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59715: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_retour_moyenne_BTC_USDC
+ 59805: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s25/gemini_retour_moyenne_ETH_USDC_serial.json pending=1
+ 59806: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_retour_moyenne_ETH_USDC mode=serial
+ 59807: 2026-09-25T11:23:48.414365Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59808: 2026-09-25T11:23:48.415226Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59809: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_retour_moyenne_ETH_USDC
+ 59899: 2026-09-25 13:23:48 [info     ] run_start                      component=p6_backtests existing=0 mode=serial n_workers=1 output=/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-498/test_determinism_parallel_vs_s26/gemini_retour_moyenne_SOL_USDC_serial.json pending=1
+ 59900: 2026-09-25 13:23:48 [info     ] job_start                      component=p6_backtests key=gemini_retour_moyenne_SOL_USDC mode=serial
+ 59901: 2026-09-25T11:23:48.420355Z [info     ] initializing_database          [krakenbot.core.database] echo=False max_overflow=10 pool_size=5
+ 59902: 2026-09-25T11:23:48.421257Z [error    ] database_connection_failed     [krakenbot.core.database] error="Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)"
+ 59903: 2026-09-25 13:23:48 [error    ] job_failed                     component=p6_backtests error="OSError: Multiple exceptions: [Errno 61] Connect call failed ('127.0.0.1', 5433), [Errno 61] Connect call failed ('::1', 5433, 0, 0)" key=gemini_retour_moyenne_SOL_USDC

@@ -159,6 +159,10 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   24 tests de déterminisme full-range verts sur le serveur. Rapport : `results/reconstruction_1w_2022_2025/` ; journal :
   `docs/RESEARCH_LOG.md`, entrée 13.
 
+- ✅ **Mesure SOL/D2 faite le 25/09** (`c38d718`) : SOL sort dans C1-C2, survit dans C3-C6 ; `grid_levels` est un axe
+  de `decision_timeframes` ; candidats v2.2 et dettes C3b au rapport § 8 (`results/sol_d2_1w_modes/report.md` ;
+  journal : `docs/RESEARCH_LOG.md`, entrée 14).
+
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
   `# B5: re-enable trader`) ; **trader masqué** sur le serveur (`systemctl mask krakenbot`). Reste ouvert : test dette 13.
