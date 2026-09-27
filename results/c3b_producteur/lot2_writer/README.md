@@ -9,7 +9,8 @@ métrique de candidat. Un incident de test a toutefois lu la base, il est décri
 | `02360db` | `refactor(audit): _common.py partagé (git_provenance, ReadOnlyDatabaseManager)` |
 | `6953fbc` | `fix(audit): write_json strict — un type non JSON est une erreur nommée (dette 22)` |
 | `c61793f` | `ci: ruff sur les scripts d'audit C3` |
-| celui-ci | `docs(results): C3b lot 2 — inventaire writer, rouge-avant, mutants` |
+| `75d9a51` | `docs(results): C3b lot 2 — inventaire writer, rouge-avant, mutants` |
+| celui-ci | `docs(results): C3b lot 2 — état CI constaté par l'API publique` |
 
 ## 1. Ce qui est livré
 
@@ -181,13 +182,16 @@ adverse, via `rc.write_json`.
 | `ruff check` et `ruff format --check` sur la liste | verts, 22 fichiers | idem |
 | mypy strict sur `_common.py` et `_db.py` | vert ; `warmup_at.py` reste vert | idem |
 | Diff de contrôle | 9 fichiers, tous listés ; vide sur les fichiers nommés par le brief et sur `src/` | idem |
-| CI verte sur la branche | **non constaté par moi** | voir ci-dessous |
+| CI verte sur la branche | **verte sur `75d9a51`**, toutes les étapes en succès, dont les deux étapes ruff « audit C3 » | [run 36326173115](https://github.com/stordd13/kraken-trading-bot/actions/runs/36326173115) |
+
+La CI a été lue **après** le commit `75d9a51`, qui disait ici « non constaté par moi » : `gh` n'était pas authentifié
+et le serveur MCP github répondait 401. Le dépôt est public ; l'état du run a été lu par l'API REST de GitHub, sans
+jeton, le 2026-09-27 (run créé à 14:30:40Z, terminé à 14:37:12Z, première tentative). Bruno a constaté le même run
+vert de son côté. Avant le push, les deux étapes ajoutées avaient été exécutées localement telles qu'écrites dans le
+workflow, sous bash : vertes.
 
 Ce que je n'ai pas pu vérifier :
 
-- **La CI.** `gh` n'est pas authentifié dans cette session et le serveur MCP github répond 401. Les deux étapes
-  ajoutées ont été exécutées localement telles qu'écrites dans le workflow, sous bash : vertes. L'état du job
-  sur GitHub reste à lire.
 - **`reconstruct_1w.py` sous mypy** garde son erreur antérieure au lot (`:210`, `no-any-return`). `mypy src/` :
   65 erreurs, égal à la base.
 - **Les écritures de `warmup_at` et de `reconstruct_1w` par leur `main`** ne sont exercées par aucun test. Le passage
