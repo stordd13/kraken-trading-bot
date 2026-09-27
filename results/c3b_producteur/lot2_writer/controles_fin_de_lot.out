@@ -1,0 +1,64 @@
+# Contrôles de fin de lot, HEAD c61793f — 2026-09-27T14:27:17Z
+
+## grep négatif : définitions hors des modules partagés
+$ grep -rnE '^[[:space:]]*(async[[:space:]]+def|def|class)[[:space:]]+(git_provenance|write_json_strict|ReadOnlyDatabaseManager)' --include='*.py' scripts src tests results
+scripts/audit/_db.py:26:class ReadOnlyDatabaseManager(DatabaseManager):
+scripts/audit/_common.py:73:def write_json_strict(path: Path, payload: Any) -> str:
+scripts/audit/_common.py:111:def git_provenance(script_relpath: str, *, root: Path = PROJECT_ROOT) -> dict[str, Any]:
+
+## diff de contrôle f4b3e33..HEAD (fichiers)
+ .github/workflows/ci.yml                |  30 +-
+ scripts/audit/_common.py                | 129 +++++++++
+ scripts/audit/_db.py                    |  39 +++
+ scripts/audit/c3_common.py              |   5 +-
+ scripts/audit/reconstruct_1w.py         |  41 +--
+ scripts/audit/warmup_at.py              |  53 +---
+ tests/test_scripts/test_audit_common.py | 495 ++++++++++++++++++++++++++++++++
+ tests/test_scripts/test_c3_common.py    |   4 +-
+ tests/test_scripts/test_c3_verdict.py   |   5 +-
+ 9 files changed, 711 insertions(+), 90 deletions(-)
+
+## diff de contrôle, nommément vide
+scripts/backtest.py : 0 fichier(s) modifié(s)
+scripts/run_p6_backtests.py : 0 fichier(s) modifié(s)
+scripts/run_p7_grid_search.py : 0 fichier(s) modifié(s)
+scripts/p7_grids.py : 0 fichier(s) modifié(s)
+scripts/compute_benchmarks.py : 0 fichier(s) modifié(s)
+scripts/audit/rejeu_*.py : 0 fichier(s) modifié(s)
+scripts/audit/c3_anchor.py : 0 fichier(s) modifié(s)
+scripts/audit/c3_entry.py : 0 fichier(s) modifié(s)
+scripts/audit/c3_benchmark.py : 0 fichier(s) modifié(s)
+scripts/audit/c3_select.py : 0 fichier(s) modifié(s)
+scripts/audit/c3_continuity.py : 0 fichier(s) modifié(s)
+scripts/audit/c3_verdict.py : 0 fichier(s) modifié(s)
+config : 0 fichier(s) modifié(s)
+alembic : 0 fichier(s) modifié(s)
+pyproject.toml : 0 fichier(s) modifié(s)
+poetry.lock : 0 fichier(s) modifié(s)
+docs/protocole_c3.md : 0 fichier(s) modifié(s)
+src : 0 fichier(s) modifié(s)
+
+## tests C3 modifiés (décision du 27/09)
+ tests/test_scripts/test_c3_common.py  | 4 ++--
+ tests/test_scripts/test_c3_verdict.py | 5 ++++-
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+
+## ruff (liste de la CI)
+All checks passed!
+ruff_check=0
+22 files already formatted
+ruff_format=0
+
+## mypy strict, un fichier par appel
+$ MYPYPATH=src:scripts:scripts/audit mypy --follow-imports=silent scripts/audit/_common.py
+Success: no issues found in 1 source file
+$ MYPYPATH=src:scripts:scripts/audit mypy --follow-imports=silent scripts/audit/_db.py
+Success: no issues found in 1 source file
+$ MYPYPATH=src:scripts:scripts/audit mypy --follow-imports=silent scripts/audit/warmup_at.py
+Success: no issues found in 1 source file
+$ MYPYPATH=src:scripts:scripts/audit mypy --follow-imports=silent scripts/audit/reconstruct_1w.py
+scripts/audit/reconstruct_1w.py:210: error: Returning Any from function declared to return "Decimal"  [no-any-return]
+Found 1 error in 1 file (checked 1 source file)
+
+## mypy src/ (base : 65)
+Found 65 errors in 18 files (checked 83 source files)

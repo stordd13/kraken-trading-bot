@@ -1,0 +1,64 @@
+# Rouge-avant, partie 2 : tests du writer strict contre l'état du commit 1 (02360db) —
+# _common.write_json_strict déplacé à l'identique (strict au sens de json), cc.write_json = rc.write_json, fixtures en np.float64.
+# tracked_dirty= M tests/test_scripts/test_audit_common.py; head=02360db 2026-09-27T13:56:59Z
+/Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_audit_common.py:336: Failed: DID NOT RAISE <class 'TypeError'>
+E   Failed: DID NOT RAISE <class 'TypeError'>
+/Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_audit_common.py:336: Failed: DID NOT RAISE <class 'TypeError'>
+E   AssertionError: assert False
+     +  where False = <built-in method startswith of str object at 0x10a8d0630>('intervals: ')
+     +    where <built-in method startswith of str object at 0x10a8d0630> = 'keys must be str, int, float, bool or None, not tuple'.startswith
+/Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_audit_common.py:422: AssertionError: assert False
+E   ValueError: Out of range float values are not JSON compliant: nan
+During handling of the above exception, another exception occurred:
+E   AssertionError: Regex pattern did not match.
+      Expected regex: 'capital'
+      Actual message: 'Out of range float values are not JSON compliant: nan'
+/Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_audit_common.py:460: AssertionError: Regex pattern did not match.
+E   assert <function write_json at 0x109ed6c00> is <function write_json_strict at 0x109e8ea20>
+     +  where <function write_json at 0x109ed6c00> = cc.write_json
+     +  and   <function write_json_strict at 0x109e8ea20> = ac.write_json_strict
+/Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_audit_common.py:468: assert <function write_json at 0x109ed6c00> is <function write_json_strict at 0x109e8ea20>
+E   AssertionError: assert {<class 'numpy.float64'>} == {<class 'float'>}
+      Extra items in the left set:
+      <class 'numpy.float64'>
+      Extra items in the right set:
+      <class 'float'>
+      Use -v to get more diff
+/Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_audit_common.py:484: AssertionError: assert {<class 'numpy.float64'>} == {<class 'float'>}
+=========================== short test summary info ============================
+FAILED tests/test_scripts/test_audit_common.py::test_the_chain_does_not_import_the_database_layer
+FAILED tests/test_scripts/test_audit_common.py::test_a_numpy_float64_is_refused_and_its_key_is_named
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[Decimal-decimal.Decimal]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[datetime-datetime.datetime]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[date-datetime.date]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[int64-numpy.int64]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[float32-numpy.float32]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[bool-numpy.bool]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[ndarray-numpy.ndarray]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[PosixPath-Path]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[set-set]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[frozenset-frozenset]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[bytes-bytes]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_json_type_is_refused_with_its_path_and_its_type[mappingproxy-mappingproxy]
+FAILED tests/test_scripts/test_audit_common.py::test_a_subtype_of_a_json_type_is_refused[float]
+FAILED tests/test_scripts/test_audit_common.py::test_a_subtype_of_a_json_type_is_refused[str]
+FAILED tests/test_scripts/test_audit_common.py::test_a_subtype_of_a_json_type_is_refused[dict]
+FAILED tests/test_scripts/test_audit_common.py::test_a_subtype_of_a_json_type_is_refused[list]
+FAILED tests/test_scripts/test_audit_common.py::test_a_subtype_of_a_json_type_is_refused[int]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_finite_float_is_refused_with_its_path[nan]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_finite_float_is_refused_with_its_path[inf]
+FAILED tests/test_scripts/test_audit_common.py::test_a_non_finite_float_is_refused_with_its_path[-inf]
+FAILED tests/test_scripts/test_audit_common.py::test_the_nested_key_path_is_exact[a.b[3].c]
+FAILED tests/test_scripts/test_audit_common.py::test_the_nested_key_path_is_exact[liste racine]
+FAILED tests/test_scripts/test_audit_common.py::test_the_nested_key_path_is_exact[tuples]
+FAILED tests/test_scripts/test_audit_common.py::test_the_nested_key_path_is_exact[racine]
+FAILED tests/test_scripts/test_audit_common.py::test_a_key_that_is_not_a_str_is_refused[240]
+FAILED tests/test_scripts/test_audit_common.py::test_a_key_that_is_not_a_str_is_refused[1.5]
+FAILED tests/test_scripts/test_audit_common.py::test_a_key_that_is_not_a_str_is_refused[True]
+FAILED tests/test_scripts/test_audit_common.py::test_a_key_that_is_not_a_str_is_refused[None]
+FAILED tests/test_scripts/test_audit_common.py::test_a_key_that_is_not_a_str_is_refused[('4h', '1d')]
+FAILED tests/test_scripts/test_audit_common.py::test_a_refusal_leaves_the_previous_file_untouched
+FAILED tests/test_scripts/test_audit_common.py::test_the_c3_writer_is_the_strict_one_and_the_frozen_one_is_untouched
+FAILED tests/test_scripts/test_audit_common.py::test_the_c3_fixtures_are_artefacts_the_strict_writer_accepts
+34 failed, 10 passed in 0.91s
+pytest_exit=1

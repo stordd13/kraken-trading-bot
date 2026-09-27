@@ -1,0 +1,5 @@
+label=after
+branch=feat/c3b-producteur
+head=c61793f0bfac510c0f17ced4867a79f38173569b
+tracked_dirty_lines=0
+probe_exit=0

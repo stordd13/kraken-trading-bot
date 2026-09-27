@@ -1,0 +1,18 @@
+# Rouge-avant, partie 1 : test_audit_common.py (partie 1) contre l'export de f4b3e33 (git archive), sans _common.py ni _db.py
+# 2026-09-27T13:46:04Z
+==================================== ERRORS ====================================
+___________ ERROR collecting tests/test_scripts/test_audit_common.py ___________
+ImportError while importing test module '/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/02a6d8a6-a2c0-4b17-a266-431c0931c2d7/scratchpad/tip_f4b3e33/tests/test_scripts/test_audit_common.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.12/3.12.11/Frameworks/Python.framework/Versions/3.12/lib/python3.12/importlib/__init__.py:90: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_scripts/test_audit_common.py:31: in <module>
+    import _common as ac
+E   ModuleNotFoundError: No module named '_common'
+=========================== short test summary info ============================
+ERROR tests/test_scripts/test_audit_common.py
+!!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.07s
+pytest_exit=2

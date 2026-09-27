@@ -1,0 +1,36 @@
+original sha256 ac2bf0bff15d59c823a6e98e51a95ac2235639edc8ff50badebb7b234bc3fbb7 scripts/audit/_common.py
+original sha256 a877bdf19032e056550c4a14e97ce9c472bb628f8f2959bc19538ceaacb4bc1f scripts/audit/_db.py
+original sha256 c8d8a6c0bd3e87412d3d3dcc4c19f5212bcba5ae3f87c84e08f1a884ca000555 scripts/audit/c3_common.py
+original sha256 9d443233d829ddfaee61ac973c46df3f2c488be40a84648f7ff63a5919034f75 scripts/audit/reconstruct_1w.py
+original sha256 8ab3d895618d159f049b0818a5167a9d16bc678857160582e1264fe32aec2e81 scripts/audit/warmup_at.py
+original sha256 8e160b04afb26c5c18b74c9f4943c664c23e685df421dc5b1367f153e8e18cb6 tests/test_scripts/test_c3_common.py
+original sha256 425997d528e4eaf0e53c4136460c1f3d19d450f7765906a635d8b231d4d6e568 tests/test_scripts/test_c3_verdict.py
+M1 sous-type de float accepté (isinstance): exit 1 ROUGE — 2 failed, 42 passed in 1.04s — tué par ['test_a_numpy_float64_is_refused_and_its_key_is_named', 'test_a_subtype_of_a_json_type_is_refused'] — restauré True
+M2 parcours retiré, default=str rétabli: exit 1 ROUGE — 32 failed, 12 passed in 1.04s — tué par ['test_a_key_that_is_not_a_str_is_refused', 'test_a_non_finite_float_is_refused_with_its_path', 'test_a_non_json_type_is_refused_with_its_path_and_its_type', 'test_a_numpy_float64_is_refused_and_its_key_is_named', 'test_a_refusal_leaves_the_previous_file_untouched', 'test_a_subtype_of_a_json_type_is_refused', 'test_the_c3_writer_is_the_strict_one_and_the_frozen_one_is_untouched', 'test_the_nested_key_path_is_exact'] — restauré True
+M3 flottant non fini accepté (allow_nan=True): exit 1 ROUGE — 4 failed, 40 passed in 1.04s — tué par ['test_a_non_finite_float_is_refused_with_its_path', 'test_a_refusal_leaves_the_previous_file_untouched'] — restauré True
+M4 index de liste omis du chemin: exit 1 ROUGE — 9 failed, 35 passed in 1.03s — tué par ['test_a_numpy_float64_is_refused_and_its_key_is_named', 'test_a_subtype_of_a_json_type_is_refused', 'test_the_nested_key_path_is_exact'] — restauré True
+M5 clé non str acceptée: exit 1 ROUGE — 5 failed, 39 passed in 1.05s — tué par ['test_a_key_that_is_not_a_str_is_refused'] — restauré True
+M6a indent=4: exit 1 ROUGE — 1 failed, 43 passed in 1.04s — tué par ['test_a_pure_json_payload_is_written_as_the_frozen_writer_writes_it'] — restauré True
+M6b sort_keys=False: exit 1 ROUGE — 1 failed, 43 passed in 1.04s — tué par ['test_a_pure_json_payload_is_written_as_the_frozen_writer_writes_it'] — restauré True
+M6c sans saut de ligne final: exit 1 ROUGE — 1 failed, 43 passed in 1.04s — tué par ['test_a_pure_json_payload_is_written_as_the_frozen_writer_writes_it'] — restauré True
+M6d ensure_ascii=True: exit 1 ROUGE — 1 failed, 43 passed in 1.09s — tué par ['test_a_pure_json_payload_is_written_as_the_frozen_writer_writes_it'] — restauré True
+M7 répertoire créé avant la validation: exit 1 ROUGE — 30 failed, 14 passed in 1.05s — tué par ['test_a_key_that_is_not_a_str_is_refused', 'test_a_non_finite_float_is_refused_with_its_path', 'test_a_non_json_type_is_refused_with_its_path_and_its_type', 'test_a_numpy_float64_is_refused_and_its_key_is_named', 'test_a_subtype_of_a_json_type_is_refused', 'test_the_nested_key_path_is_exact'] — restauré True
+M8 c3_common.write_json revient au writer du rejeu: exit 1 ROUGE — 1 failed, 43 passed in 1.07s — tué par ['test_the_c3_writer_is_the_strict_one_and_the_frozen_one_is_untouched'] — restauré True
+M9 git_provenance hache un chemin constant: exit 1 ROUGE — 2 failed, 42 passed in 1.02s — tué par ['test_a_clean_tree_is_clean_and_a_dirty_tree_is_not', 'test_git_provenance_hashes_the_script_it_is_given'] — restauré True
+M10a tracked_tree_clean forcé vrai: exit 1 ROUGE — 3 failed, 41 passed in 1.05s — tué par ['test_a_clean_tree_is_clean_and_a_dirty_tree_is_not', 'test_a_dirty_tree_is_refused_as_uncommitted_tree'] — restauré True
+M10b script_tracked forcé vrai: exit 1 ROUGE — 1 failed, 43 passed in 1.01s — tué par ['test_a_clean_tree_is_clean_and_a_dirty_tree_is_not'] — restauré True
+M11 ReadOnlyDatabaseManager sans lecture seule: exit 1 ROUGE — 1 failed, 43 passed in 1.05s — tué par ['test_read_only_manager_asks_postgres_for_read_only_transactions'] — restauré True
+M12 _common importe _db: exit 1 ROUGE — 2 failed, 42 passed in 1.25s — tué par ['test_common_is_pure_at_import', 'test_the_chain_does_not_import_the_database_layer'] — restauré True
+M13 warmup_at passe le chemin d'un autre script: exit 1 ROUGE — 1 failed, 43 passed in 1.06s — tué par ['test_a_dirty_tree_is_refused_as_uncommitted_tree'] — restauré True
+M14 copie locale réintroduite dans reconstruct_1w: exit 1 ROUGE — 2 failed, 42 passed in 1.05s — tué par ['test_each_shared_definition_exists_in_one_place', 'test_the_scripts_use_the_shared_objects'] — restauré True
+M15 fixtures témoin en np.float64 (tests unitaires): exit 1 ROUGE — 1 failed, 43 passed in 0.97s — tué par ['test_the_c3_fixtures_are_artefacts_the_strict_writer_accepts'] — restauré True
+M16 fixtures témoin en np.float64 (tests C3 qui écrivent une évaluation): exit 1 ROUGE — 96 failed, 388 passed in 30.51s — tué par ['test_ancrage_amont_en_echec_ou_discordant', 'test_aucune_declaration_ne_produit_VERIFIED', 'test_c1_la_preuve_specifiee_au_texte_vaut_DECLARED', 'test_c1_les_noms_v20_de_la_preuve_sont_une_erreur_de_forme', 'test_c1_preuve_de_depart_a_plat_incoherente_est_FAILED', 'test_c1_une_preuve_incoherente_est_FAILED', 'test_c2_appel_multiple_ou_grille_discontinue_est_FAILED', 'test_c3_identite_exacte_fausse_est_FAILED', '… 50 fonctions'] — restauré True
+M17 site adverse :796 par le writer strict (tests C3): exit 1 ROUGE — 5 failed, 479 passed in 49.91s — tué par ['test_cli_violation_sort_1_avec_un_diagnostic_sans_verdict', 'test_matrice_B_par_la_cli', 'test_revue_Fin2_3_chain_verified_faux_sur_toute_violation', 'test_table_I1_ligne_a_ligne'] — restauré True
+final sha256 ac2bf0bff15d59c823a6e98e51a95ac2235639edc8ff50badebb7b234bc3fbb7 identique True scripts/audit/_common.py
+final sha256 a877bdf19032e056550c4a14e97ce9c472bb628f8f2959bc19538ceaacb4bc1f identique True scripts/audit/_db.py
+final sha256 c8d8a6c0bd3e87412d3d3dcc4c19f5212bcba5ae3f87c84e08f1a884ca000555 identique True scripts/audit/c3_common.py
+final sha256 9d443233d829ddfaee61ac973c46df3f2c488be40a84648f7ff63a5919034f75 identique True scripts/audit/reconstruct_1w.py
+final sha256 8ab3d895618d159f049b0818a5167a9d16bc678857160582e1264fe32aec2e81 identique True scripts/audit/warmup_at.py
+final sha256 8e160b04afb26c5c18b74c9f4943c664c23e685df421dc5b1367f153e8e18cb6 identique True tests/test_scripts/test_c3_common.py
+final sha256 425997d528e4eaf0e53c4136460c1f3d19d450f7765906a635d8b231d4d6e568 identique True tests/test_scripts/test_c3_verdict.py
+tous rouges et restaurés : True
