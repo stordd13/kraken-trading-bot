@@ -254,6 +254,23 @@ Inscrite parce qu'elle porte un fait nouveau (brief, § Livrables).
 - L'item « décision de reconstruction 1 w » de « Essais à venir » est clos par l'entrée 13 ; le paragraphe n'est pas
   réécrit (ajout seul).
 
+### C3b lot 3 — producteur préfixe sur la fenêtre de conformité 2020 (inscrite le 27/09/2026, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, hors quota. Le producteur calcule des
+métriques de candidats — d'où cette ligne, exigée par le brief (`agent/AGENT_C3B_PRODUCTEUR.md` § « Lot 3 », critère de
+fin) — sur une fenêtre **entièrement antérieure au 2021-03-01**, et aucune n'est lue. Attendu complet, item par item :
+`results/c3b_producteur/prefix_conformite/ATTENDU.md`, committé avec cette entrée.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 15 | 2026-09-27 | C3b lot 3 — essai d'instrument du producteur préfixe (`scripts/audit/c3b_prefix.py`), puis chaîne `c3_anchor → c3_entry → c3_benchmark → c3_select` sur sa sortie ; **aucune lecture économique** | `grok_grid_atr_adaptive_v4`, 4 paramétrages — un par ensemble de `decision_timeframes` (classes C1, C2, C5, C6) — × `BTC/USDT`, `ETH/USDT`, `SOL/USDT` = **12 candidats** ; provenance `unknown` : aucun `validé` atteignable sur une fenêtre d'instrument | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; fenêtre de conformité `2020-01-06 → 2020-12-28`, préfixe `[2020-01-06, T = 2020-09-11T21:36Z]`, **hors campagne** (garde-fou 6) ; toute lecture bornée à `≤ T` | branche `feat/c3b-producteur`, exécuté au commit de cette entrée (SHA consigné dans `prefix_run.json`) ; métriques v2, `replay_version` 2 ; protocole v2.1 `9300f4e5…` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6, transposition déclarée) ; `min_order_usdc 5.0` (valeur du rejeu, inerte sur le grid) | producteur : deux exécutions en code 0, sorties identiques au bit (4 workers puis 1) ; `c3_anchor` 0 ; `c3_entry` 0, **aucune clause non assertable**, D2 en échec sur les 4 candidats SOL (aucune donnée SOL avant le 2020-08-11) ; `c3_benchmark` 0 (SOL `E_NO_BENCHMARK`) ; `c3_select` 0, sélection descriptive, SOL sort par D1 ; issue BTC/ETH **ni déclarée ni lue** ; `alembic` inchangé | aucune décision économique ; la conformité du préfixe conditionne le lot 4a (run d'évaluation) | `results/c3b_producteur/prefix_conformite/` (`ATTENDU.md`, `manifest.json`, rapport au commit de preuves) |
+
+- **Garde-fou 6, mécanique** : le producteur refuse (code 2) tout manifeste dont la fenêtre finit après le
+  2021-03-01 tant que `results/c3b_producteur/CAMPAIGN_UNLOCK` n'existe pas. Ce fichier n'existe pas ; il sera créé
+  par Bruno à la conversation manifeste.
+- **Tout lancement est consigné** (`status.txt` par lancement) ; un écart à l'attendu est un constat, sans relance
+  avant diagnostic. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
