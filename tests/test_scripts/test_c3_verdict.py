@@ -44,6 +44,7 @@ import c3_common as cc
 import c3_entry as ce
 import c3_select as cs
 import c3_verdict as cv
+import rejeu_common as rc
 
 from test_scripts import test_c3_common as fx
 
@@ -793,7 +794,9 @@ def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]
         },
     )
     cc.write_json(paths["selection"], artifacts["selection"])
-    cc.write_json(paths["evaluation"], artifacts["evaluation"])
+    # Seul site qui garde le writer gelé du rejeu : les cas adverses y écrivent **exprès** un `NaN` ou un
+    # infini dans l'évaluation, pour tester le refus du lecteur — le writer strict refuserait de les écrire.
+    rc.write_json(paths["evaluation"], artifacts["evaluation"])
     stamp(
         "continuity",
         {

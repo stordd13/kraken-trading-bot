@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from pathlib import Path
 import subprocess
 from typing import Any
@@ -25,10 +26,72 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 # ---------------------------------------------------------------------------
 
 
+#: Les scalaires JSON, au **type exact** : un sous-type (``numpy.float64`` est un ``float``) n'en est pas un.
+_JSON_SCALARS: tuple[type, ...] = (str, int, bool, type(None))
+_ROOT_LABEL = "<racine>"
+
+
+def _type_name(kind: type) -> str:
+    module = kind.__module__
+    return kind.__qualname__ if module == "builtins" else f"{module}.{kind.__qualname__}"
+
+
+def _refuse(value: Any) -> Any:
+    """Le ``default`` de ``json.dumps``. ``_check`` a déjà tout refusé : il n'est atteint que si le parcours et
+    l'encodeur divergent, et alors il lève au lieu de convertir."""
+    raise TypeError(f"type {_type_name(type(value))} non JSON")
+
+
+def _check(value: Any, path: str) -> None:
+    """Lève en nommant le chemin (``a.b[3].c``) de la première valeur que JSON ne sait pas écrire telle quelle."""
+    kind = type(value)
+    where = path or _ROOT_LABEL
+    if kind is float:
+        if not math.isfinite(value):
+            raise ValueError(f"{where}: flottant non fini ({value!r}) — JSON n'a ni NaN ni infini")
+        return
+    if kind in _JSON_SCALARS:
+        return
+    if kind is dict:
+        for key, item in value.items():
+            if type(key) is not str:
+                raise TypeError(
+                    f"{where}: clé {key!r} de type {_type_name(type(key))} — une clé JSON est une "
+                    "str, conversion explicite exigée au site d'écriture"
+                )
+            _check(item, f"{path}.{key}" if path else key)
+        return
+    if kind is list or kind is tuple:
+        for index, item in enumerate(value):
+            _check(item, f"{path}[{index}]")
+        return
+    raise TypeError(
+        f"{where}: type {_type_name(kind)} non JSON — conversion explicite exigée au site d'écriture"
+    )
+
+
 def write_json_strict(path: Path, payload: Any) -> str:
-    """JSON indenté, clés triées, **sans** ``default`` : une valeur non native lève (dette 22)."""
+    """Écrit du JSON indenté à clés triées et rend le sha256 du texte écrit (dette 22).
+
+    Le payload est parcouru **avant** toute écriture, en types exacts : ``str``, ``int``, ``float``, ``bool``,
+    ``None``, ``dict`` à clés ``str``, ``list`` et ``tuple``. Tout autre type, sous-types compris (``Decimal``,
+    ``datetime``, tout type numpy), lève ``TypeError`` ; un flottant non fini lève ``ValueError``. Le message
+    commence par le chemin de la valeur. La conversion (``Decimal`` → ``str``, ``datetime`` → ISO) se fait au
+    site d'écriture, jamais ici. Sur refus rien n'est créé, pas même le répertoire.
+
+    Sur un payload JSON pur, le texte est celui de ``rejeu_common.write_json`` : la forme ne change pas.
+    """
+    _check(payload, "")
     encoded = (
-        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n"
+        json.dumps(
+            payload,
+            indent=2,
+            sort_keys=True,
+            ensure_ascii=False,
+            allow_nan=False,
+            default=_refuse,
+        )
+        + "\n"
     )
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
