@@ -1,0 +1,39 @@
+# docs_step1 — 2026-09-28T16:16:49Z
+# HEAD 16f5eea898a2a7df423b3fea6e68ec130c5076ea base d351b36472079199c038c7e1f663d9cbd3d6dcc8
+# commits base..HEAD :
+#   16f5eea docs(results): C3b — rapport final, INDEX, préalable « producteur conforme » levé
+#   c42de07 docs(skills): backtest.md § « Producteur C3b »
+#   05aa4cd docs(roadmap): C3b paquet 1 clos ; v2.2 puis manifeste
+#   2126394 docs(context): PROJECT_CONTEXT — C3b paquet 1 clos, dette 22 fermée, listes de clôture
+#   2458cc4 docs(agent): brief C3b corrigé après livraison
+branch=0
+base_is_ancestor=0
+# fichiers changés (index vs base) :
+#   CLAUDE.md
+#   PROJECT_CONTEXT.md
+#   ROADMAP.md
+#   agent/AGENT_C3B_PRODUCTEUR.md
+#   docs/RESEARCH_LOG.md
+#   results/INDEX.md
+#   results/c3b_producteur/closure/tests/docs_step1.sh
+#   results/c3b_producteur/report.md
+#   skills/backtest.md
+files_exact=0
+# numstat (ajouts, retraits) :
+#   8	6	CLAUDE.md
+#   106	7	PROJECT_CONTEXT.md
+#   14	8	ROADMAP.md
+#   53	0	agent/AGENT_C3B_PRODUCTEUR.md
+#   8	0	docs/RESEARCH_LOG.md
+#   2	1	results/INDEX.md
+#   90	0	results/c3b_producteur/closure/tests/docs_step1.sh
+#   260	0	results/c3b_producteur/report.md
+#   100	0	skills/backtest.md
+brief_insertion_only=0
+research_log_append_only=0
+spec_f2_unchanged=0
+no_code_diff=0
+campaign_unlock_absent=0
+worktree_equals_index=0
+report_first_line=0
+rc=0

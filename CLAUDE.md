@@ -12,8 +12,8 @@ l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Inst
 `v2.9.0-c1-metrics`) et C2 (replay, `v2.10.0-c2-replay`) mergés ; rejeu grid clos `inconclusif` (20/09). **C3a mergée
 (23/09, `v2.11.0-c3a-protocole`)** : outillage complet, artefact du rejeu **refusé à l'entrée**. **Protocole amendé en
 v2.1 (23/09, `docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129`)** sur `feat/c3-amendements-v2.1`, merge sous
-décision humaine. Phase suivante : C3b (producteur conforme ; mesure SOL/D2 et modes lisant le 1 w avant le manifeste de la première
-campagne) ; aucune sélection, rien à trader ; R&D sur le papier
+décision humaine. **C3b paquet 1 clos (producteur conforme, 28/09) ; suite : v2.2, puis manifeste** ; aucune sélection, rien à
+trader ; R&D sur le papier
 (`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
 `docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
 end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) et les coûts par paire mesurés (GATE B).
@@ -39,6 +39,7 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | **Critère d'arrêt** (clôture de famille, alpha-stop projet, kill-switch live) | `docs/CONTRAINTES_POST_B4.md` § 10 |
 | **Brief du chantier C3a** (périmètre, gates, décisions figées) | `agent/c3a_protocole_chronologique_v2.md` |
 | **Outillage C3** (chaîne `c3_*.py`, codes de sortie, règles appliquées et leur section d'origine v2.1, seul run réel) | `skills/backtest.md` § « Validation C3 » |
+| **Producteur C3b** (paquet 1 clos ; suite : v2.2, puis manifeste) — `c3b_prefix.py`, `c3b_evaluate.py`, garde-fous, exploitation serveur | `skills/backtest.md` § « Producteur C3b » (+ `results/c3b_producteur/report.md`) |
 | **Rapport de session C3a** (revues Fin, conventions, exigences C3b accumulées) | `agent/rapport_session_c3a_20260922.md` |
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
@@ -50,10 +51,11 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 > environnement `{python, numpy, machine, libc}`), E2 conjonctive, c3 non normalisée → `inconclusif
 > (R1_NOT_NORMALISED)`, bloc de liquidation contradictoire → violation, évaluation réelle admise avec `flat_start_proof`,
 > `invocation.single_call` et `first_fill_at` (§ L.1). L'outillage `scripts/audit/c3_*.py` (7 modules, 932 tests)
-> est décrit dans `skills/backtest.md` § « Validation C3 ». Sa seule sortie réelle reste un refus (livrable C3a,
-> manifeste v2.0). **Aucune campagne existante ne peut traverser la chaîne** sans un producteur conforme (C3b), dont
-> v2.1 fixe le contrat ; `validé` / `réfuté` deviennent atteignables sur données réelles par ce chemin et par aucun
-> autre. Critère d'arrêt pré-enregistré : `docs/CONTRAINTES_POST_B4.md` § 10.
+> est décrit dans `skills/backtest.md` § « Validation C3 ». Sorties réelles : un refus (livrable C3a, manifeste
+> v2.0), puis la chaîne complète sur la fenêtre d'instrument 2020 (C3b, issue non lue). **Le producteur conforme est
+> livré (C3b) ; aucune campagne ne traverse la chaîne tant que le manifeste n'est pas gelé.** Son contrat est fixé
+> par v2.1 ; `validé` / `réfuté` deviennent atteignables sur données réelles par ce chemin et par aucun autre.
+> Critère d'arrêt pré-enregistré : `docs/CONTRAINTES_POST_B4.md` § 10.
 
 ## Règles d'or (absolues)
 
