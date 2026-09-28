@@ -354,3 +354,11 @@ _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, 
 (paquet 1, contrat fixé par v2.1) et la décision de reconstruction 1 w. Manifeste gelé, portant le sha256 v2.1, et
 inscription ici **avant** tout lancement. C3a est close : entrée 12 ci-dessus ; le rejeu diagnostic grid : entrée 11 ;
 l'adoption de v2.1 : section précédente.)_
+
+- **Préalable « producteur conforme (paquet 1) » levé par C3b**, le 28/09/2026.
+  - Sources : entrées 15, 16 et 17 ; rapport `results/c3b_producteur/report.md`. Le merge sur `dev` se fait sous
+    décision humaine.
+  - L'autre préalable, la reconstruction 1 w, l'était déjà par l'entrée 13.
+  - Restent avant la première campagne : l'amendement v2.2 et le manifeste gelé. `CAMPAIGN_UNLOCK` est créé à ce
+    moment-là.
+  - Le paragraphe ci-dessus n'est pas réécrit (ajout seul).
