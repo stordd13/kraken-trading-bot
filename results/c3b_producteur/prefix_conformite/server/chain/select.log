@@ -1,0 +1,20 @@
+sélection sur le préfixe [2020-09-11T21:36:00+00:00 ← 249.9 j], provenance unknown
+  paire BTC/USDT: VOTANTE (D1 ok, comparateur ok)
+  paire ETH/USDT: VOTANTE (D1 ok, comparateur ok)
+  paire SOL/USDT: DESCRIPTIF (D1 échec, comparateur absent)
+  145867637b7f9bac ETH/USDT ADMISSIBLE Δ^dd=-9.938 (plancher non franchi)
+  4dfed3e38156ca7f BTC/USDT ADMISSIBLE Δ^dd=+5.852 rang=1
+  6ea5949965dd3cf7 BTC/USDT ADMISSIBLE Δ^dd=+5.852 rang=2
+  7ffd47bfa073f718 SOL/USDT NON_ADMISSIBLE premier gate en échec D1
+  823f6cb20e610195 ETH/USDT ADMISSIBLE Δ^dd=-8.086 (plancher non franchi)
+  be44ed223e9b1551 SOL/USDT NON_ADMISSIBLE premier gate en échec D1
+  c56a6de626bbf027 ETH/USDT ADMISSIBLE Δ^dd=-9.755 (plancher non franchi)
+  d6e28b61f67c385b BTC/USDT ADMISSIBLE Δ^dd=+5.672 rang=3
+  dfc62d028a2cde52 SOL/USDT NON_ADMISSIBLE premier gate en échec D1
+  e00e5e4ae94dc53d SOL/USDT NON_ADMISSIBLE premier gate en échec D1
+  e2a82adcd87d14ef BTC/USDT ADMISSIBLE Δ^dd=+5.672 rang=4
+  ee2fbcc757e150ee ETH/USDT ADMISSIBLE Δ^dd=-8.270 (plancher non franchi)
+SÉLECTION_DESCRIPTIVE — retenu 4dfed3e38156ca7f (BTC/USDT) ; 8 admissibles, 4 survivants
+λ : mode prefix — un appariement sur un risque réalisé est une comparaison rétrospective, jamais une allocation validée pour l'avenir
+written /home/bruno/runs/c3b_prefix/out/chain/selection.json sha256 a4851cfd0fd3cd438d509eb93dbe53ad3904895f14a8b43d9ca71c4616afe7d7
+written /home/bruno/runs/c3b_prefix/out/chain/selection.md

@@ -1,0 +1,138 @@
+{
+  "anchor": "2020-09-11T21:36:00+00:00",
+  "assertions": [
+    {
+      "detail": "12 entrées, préfixe 'train'",
+      "id": "I-A.1",
+      "name": "forme des observations",
+      "status": "ok"
+    },
+    {
+      "detail": "ok",
+      "id": "I-A.2",
+      "name": "D5 — contrats d'instrument égaux au manifeste",
+      "status": "ok"
+    },
+    {
+      "detail": "ok",
+      "id": "I-A.3",
+      "name": "bornes du préfixe exactement [début, T]",
+      "status": "ok"
+    },
+    {
+      "detail": "12 identités, égales à l'univers",
+      "id": "I-A.4",
+      "name": "unicité des identités et univers fermé",
+      "status": "ok"
+    },
+    {
+      "detail": "provenance 'unknown' (liste close § A.5)",
+      "id": "I-A.5",
+      "name": "provenance de l'univers",
+      "status": "ok"
+    },
+    {
+      "detail": "ok",
+      "id": "I-A.6",
+      "name": "amorçage du préfixe : séries de décision, sufficient recalculé",
+      "status": "ok"
+    },
+    {
+      "detail": "ok",
+      "id": "I-A.7",
+      "name": "artefact de couverture",
+      "status": "ok"
+    },
+    {
+      "detail": "D2 échoue sur 4/12 candidats — retirés, la chaîne continue (§ I.1 l.4)",
+      "id": "I-A.8",
+      "name": "D2 — promotion en refus d'artefact sur la totalité",
+      "status": "ok"
+    },
+    {
+      "detail": "ok",
+      "id": "I-A.fin",
+      "name": "aucune clause non assertable",
+      "status": "ok"
+    }
+  ],
+  "candidate_diagnostics": [
+    {
+      "clause": "D2",
+      "identity": "7ffd47bfa073f71862bb2bf92beebc5ddb8587b05a59e6e4962b7ca8fe46c95a",
+      "key": "7ffd47bfa073f71862bb2bf92beebc5ddb8587b05a59e6e4962b7ca8fe46c95a",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "4h"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "be44ed223e9b1551a748c2e19147b8ab669858549c3443b07a9d7cbddb217c25",
+      "key": "be44ed223e9b1551a748c2e19147b8ab669858549c3443b07a9d7cbddb217c25",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1w",
+        "4h"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "dfc62d028a2cde5289f5e48368be83233778aea231b1cf41c13b2a8a257a94bf",
+      "key": "dfc62d028a2cde5289f5e48368be83233778aea231b1cf41c13b2a8a257a94bf",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "4h"
+      ]
+    },
+    {
+      "clause": "D2",
+      "identity": "e00e5e4ae94dc53d60bde692e9de5fe6ed60cef29db02d487d08012c91bb3c64",
+      "key": "e00e5e4ae94dc53d60bde692e9de5fe6ed60cef29db02d487d08012c91bb3c64",
+      "reason": "D_WARMUP_PREFIX",
+      "timeframes_insufficient": [
+        "1d",
+        "1w",
+        "4h"
+      ]
+    }
+  ],
+  "coverage": {
+    "path": "/home/bruno/runs/c3b_prefix/out/run1/coverage.json",
+    "sha256": "5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51",
+    "status": "evaluated"
+  },
+  "exit_code": 0,
+  "generated_at": "2026-09-28T00:00:00+00:00",
+  "inputs_sha256": {
+    "anchor": "e52dc52c66f5177e08f5d93316b175fd9aac6c66e5f2a237927c3804134376d9",
+    "coverage": "5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51",
+    "manifest": "d96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4",
+    "observations": "57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f"
+  },
+  "invalide": false,
+  "n_candidates": 12,
+  "n_candidates_d2_failed": 4,
+  "not_assertable": [],
+  "observations": {
+    "path": "/home/bruno/runs/c3b_prefix/out/run1/observations.json",
+    "sha256": "57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f"
+  },
+  "ok": true,
+  "prefix_segment": "train",
+  "protocole": {
+    "path": "docs/protocole_c3.md",
+    "sha256": "9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129"
+  },
+  "refusal": null,
+  "run_scope": "Essai d'instrument du producteur C3b (lot 3), aucune lecture économique. Fenêtre de conformité 2020-01-06 → 2020-12-28, hors campagne et entièrement antérieure au 2021-03-01 (garde-fou 6). Provenance « unknown » déclarée pour qu'aucun « validé » ne soit atteignable sur une fenêtre d'instrument (décision du 27/09) : les quatre paramétrages sont des représentants des classes C1, C2, C5, C6 (un par ensemble de decision_timeframes), tirés des cas-sondes du lot 1, sans rapport avec un résultat. Coûts par paire : ceux de config/pair_costs_b4.json pour la paire de déploiement (dette 24 sans objet ici) ; min_order_usdc 5.0 = valeur du rejeu, inerte sur le grid.",
+  "sentence": null,
+  "step": "entry",
+  "universe_provenance": "unknown",
+  "violations": [],
+  "window": {
+    "end": "2020-12-28T00:00:00+00:00",
+    "start": "2020-01-06T00:00:00+00:00"
+  }
+}

@@ -1,0 +1,74 @@
+{
+  "admissible_stamps": {
+    "10080": "2020-09-07T00:00:00+00:00",
+    "1440": "2020-09-11T00:00:00+00:00",
+    "240": "2020-09-11T20:00:00+00:00",
+    "5": "2020-09-11T21:35:00+00:00"
+  },
+  "admissible_stamps_by_label": {
+    "1d": "2020-09-11T00:00:00+00:00",
+    "1w": "2020-09-07T00:00:00+00:00",
+    "4h": "2020-09-11T20:00:00+00:00",
+    "5m": "2020-09-11T21:35:00+00:00"
+  },
+  "anchor": "2020-09-11T21:36:00+00:00",
+  "anchor_fraction": 0.7,
+  "evaluation_days": 107.1,
+  "exec_interval": 5,
+  "exit_code": 0,
+  "first_exec_stamp_after_anchor": "2020-09-11T21:40:00+00:00",
+  "frozen_values_asserted": [
+    "anchor_fraction",
+    "uncertainty",
+    "thresholds",
+    "protocol_sha256"
+  ],
+  "generated_at": "2026-09-28T00:00:00+00:00",
+  "inputs_sha256": {
+    "manifest": "d96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4"
+  },
+  "invalide": false,
+  "manifest_sha256": "d96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4",
+  "n_candidates": 12,
+  "ok": true,
+  "pairs": [
+    "BTC/USDT",
+    "ETH/USDT",
+    "SOL/USDT"
+  ],
+  "parent": {
+    "is_root": true
+  },
+  "prefix_days": 249.9,
+  "prefix_segment": "train",
+  "protocole": {
+    "path": "docs/protocole_c3.md",
+    "sha256": "9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129"
+  },
+  "registry": {
+    "new_entry": true,
+    "path": "/home/bruno/runs/c3b_prefix/out/chain/variants.json",
+    "sha256": "7c5b80656a17fbc958193a37ec54db3a63ec575d48393c1767a95595d5185b4c"
+  },
+  "research_log_entry": "docs/RESEARCH_LOG.md — entrée 15 « C3b lot 3 — essai d'instrument du producteur préfixe sur la fenêtre de conformité 2020 » (inscrite avant lancement)",
+  "step": "anchor",
+  "uncertainty": {
+    "B": 10000,
+    "block_lengths": [
+      10,
+      21,
+      42
+    ],
+    "bound_level": 0.95,
+    "seed": 20260927
+  },
+  "universe_provenance": "unknown",
+  "variant_id": "c3b-lot3-conformite-prefixe-2020",
+  "variant_key": "e324967cce00e44173a3bfff91e5c7ce2524a5dfa059a1a57122c0b7505bcc15",
+  "violations": [],
+  "window": {
+    "end": "2020-12-28T00:00:00+00:00",
+    "start": "2020-01-06T00:00:00+00:00"
+  },
+  "window_days": 357.0
+}

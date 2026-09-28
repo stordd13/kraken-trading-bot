@@ -1,0 +1,178 @@
+# extrait de run.log : 176 lignes gardées sur 54972
+# sha256 du brut 29a3c10e59330ef407e3326cb3827002a7d1e68006a85504d6df1b55c2d0fb03 (archivé, ~/archive/c3b_lot3_20260928/)
+=== guard=0 sha=6509737718ba7e645f973e877641d7b2b54ef2ad python=Python 3.12.3 krakenbot=/home/bruno/runs/c3b_prefix/repo/src/krakenbot/__init__.py
+=== pilot_sha256=ee1f5a53b07ff62242d939fab651acfb8d9cb23530553dad3b37b29ae86a111d
+=== start=2026-09-28T06:46:17Z
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+c3bd1e7a0001 (head)
+=== alembic_before=0
+2026-09-28 06:46:22 [info     ] database_closed
+2026-09-28 06:46:29 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=BTC/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:29 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=BTC/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:29 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=BTC/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:29 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=BTC/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:30 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:46:30 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:46:30 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:46:30 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:46:40 [info     ] database_closed
+2026-09-28 06:46:40 [info     ] database_closed
+2026-09-28 06:46:40 [info     ] job_done                       duration_s=14.591 identity=4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5
+2026-09-28 06:46:41 [info     ] database_closed
+2026-09-28 06:46:41 [info     ] job_done                       duration_s=14.666 identity=6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8
+2026-09-28 06:46:41 [info     ] job_done                       duration_s=14.343 identity=d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f
+2026-09-28 06:46:41 [info     ] database_closed
+2026-09-28 06:46:41 [info     ] job_done                       duration_s=15.076 identity=e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe
+2026-09-28 06:46:43 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=ETH/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:43 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=ETH/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:44 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=ETH/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:44 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=ETH/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:44 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:46:44 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:46:44 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:46:45 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:46:55 [info     ] database_closed
+2026-09-28 06:46:55 [info     ] database_closed
+2026-09-28 06:46:55 [info     ] job_done                       duration_s=14.889 identity=145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962
+2026-09-28 06:46:55 [info     ] database_closed
+2026-09-28 06:46:55 [info     ] job_done                       duration_s=14.884 identity=823f6cb20e6101953f522f81e39c9b9488d752a7a05b66d6ac1aa255fd05f49f
+2026-09-28 06:46:55 [info     ] job_done                       duration_s=14.491 identity=c56a6de626bbf027edd05a83b40e858bba37b330bd51d3e64e7f575934129d9e
+2026-09-28 06:46:56 [info     ] database_closed
+2026-09-28 06:46:56 [info     ] grid_backtest_started          candles=9115 component=grid_backtest pair=SOL/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:56 [info     ] job_done                       duration_s=14.823 identity=ee2fbcc757e150ee95789c7e06d84cc1b713d6782b5208c5ffa775e64e52aed0
+2026-09-28 06:46:56 [info     ] grid_backtest_started          candles=9115 component=grid_backtest pair=SOL/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:56 [info     ] grid_backtest_started          candles=9115 component=grid_backtest pair=SOL/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:56 [info     ] grid_replay_sequence_built     candles_1d=31 candles_1w=4 candles_4h=190 candles_trading=9115 component=grid_backtest decisions=190 trading_interval=5
+2026-09-28 06:46:56 [info     ] grid_replay_sequence_built     candles_1d=31 candles_1w=4 candles_4h=190 candles_trading=9115 component=grid_backtest decisions=190 trading_interval=5
+2026-09-28 06:46:57 [info     ] grid_replay_sequence_built     candles_1d=31 candles_1w=4 candles_4h=190 candles_trading=9115 component=grid_backtest decisions=190 trading_interval=5
+2026-09-28 06:46:57 [info     ] grid_backtest_started          candles=9115 component=grid_backtest pair=SOL/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:46:57 [info     ] grid_replay_sequence_built     candles_1d=31 candles_1w=4 candles_4h=190 candles_trading=9115 component=grid_backtest decisions=190 trading_interval=5
+2026-09-28 06:46:58 [info     ] database_closed
+2026-09-28 06:46:58 [info     ] job_done                       duration_s=2.539 identity=7ffd47bfa073f71862bb2bf92beebc5ddb8587b05a59e6e4962b7ca8fe46c95a
+2026-09-28 06:46:58 [info     ] database_closed
+2026-09-28 06:46:58 [info     ] job_done                       duration_s=2.694 identity=be44ed223e9b1551a748c2e19147b8ab669858549c3443b07a9d7cbddb217c25
+2026-09-28 06:46:58 [info     ] database_closed
+2026-09-28 06:46:58 [info     ] job_done                       duration_s=2.762 identity=dfc62d028a2cde5289f5e48368be83233778aea231b1cf41c13b2a8a257a94bf
+2026-09-28 06:46:58 [info     ] database_closed
+2026-09-28 06:46:58 [info     ] job_done                       duration_s=2.52 identity=e00e5e4ae94dc53d60bde692e9de5fe6ed60cef29db02d487d08012c91bb3c64
+2026-09-28 06:47:00 [info     ] written                        path=/home/bruno/runs/c3b_prefix/out/run1/observations.json sha256=57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f
+2026-09-28 06:47:00 [info     ] written                        path=/home/bruno/runs/c3b_prefix/out/run1/coverage.json sha256=5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51
+2026-09-28 06:47:00 [info     ] written                        path=/home/bruno/runs/c3b_prefix/out/run1/candles.json sha256=20c0d1fb46184f18b186499fea906d1f70b6fcd3c300d4b82ce4f8d2f3139376
+2026-09-28 06:47:00 [info     ] written                        path=/home/bruno/runs/c3b_prefix/out/run1/prefix_run.json sha256=802ae1611e8aeb7051d158d1adf4869d2fccb37057423fdaad82c97c210d4484
+=== producer_run1=0 at=2026-09-28T06:47:00Z
+2026-09-28 06:47:04 [info     ] database_closed
+2026-09-28 06:47:09 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=BTC/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:47:10 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:47:20 [info     ] database_closed
+2026-09-28 06:47:20 [info     ] job_done                       duration_s=13.932 identity=4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5
+2026-09-28 06:47:23 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=BTC/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:47:24 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:47:34 [info     ] database_closed
+2026-09-28 06:47:34 [info     ] job_done                       duration_s=14.135 identity=6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8
+2026-09-28 06:47:37 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=BTC/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:47:38 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:47:48 [info     ] database_closed
+2026-09-28 06:47:48 [info     ] job_done                       duration_s=13.882 identity=d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f
+2026-09-28 06:47:51 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=BTC/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:47:52 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:48:02 [info     ] database_closed
+2026-09-28 06:48:02 [info     ] job_done                       duration_s=13.743 identity=e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe
+2026-09-28 06:48:05 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=ETH/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:48:06 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:48:17 [info     ] database_closed
+2026-09-28 06:48:17 [info     ] job_done                       duration_s=14.589 identity=145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962
+2026-09-28 06:48:19 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=ETH/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:48:20 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:48:31 [info     ] database_closed
+2026-09-28 06:48:31 [info     ] job_done                       duration_s=14.249 identity=823f6cb20e6101953f522f81e39c9b9488d752a7a05b66d6ac1aa255fd05f49f
+2026-09-28 06:48:34 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=ETH/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:48:35 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:48:45 [info     ] database_closed
+2026-09-28 06:48:45 [info     ] job_done                       duration_s=14.006 identity=c56a6de626bbf027edd05a83b40e858bba37b330bd51d3e64e7f575934129d9e
+2026-09-28 06:48:48 [info     ] grid_backtest_started          candles=71793 component=grid_backtest pair=ETH/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:48:49 [info     ] grid_replay_sequence_built     candles_1d=500 candles_1w=87 candles_4h=1589 candles_trading=71793 component=grid_backtest decisions=1499 trading_interval=5
+2026-09-28 06:48:59 [info     ] database_closed
+2026-09-28 06:48:59 [info     ] job_done                       duration_s=14.287 identity=ee2fbcc757e150ee95789c7e06d84cc1b713d6782b5208c5ffa775e64e52aed0
+2026-09-28 06:49:00 [info     ] grid_backtest_started          candles=9115 component=grid_backtest pair=SOL/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:49:00 [info     ] grid_replay_sequence_built     candles_1d=31 candles_1w=4 candles_4h=190 candles_trading=9115 component=grid_backtest decisions=190 trading_interval=5
+2026-09-28 06:49:02 [info     ] database_closed
+2026-09-28 06:49:02 [info     ] job_done                       duration_s=2.38 identity=7ffd47bfa073f71862bb2bf92beebc5ddb8587b05a59e6e4962b7ca8fe46c95a
+2026-09-28 06:49:02 [info     ] grid_backtest_started          candles=9115 component=grid_backtest pair=SOL/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:49:03 [info     ] grid_replay_sequence_built     candles_1d=31 candles_1w=4 candles_4h=190 candles_trading=9115 component=grid_backtest decisions=190 trading_interval=5
+2026-09-28 06:49:04 [info     ] database_closed
+2026-09-28 06:49:04 [info     ] job_done                       duration_s=2.55 identity=be44ed223e9b1551a748c2e19147b8ab669858549c3443b07a9d7cbddb217c25
+2026-09-28 06:49:05 [info     ] grid_backtest_started          candles=9115 component=grid_backtest pair=SOL/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:49:05 [info     ] grid_replay_sequence_built     candles_1d=31 candles_1w=4 candles_4h=190 candles_trading=9115 component=grid_backtest decisions=190 trading_interval=5
+2026-09-28 06:49:07 [info     ] database_closed
+2026-09-28 06:49:07 [info     ] job_done                       duration_s=2.403 identity=dfc62d028a2cde5289f5e48368be83233778aea231b1cf41c13b2a8a257a94bf
+2026-09-28 06:49:07 [info     ] grid_backtest_started          candles=9115 component=grid_backtest pair=SOL/USDT period='2020-01-06 to 2020-09-11' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 06:49:08 [info     ] grid_replay_sequence_built     candles_1d=31 candles_1w=4 candles_4h=190 candles_trading=9115 component=grid_backtest decisions=190 trading_interval=5
+2026-09-28 06:49:09 [info     ] database_closed
+2026-09-28 06:49:09 [info     ] job_done                       duration_s=2.335 identity=e00e5e4ae94dc53d60bde692e9de5fe6ed60cef29db02d487d08012c91bb3c64
+2026-09-28 06:49:10 [info     ] written                        path=/home/bruno/runs/c3b_prefix/out/run2/observations.json sha256=57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f
+2026-09-28 06:49:10 [info     ] written                        path=/home/bruno/runs/c3b_prefix/out/run2/coverage.json sha256=5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51
+2026-09-28 06:49:10 [info     ] written                        path=/home/bruno/runs/c3b_prefix/out/run2/candles.json sha256=20c0d1fb46184f18b186499fea906d1f70b6fcd3c300d4b82ce4f8d2f3139376
+2026-09-28 06:49:10 [info     ] written                        path=/home/bruno/runs/c3b_prefix/out/run2/prefix_run.json sha256=86b362a199a337de26828185f4e8b6df477a2aabcbbdbe3244d31cc7d1654af7
+=== producer_run2=0 at=2026-09-28T06:49:10Z
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+c3bd1e7a0001 (head)
+=== alembic_after=0
+=== sha_observations.json run1=57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f run2=57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f
+=== sha_coverage.json run1=5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51 run2=5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51
+=== sha_candles.json run1=20c0d1fb46184f18b186499fea906d1f70b6fcd3c300d4b82ce4f8d2f3139376 run2=20c0d1fb46184f18b186499fea906d1f70b6fcd3c300d4b82ce4f8d2f3139376
+=== sha_equal=0
+ancrage T = 2020-09-11T21:36:00+00:00 (F = 0.7, fenêtre 2020-01-06T00:00:00+00:00 -> 2020-12-28T00:00:00+00:00, préfixe 249.9 j)
+estampilles admissibles : 1d=2020-09-11T00:00:00+00:00 1w=2020-09-07T00:00:00+00:00 4h=2020-09-11T20:00:00+00:00 5m=2020-09-11T21:35:00+00:00
+première exécution possible : 2020-09-11T21:40:00+00:00
+variante e324967cce00e441 (c3b-lot3-conformite-prefixe-2020) — nouvelle au registre
+provenance de l'univers : unknown (12 candidats)
+written /home/bruno/runs/c3b_prefix/out/chain/anchor.json sha256 e52dc52c66f5177e08f5d93316b175fd9aac6c66e5f2a237927c3804134376d9
+=== c3_anchor=0
+validité d'entrée — 12 candidats, préfixe 'train', T = 2020-09-11T21:36:00+00:00
+  ok   I-A.1 forme des observations : 12 entrées, préfixe 'train'
+  ok   I-A.2 D5 — contrats d'instrument égaux au manifeste : ok
+  ok   I-A.3 bornes du préfixe exactement [début, T] : ok
+  ok   I-A.4 unicité des identités et univers fermé : 12 identités, égales à l'univers
+  ok   I-A.5 provenance de l'univers : provenance 'unknown' (liste close § A.5)
+  ok   I-A.6 amorçage du préfixe : séries de décision, sufficient recalculé : ok
+  ok   I-A.7 artefact de couverture : ok
+  ok   I-A.8 D2 — promotion en refus d'artefact sur la totalité : D2 échoue sur 4/12 candidats — retirés, la chaîne continue (§ I.1 l.4)
+  ok   I-A.fin aucune clause non assertable : ok
+entrée conforme — 4 candidat(s) retiré(s) par D2, la chaîne continue
+portée du run : Essai d'instrument du producteur C3b (lot 3), aucune lecture économique. Fenêtre de conformité 2020-01-06 → 2020-12-28, hors campagne et entièrement antérieure au 2021-03-01 (garde-fou 6). Provenance « unknown » déclarée pour qu'aucun « validé » ne soit atteignable sur une fenêtre d'instrument (décision du 27/09) : les quatre paramétrages sont des représentants des classes C1, C2, C5, C6 (un par ensemble de decision_timeframes), tirés des cas-sondes du lot 1, sans rapport avec un résultat. Coûts par paire : ceux de config/pair_costs_b4.json pour la paire de déploiement (dette 24 sans objet ici) ; min_order_usdc 5.0 = valeur du rejeu, inerte sur le grid.
+written /home/bruno/runs/c3b_prefix/out/chain/entry.json sha256 8fa675d0dd0a5670a97b43f96925ec186c898684bdbcd265ab1ce41d48f0b55c
+written /home/bruno/runs/c3b_prefix/out/chain/entry.md
+=== c3_entry=0
+comparateur du préfixe [2020-01-06T00:00:00+00:00 -> 2020-09-11T21:36:00+00:00], mode λ = prefix (un appariement sur un risque réalisé est une comparaison rétrospective, jamais une allocation validée pour l'avenir)
+  BTC/USDT: constructible=True comparable=True entrée 2020-01-06T00:05:00+00:00 sortie 2020-09-11T21:35:00+00:00 ff_days=0 CAGR=62.62562408002519
+  ETH/USDT: constructible=True comparable=True entrée 2020-01-06T00:05:00+00:00 sortie 2020-09-11T21:35:00+00:00 ff_days=0 CAGR=330.11201756388493
+  SOL/USDT: constructible=False comparable=False entrée 2020-01-06T00:05:00+00:00 sortie 2020-09-11T21:35:00+00:00 ff_days=None CAGR=None — non constructible : estampille(s) d'exécution requise(s) absente(s) ['2020-01-06T00:05:00+00:00'] — aucune bougie de substitution (§ C.3)
+  candidats : 8/12 avec λ apparié et Δ publiés
+written /home/bruno/runs/c3b_prefix/out/chain/benchmark.json sha256 8b7bfd7c846e52cf275820840984e5c77aa60ee76797cb0acc31f324a14a7290
+=== c3_benchmark=0
+sélection sur le préfixe [2020-09-11T21:36:00+00:00 ← 249.9 j], provenance unknown
+  paire BTC/USDT: VOTANTE (D1 ok, comparateur ok)
+  paire ETH/USDT: VOTANTE (D1 ok, comparateur ok)
+  paire SOL/USDT: DESCRIPTIF (D1 échec, comparateur absent)
+  145867637b7f9bac ETH/USDT ADMISSIBLE Δ^dd=-9.938 (plancher non franchi)
+  4dfed3e38156ca7f BTC/USDT ADMISSIBLE Δ^dd=+5.852 rang=1
+  6ea5949965dd3cf7 BTC/USDT ADMISSIBLE Δ^dd=+5.852 rang=2
+  7ffd47bfa073f718 SOL/USDT NON_ADMISSIBLE premier gate en échec D1
+  823f6cb20e610195 ETH/USDT ADMISSIBLE Δ^dd=-8.086 (plancher non franchi)
+  be44ed223e9b1551 SOL/USDT NON_ADMISSIBLE premier gate en échec D1
+  c56a6de626bbf027 ETH/USDT ADMISSIBLE Δ^dd=-9.755 (plancher non franchi)
+  d6e28b61f67c385b BTC/USDT ADMISSIBLE Δ^dd=+5.672 rang=3
+  dfc62d028a2cde52 SOL/USDT NON_ADMISSIBLE premier gate en échec D1
+  e00e5e4ae94dc53d SOL/USDT NON_ADMISSIBLE premier gate en échec D1
+  e2a82adcd87d14ef BTC/USDT ADMISSIBLE Δ^dd=+5.672 rang=4
+  ee2fbcc757e150ee ETH/USDT ADMISSIBLE Δ^dd=-8.270 (plancher non franchi)
+SÉLECTION_DESCRIPTIVE — retenu 4dfed3e38156ca7f (BTC/USDT) ; 8 admissibles, 4 survivants
+λ : mode prefix — un appariement sur un risque réalisé est une comparaison rétrospective, jamais une allocation validée pour l'avenir
+written /home/bruno/runs/c3b_prefix/out/chain/selection.json sha256 a4851cfd0fd3cd438d509eb93dbe53ad3904895f14a8b43d9ca71c4616afe7d7
+written /home/bruno/runs/c3b_prefix/out/chain/selection.md
+=== c3_select=0
+prefix_run interpreter=/home/bruno/.cache/pypoetry/virtualenvs/krakenbot-3rJ6HBr0-py3.12/bin/python krakenbot=/home/bruno/runs/c3b_prefix/repo/src/krakenbot/__init__.py env={'libc': 'glibc 2.39', 'machine': 'x86_64', 'numpy': '2.4.1', 'python': '3.12.3'}
+=== interpreter_check=0
+=== end=2026-09-28T06:49:15Z

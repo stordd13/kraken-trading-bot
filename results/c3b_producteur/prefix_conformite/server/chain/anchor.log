@@ -1,0 +1,6 @@
+ancrage T = 2020-09-11T21:36:00+00:00 (F = 0.7, fenêtre 2020-01-06T00:00:00+00:00 -> 2020-12-28T00:00:00+00:00, préfixe 249.9 j)
+estampilles admissibles : 1d=2020-09-11T00:00:00+00:00 1w=2020-09-07T00:00:00+00:00 4h=2020-09-11T20:00:00+00:00 5m=2020-09-11T21:35:00+00:00
+première exécution possible : 2020-09-11T21:40:00+00:00
+variante e324967cce00e441 (c3b-lot3-conformite-prefixe-2020) — nouvelle au registre
+provenance de l'univers : unknown (12 candidats)
+written /home/bruno/runs/c3b_prefix/out/chain/anchor.json sha256 e52dc52c66f5177e08f5d93316b175fd9aac6c66e5f2a237927c3804134376d9

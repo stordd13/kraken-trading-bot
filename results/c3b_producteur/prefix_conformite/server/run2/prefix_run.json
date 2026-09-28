@@ -1,0 +1,218 @@
+{
+  "anchor": "2020-09-11T21:36:00+00:00",
+  "argv": [
+    "scripts/audit/c3b_prefix.py",
+    "--manifest",
+    "results/c3b_producteur/prefix_conformite/manifest.json",
+    "--output-dir",
+    "/home/bruno/runs/c3b_prefix/out/run2",
+    "--workers",
+    "1",
+    "--now",
+    "2026-09-28T00:00:00+00:00"
+  ],
+  "candidates": [
+    {
+      "decision_timeframes": [
+        "4h"
+      ],
+      "duration_s": 13.932,
+      "identity": "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5",
+      "pair": "BTC/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1w",
+        "4h"
+      ],
+      "duration_s": 14.135,
+      "identity": "6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8",
+      "pair": "BTC/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "duration_s": 13.882,
+      "identity": "d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f",
+      "pair": "BTC/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1d",
+        "4h"
+      ],
+      "duration_s": 13.743,
+      "identity": "e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe",
+      "pair": "BTC/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1w",
+        "4h"
+      ],
+      "duration_s": 14.589,
+      "identity": "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962",
+      "pair": "ETH/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1d",
+        "4h"
+      ],
+      "duration_s": 14.249,
+      "identity": "823f6cb20e6101953f522f81e39c9b9488d752a7a05b66d6ac1aa255fd05f49f",
+      "pair": "ETH/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "duration_s": 14.006,
+      "identity": "c56a6de626bbf027edd05a83b40e858bba37b330bd51d3e64e7f575934129d9e",
+      "pair": "ETH/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "4h"
+      ],
+      "duration_s": 14.287,
+      "identity": "ee2fbcc757e150ee95789c7e06d84cc1b713d6782b5208c5ffa775e64e52aed0",
+      "pair": "ETH/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "4h"
+      ],
+      "duration_s": 2.38,
+      "identity": "7ffd47bfa073f71862bb2bf92beebc5ddb8587b05a59e6e4962b7ca8fe46c95a",
+      "pair": "SOL/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1w",
+        "4h"
+      ],
+      "duration_s": 2.55,
+      "identity": "be44ed223e9b1551a748c2e19147b8ab669858549c3443b07a9d7cbddb217c25",
+      "pair": "SOL/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1d",
+        "4h"
+      ],
+      "duration_s": 2.403,
+      "identity": "dfc62d028a2cde5289f5e48368be83233778aea231b1cf41c13b2a8a257a94bf",
+      "pair": "SOL/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "decision_timeframes": [
+        "1d",
+        "1w",
+        "4h"
+      ],
+      "duration_s": 2.335,
+      "identity": "e00e5e4ae94dc53d60bde692e9de5fe6ed60cef29db02d487d08012c91bb3c64",
+      "pair": "SOL/USDT",
+      "resumed": false,
+      "strategy": "grok_grid_atr_adaptive_v4"
+    }
+  ],
+  "database": {
+    "alembic_version": [
+      "c3bd1e7a0001"
+    ],
+    "transaction_read_only": "on",
+    "url": "postgresql+asyncpg://krakenbot:***@localhost:5432/krakenbot"
+  },
+  "derived_stamps": {
+    "BTC/USDT": {
+      "10080": [],
+      "1440": [],
+      "240": [],
+      "5": []
+    },
+    "ETH/USDT": {
+      "10080": [],
+      "1440": [],
+      "240": [],
+      "5": []
+    },
+    "SOL/USDT": {
+      "10080": [],
+      "1440": [],
+      "240": [],
+      "5": []
+    }
+  },
+  "environment": {
+    "libc": "glibc 2.39",
+    "machine": "x86_64",
+    "numpy": "2.4.1",
+    "python": "3.12.3"
+  },
+  "generated_at": "2026-09-28T00:00:00+00:00",
+  "interpreter": {
+    "executable": "/home/bruno/.cache/pypoetry/virtualenvs/krakenbot-3rJ6HBr0-py3.12/bin/python",
+    "krakenbot": "/home/bruno/runs/c3b_prefix/repo/src/krakenbot/__init__.py"
+  },
+  "manifest": {
+    "path": "results/c3b_producteur/prefix_conformite/manifest.json",
+    "sha256": "d96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4",
+    "variant_key": "e324967cce00e44173a3bfff91e5c7ce2524a5dfa059a1a57122c0b7505bcc15"
+  },
+  "outputs": {
+    "candles.json": "20c0d1fb46184f18b186499fea906d1f70b6fcd3c300d4b82ce4f8d2f3139376",
+    "coverage.json": "5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51",
+    "observations.json": "57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f"
+  },
+  "prefix_segment": "train",
+  "provenance": {
+    "branch": "",
+    "git_sha": "6509737718ba7e645f973e877641d7b2b54ef2ad",
+    "scripts": {
+      "scripts/audit/c3b_common.py": {
+        "sha256": "0fe8bd29ccfec57d0907d5461f712d2b14f874dfc3f5b41ef3aa6fe4a190a66a",
+        "tracked": true
+      },
+      "scripts/audit/c3b_prefix.py": {
+        "sha256": "4a205539d4f6d6faea567c335edfc7b25ac77dd445f7e8d1bf29b1b139ac3254",
+        "tracked": true
+      }
+    },
+    "tracked_tree_clean": true
+  },
+  "schema": "c3b_prefix_run/1",
+  "window": {
+    "end": "2020-12-28T00:00:00+00:00",
+    "start": "2020-01-06T00:00:00+00:00"
+  },
+  "workers": 1
+}

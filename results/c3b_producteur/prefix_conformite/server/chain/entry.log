@@ -1,0 +1,14 @@
+validité d'entrée — 12 candidats, préfixe 'train', T = 2020-09-11T21:36:00+00:00
+  ok   I-A.1 forme des observations : 12 entrées, préfixe 'train'
+  ok   I-A.2 D5 — contrats d'instrument égaux au manifeste : ok
+  ok   I-A.3 bornes du préfixe exactement [début, T] : ok
+  ok   I-A.4 unicité des identités et univers fermé : 12 identités, égales à l'univers
+  ok   I-A.5 provenance de l'univers : provenance 'unknown' (liste close § A.5)
+  ok   I-A.6 amorçage du préfixe : séries de décision, sufficient recalculé : ok
+  ok   I-A.7 artefact de couverture : ok
+  ok   I-A.8 D2 — promotion en refus d'artefact sur la totalité : D2 échoue sur 4/12 candidats — retirés, la chaîne continue (§ I.1 l.4)
+  ok   I-A.fin aucune clause non assertable : ok
+entrée conforme — 4 candidat(s) retiré(s) par D2, la chaîne continue
+portée du run : Essai d'instrument du producteur C3b (lot 3), aucune lecture économique. Fenêtre de conformité 2020-01-06 → 2020-12-28, hors campagne et entièrement antérieure au 2021-03-01 (garde-fou 6). Provenance « unknown » déclarée pour qu'aucun « validé » ne soit atteignable sur une fenêtre d'instrument (décision du 27/09) : les quatre paramétrages sont des représentants des classes C1, C2, C5, C6 (un par ensemble de decision_timeframes), tirés des cas-sondes du lot 1, sans rapport avec un résultat. Coûts par paire : ceux de config/pair_costs_b4.json pour la paire de déploiement (dette 24 sans objet ici) ; min_order_usdc 5.0 = valeur du rejeu, inerte sur le grid.
+written /home/bruno/runs/c3b_prefix/out/chain/entry.json sha256 8fa675d0dd0a5670a97b43f96925ec186c898684bdbcd265ab1ce41d48f0b55c
+written /home/bruno/runs/c3b_prefix/out/chain/entry.md

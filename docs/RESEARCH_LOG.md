@@ -271,6 +271,18 @@ fin) — sur une fenêtre **entièrement antérieure au 2021-03-01**, et aucune 
 - **Tout lancement est consigné** (`status.txt` par lancement) ; un écart à l'attendu est un constat, sans relance
   avant diagnostic. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
 
+### Issue de l'entrée 15 (inscrite après le run — aucune lecture économique)
+
+Un seul lancement, au `6509737` (pilote sha256 `ee1f5a53…`, consigné dans `status.txt`), le 2026-09-28 de 06:46:17 à
+06:49:15Z sur le serveur, lecture seule assertée par Postgres. Archive `~/archive/c3b_lot3_20260928/` (sha256
+`80b5f2b9…`) vérifiée avant le `rm -rf ~/runs/c3b_prefix` (06:51:56Z).
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 15 | Producteur : run1 (4 workers) et run2 (1 worker) en **code 0** ; `observations.json` `57e48213…`, `coverage.json` `5871f74e…`, `candles.json` `20c0d1fb…` **identiques au bit** ; 12 entrées ; `T = 2020-09-11T21:36Z` ; 0 estampille dérivée dans `(début, T]` ; `alembic` `c3bd1e7a0001` inchangé | `results/c3b_producteur/prefix_conformite/server/status.txt`, `run1/prefix_run.json` |
+| 15 | Chaîne : `c3_anchor` 0 ; `c3_entry` 0 — I-A.1 à I-A.8 `ok`, **aucune clause non assertable**, couverture évaluée, D2 en échec sur les 4 candidats SOL et eux seuls (séries attendues) ; `c3_benchmark` 0 — SOL non constructible (estampille `2020-01-06T00:05Z` absente) ; `c3_select` 0 — provenance `unknown`, aucune `SÉLECTION_VALIDE`, SOL `DESCRIPTIF` par D1 (5 min 31/249) ; issue BTC/ETH **non lue** | `server/chain/`, `server/verify_attendu.out` |
+| 15 | Attendu tenu sur ses 7 items ; défaut de rédaction de l'item 5 (« sélection descriptive » présume un candidat retenu), vérifié par le seul booléen `!= SÉLECTION_VALIDE`, qui ne lit pas l'issue | `results/c3b_producteur/prefix_conformite/README.md` § 4 |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
