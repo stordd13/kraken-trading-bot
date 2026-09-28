@@ -332,6 +332,22 @@ avec cette entrée.
 |---|---|---|---|---|---|---|---|---|---|
 | 17 | 2026-09-28 | C3b lot 4b — essai d'instrument du producteur d'évaluation complet (`scripts/audit/c3b_evaluate.py`, parties 1 et 2 : comparateur § C.3-C.5, λ du préfixe tenus fixes, procédure § F.2), puis `c3_verdict.py chain` **complète** (six étapes) sur sa sortie ; `--campaign C3B_LOT4B`, étiquette d'instrument (dette 21 intacte) ; **aucune lecture économique, issue non lue** | `grok_grid_atr_adaptive_v4` ; **chemin sélection seul** : le retenu de `selection.json` du lot 3, consommé mécaniquement, deux exécutions ; aucune identité, paire, métrique ni issue ne remonte au dépôt | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; évaluation `[T = 2020-09-11T21:36Z, fin = 2020-12-28T00:00Z]` (`n_jours` 107,1, 108 rendements), bougies du comparateur lues sur `[T, fin]` pour la seule paire évaluée, amorçage `≥ T − 400 j`, **hors campagne** (garde-fou 6) | branche `feat/c3b-producteur`, exécuté au commit de cette entrée (SHA consigné dans la provenance) ; métriques v2, `replay_version` 2 ; protocole v2.1 `9300f4e5…` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6) ; `min_order_usdc 5.0` (inerte sur le grid) | producteur : deux exécutions en code 0, `evaluation.json` identique au bit, trois autres artefacts identiques, interpréteur du clone ; chaîne : `anchor`, `entry`, `benchmark`, `select`, `continuity` et `verdict` en code 0, `chain.verified` vrai, **zéro violation, zéro violation au rejeu** ; `alembic` inchangé ; `validé` et `réfuté` inatteignables par construction (provenance `unknown`) | aucune décision économique ; la conformité du § F.2 conditionne la porte § L.5 et le STOP avant merge de C3b | `results/c3b_producteur/eval_f2_conformite/` (`ATTENDU.md`, rapport au commit de preuves) |
 
+### Issue de l'entrée 17 (inscrite après le run — aucune lecture économique, issue non lue)
+
+- **Lancement** : un seul, au `459190a` (pilote sha256 `9b401797…`, consigné dans `status.txt`), le 2026-09-28 de
+  14:48:51 à 14:49:13Z, sur le serveur, en lecture seule assertée par Postgres.
+- **CI** : il a eu lieu après la CI verte sur `459190a`, dès la tentative 1.
+- **Archive** : `~/archive/c3b_lot4b_20260928/` (sha256 `6c02f438…`), vérifiée par codes seulement avant le
+  `rm -rf ~/runs/c3b_eval4b` (14:50:01Z).
+- **Rien n'a été lu du chemin sélection** hors de `status.txt`.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 17 | Producteur, chemin sélection : **code 0 aux deux exécutions** (événement `evaluated`) ; `evaluation.json` identique au bit, trois autres artefacts identiques, interpréteur du clone. Les sorties sont archivées, non lues | `results/c3b_producteur/eval_f2_conformite/server/status.txt` |
+| 17 | Chaîne complète : `anchor`, `entry`, `benchmark`, `select` et `continuity` en 0, `verdict` en 0 ; **`chain.verified` vrai, 0 violation, 0 violation au rejeu**. L'issue publiée **n'est pas lue** (`validé` et `réfuté` sont inatteignables par construction : provenance `unknown`) | `server/status.txt`, `server/verify_attendu.out` |
+| 17 | `alembic` `c3bd1e7a0001` inchangé ; attendu tenu sur ses 5 items vérifiables (le 6ᵉ, les bornes, repose sur des appuis déclarés) | `server/alembic_{before,after}.txt` |
+| 17 | Défauts de ma part : au STOP 1, un premier passage de mutants avait 4 survivants, tous du côté des tests (monde de test trop court, candidat en premier bloc, données non discriminantes), corrigés, puis 35 rouges sur 35 ; le chemin de l'archive du lot 3 était faux dans le pilote, vu avant le lancement | `results/c3b_producteur/eval_f2_conformite/README.md` § 3, § 6 |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme

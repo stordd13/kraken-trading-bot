@@ -1,0 +1,6 @@
+## MYPYPATH=src:scripts:scripts/audit mypy --strict --follow-imports=silent scripts/audit/c3b_evaluate.py
+Success: no issues found in 1 source file
+## MYPYPATH=src:scripts:scripts/audit mypy --strict --follow-imports=silent scripts/audit/c3b_common.py
+Success: no issues found in 1 source file
+## MYPYPATH=src:scripts:scripts/audit mypy --strict --follow-imports=silent scripts/audit/_common.py
+Success: no issues found in 1 source file

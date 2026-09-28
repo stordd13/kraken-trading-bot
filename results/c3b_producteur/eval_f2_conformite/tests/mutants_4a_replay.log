@@ -1,0 +1,181 @@
+originaux : scripts/audit/c3b_common.py 64d1c3f177e4377109d7702419ec87e4f0d3c5f6b2c67f4b79886d64907479cf ; scripts/audit/c3b_evaluate.py 96f3c401d128b48e9e1aa36ce7a7bc6b3409e5994db31cbb0a296aacba98eb92
+témoin (aucun mutant) : code 0 — 222 passed in 18.65s
+M01 [c3b_common.py] E10 extrait : divergence non vue (rouge attendu aux lots 3 ET 4a) : ROUGE — 3 failed, 219 passed in 18.83s — 19.4 s, restauré oui
+    rouge : test_c3b_common.py::test_a_router_entry_under_the_class_name_breaks_passed_params
+    rouge : test_c3b_evaluate.py::test_a_passed_params_divergence_is_3
+    rouge : test_c3b_prefix.py::test_a_passed_params_divergence_is_3
+M02 [c3b_common.py] garde de désignation ouverte par CAMPAIGN_UNLOCK : ROUGE — 1 failed, 221 passed in 18.81s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_on_the_campaign_window_is_refused_even_unlocked
+M03 [c3b_common.py] garde de désignation en >= (borne) : ROUGE — 2 failed, 220 passed in 18.80s — 19.4 s, restauré oui
+    rouge : test_c3b_common.py::test_designation_is_allowed_up_to_the_campaign_start[fin-a-la-borne]
+    rouge : test_c3b_evaluate.py::test_a_designation_window_ending_on_the_campaign_start_passes_the_guard
+M04 [c3b_evaluate.py] preuve à plat lue après run : ROUGE — 44 failed, 178 passed in 17.89s — 18.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_before_the_campaign_writes_the_full_artefact_set
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T-5min]
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T]
+    rouge : test_c3b_evaluate.py::test_a_liquidation_outside_the_final_daily_cell_is_3
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[2e-06-3]
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[5e-07-0]
+    rouge : test_c3b_evaluate.py::test_a_passed_params_divergence_is_3
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[explosion]
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[ruine]
+    rouge : test_c3b_evaluate.py::test_benchmark_eval_is_what_comparator_block_reads
+    rouge : test_c3b_evaluate.py::test_cash_different_from_C_is_3
+    rouge : test_c3b_evaluate.py::test_comparable_is_the_recomputed_conjunction
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[absent]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[end]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[longueur]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[start]
+    rouge : test_c3b_evaluate.py::test_evaluation_candles_are_read_on_T_fin_for_the_evaluated_pair_only
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_evaluator_events_never_carry_identity_pair_or_metric
+    rouge : test_c3b_evaluate.py::test_first_fill_at_is_the_smallest_trade_stamp
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[_strategy_obj]
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[active_buy_orders]
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[active_sell_orders]
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[btc_held]
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[trades]
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+    rouge : test_c3b_evaluate.py::test_returns_config_is_recompute_daily_of_the_exported_equity
+    rouge : test_c3b_evaluate.py::test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefact
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefacts
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_has_the_fixture_form
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_is_read_before_run
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+    rouge : test_c3b_evaluate.py::test_the_instrument_contract_is_that_of_the_text
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+    rouge : test_c3b_evaluate.py::test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain
+    rouge : test_c3b_evaluate.py::test_three_series_of_different_lengths_are_3_before_any_draw
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical_on_every_artefact
+M05 [c3b_evaluate.py] run appelé deux fois : ROUGE — 8 failed, 214 passed in 18.33s — 18.9 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_returns_config_is_recompute_daily_of_the_exported_equity
+    rouge : test_c3b_evaluate.py::test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefact
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefacts
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical_on_every_artefact
+M06 [c3b_evaluate.py] cash comparé en chaînes : ROUGE — 41 failed, 181 passed in 17.65s — 18.2 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_before_the_campaign_writes_the_full_artefact_set
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T-5min]
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T]
+    rouge : test_c3b_evaluate.py::test_a_liquidation_outside_the_final_daily_cell_is_3
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[2e-06-3]
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[5e-07-0]
+    rouge : test_c3b_evaluate.py::test_a_passed_params_divergence_is_3
+    rouge : test_c3b_evaluate.py::test_an_engine_failure_is_3_and_writes_nothing
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[explosion]
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[ruine]
+    rouge : test_c3b_evaluate.py::test_benchmark_eval_is_what_comparator_block_reads
+    rouge : test_c3b_evaluate.py::test_comparable_is_the_recomputed_conjunction
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[absent]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[end]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[longueur]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[start]
+    rouge : test_c3b_evaluate.py::test_evaluation_candles_are_read_on_T_fin_for_the_evaluated_pair_only
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_evaluator_events_never_carry_identity_pair_or_metric
+    rouge : test_c3b_evaluate.py::test_first_fill_at_is_the_smallest_trade_stamp
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+    rouge : test_c3b_evaluate.py::test_returns_config_is_recompute_daily_of_the_exported_equity
+    rouge : test_c3b_evaluate.py::test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefact
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefacts
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_has_the_fixture_form
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_is_read_before_run
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+    rouge : test_c3b_evaluate.py::test_the_instrument_contract_is_that_of_the_text
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+    rouge : test_c3b_evaluate.py::test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain
+    rouge : test_c3b_evaluate.py::test_three_series_of_different_lengths_are_3_before_any_draw
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical_on_every_artefact
+    rouge : test_c3b_evaluate.py::test_what_the_engine_stores_for_C[1000-1000.0-1000]
+    rouge : test_c3b_evaluate.py::test_what_the_engine_stores_for_C[1000.50-1000.5-1000.50]
+M07 [c3b_evaluate.py] cash comparé en float : ROUGE — 1 failed, 221 passed in 18.63s — 19.2 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_capital_the_float_cannot_carry_is_3
+M08 [c3b_evaluate.py] cash exporté depuis le moteur : ROUGE — 4 failed, 218 passed in 18.73s — 19.3 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_has_the_fixture_form
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_is_read_before_run
+    rouge : test_c3b_evaluate.py::test_what_the_engine_stores_for_C[1000-1000.0-1000]
+    rouge : test_c3b_evaluate.py::test_what_the_engine_stores_for_C[1000.50-1000.5-1000.50]
+M09 [c3b_evaluate.py] ordres de vente ignorés : ROUGE — 1 failed, 221 passed in 18.80s — 19.3 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[active_sell_orders]
+M10 [c3b_evaluate.py] stratégie construite ignorée : ROUGE — 1 failed, 221 passed in 18.76s — 19.3 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[_strategy_obj]
+M11 [c3b_evaluate.py] inventaire avant run ignoré : ROUGE — 1 failed, 221 passed in 18.73s — 19.3 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[btc_held]
+M12 [c3b_evaluate.py] first_fill_at par max : ROUGE — 4 failed, 218 passed in 18.78s — 19.3 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T-5min]
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T]
+    rouge : test_c3b_evaluate.py::test_first_fill_at_is_the_smallest_trade_stamp
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+M13 [c3b_evaluate.py] remplissage à T accepté : ROUGE — 1 failed, 221 passed in 18.84s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T]
+M14 [c3b_evaluate.py] identité net_pnl non contrôlée : ROUGE — 1 failed, 221 passed in 18.74s — 19.3 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[2e-06-3]
+M15 [c3b_evaluate.py] cellule d'estampille non contrôlée : ROUGE — 1 failed, 221 passed in 18.66s — 19.2 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_liquidation_outside_the_final_daily_cell_is_3
+M16 [c3b_evaluate.py] exemption trades == 0 retirée : ROUGE — 1 failed, 221 passed in 18.93s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+M17 [c3b_evaluate.py] equity_daily.start non contrôlé : ROUGE — 1 failed, 221 passed in 18.98s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[start]
+M18 [c3b_evaluate.py] equity_daily.end non contrôlé : ROUGE — 1 failed, 221 passed in 18.84s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[end]
+M19 [c3b_evaluate.py] longueur de la grille non contrôlée : ROUGE — 1 failed, 221 passed in 18.84s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[longueur]
+M20 [c3b_evaluate.py] equity_daily absent non contrôlé : ROUGE — 1 failed, 221 passed in 18.89s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[absent]
+M21 [c3b_evaluate.py] period.start faux : ROUGE — 2 failed, 220 passed in 18.83s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+M22 [c3b_evaluate.py] artefact déclaré synthétique : ROUGE — 2 failed, 220 passed in 19.16s — 19.7 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+M23 [c3b_evaluate.py] T de l'ancrage non recoupé : ROUGE — 1 failed, 221 passed in 19.01s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_an_anchor_whose_T_pairs_or_window_differ_is_3[anchor]
+M24 [c3b_evaluate.py] empreinte du manifeste de l'ancrage non recoupée : ROUGE — 1 failed, 221 passed in 19.03s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_an_anchor_of_another_manifest_is_refused
+M25 [c3b_evaluate.py] empreintes de la sélection non recoupées : ROUGE — 2 failed, 220 passed in 19.03s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_selection_of_another_manifest_or_anchor_is_refused[anchor]
+    rouge : test_c3b_evaluate.py::test_a_selection_of_another_manifest_or_anchor_is_refused[manifest]
+M26 [c3b_evaluate.py] tête du classement non recoupée : ROUGE — 1 failed, 221 passed in 18.96s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_retained_block_disagreeing_with_the_ranking_head_is_3
+M27 [c3b_evaluate.py] identité du retenu non dérivée : ROUGE — 1 failed, 221 passed in 19.15s — 19.7 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_retained_identity_not_derived_from_its_fields_is_3
+M28 [c3b_evaluate.py] retenu hors univers non vu : ROUGE — 1 failed, 221 passed in 19.08s — 19.7 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_retained_candidate_outside_the_universe_is_3
+M29 [c3b_evaluate.py] sélection vide qui continue : ROUGE — 2 failed, 220 passed in 18.95s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_an_empty_selection_is_nothing_to_evaluate
+    rouge : test_c3b_evaluate.py::test_the_chain_upstream_feeds_the_evaluation
+M30 [c3b_evaluate.py] garde de désignation non appelée : ROUGE — 1 failed, 221 passed in 18.98s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_on_the_campaign_window_is_refused_even_unlocked
+M31 [c3b_evaluate.py] clé en trop dans evaluation_run.json : ROUGE — 2 failed, 220 passed in 18.97s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+M32 [c3b_evaluate.py] paire dans le journal : ROUGE — 1 failed, 221 passed in 18.97s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_evaluator_events_never_carry_identity_pair_or_metric
+M33 [c3b_evaluate.py] E10 non appliqué à l'évaluation : ROUGE — 1 failed, 221 passed in 19.03s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_passed_params_divergence_is_3
+M34 [c3b_evaluate.py] .get( de dictionnaire (discipline de source) : ROUGE — 1 failed, 221 passed in 19.07s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_the_evaluator_never_coerces_nor_opens_a_database_by_itself
+M35 [c3b_evaluate.py] .env chargé à l'import : ROUGE — 1 failed, 221 passed in 18.98s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_importing_the_evaluator_changes_nothing
+M36 [c3b_evaluate.py] tolérance hors texte : ROUGE — 2 failed, 220 passed in 19.01s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[2e-06-3]
+    rouge : test_c3b_evaluate.py::test_the_tolerance_is_that_of_the_text
+survivants : aucun
+rc=0

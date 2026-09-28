@@ -1,0 +1,18 @@
+# suite complète locale — 2026-09-28T14:23:11Z — HEAD a0d452d + arbre de travail du lot 4b
+# commande : poetry run pytest -q -p no:cacheprovider -k "not test_determinism_parallel_vs_serial_full"
+........................................................................ [ 88%]
+........................................................................ [ 90%]
+........................................................................ [ 92%]
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+........................................................................ [ 99%]
+..............................                                           [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:99: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:108: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:114: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+3264 passed, 6 skipped, 24 deselected in 463.72s (0:07:43)
+rc=0
