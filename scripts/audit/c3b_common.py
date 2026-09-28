@@ -449,30 +449,39 @@ def export_engine(
     )
 
 
+def passed_params_problems(
+    effective: Any, *, params: Mapping[str, Any], pair: str, where: str
+) -> list[str]:
+    """E10 (écart du lot 3, partagé par le temps 3 depuis le lot 4a) : ``effective_params.passed_params == params
+    + pair``. Le moteur fusionne l'entrée ``strategies.yaml`` de même nom de classe (``backtest.py:2372-2382``) ;
+    sans ce contrôle, ``decision_timeframes`` pourrait décrire d'autres paramètres que ceux du run. Rend les
+    fautes, préfixées par ``where``."""
+    if not isinstance(effective, Mapping) or "passed_params" not in effective:
+        return [f"{where}.effective_params: bloc absent ou sans passed_params"]
+    expected = {**params, "pair": pair}
+    if effective["passed_params"] != expected:
+        return [
+            f"{where}.effective_params.passed_params {effective['passed_params']!r} != paramètres du "
+            f"manifeste + paire {expected!r}"
+        ]
+    return []
+
+
 def entry_controls(
     entry: Mapping[str, Any], *, manifest: cc.Manifest, anchor: datetime
 ) -> list[str]:
     """Contrôles internes d'une entrée exportée (code 3), aucun n'arbitre une clause de la chaîne :
 
-    * ``effective_params.passed_params == params + pair`` : le moteur fusionne l'entrée ``strategies.yaml``
-      de même nom de classe (``backtest.py:2372-2382``) ; sans ce contrôle, ``decision_timeframes`` pourrait
-      décrire d'autres paramètres que ceux du run ;
+    * E10, ``effective_params.passed_params == params + pair`` (``passed_params_problems``) ;
     * ``cc.liquidation_identities(...)["passed"]`` avec les coûts du manifeste et ``end = T`` : la preuve de D6
       tient sur la sortie du producteur (brief § Lot 3, test de conformité).
     """
     problems: list[str] = []
     identity = cc.candidate_identity(entry["strategy"], entry["pair"], entry["params"])
     where = f"observations.{identity[:16]}"
-    effective = entry["effective_params"]
-    if not isinstance(effective, Mapping) or "passed_params" not in effective:
-        problems.append(f"{where}.effective_params: bloc absent ou sans passed_params")
-    else:
-        expected = {**entry["params"], "pair": entry["pair"]}
-        if effective["passed_params"] != expected:
-            problems.append(
-                f"{where}.effective_params.passed_params {effective['passed_params']!r} != paramètres du "
-                f"manifeste + paire {expected!r}"
-            )
+    problems += passed_params_problems(
+        entry["effective_params"], params=entry["params"], pair=entry["pair"], where=where
+    )
     prefix = manifest.prefix_segment
     spread, slippage = manifest.pair_costs[entry["pair"]]
     try:
