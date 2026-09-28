@@ -435,6 +435,41 @@ def test_an_existing_unlock_file_unlocks(tmp_path: Path) -> None:
     assert c3bc.campaign_window_locked(*campaign, unlock=unlock) is False
 
 
+@pytest.mark.parametrize(
+    "end",
+    [
+        datetime(2021, 3, 1, 0, 0, 0, 1, tzinfo=UTC),
+        datetime(2026, 6, 29, tzinfo=UTC),
+        datetime(2026, 8, 3, tzinfo=UTC),
+    ],
+    ids=["fin-borne-plus-1us", "campagne", "apres-2026"],
+)
+def test_designation_is_forbidden_past_the_campaign_start_even_unlocked(
+    tmp_path: Path, end: datetime
+) -> None:
+    """Plan du lot 4a, point 1 (GO du 28/09) : la désignation mécanique ``--candidate`` est « refusée en code 2 dès
+    que la fenêtre touche la campagne — même garde que ``CAMPAIGN_UNLOCK`` » ; « une porte de désignation qui
+    existerait sur la fenêtre de campagne n'est pas une option ». Même prédicat que le garde-fou 6 (``end >
+    2021-03-01``, écart E6), **sans** la porte : un déverrouillage existant ouvre la fenêtre au retenu de
+    ``c3_select``, jamais à la désignation."""
+    unlock = tmp_path / "unlock"
+    unlock.write_text("test\n", encoding="utf-8")
+    start = datetime(2020, 6, 1, tzinfo=UTC)
+    assert c3bc.campaign_window_locked(start, end, unlock=unlock) is False
+    assert c3bc.designation_window_forbidden(end) is True
+
+
+@pytest.mark.parametrize(
+    "end",
+    [datetime(2021, 3, 1, tzinfo=UTC), datetime(2020, 12, 28, tzinfo=UTC)],
+    ids=["fin-a-la-borne", "conformite-2020"],
+)
+def test_designation_is_allowed_up_to_the_campaign_start(end: datetime) -> None:
+    """Borne du garde-fou 6 (écart E6) : une fenêtre qui finit au 2021-03-01 inclus est entièrement antérieure à la
+    campagne ; la désignation y est admise."""
+    assert c3bc.designation_window_forbidden(end) is False
+
+
 # ---------------------------------------------------------------------------
 # Paramètres (amendement 2) et séries de décision (décision 1)
 # ---------------------------------------------------------------------------

@@ -107,6 +107,14 @@ def campaign_window_locked(start: datetime, end: datetime, *, unlock: Path) -> b
     return end > CAMPAIGN_START and not unlock.exists()
 
 
+def designation_window_forbidden(end: datetime) -> bool:
+    """Garde de désignation (plan du lot 4a, point 1) : un candidat désigné mécaniquement (``c3b_evaluate
+    --candidate``) ne s'évalue que sur une fenêtre entièrement antérieure au 2021-03-01. Même prédicat que le
+    garde-fou 6 (``end > CAMPAIGN_START``, écart E6), **sans** la porte ``CAMPAIGN_UNLOCK`` : sur la fenêtre de
+    campagne, seul le retenu de ``c3_select`` s'évalue — une porte de désignation n'y existe pas."""
+    return end > CAMPAIGN_START
+
+
 def non_finite_paths(raw: Any, path: str = "") -> list[str]:
     """Chemins (``a.b[3].c``) des valeurs non finies d'un manifeste brut : flottant ``nan``/``inf``, ou chaîne
     qui se lit comme un décimal non fini (``"NaN"``, ``"inf"``). C'est ce que la canonicalisation de l'identité
