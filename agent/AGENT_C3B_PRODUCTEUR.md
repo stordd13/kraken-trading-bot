@@ -1,5 +1,58 @@
 # C3b — Producteur conforme au protocole C3 v2.1
 
+## Écarts constatés à la livraison (clôture du 28/09/2026)
+
+Ce brief reste **le document du chantier tel qu'il a été lancé** (25/09, `dev = e9c8faf`). Rien n'y est réécrit.
+
+- **Portée.** Là où les écarts ci-dessous contredisent le texte qui suit, ce sont eux qui priment.
+- **Sources.** Chaque écart nomme le lot qui l'a établi. Le rapport de chaque lot le consigne, dans
+  `results/c3b_producteur/{lot1_ab,lot2_writer,prefix_conformite,eval_conformite,eval_f2_conformite}/README.md`, ou,
+  pour le lot 3, dans son plan validé le 27/09.
+- **Pièce jointe.** `agent/c3b_spec_F2_v2.1.md` est inchangée.
+- **Rapport final** : `results/c3b_producteur/report.md`.
+
+| # | Écart | Ce que dit le brief | Ce qui est livré | Établi par |
+|---|---|---|---|---|
+| 1 | `parse_now`, `read_json` | table « Fichiers » : dans `_common.py`, « déplacés depuis `warmup_at.py` / `reconstruct_1w.py` » | restent dans `c3_common`, et les `c3b_*` importent `cc.parse_now` / `cc.read_json`. Ils n'étaient ni dans `warmup_at` ni dans `reconstruct_1w` : la liste close prime sur le libellé | lot 2, décision 3 |
+| 2 | `ReadOnlyDatabaseManager` | dans `_common.py` | dans `scripts/audit/_db.py` (`_db.ReadOnlyDatabaseManager`). `_common.py` est **pur** (stdlib) : `write_json_strict`, `git_provenance(script_relpath, *, root)`. `c3_common` ne charge jamais `krakenbot.core.database` | lot 2, décision 5 |
+| 3 | `_db.py` dans la liste close | absent de la liste « Nouveaux » | fichier neuf `scripts/audit/_db.py`, ajouté aussi à la liste ruff de la CI et au contrôle mypy strict. Le grep du critère de fin du lot 2 cherche la classe dans `_db.py` | lot 2, décision 5 |
+| 4 | `select.json` | § Lot 4a et diagramme : `select.json` | la sortie de `c3_select` s'appelle `selection.json` | lot 3 (README § 6) |
+| 5 | `stamp_cell` | § Lot 4a, contrôle interne : `stamp_cell` | c'est `c3_continuity.stamp_cell_block` | lot 3 (README § 6), 4a |
+| 6 | `--select` | § Lot 4a : `--select select.json` | flag `--selection`, comme `c3_verdict.py:1498`, exclusif de `--candidate` (voir la liste qui suit le tableau, 4a D2) | 4a, D5 |
+| 7 | `--benchmark` | nommé dans le diagramme de l'architecture, absent des § Lot 4a et 4b | `--benchmark` **obligatoire** : le `benchmark.json` de `c3_benchmark`, pour les λ du préfixe. Les empreintes du manifeste et de l'ancrage sont recoupées ; sur le chemin sélection, aussi celle que `c3_select` a enregistrée | 4b, E2 |
+| 8 | `evaluation_run.json` | § Lot 4a : artefact intermédiaire `evaluation_run.json` ; diagramme : `evaluation_run.json (provenance)` | `evaluation.json` **remplace** `evaluation_run.json`, et c'est le seul artefact d'évaluation que lit la chaîne. La provenance s'appelle `evaluation_run_provenance.json` | 4b, E1 (décision de Bruno au plan) |
+| 9 | Extraction E10 | code du lot 3 : ajouts seulement aux lots suivants | `passed_params_problems` est extrait d'`entry_controls` (`57b498e`, commit refactor séparé, messages identiques) et partagé par les lots 3 et 4. La liste close est amendée **pour cette seule extraction** | 4a, D1 (option 2, décision de Bruno) |
+| 10 | Décision 2 : l'issue n'est pas lue | § Lot 4b, critère de fin : « l'issue publiée est citée dans le rapport avec, en première ligne, … » | cette phrase est **rayée par cet écart** ; le texte d'origine reste plus bas, tel quel. L'issue n'est ni déclarée ni lue (détail sous le tableau) | décision de Bruno à la clôture du 4a (28/09), appliquée en 4b |
+| 11 | Lot 3, E3 : jours couverts | § Lot 3, `coverage.json` : `first_day`, `last_day`, sans convention | `covered_units`, `first_day` et `last_day` désignent des unités **couvertes**, lues par oracle (`cc.coverage_recompute` restreint à l'unité). Une série sans unité couverte est refusée (code 2). **Candidat v2.2** : dates nullables quand `covered_units == 0` | lot 3, plan (E2, E3) |
+| 12 | Lot 3, E5 : registre des variantes | non prévu | `c3_anchor` exige `--registry` et refuse une seconde racine dans un registre non vide. Le registre est donc **neuf**, sous la sortie du run, jamais `results/c3a_entry_validation/variants.json` | lot 3, plan (E5) |
+| 13 | Lot 3, E7 : résolution de la stratégie | § Lot 3 : refus de toute stratégie non grid | résolution par `_INNER_STRATEGY_CLASSES` (`multi_strategy_router.py`, fichier protégé, importé en lecture seule). Nom inconnu → 2 ; `NotImplementedError` → 2 ; `engine ≠ "grid"` → 2 | lot 3, plan (E7) |
+| 14 | 4b, E5 : comparateur non constructible | non prévu | refus 2 `comparator_not_buildable`, **avant le moteur**. **Candidat v2.2** : dans ce cas, `E_NO_BENCHMARK` est inatteignable par la chaîne, qui exige `returns_bench` | 4b, E5 (A1) |
+| 15 | 4b, E11 : « λ tenu fixe » | § Lot 4b : « λ lus dans `benchmark.json`, tenus fixes » | tenu **par construction côté producteur**, mutant « λ ré-estimé » rouge. La chaîne ne recoupe ni λ ni `returns_bench`, puisque `evaluation.json` ne porte ni λ ni bougies. **Candidat v2.2**, comme le recoupement `returns_config ← equity_daily` (ex-S-3) | 4b, E11 (A1) |
+| 16 | Capital représentable en `float` | § Lot 4a : exiger `usdc_balance == C` | la fabrique passe `float(C)`, argument de `run_p7_grid_search._engine`, et le moteur stocke `Decimal(str(float(C)))`. L'égalité se fait en `Decimal` numérique ; un `C` non représentable en `float` donne 3. **Contrainte à porter au manifeste de campagne** | 4a, D4 |
+
+**Détail de l'écart 10.** Ce qui remonte au dépôt :
+- `chain.verified` ;
+- les comptes de violations, dont ceux du rejeu ;
+- les codes des six étapes ;
+- l'égalité au bit d'`evaluation.json` entre deux exécutions ;
+- `alembic` inchangé.
+
+La conformité du 4b porte sur le chemin sélection seul. Ses sorties sont archivées, jamais versionnées, jamais
+ouvertes.
+
+**Autres écarts à la lettre du brief**, consignés aux rapports de lot, un par ligne :
+- **Lot 3, E4** : couverture lue sur `(début, T]` (grille de `coverage_recompute`), bougies sur `[début, T]`. Le brief
+  dit `[start, T]` pour les deux.
+- **Lot 3, E6** : garde-fou appliqué comme `end > 2021-03-01`, la lettre du brief. C'est plus strict que « touchant la
+  fenêtre de campagne ».
+- **Lot 3, E11** : un `ReadOnlyDatabaseManager` **par job**, fermé en `finally`. Le brief disait « par worker ».
+- **4a, D2** : `--candidate` (désignation mécanique hors campagne) et garde de désignation. La désignation est refusée
+  dès que la fenêtre dépasse le 2021-03-01, `CAMPAIGN_UNLOCK` ou non. Reconduite en 4b.
+- **4b, E3** : `candles_eval.json` porte la seule paire évaluée.
+- **4b, E7** : bougies et comparateur passent **avant** le moteur, comme X1 au lot 3.
+
+---
+
 Nouvel agent. **Plan mode** : tu proposes un plan par lot, il est validé avant la première ligne de code
 du lot. Cinq lots, **une session agent par lot**, chacun avec son critère de fin mécanique. Base en lecture
 seule partout (aucune écriture, aucune migration). Aucune modification de `scripts/backtest.py` ni des
