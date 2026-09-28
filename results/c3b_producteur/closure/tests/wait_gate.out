@@ -1,0 +1,17 @@
+2026-09-28T16:25:38Z poll=1 exit=pending lines=5 last=alembic_before=0 
+2026-09-28T16:30:39Z poll=2 exit=pending lines=6 last=combo0=0 junit=1/0/0/0 at=2026-09-28T16:29:14Z 
+2026-09-28T16:35:40Z poll=3 exit=pending lines=7 last=combo1=0 junit=1/0/0/0 at=2026-09-28T16:33:19Z 
+2026-09-28T16:40:41Z poll=4 exit=pending lines=12 last=combo6=0 junit=1/0/0/0 at=2026-09-28T16:40:16Z 
+2026-09-28T16:45:43Z poll=5 exit=pending lines=18 last=combo12=0 junit=1/0/0/0 at=2026-09-28T16:45:28Z 
+2026-09-28T16:50:44Z poll=6 exit=pending lines=20 last=combo14=0 junit=1/0/0/0 at=2026-09-28T16:47:09Z 
+2026-09-28T16:55:45Z poll=7 exit=pending lines=21 last=combo15=0 junit=1/0/0/0 at=2026-09-28T16:52:42Z 
+2026-09-28T17:00:47Z poll=8 exit=pending lines=22 last=combo16=0 junit=1/0/0/0 at=2026-09-28T16:58:16Z 
+2026-09-28T17:05:48Z poll=9 exit=pending lines=23 last=combo17=0 junit=1/0/0/0 at=2026-09-28T17:02:31Z 
+2026-09-28T17:10:49Z poll=10 exit=pending lines=24 last=combo18=0 junit=1/0/0/0 at=2026-09-28T17:07:47Z 
+2026-09-28T17:15:51Z poll=11 exit=pending lines=25 last=combo19=0 junit=1/0/0/0 at=2026-09-28T17:13:17Z 
+2026-09-28T17:20:52Z poll=12 exit=pending lines=26 last=combo20=0 junit=1/0/0/0 at=2026-09-28T17:17:19Z 
+2026-09-28T17:25:54Z poll=13 exit=pending lines=27 last=combo21=0 junit=1/0/0/0 at=2026-09-28T17:24:11Z 
+2026-09-28T17:30:55Z poll=14 exit=pending lines=27 last=combo21=0 junit=1/0/0/0 at=2026-09-28T17:24:11Z 
+2026-09-28T17:35:56Z poll=15 exit=pending lines=28 last=combo22=0 junit=1/0/0/0 at=2026-09-28T17:31:07Z 
+2026-09-28T17:40:58Z poll=16 exit=0 lines=37 last=end=2026-09-28T17:36:25Z 
+rc=0

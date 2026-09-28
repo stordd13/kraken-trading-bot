@@ -1,0 +1,224 @@
+# controle_diff — 2026-09-28T17:42:19Z
+# base ec7ffb827e2312026dadd96bf8bb03433aeb84a8 S fe82fe57f087c58cfc7292ff351976725e735169 HEAD fe82fe57f087c58cfc7292ff351976725e735169
+## 1. git diff --stat ec7ffb8..S
+ .github/workflows/ci.yml                           |    30 +-
+ CLAUDE.md                                          |    14 +-
+ PROJECT_CONTEXT.md                                 |   113 +-
+ ROADMAP.md                                         |    22 +-
+ agent/AGENT_C3B_PRODUCTEUR.md                      |    53 +
+ docs/RESEARCH_LOG.md                               |   102 +
+ results/INDEX.md                                   |     3 +-
+ .../c3b_producteur/closure/tests/docs_step1.out    |    39 +
+ results/c3b_producteur/closure/tests/docs_step1.sh |    90 +
+ results/c3b_producteur/eval_conformite/ATTENDU.md  |   187 +
+ results/c3b_producteur/eval_conformite/README.md   |   271 +
+ .../eval_conformite/server/alembic_after.txt       |     3 +
+ .../eval_conformite/server/alembic_before.txt      |     3 +
+ .../server/c3b_lot4a_server_20260928.tgz.sha256    |     1 +
+ .../eval_conformite/server/chain/admission.log     |     1 +
+ .../server/chain/benchmark_eval_synth.json         |    15 +
+ .../eval_conformite/server/chain/continuity.json   |   112 +
+ .../eval_conformite/server/chain/continuity.log    |    10 +
+ .../server/designated/run1/evaluation_run.json     |   197 +
+ .../designated/run1/evaluation_run_provenance.json |    88 +
+ .../designated/run2/evaluation_run_provenance.json |    88 +
+ .../server/designated_run1.extract.log             |     8 +
+ .../server/designated_run2.extract.log             |     8 +
+ .../eval_conformite/server/extract_logs.py         |    59 +
+ .../eval_conformite/server/files_versioned.sha256  |    16 +
+ .../eval_conformite/server/pilot_exit.txt          |     1 +
+ .../eval_conformite/server/run.extract.log         |    53 +
+ .../eval_conformite/server/run_c3b_evaluate.sh     |   227 +
+ .../eval_conformite/server/status.txt              |    19 +
+ .../eval_conformite/server/verify_attendu.out      |    10 +
+ .../eval_conformite/server/verify_attendu.py       |   254 +
+ .../eval_conformite/tests/mutants.log              |   136 +
+ .../eval_conformite/tests/mutants.py               |   305 +
+ .../eval_conformite/tests/mypy_audit.out           |     6 +
+ .../eval_conformite/tests/mypy_src.out             |   111 +
+ .../eval_conformite/tests/red_before_common.out    |     9 +
+ .../eval_conformite/tests/red_before_evaluate.out  |    86 +
+ .../tests/refactor_e10/entry_controls_probe.py     |    63 +
+ .../tests/refactor_e10/lot3_suites_after.out       |     4 +
+ .../tests/refactor_e10/lot3_suites_before.out      |     4 +
+ .../tests/refactor_e10/probe_after.out             |    19 +
+ .../tests/refactor_e10/probe_before.out            |    19 +
+ .../eval_conformite/tests/suite_commitA.out        |    11 +
+ .../eval_conformite/tests/suite_commitB.out        |    16 +
+ .../c3b_producteur/eval_f2_conformite/ATTENDU.md   |   174 +
+ .../c3b_producteur/eval_f2_conformite/README.md    |   334 +
+ .../eval_f2_conformite/server/alembic_after.txt    |     3 +
+ .../eval_f2_conformite/server/alembic_before.txt   |     3 +
+ .../server/c3b_lot4b_server_20260928.tgz.sha256    |     1 +
+ .../eval_f2_conformite/server/pilot_exit.txt       |     1 +
+ .../eval_f2_conformite/server/run_c3b_eval4b.sh    |   233 +
+ .../eval_f2_conformite/server/status.txt           |    17 +
+ .../eval_f2_conformite/server/verify_attendu.out   |     8 +
+ .../eval_f2_conformite/server/verify_attendu.py    |    74 +
+ .../eval_f2_conformite/tests/controle_diff.txt     |    27 +
+ .../eval_f2_conformite/tests/make_skeleton_4b.py   |    63 +
+ .../eval_f2_conformite/tests/mutants.log           |   248 +
+ .../eval_f2_conformite/tests/mutants.py            |   462 +
+ .../eval_f2_conformite/tests/mutants_4a_replay.log |   181 +
+ .../eval_f2_conformite/tests/mutants_pass1.log     |   229 +
+ .../eval_f2_conformite/tests/mypy_audit.out        |     6 +
+ .../eval_f2_conformite/tests/mypy_src.out          |   110 +
+ .../tests/red_before_a0d452d.out                   |    95 +
+ .../tests/red_before_skeleton.out                  |    79 +
+ .../eval_f2_conformite/tests/suite.out             |    18 +
+ .../eval_f2_conformite/tests/test_diff_4a.txt      |    97 +
+ results/c3b_producteur/lot1_ab/README.md           |    83 +
+ results/c3b_producteur/lot1_ab/capture.sh          |    12 +
+ .../lot1_ab/compare_grid_A_bybit_strict.md         |    42 +
+ .../lot1_ab/compare_grid_A_bybit_strict.out        |    44 +
+ .../lot1_ab/compare_grid_quick_bybit_strict.md     |    42 +
+ .../lot1_ab/compare_grid_quick_bybit_strict.out    |    44 +
+ .../lot1_ab/compare_signal_A_bybit_strict.md       |    42 +
+ .../lot1_ab/compare_signal_A_bybit_strict.out      |    44 +
+ .../lot1_ab/grid_quick_bybit_c3b.json              | 16414 +++++
+ .../lot1_ab/grid_quick_bybit_ref.json              | 16414 +++++
+ results/c3b_producteur/lot1_ab/mutants.log         |    10 +
+ results/c3b_producteur/lot1_ab/mutants.py          |    96 +
+ .../c3b_producteur/lot1_ab/signal_A_bybit_c3b.json | 29203 +++++++++
+ .../c3b_producteur/lot1_ab/signal_A_bybit_ref.json | 29203 +++++++++
+ results/c3b_producteur/lot2_writer/README.md       |   241 +
+ .../lot2_writer/compare_before_after.out           |     6 +
+ results/c3b_producteur/lot2_writer/compare_sha.py  |    63 +
+ .../lot2_writer/controles_fin_de_lot.out           |    64 +
+ results/c3b_producteur/lot2_writer/mutants.log     |    36 +
+ results/c3b_producteur/lot2_writer/mutants.py      |   252 +
+ .../mutants_run1_test_non_hermetique.log           |    36 +
+ results/c3b_producteur/lot2_writer/probe.sh        |    21 +
+ results/c3b_producteur/lot2_writer/probe_writer.py |   140 +
+ .../lot2_writer/red_before_part1.out               |    18 +
+ .../lot2_writer/red_before_part2.out               |    64 +
+ results/c3b_producteur/lot2_writer/sha_after.json  | 26562 ++++++++
+ results/c3b_producteur/lot2_writer/sha_after.out   |    24 +
+ .../c3b_producteur/lot2_writer/sha_after.state.txt |     5 +
+ results/c3b_producteur/lot2_writer/sha_before.json | 26572 ++++++++
+ results/c3b_producteur/lot2_writer/sha_before.out  |    26 +
+ .../lot2_writer/sha_before.state.txt               |     5 +
+ .../lot2_writer/sha_before_twin.json               | 26572 ++++++++
+ .../c3b_producteur/lot2_writer/sha_before_twin.out |    26 +
+ .../lot2_writer/sha_before_twin.state.txt          |     5 +
+ .../c3b_producteur/lot2_writer/suite_commit1.out   |    24 +
+ .../c3b_producteur/lot2_writer/suite_commit2.out   |    20 +
+ .../c3b_producteur/prefix_conformite/ATTENDU.md    |    75 +
+ results/c3b_producteur/prefix_conformite/README.md |   196 +
+ .../c3b_producteur/prefix_conformite/manifest.json |   340 +
+ .../prefix_conformite/server/alembic_after.txt     |     3 +
+ .../prefix_conformite/server/alembic_before.txt    |     3 +
+ .../server/c3b_lot3_server_20260928.tgz.sha256     |     1 +
+ .../prefix_conformite/server/chain/anchor.json     |    74 +
+ .../prefix_conformite/server/chain/anchor.log      |     6 +
+ .../prefix_conformite/server/chain/benchmark.json  |  1443 +
+ .../prefix_conformite/server/chain/benchmark.log   |     6 +
+ .../prefix_conformite/server/chain/entry.json      |   138 +
+ .../prefix_conformite/server/chain/entry.log       |    14 +
+ .../prefix_conformite/server/chain/entry.md        |    28 +
+ .../prefix_conformite/server/chain/select.log      |    20 +
+ .../prefix_conformite/server/chain/selection.json  |  1326 +
+ .../prefix_conformite/server/chain/selection.md    |    22 +
+ .../prefix_conformite/server/chain/variants.json   |    20 +
+ .../prefix_conformite/server/extract_logs.py       |    54 +
+ .../prefix_conformite/server/files.sha256          |    50 +
+ .../prefix_conformite/server/run.extract.log       |   178 +
+ .../prefix_conformite/server/run1.extract.log      |    55 +
+ .../prefix_conformite/server/run1/coverage.json    | 64928 +++++++++++++++++++
+ .../server/run1/observations.json                  |  5819 ++
+ .../prefix_conformite/server/run1/prefix_run.json  |   218 +
+ .../prefix_conformite/server/run2.extract.log      |    55 +
+ .../prefix_conformite/server/run2/prefix_run.json  |   218 +
+ .../prefix_conformite/server/run_c3b_prefix.sh     |   157 +
+ .../prefix_conformite/server/status.txt            |    17 +
+ .../prefix_conformite/server/verify_attendu.out    |    32 +
+ .../prefix_conformite/server/verify_attendu.py     |   139 +
+ .../prefix_conformite/tests/make_skeleton.py       |    54 +
+ .../prefix_conformite/tests/mutants.log            |    49 +
+ .../prefix_conformite/tests/mutants.py             |   373 +
+ .../prefix_conformite/tests/mypy_src.out           |   110 +
+ .../prefix_conformite/tests/red_before.out         |   354 +
+ .../prefix_conformite/tests/suite.out              |    54 +
+ results/c3b_producteur/report.md                   |   260 +
+ scripts/audit/_common.py                           |   129 +
+ scripts/audit/_db.py                               |    39 +
+ scripts/audit/c3_common.py                         |     5 +-
+ scripts/audit/c3b_common.py                        |   897 +
+ scripts/audit/c3b_evaluate.py                      |  1175 +
+ scripts/audit/c3b_prefix.py                        |   526 +
+ scripts/audit/reconstruct_1w.py                    |    41 +-
+ scripts/audit/warmup_at.py                         |    53 +-
+ skills/backtest.md                                 |   100 +
+ src/krakenbot/strategies/base.py                   |    15 +-
+ .../strategies/grok_grid_atr_adaptive_v4.py        |    78 +-
+ tests/test_scripts/test_audit_common.py            |   495 +
+ tests/test_scripts/test_c3_common.py               |     4 +-
+ tests/test_scripts/test_c3_verdict.py              |     5 +-
+ tests/test_scripts/test_c3b_common.py              |  1250 +
+ tests/test_scripts/test_c3b_evaluate.py            |  2004 +
+ tests/test_scripts/test_c3b_prefix.py              |   739 +
+ .../test_grid_v4_decision_timeframes.py            |   247 +
+ 157 files changed, 262401 insertions(+), 114 deletions(-)
+## commits ec7ffb8..S
+fe82fe5 docs(claude): CLAUDE.md — C3b paquet 1 clos ; suite : v2.2, puis manifeste
+16f5eea docs(results): C3b — rapport final, INDEX, préalable « producteur conforme » levé
+c42de07 docs(skills): backtest.md § « Producteur C3b »
+05aa4cd docs(roadmap): C3b paquet 1 clos ; v2.2 puis manifeste
+2126394 docs(context): PROJECT_CONTEXT — C3b paquet 1 clos, dette 22 fermée, listes de clôture
+2458cc4 docs(agent): brief C3b corrigé après livraison
+d351b36 docs(results): C3b lot 4b — conformité § F.2
+459190a docs(research): entrée conformité § F.2
+3740c40 feat(audit): c3b_evaluate — comparateur § C.5, procédure § F.2 rejouable (C3b lot 4b)
+a0d452d docs(results): C3b lot 4a — conformité évaluation
+85c8db7 docs(research): entrée conformité évaluation
+527e5ae feat(audit): c3b_evaluate — run unique, flat_start_proof, first_fill_at (C3b lot 4a)
+57b498e refactor(audit): passed_params_problems extrait d'entry_controls (E10 partagé lots 3-4)
+4d5eb46 docs(results): C3b lot 3 — conformité préfixe
+6509737 docs(research): ligne RESEARCH_LOG conformité
+feb5a82 feat(audit): c3b_prefix — observations, couverture, bougies (C3b lot 3)
+8f7d7a1 feat(audit): c3b_common — fabrique moteur et couche d'export (C3b lot 3)
+0a6c33e docs(results): C3b lot 2 — état CI constaté par l'API publique
+75d9a51 docs(results): C3b lot 2 — inventaire writer, rouge-avant, mutants
+c61793f ci: ruff sur les scripts d'audit C3
+6953fbc fix(audit): write_json strict — un type non JSON est une erreur nommée (dette 22)
+02360db refactor(audit): _common.py partagé (git_provenance, ReadOnlyDatabaseManager)
+f4b3e33 docs(results): C3b lot 1 — compare-ab --strict, trois runs de référence
+10ed8d8 feat(strategies): decision_timeframes classmethod, refus du non-booléen (C3b lot 1)
+files_in_closed_list=0
+named_paths_empty=0
+c3_tests_empty_except_two=0
+# tests/test_scripts/test_c3_common.py touché par : 6953fbc (+2 -2)
+test_c3_common_only_6953fbc=0
+# tests/test_scripts/test_c3_verdict.py touché par : 6953fbc (+4 -1)
+test_c3_verdict_only_6953fbc=0
+src_only_lot1=0
+## index vs S
+results/c3b_producteur/closure/gate_L5/README.md
+results/c3b_producteur/closure/gate_L5/alembic_after.txt
+results/c3b_producteur/closure/gate_L5/alembic_before.txt
+results/c3b_producteur/closure/gate_L5/c3b_gate_server_20260928.tgz.sha256
+results/c3b_producteur/closure/gate_L5/pilot_exit.txt
+results/c3b_producteur/closure/gate_L5/pytest_summary.txt
+results/c3b_producteur/closure/gate_L5/run_c3b_gate.sh
+results/c3b_producteur/closure/gate_L5/status.txt
+results/c3b_producteur/closure/tests/archive_gate.out
+results/c3b_producteur/closure/tests/archive_gate.sh
+results/c3b_producteur/closure/tests/ci_status.sh
+results/c3b_producteur/closure/tests/ci_status_S.out
+results/c3b_producteur/closure/tests/controle_diff.out
+results/c3b_producteur/closure/tests/controle_diff.sh
+results/c3b_producteur/closure/tests/fetch_gate.out
+results/c3b_producteur/closure/tests/fetch_gate.sh
+results/c3b_producteur/closure/tests/launch_gate.out
+results/c3b_producteur/closure/tests/launch_gate.sh
+results/c3b_producteur/closure/tests/mypy_gold.out
+results/c3b_producteur/closure/tests/mypy_gold.sh
+results/c3b_producteur/closure/tests/preflight_server.out
+results/c3b_producteur/closure/tests/preflight_server.sh
+results/c3b_producteur/closure/tests/suite_locale.out
+results/c3b_producteur/closure/tests/suite_locale.sh
+results/c3b_producteur/closure/tests/wait_gate.out
+results/c3b_producteur/closure/tests/wait_gate.sh
+gate_commit_closure_only=0
+gate_commit_no_code=0
+rc=0
