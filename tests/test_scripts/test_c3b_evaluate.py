@@ -1,14 +1,18 @@
-"""``scripts/audit/c3b_evaluate.py`` — le producteur, temps 3 (partie 1) : run unique et preuves § B (C3b lot 4a).
+"""``scripts/audit/c3b_evaluate.py`` — le producteur, temps 3 : run unique et preuves § B (C3b lot 4a), comparateur
+d'évaluation et procédure § F.2 rejouable (C3b lot 4b).
 
-Brief : ``agent/AGENT_C3B_PRODUCTEUR.md`` § « Lot 4a » ; plan du lot validé le 2026-09-28 (GO de Bruno, trois
-amendements). Les attendus viennent du brief, du protocole (§ B.2, § B.4, § C.3, § L.1) et de la chaîne elle-même,
-appelée en processus sur la sortie du producteur (``c3_anchor``, ``cc.evaluation_admission``, ``c3_continuity``) —
-jamais de l'implémentation.
+Brief : ``agent/AGENT_C3B_PRODUCTEUR.md`` § « Lot 4a » et § « Lot 4b » ; plans validés le 2026-09-28 (GO de Bruno,
+avec amendements). Les attendus viennent du brief, du protocole (§ B.2, § B.4, § C.3-C.5, § F.2, § L.1), de la
+procédure § F.2 écrite depuis le texte dans ``test_c3_common.py`` (``f2_procedure``) et de la chaîne elle-même,
+appelée en processus sur la sortie du producteur (``c3_anchor``, ``cc.evaluation_admission``, ``c3_continuity``,
+``c3_verdict``) — jamais de l'implémentation.
 
 **Herméticité construite, comme au lot 3** : une fixture autouse remplace ``_db.ReadOnlyDatabaseManager`` (dans
 ``c3b_evaluate`` et ``c3b_prefix``) par un bouchon qui n'ouvre jamais de session, coupe ``.env``, fait lever les
 lectures en base de ``c3b_common`` et les trois chargeurs du moteur tant qu'un test ne les remplace pas, et pointe
-``CAMPAIGN_UNLOCK`` vers un chemin absent. **Aucun test base.**
+``CAMPAIGN_UNLOCK`` vers un chemin absent. **Aucun test base.** Les bougies ``[T, fin]`` du comparateur sont servies
+par ``tp.install_database`` sur le marché synthétique ; ``benchmark.json`` (λ du préfixe) est **simulé conforme** à ce
+que ``c3_benchmark`` écrit (``write_benchmark``).
 
 Deux moteurs : un **bouchon** (``StubEngine``) qui compte ses ``run`` et mute tout son état dans ``run`` — une lecture
 après ``run`` voit un autre état —, et dont la sortie saine est conforme au contrat (elle passe l'admission et
@@ -43,9 +47,11 @@ sys.path.insert(0, str(_PROJECT_ROOT / "scripts" / "audit"))
 sys.path.insert(0, str(_PROJECT_ROOT / "tests"))
 
 import c3_anchor as ca
+import c3_benchmark as cb
 import c3_common as cc
 import c3_continuity as ccont
 import c3_select as cs
+import c3_verdict as cv
 import c3b_common as c3bc
 import c3b_evaluate as evaluate
 import c3b_prefix as prefix
@@ -58,9 +64,6 @@ from test_scripts import test_c3b_prefix as tp
 NOW = tp.NOW
 T = pc.ANCHOR
 FIN = pc.WINDOW_END
-#: Brief § Lot 4b : les clés que la partie 2 ajoute à l'artefact d'évaluation (§ F.2) — absentes de la partie 1.
-F2_KEYS = frozenset({"returns_config", "returns_bench", "environment", "B", "replications"})
-F2_METRICS = frozenset({"cagr_pct", "delta_dd"})
 
 
 @pytest.fixture(autouse=True)
@@ -92,6 +95,7 @@ class World:
     manifest_path: Path
     anchor_path: Path
     manifest: cc.Manifest
+    benchmark_path: Path
 
     @property
     def btc(self) -> cc.Candidate:
@@ -101,8 +105,147 @@ class World:
         )[0]
 
 
+#: Les λ du préfixe du candidat désigné dans ``benchmark.json`` simulé : non dyadiques, distincts entre eux et de ceux
+#: des autres identités (``OTHER_LAMBDAS``), et **choisis pour que la conversion se voie** : sur la NAV du monde court,
+#: ``Decimal(λ)`` au lieu de ``Decimal(str(λ))`` (``c3_benchmark.py:500``) change les rendements au bit pour 11 valeurs
+#: de λ sur 999 au pas 0,001 (mesuré au passage des mutants, M10), dont 0,168 et 0,336 ; pas pour 0,123 ni 0,456.
+LAMBDAS = {"dd": 0.168, "sigma": 0.336}
+OTHER_LAMBDAS = {"dd": 0.9, "sigma": 0.8}
+
+
+def benchmark_block(
+    candidate: cc.Candidate,
+    *,
+    lambdas: Mapping[str, float] = OTHER_LAMBDAS,
+    estimable: bool = True,
+) -> dict[str, Any]:
+    """Un bloc candidat **aux quinze clés** de ``c3_benchmark.candidate_block`` (``c3_benchmark.py:434-507``) :
+    ``estimable`` avec ses deux ``λ`` et ses deux appariements, ou ``NOT_ESTIMABLE`` au premier gate ``λ_dd`` (λ nuls,
+    ``F_NOT_ESTIMABLE``). Le producteur n'en lit que ``pair``, ``estimable`` et les deux ``λ`` ; les autres valeurs
+    sont neutres."""
+
+    def match(name: str) -> dict[str, Any]:
+        return {
+            "lambda": lambdas[name] if estimable else None,
+            "residual": 0.0 if estimable else None,
+            "crossings": 1,
+            "value_at_lambda": 1.0,
+            "note": None if estimable else "aucun croisement dans [0, 1]",
+            "estimable": estimable,
+        }
+
+    return {
+        "pair": candidate.pair,
+        "target_dd": 1.0,
+        "target_sigma": 0.01,
+        "cagr_pct": 5.0,
+        "estimable": estimable,
+        "first_failed": None if estimable else "λ_dd",
+        "reason": None if estimable else "F_NOT_ESTIMABLE",
+        "lambda_dd": lambdas["dd"] if estimable else None,
+        "lambda_sigma": lambdas["sigma"] if estimable else None,
+        "cagr_blend_dd": 1.0 if estimable else None,
+        "cagr_blend_sigma": 1.0 if estimable else None,
+        "delta_dd": 4.0 if estimable else None,
+        "delta_sigma": 4.0 if estimable else None,
+        "match_dd": match("dd"),
+        "match_sigma": match("sigma") if estimable else None,
+    }
+
+
+def write_benchmark(
+    chain: Path,
+    manifest_path: Path,
+    anchor_path: Path,
+    manifest: cc.Manifest,
+    *,
+    blocks: Mapping[str, Mapping[str, Any]] | None = None,
+    designated: cc.Candidate | None = None,
+    exit_code: int = 0,
+    inputs: Mapping[str, Path] | None = None,
+    lambda_mode: str = cc.LAMBDA_MODE_DECISIONAL,
+) -> Path:
+    """Un ``benchmark.json`` **simulé conforme** à ce que ``c3_benchmark.main`` écrit (``c3_benchmark.py:646-673``) :
+    l'enveloppe de la chaîne aux empreintes réelles du manifeste et de l'ancrage (les trois autres entrées sont des
+    bouchons), les clés de premier niveau, un bloc de paire à la forme de ``PairBenchmark.to_dict`` et un bloc
+    ``candidate_block`` par identité. Le candidat ``designated`` porte ``LAMBDAS`` ; ``blocks`` remplace des blocs.
+    Chaque test adverse ne déforme qu'un champ."""
+    others: dict[str, Path] = {}
+    for name in ("entry", "observations", "candles"):
+        others[name] = chain / f"{name}.json"
+        cc.write_json(others[name], {"bouchon": name})
+    recorded = {"manifest": manifest_path, "anchor": anchor_path, **others}
+    recorded.update(inputs or {})
+    anchor = manifest.anchor()
+    candidates = {
+        c.identity: benchmark_block(
+            c, lambdas=LAMBDAS if designated is not None and c == designated else OTHER_LAMBDAS
+        )
+        for c in manifest.candidates
+    }
+    candidates.update({k: dict(v) for k, v in (blocks or {}).items()})
+    payload = cc.envelope(cb.STEP, datetime.fromisoformat(NOW), recorded, exit_code=exit_code)
+    payload.update(
+        {
+            "window": {"start": manifest.window_start.isoformat(), "end": anchor.isoformat()},
+            "prefix_days": (anchor - manifest.window_start).total_seconds() / 86400.0,
+            "lambda_mode": lambda_mode,
+            "lambda_mode_declared": manifest.lambda_mode,
+            "lambda_label": cc.LAMBDA_LABEL,
+            "lambda_grid": {
+                "coarse_step": str(cc.LAMBDA_COARSE_STEP),
+                "fine_step": str(cc.LAMBDA_FINE_STEP),
+                "refine_halfwidth": str(cc.LAMBDA_REFINE_HALFWIDTH),
+                "residual_max": cc.LAMBDA_RESIDUAL_MAX,
+            },
+            "costs": {
+                "taker": str(manifest.taker),
+                "pair_costs": {
+                    p: {"spread": str(s), "slippage": str(sl)}
+                    for p, (s, sl) in manifest.pair_costs.items()
+                },
+            },
+            "capital": str(manifest.capital),
+            "pairs": {
+                pair: {
+                    "buildable": True,
+                    "comparable": True,
+                    "reason": None,
+                    "entry_stamp": cc.first_stamp_strictly_after(
+                        manifest.window_start, manifest.exec_interval
+                    ).isoformat(),
+                    "exit_stamp": cc.last_stamp_at_or_before(
+                        anchor, manifest.exec_interval
+                    ).isoformat(),
+                    "entry_price": "100000",
+                    "exit_price": "90000",
+                    "qty": "0.01",
+                    "nav": [1000.0, 1000.0],
+                    "returns": [0.0],
+                    "cagr_pct": 0.0,
+                    "comparability": {
+                        "entry_stamp_present": True,
+                        "exit_stamp_present": True,
+                        "ff_days": 0,
+                        "longest_ff_run_days": 0,
+                        "ff_ok": True,
+                        "n_returns_ok": True,
+                        "all_finite": True,
+                    },
+                }
+                for pair in manifest.pairs
+            },
+            "candidates": candidates,
+        }
+    )
+    path = chain / "benchmark.json"
+    cc.write_json(path, payload)
+    return path
+
+
 def make_world(tmp_path: Path, payload: Mapping[str, Any] | None = None) -> World:
-    """Le manifeste de producteur du lot 3 et **son** ancrage, produit par ``c3_anchor`` en processus."""
+    """Le manifeste de producteur du lot 3, **son** ancrage, produit par ``c3_anchor`` en processus, et son
+    ``benchmark.json`` simulé conforme (λ du préfixe, ``LAMBDAS`` pour le candidat désigné)."""
     tmp_path.mkdir(parents=True, exist_ok=True)
     manifest_path = tp.write_manifest(tmp_path, payload or pc.producer_manifest())
     chain = tmp_path / "chain"
@@ -121,7 +264,10 @@ def make_world(tmp_path: Path, payload: Mapping[str, Any] | None = None) -> Worl
         ]
     )
     assert code == 0
-    return World(manifest_path, anchor_path, pc.loaded(cc.read_json(manifest_path)))
+    manifest = pc.loaded(cc.read_json(manifest_path))
+    world = World(manifest_path, anchor_path, manifest, chain / "benchmark.json")
+    write_benchmark(chain, manifest_path, anchor_path, manifest, designated=world.btc)
+    return world
 
 
 def retained_block(candidate: cc.Candidate) -> dict[str, Any]:
@@ -152,10 +298,15 @@ def write_selection(
     chain = tmp_path / "chain"
     chain.mkdir(exist_ok=True)
     others: dict[str, Path] = {}
-    for name in ("entry", "observations", "coverage", "benchmark"):
+    for name in ("entry", "observations", "coverage"):
         others[name] = chain / f"{name}.json"
         cc.write_json(others[name], {"bouchon": name})
-    recorded = {"manifest": world.manifest_path, "anchor": world.anchor_path, **others}
+    recorded = {
+        "manifest": world.manifest_path,
+        "anchor": world.anchor_path,
+        "benchmark": world.benchmark_path,
+        **others,
+    }
     recorded.update(inputs or {})
     head = [] if retained is None else [retained.identity]
     payload = cc.envelope(cs.STEP, datetime.fromisoformat(NOW), recorded, exit_code=exit_code)
@@ -185,6 +336,7 @@ def run_eval(
     selection: Path | None = None,
     candidate: str | None = None,
     now: str = NOW,
+    benchmark: Path | None = None,
 ) -> tuple[int, list[dict[str, Any]]]:
     manifest_path, anchor_path = (
         (world.manifest_path, world.anchor_path) if isinstance(world, World) else world
@@ -194,6 +346,8 @@ def run_eval(
         str(manifest_path),
         "--anchor",
         str(anchor_path),
+        "--benchmark",
+        str(benchmark if benchmark is not None else anchor_path.parent / "benchmark.json"),
         "--output-dir",
         str(out),
         "--now",
@@ -206,13 +360,6 @@ def run_eval(
     with structlog.testing.capture_logs() as logs:
         code = evaluate.main(argv)
     return code, logs
-
-
-def install_probe(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def probe(db: Any) -> dict[str, Any]:
-        return {"transaction_read_only": "on", "alembic_version": ["c3bd1e7a0001"]}
-
-    monkeypatch.setattr(c3bc, "probe_database", probe)
 
 
 def spy_build(monkeypatch: pytest.MonkeyPatch, engine: Any = None) -> list[Any]:
@@ -324,7 +471,7 @@ def stubbed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **kw: Any
 ) -> tuple[World, StubEngine, list[Any]]:
     world = make_world(tmp_path)
-    install_probe(monkeypatch)
+    tp.install_database(monkeypatch, pc.market(anchor=FIN))
     engine = StubEngine(world, **kw)
     return world, engine, spy_build(monkeypatch, engine)
 
@@ -576,7 +723,7 @@ def test_an_uncommitted_tree_is_refused(tmp_path: Path, monkeypatch: pytest.Monk
 def test_an_output_dir_with_final_artefacts_is_refused(tmp_path: Path) -> None:
     world = make_world(tmp_path)
     (tmp_path / "out").mkdir()
-    (tmp_path / "out" / evaluate.EVALUATION_RUN).write_text("{}\n", encoding="utf-8")
+    (tmp_path / "out" / evaluate.EVALUATION).write_text("{}\n", encoding="utf-8")
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (2, ["output_dir_not_empty"])
 
@@ -610,7 +757,7 @@ def test_the_flat_start_proof_is_read_before_run(
     world, engine, _ = stubbed(tmp_path, monkeypatch)
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (0, [])
-    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION_RUN)
+    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert run["flat_start_proof"] == {
         "at": T.isoformat(),
         "cash": "1000",
@@ -636,7 +783,7 @@ def test_the_flat_start_proof_has_the_fixture_form(
     la fixture de la chaîne à ``T`` (``C = 1000``, § 0.5)."""
     world, _, _ = stubbed(tmp_path, monkeypatch)
     assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
-    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION_RUN)
+    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert run["flat_start_proof"] == fx.flat_start_proof(at=T)
 
 
@@ -648,7 +795,7 @@ def test_cash_different_from_C_is_3(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (3, ["flat_start_proof"])
     assert engine.calls == []
-    assert not (tmp_path / "out" / evaluate.EVALUATION_RUN).exists()
+    assert not (tmp_path / "out" / evaluate.EVALUATION).exists()
 
 
 @pytest.mark.parametrize(
@@ -738,7 +885,7 @@ def test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter(
     si le compteur ≠ 1 » — l'artefact déclare ``single_call`` si et seulement si le compteur vaut 1."""
     world, engine, built = stubbed(tmp_path, monkeypatch)
     assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
-    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION_RUN)
+    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert engine.calls == [(world.btc.pair, T, FIN)]
     assert run["invocation"] == {"single_call": len(engine.calls) == 1}
     assert built == [world.btc.identity]
@@ -755,7 +902,7 @@ def test_first_fill_at_is_the_smallest_trade_stamp(
     engine._trades = [*reversed(engine._trades), trade(early)]
     spy_build(monkeypatch, engine)
     assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
-    assert cc.read_json(tmp_path / "out" / evaluate.EVALUATION_RUN)["first_fill_at"] == (
+    assert cc.read_json(tmp_path / "out" / evaluate.EVALUATION)["first_fill_at"] == (
         early.isoformat()
     )
 
@@ -771,7 +918,7 @@ def test_a_fill_at_or_before_T_is_3(
     spy_build(monkeypatch, engine)
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (3, ["first_fill_at"])
-    assert not (tmp_path / "out" / evaluate.EVALUATION_RUN).exists()
+    assert not (tmp_path / "out" / evaluate.EVALUATION).exists()
 
 
 def test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses(
@@ -783,7 +930,7 @@ def test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses(
     world, _, _ = stubbed(tmp_path, monkeypatch, lots=(), trades=())
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (0, [])
-    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION_RUN)
+    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert run["first_fill_at"] is None and run["liquidation"]["trades"] == 0
     with pytest.raises(cc.EntryRefusedError, match="first_fill_at"):
         cc.evaluation_admission(run)
@@ -867,8 +1014,9 @@ def real_world(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **kw: Any) -> Wo
     """Le marché du lot 3 prolongé jusqu'à ``fin`` : le niveau d'achat amorcé de BTC se remplit à la première
     bougie 5 min strictement après ``T`` (prix 90 000 sous le niveau 100 000), la vente appariée n'est jamais
     touchée, la position finit ouverte et la liquidation terminale tombe à ``fin`` (dernière bougie ``≤ fin``)."""
-    pc.install_market(monkeypatch, pc.market(anchor=FIN))
-    install_probe(monkeypatch)
+    data = pc.market(anchor=FIN)
+    pc.install_market(monkeypatch, data)
+    tp.install_database(monkeypatch, data)
     return make_world(tmp_path, pc.producer_manifest(**kw))
 
 
@@ -877,15 +1025,15 @@ def test_the_nominal_evaluation_is_admitted_and_declared(
 ) -> None:
     """Critère de fin du lot 4a : ``cc.evaluation_admission`` vrai (évaluation réelle admise) sur un artefact
     produit, et ``c3_continuity`` sur un comparateur d'évaluation synthétique rend ``c1``, ``c2``, ``c5`` =
-    ``DECLARED``. Forme : les clés de la fixture ``evaluation`` moins celles du lot 4b."""
+    ``DECLARED``. Forme : exactement les clés de la fixture ``evaluation`` (lot 4b : les clés § F.2 comprises)."""
     world = real_world(tmp_path, monkeypatch)
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (0, [])
-    evaluation = tmp_path / "out" / evaluate.EVALUATION_RUN
+    evaluation = tmp_path / "out" / evaluate.EVALUATION
     run = cc.read_json(evaluation)
     reference = fx.evaluation(fx.manifest())
-    assert set(run) == set(reference) - F2_KEYS
-    assert set(run["metrics"]) == set(reference["metrics"]) - F2_METRICS
+    assert set(run) == set(reference)
+    assert set(run["metrics"]) == set(reference["metrics"])
     assert run["synthetic"] is False
     assert run["period"] == {"start": T.isoformat(), "end": FIN.isoformat()}
     assert (
@@ -910,9 +1058,7 @@ def test_two_evaluations_are_bit_identical(tmp_path: Path, monkeypatch: pytest.M
     assert (
         run_eval(world, tmp_path / "b", candidate=identity, now="2026-10-01T12:00:00+00:00")[0] == 0
     )
-    assert sha(tmp_path / "a" / evaluate.EVALUATION_RUN) == sha(
-        tmp_path / "b" / evaluate.EVALUATION_RUN
-    )
+    assert sha(tmp_path / "a" / evaluate.EVALUATION) == sha(tmp_path / "b" / evaluate.EVALUATION)
     generated = [
         cc.read_json(tmp_path / d / evaluate.PROVENANCE)["generated_at"] for d in ("a", "b")
     ]
@@ -927,8 +1073,8 @@ def test_selection_and_designation_write_the_same_artefact(
     selection = write_selection(tmp_path, world, world.btc)
     assert run_eval(world, tmp_path / "sel", selection=selection)[0] == 0
     assert run_eval(world, tmp_path / "des", candidate=world.btc.identity)[0] == 0
-    assert sha(tmp_path / "sel" / evaluate.EVALUATION_RUN) == sha(
-        tmp_path / "des" / evaluate.EVALUATION_RUN
+    assert sha(tmp_path / "sel" / evaluate.EVALUATION) == sha(
+        tmp_path / "des" / evaluate.EVALUATION
     )
     sources = [cc.read_json(tmp_path / d / evaluate.PROVENANCE)["source"] for d in ("sel", "des")]
     assert sources == [
@@ -948,7 +1094,7 @@ def test_a_passed_params_divergence_is_3(tmp_path: Path, monkeypatch: pytest.Mon
     )
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (3, ["evaluation_controls"])
-    assert not (tmp_path / "out" / evaluate.EVALUATION_RUN).exists()
+    assert not (tmp_path / "out" / evaluate.EVALUATION).exists()
 
 
 def test_the_chain_upstream_feeds_the_evaluation(
@@ -976,7 +1122,7 @@ def test_the_chain_upstream_feeds_the_evaluation(
         assert not (tmp_path / "eval").exists()
     else:
         assert (code, errors(logs)) == (0, [])
-        run = cc.read_json(tmp_path / "eval" / evaluate.EVALUATION_RUN)
+        run = cc.read_json(tmp_path / "eval" / evaluate.EVALUATION)
         assert (
             cc.candidate_identity(run["strategy"], run["pair"], run["params"])
             == (retained["identity"])
@@ -997,9 +1143,16 @@ def test_evaluator_events_never_carry_identity_pair_or_metric(
     selection = write_selection(tmp_path, world, world.btc)
     code, logs = run_eval(world, tmp_path / "out", selection=selection)
     assert code == 0
-    assert [entry["event"] for entry in logs] == ["evaluated", "written", "written"]
+    assert [entry["event"] for entry in logs] == ["evaluated", *["written"] * 5]
     text = json.dumps(logs, default=str)
-    for secret in (world.btc.identity[:16], world.btc.pair, "net_pnl", "first_fill"):
+    for secret in (
+        world.btc.identity[:16],
+        world.btc.pair,
+        "net_pnl",
+        "first_fill",
+        "lambda",
+        "cagr",
+    ):
         assert secret not in text
 
 
@@ -1029,3 +1182,823 @@ def test_importing_the_evaluator_changes_nothing() -> None:
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
     assert json.loads(proc.stdout.strip().splitlines()[-1]) == []
+
+
+# ---------------------------------------------------------------------------
+# Lot 4b — outillage des tests : bougies d'évaluation, comparateur écrit depuis le texte
+# ---------------------------------------------------------------------------
+
+#: § 0.5 : ``C = 1000`` ; brief § Lot 3 : coûts de ``config/pair_costs_b4.json`` pour la paire de déploiement.
+C = Decimal("1000")
+#: § F.2 (c) : « ``(fin − T)`` en secondes, divisé par 86 400, en double précision ».
+N_DAYS = (FIN - T).total_seconds() / 86400.0
+#: § F.2 (b), (h) : « ``L ∈ {10, 21, 42}`` » × les deux appariements ``dd`` et ``σ`` — recopiés du texte.
+TEXT_COMBINATIONS = frozenset(f"{L}:{m}" for L in (10, 21, 42) for m in ("dd", "sigma"))
+TEXT_B = 10_000
+#: § C.3 : la première bougie d'exécution **strictement après** ``T = 19:12`` est celle de 19:15 ; la dernière
+#: ``≤ fin`` est ``fin`` elle-même (minuit, sur la grille 5 min).
+ENTRY_STAMP = T + timedelta(minutes=3)
+EXIT_STAMP = FIN
+
+
+def install_closes(
+    monkeypatch: pytest.MonkeyPatch, data: pc.Market
+) -> list[tuple[str, int, datetime, datetime]]:
+    """``tp.install_database`` (sonde, lectures du marché synthétique), plus un journal des lectures de closes avec
+    leur paire et leur intervalle."""
+    tp.install_database(monkeypatch, data)
+    served = c3bc.fetch_closes
+    reads: list[tuple[str, int, datetime, datetime]] = []
+
+    async def closes(
+        db: Any, *, exchange: str, pair: str, interval: int, start: datetime, end: datetime
+    ) -> Any:
+        reads.append((pair, interval, start, end))
+        return await served(
+            db, exchange=exchange, pair=pair, interval=interval, start=start, end=end
+        )
+
+    monkeypatch.setattr(c3bc, "fetch_closes", closes)
+    return reads
+
+
+def with_exec_closes(data: pc.Market, closes: Mapping[datetime, Decimal]) -> pc.Market:
+    """Le marché avec d'autres closes 5 min de BTC aux estampilles données (le reste inchangé)."""
+    out = dict(data)
+    out[("BTC/USDT", 5)] = [
+        pc._ohlc("BTC/USDT", 5, c.timestamp, closes[c.timestamp]) if c.timestamp in closes else c
+        for c in data[("BTC/USDT", 5)]
+    ]
+    return out
+
+
+def hand_nav(*, close_in: Decimal, close_out: Decimal, marks: Sequence[Decimal]) -> list[Decimal]:
+    """La NAV du B&H plein notionnel de BTC sur ``[T, fin]``, **écrite depuis la convention** (brief § Lot 4b, § C.3 ;
+    ``c3_benchmark.py:11-17``) : ``C`` à ``T`` ; entrée au close de la première bougie d'exécution après ``T``, taker
+    + spread + slippage ; marques ``quantité × close 1 j`` à chaque minuit intérieur ; sortie au close de la dernière
+    ``≤ fin``, spread + slippage puis taker. Opérations ``Decimal`` dans l'ordre du texte de la chaîne."""
+    spread, slippage = (Decimal(x) for x in pc.COSTS["BTC/USDT"])
+    taker = Decimal(fx.TAKER)
+    exec_in = close_in * (1 + spread + slippage)
+    qty = C * (1 - taker) / exec_in
+    exec_out = close_out * (1 - spread - slippage)
+    return [C, *(qty * mark for mark in marks), qty * exec_out * (1 - taker)]
+
+
+def expected_bench(nav: Sequence[Decimal], lambdas: Mapping[str, float]) -> dict[str, list[float]]:
+    """Brief § Lot 4b : ``nav_bench[m] = blend_nav(nav_bh, λ_m, C)`` ; ``returns_bench[m] =
+    cc.recompute_daily(nav_bench[m], days=n_jours).returns`` ; ``λ`` en ``Decimal(str(λ))``
+    (``c3_benchmark.py:500``)."""
+    return {
+        m: list(
+            cc.recompute_daily(
+                [float(v) for v in cb.blend_nav(nav, Decimal(str(lambdas[m])), C)], days=N_DAYS
+            ).returns
+        )
+        for m in ("dd", "sigma")
+    }
+
+
+def outputs(out: Path) -> dict[str, Any]:
+    return {
+        name: cc.read_json(out / name)
+        for name in (
+            evaluate.EVALUATION,
+            evaluate.BENCHMARK_EVAL,
+            evaluate.CANDLES_EVAL,
+            evaluate.SENSITIVITY,
+        )
+    }
+
+
+def keys_of(value: Any) -> set[str]:
+    """Toutes les clés de mapping d'un payload, à toute profondeur."""
+    if isinstance(value, Mapping):
+        found = set(value)
+        for item in value.values():
+            found |= keys_of(item)
+        return found
+    if isinstance(value, list):
+        found = set()
+        for item in value:
+            found |= keys_of(item)
+        return found
+    return set()
+
+
+def chain_replay(world: World, evaluation: Mapping[str, Any]) -> tuple[list[str], dict[str, Any]]:
+    """Ce que ``c3_verdict.decide`` fait de l'artefact, en processus (``c3_verdict.py:686-717``) : contrat
+    d'instrument, lecture stricte des réplications et des séries, **rejeu** du tirage depuis ``anchor.json``,
+    recoupement au bit, bornes et estimabilité. Rend les violations et les paramètres rejoués."""
+    anchor_raw = cc.read_json(world.anchor_path)
+    cv._evaluation_contract(evaluation)
+    replications = cv._read_replications(evaluation)
+    returns, bench = cv._read_series(evaluation)
+    replay, meta = cv._replay(evaluation, anchor_raw, returns, bench)
+    violations: list[str] = []
+    cv._cross_check_replay(replications, replay, evaluation, violations=violations)
+    cv._bounds_all_positive(replications, replay, violations=violations)
+    cv._estimability_of(evaluation, replications, replay, violations=violations)
+    return violations, meta
+
+
+# ---------------------------------------------------------------------------
+# E. Comparateur d'évaluation (§ C.3-C.5)
+# ---------------------------------------------------------------------------
+
+
+def test_evaluation_candles_are_read_on_T_fin_for_the_evaluated_pair_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b : « ``candles_eval.json`` sur ``[T, fin]``, même forme que ``candles.json``, aucune estampille
+    ``> fin`` » ; plan, E3 : la paire évaluée seule. Deux lectures exactement — exécution et quotidienne — bornées à
+    ``[T, fin]`` ; l'artefact est relu par ``cb.load_candles`` sans refus."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    reads = install_closes(monkeypatch, pc.market(anchor=FIN))
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    assert reads == [("BTC/USDT", 5, T, FIN), ("BTC/USDT", 1440, T, FIN)]
+    candles = cc.read_json(tmp_path / "out" / evaluate.CANDLES_EVAL)
+    assert list(candles) == ["pairs"] and list(candles["pairs"]) == ["BTC/USDT"]
+    block = candles["pairs"]["BTC/USDT"]
+    assert set(block) == {"exec_interval", "exec", "daily"} and block["exec_interval"] == 5
+    for series in ("exec", "daily"):
+        stamps = [datetime.fromisoformat(row["t"]) for row in block[series]]
+        assert stamps == sorted(set(stamps)) and T <= stamps[0] and stamps[-1] <= FIN
+    assert block["exec"][0]["t"] == ENTRY_STAMP.isoformat()
+    assert block["exec"][-1]["t"] == EXIT_STAMP.isoformat()
+    assert [row["t"] for row in block["daily"]] == [
+        (datetime(2020, 1, 16, tzinfo=UTC) + timedelta(days=k)).isoformat() for k in range(5)
+    ]
+    view = cb.load_candles(candles, pc.loaded(pc.producer_manifest(pairs=("BTC/USDT",))), end=FIN)
+    assert list(view) == ["BTC/USDT"]
+
+
+def test_the_comparator_enters_at_the_first_exec_close_after_T(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b, § C.3 : entrée « à la **clôture de la première bougie d'exécution strictement après ``T``** »,
+    sortie « à la dernière ``≤ fin`` », taker + spread + slippage sur les deux jambes. Le marché porte un autre close
+    à 19:10 (``≤ T``, 95 000), à 19:15 (90 000) et à ``fin`` (88 000, contre 90 000 à 23:55) : une autre borne
+    d'entrée ou de sortie donne une autre NAV. ``returns_bench`` est égal au bit à la NAV dérivée à la main."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    data = with_exec_closes(
+        pc.market(anchor=FIN),
+        {
+            T - timedelta(minutes=2): Decimal("95000"),
+            ENTRY_STAMP: Decimal("90000"),
+            FIN: Decimal("88000"),
+        },
+    )
+    install_closes(monkeypatch, data)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    produced = outputs(tmp_path / "out")
+    nav = hand_nav(close_in=Decimal("90000"), close_out=Decimal("88000"), marks=[pc.LEVEL] * 4)
+    assert produced[evaluate.EVALUATION]["returns_bench"] == expected_bench(nav, LAMBDAS)
+    assert produced[evaluate.BENCHMARK_EVAL]["comparable"] is True
+
+
+def test_benchmark_eval_is_what_comparator_block_reads(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b : « ``{pair, window {start: T, end: fin}, comparable, comparability {cinq tests}}`` — les clés
+    que ``c3_continuity.comparator_block`` lit » ; les cinq tests sont ceux de la fixture ``benchmark_eval`` de la
+    chaîne. Sur la sortie, ``comparator_block`` rend ``VERIFIED`` sans violation."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    bench = cc.read_json(tmp_path / "out" / evaluate.BENCHMARK_EVAL)
+    reference = fx.benchmark_eval()
+    assert set(bench) == set(reference)
+    assert set(bench["comparability"]) == set(reference["comparability"])
+    assert bench["pair"] == "BTC/USDT"
+    assert bench["window"] == {"start": T.isoformat(), "end": FIN.isoformat()}
+    assert bench["comparable"] is True and all(v is True for v in bench["comparability"].values())
+    violations: list[str] = []
+    block = ccont.comparator_block(bench, anchor=T, end=FIN, violations=violations)
+    assert (block["state"], violations) == ("VERIFIED", [])
+
+
+def test_comparable_is_the_recomputed_conjunction(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ C.5 : « jours forward-fillés du benchmark » sous la règle de D1. Sans aucun close quotidien aux minuits
+    intérieurs de ``[T, fin]``, ``ff_ok`` est faux : ``comparable`` est la conjonction recalculée, faux ; tout est
+    écrit (E6) ; ``comparator_block`` rend ``FAILED`` **sans violation** ; la sensibilité n'apparie rien."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    data = dict(pc.market(anchor=FIN))
+    data[("BTC/USDT", 1440)] = [c for c in data[("BTC/USDT", 1440)] if not T < c.timestamp < FIN]
+    install_closes(monkeypatch, data)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (0, [])
+    produced = outputs(tmp_path / "out")
+    bench = produced[evaluate.BENCHMARK_EVAL]
+    assert bench["comparable"] is False and bench["comparability"]["ff_ok"] is False
+    violations: list[str] = []
+    block = ccont.comparator_block(bench, anchor=T, end=FIN, violations=violations)
+    assert (block["state"], violations) == ("FAILED", [])
+    assert produced[evaluate.SENSITIVITY]["matches"] == {"dd": None, "sigma": None}
+
+
+def test_a_non_buildable_comparator_is_2_before_the_engine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plan, E5 : sans la bougie d'exécution de 19:15, le comparateur n'a pas de prix d'entrée (§ C.5, « observation
+    admissible aux deux bornes ») : refus (2) avant la construction du moteur, rien d'écrit."""
+    world, _, built = stubbed(tmp_path, monkeypatch)
+    data = dict(pc.market(anchor=FIN))
+    data[("BTC/USDT", 5)] = [c for c in data[("BTC/USDT", 5)] if c.timestamp != ENTRY_STAMP]
+    install_closes(monkeypatch, data)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (2, ["comparator_not_buildable"])
+    assert built == []
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_candle_after_fin_is_refused_by_the_producer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b : « aucune estampille ``> fin`` » — une lecture qui en rendrait une (base fautive) est refusée
+    **par le producteur** (``c3bc.candles_artefact``), contrôle en échec (3), rien d'écrit."""
+    world, _, built = stubbed(tmp_path, monkeypatch)
+    data = pc.market(anchor=FIN)
+
+    async def leaky(
+        db: Any, *, exchange: str, pair: str, interval: int, start: datetime, end: datetime
+    ) -> Any:
+        rows = [(c.timestamp, c.close) for c in data[(pair, interval)] if start <= c.timestamp]
+        return rows + [(FIN + timedelta(minutes=5), Decimal("90000"))] if interval == 5 else rows
+
+    monkeypatch.setattr(c3bc, "fetch_closes", leaky)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (3, ["candles"])
+    assert built == []
+    assert not (tmp_path / "out").exists()
+
+
+# ---------------------------------------------------------------------------
+# F. λ du préfixe, tenu fixe (§ F.2 f)
+# ---------------------------------------------------------------------------
+
+
+def test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b : « ``λ_dd``, ``λ_σ`` lus dans ``benchmark.json`` (étape 3) pour l'identité retenue, tenus fixes
+    (§ F.2 f) ». Le retenu est la **seconde** identité BTC — son bloc n'est pas le premier du fichier (le writer trie
+    les clés) — et porte 0,168 / 0,336 ; tous les autres blocs portent 0,9 / 0,8. ``returns_bench`` est égal au bit au
+    blend de chacun des deux ``λ`` du bloc retenu, au bon appariement, en ``Decimal(str(λ))``."""
+    world, engine, _ = stubbed(tmp_path, monkeypatch)
+    target = sorted(
+        (c for c in world.manifest.candidates if c.pair == "BTC/USDT"), key=lambda c: c.identity
+    )[1]
+    engine.effective_params = {"passed_params": {**target.params, "pair": target.pair}}
+    write_benchmark(
+        world.anchor_path.parent,
+        world.manifest_path,
+        world.anchor_path,
+        world.manifest,
+        designated=target,
+    )
+    assert sorted(cc.read_json(world.benchmark_path)["candidates"])[0] != target.identity
+    selection = write_selection(tmp_path, world, target)
+    assert run_eval(world, tmp_path / "out", selection=selection)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    nav = hand_nav(close_in=Decimal("90000"), close_out=Decimal("90000"), marks=[pc.LEVEL] * 4)
+    assert evaluation["returns_bench"] == expected_bench(nav, LAMBDAS)
+    assert evaluation["returns_bench"]["dd"] != evaluation["returns_bench"]["sigma"]
+    sensitivity = cc.read_json(tmp_path / "out" / evaluate.SENSITIVITY)
+    assert sensitivity["prefix"] == LAMBDAS
+
+
+def test_a_not_estimable_prefix_lambda_is_2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b : « ``NOT_ESTIMABLE`` → code 2 » — avant l'arbre, la base et le moteur."""
+    world, _, built = stubbed(tmp_path, monkeypatch)
+    write_benchmark(
+        world.anchor_path.parent,
+        world.manifest_path,
+        world.anchor_path,
+        world.manifest,
+        designated=world.btc,
+        blocks={world.btc.identity: benchmark_block(world.btc, estimable=False)},
+    )
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (2, ["lambda_not_estimable"])
+    assert (built, tp._StubReadOnlyDb.built) == ([], [])
+
+
+@pytest.mark.parametrize("name", ["manifest", "anchor"])
+def test_a_benchmark_of_another_manifest_or_anchor_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str
+) -> None:
+    """``cc.check_inputs_match`` : le ``benchmark.json`` doit avoir été calculé sur les fichiers fournis."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    other = tmp_path / f"autre_{name}.json"
+    cc.write_json(other, {"autre": name})
+    write_benchmark(
+        world.anchor_path.parent,
+        world.manifest_path,
+        world.anchor_path,
+        world.manifest,
+        designated=world.btc,
+        inputs={name: other},
+    )
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (2, ["benchmark_inputs_mismatch"])
+
+
+@pytest.mark.parametrize(
+    "fault", ["amont_en_echec", "mode_reestime"], ids=["amont-en-echec", "mode-non-decisionnel"]
+)
+def test_a_failed_or_non_decisional_benchmark_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    """``cc.require_upstream_ok`` ; § C.4 : seul le mode ``prefix`` est décisionnel."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    write_benchmark(
+        world.anchor_path.parent,
+        world.manifest_path,
+        world.anchor_path,
+        world.manifest,
+        designated=world.btc,
+        exit_code=1 if fault == "amont_en_echec" else 0,
+        lambda_mode="reestimated" if fault == "mode_reestime" else cc.LAMBDA_MODE_DECISIONAL,
+    )
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (2, ["benchmark_refused"])
+
+
+def test_a_selection_computed_on_another_benchmark_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plan, E2 : sur le chemin sélection, ``c3_select`` a enregistré l'empreinte du ``benchmark.json`` qu'il a lu
+    (``inputs_sha256.benchmark``) ; ``--benchmark`` doit être ce fichier-là."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    other = tmp_path / "autre_benchmark.json"
+    cc.write_json(other, {"autre": "benchmark"})
+    selection = write_selection(tmp_path, world, world.btc, inputs={"benchmark": other})
+    code, logs = run_eval(world, tmp_path / "out", selection=selection)
+    assert (code, errors(logs)) == (2, ["selection_benchmark_mismatch"])
+
+
+def test_an_identity_absent_from_the_benchmark_is_refused_without_naming_it(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    raw = dict(cc.read_json(world.benchmark_path))
+    raw["candidates"] = {k: v for k, v in raw["candidates"].items() if k != world.btc.identity}
+    cc.write_json(world.benchmark_path, raw)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (2, ["benchmark_refused"])
+    assert world.btc.identity[:16] not in json.dumps(logs, default=str)
+
+
+def test_a_benchmark_block_of_another_pair_is_3(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Le bloc de l'identité évaluée porte sa paire (``c3_benchmark.candidate_block``) : une autre paire sous la même
+    identité est une incohérence amont — contrôle en échec (3), jamais un λ appliqué au mauvais comparateur."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    block = {**benchmark_block(world.btc, lambdas=LAMBDAS), "pair": "SOL/USDT"}
+    write_benchmark(
+        world.anchor_path.parent,
+        world.manifest_path,
+        world.anchor_path,
+        world.manifest,
+        designated=world.btc,
+        blocks={world.btc.identity: block},
+    )
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (3, ["benchmark_inconsistent"])
+
+
+@pytest.mark.parametrize("value", [-0.001, 1.001])
+def test_a_lambda_outside_the_unit_interval_is_3(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, value: float
+) -> None:
+    """§ F.2 (g) : « ``λ ∈ [0, 1]`` »."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    write_benchmark(
+        world.anchor_path.parent,
+        world.manifest_path,
+        world.anchor_path,
+        world.manifest,
+        designated=world.btc,
+        blocks={
+            world.btc.identity: benchmark_block(world.btc, lambdas={"dd": value, "sigma": 0.5})
+        },
+    )
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (3, ["lambda_domain"])
+
+
+# ---------------------------------------------------------------------------
+# G. Procédure § F.2 — rejouable au bit par la chaîne
+# ---------------------------------------------------------------------------
+
+_N = fx.N_EVAL_POINTS - 1
+_BENCHES = {
+    "cash": ([0.0] * _N, [0.0] * _N),
+    "mixte": ([0.0] * _N, fx.varying_returns(5)),
+    "varie": (fx.varying_returns(5), fx.varying_returns(7)),
+}
+
+
+#: Séries de configuration : le témoin des fixtures, et ``varying_returns(9)`` — sur le témoin, la somme exacte
+#: (``math.fsum``) et la somme de numpy du § F.2 (c) coïncident ; sur ``varying_returns(9)``, non (mesuré, M12).
+_CONFIGS = {"temoin": fx.witness_returns(), "varie9": fx.varying_returns(9)}
+
+
+@pytest.mark.parametrize("pair_index", [0, 1])
+@pytest.mark.parametrize("bench", sorted(_BENCHES))
+@pytest.mark.parametrize("config_name", sorted(_CONFIGS))
+def test_f2_is_bit_equal_to_the_procedure_written_from_the_text(
+    tmp_path: Path, config_name: str, bench: str, pair_index: int
+) -> None:
+    """Brief § Lot 4b : « sur les séries témoin des fixtures (``witness_returns``, cash), sortie égale au bit à
+    ``f2_procedure`` (suites, écartées, bornes, ``cagr_pct``, ``delta_dd``) ». ``f2_procedure`` est la procédure
+    § F.2 (b)-(d) **écrite depuis le texte** dans ``test_c3_common.py`` ; l'égalité vaut aussi sur le texte JSON
+    écrit par le writer strict (``repr`` le plus court, § F.2 d)."""
+    config = _CONFIGS[config_name]
+    dd, sigma = _BENCHES[bench]
+    returns_bench = {"dd": dd, "sigma": sigma}
+    block = evaluate.f2_block(
+        config,
+        returns_bench,
+        inputs=evaluate.ReplayInputs(seed=fx.SEED, pair_index=pair_index, days=fx.EVAL_DAYS),
+        net_pnl=42.0,
+    )
+    expected = fx.f2_procedure(
+        config, returns_bench, seed=fx.SEED, pair_index=pair_index, days=fx.EVAL_DAYS
+    )
+    assert set(block["replications"]) == set(expected["replications"]) == TEXT_COMBINATIONS
+    for combination, reference in expected["replications"].items():
+        assert block["replications"][combination] == reference, combination
+    assert block["metrics"] == {
+        "net_pnl": 42.0,
+        "cagr_pct": expected["cagr_config"],
+        "delta_dd": expected["delta_hat"]["dd"],
+    }
+    assert block["returns_config"] == config and block["returns_bench"] == returns_bench
+    import _common
+
+    ours = _common.write_json_strict(tmp_path / "ours.json", block["replications"])
+    text = _common.write_json_strict(tmp_path / "text.json", expected["replications"])
+    assert ours == text
+
+
+def test_the_instrument_contract_is_that_of_the_text(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ F.2 (b) : ``B = 10 000``, ``L ∈ {10, 21, 42}``, les deux appariements, l'environnement « en quatre champs,
+    et quatre seulement » ; ``c3_verdict._evaluation_contract`` passe sur l'artefact produit dans le même
+    environnement."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    assert evaluation["B"] == TEXT_B
+    assert set(evaluation["replications"]) == TEXT_COMBINATIONS
+    assert set(evaluation["returns_bench"]) == {"dd", "sigma"}
+    assert evaluation["environment"] == fx.environment()
+    cv._evaluation_contract(evaluation)
+
+
+def test_returns_config_is_recompute_daily_of_the_exported_equity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b : « ``returns_config = cc.recompute_daily(equity_daily.values, days=n_jours).returns``,
+    dérivée de la série exportée par la fonction de la chaîne » — vrai moteur, artefact relu depuis le disque."""
+    world = real_world(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    recomputed = cc.recompute_daily(evaluation["equity_daily"]["values"], days=N_DAYS)
+    assert evaluation["returns_config"] == list(recomputed.returns)
+    assert len(evaluation["returns_config"]) == len(cc.daily_grid(T, FIN)) - 1
+
+
+#: Monde long (lot 4b) : une fenêtre de 154 jours (2020-01-06 → 2020-06-08), dont l'évaluation porte **47 rendements**,
+#: plus que la plus longue des longueurs de bloc (§ F.2 b, ``L = 42``). Sur le monde court (5 rendements), chaque
+#: réplication est une rotation de la série entière — la même somme pour tous les tirages : ni la graine ni l'index de
+#: paire ne s'y voient (M01 y survivait, défaut du test relevé au passage des mutants).
+LONG_START = datetime(2020, 1, 6, tzinfo=UTC)
+LONG_END = datetime(2020, 6, 8, tzinfo=UTC)
+
+
+def long_world(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, pairs: Sequence[str] = pc.PAIRS
+) -> World:
+    """Le monde de producteur sur la fenêtre longue, ses bougies d'évaluation servies par la base bouchonnée, et un
+    moteur bouchon **conforme sur cette fenêtre** : grille quotidienne ``[T, fin]``, NAV variable (rendements
+    ``fx.varying_returns(9)``), métriques cohérentes avec la NAV, liquidation dans la cellule finale."""
+    world = make_world(tmp_path, pc.producer_manifest(pairs=pairs, start=LONG_START, end=LONG_END))
+    anchor, end = world.manifest.anchor(), world.manifest.window_end
+    tp.install_database(monkeypatch, pc.market(anchor=end))
+    n_points = len(cc.daily_grid(anchor, end))
+    values = [1000.0]
+    for r in fx.varying_returns(9, n=n_points - 1):
+        values.append(values[-1] * (1.0 + r))
+    engine = StubEngine(
+        world,
+        stamp=end - timedelta(minutes=5),
+        equity={"start": anchor.isoformat(), "end": end.isoformat(), "values": values},
+    )
+    engine._metrics = {
+        "net_pnl": values[-1] - 1000.0,
+        "ending_balance": values[-1],
+        "starting_balance": 1000.0,
+    }
+    spy_build(monkeypatch, engine)
+    return world
+
+
+@pytest.mark.parametrize(
+    "pairs", [("BTC/USDT", "SOL/USDT"), ("SOL/USDT", "BTC/USDT")], ids=["tri", "inverse"]
+)
+def test_the_chain_replay_finds_the_declared_artefact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pairs: tuple[str, str]
+) -> None:
+    """§ F.2 (d) : la chaîne « rejoue le tirage — graine du manifeste, index de paire, ``n_jours`` » et « toute
+    différence avec ce que l'artefact déclare est une violation ». Rejouée en processus sur l'artefact produit :
+    **zéro violation**, et les paramètres rejoués sont ceux du texte — graine du manifeste, index de BTC dans les
+    paires **triées** (0, que le manifeste liste BTC en premier ou en second), ``(fin − T)`` / 86 400. Monde long :
+    47 rendements, plus que ``L = 42`` — sur 5 rendements le tirage ne se voit pas (``long_world``)."""
+    world = long_world(tmp_path, monkeypatch, pairs=pairs)
+    anchor, end = world.manifest.anchor(), world.manifest.window_end
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    assert len(evaluation["returns_config"]) == len(cc.daily_grid(anchor, end)) - 1 > 42
+    violations, meta = chain_replay(world, evaluation)
+    assert violations == []
+    assert meta == {
+        "seed": world.manifest.seed,
+        "pair_index": 0,
+        "days": (end - anchor).total_seconds() / 86400.0,
+    }
+
+
+def test_n_days_never_comes_from_the_engine(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ F.2 (c) : ``n_jours`` vient des bornes. Le bouchon déclare ``duration_days = 5,0`` ; la provenance porte
+    ``(fin − T)`` / 86 400 et le rejeu de la chaîne ne voit aucune violation. (Sur le vrai ``GridBacktester``,
+    ``duration_days`` est la même expression, ``backtest.py:2869`` : ce test épingle la source, plan E8.)"""
+    world, engine, _ = stubbed(tmp_path, monkeypatch)
+    engine._metrics["duration_days"] = 5.0
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    provenance = cc.read_json(tmp_path / "out" / evaluate.PROVENANCE)
+    assert provenance["replay"]["days"] == N_DAYS
+    violations, _ = chain_replay(world, cc.read_json(tmp_path / "out" / evaluate.EVALUATION))
+    assert violations == []
+
+
+def test_an_anchor_seed_different_from_the_manifest_is_3(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Plan, E9 : la graine est lue dans ``anchor.uncertainty.seed`` et recoupée à celle du manifeste (§ F.2 b)."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    raw = dict(cc.read_json(world.anchor_path))
+    raw["uncertainty"] = {**raw["uncertainty"], "seed": world.manifest.seed + 1}
+    cc.write_json(world.anchor_path, raw)
+    write_benchmark(
+        world.anchor_path.parent,
+        world.manifest_path,
+        world.anchor_path,
+        world.manifest,
+        designated=world.btc,
+    )
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (3, ["replay_inputs"])
+
+
+def test_three_series_of_different_lengths_are_3_before_any_draw(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b : « trois séries de même longueur, sinon code 3 avant tout tirage ». Une NAV à 0 au milieu de la
+    grille rend un rendement indéfini (``recompute_daily`` le saute) : la configuration a un rendement de moins que
+    le comparateur. Aucun tirage, rien d'écrit. Même contrôle en unitaire, NAV du comparateur plus courte."""
+    values = [1000.0 + 0.5 * k for k in range(len(cc.daily_grid(T, FIN)))]
+    values[2] = 0.0
+    draws = tp.spy(monkeypatch, cc, "replay_bootstrap")
+    world, _, _ = stubbed(
+        tmp_path,
+        monkeypatch,
+        equity={"start": T.isoformat(), "end": FIN.isoformat(), "values": values},
+    )
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (3, ["series_length"])
+    assert draws == []
+    assert not (tmp_path / "out").exists()
+    with pytest.raises(c3bc.ProducerControlError) as caught:
+        evaluate.evaluation_series(
+            [1000.0, 1001.0, 1002.0],
+            nav_bh=[C, C],
+            lambdas={"dd": Decimal("0.5"), "sigma": Decimal("0.5")},
+            capital=C,
+            days=2.0,
+        )
+    assert caught.value.control == "series_length"
+
+
+@pytest.mark.parametrize("case", ["ruine", "explosion"])
+def test_an_invalid_input_is_3_before_any_draw(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case: str
+) -> None:
+    """§ F.2 (e), table : « un rendement ``≤ −1`` dans les données fournies » (NAV finale à 0 : rendement −1) ou « une
+    série dont le ``CAGR`` observé n'est pas fini » (NAV qui explose : l'exponentielle déborde) est une entrée
+    invalide — contrôle en échec (3), aucun artefact ; dans le premier cas, aucun tirage."""
+    values = [1000.0 + 0.5 * k for k in range(len(cc.daily_grid(T, FIN)))]
+    if case == "ruine":
+        values[-1] = 0.0
+    else:
+        values[1:] = [1e300] * (len(values) - 1)
+    draws = tp.spy(monkeypatch, cc, "replay_bootstrap")
+    world, _, _ = stubbed(
+        tmp_path,
+        monkeypatch,
+        equity={"start": T.isoformat(), "end": FIN.isoformat(), "values": values},
+    )
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (3, ["f2_invalid_input"])
+    assert not (tmp_path / "out").exists()
+    if case == "ruine":
+        assert draws == []
+
+
+def test_evaluation_json_has_exactly_the_keys_of_the_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Brief § Lot 4b : « ``evaluation.json`` : exactement les clés de la fixture ``evaluation`` de
+    ``test_c3_common.py``, pas une de plus ». Ni ``λ`` ni sensibilité (§ F.2 f : « jamais dans evaluation.json »)."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    reference = fx.evaluation(fx.manifest())
+    assert set(evaluation) == set(reference)
+    assert (
+        set(evaluation["metrics"])
+        == set(reference["metrics"])
+        == {
+            "net_pnl",
+            "cagr_pct",
+            "delta_dd",
+        }
+    )
+    for combination, item in evaluation["replications"].items():
+        assert set(item) == set(reference["replications"][combination])
+    assert not [k for k in keys_of(evaluation) if "lambda" in k or "sensitiv" in k]
+
+
+def test_the_full_chain_verifies_a_produced_evaluation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """L'image locale du run serveur : temps 1 (``c3b_prefix``), chaîne 1..4, temps 3, puis ``c3_verdict.py chain``
+    **complète** sur les sorties du producteur : code 0, ``chain.verified`` vrai, aucune violation, cinq étapes en
+    code 0.
+
+    Le monde synthétique n'a **aucun candidat estimable** au préfixe (D3 : trop peu de cycles en 9,8 jours) :
+    ``c3_select`` s'abstient, le chemin sélection rendrait 2 « rien à évaluer ». Le temps 3 tourne donc sur la
+    première identité BTC désignée, ses ``λ`` pris dans un ``benchmark.json`` simulé conforme aux empreintes réelles
+    du manifeste et de l'ancrage. La chaîne ne voit pas ``λ`` (plan, E11) ; elle **lit, rejoue et recoupe** tout
+    l'artefact avant de décider l'abstention (``c3_verdict.py:686-717`` avant ``:724``). Le chemin sélection
+    lui-même traverse la chaîne au run serveur."""
+    import shutil
+
+    data = pc.market(anchor=FIN)
+    pc.install_market(monkeypatch, data)
+    tp.install_database(monkeypatch, data)
+    payload = pc.producer_manifest()
+    manifest_path = tp.write_manifest(tmp_path, payload)
+    assert tp.run_main(manifest_path, tmp_path / "prefix")[0] == 0
+    first = tp._chain(tmp_path, manifest_path, tmp_path / "prefix")
+    assert first["codes"] == {"anchor": 0, "entry": 0, "benchmark": 0, "select": 0}
+    chain = tmp_path / "chain"
+    assert cc.read_json(chain / "selection.json")["retained"] is None
+    manifest = pc.loaded(payload)
+    btc = sorted((c for c in manifest.candidates if c.pair == "BTC/USDT"), key=lambda c: c.identity)
+    lambdas = tmp_path / "lambdas"
+    lambdas.mkdir()
+    benchmark = write_benchmark(
+        lambdas, manifest_path, chain / "anchor.json", manifest, designated=btc[0]
+    )
+    code, logs = run_eval(
+        (manifest_path, chain / "anchor.json"),
+        tmp_path / "eval",
+        candidate=btc[0].identity,
+        benchmark=benchmark,
+    )
+    assert (code, errors(logs)) == (0, [])
+    registry = tmp_path / "registry.json"
+    shutil.copy(chain / "variants.json", registry)
+    prefix_out, eval_out, out = tmp_path / "prefix", tmp_path / "eval", tmp_path / "verdict"
+    code = cv.main(
+        [
+            "chain",
+            "--manifest",
+            str(manifest_path),
+            "--observations",
+            str(prefix_out / "observations.json"),
+            "--coverage",
+            str(prefix_out / "coverage.json"),
+            "--candles",
+            str(prefix_out / "candles.json"),
+            "--evaluation",
+            str(eval_out / evaluate.EVALUATION),
+            "--benchmark-eval",
+            str(eval_out / evaluate.BENCHMARK_EVAL),
+            "--registry",
+            str(registry),
+            "--out-dir",
+            str(out),
+            "--campaign",
+            "C3B_TEST",
+            "--now",
+            NOW,
+        ]
+    )
+    assert code == 0
+    verdict = cc.read_json(out / "verdict.json")
+    assert verdict["chain"]["verified"] is True and verdict["violations"] == []
+    assert [(s["name"], s["exit_code"]) for s in verdict["chain"]["steps"]] == [
+        ("anchor", 0),
+        ("entry", 0),
+        ("benchmark", 0),
+        ("select", 0),
+        ("continuity", 0),
+    ]
+
+
+def test_two_evaluations_are_bit_identical_on_every_artefact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Déterminisme, lot 4b : les quatre artefacts identiques au bit entre deux exécutions ; ``--now`` n'entre que
+    dans la provenance. Vrai moteur."""
+    world = real_world(tmp_path, monkeypatch)
+    identity = world.btc.identity
+    assert run_eval(world, tmp_path / "a", candidate=identity, now=NOW)[0] == 0
+    assert (
+        run_eval(world, tmp_path / "b", candidate=identity, now="2026-10-01T12:00:00+00:00")[0] == 0
+    )
+    for name in (
+        evaluate.EVALUATION,
+        evaluate.BENCHMARK_EVAL,
+        evaluate.CANDLES_EVAL,
+        evaluate.SENSITIVITY,
+    ):
+        assert sha(tmp_path / "a" / name) == sha(tmp_path / "b" / name), name
+
+
+def test_selection_and_designation_write_the_same_artefacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Lot 4b : la désignation ne change aucun des quatre artefacts, seulement la source de la provenance."""
+    world = real_world(tmp_path, monkeypatch)
+    selection = write_selection(tmp_path, world, world.btc)
+    assert run_eval(world, tmp_path / "sel", selection=selection)[0] == 0
+    assert run_eval(world, tmp_path / "des", candidate=world.btc.identity)[0] == 0
+    for name in (
+        evaluate.EVALUATION,
+        evaluate.BENCHMARK_EVAL,
+        evaluate.CANDLES_EVAL,
+        evaluate.SENSITIVITY,
+    ):
+        assert sha(tmp_path / "sel" / name) == sha(tmp_path / "des" / name), name
+
+
+def test_a_designation_before_the_campaign_writes_the_full_artefact_set(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Garde de désignation reprise (plan 4a, amendement 2) : refusée sur la campagne (tests de la section A),
+    admise hors campagne — et, au lot 4b, elle écrit les cinq fichiers."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (0, [])
+    assert sorted(p.name for p in (tmp_path / "out").iterdir()) == sorted(evaluate.FINAL_ARTEFACTS)
+
+
+# ---------------------------------------------------------------------------
+# H. Sensibilité descriptive (§ F.2 f, § C.4)
+# ---------------------------------------------------------------------------
+
+
+def test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ F.2 (f) : « la ré-estimation post-ancrage est calculée et rapportée comme sensibilité descriptive » ; § C.4 :
+    mode ré-estimé, « DESCRIPTIF uniquement », étiquette obligatoire. Même recherche que le préfixe (§ F.2 g,
+    ``cb.match_lambda``) sur la NAV du comparateur d'évaluation, cibles recalculées sur la trajectoire évaluée."""
+    world, engine, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    sensitivity = cc.read_json(tmp_path / "out" / evaluate.SENSITIVITY)
+    assert engine._equity is not None
+    daily = cc.recompute_daily(engine._equity["values"], days=N_DAYS)
+    nav = hand_nav(close_in=Decimal("90000"), close_out=Decimal("90000"), marks=[pc.LEVEL] * 4)
+    targets = {"dd": daily.mdd_daily, "sigma": daily.sigma_daily}
+    assert sensitivity["targets"] == targets
+    for m in ("dd", "sigma"):
+        target = targets[m]
+        assert target is not None
+        expected = cb.match_lambda(cb.LambdaCurve(nav, C, m), target).to_dict()
+        assert sensitivity["matches"][m] == expected, m
+    assert sensitivity["lambda_mode"] == "reestimated" and sensitivity["status"] == "DESCRIPTIF"
+    assert sensitivity["lambda_label"] == cc.LAMBDA_LABEL
+    assert sensitivity["window"] == {"start": T.isoformat(), "end": FIN.isoformat()}

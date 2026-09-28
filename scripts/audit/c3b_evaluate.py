@@ -1,9 +1,10 @@
-"""C3b — producteur, temps 3 (partie 1) : le run d'évaluation ``[T, fin]`` d'un candidat, et ses preuves § B.
+"""C3b — producteur, temps 3 : l'évaluation ``[T, fin]`` d'un candidat, ses preuves § B, son comparateur et § F.2.
 
-Brief : ``agent/AGENT_C3B_PRODUCTEUR.md`` § « Lot 4a » ; plan du lot validé le 2026-09-28. Outillage **hors chaîne**
-(§ L.1, ligne 0). Pour **le** candidat retenu par ``c3_select`` (``--selection``), ou pour un candidat désigné
-mécaniquement sur une fenêtre hors campagne (``--candidate``), **un seul** ``engine.run(pair, T, fin)`` et les trois
-porteurs sans lesquels une évaluation réelle n'est pas admise (§ L.1 v2.1, ``cc.evaluation_admission``) :
+Brief : ``agent/AGENT_C3B_PRODUCTEUR.md`` § « Lot 4a » (partie 1) et § « Lot 4b » (partie 2) ; plans validés le
+2026-09-28. Outillage **hors chaîne** (§ L.1, ligne 0). Pour **le** candidat retenu par ``c3_select``
+(``--selection``), ou pour un candidat désigné mécaniquement sur une fenêtre hors campagne (``--candidate``), **un
+seul** ``engine.run(pair, T, fin)`` et les trois porteurs sans lesquels une évaluation réelle n'est pas admise (§ L.1
+v2.1, ``cc.evaluation_admission``) :
 
 * ``flat_start_proof`` (§ B.2, § J item 10) — lue sur le moteur **avant** ``run`` ; elle vaut ``DÉCLARÉ``, jamais
   plus : elle est produite par le programme dont elle décrit l'état ;
@@ -11,8 +12,21 @@ porteurs sans lesquels une évaluation réelle n'est pas admise (§ L.1 v2.1, ``
 * ``first_fill_at`` (§ C.3) — la plus petite estampille de ``metrics.trades``, strictement après ``T`` ; ``null``
   sans trade (la chaîne le traite : l'admission le refuse).
 
-Sorties : ``evaluation_run.json`` — intermédiaire, **pas** l'artefact lu par la chaîne (lot 4b) ; ses clés sont
-celles de l'artefact d'évaluation moins celles du § F.2 — et ``evaluation_run_provenance.json``, à part.
+Partie 2 (lot 4b), par les primitives de la chaîne et elles seules (décision 3, « une seule fonction, une seule
+convention », § F.2 c) :
+
+* le **comparateur d'évaluation** (§ C.3-C.5) : ``cb.build_pair`` sur ``[T, fin]``, construit depuis
+  ``candles_eval.json`` relu par ``cb.load_candles`` ; ``λ_dd``, ``λ_σ`` **du préfixe**, lus dans ``benchmark.json``
+  (étape 3) et tenus fixes (§ F.2 f) ; ``nav_bench[m] = cb.blend_nav(nav_bh, λ_m, C)`` ;
+* les **séries appariées** (§ F.2 a) : ``cc.recompute_daily`` sur ``equity_daily.values`` et sur chaque blend, avec
+  ``n_jours = (fin − T)`` en secondes / 86 400 ;
+* la **procédure § F.2** : ``cc.replay_bootstrap`` (graine de l'ancrage, index de la paire dans les paires **triées**
+  de l'ancrage) — exactement ce que ``c3_verdict._replay`` rejoue (``c3_verdict.py:250-278``).
+
+Sorties : ``evaluation.json`` (les clés de la fixture ``evaluation`` de ``test_c3_common.py``, aucune autre),
+``benchmark_eval.json`` (les clés que ``c3_continuity.comparator_block`` lit), ``candles_eval.json`` (forme de
+``candles.json``, la paire évaluée seule), ``evaluation_sensitivity.json`` (λ ré-estimé, § F.2 f : descriptif, hors
+chaîne) et ``evaluation_run_provenance.json``, à part.
 
 Ordre des contrôles — tout ce qui précède la base est pur, et un refus n'écrit rien :
 
@@ -21,12 +35,17 @@ Ordre des contrôles — tout ce qui précède la base est pur, et un refus n'é
    4. paramètres, séries de décision, fees et coûts (mêmes refus que le préfixe) ; 5. ancrage : amont en succès,
    empreinte du manifeste ; ``T``, paires et fenêtre recoupés au manifeste (code 3) ; 6. cible — sélection : amont en
    succès, empreintes du manifeste et de l'ancrage, retenu recoupé à la tête du classement et à son identité (code
-   3), **aucun retenu → 2 « rien à évaluer »** ; désignation : identité de l'univers ; 7. arbre git committé ;
-   8. répertoire de sortie ; 9. ``DATABASE_URL``, lecture seule assertée ; 10. moteur, preuve de départ à plat,
-   ``run`` unique, export, contrôles internes ; 11. écriture en deux temps (temporaires puis renommage).
+   3), **aucun retenu → 2 « rien à évaluer »** ; désignation : identité de l'univers ; 6b. paramètres du tirage
+   (graine recoupée au manifeste, index de paire, ``n_jours``) ; 6c. ``benchmark.json`` : amont en succès, empreintes
+   du manifeste et de l'ancrage, λ du préfixe de l'identité évaluée (``NOT_ESTIMABLE`` → 2) ; sélection : empreinte
+   de ``benchmark.json`` recoupée à celle que ``c3_select`` a enregistrée ; 7. arbre git committé ; 8. répertoire de
+   sortie ; 9. ``DATABASE_URL``, lecture seule assertée ; 10. bougies ``[T, fin]`` de la paire évaluée, comparateur
+   (non constructible → 2, **avant le moteur**), moteur, preuve de départ à plat, ``run`` unique, export, contrôles
+   internes ; 10b. hors base : séries (longueurs inégales ou entrée invalide → 3, **avant tout tirage**), § F.2,
+   sensibilité ; 11. écriture en deux temps (temporaires puis renommage).
 
-Journal : en succès, les événements de ce script ne portent ni identité, ni paire, ni métrique (plan du lot,
-point 1) ; le moteur, lui, journalise sa paire (``backtest.py:2884-2890``).
+Journal : en succès, les événements de ce script ne portent ni identité, ni paire, ni métrique, ni λ (plan du lot
+4a, point 1) ; le moteur, lui, journalise sa paire (``backtest.py:2884-2890``).
 
 Usage::
 
@@ -34,7 +53,8 @@ Usage::
         --manifest results/c3b_producteur/prefix_conformite/manifest.json \\
         --anchor results/c3b_producteur/prefix_conformite/server/chain/anchor.json \\
         --selection results/c3b_producteur/prefix_conformite/server/chain/selection.json \\
-        --output-dir ~/runs/c3b_eval4a/out/select/run1 --now 2026-09-28T00:00:00+00:00
+        --benchmark results/c3b_producteur/prefix_conformite/server/chain/benchmark.json \\
+        --output-dir ~/runs/c3b_eval4b/out/run1 --now 2026-09-28T00:00:00+00:00
 
 Codes de sortie : 0 évalué ; 2 refus d'entrée, dont « rien à évaluer » ; 3 contrôle interne ou moteur en échec.
 Jamais les codes du § I.1, qui appartiennent à la chaîne.
@@ -45,7 +65,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 import os
@@ -62,6 +82,7 @@ sys.path.insert(0, str(_ROOT / "scripts" / "audit"))
 
 from _common import git_provenance  # noqa: E402
 from _db import ReadOnlyDatabaseManager  # noqa: E402
+import c3_benchmark as cb  # noqa: E402
 import c3_common as cc  # noqa: E402
 import c3_continuity as ccont  # noqa: E402
 import c3b_common as c3bc  # noqa: E402
@@ -77,10 +98,22 @@ logger = structlog.get_logger()
 PROJECT_ROOT = _ROOT
 SCRIPT_RELPATH = "scripts/audit/c3b_evaluate.py"
 COMMON_RELPATH = "scripts/audit/c3b_common.py"
-SCHEMA = "c3b_evaluate_run/1"
-EVALUATION_RUN = "evaluation_run.json"
+SCHEMA = "c3b_evaluate_run/2"
+EVALUATION = "evaluation.json"
+BENCHMARK_EVAL = "benchmark_eval.json"
+CANDLES_EVAL = "candles_eval.json"
+SENSITIVITY = "evaluation_sensitivity.json"
 PROVENANCE = "evaluation_run_provenance.json"
-FINAL_ARTEFACTS: tuple[str, ...] = (EVALUATION_RUN, PROVENANCE)
+#: L'ordre d'écriture ; la provenance, qui porte le sha des quatre autres, vient en dernier.
+FINAL_ARTEFACTS: tuple[str, ...] = (
+    EVALUATION,
+    BENCHMARK_EVAL,
+    CANDLES_EVAL,
+    SENSITIVITY,
+    PROVENANCE,
+)
+#: § C.4 : le mode ré-estimé est « DESCRIPTIF uniquement » ; c'est le seul mode de ``evaluation_sensitivity.json``.
+LAMBDA_MODE_SENSITIVITY = "reestimated"
 SOURCE_SELECTION = "selection"
 SOURCE_DESIGNATION = "designation"
 #: § B.2 l.870 : « l'identité ``|net_pnl − (ending_balance − starting_balance)| ≤ 1e-6`` » — nécessaire, pas
@@ -188,6 +221,108 @@ def designated_candidate(identity: str, *, manifest: cc.Manifest) -> cc.Candidat
             ["--candidate: identité absente de universe.candidates du manifeste"],
         )
     return candidate
+
+
+@dataclass(frozen=True)
+class ReplayInputs:
+    """Les trois paramètres du tirage § F.2 (b), (c), **tels que la chaîne les relit** (``c3_verdict._replay``,
+    ``c3_verdict.py:259-277``) : la graine de l'ancrage, l'index de la paire évaluée dans les paires **triées** de
+    l'ancrage, ``n_jours = (fin − T)`` en secondes / 86 400."""
+
+    seed: int
+    pair_index: int
+    days: float
+
+
+def replay_inputs(
+    raw: Any, *, manifest: cc.Manifest, pair: str, anchor: datetime, end: datetime
+) -> ReplayInputs:
+    """§ F.2 (b) : « la graine est déclarée au manifeste » — lue, comme la chaîne, dans ``anchor.uncertainty.seed``
+    (``c3_anchor`` la recopie du manifeste) et recoupée à ``manifest.seed`` ; « l'index de paire est la position de
+    la paire de la configuration évaluée dans la liste **triée** des paires de l'univers (celle que porte l'artefact
+    d'ancrage) ». § F.2 (c) : « ``n_jours`` est la durée de la fenêtre d'évaluation, pas le nombre de rendements :
+    ``(fin − T)`` en secondes, divisé par 86 400, en double précision » — jamais ``anchor.evaluation_days``, jamais
+    ``metrics.duration_days`` du moteur (qui calcule la même expression, ``backtest.py:2869`` : la source fait foi,
+    pas la coïncidence). ``T`` et ``fin`` sont ceux que ``read_anchor`` a recoupés à l'ancrage. Graine discordante ou
+    paire hors de l'ancrage : contrôle en échec (3)."""
+    uncertainty = cc.require_mapping(raw, "uncertainty", where="anchor")
+    seed = cc.require_int(uncertainty, "seed", where="anchor.uncertainty", minimum=0)
+    listed = cc.require_sequence(raw, "pairs", where="anchor", min_len=1)
+    pairs = sorted(
+        cc.require_str({"pair": item}, "pair", where="anchor.pairs[]") for item in listed
+    )
+    problems: list[str] = []
+    if seed != manifest.seed:
+        problems.append(
+            f"anchor.uncertainty.seed {seed} != uncertainty.seed du manifeste {manifest.seed}"
+        )
+    if pair not in pairs:
+        problems.append("la paire évaluée n'est pas une paire de anchor.pairs")
+    if problems:
+        raise c3bc.ProducerControlError("replay_inputs", problems)
+    return ReplayInputs(
+        seed=seed,
+        pair_index=pairs.index(pair),
+        days=(end - anchor).total_seconds() / 86400.0,
+    )
+
+
+def prefix_lambdas(
+    raw: Any, *, candidate: cc.Candidate, manifest_path: Path, anchor_path: Path
+) -> dict[str, Decimal]:
+    """§ F.2 (f) : « ``λ`` est estimé une fois, sur le préfixe, puis **tenu fixe** » — ``λ_dd``, ``λ_σ`` lus dans
+    ``benchmark.json`` (étape 3, ``c3_benchmark.candidate_block``) pour l'identité évaluée, et rien d'autre de ce
+    bloc. Amont en échec, empreintes du manifeste ou de l'ancrage discordantes, mode de ``λ`` non décisionnel (§ C.4)
+    ou identité sans bloc : refus (2), le message ne porte pas l'identité. ``NOT_ESTIMABLE`` au préfixe : refus (2)
+    ``lambda_not_estimable`` — sur le chemin sélection il est inatteignable, ``c3_select`` n'admet que des estimables
+    (``c3_select.py:390-395``). Paire du bloc discordante ou ``λ`` hors ``[0, 1]`` (§ F.2 g) : contrôle en échec (3).
+    Conversion ``Decimal(str(λ))`` : celle de la chaîne quand elle construit le blend (``c3_benchmark.py:500``)."""
+    if not isinstance(raw, Mapping):
+        raise cc.MissingEvidenceError(f"benchmark: bloc attendu, reçu {type(raw).__name__}")
+    cc.require_upstream_ok(raw, where="benchmark")
+    mismatch = cc.check_inputs_match(
+        raw, {"manifest": manifest_path, "anchor": anchor_path}, where="benchmark"
+    )
+    if mismatch:
+        raise c3bc.ProducerRefusal("benchmark_inputs_mismatch", mismatch)
+    mode = cc.require_str(raw, "lambda_mode", where="benchmark")
+    if mode != cc.LAMBDA_MODE_DECISIONAL:
+        raise c3bc.ProducerRefusal(
+            "benchmark_refused",
+            [
+                f"benchmark.lambda_mode {mode!r} : seul {cc.LAMBDA_MODE_DECISIONAL!r} est décisionnel (§ C.4)"
+            ],
+        )
+    candidates = cc.require_mapping(raw, "candidates", where="benchmark")
+    if candidate.identity not in candidates:
+        raise c3bc.ProducerRefusal(
+            "benchmark_refused", ["benchmark.candidates : aucun bloc pour l'identité évaluée"]
+        )
+    where = "benchmark.candidates[évaluée]"
+    block = candidates[candidate.identity]
+    if not isinstance(block, Mapping):
+        raise cc.MissingEvidenceError(f"{where}: bloc attendu, reçu {type(block).__name__}")
+    pair = cc.require_str(block, "pair", where=where)
+    estimable = cc.require_bool(block, "estimable", where=where)
+    if pair != candidate.pair:
+        raise c3bc.ProducerControlError(
+            "benchmark_inconsistent", [f"{where}.pair ne recoupe pas la paire du candidat évalué"]
+        )
+    if not estimable:
+        raise c3bc.ProducerRefusal(
+            "lambda_not_estimable",
+            [f"{where}: λ du préfixe NOT_ESTIMABLE (§ F.2 f, § C.6) — rien à comparer"],
+        )
+    lambdas: dict[str, Decimal] = {}
+    problems: list[str] = []
+    for matching in cc.MATCHINGS:
+        value = cc.require_float(block, f"lambda_{matching}", where=where)
+        if not 0.0 <= value <= 1.0:
+            problems.append(f"{where}.lambda_{matching} hors du domaine [0, 1] (§ F.2 g)")
+        lambdas[matching] = Decimal(str(value))
+    if problems:
+        raise c3bc.ProducerControlError("lambda_domain", problems)
+    return lambdas
 
 
 # ---------------------------------------------------------------------------
@@ -330,10 +465,11 @@ def evaluation_payload(
     proof: Mapping[str, Any],
     net_pnl: float,
 ) -> dict[str, Any]:
-    """``evaluation_run.json`` : les clés de l'artefact d'évaluation (fixture ``evaluation``, ``test_c3_common.py:
-    1680-1708``) **moins** celles du § F.2 (``returns_config``, ``returns_bench``, ``environment``, ``B``,
-    ``replications``) et moins ``cagr_pct`` / ``delta_dd`` dans ``metrics`` — le lot 4b les ajoute. Aucune
-    provenance : elle vit dans ``evaluation_run_provenance.json``."""
+    """Le payload du run, base d'``evaluation.json`` : les clés de l'artefact d'évaluation (fixture ``evaluation``,
+    ``test_c3_common.py:1680-1708``) **moins** celles du § F.2 (``returns_config``, ``returns_bench``,
+    ``environment``, ``B``, ``replications``) et moins ``cagr_pct`` / ``delta_dd`` dans ``metrics`` —
+    ``evaluation_artefact`` les ajoute (lot 4b). Aucune provenance : elle vit dans
+    ``evaluation_run_provenance.json``."""
     return {
         "synthetic": False,
         "strategy": candidate.strategy,
@@ -351,18 +487,288 @@ def evaluation_payload(
 
 
 # ---------------------------------------------------------------------------
+# Comparateur d'évaluation (§ C.3-C.5) et procédure § F.2 — primitives de la chaîne, aucune recopiée
+# ---------------------------------------------------------------------------
+
+
+async def read_evaluation_closes(
+    db: Any, manifest: cc.Manifest, candidate: cc.Candidate, *, anchor: datetime, end: datetime
+) -> dict[str, list[tuple[datetime, Decimal]]]:
+    """Les closes de la **seule** paire évaluée sur ``[T, fin]`` : la série d'exécution et la série quotidienne
+    (§ C.3), par ``c3bc.fetch_closes`` — la lecture du préfixe (``c3b_prefix.collect``), bornée à l'évaluation."""
+    return {
+        "exec": await c3bc.fetch_closes(
+            db,
+            exchange=manifest.exchange,
+            pair=candidate.pair,
+            interval=manifest.exec_interval,
+            start=anchor,
+            end=end,
+        ),
+        "daily": await c3bc.fetch_closes(
+            db,
+            exchange=manifest.exchange,
+            pair=candidate.pair,
+            interval=c3bc.DAILY_INTERVAL,
+            start=anchor,
+            end=end,
+        ),
+    }
+
+
+def evaluation_comparator(
+    candles: Mapping[str, Any],
+    *,
+    manifest: cc.Manifest,
+    candidate: cc.Candidate,
+    anchor: datetime,
+    end: datetime,
+) -> tuple[cb.PairBenchmark, dict[str, Any]]:
+    """Le comparateur d'évaluation, construit **depuis l'artefact** ``candles_eval.json`` : relu par
+    ``cb.load_candles`` sur le manifeste restreint au candidat évalué (la paire évaluée seule), puis
+    ``cb.build_pair(pair, …, start=T, end=fin)``. La convention est celle de la fonction, citée et non réécrite
+    (``c3_benchmark.py:185-240``) : entrée à la **clôture de la première bougie d'exécution strictement après
+    ``T``**, sortie à la dernière ``≤ fin``, taker + spread + slippage sur les deux jambes, marques quotidiennes aux
+    minuits intérieurs.
+
+    Non constructible (estampille d'entrée ou de sortie absente) : refus (2) ``comparator_not_buildable`` — la chaîne
+    exige ``returns_bench``, qu'aucune NAV ne fournit ici (écart E5, candidat v2.2). ``benchmark_eval`` porte les clés
+    que ``c3_continuity.comparator_block`` lit (``c3_continuity.py:300-312``) : ``comparability`` projetée sur les
+    cinq tests de ``cc.COMPARABILITY_TESTS``, ``comparable`` **recalculé** comme leur conjonction — jamais posé ; s'il
+    diffère de celui de ``build_pair``, contrôle en échec (3)."""
+    try:
+        parsed = cb.load_candles(candles, replace(manifest, candidates=(candidate,)), end=end)
+    except (cc.MissingEvidenceError, cc.InvalidValueError) as exc:
+        raise c3bc.ProducerControlError("candles", [str(exc)]) from exc
+    spread, slippage = manifest.pair_costs[candidate.pair]
+    bench = cb.build_pair(
+        candidate.pair,
+        parsed[candidate.pair],
+        start=anchor,
+        end=end,
+        exec_interval=manifest.exec_interval,
+        spread=spread,
+        slippage=slippage,
+        taker=manifest.taker,
+        capital=manifest.capital,
+    )
+    if not bench.buildable:
+        raise c3bc.ProducerRefusal(
+            "comparator_not_buildable", [f"comparateur d'évaluation {bench.reason}"]
+        )
+    tests: dict[str, bool] = {}
+    for name in cc.COMPARABILITY_TESTS:
+        value = bench.comparability[name]
+        if type(value) is not bool:
+            raise c3bc.ProducerControlError(
+                "comparator",
+                [f"comparability.{name}: booléen attendu, reçu {type(value).__name__}"],
+            )
+        tests[name] = value
+    comparable = all(tests.values())
+    if comparable is not bench.comparable:
+        raise c3bc.ProducerControlError(
+            "comparator",
+            [
+                f"conjonction des tests § C.5 {comparable!r} != comparable de build_pair {bench.comparable!r}"
+            ],
+        )
+    payload = {
+        "pair": candidate.pair,
+        "window": {"start": anchor.isoformat(), "end": end.isoformat()},
+        "comparable": comparable,
+        "comparability": tests,
+    }
+    return bench, payload
+
+
+@dataclass(frozen=True)
+class Series:
+    """Les séries quotidiennes que la procédure consomme (§ F.2 a), et le recalcul dont ``returns_config`` sort."""
+
+    daily: cc.DailyRecompute
+    returns_config: list[float]
+    returns_bench: dict[str, list[float]]
+
+
+def evaluation_series(
+    values: Sequence[float],
+    *,
+    nav_bh: Sequence[Decimal],
+    lambdas: Mapping[str, Decimal],
+    capital: Decimal,
+    days: float,
+) -> Series:
+    """§ F.2 (a) : les rendements quotidiens de la configuration et du comparateur de chaque appariement, **par la
+    même fonction que la chaîne** : ``returns_config = cc.recompute_daily(equity_daily.values, days).returns``
+    (dérivée de la série exportée ; ex-S-3, l'égalité au bit est garantie ici par construction) et
+    ``returns_bench[m] = cc.recompute_daily(cb.blend_nav(nav_bh, λ_m, C), days).returns`` — la NAV ``Decimal`` du
+    blend passée en ``float`` au site, la conversion que ``recompute_daily`` fait elle-même (``c3_common.py:1607``).
+
+    **Avant tout tirage** : trois longueurs différentes (§ F.2 d : « indices appariés impossibles ») → contrôle en
+    échec (3) ``series_length`` ; puis ``cc.check_returns`` sur chaque série — un non-fini ou un rendement ``≤ −1``
+    est une entrée invalide (§ F.2 e) → contrôle en échec (3) ``f2_invalid_input``, aucun artefact. Même issue quand
+    ``recompute_daily`` lève ``OverflowError`` : son CAGR passe par ``math.exp`` (``cc.cagr_pct``), qui lève là où
+    l'exponentielle de numpy rend ``inf`` — c'est le CAGR observé non fini du § F.2 (e), constaté avant le tirage."""
+    try:
+        daily = cc.recompute_daily(values, days=days)
+        returns_config = list(daily.returns)
+        returns_bench = {
+            matching: list(
+                cc.recompute_daily(
+                    [float(v) for v in cb.blend_nav(nav_bh, lambdas[matching], capital)],
+                    days=days,
+                ).returns
+            )
+            for matching in cc.MATCHINGS
+        }
+    except OverflowError as exc:
+        raise c3bc.ProducerControlError(
+            "f2_invalid_input",
+            [
+                f"CAGR observé non fini ({exc}, cc.cagr_pct) — entrée invalide (§ F.2 e), aucun tirage"
+            ],
+        ) from exc
+    lengths = {"returns_config": len(returns_config)}
+    lengths.update({f"returns_bench.{m}": len(series) for m, series in returns_bench.items()})
+    if len(set(lengths.values())) != 1:
+        raise c3bc.ProducerControlError(
+            "series_length",
+            [f"longueurs {lengths} — indices appariés impossibles (§ F.2 a, d), aucun tirage"],
+        )
+    try:
+        cc.check_returns(returns_config, label="returns_config")
+        for matching, series in returns_bench.items():
+            cc.check_returns(series, label=f"returns_bench.{matching}")
+    except cc.InvalidInputError as exc:
+        raise c3bc.ProducerControlError(
+            "f2_invalid_input", [f"{exc} — entrée invalide (§ F.2 e), aucun tirage"]
+        ) from exc
+    return Series(daily=daily, returns_config=returns_config, returns_bench=returns_bench)
+
+
+def f2_block(
+    returns_config: Sequence[float],
+    returns_bench: Mapping[str, Sequence[float]],
+    *,
+    inputs: ReplayInputs,
+    net_pnl: float,
+) -> dict[str, Any]:
+    """§ F.2 (b)-(e) : ``cc.replay_bootstrap``, la fonction que la chaîne rejoue, aux paramètres qu'elle relit
+    (``ReplayInputs``). Exporte ce que ``c3_verdict`` lit et rejoue (``_evaluation_contract``,
+    ``_read_replications``, ``_read_series``, ``_cross_check_replay``) : les séries, l'environnement du tirage en
+    quatre champs, ``B``, par combinaison ``L:m`` la suite ``Δ*`` retenue dans l'ordre des réplications, le compte
+    d'écartées et la borne (nulle si et seulement si la suite est vide), et ``metrics.{cagr_pct, delta_dd}`` —
+    le CAGR observé de la configuration et ``Δ̂`` en drawdown, par le même chemin (§ F.2 c). ``net_pnl`` reste
+    déclaratif (§ F.2 d). Un CAGR observé non fini est une entrée invalide (§ F.2 e) : contrôle en échec (3)
+    ``f2_invalid_input``, aucun artefact. Aucun type numpy : ``replay_bootstrap`` rend des ``float`` natifs, mis en
+    liste au site."""
+    try:
+        replay = cc.replay_bootstrap(
+            returns_config,
+            returns_bench,
+            seed=inputs.seed,
+            pair_index=inputs.pair_index,
+            days=inputs.days,
+        )
+    except cc.InvalidValueError as exc:
+        raise c3bc.ProducerControlError("f2_invalid_input", [str(exc)]) from exc
+    replications = {
+        combination: {"delta_stars": list(kept), "discarded": discarded, "bound": bound}
+        for combination, (kept, discarded, bound) in replay.replications.items()
+    }
+    return {
+        "returns_config": list(returns_config),
+        "returns_bench": {m: list(returns_bench[m]) for m in cc.MATCHINGS},
+        "environment": cc.replay_environment(),
+        "B": cc.BOOTSTRAP_B,
+        "replications": replications,
+        "metrics": {
+            "net_pnl": net_pnl,
+            "cagr_pct": replay.cagr_config,
+            "delta_dd": replay.delta_hat["dd"],
+        },
+    }
+
+
+def evaluation_artefact(base: Mapping[str, Any], f2: Mapping[str, Any]) -> dict[str, Any]:
+    """``evaluation.json`` : le payload du run (lot 4a, ``evaluation_payload``) complété des clés § F.2 ; ``metrics``
+    est remplacé par celui du § F.2, qui reprend le ``net_pnl`` du run. Une autre clé commune serait un contrôle en
+    échec (3) : l'assemblage n'écrase rien d'autre."""
+    shared = sorted((set(base) & set(f2)) - {"metrics"})
+    if shared or f2["metrics"]["net_pnl"] != base["metrics"]["net_pnl"]:
+        raise c3bc.ProducerControlError(
+            "evaluation_assembly", [f"clés communes {shared} ou net_pnl discordant"]
+        )
+    return {**base, **f2}
+
+
+def sensitivity_payload(
+    bench: cb.PairBenchmark,
+    daily: cc.DailyRecompute,
+    *,
+    lambdas: Mapping[str, Decimal],
+    capital: Decimal,
+    pair: str,
+    anchor: datetime,
+    end: datetime,
+) -> dict[str, Any]:
+    """§ F.2 (f) : « la ré-estimation post-ancrage est calculée et **rapportée comme sensibilité descriptive**, elle ne
+    fonde aucune issue » ; § C.4 : mode ré-estimé, « DESCRIPTIF uniquement ». Même recherche que le préfixe
+    (``cb.LambdaCurve``, ``cb.match_lambda``, § F.2 g), sur la NAV du comparateur d'évaluation, cibles recalculées
+    sur la trajectoire évaluée (``max_drawdown_pct_daily`` et écart-type quotidien). Hors chaîne, jamais dans
+    ``evaluation.json``. Comparateur non comparable ou cible indéfinie : appariement nul, raison dite."""
+    targets: dict[str, float | None] = {"dd": daily.mdd_daily, "sigma": daily.sigma_daily}
+    matches: dict[str, Any] = {}
+    reasons: dict[str, str | None] = {}
+    for matching in cc.MATCHINGS:
+        target = targets[matching]
+        if not bench.comparable:
+            matches[matching] = None
+            reasons[matching] = (
+                "comparateur d'évaluation non comparable (§ C.5) : aucune ré-estimation"
+            )
+        elif target is None:
+            matches[matching] = None
+            reasons[matching] = "cible indéfinie : moins de deux rendements quotidiens"
+        else:
+            curve = cb.LambdaCurve(bench.nav, capital, matching)
+            matches[matching] = cb.match_lambda(curve, target).to_dict()
+            reasons[matching] = None
+    return {
+        "pair": pair,
+        "window": {"start": anchor.isoformat(), "end": end.isoformat()},
+        "lambda_mode": LAMBDA_MODE_SENSITIVITY,
+        "status": "DESCRIPTIF",
+        "lambda_label": cc.LAMBDA_LABEL,
+        "note": (
+            "§ F.2 (f) : λ ré-estimé sur la fenêtre d'évaluation — sensibilité descriptive, ne fonde aucune "
+            "issue ; hors chaîne, jamais dans evaluation.json"
+        ),
+        "prefix": {m: float(lambdas[m]) for m in cc.MATCHINGS},
+        "targets": targets,
+        "matches": matches,
+        "reasons": reasons,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Le run
 # ---------------------------------------------------------------------------
 
 
 @dataclass(frozen=True)
 class Evaluated:
-    """Ce que le run rend à ``main`` : l'artefact, l'état lu avant ``run``, la sonde de base et la durée."""
+    """Ce que le run rend à ``main`` : le payload du run (lot 4a), l'état lu avant ``run``, la sonde de base, la
+    durée du moteur ; et, lot 4b, ``candles_eval``, le comparateur d'évaluation et ``benchmark_eval``."""
 
     payload: dict[str, Any]
     observed: dict[str, Any]
     probe: dict[str, Any]
     duration_s: float
+    candles: dict[str, Any]
+    comparator: cb.PairBenchmark
+    benchmark_eval: dict[str, Any]
 
 
 async def evaluate(
@@ -373,19 +779,29 @@ async def evaluate(
     anchor: datetime,
     pair_costs: Mapping[str, Any],
 ) -> Evaluated:
-    """Un gestionnaire en lecture seule (assertée par Postgres avant tout), le moteur de la fabrique, la preuve
-    de départ à plat **avant** ``run``, **un seul** ``run(pair, T, fin)``, l'export et les contrôles. Base
-    injoignable ou lecture seule non assertée : refus (2) ; toute autre exception du moteur : contrôle (3)."""
+    """Un gestionnaire en lecture seule (assertée par Postgres avant tout) ; les bougies ``[T, fin]`` de la paire
+    évaluée, ``candles_eval`` et le comparateur **avant le moteur** (un artefact impossible à former refuse avant
+    tout run, comme X1 au lot 3) ; puis le moteur de la fabrique, la preuve de départ à plat **avant** ``run``,
+    **un seul** ``run(pair, T, fin)``, l'export et les contrôles. Base injoignable, lecture seule non assertée ou
+    lecture en échec : refus (2) ; comparateur non constructible : refus (2) ; bougie hors ``[T, fin]`` : contrôle
+    (3) ; toute autre exception du moteur : contrôle (3)."""
     db = ReadOnlyDatabaseManager(url)
+    end = manifest.window_end
     try:
         try:
             probe = await c3bc.probe_database(db)
+            closes = await read_evaluation_closes(db, manifest, candidate, anchor=anchor, end=end)
         except Exception as exc:  # noqa: BLE001 - base injoignable ou lecture seule non assertée = refus
             raise c3bc.ProducerRefusal(
                 "database_read_failed", [f"{type(exc).__name__}: {exc}"]
             ) from exc
+        candles = c3bc.candles_artefact(
+            {candidate.pair: closes}, start=anchor, end=end, exec_interval=manifest.exec_interval
+        )
+        comparator, benchmark_eval = evaluation_comparator(
+            candles, manifest=manifest, candidate=candidate, anchor=anchor, end=end
+        )
         started = time.monotonic()
-        end = manifest.window_end
         try:
             engine = c3bc.build_engine(get_settings(), db, manifest, candidate, pair_costs)
             proof, observed = capture_flat_start(engine, capital=manifest.capital, anchor=anchor)
@@ -431,7 +847,15 @@ async def evaluate(
             raise c3bc.ProducerControlError(
                 "engine_failed", [f"{type(exc).__name__}: {exc}"]
             ) from exc
-        return Evaluated(payload, observed, probe, round(time.monotonic() - started, 3))
+        return Evaluated(
+            payload,
+            observed,
+            probe,
+            round(time.monotonic() - started, 3),
+            candles,
+            comparator,
+            benchmark_eval,
+        )
     finally:
         await db.close_db()
 
@@ -473,6 +897,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--candidate",
         default=None,
         help="identité désignée mécaniquement — refusée si la fenêtre dépasse le 2021-03-01",
+    )
+    parser.add_argument(
+        "--benchmark",
+        type=Path,
+        required=True,
+        help="benchmark.json de c3_benchmark — λ du préfixe, tenus fixes (§ F.2 f)",
     )
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--now", default=None, help="ISO UTC — n'entre que dans la provenance")
@@ -552,6 +982,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _refuse("anchor_refused", [str(exc)])
     # 6. cible
     source: dict[str, Any]
+    selection_raw: Any = None
     if args.selection is not None:
         try:
             selection_raw = cc.read_json(args.selection)
@@ -587,6 +1018,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         except c3bc.ProducerRefusal as exc:
             return _refuse(exc.reason, exc.problems)
         source = {"kind": SOURCE_DESIGNATION, "identity": candidate.identity}
+    # 6b. paramètres du tirage § F.2 : graine recoupée, index de paire, n_jours
+    try:
+        draw = replay_inputs(
+            anchor_raw,
+            manifest=manifest,
+            pair=candidate.pair,
+            anchor=anchor,
+            end=manifest.window_end,
+        )
+    except c3bc.ProducerControlError as exc:
+        return _control(exc.control, exc.problems)
+    except (cc.MissingEvidenceError, cc.InvalidValueError, cc.NonFiniteValueError) as exc:
+        return _refuse("anchor_refused", [str(exc)])
+    # 6c. λ du préfixe (benchmark.json), puis, sur le chemin sélection, l'empreinte que c3_select a enregistrée
+    try:
+        benchmark_raw = cc.read_json(args.benchmark)
+    except (OSError, ValueError) as exc:
+        return _refuse("benchmark_unreadable", [f"{args.benchmark}: {exc}"])
+    try:
+        lambdas = prefix_lambdas(
+            benchmark_raw,
+            candidate=candidate,
+            manifest_path=args.manifest,
+            anchor_path=args.anchor,
+        )
+    except c3bc.ProducerRefusal as exc:
+        return _refuse(exc.reason, exc.problems)
+    except c3bc.ProducerControlError as exc:
+        return _control(exc.control, exc.problems)
+    except (cc.InvalidValueError, cc.NonFiniteValueError) as exc:
+        return _control("f2_invalid_input", [f"{exc} — λ non fini, entrée invalide (§ F.2 e)"])
+    except cc.MissingEvidenceError as exc:
+        return _refuse("benchmark_refused", [str(exc)])
+    if args.selection is not None:
+        try:
+            mismatch = cc.check_inputs_match(
+                selection_raw, {"benchmark": args.benchmark}, where="selection"
+            )
+        except cc.MissingEvidenceError as exc:
+            return _refuse("selection_refused", [str(exc)])
+        if mismatch:
+            return _refuse("selection_benchmark_mismatch", mismatch)
     # 7. arbre committé
     origin = provenance()
     untracked = [path for path, info in origin["scripts"].items() if info["tracked"] is not True]
@@ -604,7 +1077,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     url = os.getenv("DATABASE_URL")
     if not url:
         return _refuse("database_url_missing", ["DATABASE_URL absente (jamais Settings())"])
-    # 10. moteur, preuve, run unique, export, contrôles
+    # 10. bougies [T, fin], comparateur, moteur, preuve, run unique, export, contrôles
     try:
         result = asyncio.run(
             evaluate(url, manifest, candidate, anchor=anchor, pair_costs=pair_costs)
@@ -613,11 +1086,48 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _refuse(exc.reason, exc.problems)
     except c3bc.ProducerControlError as exc:
         return _control(exc.control, exc.problems)
+    # 10b. hors base : séries appariées, § F.2, sensibilité — un échec n'écrit rien
+    try:
+        series = evaluation_series(
+            result.payload["equity_daily"]["values"],
+            nav_bh=result.comparator.nav,
+            lambdas=lambdas,
+            capital=manifest.capital,
+            days=draw.days,
+        )
+        f2 = f2_block(
+            series.returns_config,
+            series.returns_bench,
+            inputs=draw,
+            net_pnl=result.payload["metrics"]["net_pnl"],
+        )
+        evaluation = evaluation_artefact(result.payload, f2)
+        sensitivity = sensitivity_payload(
+            result.comparator,
+            series.daily,
+            lambdas=lambdas,
+            capital=manifest.capital,
+            pair=candidate.pair,
+            anchor=anchor,
+            end=manifest.window_end,
+        )
+    except c3bc.ProducerControlError as exc:
+        return _control(exc.control, exc.problems)
+    except Exception as exc:  # noqa: BLE001 - un calcul en échec est un contrôle en échec, jamais un refus
+        print(traceback.format_exc(), file=sys.stderr)
+        return _control("evaluation_failed", [f"{type(exc).__name__}: {exc}"])
     # 11. écriture en deux temps
     staged: list[tuple[Path, Path]] = []
+    digests: dict[str, str] = {}
     try:
-        tmp, run_digest = c3bc.stage_json(args.output_dir / EVALUATION_RUN, result.payload)
-        staged.append((tmp, args.output_dir / EVALUATION_RUN))
+        for name, payload in (
+            (EVALUATION, evaluation),
+            (BENCHMARK_EVAL, result.benchmark_eval),
+            (CANDLES_EVAL, result.candles),
+            (SENSITIVITY, sensitivity),
+        ):
+            tmp, digests[name] = c3bc.stage_json(args.output_dir / name, payload)
+            staged.append((tmp, args.output_dir / name))
         provenance_payload = {
             "schema": SCHEMA,
             "generated_at": now.isoformat(),
@@ -629,6 +1139,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "variant_key": cc.sig(raw),
             },
             "anchor": {"path": str(args.anchor), "sha256": cc.file_sha256(args.anchor)},
+            "benchmark": {"path": str(args.benchmark), "sha256": cc.file_sha256(args.benchmark)},
             "source": source,
             "candidate": {
                 "identity": candidate.identity,
@@ -638,14 +1149,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "exec_interval": manifest.exec_interval,
             },
             "window": {"anchor": anchor.isoformat(), "end": manifest.window_end.isoformat()},
+            "replay": {"seed": draw.seed, "pair_index": draw.pair_index, "days": draw.days},
             "database": {"url": c3bc.masked_url(url), **result.probe},
             "environment": cc.replay_environment(),
             "interpreter": {"executable": sys.executable, "krakenbot": str(krakenbot.__file__)},
-            "outputs": {EVALUATION_RUN: run_digest},
+            "outputs": dict(digests),
             "flat_start_observed": result.observed,
             "duration_s": result.duration_s,
         }
-        tmp, provenance_digest = c3bc.stage_json(args.output_dir / PROVENANCE, provenance_payload)
+        tmp, digests[PROVENANCE] = c3bc.stage_json(args.output_dir / PROVENANCE, provenance_payload)
         staged.append((tmp, args.output_dir / PROVENANCE))
     except (TypeError, ValueError) as exc:
         for tmp, _ in staged:
@@ -654,8 +1166,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     for tmp, final in staged:
         os.replace(tmp, final)
     logger.info("evaluated", source=source["kind"], duration_s=result.duration_s)
-    for name, digest in ((EVALUATION_RUN, run_digest), (PROVENANCE, provenance_digest)):
-        logger.info("written", path=str(args.output_dir / name), sha256=digest)
+    for name in FINAL_ARTEFACTS:
+        logger.info("written", path=str(args.output_dir / name), sha256=digests[name])
     return 0
 
 
