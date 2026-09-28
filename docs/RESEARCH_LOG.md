@@ -283,6 +283,24 @@ Un seul lancement, au `6509737` (pilote sha256 `ee1f5a53…`, consigné dans `st
 | 15 | Chaîne : `c3_anchor` 0 ; `c3_entry` 0 — I-A.1 à I-A.8 `ok`, **aucune clause non assertable**, couverture évaluée, D2 en échec sur les 4 candidats SOL et eux seuls (séries attendues) ; `c3_benchmark` 0 — SOL non constructible (estampille `2020-01-06T00:05Z` absente) ; `c3_select` 0 — provenance `unknown`, aucune `SÉLECTION_VALIDE`, SOL `DESCRIPTIF` par D1 (5 min 31/249) ; issue BTC/ETH **non lue** | `server/chain/`, `server/verify_attendu.out` |
 | 15 | Attendu tenu sur ses 7 items ; défaut de rédaction de l'item 5 (« sélection descriptive » présume un candidat retenu), vérifié par le seul booléen `!= SÉLECTION_VALIDE`, qui ne lit pas l'issue | `results/c3b_producteur/prefix_conformite/README.md` § 4 |
 
+### C3b lot 4a — producteur d'évaluation sur la fenêtre de conformité 2020 (inscrite le 28/09/2026, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, et il est hors quota. C'est un run
+distinct de l'entrée 15 (nouveau script, fenêtre `[T, fin]` jamais lue jusqu'ici, nouvelles métriques de candidat) :
+il reçoit donc sa propre entrée. L'entrée 15 est close, avec son issue inscrite, et on n'y ajoute rien (ajout seul).
+Attendu complet, item par item : `results/c3b_producteur/eval_conformite/ATTENDU.md`, committé avec cette entrée.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 16 | 2026-09-28 | C3b lot 4a — essai d'instrument du producteur d'évaluation (`scripts/audit/c3b_evaluate.py`) : un seul `run(pair, T, fin)` par chemin, puis admission (`cc.evaluation_admission`) et `c3_continuity` sur un comparateur d'évaluation **synthétique** ; **aucune lecture économique** | `grok_grid_atr_adaptive_v4`, deux chemins exécutés chacun deux fois. **Sélection** : le retenu de `selection.json` du lot 3, consommé mécaniquement ; seul le code (0 évalué / 2 `nothing_to_evaluate`) est rapporté, et les sorties sont archivées sans être lues. **Désignation** : `145867637b7f9bac…` (`ETH/USDT`, classe C2, séries `[1w, 4h]`), première identité BTC/ETH dans l'ordre lexicographique, recalculée par le pilote | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; évaluation `[T = 2020-09-11T21:36Z, fin = 2020-12-28T00:00Z]`, amorçage avant `T` (`≥ T − 400 j`), **hors campagne** (garde-fou 6 ; la désignation est refusée au-delà du 2021-03-01, `CAMPAIGN_UNLOCK` ou non) | branche `feat/c3b-producteur`, exécuté au commit de cette entrée (SHA consigné dans `evaluation_run_provenance.json`) ; métriques v2, `replay_version` 2 ; protocole v2.1 `9300f4e5…` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6) ; `min_order_usdc 5.0` (inerte sur le grid) | sélection : deux codes égaux dans {0, 2}, rien d'autre ; désignation : deux exécutions en code 0, `evaluation_run.json` identique au bit, preuve à plat `{at: T, cash: "1000", qty: "0", pending: 0}` (**DÉCLARÉ**), `single_call` vrai, `first_fill_at > T`, 109 points quotidiens ; admission : réelle et admise ; `c3_continuity` 0, **c1, c2, c5 `DECLARED`**, c3 et c4 `VERIFIED`, comparateur synthétique sans valeur ; `alembic` inchangé | aucune décision économique ; la conformité de l'évaluation conditionne le lot 4b (comparateur d'évaluation, § F.2) | `results/c3b_producteur/eval_conformite/` (`ATTENDU.md`, rapport au commit de preuves) |
+
+- **Deux gardes mécaniques.**
+  - Le garde-fou 6 refuse toute fenêtre qui finit après le 2021-03-01 tant que `CAMPAIGN_UNLOCK` n'existe pas.
+  - La désignation (`--candidate`) est refusée sur une telle fenêtre **même si** `CAMPAIGN_UNLOCK` existe : sur la
+    campagne, seul le retenu de `c3_select` s'évalue.
+- **Tout lancement est consigné** (`status.txt` par lancement). Un écart à l'attendu est un constat, sans relance
+  avant diagnostic. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
