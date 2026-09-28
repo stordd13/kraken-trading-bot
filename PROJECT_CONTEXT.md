@@ -1,7 +1,7 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 24 septembre 2026, **à la reconstruction 1 w** (amendement v2.1 du protocole C3 le 23 septembre). B4 close le 15 sept (merge `4c98b6b`
+> Dernière mise à jour : 28 septembre 2026, **à la clôture du producteur C3b (paquet 1)** ; précédente : 24 septembre, à la reconstruction 1 w (amendement v2.1 du protocole C3 le 23 septembre). B4 close le 15 sept (merge `4c98b6b`
 > dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec
 > un instrument depuis invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ;
 > sélection paper vide. Instrument réparé : **C1 métriques** (tag `v2.9.0-c1-metrics`) et **C2 fidélité replay** (tag
@@ -162,6 +162,28 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - ✅ **Mesure SOL/D2 faite le 25/09** (`c38d718`) : SOL sort dans C1-C2, survit dans C3-C6 ; `grid_levels` est un axe
   de `decision_timeframes` ; candidats v2.2 et dettes C3b au rapport § 8 (`results/sol_d2_1w_modes/report.md` ;
   journal : `docs/RESEARCH_LOG.md`, entrée 14).
+
+- ✅ **C3b paquet 1, producteur conforme, livré le 28 sept.**
+  - **Branche** `feat/c3b-producteur`, partie de `dev` @ `ec7ffb8`, en cinq lots. Merge sous décision humaine, après
+    la porte § L.5 option 1. État au commit de clôture.
+  - **Quatre temps** : `scripts/audit/c3b_prefix.py`, puis la chaîne 1-4, puis `scripts/audit/c3b_evaluate.py`, puis
+    `c3_verdict.py chain`.
+  - **Livré**
+    - La classmethod `decision_timeframes` (lot 1). Elle refuse un `pause_1w_strong_bear` non booléen et décide
+      `bias_live` par l'oracle, ce qui ferme les dettes producteur du rapport SOL/D2 § 8.2.
+    - `_common.py` / `_db.py` et le writer strict (lot 2, dette 22 close).
+    - Préfixe, évaluation, comparateur et § F.2 rejouable (lots 3, 4a, 4b).
+    - 326 tests ; suite locale 3 264 passés.
+  - **Chaîne complète vérifiée sur la fenêtre d'instrument 2020** (`2020-01-06 → 2020-12-28`, hors campagne) : six
+    étapes en code 0, `chain.verified` vrai, **0 violation au rejeu du § F.2**.
+  - **Aucune issue de chaîne lue** ; aucune donnée de la fenêtre de campagne lue par le producteur.
+  - **`CAMPAIGN_UNLOCK` absent** : Bruno le crée à la conversation manifeste.
+  - **Où lire**
+    - rapport : `results/c3b_producteur/report.md` ;
+    - porte : `results/c3b_producteur/closure/gate_L5/` ;
+    - journal : `docs/RESEARCH_LOG.md`, entrées 15-17 ;
+    - commandes : `skills/backtest.md` § « Producteur C3b ».
+  - **Suite** : v2.2 (candidats au § 9), puis le manifeste de la première campagne.
 
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
@@ -416,7 +438,8 @@ Détail : `ROADMAP.md`.
   dépriorisée) → **C3 validation chronologique** : **C3a mergée le 23 sept** (`64adede`, tag `v2.11.0-c3a-protocole` ;
   artefact du rejeu refusé à l'entrée) ; **protocole v2.1 amendé le 23 sept** (branche `feat/c3-amendements-v2.1`,
   merge sous décision humaine) ; **C3b** : producteur conforme, décision de reconstruction 1 w, puis manifeste et
-  campagne réelle sous la chaîne. **Phase courante : merge de v2.1 + brief C3b.**
+  campagne réelle sous la chaîne. **Phase courante : C3b paquet 1 clos (producteur, merge sous décision humaine) ;
+  suite : v2.2, puis manifeste.**
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
@@ -616,14 +639,90 @@ Détail : `ROADMAP.md`.
     première campagne réelle — dériver le nom du manifeste (identifiant de variante ou champ déclaré et entré dans
     l'empreinte), ou amender le § L.2. Sites : `scripts/audit/c3_verdict.py`, `--campaign` des deux parseurs (`build_parser`, `build_chain_parser`).
 
-22. **`write_json(default=str)` convertit en chaîne tout type non JSON sans signaler**
+22. ✅ **C3b lot 2 (2026-09-27) — `write_json(default=str)` convertit en chaîne tout type non JSON sans signaler**
     (`rejeu_common.py:344`, réexporté par `scripts/audit/c3_common.py`, donc utilisé par tous les
     artefacts C3). Constat 24/09 (application v2.1, S-5). Incompatible avec le § F.2 (d) v2.1 :
     les suites `Δ*` et les bornes sont sérialisées en `repr` exact et recoupées au bit par la chaîne ;
-    un `numpy.float64` ou un `Decimal` glissé dans un artefact serait écrit comme texte, et le rejeu
-    échouerait en violation sans cause lisible. **Fix (C3b)** : `default` qui lève `TypeError` en nommant
-    la clé ; les conversions légitimes (`Decimal` → `str`, `datetime` → ISO) faites explicitement au
-    site d'écriture. Test rouge-avant : un `numpy.float64` dans un artefact → erreur, pas une chaîne.
+    un `Decimal`, ou un `numpy.float32`, `int64` ou `bool_`, glissé dans un artefact serait écrit comme texte, et
+    le rejeu échouerait en violation sans cause lisible.
+    - **Libellé corrigé à la clôture de C3b.** L'exemple initial, `numpy.float64`, est faux. C'est un sous-type de
+      `float` : `json` l'écrit en nombre et n'appelle jamais `default`. Seul un parcours en types exacts le refuse
+      (mesuré sous numpy 2.4.1, `results/c3b_producteur/lot2_writer/README.md` § 4.1).
+
+    **Fix (C3b)** : `default` qui lève `TypeError` en nommant la clé ; les conversions légitimes (`Decimal` →
+    `str`, `datetime` → ISO) faites explicitement au site d'écriture. Test rouge-avant : un `numpy.float64` dans un
+    artefact → erreur, pas une chaîne.
+
+    **Fermée en C3b, lot 2** (`6953fbc`).
+    - **Le writer.** `scripts/audit/_common.write_json_strict` parcourt le payload **avant** toute écriture, en types
+      exacts.
+      - Types admis : `str`, `int`, `float`, `bool`, `None`, `dict` à clés `str`, `list`, `tuple`.
+      - Tout autre type, sous-types compris : `TypeError`. Un flottant non fini : `ValueError`.
+      - Le message commence par le chemin de la valeur (`a.b[3].c`). Sur refus, rien n'est créé.
+      - Sur un payload JSON pur, le texte et le sha256 sont ceux de `rejeu_common.write_json`.
+    - **Le site.** `c3_common.write_json = _common.write_json_strict` (`c3_common.py:66`).
+    - **Écart de site, déclaré.** Le fix n'est **pas** à `rejeu_common.py:344` : `rejeu_common.write_json` est
+      **intouché**, gelé avec le diagnostic du 20/09. `c3_common` a simplement cessé de le réexporter (brief C3b,
+      décision 4).
+    - **Inventaire des 12 sites d'écriture de `c3_*.py` : vide.** Aucun artefact C3a n'a écrit une chaîne à la place
+      d'un nombre. Les 4 354 écritures des 932 tests C3 ont le même sha256 avant et après.
+    - Rapport : `results/c3b_producteur/lot2_writer/README.md`.
+
+**Sorties en code 1 de la chaîne, hors table § I.1** (constats C3b, lots 2 et 4b ; non corrigées : les six modules
+`c3_*` sont hors liste close). Chacune sort par une exception non rattrapée, sans artefact ni ligne `VIOLATION`, là où
+le § I.1 promet un diagnostic.
+- `c3_anchor.py:335` : registre recopié, jamais canonicalisé.
+- `c3_benchmark.py:166-168` (et `:436-438`, `:504-506`) : `float(Decimal)` qui déborde ; `returns` écrit même quand
+  `all_finite` est faux.
+- `c3_select.py:294-297` (et `:368-371`, `:402`) : MDD et CAGR recalculés sur une NAV ≤ 0.
+- `c3_verdict.py:413` : `estimabilite.declared`, copie d'`evaluation.estimability`.
+- `cc.recompute_daily` lève `OverflowError` (via `cc.cagr_pct`, `math.exp`) sur un CAGR qui déborde. `c3_benchmark`
+  (`candidate_block`) sortirait par cette exception non rattrapée. Le producteur, lui, la route en code 3
+  `f2_invalid_input`. Constat du 4b.
+
+Détail : `results/c3b_producteur/lot2_writer/README.md` § 4.3 et `eval_f2_conformite/README.md` § 6.
+
+**Candidats amendement v2.2** — à regrouper avec la re-passe Astra ; listés ici, jamais implémentés.
+1. **§ A.8 l.515** omet `grid_levels`, qui est un axe de `decision_timeframes` (`results/sol_d2_1w_modes/report.md`
+   § 8.1-1).
+2. **§ A.8 l.605-606** : « lisent le 1 w » devrait dire « alimente une porte de décision » (même rapport, § 8.1-2).
+3. **Recoupement `returns_config ← equity_daily` côté chaîne** (ex-S-3). Aujourd'hui, l'égalité n'est garantie que
+   par construction côté producteur.
+4. **S-1** : `min_order_usdc` et `gross_usdc` nomment l'USDC alors que les paires de validation sont en USDT (§ A.7,
+   liste blanche).
+5. **Enforcement du § 10.1 au registre de variantes** : règle normative sans texte au protocole ; l'amendement vient
+   d'abord, l'outillage ensuite.
+6. **E5 (4b)** : sur un comparateur d'évaluation non constructible, `E_NO_BENCHMARK` est inatteignable, parce que la
+   chaîne exige `returns_bench`.
+7. **E11 (4b)** : la chaîne ne recoupe ni λ ni `returns_bench`. « λ du préfixe tenu fixe » n'est garanti que côté
+   producteur.
+8. **`first_fill_at` nul** : une évaluation réelle sans trade est refusée en R0 par l'admission
+   (`c3_common.py:1167`), alors que le § B.8 admet c5 `NON VÉRIFIABLE` (4a).
+9. **Dates de couverture indéfinies quand `covered_units == 0`** : § A.7, « premier et dernier jours couverts »
+   (lot 3, E3).
+
+**Candidats de clôture, hors C3b** — chacun dans sa propre session ; aucun code n'a été écrit en C3b.
+1. **Tests base isolés par un marqueur `db`** : `--strict-markers`, et une fixture qui interdit toute connexion hors
+   du marqueur (incident du lot 2 ; `ROADMAP.md`, items non bloquants).
+2. **`test_rejeu_effect.py::test_calibration_writes_no_extrapolation_of_the_fwe_quantile`** : asserter sur les champs
+   parsés, et non par sous-chaîne sur un texte qui porte des chronomètres (flaky constaté au 4a).
+3. **Monde synthétique avec un candidat estimable et retenu**, pour que le chemin sélection traverse `c3_verdict` en
+   test, et pas seulement au serveur (4b).
+4. **Fabrique du moteur en `Decimal`, à vérifier** : aujourd'hui `starting_capital=float(manifest.capital)`
+   (`c3b_common.py:310`), et le moteur stocke `Decimal(str(float(C)))`.
+5. **Provenance étendue aux modules d'audit importés, et scan de discipline unifié sur `c3*.py`.**
+   - `git_provenance` ne hache que le script et `c3b_common` (`c3b_prefix.py:66-67`, `c3b_evaluate.py:99-100`). Il
+     ignore `_common` et `_db`, dont le résultat dépend pourtant.
+   - Le scan AST de la chaîne (`test_c3_common.py:35`, glob `c3_*.py`) ne couvre pas les `c3b_*`, dont les tests
+     portent un scan équivalent.
+6. **Contrainte de capital au manifeste** : `C` représentable en `float`, sinon code 3 (4a, D4).
+
+**Dettes 19, 21, 23 et 24 : inchangées par C3b.**
+- **19** : moteur signal, hors de la première campagne.
+- **21** : `--campaign`. Le `C3B_LOT4B` du 4b était une étiquette d'instrument ; la dette est intacte et se tranche
+  avant la campagne.
+- **23** (bind mount Postgres) et **24** (spread et slippage, à trancher au manifeste) : `ROADMAP.md` § « Items non
+  bloquants ».
 
 **Note WF** (audit red-team 16/09, reformulée le 22 sept — **non déclarée résolue**) : la sélection top-5 de
 P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7
