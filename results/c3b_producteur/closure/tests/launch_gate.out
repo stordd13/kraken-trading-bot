@@ -1,0 +1,13 @@
+# launch_gate — 2026-09-28T16:24:58Z — sha fe82fe57f087c58cfc7292ff351976725e735169
+pilot_expected_sha=0
+mkdir_run=0
+clone_head=fe82fe57f087c58cfc7292ff351976725e735169
+clone=0
+env_copy=0
+scp_pilot=0
+pilot_sha256_local=be071fff4f6b78532ee002a81bf0b3662c49ae47f0a17c143c706b0fd0d30c9c
+pilot_sha256_remote=be071fff4f6b78532ee002a81bf0b3662c49ae47f0a17c143c706b0fd0d30c9c
+pilot_cmp=0
+tmux_launch=0
+session=c3b-gate-20260928 launched_at=2026-09-28T16:25:07Z
+rc=0

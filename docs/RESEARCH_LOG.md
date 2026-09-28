@@ -254,9 +254,111 @@ Inscrite parce qu'elle porte un fait nouveau (brief, § Livrables).
 - L'item « décision de reconstruction 1 w » de « Essais à venir » est clos par l'entrée 13 ; le paragraphe n'est pas
   réécrit (ajout seul).
 
+### C3b lot 3 — producteur préfixe sur la fenêtre de conformité 2020 (inscrite le 27/09/2026, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, hors quota. Le producteur calcule des
+métriques de candidats — d'où cette ligne, exigée par le brief (`agent/AGENT_C3B_PRODUCTEUR.md` § « Lot 3 », critère de
+fin) — sur une fenêtre **entièrement antérieure au 2021-03-01**, et aucune n'est lue. Attendu complet, item par item :
+`results/c3b_producteur/prefix_conformite/ATTENDU.md`, committé avec cette entrée.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 15 | 2026-09-27 | C3b lot 3 — essai d'instrument du producteur préfixe (`scripts/audit/c3b_prefix.py`), puis chaîne `c3_anchor → c3_entry → c3_benchmark → c3_select` sur sa sortie ; **aucune lecture économique** | `grok_grid_atr_adaptive_v4`, 4 paramétrages — un par ensemble de `decision_timeframes` (classes C1, C2, C5, C6) — × `BTC/USDT`, `ETH/USDT`, `SOL/USDT` = **12 candidats** ; provenance `unknown` : aucun `validé` atteignable sur une fenêtre d'instrument | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; fenêtre de conformité `2020-01-06 → 2020-12-28`, préfixe `[2020-01-06, T = 2020-09-11T21:36Z]`, **hors campagne** (garde-fou 6) ; toute lecture bornée à `≤ T` | branche `feat/c3b-producteur`, exécuté au commit de cette entrée (SHA consigné dans `prefix_run.json`) ; métriques v2, `replay_version` 2 ; protocole v2.1 `9300f4e5…` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6, transposition déclarée) ; `min_order_usdc 5.0` (valeur du rejeu, inerte sur le grid) | producteur : deux exécutions en code 0, sorties identiques au bit (4 workers puis 1) ; `c3_anchor` 0 ; `c3_entry` 0, **aucune clause non assertable**, D2 en échec sur les 4 candidats SOL (aucune donnée SOL avant le 2020-08-11) ; `c3_benchmark` 0 (SOL `E_NO_BENCHMARK`) ; `c3_select` 0, sélection descriptive, SOL sort par D1 ; issue BTC/ETH **ni déclarée ni lue** ; `alembic` inchangé | aucune décision économique ; la conformité du préfixe conditionne le lot 4a (run d'évaluation) | `results/c3b_producteur/prefix_conformite/` (`ATTENDU.md`, `manifest.json`, rapport au commit de preuves) |
+
+- **Garde-fou 6, mécanique** : le producteur refuse (code 2) tout manifeste dont la fenêtre finit après le
+  2021-03-01 tant que `results/c3b_producteur/CAMPAIGN_UNLOCK` n'existe pas. Ce fichier n'existe pas ; il sera créé
+  par Bruno à la conversation manifeste.
+- **Tout lancement est consigné** (`status.txt` par lancement) ; un écart à l'attendu est un constat, sans relance
+  avant diagnostic. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
+
+### Issue de l'entrée 15 (inscrite après le run — aucune lecture économique)
+
+Un seul lancement, au `6509737` (pilote sha256 `ee1f5a53…`, consigné dans `status.txt`), le 2026-09-28 de 06:46:17 à
+06:49:15Z sur le serveur, lecture seule assertée par Postgres. Archive `~/archive/c3b_lot3_20260928/` (sha256
+`80b5f2b9…`) vérifiée avant le `rm -rf ~/runs/c3b_prefix` (06:51:56Z).
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 15 | Producteur : run1 (4 workers) et run2 (1 worker) en **code 0** ; `observations.json` `57e48213…`, `coverage.json` `5871f74e…`, `candles.json` `20c0d1fb…` **identiques au bit** ; 12 entrées ; `T = 2020-09-11T21:36Z` ; 0 estampille dérivée dans `(début, T]` ; `alembic` `c3bd1e7a0001` inchangé | `results/c3b_producteur/prefix_conformite/server/status.txt`, `run1/prefix_run.json` |
+| 15 | Chaîne : `c3_anchor` 0 ; `c3_entry` 0 — I-A.1 à I-A.8 `ok`, **aucune clause non assertable**, couverture évaluée, D2 en échec sur les 4 candidats SOL et eux seuls (séries attendues) ; `c3_benchmark` 0 — SOL non constructible (estampille `2020-01-06T00:05Z` absente) ; `c3_select` 0 — provenance `unknown`, aucune `SÉLECTION_VALIDE`, SOL `DESCRIPTIF` par D1 (5 min 31/249) ; issue BTC/ETH **non lue** | `server/chain/`, `server/verify_attendu.out` |
+| 15 | Attendu tenu sur ses 7 items ; défaut de rédaction de l'item 5 (« sélection descriptive » présume un candidat retenu), vérifié par le seul booléen `!= SÉLECTION_VALIDE`, qui ne lit pas l'issue | `results/c3b_producteur/prefix_conformite/README.md` § 4 |
+
+### C3b lot 4a — producteur d'évaluation sur la fenêtre de conformité 2020 (inscrite le 28/09/2026, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, et il est hors quota. C'est un run
+distinct de l'entrée 15 (nouveau script, fenêtre `[T, fin]` jamais lue jusqu'ici, nouvelles métriques de candidat) :
+il reçoit donc sa propre entrée. L'entrée 15 est close, avec son issue inscrite, et on n'y ajoute rien (ajout seul).
+Attendu complet, item par item : `results/c3b_producteur/eval_conformite/ATTENDU.md`, committé avec cette entrée.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 16 | 2026-09-28 | C3b lot 4a — essai d'instrument du producteur d'évaluation (`scripts/audit/c3b_evaluate.py`) : un seul `run(pair, T, fin)` par chemin, puis admission (`cc.evaluation_admission`) et `c3_continuity` sur un comparateur d'évaluation **synthétique** ; **aucune lecture économique** | `grok_grid_atr_adaptive_v4`, deux chemins exécutés chacun deux fois. **Sélection** : le retenu de `selection.json` du lot 3, consommé mécaniquement ; seul le code (0 évalué / 2 `nothing_to_evaluate`) est rapporté, et les sorties sont archivées sans être lues. **Désignation** : `145867637b7f9bac…` (`ETH/USDT`, classe C2, séries `[1w, 4h]`), première identité BTC/ETH dans l'ordre lexicographique, recalculée par le pilote | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; évaluation `[T = 2020-09-11T21:36Z, fin = 2020-12-28T00:00Z]`, amorçage avant `T` (`≥ T − 400 j`), **hors campagne** (garde-fou 6 ; la désignation est refusée au-delà du 2021-03-01, `CAMPAIGN_UNLOCK` ou non) | branche `feat/c3b-producteur`, exécuté au commit de cette entrée (SHA consigné dans `evaluation_run_provenance.json`) ; métriques v2, `replay_version` 2 ; protocole v2.1 `9300f4e5…` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6) ; `min_order_usdc 5.0` (inerte sur le grid) | sélection : deux codes égaux dans {0, 2}, rien d'autre ; désignation : deux exécutions en code 0, `evaluation_run.json` identique au bit, preuve à plat `{at: T, cash: "1000", qty: "0", pending: 0}` (**DÉCLARÉ**), `single_call` vrai, `first_fill_at > T`, 109 points quotidiens ; admission : réelle et admise ; `c3_continuity` 0, **c1, c2, c5 `DECLARED`**, c3 et c4 `VERIFIED`, comparateur synthétique sans valeur ; `alembic` inchangé | aucune décision économique ; la conformité de l'évaluation conditionne le lot 4b (comparateur d'évaluation, § F.2) | `results/c3b_producteur/eval_conformite/` (`ATTENDU.md`, rapport au commit de preuves) |
+
+- **Deux gardes mécaniques.**
+  - Le garde-fou 6 refuse toute fenêtre qui finit après le 2021-03-01 tant que `CAMPAIGN_UNLOCK` n'existe pas.
+  - La désignation (`--candidate`) est refusée sur une telle fenêtre **même si** `CAMPAIGN_UNLOCK` existe : sur la
+    campagne, seul le retenu de `c3_select` s'évalue.
+- **Tout lancement est consigné** (`status.txt` par lancement). Un écart à l'attendu est un constat, sans relance
+  avant diagnostic. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
+
+### Issue de l'entrée 16 (inscrite après le run — aucune lecture économique)
+
+Un seul lancement, au `85c8db7` (pilote sha256 `7bdc1bd2…`, consigné dans `status.txt`), le 2026-09-28 de 12:34:12 à
+12:34:44Z sur le serveur, lecture seule assertée par Postgres. Il a eu lieu après la CI verte sur `85c8db7` : la
+tentative 1 était rouge, sur le test instable `test_rejeu_effect.py`, sans rapport avec le lot, et la tentative 2 est
+verte. Archive `~/archive/c3b_lot4a_20260928/` (sha256 `1e401ab2…`), vérifiée avant le `rm -rf ~/runs/c3b_eval4a`
+(12:36:11Z).
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 16 | Chemin sélection : **code 0 aux deux exécutions** (événement `evaluated`), sorties identiques au bit. C'est le seul fait rapporté ; les sorties sont archivées, non lues | `results/c3b_producteur/eval_conformite/server/status.txt` |
+| 16 | Chemin désigné (`145867637b…`, recalculé égal) : code 0 ×2, `evaluation_run.json` `a2042a02…` identique au bit. Preuve de départ à plat `{at: T, cash: "1000", qty: "0", pending: 0}` (**DÉCLARÉ**), moteur à `usdc_balance "1000.0"` avant `run` ; `single_call` vrai ; `first_fill_at` après `T` ; 109 points quotidiens | `server/designated/run1/`, `server/verify_attendu.out` |
+| 16 | Admission : réelle et admise ; `c3_continuity` 0, **c1, c2, c5 `DECLARED`**, c3 et c4 `VERIFIED`, `stamp_cell` `NOT_VERIFIABLE` (rien liquidé à `fin`), comparateur synthétique sans valeur ; `alembic` `c3bd1e7a0001` inchangé | `server/chain/continuity.json` |
+| 16 | Attendu tenu sur ses 8 items. Défaut de ma part : une liste des tailles de fichiers a laissé voir que l'artefact du chemin sélection diffère de celui du chemin désigné (retenu ≠ désigné). Rien d'autre n'est lu, et ce fait n'est utilisé nulle part | `results/c3b_producteur/eval_conformite/README.md` § 4 |
+
+### C3b lot 4b — comparateur d'évaluation et procédure § F.2, chaîne complète sur la fenêtre de conformité 2020 (inscrite le 28/09/2026, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique, issue non lue)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, et il est hors quota. Il reçoit sa
+propre entrée, parce que c'est un run neuf :
+- le comparateur d'évaluation est construit sur `[T, fin]` ;
+- le tirage du § F.2 a lieu ;
+- `c3_verdict` calcule un verdict pour la première fois.
+
+**L'issue n'est ni déclarée ni lue** (décision de Bruno du 28/09). L'entrée 16 est close, avec son issue inscrite, et
+on n'y ajoute rien. Attendu complet, item par item : `results/c3b_producteur/eval_f2_conformite/ATTENDU.md`, committé
+avec cette entrée.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 17 | 2026-09-28 | C3b lot 4b — essai d'instrument du producteur d'évaluation complet (`scripts/audit/c3b_evaluate.py`, parties 1 et 2 : comparateur § C.3-C.5, λ du préfixe tenus fixes, procédure § F.2), puis `c3_verdict.py chain` **complète** (six étapes) sur sa sortie ; `--campaign C3B_LOT4B`, étiquette d'instrument (dette 21 intacte) ; **aucune lecture économique, issue non lue** | `grok_grid_atr_adaptive_v4` ; **chemin sélection seul** : le retenu de `selection.json` du lot 3, consommé mécaniquement, deux exécutions ; aucune identité, paire, métrique ni issue ne remonte au dépôt | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; évaluation `[T = 2020-09-11T21:36Z, fin = 2020-12-28T00:00Z]` (`n_jours` 107,1, 108 rendements), bougies du comparateur lues sur `[T, fin]` pour la seule paire évaluée, amorçage `≥ T − 400 j`, **hors campagne** (garde-fou 6) | branche `feat/c3b-producteur`, exécuté au commit de cette entrée (SHA consigné dans la provenance) ; métriques v2, `replay_version` 2 ; protocole v2.1 `9300f4e5…` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6) ; `min_order_usdc 5.0` (inerte sur le grid) | producteur : deux exécutions en code 0, `evaluation.json` identique au bit, trois autres artefacts identiques, interpréteur du clone ; chaîne : `anchor`, `entry`, `benchmark`, `select`, `continuity` et `verdict` en code 0, `chain.verified` vrai, **zéro violation, zéro violation au rejeu** ; `alembic` inchangé ; `validé` et `réfuté` inatteignables par construction (provenance `unknown`) | aucune décision économique ; la conformité du § F.2 conditionne la porte § L.5 et le STOP avant merge de C3b | `results/c3b_producteur/eval_f2_conformite/` (`ATTENDU.md`, rapport au commit de preuves) |
+
+### Issue de l'entrée 17 (inscrite après le run — aucune lecture économique, issue non lue)
+
+- **Lancement** : un seul, au `459190a` (pilote sha256 `9b401797…`, consigné dans `status.txt`), le 2026-09-28 de
+  14:48:51 à 14:49:13Z, sur le serveur, en lecture seule assertée par Postgres.
+- **CI** : il a eu lieu après la CI verte sur `459190a`, dès la tentative 1.
+- **Archive** : `~/archive/c3b_lot4b_20260928/` (sha256 `6c02f438…`), vérifiée par codes seulement avant le
+  `rm -rf ~/runs/c3b_eval4b` (14:50:01Z).
+- **Rien n'a été lu du chemin sélection** hors de `status.txt`.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 17 | Producteur, chemin sélection : **code 0 aux deux exécutions** (événement `evaluated`) ; `evaluation.json` identique au bit, trois autres artefacts identiques, interpréteur du clone. Les sorties sont archivées, non lues | `results/c3b_producteur/eval_f2_conformite/server/status.txt` |
+| 17 | Chaîne complète : `anchor`, `entry`, `benchmark`, `select` et `continuity` en 0, `verdict` en 0 ; **`chain.verified` vrai, 0 violation, 0 violation au rejeu**. L'issue publiée **n'est pas lue** (`validé` et `réfuté` sont inatteignables par construction : provenance `unknown`) | `server/status.txt`, `server/verify_attendu.out` |
+| 17 | `alembic` `c3bd1e7a0001` inchangé ; attendu tenu sur ses 5 items vérifiables (le 6ᵉ, les bornes, repose sur des appuis déclarés) | `server/alembic_{before,after}.txt` |
+| 17 | Défauts de ma part : au STOP 1, un premier passage de mutants avait 4 survivants, tous du côté des tests (monde de test trop court, candidat en premier bloc, données non discriminantes), corrigés, puis 35 rouges sur 35 ; le chemin de l'archive du lot 3 était faux dans le pilote, vu avant le lancement | `results/c3b_producteur/eval_f2_conformite/README.md` § 3, § 6 |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
 (paquet 1, contrat fixé par v2.1) et la décision de reconstruction 1 w. Manifeste gelé, portant le sha256 v2.1, et
 inscription ici **avant** tout lancement. C3a est close : entrée 12 ci-dessus ; le rejeu diagnostic grid : entrée 11 ;
 l'adoption de v2.1 : section précédente.)_
+
+- **Préalable « producteur conforme (paquet 1) » levé par C3b**, le 28/09/2026.
+  - Sources : entrées 15, 16 et 17 ; rapport `results/c3b_producteur/report.md`. Le merge sur `dev` se fait sous
+    décision humaine.
+  - L'autre préalable, la reconstruction 1 w, l'était déjà par l'entrée 13.
+  - Restent avant la première campagne : l'amendement v2.2 et le manifeste gelé. `CAMPAIGN_UNLOCK` est créé à ce
+    moment-là.
+  - Le paragraphe ci-dessus n'est pas réécrit (ajout seul).

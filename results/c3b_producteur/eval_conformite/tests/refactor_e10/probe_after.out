@@ -1,0 +1,19 @@
+{
+  "bloc_absent": [
+    "observations.d6e28b61f67c385b.effective_params: bloc absent ou sans passed_params"
+  ],
+  "bloc_non_mapping": [
+    "observations.d6e28b61f67c385b.effective_params: bloc absent ou sans passed_params"
+  ],
+  "conforme": [],
+  "divergence_cle_en_plus": [
+    "observations.d6e28b61f67c385b.effective_params.passed_params {'pair': 'BTC/USDT', 'atr_period': 21} != paramètres du manifeste + paire {'pair': 'BTC/USDT'}"
+  ],
+  "divergence_paire": [
+    "observations.d6e28b61f67c385b.effective_params.passed_params {'pair': 'ETH/USDT'} != paramètres du manifeste + paire {'pair': 'BTC/USDT'}"
+  ],
+  "sans_passed_params": [
+    "observations.d6e28b61f67c385b.effective_params: bloc absent ou sans passed_params"
+  ]
+}
+sha256 b96bf9b89fc6bd4d771323e52f8571601e2912b33b2197645bf94e530f216145

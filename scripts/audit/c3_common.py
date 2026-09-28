@@ -44,6 +44,7 @@ sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 sys.path.insert(0, str(_ROOT / "scripts" / "audit"))
 
+import _common  # noqa: E402
 import rejeu_common as rc  # noqa: E402
 
 from krakenbot.backtest_metrics import daily_grid, max_drawdown_pct  # noqa: E402
@@ -60,7 +61,9 @@ first_difference = rc.first_difference
 dec = rc.dec
 daily_returns = rc.daily_returns
 nnz = rc.nnz
-write_json = rc.write_json
+# Dette 22 : le writer de la chaîne est strict — un type non JSON est une erreur qui nomme sa clé.
+# `rc.write_json` (`default=str`) reste celui du rejeu, gelé.
+write_json = _common.write_json_strict
 read_json = rc.read_json
 NonFiniteValueError = rc.NonFiniteValueError
 

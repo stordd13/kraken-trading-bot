@@ -1,0 +1,24 @@
+........................................................................ [  7%]
+........................................................................ [ 15%]
+........................................................................ [ 23%]
+........................................................................ [ 30%]
+........................................................................ [ 38%]
+........................................................................ [ 46%]
+........................................................................ [ 54%]
+........................................................................ [ 61%]
+........................................................................ [ 69%]
+........................................................................ [ 77%]
+........................................................................ [ 84%]
+........................................................................ [ 92%]
+....................................................................     [100%]
+932 passed in 97.67s (0:01:37)
+pytest_exit=0 écritures=4354 constats=9
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'metrics.cagr_pct', 'kind': 'float non fini', 'n': 1}
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'metrics.net_pnl', 'kind': 'float non fini', 'n': 1}
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'replications.10:dd.bound', 'kind': 'float non fini', 'n': 1}
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'replications.10:sigma.bound', 'kind': 'float non fini', 'n': 1}
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'replications.21:dd.bound', 'kind': 'float non fini', 'n': 1}
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'replications.21:dd.delta_stars[*]', 'kind': 'float non fini', 'n': 2}
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'replications.21:sigma.bound', 'kind': 'float non fini', 'n': 1}
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'replications.42:dd.bound', 'kind': 'float non fini', 'n': 1}
+   {'origin': 'test', 'caller': 'test_c3_verdict.py:_write_cli_inputs', 'via': 'rc', 'path': 'replications.42:sigma.bound', 'kind': 'float non fini', 'n': 1}

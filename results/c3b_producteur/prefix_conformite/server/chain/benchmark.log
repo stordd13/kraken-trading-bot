@@ -1,0 +1,6 @@
+comparateur du préfixe [2020-01-06T00:00:00+00:00 -> 2020-09-11T21:36:00+00:00], mode λ = prefix (un appariement sur un risque réalisé est une comparaison rétrospective, jamais une allocation validée pour l'avenir)
+  BTC/USDT: constructible=True comparable=True entrée 2020-01-06T00:05:00+00:00 sortie 2020-09-11T21:35:00+00:00 ff_days=0 CAGR=62.62562408002519
+  ETH/USDT: constructible=True comparable=True entrée 2020-01-06T00:05:00+00:00 sortie 2020-09-11T21:35:00+00:00 ff_days=0 CAGR=330.11201756388493
+  SOL/USDT: constructible=False comparable=False entrée 2020-01-06T00:05:00+00:00 sortie 2020-09-11T21:35:00+00:00 ff_days=None CAGR=None — non constructible : estampille(s) d'exécution requise(s) absente(s) ['2020-01-06T00:05:00+00:00'] — aucune bougie de substitution (§ C.3)
+  candidats : 8/12 avec λ apparié et Δ publiés
+written /home/bruno/runs/c3b_prefix/out/chain/benchmark.json sha256 8b7bfd7c846e52cf275820840984e5c77aa60ee76797cb0acc31f324a14a7290

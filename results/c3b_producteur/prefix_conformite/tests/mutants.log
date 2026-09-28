@@ -1,0 +1,49 @@
+originaux : scripts/audit/c3b_common.py 0fe8bd29ccfec57d0907d5461f712d2b14f874dfc3f5b41ef3aa6fe4a190a66a ; scripts/audit/c3b_prefix.py 4a205539d4f6d6faea567c335edfc7b25ac77dd445f7e8d1bf29b1b139ac3254
+témoin (aucun mutant) : code 0 — 118 passed in 6.57s
+M01 [c3b_common.py] lot non renommé : ROUGE — 11 échec(s), 6 erreur(s), 5.8 s, restauré oui
+M02 [c3b_common.py] bloc non renommé : ROUGE — 11 échec(s), 6 erreur(s), 5.7 s, restauré oui
+M03 [c3b_common.py] entry_price sans le fee : ROUGE — 2 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M04 [c3b_common.py] lots depuis tous les trades : ROUGE — 12 échec(s), 0 erreur(s), 6.5 s, restauré oui
+M05 [c3b_common.py] entry_price calculé quand pnl est nul : ROUGE — 2 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M06 [c3b_common.py] 1 w compté en jours (dénominateur) : ROUGE — 12 échec(s), 0 erreur(s), 5.0 s, restauré oui
+M07 [c3b_common.py] 1 w compté en jours (unité) : ROUGE — 3 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M08 [c3b_common.py] dérivées non comptées : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M09 [c3b_common.py] trou de bord ignoré : ROUGE — 2 échec(s), 0 erreur(s), 7.3 s, restauré oui
+M10 [c3b_common.py] first_day sur les observées : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M11 [c3b_common.py] filtre > T retiré : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M12 [c3b_common.py] doublon de bougie accepté : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M13 [c3b_common.py] close en float : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M14 [c3b_common.py] bougie avant le début acceptée : ROUGE — 1 échec(s), 0 erreur(s), 7.4 s, restauré oui
+M15 [c3b_common.py] exec_interval non exporté : ROUGE — 5 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M16 [c3b_common.py] decision_timeframes non triée : ROUGE — 4 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M17 [c3b_common.py] decision_timeframes absente : ROUGE — 5 échec(s), 0 erreur(s), 7.4 s, restauré oui
+M18 [c3b_common.py] period arrondie à minuit : ROUGE — 3 échec(s), 0 erreur(s), 7.7 s, restauré oui
+M19 [c3b_common.py] garde-fou en >= : ROUGE — 2 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M20 [c3b_common.py] garde-fou sur start seul : ROUGE — 2 échec(s), 0 erreur(s), 7.5 s, restauré oui
+M21 [c3b_common.py] garde-fou qui ignore le fichier : ROUGE — 1 échec(s), 0 erreur(s), 7.3 s, restauré oui
+M22 [c3b_common.py] borne du garde-fou déplacée : ROUGE — 2 échec(s), 0 erreur(s), 7.8 s, restauré oui
+M23 [c3b_prefix.py] classmethod avant le garde-fou : ROUGE — 11 échec(s), 0 erreur(s), 7.8 s, restauré oui
+M24 [c3b_prefix.py] validation des paramètres retirée : ROUGE — 7 échec(s), 0 erreur(s), 7.8 s, restauré oui
+M25 [c3b_common.py] grid_levels bool accepté : ROUGE — 2 échec(s), 0 erreur(s), 7.5 s, restauré oui
+M26 [c3b_common.py] bias_1d non fini accepté par le validateur : ROUGE — 3 échec(s), 0 erreur(s), 7.4 s, restauré oui
+M27 [c3b_common.py] refus de la classmethod rattrapé candidat par candidat : ROUGE — 9 échec(s), 0 erreur(s), 7.6 s, restauré oui
+M28 [c3b_common.py] moteur non grid accepté : ROUGE — 2 échec(s), 0 erreur(s), 7.3 s, restauré oui
+M29 [c3b_prefix.py] NonFiniteValueError non rattrapée : ROUGE — 4 échec(s), 0 erreur(s), 7.3 s, restauré oui
+M30 [c3b_prefix.py] run appelé deux fois : ROUGE — 2 échec(s), 0 erreur(s), 9.3 s, restauré oui
+M31 [c3b_prefix.py] run jusqu'à window.end : ROUGE — 2 échec(s), 0 erreur(s), 7.3 s, restauré oui
+M32 [c3b_prefix.py] T pris à window.end : ROUGE — 2 échec(s), 0 erreur(s), 7.4 s, restauré oui
+M33 [c3b_prefix.py] reprise sous un autre manifeste : ROUGE — 1 échec(s), 0 erreur(s), 7.4 s, restauré oui
+M34 [c3b_prefix.py] reprise sous un autre commit : ROUGE — 1 échec(s), 0 erreur(s), 7.4 s, restauré oui
+M35 [c3b_common.py] coûts du modèle de fees au lieu du manifeste : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M36 [c3b_common.py] coûts non recoupés au fichier : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M37 [c3b_common.py] nom du modèle de fees non recoupé : ROUGE — 1 échec(s), 0 erreur(s), 7.1 s, restauré oui
+M38 [c3b_common.py] contrôle passed_params retiré : ROUGE — 2 échec(s), 0 erreur(s), 7.3 s, restauré oui
+M39 [c3b_prefix.py] contrôle uncommitted_tree retiré : ROUGE — 3 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M40 [c3b_prefix.py] job en échec ignoré : ROUGE — 2 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M41 [c3b_common.py] série sans unité couverte acceptée : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M42 [c3b_common.py] coercition bool( dans la source : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M43 [c3b_prefix.py] .env chargé à l'import : ROUGE — 1 échec(s), 0 erreur(s), 7.2 s, restauré oui
+M44 [c3b_prefix.py] ordre d'achèvement conservé à l'assemblage : ÉQUIVALENT — 0 échec(s), 0 erreur(s), 7.1 s, restauré oui
+équivalent M44 : le writer strict trie les clés (sort_keys=True) : l'ordre d'insertion d'observations.json ne peut pas changer le texte écrit ; l'indépendance à l'ordre d'exécution est portée par le test du pool inversé
+survivants : aucun
+rc=0

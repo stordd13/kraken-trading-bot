@@ -1,0 +1,10 @@
+original sha256 60e7c3c58e782161baa2e2502e51e133ebb7dfada4402b2bfbd3b44b2002f41e
+M1 forme fermée bias_1d != 0: exit 1 ROUGE — 13 failed, 47 passed in 0.39s — tué par ['test_coercion_is_that_of_init', 'test_probe_cases_equal_class_and_behavioural_probe', 'test_sweep_equals_class_of'] — restauré True
+M2 1d ssi bear_1d seul: exit 1 ROUGE — 14 failed, 46 passed in 0.34s — tué par ['test_coercion_is_that_of_init', 'test_probe_cases_equal_class_and_behavioural_probe', 'test_sweep_equals_class_of'] — restauré True
+M3 1w inconditionnel: exit 1 ROUGE — 14 failed, 46 passed in 0.30s — tué par ['test_coercion_is_that_of_init', 'test_probe_cases_equal_class_and_behavioural_probe', 'test_sweep_equals_class_of'] — restauré True
+M4 grid_levels non coercé: exit 1 ROUGE — 4 failed, 56 passed in 0.51s — tué par ['test_coercion_is_that_of_init'] — restauré True
+M5 bool(...) au lieu du refus: exit 1 ROUGE — 21 failed, 39 passed in 0.51s — tué par ['test_false_string_is_refused_where_the_instance_reads_it_true', 'test_non_bool_pause_is_refused'] — restauré True
+M6 sortie non triée: exit 1 ROUGE — 8 failed, 52 passed in 0.45s — tué par ['test_sweep_equals_class_of'] — restauré True
+M7 mode invalide non refusé: exit 1 ROUGE — 1 failed, 59 passed in 0.52s — tué par ['test_invalid_mode_raises_the_value_error_of_init'] — restauré True
+final sha256 60e7c3c58e782161baa2e2502e51e133ebb7dfada4402b2bfbd3b44b2002f41e identique True
+tous rouges et restaurés : True

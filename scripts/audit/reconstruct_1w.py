@@ -86,7 +86,6 @@ import json
 import os
 from pathlib import Path
 import re
-import subprocess
 import sys
 from typing import Any
 import urllib.error
@@ -97,6 +96,7 @@ sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 sys.path.insert(0, str(_ROOT / "scripts" / "audit"))
 
+from _common import git_provenance, write_json_strict  # noqa: E402
 import binance_vision_import as bvi  # noqa: E402
 import c3_common as cc  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
@@ -608,30 +608,6 @@ def importer_conflict_clause() -> dict[str, Any]:
         "importer": IMPORTER_RELPATH,
         "importer_sha256": hashlib.sha256(source.encode("utf-8")).hexdigest(),
         "clause_lines": lines,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Provenance git
-# ---------------------------------------------------------------------------
-
-
-def _git(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", *args], cwd=PROJECT_ROOT, capture_output=True, text=True, check=False
-    )
-
-
-def git_provenance() -> dict[str, Any]:
-    script = PROJECT_ROOT / SCRIPT_RELPATH
-    return {
-        "git_sha": _git("rev-parse", "HEAD").stdout.strip(),
-        "branch": _git("branch", "--show-current").stdout.strip(),
-        "script": SCRIPT_RELPATH,
-        "script_sha256": hashlib.sha256(script.read_bytes()).hexdigest(),
-        "script_tracked": _git("ls-files", "--error-unmatch", SCRIPT_RELPATH).returncode == 0,
-        "tracked_tree_clean": _git("status", "--porcelain", "--untracked-files=no").stdout.strip()
-        == "",
     }
 
 
@@ -1485,19 +1461,8 @@ def render_write_markdown(report: Mapping[str, Any], *, json_name: str, json_sha
 
 
 # ---------------------------------------------------------------------------
-# Sorties
+# Sorties (JSON : ``_common.write_json_strict``)
 # ---------------------------------------------------------------------------
-
-
-def write_json_strict(path: Path, payload: Any) -> str:
-    """JSON indenté, clés triées, **sans** ``default`` : une valeur non native lève (dette 22)."""
-    encoded = (
-        json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False, allow_nan=False) + "\n"
-    )
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(encoded, encoding="utf-8")
-    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 
 def _pct(ratio: float) -> str:
@@ -1897,7 +1862,7 @@ def main(argv: list[str] | None = None) -> int:
             "anchor_mismatch", recomputed=anchor.isoformat(), declared=ANCHOR_DECLARED.isoformat()
         )
         return 2
-    provenance = git_provenance()
+    provenance = git_provenance(SCRIPT_RELPATH)
     committed = provenance["script_tracked"] and provenance["tracked_tree_clean"]
     if not committed and not args.allow_uncommitted:
         logger.error(

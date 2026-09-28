@@ -653,6 +653,106 @@ relu dans le paquet adopté ; la procédure du § F.2 est réécrite **côté te
 jamais importée du noyau ; témoins vérifiés par mutation là où ils étaient verts à l'écriture ; scan AST contre
 `bool(…)` sur donnée externe et `.get(clé, défaut)` hors `OPTIONAL_FIELDS`.
 
+## Producteur C3b (paquet 1, livré le 28/09/2026 — ce qui fabrique les entrées de la chaîne)
+
+Depuis C3b, le « fait stratégique » ci-dessus est levé **côté producteur** : un producteur conforme existe, et une
+campagne réelle peut traverser la chaîne. Il reste le manifeste de la première campagne. Le paragraphe précédent
+n'est pas réécrit.
+
+**Sources**
+- Brief : `agent/AGENT_C3B_PRODUCTEUR.md`, avec en tête ses écarts constatés à la livraison.
+- Rapport : `results/c3b_producteur/report.md`, et un README par lot.
+- Tests : `tests/test_scripts/test_c3b_{common,prefix,evaluate}.py` et `test_audit_common.py`. **Aucun test n'accède
+  à la base.**
+
+Le producteur est un **outillage hors chaîne** (§ L.1, ligne 0) : il lit la base, en lecture seule assertée par
+Postgres, et écrit des JSON que la chaîne lit sans jamais toucher la base.
+
+**Les quatre temps**
+
+| Temps | Commande | Lit | Écrit |
+|---|---|---|---|
+| 1 — préfixe `[début, T]` | `c3b_prefix.py` | le manifeste **seul** ; `T = manifest.anchor()` est recalculé, jamais passé en paramètre | `observations.json`, `coverage.json`, `candles.json` ; provenance à part : `prefix_run.json` |
+| 2 — chaîne 1-4 | `c3_anchor.py`, `c3_entry.py`, `c3_benchmark.py`, `c3_select.py`, lancés un par un | les sorties du temps 1 | `anchor.json`, `entry.json`, `benchmark.json` (λ du préfixe), `selection.json` (le retenu) |
+| 3 — évaluation `[T, fin]` | `c3b_evaluate.py` | manifeste, `anchor.json`, `selection.json` (ou `--candidate`), `benchmark.json` | `evaluation.json`, `benchmark_eval.json`, `candles_eval.json`, `evaluation_sensitivity.json` (descriptif, hors chaîne) ; provenance à part : `evaluation_run_provenance.json` |
+| 4 — chaîne complète | `c3_verdict.py chain` | tout ce qui précède | la chaîne rejoue les étapes 1 à 5 à l'identique, puis `verify_chain` et le verdict |
+
+L'évaluation dépend des sorties 1-4 : `T` recalculé, λ du préfixe tenus fixes (§ F.2 f), identité retenue. Elle ne
+peut donc pas être produite avant elles.
+
+**Commandes**
+
+```bash
+poetry run python scripts/audit/c3b_prefix.py --manifest M.json --output-dir DIR [--workers N] [--now ISO]
+poetry run python scripts/audit/c3b_evaluate.py --manifest M.json --anchor anchor.json \
+    (--selection selection.json | --candidate IDENTITÉ) --benchmark benchmark.json --output-dir DIR [--now ISO]
+```
+
+**`c3b_prefix.py`**
+- Un seul `engine.run(pair, début, T)` par candidat, avec **les arguments de** `run_p7_grid_search._engine`.
+- Entrée d'observation : le dict `result` du runner, à un seul segment, plus `decision_timeframes` (la classmethod) et
+  `exec_interval`.
+- Liquidation renommée en `_base`, lots reconstruits depuis les trades `forced_liquidation`.
+- Couverture : `covered_units` et jours couverts lus **par oracle** (`cc.coverage_recompute`).
+- Parallélisme `--workers` : un gestionnaire en lecture seule par job ; sortie indépendante de l'ordre des jobs.
+
+**`c3b_evaluate.py`**
+- Un seul `run(pair, T, fin)`, qui porte les trois preuves d'admission :
+  - `flat_start_proof` : lue sur le moteur **avant** `run` ; elle vaut DÉCLARÉ ;
+  - `invocation.single_call` ;
+  - `first_fill_at`, strictement après `T`.
+- Le comparateur passe par `c3_benchmark.build_pair` sur `[T, fin]`, depuis `candles_eval.json` relu.
+- Les séries passent par `cc.recompute_daily`. Le tirage § F.2 passe par `cc.replay_bootstrap` : graine de l'ancrage,
+  index de la paire dans les paires triées. C'est exactement ce que `c3_verdict` rejoue.
+
+**Garde-fous**
+- **`CAMPAIGN_UNLOCK`** (garde-fou 6) : les deux scripts refusent, code 2, toute fenêtre qui finit après le
+  **2021-03-01** tant que `results/c3b_producteur/CAMPAIGN_UNLOCK` n'existe pas. Bruno crée ce fichier à la
+  conversation manifeste, après le gel du manifeste et son inscription au `RESEARCH_LOG`. Aucun agent ne le crée.
+- **Garde de désignation** : `--candidate`, la désignation mécanique hors campagne pour les essais d'instrument, est
+  refusé dès que la fenêtre dépasse le 2021-03-01, **que `CAMPAIGN_UNLOCK` existe ou non**.
+- **Sur la fenêtre de campagne, seul le retenu de `c3_select` s'évalue** (`--selection`). Une sélection vide ou une
+  abstention donne le code 2 `nothing_to_evaluate`, sans aucun fichier.
+
+**Conventions**
+- **Codes : 0 ; 2 = refus d'entrée ; 3 = contrôle interne ou moteur en échec.** Jamais les codes du § I.1, qui
+  appartiennent à la chaîne.
+- Ordre des contrôles gelé (docstrings) : tout ce qui précède la base est pur, et un refus n'écrit rien.
+- Arbre git suivi propre, sinon `uncommitted_tree` (2). Répertoire de sortie vide.
+- `DATABASE_URL` requis ; lecture seule assertée.
+- Écriture par `_common.write_json_strict`, en deux temps : temporaires, puis renommage.
+- Sorties **identiques au bit** d'une exécution à l'autre, quel que soit le nombre de workers. `--now` n'entre que
+  dans la provenance.
+- Journal sans identité, paire, métrique ni λ en cas de succès. Le moteur, lui, journalise sa paire.
+- Stratégie grid seule : toute autre stratégie ou tout autre moteur est refusé (2).
+- Capital représentable en `float` : la fabrique passe `float(C)`. Sinon, code 3 à la preuve de départ.
+
+**Exploitation sur le serveur (lots 3, 4a, 4b)**
+- **Transport**
+  - `~/runs/<chantier>/`.
+  - Clone GitHub du SHA **poussé** : `git fetch` puis `checkout --detach`, jamais de bundle.
+  - `.env` copié du service.
+- **Environnement unique**
+  - L'interpréteur du venv du service, avec `env PYTHONPATH="$REPO/src"` sur chaque invocation Python (jamais sur
+    `alembic`).
+  - Gardes : SHA, arbre suivi propre, `poetry.lock` et `pyproject.toml` identiques au service, `krakenbot` résolu vers
+    le clone, `.env` présent.
+  - `pilot_sha256` consigné après la garde.
+- **Pilote** en bash sous tmux (`bash -lc`) : `set -o pipefail`, pas de `set -e`, `status.txt` en `clé=code`, second
+  `alembic current` inconditionnel, pas de `kill`.
+- **Archive** `~/archive/c3b_<lot>_<date>/` **sans `.env` ni clone**, vérifiée avant `rm -rf` : liste, `sha256sum -c`,
+  extraction et `diff`, `cmp` du pilote.
+- **Les sorties du chemin sélection** (évaluation du retenu, chaîne, journaux) **ne sont jamais versionnées ni
+  ouvertes.** Elles sont archivées seulement. Ne remontent au dépôt que des codes, des noms d'événement et des
+  booléens extraits par heredoc (`chain.verified`, comptes de violations), qui n'impriment ni identité, ni paire, ni
+  métrique, ni issue.
+
+**Seuls runs réels** : la fenêtre d'instrument `2020-01-06 → 2020-12-28`, hors campagne (RESEARCH_LOG, entrées 15 à
+17).
+- Chaîne complète en code 0.
+- `chain.verified` vrai, 0 violation au rejeu du § F.2.
+- **Issue non lue.**
+
 ## Benchmarks de comparaison
 
 Toute stratégie doit battre au moins un des deux :

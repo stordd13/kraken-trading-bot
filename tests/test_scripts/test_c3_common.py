@@ -1609,12 +1609,12 @@ def bench_by_matching(returns_bench: Any) -> dict[str, list[float]]:
 def witness_returns(n: int = N_EVAL_POINTS - 1) -> list[float]:
     """Le témoin d'évaluation : dérive positive à faible bruit, N(0,0005 ; 0,002), graine 11. Contre du cash,
     mesuré par la procédure ci-dessus : CAGR ≈ 22,3 %/an et six bornes ≈ 14,6 à 17,2 points de %/an."""
-    return list(np.random.default_rng(11).normal(0.0005, 0.002, n))
+    return np.random.default_rng(11).normal(0.0005, 0.002, n).tolist()
 
 
 def varying_returns(seed: int, n: int = N_EVAL_POINTS - 1) -> list[float]:
     rng = np.random.default_rng(seed)
-    return list(rng.normal(0.0005, 0.02, n))
+    return rng.normal(0.0005, 0.02, n).tolist()
 
 
 def flat_start_proof(

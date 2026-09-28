@@ -1,0 +1,20 @@
+# preflight_server — 2026-09-28T16:17:44Z
+host=krakenbot date=2026-09-28T16:17:46Z
+service_head=e9c8fafa4631c8853e973a7da8ae2caadfc74a47
+service_tracked_dirty_lines=0
+py=Python 3.12.3
+pytest_rc=0 pytest=pytest 9.0.2
+runs_entries=
+c3b_gate=absent
+archive_c3b_gate=
+tmux=no server running on /tmp/tmux-1000/default;
+disk_home=54G libres / 75G
+cpus=4 mem_free_mb=5933
+collector=active NRestarts=0
+trader=inactive
+service_env=present
+pg_port_5432=open
+pg_port_5433=closed
+remote_ok=0
+ssh_exit=0
+rc=0

@@ -1,0 +1,248 @@
+original : scripts/audit/c3b_evaluate.py 96f3c401d128b48e9e1aa36ce7a7bc6b3409e5994db31cbb0a296aacba98eb92
+témoin (aucun mutant) : code 0 — 222 passed in 18.86s
+M01 index de paire pris dans l'ordre des candidats du manifeste : ROUGE — 1 failed, 221 passed in 18.91s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+M02 n_jours = anchor.evaluation_days : ROUGE — 1 failed, 221 passed in 19.00s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+M03 n_jours = metrics.duration_days du moteur (équivalent sur le vrai moteur, plan E8) : ROUGE — 23 failed, 199 passed in 18.26s — 18.8 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_before_the_campaign_writes_the_full_artefact_set
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[5e-07-0]
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[explosion]
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[ruine]
+    rouge : test_c3b_evaluate.py::test_benchmark_eval_is_what_comparator_block_reads
+    rouge : test_c3b_evaluate.py::test_comparable_is_the_recomputed_conjunction
+    rouge : test_c3b_evaluate.py::test_evaluation_candles_are_read_on_T_fin_for_the_evaluated_pair_only
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_evaluator_events_never_carry_identity_pair_or_metric
+    rouge : test_c3b_evaluate.py::test_first_fill_at_is_the_smallest_trade_stamp
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+    rouge : test_c3b_evaluate.py::test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+    rouge : test_c3b_evaluate.py::test_the_evaluator_never_coerces_nor_opens_a_database_by_itself
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_has_the_fixture_form
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_is_read_before_run
+    rouge : test_c3b_evaluate.py::test_the_instrument_contract_is_that_of_the_text
+    rouge : test_c3b_evaluate.py::test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain
+    rouge : test_c3b_evaluate.py::test_three_series_of_different_lengths_are_3_before_any_draw
+M04 n_jours = nombre de rendements : ROUGE — 4 failed, 218 passed in 18.97s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+M05 graine non recoupée au manifeste : ROUGE — 1 failed, 221 passed in 18.90s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_an_anchor_seed_different_from_the_manifest_is_3
+M06 returns_config depuis engine.equity_curve : ROUGE — 37 failed, 185 passed in 17.85s — 18.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_before_the_campaign_writes_the_full_artefact_set
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T-5min]
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T]
+    rouge : test_c3b_evaluate.py::test_a_liquidation_outside_the_final_daily_cell_is_3
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[2e-06-3]
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[5e-07-0]
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[explosion]
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[ruine]
+    rouge : test_c3b_evaluate.py::test_benchmark_eval_is_what_comparator_block_reads
+    rouge : test_c3b_evaluate.py::test_comparable_is_the_recomputed_conjunction
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[absent]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[end]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[longueur]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[start]
+    rouge : test_c3b_evaluate.py::test_evaluation_candles_are_read_on_T_fin_for_the_evaluated_pair_only
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_evaluator_events_never_carry_identity_pair_or_metric
+    rouge : test_c3b_evaluate.py::test_first_fill_at_is_the_smallest_trade_stamp
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+    rouge : test_c3b_evaluate.py::test_returns_config_is_recompute_daily_of_the_exported_equity
+    rouge : test_c3b_evaluate.py::test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefact
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefacts
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_has_the_fixture_form
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_is_read_before_run
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+    rouge : test_c3b_evaluate.py::test_the_instrument_contract_is_that_of_the_text
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+    rouge : test_c3b_evaluate.py::test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain
+    rouge : test_c3b_evaluate.py::test_three_series_of_different_lengths_are_3_before_any_draw
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical_on_every_artefact
+M07 rendements du comparateur par le chemin Decimal de build_pair : ROUGE — 2 failed, 220 passed in 18.99s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+M08 λ ré-estimé sur la fenêtre d'évaluation au lieu du λ du préfixe : ROUGE — 2 failed, 220 passed in 19.02s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+M09 λ dd et σ permutés : ROUGE — 2 failed, 220 passed in 18.89s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+M10 Decimal(λ) au lieu de Decimal(str(λ)) : ROUGE — 2 failed, 220 passed in 19.14s — 19.7 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+M11 λ du premier bloc de benchmark.json : ROUGE — 1 failed, 221 passed in 18.91s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+M12 cagr_pct par cc.cagr_pct (math.fsum) au lieu du chemin du rejeu : ROUGE — 8 failed, 214 passed in 18.77s — 19.3 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-cash-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-cash-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-mixte-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-mixte-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-varie-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-varie-1]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+M13 delta_dd pris sur l'appariement σ : ROUGE — 12 failed, 210 passed in 18.66s — 19.2 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-mixte-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-mixte-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-varie-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-varie-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-mixte-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-mixte-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-varie-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-varie-1]
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+M14 longueurs non contrôlées : ROUGE — 1 failed, 221 passed in 18.90s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_three_series_of_different_lengths_are_3_before_any_draw
+M15 entrées invalides (§ F.2 e) non contrôlées : ROUGE — 1 failed, 221 passed in 19.01s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[ruine]
+M16 clé en trop dans evaluation.json : ROUGE — 2 failed, 220 passed in 19.05s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+M17 comparable posé : ROUGE — 1 failed, 221 passed in 18.80s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_comparable_is_the_recomputed_conjunction
+M18 fenêtre de benchmark_eval = estampilles d'entrée et de sortie : ROUGE — 1 failed, 221 passed in 18.77s — 19.3 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_benchmark_eval_is_what_comparator_block_reads
+M19 comparability à sept clés : ROUGE — 1 failed, 221 passed in 18.89s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_benchmark_eval_is_what_comparator_block_reads
+M20 bougies lues depuis le début de la fenêtre : ROUGE — 47 failed, 175 passed in 17.57s — 18.1 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_before_the_campaign_writes_the_full_artefact_set
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T-5min]
+    rouge : test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T]
+    rouge : test_c3b_evaluate.py::test_a_float_balance_is_3
+    rouge : test_c3b_evaluate.py::test_a_liquidation_outside_the_final_daily_cell_is_3
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[2e-06-3]
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[5e-07-0]
+    rouge : test_c3b_evaluate.py::test_a_non_buildable_comparator_is_2_before_the_engine
+    rouge : test_c3b_evaluate.py::test_a_passed_params_divergence_is_3
+    rouge : test_c3b_evaluate.py::test_an_engine_failure_is_3_and_writes_nothing
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[explosion]
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[ruine]
+    rouge : test_c3b_evaluate.py::test_benchmark_eval_is_what_comparator_block_reads
+    rouge : test_c3b_evaluate.py::test_cash_different_from_C_is_3
+    rouge : test_c3b_evaluate.py::test_comparable_is_the_recomputed_conjunction
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[absent]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[end]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[longueur]
+    rouge : test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[start]
+    rouge : test_c3b_evaluate.py::test_evaluation_candles_are_read_on_T_fin_for_the_evaluated_pair_only
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_evaluator_events_never_carry_identity_pair_or_metric
+    rouge : test_c3b_evaluate.py::test_first_fill_at_is_the_smallest_trade_stamp
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[_strategy_obj]
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[active_buy_orders]
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[active_sell_orders]
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[btc_held]
+    rouge : test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[trades]
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+    rouge : test_c3b_evaluate.py::test_returns_config_is_recompute_daily_of_the_exported_equity
+    rouge : test_c3b_evaluate.py::test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefact
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefacts
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_has_the_fixture_form
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_is_read_before_run
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+    rouge : test_c3b_evaluate.py::test_the_instrument_contract_is_that_of_the_text
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+    rouge : test_c3b_evaluate.py::test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain
+    rouge : test_c3b_evaluate.py::test_three_series_of_different_lengths_are_3_before_any_draw
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical_on_every_artefact
+M21 bougies quotidiennes lues au-delà de fin : ROUGE — 1 failed, 221 passed in 19.05s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_evaluation_candles_are_read_on_T_fin_for_the_evaluated_pair_only
+M22 comparateur construit après le moteur : ROUGE — 1 failed, 221 passed in 19.00s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_non_buildable_comparator_is_2_before_the_engine
+M23 comparateur non constructible en code 3 : ROUGE — 1 failed, 221 passed in 18.85s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_non_buildable_comparator_is_2_before_the_engine
+M24 NOT_ESTIMABLE ignoré : ROUGE — 1 failed, 221 passed in 18.94s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_not_estimable_prefix_lambda_is_2
+M25 empreintes de benchmark.json non recoupées : ROUGE — 2 failed, 220 passed in 19.02s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_benchmark_of_another_manifest_or_anchor_is_refused[anchor]
+    rouge : test_c3b_evaluate.py::test_a_benchmark_of_another_manifest_or_anchor_is_refused[manifest]
+M26 empreinte de benchmark.json enregistrée par c3_select non recoupée : ROUGE — 1 failed, 221 passed in 18.87s — 19.4 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_selection_computed_on_another_benchmark_is_refused
+M27 domaine de λ non contrôlé : ROUGE — 2 failed, 220 passed in 19.17s — 19.7 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_lambda_outside_the_unit_interval_is_3[-0.001]
+    rouge : test_c3b_evaluate.py::test_a_lambda_outside_the_unit_interval_is_3[1.001]
+M28 sensibilité écrite dans evaluation.json : ROUGE — 2 failed, 220 passed in 19.16s — 19.7 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+M29 delta_stars en ndarray : ROUGE — 38 failed, 184 passed in 17.19s — 17.8 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_before_the_campaign_writes_the_full_artefact_set
+    rouge : test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[5e-07-0]
+    rouge : test_c3b_evaluate.py::test_benchmark_eval_is_what_comparator_block_reads
+    rouge : test_c3b_evaluate.py::test_comparable_is_the_recomputed_conjunction
+    rouge : test_c3b_evaluate.py::test_evaluation_candles_are_read_on_T_fin_for_the_evaluated_pair_only
+    rouge : test_c3b_evaluate.py::test_evaluation_json_has_exactly_the_keys_of_the_fixture
+    rouge : test_c3b_evaluate.py::test_evaluator_events_never_carry_identity_pair_or_metric
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-cash-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-cash-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-mixte-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-mixte-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-varie-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[temoin-varie-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-cash-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-cash-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-mixte-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-mixte-1]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-varie-0]
+    rouge : test_c3b_evaluate.py::test_f2_is_bit_equal_to_the_procedure_written_from_the_text[varie9-varie-1]
+    rouge : test_c3b_evaluate.py::test_first_fill_at_is_the_smallest_trade_stamp
+    rouge : test_c3b_evaluate.py::test_lambdas_are_those_of_the_prefix_benchmark_for_the_evaluated_identity
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+    rouge : test_c3b_evaluate.py::test_returns_config_is_recompute_daily_of_the_exported_equity
+    rouge : test_c3b_evaluate.py::test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefact
+    rouge : test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefacts
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_comparator_enters_at_the_first_exec_close_after_T
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_has_the_fixture_form
+    rouge : test_c3b_evaluate.py::test_the_flat_start_proof_is_read_before_run
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+    rouge : test_c3b_evaluate.py::test_the_instrument_contract_is_that_of_the_text
+    rouge : test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+    rouge : test_c3b_evaluate.py::test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical
+    rouge : test_c3b_evaluate.py::test_two_evaluations_are_bit_identical_on_every_artefact
+M30 environnement avec un champ en trop : ROUGE — 5 failed, 217 passed in 18.90s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_n_days_never_comes_from_the_engine
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[inverse]
+    rouge : test_c3b_evaluate.py::test_the_chain_replay_finds_the_declared_artefact[tri]
+    rouge : test_c3b_evaluate.py::test_the_full_chain_verifies_a_produced_evaluation
+    rouge : test_c3b_evaluate.py::test_the_instrument_contract_is_that_of_the_text
+M31 garde de désignation retirée (reprise du 4a) : ROUGE — 1 failed, 221 passed in 18.92s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_designation_on_the_campaign_window_is_refused_even_unlocked
+M32 mode de λ non contrôlé : ROUGE — 1 failed, 221 passed in 19.02s — 19.6 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_failed_or_non_decisional_benchmark_is_refused[mode-non-decisionnel]
+M33 CAGR observé non fini (math.exp) non rattrapé : ROUGE — 1 failed, 221 passed in 18.88s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_an_invalid_input_is_3_before_any_draw[explosion]
+M34 identité absente nommée dans le journal : ROUGE — 1 failed, 221 passed in 19.08s — 19.7 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_an_identity_absent_from_the_benchmark_is_refused_without_naming_it
+M35 paire du bloc de benchmark non recoupée : ROUGE — 1 failed, 221 passed in 18.92s — 19.5 s, restauré oui
+    rouge : test_c3b_evaluate.py::test_a_benchmark_block_of_another_pair_is_3
+survivants : aucun
+rc=0

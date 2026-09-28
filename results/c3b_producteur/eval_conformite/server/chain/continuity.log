@@ -1,0 +1,10 @@
+continuité de 145867637b7f9bac (ETH/USDT) sur [2020-09-11T21:36:00+00:00, 2020-12-28T00:00:00+00:00] — état DECLARED
+  c1 DECLARED       départ à plat à l'ancrage (§ B.2) : preuve cohérente avec le contrat (at = T, cash 1000 = C, quantité 0, 0 ordre en attente) — produite par le programme qu'elle décrit, elle vaut DECLARED, jamais VERIFIED
+  c2 DECLARED       aucune réinitialisation interne (§ B.4) : un seul appel déclaré, grille quotidienne continue de 109 points sur [T, fin] — la convention d'appel est déclarée, son intégration relève de C3b
+  c3 VERIFIED       liquidation terminale costée (§ B.3) : liquidation terminale costée, prouvée par lot
+  c4 VERIFIED       amorçage à l'ancrage (§ B.5) : amorçage recalculé suffisant sur 1w, 4h
+  c5 DECLARED       première exécution strictement après T (§ C.3) : premier remplissage déclaré à 2020-09-13T12:05:00+00:00, strictement après T
+  stamp_cell NOT_VERIFIABLE estampille de liquidation dans la cellule quotidienne finale (§ B.4) : estampille de liquidation nulle, rien à situer
+  comparator VERIFIED       comparateur d'évaluation (§ C.5) : comparateur d'évaluation comparable (§ C.5), fenêtre [T, fin] recoupée
+  amorçage à T True · comparateur True · cellule d'estampille False · liquidation normalisée True
+written /home/bruno/runs/c3b_eval4a/out/chain/continuity.json sha256 f43cc5c15d85ef47571b7b79386fb0068c12049f12b5bd09c5881cda5aed8e31

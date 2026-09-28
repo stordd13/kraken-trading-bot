@@ -1,0 +1,20 @@
+# Suite locale, état du commit 2 (arbre de travail avant commit, HEAD 02360db + modifications) — 2026-09-27T14:15:29Z
+# poetry run pytest -q -k 'not test_determinism_parallel_vs_serial_full'
+# dirty:  M scripts/audit/_common.py
+# dirty:  M scripts/audit/c3_common.py
+# dirty:  M tests/test_scripts/test_audit_common.py
+# dirty:  M tests/test_scripts/test_c3_common.py
+# dirty:  M tests/test_scripts/test_c3_verdict.py
+........................................................................ [ 94%]
+........................................................................ [ 96%]
+........................................................................ [ 99%]
+........................                                                 [100%]
+=========================== short test summary info ============================
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:99: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:108: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:114: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+3042 passed, 6 skipped, 24 deselected in 501.91s (0:08:21)
+pytest_exit=0

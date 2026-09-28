@@ -1,0 +1,11 @@
+head=4d5eb4667bd494e54c8cdb9b92b227571c2ffd95
+status:
+ M scripts/audit/c3b_common.py
+?? results/c3b_producteur/eval_conformite/
+start=2026-09-28T07:55:01Z
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+3184 passed, 6 skipped in 12460.39s (3:27:40)
+end=2026-09-28T11:22:43Z
+rc=

@@ -1,0 +1,17 @@
+guard=0 sha=459190a222bb24aface23c46d80b2d879795a49c python=Python 3.12.3 krakenbot=/home/bruno/runs/c3b_eval4b/repo/src/krakenbot/__init__.py lot3_candles=0 registry=0
+pilot_sha256=9b401797639bc9b1928aa952257a67c9742f471244f9de7547d1d25f637f9cc8
+start=2026-09-28T14:48:51Z
+alembic_before=0
+eval_run1=0 event=evaluated at=2026-09-28T14:49:00Z
+eval_run2=0 event=evaluated at=2026-09-28T14:49:09Z
+eval_bit_equal=0
+outputs_bit_equal=0
+alembic_after=0
+chain_exit=0
+chain_verified=true
+verdict_violations=0
+replay_violations=0
+chain_steps=anchor:0,entry:0,benchmark:0,select:0,continuity:0
+extract=0
+interpreter_check=0
+end=2026-09-28T14:49:13Z

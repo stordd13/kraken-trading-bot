@@ -1,0 +1,110 @@
+src/krakenbot/indicators/vwap.py:61: error: Incompatible types in assignment (expression has type "Decimal | float", variable has type "Decimal | None")  [assignment]
+src/krakenbot/indicators/rsi.py:66: error: Incompatible types in assignment (expression has type "Decimal | float", variable has type "Decimal | None")  [assignment]
+src/krakenbot/indicators/rsi.py:67: error: Incompatible types in assignment (expression has type "Decimal | float", variable has type "Decimal | None")  [assignment]
+src/krakenbot/indicators/rsi.py:71: error: Unsupported operand types for * ("None" and "int")  [operator]
+src/krakenbot/indicators/rsi.py:71: note: Left operand is of type "Decimal | None"
+src/krakenbot/indicators/macd.py:90: error: Unsupported operand types for * ("None" and "Decimal")  [operator]
+src/krakenbot/indicators/macd.py:90: note: Left operand is of type "Decimal | None"
+src/krakenbot/indicators/macd.py:91: error: Unsupported operand types for * ("None" and "Decimal")  [operator]
+src/krakenbot/indicators/macd.py:91: note: Left operand is of type "Decimal | None"
+src/krakenbot/indicators/bollinger.py:76: error: Generator has incompatible item type "Decimal | Any"; expected "bool"  [misc]
+src/krakenbot/indicators/bollinger.py:76: error: Unsupported operand types for - ("Decimal" and "float")  [operator]
+src/krakenbot/indicators/bollinger.py:76: note: Right operand is of type "Decimal | float"
+src/krakenbot/indicators/bollinger.py:77: error: "float" has no attribute "sqrt"  [attr-defined]
+src/krakenbot/indicators/bollinger.py:94: error: Argument "middle" to "BollingerBandsResult" has incompatible type "Decimal | float"; expected "Decimal"  [arg-type]
+src/krakenbot/indicators/adx.py:101: error: Unsupported operand types for - ("Decimal" and "None")  [operator]
+src/krakenbot/indicators/adx.py:101: note: Right operand is of type "Decimal | None"
+src/krakenbot/indicators/adx.py:102: error: Unsupported operand types for - ("Decimal" and "None")  [operator]
+src/krakenbot/indicators/adx.py:102: note: Right operand is of type "Decimal | None"
+src/krakenbot/indicators/adx.py:107: error: Unsupported operand types for - ("None" and "Decimal")  [operator]
+src/krakenbot/indicators/adx.py:107: note: Left operand is of type "Decimal | None"
+src/krakenbot/indicators/adx.py:133: error: Unsupported operand types for - ("None" and "Decimal")  [operator]
+src/krakenbot/indicators/adx.py:133: note: Left operand is of type "Decimal | None"
+src/krakenbot/indicators/adx.py:133: error: Unsupported operand types for / ("None" and "Decimal")  [operator]
+src/krakenbot/indicators/adx.py:136: error: Unsupported operand types for - ("None" and "Decimal")  [operator]
+src/krakenbot/indicators/adx.py:136: note: Left operand is of type "Decimal | None"
+src/krakenbot/indicators/adx.py:136: error: Unsupported operand types for / ("None" and "Decimal")  [operator]
+src/krakenbot/indicators/supertrend.py:113: error: Unsupported operand types for > ("Decimal" and "None")  [operator]
+src/krakenbot/indicators/supertrend.py:113: note: Right operand is of type "Decimal | None"
+src/krakenbot/indicators/supertrend.py:114: error: Unsupported operand types for < ("Decimal" and "None")  [operator]
+src/krakenbot/indicators/supertrend.py:114: note: Right operand is of type "Decimal | None"
+src/krakenbot/indicators/supertrend.py:118: error: Incompatible types in assignment (expression has type "Decimal | None", variable has type "Decimal")  [assignment]
+src/krakenbot/core/logger.py:123: error: Incompatible types in assignment (expression has type "dict[str, Any]", target has type "str")  [assignment]
+src/krakenbot/core/logger.py:251: error: Returning Any from function declared to return "BoundLogger"  [no-any-return]
+src/krakenbot/config/settings.py:257: error: Incompatible types in assignment (expression has type "str", variable has type "PostgresDsn")  [assignment]
+src/krakenbot/config/settings.py:723: error: Returning Any from function declared to return "dict[str, Any] | None"  [no-any-return]
+src/krakenbot/indicators/multi_timeframe.py:510: error: Returning Any from function declared to return "Decimal | None"  [no-any-return]
+src/krakenbot/indicators/multi_timeframe.py:536: error: Returning Any from function declared to return "Decimal | None"  [no-any-return]
+src/krakenbot/indicators/multi_timeframe.py:556: error: Returning Any from function declared to return "Decimal | None"  [no-any-return]
+src/krakenbot/indicators/multi_timeframe.py:657: error: Returning Any from function declared to return "Decimal | None"  [no-any-return]
+src/krakenbot/indicators/multi_timeframe.py:682: error: Returning Any from function declared to return "dict[str, Decimal] | None"  [no-any-return]
+src/krakenbot/indicators/multi_timeframe.py:723: error: Returning Any from function declared to return "dict[str, Decimal] | None"  [no-any-return]
+src/krakenbot/indicators/multi_timeframe.py:748: error: Returning Any from function declared to return "Decimal | None"  [no-any-return]
+src/krakenbot/strategies/grok_supertrend_4h.py:355: error: Item "None" of "Any | None" has no attribute "get_atr"  [union-attr]
+src/krakenbot/strategies/grok_ema_adx_atr.py:402: error: Item "None" of "Any | None" has no attribute "get_atr"  [union-attr]
+src/krakenbot/strategies/multi_strategy_router.py:400: error: Incompatible types in assignment (expression has type "_RiskOverlayEventBusProxy", variable has type "EventBus")  [assignment]
+src/krakenbot/connectors/kraken/rest.py:1703: error: "object" has no attribute "isoformat"  [attr-defined]
+src/krakenbot/connectors/kraken/rest.py:1704: error: "object" has no attribute "isoformat"  [attr-defined]
+src/krakenbot/connectors/binance/rest.py:342: error: "object" has no attribute "isoformat"  [attr-defined]
+src/krakenbot/connectors/binance/rest.py:343: error: "object" has no attribute "isoformat"  [attr-defined]
+src/krakenbot/connectors/exchange.py:168: error: Incompatible return value type (got "BinanceRestClient", expected "ExchangeRestClient")  [return-value]
+src/krakenbot/connectors/exchange.py:168: note: Following member(s) of "BinanceRestClient" have conflicts:
+src/krakenbot/connectors/exchange.py:168: note:     Expected:
+src/krakenbot/connectors/exchange.py:168: note:         def place_limit_order(self, pair: str, side: TradeSide, amount: Decimal, price: Decimal, strategy: str, *, expires_in_seconds: int | None = ...) -> Coroutine[Any, Any, Order]
+src/krakenbot/connectors/exchange.py:168: note:     Got:
+src/krakenbot/connectors/exchange.py:168: note:         def place_limit_order(self, pair: str, side: TradeSide, amount: Decimal, price: Decimal, strategy: str = ..., expires_in_seconds: int = ...) -> Coroutine[Any, Any, Order]
+src/krakenbot/connectors/exchange.py:168: note:     Expected:
+src/krakenbot/connectors/exchange.py:168: note:         def place_margin_order(self, pair: str, side: TradeSide, amount: Decimal, leverage: int, strategy: str, *, reference_price: Decimal | None = ..., position_id: int | None = ...) -> Coroutine[Any, Any, Trade]
+src/krakenbot/connectors/exchange.py:168: note:     Got:
+src/krakenbot/connectors/exchange.py:168: note:         def place_margin_order(self, pair: str, side: TradeSide, amount: Decimal, strategy: str = ..., signal_price: Decimal | None = ..., leverage: int = ...) -> Coroutine[Any, Any, Trade]
+src/krakenbot/connectors/exchange.py:168: note:     <1 more conflict(s) not shown>
+src/krakenbot/connectors/exchange.py:173: error: Incompatible return value type (got "BybitRestClient", expected "ExchangeRestClient")  [return-value]
+src/krakenbot/connectors/exchange.py:173: note: Following member(s) of "BybitRestClient" have conflicts:
+src/krakenbot/connectors/exchange.py:173: note:     Expected:
+src/krakenbot/connectors/exchange.py:173: note:         def place_limit_order(self, pair: str, side: TradeSide, amount: Decimal, price: Decimal, strategy: str, *, expires_in_seconds: int | None = ...) -> Coroutine[Any, Any, Order]
+src/krakenbot/connectors/exchange.py:173: note:     Got:
+src/krakenbot/connectors/exchange.py:173: note:         def place_limit_order(self, pair: str, side: TradeSide, amount: Decimal, price: Decimal, strategy: str = ..., expires_in_seconds: int = ..., *, post_only: bool = ...) -> Coroutine[Any, Any, Order]
+src/krakenbot/connectors/exchange.py:173: note:     Expected:
+src/krakenbot/connectors/exchange.py:173: note:         def place_margin_order(self, pair: str, side: TradeSide, amount: Decimal, leverage: int, strategy: str, *, reference_price: Decimal | None = ..., position_id: int | None = ...) -> Coroutine[Any, Any, Trade]
+src/krakenbot/connectors/exchange.py:173: note:     Got:
+src/krakenbot/connectors/exchange.py:173: note:         def place_margin_order(self, pair: str, side: TradeSide, amount: Decimal, strategy: str = ..., signal_price: Decimal | None = ..., leverage: int = ...) -> Coroutine[Any, Any, Trade]
+src/krakenbot/connectors/exchange.py:173: note:     <1 more conflict(s) not shown>
+src/krakenbot/connectors/exchange.py:180: error: Incompatible return value type (got "KrakenRestClient", expected "ExchangeRestClient")  [return-value]
+src/krakenbot/connectors/exchange.py:180: note: Following member(s) of "KrakenRestClient" have conflicts:
+src/krakenbot/connectors/exchange.py:180: note:     Expected:
+src/krakenbot/connectors/exchange.py:180: note:         def place_limit_order(self, pair: str, side: TradeSide, amount: Decimal, price: Decimal, strategy: str, *, expires_in_seconds: int | None = ...) -> Coroutine[Any, Any, Order]
+src/krakenbot/connectors/exchange.py:180: note:     Got:
+src/krakenbot/connectors/exchange.py:180: note:         def place_limit_order(self, pair: str, side: TradeSide, amount: Decimal, price: Decimal, strategy: str = ..., expires_in_seconds: int = ...) -> Coroutine[Any, Any, Order]
+src/krakenbot/connectors/exchange.py:180: note:     Expected:
+src/krakenbot/connectors/exchange.py:180: note:         def place_margin_order(self, pair: str, side: TradeSide, amount: Decimal, leverage: int, strategy: str, *, reference_price: Decimal | None = ..., position_id: int | None = ...) -> Coroutine[Any, Any, Trade]
+src/krakenbot/connectors/exchange.py:180: note:     Got:
+src/krakenbot/connectors/exchange.py:180: note:         def place_margin_order(self, pair: str, side: TradeSide, amount: Decimal, strategy: str = ..., signal_price: Decimal | None = ..., leverage: int = ...) -> Coroutine[Any, Any, Trade]
+src/krakenbot/connectors/exchange.py:180: note:     <1 more conflict(s) not shown>
+src/krakenbot/connectors/exchange.py:218: error: Argument 3 to "KrakenWebSocketClient" has incompatible type "DatabaseManager | None"; expected "DatabaseManager"  [arg-type]
+src/krakenbot/main.py:239: error: Argument 4 to "ExecutionEngine" has incompatible type "ExchangeRestClient"; expected "KrakenRestClient"  [arg-type]
+src/krakenbot/main.py:306: error: Argument "event_bus" to "BaseStrategy" has incompatible type "EventBus | None"; expected "EventBus"  [arg-type]
+src/krakenbot/main.py:307: error: Argument "db_manager" to "BaseStrategy" has incompatible type "DatabaseManager | None"; expected "DatabaseManager"  [arg-type]
+src/krakenbot/main.py:420: error: Argument 1 to "float" has incompatible type "Any | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+src/krakenbot/main.py:424: error: Argument 1 to "float" has incompatible type "Any | None"; expected "str | Buffer | SupportsFloat | SupportsIndex"  [arg-type]
+src/krakenbot/main.py:498: error: Item "None" of "ExecutionEngine | None" has no attribute "start"  [union-attr]
+src/krakenbot/main.py:505: error: Argument 1 to "initialize_all" of "MultiPairAnalyzerRegistry" has incompatible type "DatabaseManager | None"; expected "DatabaseManager"  [arg-type]
+src/krakenbot/main.py:536: error: Item "None" of "EventBus | None" has no attribute "subscribe"  [union-attr]
+src/krakenbot/main.py:543: error: Item "None" of "BaseWebSocketClient | None" has no attribute "connect"  [union-attr]
+src/krakenbot/main.py:550: error: Item "None" of "BaseWebSocketClient | None" has no attribute "subscribe_ohlc"  [union-attr]
+src/krakenbot/main.py:551: error: Item "None" of "BaseWebSocketClient | None" has no attribute "subscribe_ticker"  [union-attr]
+src/krakenbot/main.py:573: error: Item "None" of "EventBus | None" has no attribute "subscribe"  [union-attr]
+src/krakenbot/main.py:753: error: Item "None" of "DatabaseManager | None" has no attribute "read_session"  [union-attr]
+src/krakenbot/main.py:1071: error: Item "None" of "DatabaseManager | None" has no attribute "session"  [union-attr]
+src/krakenbot/main.py:1107: error: Item "None" of "DatabaseManager | None" has no attribute "session"  [union-attr]
+src/krakenbot/main.py:1131: error: Item "None" of "DatabaseManager | None" has no attribute "session"  [union-attr]
+src/krakenbot/main.py:1214: error: Cannot infer type of lambda  [misc]
+src/krakenbot/collector.py:166: error: Item "None" of "BaseWebSocketClient | None" has no attribute "connect"  [union-attr]
+src/krakenbot/collector.py:174: error: Item "None" of "BaseWebSocketClient | None" has no attribute "subscribe_ohlc"  [union-attr]
+src/krakenbot/collector.py:176: error: Item "None" of "BaseWebSocketClient | None" has no attribute "subscribe_ticker"  [union-attr]
+src/krakenbot/collector.py:380: error: Cannot infer type of lambda  [misc]
+src/krakenbot/ml/features/feature_store.py:32: error: Library stubs not installed for "pandas"  [import-untyped]
+src/krakenbot/ml/features/feature_store.py:32: note: Hint: "python3 -m pip install pandas-stubs"
+src/krakenbot/ml/features/feature_store.py:32: note: (or run "mypy --install-types" to install all missing stub packages)
+src/krakenbot/ml/features/feature_store.py:32: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+src/krakenbot/ml/features/feature_store.py:551: error: Returning Any from function declared to return "int"  [no-any-return]
+Found 65 errors in 18 files (checked 83 source files)

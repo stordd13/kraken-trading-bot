@@ -1,0 +1,42 @@
+### GridBacktester — grok_grid_atr_adaptive_v4 BTC/USDC 2025-03-01 → 2025-03-15 (`--fees bybit`)
+
+- trades: 4 / equity points: 4033 / balances: {'crypto': '0', 'usdc': '1002.395048128024284297185500'}
+- old engine: `/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/backtest.py` · new engine: `/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/backtest.py`
+- identity (trades on the 15 pre-C1 fields, balances, equity curve point by point, schema-1 projection): **IDENTICAL**
+
+| Key | Old | New | Status | Cause |
+|---|---|---|---|---|
+| `total_trades` | 2 | 2 | identical | - |
+| `winning_trades` | 2 | 2 | identical | - |
+| `losing_trades` | 0 | 0 | identical | - |
+| `win_rate` | 1.000000 | 1.000000 | identical | - |
+| `total_return_pct` | 0.239505 | 0.239505 | identical | - |
+| `net_pnl` | 2.395048 | 2.395048 | identical | - |
+| `total_fees` | 0.102447 | 0.102447 | identical | - |
+| `total_pnl` | 2.445048 | 2.445048 | identical | - |
+| `unrealized_pnl` | 0.000000 | 0.000000 | identical | - |
+| `starting_balance` | 1000.000000 | 1000.000000 | identical | - |
+| `ending_balance` | 1002.395048 | 1002.395048 | identical | - |
+| `duration_days` | 14.000000 | 14.000000 | identical | - |
+| `average_holding_time_minutes` | 1417.500000 | 1417.500000 | identical | - |
+| `max_drawdown` | 1.4796969355802781348658164 | 1.4796969355802781348658164 | identical | - |
+| `average_win` | 1.22252406401214214859275011 | 1.22252406401214214859275011 | identical | - |
+| `average_loss` | 0 | 0 | identical | - |
+| `sharpe_ratio` | 9.164218 | 9.164218 | moving | D1 daily resampling + unit; C2 anchor/ffill; C4 ddof=1 |
+| `sortino_ratio` | n/a | n/a | moving | D1 daily resampling + unit; C2 anchor/ffill; C4 ddof=1 |
+| `max_drawdown_pct -> max_drawdown_pct_daily` | n/a | 0.000000 | moving | D2 relative to running peak; D1/C2 daily NAV |
+| `profit_factor` | n/a | n/a | moving | D3 net of the buy fee (pnl_net_trade); 0 losses -> None |
+| `calmar_ratio` | n/a | n/a | moving | D2 (denominator) ; C5 geometric CAGR ; D1/C2 daily |
+| `gross_loss_net` | - | 0.000000 | new | - |
+| `gross_profit_net` | - | 2.395048 | new | - |
+| `max_drawdown_pct_engine` | - | 0.147910 | new | - |
+| `metrics_version` | - | 2 | new | - |
+| `n_daily_returns` | - | 14 | new | - |
+| `pf_excluded_trades` | - | 0 | new | - |
+| `gross_loss_net` | 0.000000 | - | removed | - |
+| `gross_profit_net` | 2.395048 | - | removed | - |
+| `max_drawdown_pct_daily` | 0.000000 | - | removed | - |
+| `max_drawdown_pct_engine` | 0.147910 | - | removed | - |
+| `metrics_version` | 2 | - | removed | - |
+| `n_daily_returns` | 14 | - | removed | - |
+| `pf_excluded_trades` | 0 | - | removed | - |

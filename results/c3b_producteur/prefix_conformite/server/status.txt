@@ -1,0 +1,17 @@
+guard=0 sha=6509737718ba7e645f973e877641d7b2b54ef2ad python=Python 3.12.3 krakenbot=/home/bruno/runs/c3b_prefix/repo/src/krakenbot/__init__.py
+pilot_sha256=ee1f5a53b07ff62242d939fab651acfb8d9cb23530553dad3b37b29ae86a111d
+start=2026-09-28T06:46:17Z
+alembic_before=0
+producer_run1=0 at=2026-09-28T06:47:00Z
+producer_run2=0 at=2026-09-28T06:49:10Z
+alembic_after=0
+sha_observations.json run1=57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f run2=57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f
+sha_coverage.json run1=5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51 run2=5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51
+sha_candles.json run1=20c0d1fb46184f18b186499fea906d1f70b6fcd3c300d4b82ce4f8d2f3139376 run2=20c0d1fb46184f18b186499fea906d1f70b6fcd3c300d4b82ce4f8d2f3139376
+sha_equal=0
+c3_anchor=0
+c3_entry=0
+c3_benchmark=0
+c3_select=0
+interpreter_check=0
+end=2026-09-28T06:49:15Z

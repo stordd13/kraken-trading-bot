@@ -1,0 +1,1326 @@
+{
+  "abstention_clause": null,
+  "admissible": [
+    "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962",
+    "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5",
+    "6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8",
+    "823f6cb20e6101953f522f81e39c9b9488d752a7a05b66d6ac1aa255fd05f49f",
+    "c56a6de626bbf027edd05a83b40e858bba37b330bd51d3e64e7f575934129d9e",
+    "d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f",
+    "e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe",
+    "ee2fbcc757e150ee95789c7e06d84cc1b713d6782b5208c5ffa775e64e52aed0"
+  ],
+  "anchor": "2020-09-11T21:36:00+00:00",
+  "candidates": [
+    {
+      "alerts": [],
+      "candidate_reason": null,
+      "clause_details": {
+        "D1": "couverture de la paire ok",
+        "D2": "amorçage suffisant",
+        "D3": "cycles achevés 96 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": true,
+        "D2": true,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "-5.0E-28",
+          "inventory_divergence_base": "-5E-28",
+          "net_pnl_lot_basis": "105.6781086778408823673958624",
+          "pnl": "-9.15162538313508402017456773"
+        }
+      },
+      "first_failed_gate": null,
+      "floor": {
+        "P1": true,
+        "P2": true,
+        "P3": false
+      },
+      "identity": "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962",
+      "key": "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962",
+      "mdd_report": {
+        "abs_diff": 1.7763568394002505e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 11.616290001464552,
+        "recorded": 11.616290001464554
+      },
+      "metrics_prefix": {
+        "losing_trades": 4,
+        "max_drawdown_pct_daily": 11.616290001464554,
+        "n_daily_returns": 250,
+        "net_pnl": 105.67810867784088,
+        "total_trades": 101,
+        "winning_trades": 97
+      },
+      "pair": "ETH/USDT",
+      "params": {
+        "bear_protection_mode": "1w_only",
+        "bias_1d": 0
+      },
+      "projection_sha256": "92d8fe28b2299257e13120e1e918fe14934cdf56b221a46b95eb0c7148ded9cf",
+      "rank": null,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 15.803959168661219,
+        "cycles": 96,
+        "mdd_daily": 11.616290001464552,
+        "n_returns": 250,
+        "sigma_daily": 0.009875425396261777,
+        "undefined_returns": 0
+      },
+      "scores": {
+        "cagr_pct": 15.803959168661219,
+        "delta_dd": -9.937987618137957,
+        "delta_sigma": -13.99740742644364,
+        "lambda_dd": 0.099,
+        "lambda_sigma": 0.114,
+        "mdd_daily": 11.616290001464552
+      },
+      "status": "ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": null,
+      "clause_details": {
+        "D1": "couverture de la paire ok",
+        "D2": "amorçage suffisant",
+        "D3": "cycles achevés 59 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": true,
+        "D2": true,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "3E-30",
+          "inventory_divergence_base": "3E-30",
+          "net_pnl_lot_basis": "67.65559568334472470573897125",
+          "pnl": "-2.65385269409642842564425227"
+        }
+      },
+      "first_failed_gate": null,
+      "floor": {
+        "P1": true,
+        "P2": true,
+        "P3": true
+      },
+      "identity": "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5",
+      "key": "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5",
+      "mdd_report": {
+        "abs_diff": 3.552713678800501e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 5.221911695491851,
+        "recorded": 5.221911695491848
+      },
+      "metrics_prefix": {
+        "losing_trades": 2,
+        "max_drawdown_pct_daily": 5.221911695491848,
+        "n_daily_returns": 250,
+        "net_pnl": 67.65559568334473,
+        "total_trades": 62,
+        "winning_trades": 60
+      },
+      "pair": "BTC/USDT",
+      "params": {
+        "bear_protection_mode": "none",
+        "bias_1d": 0
+      },
+      "projection_sha256": "ac03452f2da963d7a038871ed49ac96e4943341f3532cdb95af12464d8f865b4",
+      "rank": 1,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 10.033805723523681,
+        "cycles": 59,
+        "mdd_daily": 5.221911695491851,
+        "n_returns": 250,
+        "sigma_daily": 0.004741791083045975,
+        "undefined_returns": 0
+      },
+      "scores": {
+        "cagr_pct": 10.033805723523681,
+        "delta_dd": 5.8522227021444495,
+        "delta_sigma": 4.152783177171937,
+        "lambda_dd": 0.072,
+        "lambda_sigma": 0.101,
+        "mdd_daily": 5.221911695491851
+      },
+      "status": "ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": null,
+      "clause_details": {
+        "D1": "couverture de la paire ok",
+        "D2": "amorçage suffisant",
+        "D3": "cycles achevés 59 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": true,
+        "D2": true,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "3E-30",
+          "inventory_divergence_base": "3E-30",
+          "net_pnl_lot_basis": "67.65559568334472470573897125",
+          "pnl": "-2.65385269409642842564425227"
+        }
+      },
+      "first_failed_gate": null,
+      "floor": {
+        "P1": true,
+        "P2": true,
+        "P3": true
+      },
+      "identity": "6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8",
+      "key": "6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8",
+      "mdd_report": {
+        "abs_diff": 3.552713678800501e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 5.221911695491851,
+        "recorded": 5.221911695491848
+      },
+      "metrics_prefix": {
+        "losing_trades": 2,
+        "max_drawdown_pct_daily": 5.221911695491848,
+        "n_daily_returns": 250,
+        "net_pnl": 67.65559568334473,
+        "total_trades": 62,
+        "winning_trades": 60
+      },
+      "pair": "BTC/USDT",
+      "params": {
+        "bear_protection_mode": "1w_only",
+        "bias_1d": 0
+      },
+      "projection_sha256": "a1b062ed20366b67fd87a2a1a7c98c90af9c651fea0c9bb9631f48ccb2d90458",
+      "rank": 2,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 10.033805723523681,
+        "cycles": 59,
+        "mdd_daily": 5.221911695491851,
+        "n_returns": 250,
+        "sigma_daily": 0.004741791083045975,
+        "undefined_returns": 0
+      },
+      "scores": {
+        "cagr_pct": 10.033805723523681,
+        "delta_dd": 5.8522227021444495,
+        "delta_sigma": 4.152783177171937,
+        "lambda_dd": 0.072,
+        "lambda_sigma": 0.101,
+        "mdd_daily": 5.221911695491851
+      },
+      "status": "ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": "D_NOT_ADMISSIBLE",
+      "clause_details": {
+        "D1": "couverture de la paire insuffisante (§ A.8 D1)",
+        "D2": "séries insuffisantes au début du préfixe : 4h",
+        "D3": "cycles achevés 95 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": false,
+        "D2": false,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "1.1E-26",
+          "inventory_divergence_base": "0E-26",
+          "net_pnl_lot_basis": "89.78279507570137355605264908",
+          "pnl": "-23.55463716205820229874220970"
+        }
+      },
+      "first_failed_gate": "D1",
+      "floor": null,
+      "identity": "7ffd47bfa073f71862bb2bf92beebc5ddb8587b05a59e6e4962b7ca8fe46c95a",
+      "key": "7ffd47bfa073f71862bb2bf92beebc5ddb8587b05a59e6e4962b7ca8fe46c95a",
+      "mdd_report": {
+        "abs_diff": 2.220446049250313e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 3.1632160542834993,
+        "recorded": 3.1632160542835015
+      },
+      "metrics_prefix": {
+        "losing_trades": 6,
+        "max_drawdown_pct_daily": 3.1632160542835015,
+        "n_daily_returns": 250,
+        "net_pnl": 89.78279507570137,
+        "total_trades": 101,
+        "winning_trades": 95
+      },
+      "pair": "SOL/USDT",
+      "params": {
+        "bear_protection_mode": "none",
+        "bias_1d": 0
+      },
+      "projection_sha256": "3e40d9ebd19bceeb2f161ee6c9ca34e2ab5eb38c56f65224268afd48c7b5621c",
+      "rank": null,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 13.380440035209107,
+        "cycles": 95,
+        "mdd_daily": 3.1632160542834993,
+        "n_returns": 250,
+        "sigma_daily": 0.006001895500335668,
+        "undefined_returns": 0
+      },
+      "scores": null,
+      "status": "NON_ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": null,
+      "clause_details": {
+        "D1": "couverture de la paire ok",
+        "D2": "amorçage suffisant",
+        "D3": "cycles achevés 103 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": true,
+        "D2": true,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "6.3E-28",
+          "inventory_divergence_base": "6E-28",
+          "net_pnl_lot_basis": "116.0050496007797512070037020",
+          "pnl": "-7.25759274236470491415610384"
+        }
+      },
+      "first_failed_gate": null,
+      "floor": {
+        "P1": true,
+        "P2": true,
+        "P3": false
+      },
+      "identity": "823f6cb20e6101953f522f81e39c9b9488d752a7a05b66d6ac1aa255fd05f49f",
+      "key": "823f6cb20e6101953f522f81e39c9b9488d752a7a05b66d6ac1aa255fd05f49f",
+      "mdd_report": {
+        "abs_diff": 1.7763568394002505e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 11.56139234298503,
+        "recorded": 11.561392342985032
+      },
+      "metrics_prefix": {
+        "losing_trades": 3,
+        "max_drawdown_pct_daily": 11.561392342985032,
+        "n_daily_returns": 250,
+        "net_pnl": 116.00504960077976,
+        "total_trades": 107,
+        "winning_trades": 104
+      },
+      "pair": "ETH/USDT",
+      "params": {
+        "bear_protection_mode": "none"
+      },
+      "projection_sha256": "8feb2c31ea4253370e762accad0b68c125eed0026d3befa5cb78641689c5ab04",
+      "rank": null,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 17.387118271423674,
+        "cycles": 103,
+        "mdd_daily": 11.56139234298503,
+        "n_returns": 250,
+        "sigma_daily": 0.00983686985128935,
+        "undefined_returns": 0
+      },
+      "scores": {
+        "cagr_pct": 17.387118271423674,
+        "delta_dd": -8.085649882378743,
+        "delta_sigma": -12.414248323681186,
+        "lambda_dd": 0.098,
+        "lambda_sigma": 0.114,
+        "mdd_daily": 11.56139234298503
+      },
+      "status": "ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": "D_NOT_ADMISSIBLE",
+      "clause_details": {
+        "D1": "couverture de la paire insuffisante (§ A.8 D1)",
+        "D2": "séries insuffisantes au début du préfixe : 1w, 4h",
+        "D3": "cycles achevés 95 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": false,
+        "D2": false,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "1.1E-26",
+          "inventory_divergence_base": "0E-26",
+          "net_pnl_lot_basis": "89.78279507570137355605264908",
+          "pnl": "-23.55463716205820229874220970"
+        }
+      },
+      "first_failed_gate": "D1",
+      "floor": null,
+      "identity": "be44ed223e9b1551a748c2e19147b8ab669858549c3443b07a9d7cbddb217c25",
+      "key": "be44ed223e9b1551a748c2e19147b8ab669858549c3443b07a9d7cbddb217c25",
+      "mdd_report": {
+        "abs_diff": 2.220446049250313e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 3.1632160542834993,
+        "recorded": 3.1632160542835015
+      },
+      "metrics_prefix": {
+        "losing_trades": 6,
+        "max_drawdown_pct_daily": 3.1632160542835015,
+        "n_daily_returns": 250,
+        "net_pnl": 89.78279507570137,
+        "total_trades": 101,
+        "winning_trades": 95
+      },
+      "pair": "SOL/USDT",
+      "params": {
+        "bear_protection_mode": "1w_only",
+        "bias_1d": 0
+      },
+      "projection_sha256": "2daae63ff19df3b55d707e909e368aa4e37009875d656753b5afff0fc6c7122d",
+      "rank": null,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 13.380440035209107,
+        "cycles": 95,
+        "mdd_daily": 3.1632160542834993,
+        "n_returns": 250,
+        "sigma_daily": 0.006001895500335668,
+        "undefined_returns": 0
+      },
+      "scores": null,
+      "status": "NON_ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": null,
+      "clause_details": {
+        "D1": "couverture de la paire ok",
+        "D2": "amorçage suffisant",
+        "D3": "cycles achevés 97 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": true,
+        "D2": true,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "-5.0E-28",
+          "inventory_divergence_base": "-5E-28",
+          "net_pnl_lot_basis": "106.8770225821790358712890770",
+          "pnl": "-9.15162538313508402017456773"
+        }
+      },
+      "first_failed_gate": null,
+      "floor": {
+        "P1": true,
+        "P2": true,
+        "P3": false
+      },
+      "identity": "c56a6de626bbf027edd05a83b40e858bba37b330bd51d3e64e7f575934129d9e",
+      "key": "c56a6de626bbf027edd05a83b40e858bba37b330bd51d3e64e7f575934129d9e",
+      "mdd_report": {
+        "abs_diff": 1.7763568394002505e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 11.616290001464552,
+        "recorded": 11.616290001464554
+      },
+      "metrics_prefix": {
+        "losing_trades": 4,
+        "max_drawdown_pct_daily": 11.616290001464554,
+        "n_daily_returns": 250,
+        "net_pnl": 106.87702258217904,
+        "total_trades": 102,
+        "winning_trades": 98
+      },
+      "pair": "ETH/USDT",
+      "params": {},
+      "projection_sha256": "01ce8b9a6ce2931ebbbf0fc2ecdb05dc75b6a58f00245d3e29ae6fa0d9529c3c",
+      "rank": null,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 15.987409168341626,
+        "cycles": 97,
+        "mdd_daily": 11.616290001464552,
+        "n_returns": 250,
+        "sigma_daily": 0.009913808199200841,
+        "undefined_returns": 0
+      },
+      "scores": {
+        "cagr_pct": 15.987409168341626,
+        "delta_dd": -9.75453761845755,
+        "delta_sigma": -14.086028357438684,
+        "lambda_dd": 0.099,
+        "lambda_sigma": 0.115,
+        "mdd_daily": 11.616290001464552
+      },
+      "status": "ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": null,
+      "clause_details": {
+        "D1": "couverture de la paire ok",
+        "D2": "amorçage suffisant",
+        "D3": "cycles achevés 58 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": true,
+        "D2": true,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "3E-30",
+          "inventory_divergence_base": "3E-30",
+          "net_pnl_lot_basis": "66.45812846989055784188965035",
+          "pnl": "-2.65385269409642842564425227"
+        }
+      },
+      "first_failed_gate": null,
+      "floor": {
+        "P1": true,
+        "P2": true,
+        "P3": true
+      },
+      "identity": "d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f",
+      "key": "d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f",
+      "mdd_report": {
+        "abs_diff": 3.552713678800501e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 5.221911695491851,
+        "recorded": 5.221911695491848
+      },
+      "metrics_prefix": {
+        "losing_trades": 2,
+        "max_drawdown_pct_daily": 5.221911695491848,
+        "n_daily_returns": 250,
+        "net_pnl": 66.45812846989055,
+        "total_trades": 61,
+        "winning_trades": 59
+      },
+      "pair": "BTC/USDT",
+      "params": {},
+      "projection_sha256": "c3ae0d7a6549355f4e8d55f6c36b57ffafb2c1814d01fb5a30cb8979144db432",
+      "rank": 3,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 9.853598174018853,
+        "cycles": 58,
+        "mdd_daily": 5.221911695491851,
+        "n_returns": 250,
+        "sigma_daily": 0.004698182790483047,
+        "undefined_returns": 0
+      },
+      "scores": {
+        "cagr_pct": 9.853598174018853,
+        "delta_dd": 5.672015152639621,
+        "delta_sigma": 4.031321205980066,
+        "lambda_dd": 0.072,
+        "lambda_sigma": 0.1,
+        "mdd_daily": 5.221911695491851
+      },
+      "status": "ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": "D_NOT_ADMISSIBLE",
+      "clause_details": {
+        "D1": "couverture de la paire insuffisante (§ A.8 D1)",
+        "D2": "séries insuffisantes au début du préfixe : 1d, 4h",
+        "D3": "cycles achevés 95 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": false,
+        "D2": false,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "1.1E-26",
+          "inventory_divergence_base": "0E-26",
+          "net_pnl_lot_basis": "89.78279507570137355605264908",
+          "pnl": "-23.55463716205820229874220970"
+        }
+      },
+      "first_failed_gate": "D1",
+      "floor": null,
+      "identity": "dfc62d028a2cde5289f5e48368be83233778aea231b1cf41c13b2a8a257a94bf",
+      "key": "dfc62d028a2cde5289f5e48368be83233778aea231b1cf41c13b2a8a257a94bf",
+      "mdd_report": {
+        "abs_diff": 2.220446049250313e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 3.1632160542834993,
+        "recorded": 3.1632160542835015
+      },
+      "metrics_prefix": {
+        "losing_trades": 6,
+        "max_drawdown_pct_daily": 3.1632160542835015,
+        "n_daily_returns": 250,
+        "net_pnl": 89.78279507570137,
+        "total_trades": 101,
+        "winning_trades": 95
+      },
+      "pair": "SOL/USDT",
+      "params": {
+        "bear_protection_mode": "none"
+      },
+      "projection_sha256": "8be53d19cf214f22f72b06b0977467239a2164b30b4d41494d35ff0ff36b87af",
+      "rank": null,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 13.380440035209107,
+        "cycles": 95,
+        "mdd_daily": 3.1632160542834993,
+        "n_returns": 250,
+        "sigma_daily": 0.006001895500335668,
+        "undefined_returns": 0
+      },
+      "scores": null,
+      "status": "NON_ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": "D_NOT_ADMISSIBLE",
+      "clause_details": {
+        "D1": "couverture de la paire insuffisante (§ A.8 D1)",
+        "D2": "séries insuffisantes au début du préfixe : 1d, 1w, 4h",
+        "D3": "cycles achevés 95 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": false,
+        "D2": false,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "1.1E-26",
+          "inventory_divergence_base": "0E-26",
+          "net_pnl_lot_basis": "89.78279507570137355605264908",
+          "pnl": "-23.55463716205820229874220970"
+        }
+      },
+      "first_failed_gate": "D1",
+      "floor": null,
+      "identity": "e00e5e4ae94dc53d60bde692e9de5fe6ed60cef29db02d487d08012c91bb3c64",
+      "key": "e00e5e4ae94dc53d60bde692e9de5fe6ed60cef29db02d487d08012c91bb3c64",
+      "mdd_report": {
+        "abs_diff": 2.220446049250313e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 3.1632160542834993,
+        "recorded": 3.1632160542835015
+      },
+      "metrics_prefix": {
+        "losing_trades": 6,
+        "max_drawdown_pct_daily": 3.1632160542835015,
+        "n_daily_returns": 250,
+        "net_pnl": 89.78279507570137,
+        "total_trades": 101,
+        "winning_trades": 95
+      },
+      "pair": "SOL/USDT",
+      "params": {},
+      "projection_sha256": "9af4451950655f74616809ba41d2c2e7421adcdf47a310c3e2553c531d0bd50e",
+      "rank": null,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 13.380440035209107,
+        "cycles": 95,
+        "mdd_daily": 3.1632160542834993,
+        "n_returns": 250,
+        "sigma_daily": 0.006001895500335668,
+        "undefined_returns": 0
+      },
+      "scores": null,
+      "status": "NON_ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": null,
+      "clause_details": {
+        "D1": "couverture de la paire ok",
+        "D2": "amorçage suffisant",
+        "D3": "cycles achevés 58 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": true,
+        "D2": true,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "3E-30",
+          "inventory_divergence_base": "3E-30",
+          "net_pnl_lot_basis": "66.45812846989055784188965035",
+          "pnl": "-2.65385269409642842564425227"
+        }
+      },
+      "first_failed_gate": null,
+      "floor": {
+        "P1": true,
+        "P2": true,
+        "P3": true
+      },
+      "identity": "e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe",
+      "key": "e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe",
+      "mdd_report": {
+        "abs_diff": 3.552713678800501e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 5.221911695491851,
+        "recorded": 5.221911695491848
+      },
+      "metrics_prefix": {
+        "losing_trades": 2,
+        "max_drawdown_pct_daily": 5.221911695491848,
+        "n_daily_returns": 250,
+        "net_pnl": 66.45812846989055,
+        "total_trades": 61,
+        "winning_trades": 59
+      },
+      "pair": "BTC/USDT",
+      "params": {
+        "bear_protection_mode": "none"
+      },
+      "projection_sha256": "a28e76426fbfaea18661a014c356df7629c5f1c860695147696d54237447f704",
+      "rank": 4,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 9.853598174018853,
+        "cycles": 58,
+        "mdd_daily": 5.221911695491851,
+        "n_returns": 250,
+        "sigma_daily": 0.004698182790483047,
+        "undefined_returns": 0
+      },
+      "scores": {
+        "cagr_pct": 9.853598174018853,
+        "delta_dd": 5.672015152639621,
+        "delta_sigma": 4.031321205980066,
+        "lambda_dd": 0.072,
+        "lambda_sigma": 0.1,
+        "mdd_daily": 5.221911695491851
+      },
+      "status": "ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    },
+    {
+      "alerts": [],
+      "candidate_reason": null,
+      "clause_details": {
+        "D1": "couverture de la paire ok",
+        "D2": "amorçage suffisant",
+        "D3": "cycles achevés 102 >= 25",
+        "D4": "rendements quotidiens définis",
+        "D5": "contrats égaux au manifeste",
+        "D6": "liquidation terminale costée, prouvée par lot"
+      },
+      "clauses": {
+        "D1": true,
+        "D2": true,
+        "D3": true,
+        "D4": true,
+        "D5": true,
+        "D6": true
+      },
+      "d6_report": {
+        "checks": {
+          "fees_positive": true,
+          "gross_positive": true,
+          "lots_count": true,
+          "lots_fees_sum": true,
+          "lots_gross_sum": true,
+          "lots_identites": true,
+          "lots_known": true,
+          "lots_present": true,
+          "lots_unknown_amount": true,
+          "price_identity": true,
+          "residual_net_iff_unknown": true,
+          "residual_trade_iff_unknown": true,
+          "slippage_pct": true,
+          "spread_pct": true,
+          "timestamp_le_borne": true,
+          "trades_positions": true
+        },
+        "details": [],
+        "lots_present": true,
+        "passed": true,
+        "reported": {
+          "dust_written_off_base": "6.3E-28",
+          "inventory_divergence_base": "6E-28",
+          "net_pnl_lot_basis": "114.8061356964415977031104874",
+          "pnl": "-7.25759274236470491415610384"
+        }
+      },
+      "first_failed_gate": null,
+      "floor": {
+        "P1": true,
+        "P2": true,
+        "P3": false
+      },
+      "identity": "ee2fbcc757e150ee95789c7e06d84cc1b713d6782b5208c5ffa775e64e52aed0",
+      "key": "ee2fbcc757e150ee95789c7e06d84cc1b713d6782b5208c5ffa775e64e52aed0",
+      "mdd_report": {
+        "abs_diff": 1.7763568394002505e-15,
+        "note": "écart rapporté, non classé (export float, § 6.3) ; les décisions lisent le recalculé",
+        "recomputed": 11.56139234298503,
+        "recorded": 11.561392342985032
+      },
+      "metrics_prefix": {
+        "losing_trades": 3,
+        "max_drawdown_pct_daily": 11.561392342985032,
+        "n_daily_returns": 250,
+        "net_pnl": 114.8061356964416,
+        "total_trades": 106,
+        "winning_trades": 103
+      },
+      "pair": "ETH/USDT",
+      "params": {
+        "bear_protection_mode": "none",
+        "bias_1d": 0
+      },
+      "projection_sha256": "ffde6a964e307bfcc8e9a358b3a7d581ef1dd4b99c3ad3bd1474cae4e52662b0",
+      "rank": null,
+      "recomputed": {
+        "alert_days": 0,
+        "cagr_pct": 17.202972645201076,
+        "cycles": 102,
+        "mdd_daily": 11.56139234298503,
+        "n_returns": 250,
+        "sigma_daily": 0.0097985367597664,
+        "undefined_returns": 0
+      },
+      "scores": {
+        "cagr_pct": 17.202972645201076,
+        "delta_dd": -8.26979550860134,
+        "delta_sigma": -12.32650273272682,
+        "lambda_dd": 0.098,
+        "lambda_sigma": 0.113,
+        "mdd_daily": 11.56139234298503
+      },
+      "status": "ADMISSIBLE",
+      "strategy": "grok_grid_atr_adaptive_v4"
+    }
+  ],
+  "exit_code": 0,
+  "generated_at": "2026-09-28T00:00:00+00:00",
+  "inputs_sha256": {
+    "anchor": "e52dc52c66f5177e08f5d93316b175fd9aac6c66e5f2a237927c3804134376d9",
+    "benchmark": "8b7bfd7c846e52cf275820840984e5c77aa60ee76797cb0acc31f324a14a7290",
+    "coverage": "5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51",
+    "entry": "8fa675d0dd0a5670a97b43f96925ec186c898684bdbcd265ab1ce41d48f0b55c",
+    "manifest": "d96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4",
+    "observations": "57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f"
+  },
+  "invalide": false,
+  "lambda_label": "un appariement sur un risque réalisé est une comparaison rétrospective, jamais une allocation validée pour l'avenir",
+  "lambda_mode": "prefix",
+  "multiplicity": {
+    "n_admissible": 8,
+    "n_candidates": 12,
+    "n_survivors": 4,
+    "note": "multiplicité déclarée et non quantifiée (§ F.3) : historique déjà exploré",
+    "provenance": "unknown",
+    "variant_key": "e324967cce00e44173a3bfff91e5c7ce2524a5dfa059a1a57122c0b7505bcc15",
+    "window_already_swept": true
+  },
+  "ok": true,
+  "pairs": {
+    "BTC/USDT": {
+      "benchmark_ok": true,
+      "benchmark_reason": null,
+      "d1": {
+        "gap_max_days": 7.497,
+        "ok": true,
+        "per_interval": {
+          "10080": {
+            "covered_units": 35,
+            "expected_units": 35,
+            "longest_gap_days": 0.0,
+            "ok": true,
+            "ratio": 1.0,
+            "unit": "week"
+          },
+          "1440": {
+            "covered_units": 249,
+            "expected_units": 249,
+            "longest_gap_days": 0.0,
+            "ok": true,
+            "ratio": 1.0,
+            "unit": "day"
+          },
+          "240": {
+            "covered_units": 248,
+            "expected_units": 249,
+            "longest_gap_days": 0.16666666666666666,
+            "ok": true,
+            "ratio": 0.9959839357429718,
+            "unit": "day"
+          },
+          "5": {
+            "covered_units": 249,
+            "expected_units": 249,
+            "longest_gap_days": 0.24305555555555555,
+            "ok": true,
+            "ratio": 1.0,
+            "unit": "day"
+          }
+        }
+      },
+      "status": "VOTANTE"
+    },
+    "ETH/USDT": {
+      "benchmark_ok": true,
+      "benchmark_reason": null,
+      "d1": {
+        "gap_max_days": 7.497,
+        "ok": true,
+        "per_interval": {
+          "10080": {
+            "covered_units": 35,
+            "expected_units": 35,
+            "longest_gap_days": 0.0,
+            "ok": true,
+            "ratio": 1.0,
+            "unit": "week"
+          },
+          "1440": {
+            "covered_units": 249,
+            "expected_units": 249,
+            "longest_gap_days": 0.0,
+            "ok": true,
+            "ratio": 1.0,
+            "unit": "day"
+          },
+          "240": {
+            "covered_units": 248,
+            "expected_units": 249,
+            "longest_gap_days": 0.16666666666666666,
+            "ok": true,
+            "ratio": 0.9959839357429718,
+            "unit": "day"
+          },
+          "5": {
+            "covered_units": 249,
+            "expected_units": 249,
+            "longest_gap_days": 0.24305555555555555,
+            "ok": true,
+            "ratio": 1.0,
+            "unit": "day"
+          }
+        }
+      },
+      "status": "VOTANTE"
+    },
+    "SOL/USDT": {
+      "benchmark_ok": false,
+      "benchmark_reason": "non constructible : estampille(s) d'exécution requise(s) absente(s) ['2020-01-06T00:05:00+00:00'] — aucune bougie de substitution (§ C.3)",
+      "d1": {
+        "gap_max_days": 7.497,
+        "ok": false,
+        "per_interval": {
+          "10080": {
+            "covered_units": 4,
+            "expected_units": 35,
+            "longest_gap_days": 217.0,
+            "ok": false,
+            "ratio": 0.11428571428571428,
+            "unit": "week"
+          },
+          "1440": {
+            "covered_units": 31,
+            "expected_units": 249,
+            "longest_gap_days": 218.0,
+            "ok": false,
+            "ratio": 0.12449799196787148,
+            "unit": "day"
+          },
+          "240": {
+            "covered_units": 30,
+            "expected_units": 249,
+            "longest_gap_days": 218.16666666666666,
+            "ok": false,
+            "ratio": 0.12048192771084337,
+            "unit": "day"
+          },
+          "5": {
+            "covered_units": 31,
+            "expected_units": 249,
+            "longest_gap_days": 218.25,
+            "ok": false,
+            "ratio": 0.12449799196787148,
+            "unit": "day"
+          }
+        }
+      },
+      "status": "DESCRIPTIF"
+    }
+  },
+  "prefix_days": 249.9,
+  "prefix_segment": "train",
+  "projection_sha256": {
+    "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962": "92d8fe28b2299257e13120e1e918fe14934cdf56b221a46b95eb0c7148ded9cf",
+    "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5": "ac03452f2da963d7a038871ed49ac96e4943341f3532cdb95af12464d8f865b4",
+    "6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8": "a1b062ed20366b67fd87a2a1a7c98c90af9c651fea0c9bb9631f48ccb2d90458",
+    "7ffd47bfa073f71862bb2bf92beebc5ddb8587b05a59e6e4962b7ca8fe46c95a": "3e40d9ebd19bceeb2f161ee6c9ca34e2ab5eb38c56f65224268afd48c7b5621c",
+    "823f6cb20e6101953f522f81e39c9b9488d752a7a05b66d6ac1aa255fd05f49f": "8feb2c31ea4253370e762accad0b68c125eed0026d3befa5cb78641689c5ab04",
+    "be44ed223e9b1551a748c2e19147b8ab669858549c3443b07a9d7cbddb217c25": "2daae63ff19df3b55d707e909e368aa4e37009875d656753b5afff0fc6c7122d",
+    "c56a6de626bbf027edd05a83b40e858bba37b330bd51d3e64e7f575934129d9e": "01ce8b9a6ce2931ebbbf0fc2ecdb05dc75b6a58f00245d3e29ae6fa0d9529c3c",
+    "d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f": "c3ae0d7a6549355f4e8d55f6c36b57ffafb2c1814d01fb5a30cb8979144db432",
+    "dfc62d028a2cde5289f5e48368be83233778aea231b1cf41c13b2a8a257a94bf": "8be53d19cf214f22f72b06b0977467239a2164b30b4d41494d35ff0ff36b87af",
+    "e00e5e4ae94dc53d60bde692e9de5fe6ed60cef29db02d487d08012c91bb3c64": "9af4451950655f74616809ba41d2c2e7421adcdf47a310c3e2553c531d0bd50e",
+    "e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe": "a28e76426fbfaea18661a014c356df7629c5f1c860695147696d54237447f704",
+    "ee2fbcc757e150ee95789c7e06d84cc1b713d6782b5208c5ffa775e64e52aed0": "ffde6a964e307bfcc8e9a358b3a7d581ef1dd4b99c3ad3bd1474cae4e52662b0"
+  },
+  "projection_sha256_all": "c86df6ee8b0764dc7f91fd94ec39bf0657c5a3a609a1c24b8375aafaf619a4cb",
+  "protocole": {
+    "path": "docs/protocole_c3.md",
+    "sha256": "9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129"
+  },
+  "provenance": "unknown",
+  "ranking": [
+    "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5",
+    "6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8",
+    "d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f",
+    "e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe"
+  ],
+  "reason": null,
+  "retained": {
+    "identity": "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5",
+    "key": "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5",
+    "pair": "BTC/USDT",
+    "params": {
+      "bear_protection_mode": "none",
+      "bias_1d": 0
+    },
+    "strategy": "grok_grid_atr_adaptive_v4"
+  },
+  "status": "SÉLECTION_DESCRIPTIVE",
+  "step": "select",
+  "survivors": [
+    "4dfed3e38156ca7f9cddf69ba2ada464705413f946fd713d1bb7afa30efe92a5",
+    "6ea5949965dd3cf7b2d6c80da5e7f42d1ea51e26466efdd2357993a5158609a8",
+    "d6e28b61f67c385b43a23e12bd0247385ee4362085c70a2985d51021a007af6f",
+    "e2a82adcd87d14efcb3c457eeaac21ca98447eeff3cc0ff990192dcb9d1235fe"
+  ],
+  "violations": []
+}

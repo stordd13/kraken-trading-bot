@@ -40,7 +40,7 @@ Conventions : lecture seule **garantie par Postgres** (``default_transaction_rea
 ``transaction_read_only`` asserté ``on``) ; ``DATABASE_URL`` lue après ``load_dotenv`` dans ``main``, jamais
 ``Settings()`` (piège 5432) ni à l'import ; le tree suivi doit être propre et le script committé, pour que le git
 sha de l'en-tête soit réel (``--allow-uncommitted`` : développement seulement, en-tête marqué provisoire) ; JSON
-écrit sans ``default=str`` (``reconstruct_1w.write_json_strict``, dette 22).
+écrit sans ``default=str`` (``_common.write_json_strict``, dette 22).
 
 Usage::
 
@@ -59,10 +59,8 @@ from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-import hashlib
 import os
 from pathlib import Path
-import subprocess
 import sys
 from types import SimpleNamespace
 from typing import Any, cast
@@ -72,18 +70,15 @@ sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 sys.path.insert(0, str(_ROOT / "scripts" / "audit"))
 
+from _common import git_provenance, write_json_strict  # noqa: E402
+from _db import ReadOnlyDatabaseManager  # noqa: E402
 import backtest as bt  # noqa: E402
 from backtest import indicator_requirements, load_context_series, warmup_needs  # noqa: E402
 import c3_common as cc  # noqa: E402
 from dotenv import load_dotenv  # noqa: E402
-from reconstruct_1w import write_json_strict  # noqa: E402
 from sqlalchemy import func, select, text  # noqa: E402
 from sqlalchemy.engine import make_url  # noqa: E402
-from sqlalchemy.ext.asyncio import (  # noqa: E402
-    AsyncSession,
-    async_sessionmaker,
-    create_async_engine,
-)
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 import structlog  # noqa: E402
 
 from krakenbot.core.database import DatabaseManager  # noqa: E402
@@ -582,25 +577,8 @@ def build_payload(
 
 
 # ---------------------------------------------------------------------------
-# Couche base — lecture seule garantie par Postgres
+# Couche base — lecture seule garantie par Postgres (``_db.ReadOnlyDatabaseManager``)
 # ---------------------------------------------------------------------------
-
-
-class ReadOnlyDatabaseManager(DatabaseManager):
-    """Le ``DatabaseManager`` des chargeurs du moteur, en lecture seule **côté Postgres** : chaque connexion pose
-    ``default_transaction_read_only = on``, donc toute transaction ouverte par ce moteur est ``READ ONLY`` — une
-    écriture lèverait, elle n'est pas seulement évitée."""
-
-    def __init__(self, url: str) -> None:
-        super().__init__()
-        self._engine = create_async_engine(
-            url, connect_args={"server_settings": {"default_transaction_read_only": "on"}}
-        )
-        self._session_factory = async_sessionmaker(
-            bind=self._engine, class_=AsyncSession, expire_on_commit=False, autoflush=False
-        )
-        self._initialized = True
-
 
 ALEMBIC_SQL = text("SELECT version_num FROM alembic_version ORDER BY version_num")
 
@@ -687,25 +665,6 @@ async def collect(
 # ---------------------------------------------------------------------------
 
 
-def _git(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["git", *args], cwd=PROJECT_ROOT, capture_output=True, text=True, check=False
-    )
-
-
-def git_provenance() -> dict[str, Any]:
-    script = PROJECT_ROOT / SCRIPT_RELPATH
-    return {
-        "git_sha": _git("rev-parse", "HEAD").stdout.strip(),
-        "branch": _git("branch", "--show-current").stdout.strip(),
-        "script": SCRIPT_RELPATH,
-        "script_sha256": hashlib.sha256(script.read_bytes()).hexdigest(),
-        "script_tracked": _git("ls-files", "--error-unmatch", SCRIPT_RELPATH).returncode == 0,
-        "tracked_tree_clean": _git("status", "--porcelain", "--untracked-files=no").stdout.strip()
-        == "",
-    }
-
-
 def _database(url: str) -> dict[str, Any]:
     parsed = make_url(url)
     return {"host": parsed.host, "port": parsed.port, "database": parsed.database}
@@ -740,7 +699,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "anchor_mismatch", recomputed=end.isoformat(), declared=ANCHOR_DECLARED.isoformat()
         )
         return 2
-    provenance = git_provenance()
+    provenance = git_provenance(SCRIPT_RELPATH)
     committed = provenance["script_tracked"] and provenance["tracked_tree_clean"]
     if not committed and not args.allow_uncommitted:
         logger.error(

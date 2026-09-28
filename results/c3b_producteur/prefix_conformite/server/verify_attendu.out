@@ -1,0 +1,32 @@
+## 1. producteur
+entrées 12 ; paires {'ETH/USDT': 4, 'BTC/USDT': 4, 'SOL/USDT': 4}
+anchor 2020-09-11T21:36:00+00:00 == T
+exec_interval [5]
+decision_timeframes par classe [('C1', ('1d', '1w', '4h')), ('C2', ('1w', '4h')), ('C5', ('1d', '4h')), ('C6', ('4h',))]
+estampilles dérivées dans (début, T] 0
+workers run1/run2 4 1 ; repris []
+durée des jobs run1 (s) min/max 2.52 15.076
+provenance git {'branch': '', 'git_sha': '6509737718ba7e645f973e877641d7b2b54ef2ad', 'scripts': {'scripts/audit/c3b_common.py': {'sha256': '0fe8bd29ccfec57d0907d5461f712d2b14f874dfc3f5b41ef3aa6fe4a190a66a', 'tracked': True}, 'scripts/audit/c3b_prefix.py': {'sha256': '4a205539d4f6d6faea567c335edfc7b25ac77dd445f7e8d1bf29b1b139ac3254', 'tracked': True}}, 'tracked_tree_clean': True}
+base {'alembic_version': ['c3bd1e7a0001'], 'transaction_read_only': 'on', 'url': 'postgresql+asyncpg://krakenbot:***@localhost:5432/krakenbot'}
+environnement {'libc': 'glibc 2.39', 'machine': 'x86_64', 'numpy': '2.4.1', 'python': '3.12.3'}
+interpréteur {'executable': '/home/bruno/.cache/pypoetry/virtualenvs/krakenbot-3rJ6HBr0-py3.12/bin/python', 'krakenbot': '/home/bruno/runs/c3b_prefix/repo/src/krakenbot/__init__.py'}
+manifeste {'path': 'results/c3b_producteur/prefix_conformite/manifest.json', 'sha256': 'd96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4', 'variant_key': 'e324967cce00e44173a3bfff91e5c7ce2524a5dfa059a1a57122c0b7505bcc15'}
+sorties run1 == run2 (prefix_run.outputs) True {'candles.json': '20c0d1fb46184f18b186499fea906d1f70b6fcd3c300d4b82ce4f8d2f3139376', 'coverage.json': '5871f74e981c79f690b3bc1360503a9516da839ffa1c11e46d34ad632b107d51', 'observations.json': '57e48213c8b4a46fca603e1ed02c5e8192287681c092bed60ad312c5d3a4fd3f'}
+couverture fenêtre {'end': '2020-09-11T21:36:00+00:00', 'start': '2020-01-06T00:00:00+00:00'} ; paires ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+bougies : max t <= T {'BTC/USDT': True, 'ETH/USDT': True, 'SOL/USDT': True}
+bougies : min t >= début {'BTC/USDT': True, 'ETH/USDT': True, 'SOL/USDT': True}
+## 2. c3_anchor
+exit 0 anchor 2020-09-11T21:36:00+00:00 variant e324967cce00e441
+## 3. c3_entry
+exit 0 ; refus None ; violations []
+provenance unknown ; couverture evaluated
+assertions [('I-A.1', 'ok'), ('I-A.2', 'ok'), ('I-A.3', 'ok'), ('I-A.4', 'ok'), ('I-A.5', 'ok'), ('I-A.6', 'ok'), ('I-A.7', 'ok'), ('I-A.8', 'ok'), ('I-A.fin', 'ok')]
+non assertables []
+D2 en échec 4 [('SOL/USDT', 'C1', ('1d', '1w', '4h'), 'D_WARMUP_PREFIX'), ('SOL/USDT', 'C2', ('1w', '4h'), 'D_WARMUP_PREFIX'), ('SOL/USDT', 'C5', ('1d', '4h'), 'D_WARMUP_PREFIX'), ('SOL/USDT', 'C6', ('4h',), 'D_WARMUP_PREFIX')]
+## 4. c3_benchmark
+exit 0 ; SOL buildable False ; reason non constructible : estampille(s) d'exécution requise(s) absente(s) ['2020-01-06T00:05:00+00:00'] — aucune bougie de substitution (§ C.3)
+## 5. c3_select
+exit 0 ; provenance unknown
+aucune SÉLECTION_VALIDE True
+SOL paire DESCRIPTIF ; d1.ok False ; benchmark_ok False ; 5 min {'covered_units': 31, 'expected_units': 249}
+SOL candidats [('C1', 'D1', 'NON_ADMISSIBLE', 'D_NOT_ADMISSIBLE'), ('C2', 'D1', 'NON_ADMISSIBLE', 'D_NOT_ADMISSIBLE'), ('C5', 'D1', 'NON_ADMISSIBLE', 'D_NOT_ADMISSIBLE'), ('C6', 'D1', 'NON_ADMISSIBLE', 'D_NOT_ADMISSIBLE')]

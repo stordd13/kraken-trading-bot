@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, dev]
+    branches: [main, dev, "feat/**"]
   pull_request:
     branches: [main]
 
@@ -44,6 +44,34 @@ jobs:
 
       - name: Run ruff formatter check
         run: poetry run ruff format --check src/
+
+      # Scripts d'audit C3 et leurs tests : liste explicite, jamais scripts/audit/ entier — les
+      # rejeu_*.py sont gelés et non formatés, les reformater est une décision séparée (S-4).
+      - name: Run ruff linter (audit C3)
+        run: >-
+          poetry run ruff check
+          scripts/audit/_common.py
+          scripts/audit/_db.py
+          scripts/audit/c3*.py
+          scripts/audit/warmup_at.py
+          scripts/audit/reconstruct_1w.py
+          tests/test_scripts/test_c3*.py
+          tests/test_scripts/test_warmup_at.py
+          tests/test_scripts/test_reconstruct_1w.py
+          tests/test_scripts/test_audit_common.py
+
+      - name: Run ruff formatter check (audit C3)
+        run: >-
+          poetry run ruff format --check
+          scripts/audit/_common.py
+          scripts/audit/_db.py
+          scripts/audit/c3*.py
+          scripts/audit/warmup_at.py
+          scripts/audit/reconstruct_1w.py
+          tests/test_scripts/test_c3*.py
+          tests/test_scripts/test_warmup_at.py
+          tests/test_scripts/test_reconstruct_1w.py
+          tests/test_scripts/test_audit_common.py
 
       - name: Run mypy type checking
         run: poetry run mypy src/ --ignore-missing-imports

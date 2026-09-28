@@ -1,0 +1,27 @@
+# Diff de contrôle du lot 4b — 2026-09-28T14:23:51Z, arbre de travail avant le commit 1
+## git diff --name-only a0d452d (liste close : c3b_evaluate.py, test_c3b_evaluate.py, docs/RESEARCH_LOG.md, results/c3b_producteur/eval_f2_conformite/**)
+docs/RESEARCH_LOG.md
+scripts/audit/c3b_evaluate.py
+tests/test_scripts/test_c3b_evaluate.py
+## fichiers non suivis
+?? results/c3b_producteur/eval_f2_conformite/ATTENDU.md
+?? results/c3b_producteur/eval_f2_conformite/server/run_c3b_eval4b.sh
+?? results/c3b_producteur/eval_f2_conformite/tests/controle_diff.txt
+?? results/c3b_producteur/eval_f2_conformite/tests/make_skeleton_4b.py
+?? results/c3b_producteur/eval_f2_conformite/tests/mutants.log
+?? results/c3b_producteur/eval_f2_conformite/tests/mutants.py
+?? results/c3b_producteur/eval_f2_conformite/tests/mutants_4a_replay.log
+?? results/c3b_producteur/eval_f2_conformite/tests/mutants_pass1.log
+?? results/c3b_producteur/eval_f2_conformite/tests/mypy_audit.out
+?? results/c3b_producteur/eval_f2_conformite/tests/mypy_src.out
+?? results/c3b_producteur/eval_f2_conformite/tests/red_before_a0d452d.out
+?? results/c3b_producteur/eval_f2_conformite/tests/red_before_skeleton.out
+?? results/c3b_producteur/eval_f2_conformite/tests/suite.out
+?? results/c3b_producteur/eval_f2_conformite/tests/test_diff_4a.txt
+## c3b_common.py et test_c3b_common.py depuis a0d452d (attendu : vide, plan E13)
+## depuis ec7ffb8, fichiers nommés par le brief (hors src/, touché au lot 1)
+ tests/test_scripts/test_c3_common.py  | 4 ++--
+ tests/test_scripts/test_c3_verdict.py | 5 ++++-
+ 2 files changed, 6 insertions(+), 3 deletions(-)
+   -> test_c3_common.py et test_c3_verdict.py : commit 6953fbc du lot 2 (fixtures en float natifs, site adverse commenté) ; diff vide depuis a0d452d :
+   (vide)

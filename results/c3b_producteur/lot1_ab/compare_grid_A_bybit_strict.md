@@ -1,0 +1,42 @@
+### GridBacktester — grok_grid_atr_adaptive_v4 BTC/USDC 2023-04-01 → 2026-04-01 (`--fees bybit`)
+
+- trades: 114 / equity points: 315650 / balances: {'crypto': '0', 'usdc': '1045.722405322421403208156383'}
+- old engine: `/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/backtest.py` · new engine: `/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/backtest.py`
+- identity (trades on the 15 pre-C1 fields, balances, equity curve point by point, schema-1 projection): **IDENTICAL**
+
+| Key | Old | New | Status | Cause |
+|---|---|---|---|---|
+| `total_trades` | 57 | 57 | identical | - |
+| `winning_trades` | 53 | 53 | identical | - |
+| `losing_trades` | 4 | 4 | identical | - |
+| `win_rate` | 0.929825 | 0.929825 | identical | - |
+| `total_return_pct` | 4.572241 | 4.572241 | identical | - |
+| `net_pnl` | 45.722405 | 45.722405 | identical | - |
+| `total_fees` | 3.024525 | 3.024525 | identical | - |
+| `total_pnl` | 47.147405 | 47.147405 | identical | - |
+| `unrealized_pnl` | -15.310009 | -15.310009 | identical | - |
+| `starting_balance` | 1000.000000 | 1000.000000 | identical | - |
+| `ending_balance` | 1045.722405 | 1045.722405 | identical | - |
+| `duration_days` | 1096.000000 | 1096.000000 | identical | - |
+| `average_holding_time_minutes` | 5776.981132 | 5776.981132 | identical | - |
+| `max_drawdown` | 27.030722940924218247000434 | 27.030722940924218247000434 | identical | - |
+| `average_win` | 1.178441783664593022111397519 | 1.178441783664593022111397519 | identical | - |
+| `average_loss` | -3.827502302950506740936920945 | -3.827502302950506740936920945 | identical | - |
+| `sharpe_ratio` | 0.930586 | 0.930586 | moving | D1 daily resampling + unit; C2 anchor/ffill; C4 ddof=1 |
+| `sortino_ratio` | 1.493563 | 1.493563 | moving | D1 daily resampling + unit; C2 anchor/ffill; C4 ddof=1 |
+| `max_drawdown_pct -> max_drawdown_pct_daily` | n/a | 2.044308 | moving | D2 relative to running peak; D1/C2 daily NAV |
+| `profit_factor` | 3.967059 | 3.967059 | moving | D3 net of the buy fee (pnl_net_trade); 0 losses -> None |
+| `calmar_ratio` | 0.733766 | 0.733766 | moving | D2 (denominator) ; C5 geometric CAGR ; D1/C2 daily |
+| `gross_loss_net` | - | 15.410009 | new | - |
+| `gross_profit_net` | - | 61.132415 | new | - |
+| `max_drawdown_pct_engine` | - | 2.574449 | new | - |
+| `metrics_version` | - | 2 | new | - |
+| `n_daily_returns` | - | 1096 | new | - |
+| `pf_excluded_trades` | - | 0 | new | - |
+| `gross_loss_net` | 15.410009 | - | removed | - |
+| `gross_profit_net` | 61.132415 | - | removed | - |
+| `max_drawdown_pct_daily` | 2.044308 | - | removed | - |
+| `max_drawdown_pct_engine` | 2.574449 | - | removed | - |
+| `metrics_version` | 2 | - | removed | - |
+| `n_daily_returns` | 1096 | - | removed | - |
+| `pf_excluded_trades` | 0 | - | removed | - |

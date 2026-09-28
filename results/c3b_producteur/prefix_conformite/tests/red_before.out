@@ -1,0 +1,354 @@
+# Rouge-avant : les deux fichiers de tests contre les squelettes (signatures du producteur, corps qui lèvent NotImplementedError)
+# head=0a6c33e3c5e479fae0cce273d6cf20426c16fb9e ; squelettes générés par transformation AST de l'implémentation (make_skeleton.py), jamais committés
+# sha256 squelette c3b_common 5ce8ec3ee735d8f3d8d89e60f517826f304f683c84f825c56bc230e0d28f8e05 ; c3b_prefix f09db9e0b8a586770a31a701b04f30fdbc9df9b0db35a3d2b4c8082c122357cc
+.FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEEEEEEFFFFFFFFFFF [ 61%]
+FFFFFFFFFF..FFFFFFFFFFFFFFFFFFFFFF.FFFFFFFFFF.                           [100%]
+==================================== ERRORS ====================================
+_____ ERROR at setup of test_the_real_engine_export_passes_the_entry_form ______
+E   NotImplementedError: squelette rouge-avant
+__ ERROR at setup of test_the_real_engine_export_carries_a_proven_liquidation __
+E   NotImplementedError: squelette rouge-avant
+__ ERROR at setup of test_sol_without_history_exports_an_insufficient_warmup ___
+E   NotImplementedError: squelette rouge-avant
+_______ ERROR at setup of test_the_entry_keys_are_those_of_the_p7_result _______
+E   NotImplementedError: squelette rouge-avant
+_____________ ERROR at setup of test_the_exported_lists_and_bounds _____________
+E   NotImplementedError: squelette rouge-avant
+________ ERROR at setup of test_removing_a_carrier_is_seen_by_the_chain ________
+E   NotImplementedError: squelette rouge-avant
+=================================== FAILURES ===================================
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:77: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:77: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:77: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:77: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:77: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:77: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:77: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:94: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:84: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:104: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:120: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:120: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:120: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:120: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:108: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:108: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:108: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:108: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:120: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:145: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:145: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:145: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:145: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:137: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:137: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:137: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:145: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:145: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:137: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:120: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:174: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:212: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:217: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:226: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:226: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:226: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:226: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:226: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:260: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_common.py:260: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:122: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+E   NotImplementedError: squelette rouge-avant
+/Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/c3b_prefix.py:128: NotImplementedError: squelette rouge-avant
+=========================== short test summary info ============================
+PASSED tests/test_scripts/test_c3b_common.py::test_campaign_constants_are_those_of_the_brief
+PASSED tests/test_scripts/test_c3b_common.py::test_the_producer_never_coerces_nor_opens_a_database_by_itself[scripts/audit/c3b_common.py]
+PASSED tests/test_scripts/test_c3b_common.py::test_the_producer_never_coerces_nor_opens_a_database_by_itself[scripts/audit/c3b_prefix.py]
+PASSED tests/test_scripts/test_c3b_prefix.py::test_the_conformity_anchor_is_off_every_grid
+PASSED tests/test_scripts/test_c3b_prefix.py::test_importing_the_producer_changes_nothing
+FAILED tests/test_scripts/test_c3b_common.py::test_the_campaign_window_is_locked_without_the_unlock_file[conformite-2020]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_campaign_window_is_locked_without_the_unlock_file[fin-a-la-borne]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_campaign_window_is_locked_without_the_unlock_file[fin-borne-plus-1us]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_campaign_window_is_locked_without_the_unlock_file[debut-a-la-borne]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_campaign_window_is_locked_without_the_unlock_file[chevauche]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_campaign_window_is_locked_without_the_unlock_file[apres-2026]
+FAILED tests/test_scripts/test_c3b_common.py::test_an_existing_unlock_file_unlocks
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params0-grid_levels]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params1-grid_levels]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params2-grid_levels]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params3-grid_levels]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params4-grid_levels]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params5-bias_1d]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params6-bias_1d]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params7-bias_1d]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params8-bias_1d]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params9-bias_1d]
+FAILED tests/test_scripts/test_c3b_common.py::test_grid_levels_must_be_an_int_and_bias_1d_finite[params10-bias_1d]
+FAILED tests/test_scripts/test_c3b_common.py::test_well_typed_params_pass[params0]
+FAILED tests/test_scripts/test_c3b_common.py::test_well_typed_params_pass[params1]
+FAILED tests/test_scripts/test_c3b_common.py::test_well_typed_params_pass[params2]
+FAILED tests/test_scripts/test_c3b_common.py::test_well_typed_params_pass[params3]
+FAILED tests/test_scripts/test_c3b_common.py::test_well_typed_params_pass[params4]
+FAILED tests/test_scripts/test_c3b_common.py::test_well_typed_params_pass[params5]
+FAILED tests/test_scripts/test_c3b_common.py::test_non_finite_values_of_a_raw_manifest_are_named
+FAILED tests/test_scripts/test_c3b_common.py::test_decision_timeframes_are_those_of_the_class[C1]
+FAILED tests/test_scripts/test_c3b_common.py::test_decision_timeframes_are_those_of_the_class[C2]
+FAILED tests/test_scripts/test_c3b_common.py::test_decision_timeframes_are_those_of_the_class[C5]
+FAILED tests/test_scripts/test_c3b_common.py::test_decision_timeframes_are_those_of_the_class[C6]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_bad_candidate_refuses_the_whole_universe[pause-str]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_bad_candidate_refuses_the_whole_universe[pause-int]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_bad_candidate_refuses_the_whole_universe[mode-invalide]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_bad_candidate_refuses_the_whole_universe[non-grid]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_bad_candidate_refuses_the_whole_universe[inconnue]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_bad_candidate_refuses_the_whole_universe[moteur-signal]
+FAILED tests/test_scripts/test_c3b_common.py::test_engine_costs_come_from_the_manifest_cross_checked_with_the_file
+FAILED tests/test_scripts/test_c3b_common.py::test_costs_different_from_the_file_are_refused
+FAILED tests/test_scripts/test_c3b_common.py::test_a_validation_pair_without_transposition_is_refused
+FAILED tests/test_scripts/test_c3b_common.py::test_the_costs_file_is_read_from_the_project_root
+FAILED tests/test_scripts/test_c3b_common.py::test_the_fee_model_must_be_the_one_the_engine_resolves[nom-non-canonique]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_fee_model_must_be_the_one_the_engine_resolves[taker-different]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_fee_model_must_be_the_one_the_engine_resolves[modele-inconnu]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_bybit_model_at_its_taker_passes
+FAILED tests/test_scripts/test_c3b_common.py::test_the_engine_is_built_with_the_arguments_of_the_p7_runner
+FAILED tests/test_scripts/test_c3b_common.py::test_the_export_leaves_no_btc_key
+FAILED tests/test_scripts/test_c3b_common.py::test_an_engine_change_under_the_export_is_a_control_error[cle-btc-hors-liste]
+FAILED tests/test_scripts/test_c3b_common.py::test_an_engine_change_under_the_export_is_a_control_error[collision]
+FAILED tests/test_scripts/test_c3b_common.py::test_an_engine_change_under_the_export_is_a_control_error[lots-deja-portes]
+FAILED tests/test_scripts/test_c3b_common.py::test_lots_are_the_forced_liquidation_trades_in_order
+FAILED tests/test_scripts/test_c3b_common.py::test_entry_price_inverts_the_engine_pnl
+FAILED tests/test_scripts/test_c3b_common.py::test_entry_price_is_exact_to_the_decimal_context_only
+FAILED tests/test_scripts/test_c3b_common.py::test_a_coherent_export_passes_the_liquidation_identities
+FAILED tests/test_scripts/test_c3b_common.py::test_an_export_without_forced_trade_passes_the_identities
+FAILED tests/test_scripts/test_c3b_common.py::test_a_non_positive_lot_is_a_control_error
+FAILED tests/test_scripts/test_c3b_common.py::test_a_router_entry_under_the_class_name_breaks_passed_params
+FAILED tests/test_scripts/test_c3b_common.py::test_a_complete_series - NotImp...
+FAILED tests/test_scripts/test_c3b_common.py::test_a_5m_day_is_covered_from_144_candles[144-restent]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_5m_day_is_covered_from_144_candles[143-restent]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_4h_day_with_five_of_six_stamps_is_not_covered
+FAILED tests/test_scripts/test_c3b_common.py::test_the_week_is_a_unit_never_days
+FAILED tests/test_scripts/test_c3b_common.py::test_a_late_start_is_an_edge_gap
+FAILED tests/test_scripts/test_c3b_common.py::test_first_and_last_days_are_covered_days
+FAILED tests/test_scripts/test_c3b_common.py::test_derived_rows_count_as_observed
+FAILED tests/test_scripts/test_c3b_common.py::test_a_derived_stamp_absent_from_the_observed_is_a_control_error
+FAILED tests/test_scripts/test_c3b_common.py::test_duplicate_or_off_grid_observed_stamps_are_control_errors[doublon]
+FAILED tests/test_scripts/test_c3b_common.py::test_duplicate_or_off_grid_observed_stamps_are_control_errors[hors-grille]
+FAILED tests/test_scripts/test_c3b_common.py::test_a_series_without_covered_unit_is_refused
+FAILED tests/test_scripts/test_c3b_common.py::test_the_coverage_artefact_is_what_a07_reads
+FAILED tests/test_scripts/test_c3b_common.py::test_the_candles_are_what_c3_benchmark_reads
+FAILED tests/test_scripts/test_c3b_common.py::test_the_producer_itself_refuses_bad_candles[estampille-apres-T]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_producer_itself_refuses_bad_candles[doublon]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_producer_itself_refuses_bad_candles[close-float]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_producer_itself_refuses_bad_candles[avant-debut]
+FAILED tests/test_scripts/test_c3b_common.py::test_the_atomic_writer_is_the_strict_writer
+FAILED tests/test_scripts/test_c3b_common.py::test_the_atomic_writer_refuses_a_decimal_and_leaves_nothing
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_campaign_window_is_refused_before_anything
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_window_ending_on_the_campaign_start_passes_the_guard
+FAILED tests/test_scripts/test_c3b_prefix.py::test_bad_params_are_refused_before_the_classmethod[grid_levels-12.5]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_bad_params_are_refused_before_the_classmethod[grid_levels-12]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_bad_params_are_refused_before_the_classmethod[grid_levels-True]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_bad_params_are_refused_before_the_classmethod[grid_levels-None]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_bad_params_are_refused_before_the_classmethod[bias_1d-abc]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_bad_params_are_refused_before_the_classmethod[bias_1d-None]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_bad_params_are_refused_before_the_classmethod[bias_1d-True]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_non_finite_params_are_refused_at_load_with_their_key[bias_1d-NaN]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_non_finite_params_are_refused_at_load_with_their_key[bias_1d-inf]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_non_finite_params_are_refused_at_load_with_their_key[bias_1d-nan]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_non_finite_params_are_refused_at_load_with_their_key[grid_levels-nan]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_decision_timeframes_refusal_runs_nothing[pause-false]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_decision_timeframes_refusal_runs_nothing[non-grid]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_decision_timeframes_refusal_runs_nothing[moteur-signal]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_an_uncommitted_tree_is_refused[arbre-sale]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_an_uncommitted_tree_is_refused[script-non-suivi]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_missing_database_url_is_refused
+FAILED tests/test_scripts/test_c3b_prefix.py::test_an_unreadable_database_is_refused
+FAILED tests/test_scripts/test_c3b_prefix.py::test_an_output_dir_with_final_artefacts_is_refused
+FAILED tests/test_scripts/test_c3b_prefix.py::test_the_anchor_is_never_a_parameter
+FAILED tests/test_scripts/test_c3b_prefix.py::test_the_nominal_run_feeds_the_chain
+FAILED tests/test_scripts/test_c3b_prefix.py::test_run_is_called_once_per_candidate_on_the_prefix
+FAILED tests/test_scripts/test_c3b_prefix.py::test_two_runs_are_bit_identical
+FAILED tests/test_scripts/test_c3b_prefix.py::test_the_execution_order_does_not_change_the_output
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_job_timeout_is_a_failed_job
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_matching_partial_is_resumed
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_foreign_partial_is_refused[manifest_sha256]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_foreign_partial_is_refused[git_sha]
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_failed_job_is_3_and_publishes_nothing
+FAILED tests/test_scripts/test_c3b_prefix.py::test_a_passed_params_divergence_is_3
+ERROR tests/test_scripts/test_c3b_common.py::test_the_real_engine_export_passes_the_entry_form
+ERROR tests/test_scripts/test_c3b_common.py::test_the_real_engine_export_carries_a_proven_liquidation
+ERROR tests/test_scripts/test_c3b_common.py::test_sol_without_history_exports_an_insufficient_warmup
+ERROR tests/test_scripts/test_c3b_common.py::test_the_entry_keys_are_those_of_the_p7_result
+ERROR tests/test_scripts/test_c3b_common.py::test_the_exported_lists_and_bounds
+ERROR tests/test_scripts/test_c3b_common.py::test_removing_a_carrier_is_seen_by_the_chain
+107 failed, 5 passed, 6 errors in 2.78s
+rc=1
