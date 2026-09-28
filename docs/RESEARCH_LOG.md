@@ -301,6 +301,21 @@ Attendu complet, item par item : `results/c3b_producteur/eval_conformite/ATTENDU
 - **Tout lancement est consigné** (`status.txt` par lancement). Un écart à l'attendu est un constat, sans relance
   avant diagnostic. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
 
+### Issue de l'entrée 16 (inscrite après le run — aucune lecture économique)
+
+Un seul lancement, au `85c8db7` (pilote sha256 `7bdc1bd2…`, consigné dans `status.txt`), le 2026-09-28 de 12:34:12 à
+12:34:44Z sur le serveur, lecture seule assertée par Postgres. Il a eu lieu après la CI verte sur `85c8db7` : la
+tentative 1 était rouge, sur le test instable `test_rejeu_effect.py`, sans rapport avec le lot, et la tentative 2 est
+verte. Archive `~/archive/c3b_lot4a_20260928/` (sha256 `1e401ab2…`), vérifiée avant le `rm -rf ~/runs/c3b_eval4a`
+(12:36:11Z).
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 16 | Chemin sélection : **code 0 aux deux exécutions** (événement `evaluated`), sorties identiques au bit. C'est le seul fait rapporté ; les sorties sont archivées, non lues | `results/c3b_producteur/eval_conformite/server/status.txt` |
+| 16 | Chemin désigné (`145867637b…`, recalculé égal) : code 0 ×2, `evaluation_run.json` `a2042a02…` identique au bit. Preuve de départ à plat `{at: T, cash: "1000", qty: "0", pending: 0}` (**DÉCLARÉ**), moteur à `usdc_balance "1000.0"` avant `run` ; `single_call` vrai ; `first_fill_at` après `T` ; 109 points quotidiens | `server/designated/run1/`, `server/verify_attendu.out` |
+| 16 | Admission : réelle et admise ; `c3_continuity` 0, **c1, c2, c5 `DECLARED`**, c3 et c4 `VERIFIED`, `stamp_cell` `NOT_VERIFIABLE` (rien liquidé à `fin`), comparateur synthétique sans valeur ; `alembic` `c3bd1e7a0001` inchangé | `server/chain/continuity.json` |
+| 16 | Attendu tenu sur ses 8 items. Défaut de ma part : une liste des tailles de fichiers a laissé voir que l'artefact du chemin sélection diffère de celui du chemin désigné (retenu ≠ désigné). Rien d'autre n'est lu, et ce fait n'est utilisé nulle part | `results/c3b_producteur/eval_conformite/README.md` § 4 |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme

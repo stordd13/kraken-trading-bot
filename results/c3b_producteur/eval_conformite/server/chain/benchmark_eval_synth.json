@@ -1,0 +1,15 @@
+{
+  "comparability": {
+    "all_finite": true,
+    "entry_stamp_present": true,
+    "exit_stamp_present": true,
+    "ff_ok": true,
+    "n_returns_ok": true
+  },
+  "comparable": true,
+  "pair": "ETH/USDT",
+  "window": {
+    "end": "2020-12-28T00:00:00+00:00",
+    "start": "2020-09-11T21:36:00+00:00"
+  }
+}

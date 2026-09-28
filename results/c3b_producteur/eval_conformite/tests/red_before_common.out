@@ -1,0 +1,9 @@
+# rouge-avant, partie 1 : ajouts de test_c3b_common.py contre 57b498e (commit A, garde absente)
+head=57b498e096894e8bf58074d8fc0115f6f52b0563
+FAILED tests/test_scripts/test_c3b_common.py::test_designation_is_forbidden_past_the_campaign_start_even_unlocked[fin-borne-plus-1us]
+FAILED tests/test_scripts/test_c3b_common.py::test_designation_is_forbidden_past_the_campaign_start_even_unlocked[campagne]
+FAILED tests/test_scripts/test_c3b_common.py::test_designation_is_forbidden_past_the_campaign_start_even_unlocked[apres-2026]
+FAILED tests/test_scripts/test_c3b_common.py::test_designation_is_allowed_up_to_the_campaign_start[fin-a-la-borne]
+FAILED tests/test_scripts/test_c3b_common.py::test_designation_is_allowed_up_to_the_campaign_start[conformite-2020]
+5 failed, 83 deselected in 0.15s
+rc=1

@@ -1,0 +1,10 @@
+TENU   1 désignation — designation=0 identity=145867637b7f9bac…
+TENU   2 chemin sélection — codes ['0', '0'], événements ['evaluated', 'evaluated'], select_sha_equal=0
+TENU   3 chemin désigné, exécution — codes 0/0, identique au bit True, clés ['equity_daily', 'first_fill_at', 'flat_start_proof', 'invocation', 'liquidation', 'metrics', 'pair', 'params', 'period', 'strategy', 'synthetic', 'warmup'], observé {'active_buy_orders': 0, 'active_sell_orders': 0, 'btc_held': '0', 'strategy_built': False, 'trades': 0, 'usdc_balance': '1000.0'}, preuve {'at': '2020-09-11T21:36:00+00:00', 'cash': '1000', 'pending': 0, 'qty': '0'}, invocation {'single_call': True}, période {'end': '2020-12-28T00:00:00+00:00', 'start': '2020-09-11T21:36:00+00:00'}
+TENU   4 séries — first_fill_at 2020-09-13T12:05:00+00:00 (> T), equity_daily [2020-09-11T21:36:00+00:00, 2020-12-28T00:00:00+00:00] 109 points
+TENU   5 admission — serveur admission=0, recalcul local evaluation_admission -> False
+TENU   6 continuité — c3_continuity=0, clauses {'c1': 'DECLARED', 'c2': 'DECLARED', 'c3': 'VERIFIED', 'c4': 'VERIFIED', 'c5': 'DECLARED'}, stamp_cell NOT_VERIFIABLE, comparateur VERIFIED (synthétique), agrégat DECLARED
+TENU   7 base — alembic identique avant/après (c3bd1e7a0001 (head)), transaction_read_only on
+TENU   8 bornes — amorçage [2019-08-12T00:00:00+00:00, 2020-09-11T20:00:00+00:00] (≥ T − 400 j, ≤ T), liquidation None (≤ fin), fenêtre {'anchor': '2020-09-11T21:36:00+00:00', 'end': '2020-12-28T00:00:00+00:00'}
+items tenus : 8/8
+verify_rc=0

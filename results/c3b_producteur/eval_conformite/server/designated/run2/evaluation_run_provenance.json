@@ -1,0 +1,88 @@
+{
+  "anchor": {
+    "path": "results/c3b_producteur/prefix_conformite/server/chain/anchor.json",
+    "sha256": "e52dc52c66f5177e08f5d93316b175fd9aac6c66e5f2a237927c3804134376d9"
+  },
+  "argv": [
+    "scripts/audit/c3b_evaluate.py",
+    "--manifest",
+    "results/c3b_producteur/prefix_conformite/manifest.json",
+    "--anchor",
+    "results/c3b_producteur/prefix_conformite/server/chain/anchor.json",
+    "--candidate",
+    "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962",
+    "--output-dir",
+    "/home/bruno/runs/c3b_eval4a/out/designated/run2",
+    "--now",
+    "2026-09-28T00:00:00+00:00"
+  ],
+  "candidate": {
+    "decision_timeframes": [
+      "1w",
+      "4h"
+    ],
+    "exec_interval": 5,
+    "identity": "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962",
+    "pair": "ETH/USDT",
+    "strategy": "grok_grid_atr_adaptive_v4"
+  },
+  "database": {
+    "alembic_version": [
+      "c3bd1e7a0001"
+    ],
+    "transaction_read_only": "on",
+    "url": "postgresql+asyncpg://krakenbot:***@localhost:5432/krakenbot"
+  },
+  "duration_s": 5.692,
+  "environment": {
+    "libc": "glibc 2.39",
+    "machine": "x86_64",
+    "numpy": "2.4.1",
+    "python": "3.12.3"
+  },
+  "flat_start_observed": {
+    "active_buy_orders": 0,
+    "active_sell_orders": 0,
+    "btc_held": "0",
+    "strategy_built": false,
+    "trades": 0,
+    "usdc_balance": "1000.0"
+  },
+  "generated_at": "2026-09-28T00:00:00+00:00",
+  "interpreter": {
+    "executable": "/home/bruno/.cache/pypoetry/virtualenvs/krakenbot-3rJ6HBr0-py3.12/bin/python",
+    "krakenbot": "/home/bruno/runs/c3b_eval4a/repo/src/krakenbot/__init__.py"
+  },
+  "manifest": {
+    "path": "results/c3b_producteur/prefix_conformite/manifest.json",
+    "sha256": "d96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4",
+    "variant_key": "e324967cce00e44173a3bfff91e5c7ce2524a5dfa059a1a57122c0b7505bcc15"
+  },
+  "outputs": {
+    "evaluation_run.json": "a2042a028f6b213895d470a647947818edfbc94560cc6104e5b76f6eaa0d11d0"
+  },
+  "provenance": {
+    "branch": "",
+    "git_sha": "85c8db71cc4666db0e1a982dc1c70e840cf9c20f",
+    "scripts": {
+      "scripts/audit/c3b_common.py": {
+        "sha256": "64d1c3f177e4377109d7702419ec87e4f0d3c5f6b2c67f4b79886d64907479cf",
+        "tracked": true
+      },
+      "scripts/audit/c3b_evaluate.py": {
+        "sha256": "b05e97e1a84f507bd2b9c2f12cd8e6c613d3f81d08a0812751807e0b872a2747",
+        "tracked": true
+      }
+    },
+    "tracked_tree_clean": true
+  },
+  "schema": "c3b_evaluate_run/1",
+  "source": {
+    "identity": "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962",
+    "kind": "designation"
+  },
+  "window": {
+    "anchor": "2020-09-11T21:36:00+00:00",
+    "end": "2020-12-28T00:00:00+00:00"
+  }
+}

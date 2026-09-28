@@ -1,0 +1,53 @@
+# extrait de run.log : 51 lignes gardées sur 2739
+# sha256 du brut 0a2b18f8f585ff39eb63d804f525b86f3c649f1f1c534c75ec25a542b5c2066a (archivé, ~/archive/c3b_lot4a_20260928/)
+=== guard=0 sha=85c8db71cc4666db0e1a982dc1c70e840cf9c20f python=Python 3.12.3 krakenbot=/home/bruno/runs/c3b_eval4a/repo/src/krakenbot/__init__.py
+=== pilot_sha256=7bdc1bd2c041e4144dc44bfe1f0193ec05859e5174e9483238e07d9452a1b18a
+=== start=2026-09-28T12:34:12Z
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+c3bd1e7a0001 (head)
+=== alembic_before=0
+=== designation=0 identity=145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962
+=== eval_select_run1=0 event=evaluated at=2026-09-28T12:34:21Z
+=== eval_select_run2=0 event=evaluated at=2026-09-28T12:34:28Z
+=== select_sha_equal=0
+2026-09-28 12:34:30 [info     ] grid_backtest_started          candles=30775 component=grid_backtest pair=ETH/USDT period='2020-09-11 to 2020-12-28' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 12:34:31 [info     ] grid_replay_sequence_built     candles_1d=358 candles_1w=73 candles_4h=733 candles_trading=30775 component=grid_backtest decisions=643 trading_interval=5
+2026-09-28 12:34:35 [info     ] database_closed
+2026-09-28 12:34:35 [info     ] evaluated                      duration_s=5.74 source=designation
+2026-09-28 12:34:35 [info     ] written                        path=/home/bruno/runs/c3b_eval4a/out/designated/run1/evaluation_run.json sha256=a2042a028f6b213895d470a647947818edfbc94560cc6104e5b76f6eaa0d11d0
+2026-09-28 12:34:35 [info     ] written                        path=/home/bruno/runs/c3b_eval4a/out/designated/run1/evaluation_run_provenance.json sha256=0f0bdf3be95ca53dd676648fffbbbbce02b2a24ef8f50f8183ba7d074826a526
+=== eval_designated_run1=0 at=2026-09-28T12:34:35Z
+2026-09-28 12:34:37 [info     ] grid_backtest_started          candles=30775 component=grid_backtest pair=ETH/USDT period='2020-09-11 to 2020-12-28' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 12:34:38 [info     ] grid_replay_sequence_built     candles_1d=358 candles_1w=73 candles_4h=733 candles_trading=30775 component=grid_backtest decisions=643 trading_interval=5
+2026-09-28 12:34:42 [info     ] database_closed
+2026-09-28 12:34:42 [info     ] evaluated                      duration_s=5.692 source=designation
+2026-09-28 12:34:42 [info     ] written                        path=/home/bruno/runs/c3b_eval4a/out/designated/run2/evaluation_run.json sha256=a2042a028f6b213895d470a647947818edfbc94560cc6104e5b76f6eaa0d11d0
+2026-09-28 12:34:42 [info     ] written                        path=/home/bruno/runs/c3b_eval4a/out/designated/run2/evaluation_run_provenance.json sha256=7f56a021c3b5de28f28d68e6bb92f639242696718dcbd1f473506b7ad18ae1fd
+=== eval_designated_run2=0 at=2026-09-28T12:34:42Z
+=== sha_evaluation_run run1=a2042a028f6b213895d470a647947818edfbc94560cc6104e5b76f6eaa0d11d0 run2=a2042a028f6b213895d470a647947818edfbc94560cc6104e5b76f6eaa0d11d0
+=== designated_sha_equal=0
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+c3bd1e7a0001 (head)
+=== alembic_after=0
+evaluation_admission -> False (False : évaluation réelle, admise)
+=== admission=0
+benchmark_eval synthétique eb4760ceb776028d7c4a00938ff5006a036b27f852ea60849eb10fcb1ef7cefa
+=== benchmark_eval_synth=0
+continuité de 145867637b7f9bac (ETH/USDT) sur [2020-09-11T21:36:00+00:00, 2020-12-28T00:00:00+00:00] — état DECLARED
+  c1 DECLARED       départ à plat à l'ancrage (§ B.2) : preuve cohérente avec le contrat (at = T, cash 1000 = C, quantité 0, 0 ordre en attente) — produite par le programme qu'elle décrit, elle vaut DECLARED, jamais VERIFIED
+  c2 DECLARED       aucune réinitialisation interne (§ B.4) : un seul appel déclaré, grille quotidienne continue de 109 points sur [T, fin] — la convention d'appel est déclarée, son intégration relève de C3b
+  c3 VERIFIED       liquidation terminale costée (§ B.3) : liquidation terminale costée, prouvée par lot
+  c4 VERIFIED       amorçage à l'ancrage (§ B.5) : amorçage recalculé suffisant sur 1w, 4h
+  c5 DECLARED       première exécution strictement après T (§ C.3) : premier remplissage déclaré à 2020-09-13T12:05:00+00:00, strictement après T
+  stamp_cell NOT_VERIFIABLE estampille de liquidation dans la cellule quotidienne finale (§ B.4) : estampille de liquidation nulle, rien à situer
+  comparator VERIFIED       comparateur d'évaluation (§ C.5) : comparateur d'évaluation comparable (§ C.5), fenêtre [T, fin] recoupée
+  amorçage à T True · comparateur True · cellule d'estampille False · liquidation normalisée True
+written /home/bruno/runs/c3b_eval4a/out/chain/continuity.json sha256 f43cc5c15d85ef47571b7b79386fb0068c12049f12b5bd09c5881cda5aed8e31
+=== c3_continuity=0
+clauses {'c1': 'DECLARED', 'c2': 'DECLARED', 'c3': 'VERIFIED', 'c4': 'VERIFIED', 'c5': 'DECLARED'} stamp_cell NOT_VERIFIABLE comparator VERIFIED state DECLARED
+=== continuity_declared=0
+provenance interpreter=/home/bruno/.cache/pypoetry/virtualenvs/krakenbot-3rJ6HBr0-py3.12/bin/python krakenbot=/home/bruno/runs/c3b_eval4a/repo/src/krakenbot/__init__.py env={'libc': 'glibc 2.39', 'machine': 'x86_64', 'numpy': '2.4.1', 'python': '3.12.3'}
+=== interpreter_check=0
+=== end=2026-09-28T12:34:44Z

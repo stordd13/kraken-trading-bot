@@ -1,0 +1,8 @@
+# extrait de run1.log : 6 lignes gardées sur 1350
+# sha256 du brut 82c58f17d6d465153c67cecab3a189fa7c41e5be323f0b88d444c41c731aa065 (archivé, ~/archive/c3b_lot4a_20260928/)
+2026-09-28 12:34:30 [info     ] grid_backtest_started          candles=30775 component=grid_backtest pair=ETH/USDT period='2020-09-11 to 2020-12-28' strategy=grok_grid_atr_adaptive_v4
+2026-09-28 12:34:31 [info     ] grid_replay_sequence_built     candles_1d=358 candles_1w=73 candles_4h=733 candles_trading=30775 component=grid_backtest decisions=643 trading_interval=5
+2026-09-28 12:34:35 [info     ] database_closed
+2026-09-28 12:34:35 [info     ] evaluated                      duration_s=5.74 source=designation
+2026-09-28 12:34:35 [info     ] written                        path=/home/bruno/runs/c3b_eval4a/out/designated/run1/evaluation_run.json sha256=a2042a028f6b213895d470a647947818edfbc94560cc6104e5b76f6eaa0d11d0
+2026-09-28 12:34:35 [info     ] written                        path=/home/bruno/runs/c3b_eval4a/out/designated/run1/evaluation_run_provenance.json sha256=0f0bdf3be95ca53dd676648fffbbbbce02b2a24ef8f50f8183ba7d074826a526

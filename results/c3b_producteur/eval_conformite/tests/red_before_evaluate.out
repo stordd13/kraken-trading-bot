@@ -1,0 +1,86 @@
+# rouge-avant, partie 2 : test_c3b_evaluate.py contre un squelette AST de c3b_evaluate.py (make_skeleton.py du lot 3, jamais committé) ; c3b_common avec la garde de désignation
+head=57b498e096894e8bf58074d8fc0115f6f52b0563
+_________________ test_a_failed_upstream_selection_is_refused __________________
+tmp_path = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0')
+    def test_a_failed_upstream_selection_is_refused(tmp_path: Path) -> None:
+selection  = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/chain/selection.json')
+tmp_path   = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0')
+        anchor_path = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/chain/anchor.json')
+        argv       = ['--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_ups.../var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/out', ...]
+        manifest_path = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/manifest.json')
+        out        = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/out')
+        selection  = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/chain/selection.json')
+argv = ['--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_ups.../var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/out', ...]
+argv       = ['--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_ups.../var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/out', ...]
+written /private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_failed_upstream_selecti0/chain/anchor.json sha256 945c0866d215c498febbdffa215453a51aae6c2046d5d0c20a84d031bb37c164
+_____________________ test_a_passed_params_divergence_is_3 _____________________
+tmp_path = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0')
+    def test_a_passed_params_divergence_is_3(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        """E10, partagé avec le lot 3 (``c3bc.passed_params_problems``) : une entrée ``strategies.yaml`` au nom de
+tmp_path   = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0')
+        anchor_path = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0/chain/anchor.json')
+        argv       = ['--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_par.../var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0/out', ...]
+        manifest_path = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0/manifest.json')
+        out        = PosixPath('/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0/out')
+argv = ['--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_par.../var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0/out', ...]
+argv       = ['--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_par.../var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0/out', ...]
+written /private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-661/test_a_passed_params_divergenc0/chain/anchor.json sha256 2bb10f60969ca0f7be2474de8743b4dc5e4ea80d74adee7d0b13af8fd06773f4
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_campaign_window_is_refused_before_anything
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_designation_on_the_campaign_window_is_refused_even_unlocked
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_designation_window_ending_on_the_campaign_start_passes_the_guard
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_selection_and_candidate_are_exclusive_and_one_is_required[les deux]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_selection_and_candidate_are_exclusive_and_one_is_required[aucun]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_designation_outside_the_universe_is_refused
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_an_empty_selection_is_nothing_to_evaluate
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_failed_upstream_selection_is_refused
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_selection_of_another_manifest_or_anchor_is_refused[manifest]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_selection_of_another_manifest_or_anchor_is_refused[anchor]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_retained_block_disagreeing_with_the_ranking_head_is_3
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_retained_identity_not_derived_from_its_fields_is_3
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_retained_candidate_outside_the_universe_is_3
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_an_anchor_of_another_manifest_is_refused
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_an_anchor_whose_T_pairs_or_window_differ_is_3[anchor]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_an_anchor_whose_T_pairs_or_window_differ_is_3[pairs]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_an_anchor_whose_T_pairs_or_window_differ_is_3[window]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_non_boolean_pause_flag_is_refused_before_the_engine
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_an_uncommitted_tree_is_refused
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_an_output_dir_with_final_artefacts_is_refused
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_missing_or_unreadable_database_is_refused
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_the_flat_start_proof_is_read_before_run
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_the_flat_start_proof_has_the_fixture_form
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_cash_different_from_C_is_3
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[btc_held]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[active_buy_orders]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[active_sell_orders]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[_strategy_obj]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_inventory_orders_strategy_or_trades_before_run_are_3[trades]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_float_balance_is_3 - N...
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_what_the_engine_stores_for_C[1000-1000.0-1000]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_what_the_engine_stores_for_C[1000.50-1000.5-1000.50]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_capital_the_float_cannot_carry_is_3
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_run_is_called_once_on_T_fin_and_single_call_pins_the_counter
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_first_fill_at_is_the_smallest_trade_stamp
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_fill_at_or_before_T_is_3[T-5min]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[2e-06-3]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_net_pnl_identity_gap_is_3[5e-07-0]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_liquidation_outside_the_final_daily_cell_is_3
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[absent]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[start]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[end]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_equity_daily_bounds_and_length_are_those_of_T_fin[longueur]
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_an_engine_failure_is_3_and_writes_nothing
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_the_nominal_evaluation_is_admitted_and_declared
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_two_evaluations_are_bit_identical
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_selection_and_designation_write_the_same_artefact
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_a_passed_params_divergence_is_3
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_the_chain_upstream_feeds_the_evaluation
+FAILED tests/test_scripts/test_c3b_evaluate.py::test_evaluator_events_never_carry_identity_pair_or_metric
+52 failed, 3 passed in 1.68s
+rc=1
+# verts-avant (3), attendus — ils gardent des propriétés que le squelette conserve (imports, constantes, absence de
+# bool( / .get( ) ; chacun a son mutant (M34 .get(, M35 load_dotenv à l'import, M36 tolérance) :
+#   test_importing_the_evaluator_changes_nothing
+#   test_the_evaluator_never_coerces_nor_opens_a_database_by_itself
+#   test_the_tolerance_is_that_of_the_text

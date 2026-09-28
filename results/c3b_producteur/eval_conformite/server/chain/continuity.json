@@ -1,0 +1,112 @@
+{
+  "benchmark_comparable": true,
+  "clauses": {
+    "c1": {
+      "detail": "preuve cohérente avec le contrat (at = T, cash 1000 = C, quantité 0, 0 ordre en attente) — produite par le programme qu'elle décrit, elle vaut DECLARED, jamais VERIFIED",
+      "name": "départ à plat à l'ancrage (§ B.2)",
+      "state": "DECLARED"
+    },
+    "c2": {
+      "detail": "un seul appel déclaré, grille quotidienne continue de 109 points sur [T, fin] — la convention d'appel est déclarée, son intégration relève de C3b",
+      "name": "aucune réinitialisation interne (§ B.4)",
+      "state": "DECLARED"
+    },
+    "c3": {
+      "detail": "liquidation terminale costée, prouvée par lot",
+      "name": "liquidation terminale costée (§ B.3)",
+      "state": "VERIFIED"
+    },
+    "c4": {
+      "detail": "amorçage recalculé suffisant sur 1w, 4h",
+      "name": "amorçage à l'ancrage (§ B.5)",
+      "state": "VERIFIED"
+    },
+    "c5": {
+      "detail": "premier remplissage déclaré à 2020-09-13T12:05:00+00:00, strictement après T",
+      "name": "première exécution strictement après T (§ C.3)",
+      "state": "DECLARED"
+    }
+  },
+  "comparator": {
+    "declared_comparable": true,
+    "detail": "comparateur d'évaluation comparable (§ C.5), fenêtre [T, fin] recoupée",
+    "name": "comparateur d'évaluation (§ C.5)",
+    "state": "VERIFIED",
+    "tests": {
+      "all_finite": true,
+      "entry_stamp_present": true,
+      "exit_stamp_present": true,
+      "ff_ok": true,
+      "n_returns_ok": true,
+      "window_ok": true
+    },
+    "window": {
+      "declared": {
+        "end": "2020-12-28T00:00:00+00:00",
+        "start": "2020-09-11T21:36:00+00:00"
+      },
+      "expected": {
+        "end": "2020-12-28T00:00:00+00:00",
+        "start": "2020-09-11T21:36:00+00:00"
+      }
+    }
+  },
+  "d6_report": {
+    "checks": {
+      "etat_sans_trade": true,
+      "lots_count": true,
+      "lots_fees_sum": true,
+      "lots_gross_sum": true,
+      "lots_identites": true,
+      "lots_known": true,
+      "lots_present": true,
+      "lots_unknown_amount": true,
+      "residual_net_iff_unknown": true,
+      "residual_trade_iff_unknown": true,
+      "trades_positions": true
+    },
+    "details": [],
+    "lots_present": true,
+    "passed": true,
+    "reported": {
+      "dust_written_off_base": "-2E-29",
+      "inventory_divergence_base": "-2E-29",
+      "net_pnl_lot_basis": "22.75339526797825341393727925",
+      "pnl": "0"
+    }
+  },
+  "evaluation_window": {
+    "end": "2020-12-28T00:00:00+00:00",
+    "start": "2020-09-11T21:36:00+00:00"
+  },
+  "exit_code": 0,
+  "generated_at": "2026-09-28T00:00:00+00:00",
+  "identity": "145867637b7f9bac6b556efc9dc48e929f18624f1c56d54eebe83b6c5eb47962",
+  "inputs_sha256": {
+    "anchor": "e52dc52c66f5177e08f5d93316b175fd9aac6c66e5f2a237927c3804134376d9",
+    "benchmark_eval": "eb4760ceb776028d7c4a00938ff5006a036b27f852ea60849eb10fcb1ef7cefa",
+    "evaluation": "a2042a028f6b213895d470a647947818edfbc94560cc6104e5b76f6eaa0d11d0",
+    "manifest": "d96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4"
+  },
+  "invalide": false,
+  "liquidation_normalised": true,
+  "note": "aucune déclaration ne produit VERIFIED ; « non vérifiable » est une réponse admissible, une preuve fausse ne l'est pas (§ B)",
+  "ok": true,
+  "pair": "ETH/USDT",
+  "protocole": {
+    "path": "docs/protocole_c3.md",
+    "sha256": "9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129"
+  },
+  "stamp_cell": {
+    "detail": "estampille de liquidation nulle, rien à situer",
+    "name": "estampille de liquidation dans la cellule quotidienne finale (§ B.4)",
+    "state": "NOT_VERIFIABLE"
+  },
+  "stamp_same_daily_cell": false,
+  "state": "DECLARED",
+  "step": "continuity",
+  "strategy": "grok_grid_atr_adaptive_v4",
+  "synthetic": false,
+  "violations": [],
+  "warmup_anchor_ok": true
+}
