@@ -316,6 +316,22 @@ verte. Archive `~/archive/c3b_lot4a_20260928/` (sha256 `1e401ab2…`), vérifié
 | 16 | Admission : réelle et admise ; `c3_continuity` 0, **c1, c2, c5 `DECLARED`**, c3 et c4 `VERIFIED`, `stamp_cell` `NOT_VERIFIABLE` (rien liquidé à `fin`), comparateur synthétique sans valeur ; `alembic` `c3bd1e7a0001` inchangé | `server/chain/continuity.json` |
 | 16 | Attendu tenu sur ses 8 items. Défaut de ma part : une liste des tailles de fichiers a laissé voir que l'artefact du chemin sélection diffère de celui du chemin désigné (retenu ≠ désigné). Rien d'autre n'est lu, et ce fait n'est utilisé nulle part | `results/c3b_producteur/eval_conformite/README.md` § 4 |
 
+### C3b lot 4b — comparateur d'évaluation et procédure § F.2, chaîne complète sur la fenêtre de conformité 2020 (inscrite le 28/09/2026, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique, issue non lue)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, et il est hors quota. Il reçoit sa
+propre entrée, parce que c'est un run neuf :
+- le comparateur d'évaluation est construit sur `[T, fin]` ;
+- le tirage du § F.2 a lieu ;
+- `c3_verdict` calcule un verdict pour la première fois.
+
+**L'issue n'est ni déclarée ni lue** (décision de Bruno du 28/09). L'entrée 16 est close, avec son issue inscrite, et
+on n'y ajoute rien. Attendu complet, item par item : `results/c3b_producteur/eval_f2_conformite/ATTENDU.md`, committé
+avec cette entrée.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 17 | 2026-09-28 | C3b lot 4b — essai d'instrument du producteur d'évaluation complet (`scripts/audit/c3b_evaluate.py`, parties 1 et 2 : comparateur § C.3-C.5, λ du préfixe tenus fixes, procédure § F.2), puis `c3_verdict.py chain` **complète** (six étapes) sur sa sortie ; `--campaign C3B_LOT4B`, étiquette d'instrument (dette 21 intacte) ; **aucune lecture économique, issue non lue** | `grok_grid_atr_adaptive_v4` ; **chemin sélection seul** : le retenu de `selection.json` du lot 3, consommé mécaniquement, deux exécutions ; aucune identité, paire, métrique ni issue ne remonte au dépôt | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; évaluation `[T = 2020-09-11T21:36Z, fin = 2020-12-28T00:00Z]` (`n_jours` 107,1, 108 rendements), bougies du comparateur lues sur `[T, fin]` pour la seule paire évaluée, amorçage `≥ T − 400 j`, **hors campagne** (garde-fou 6) | branche `feat/c3b-producteur`, exécuté au commit de cette entrée (SHA consigné dans la provenance) ; métriques v2, `replay_version` 2 ; protocole v2.1 `9300f4e5…` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6) ; `min_order_usdc 5.0` (inerte sur le grid) | producteur : deux exécutions en code 0, `evaluation.json` identique au bit, trois autres artefacts identiques, interpréteur du clone ; chaîne : `anchor`, `entry`, `benchmark`, `select`, `continuity` et `verdict` en code 0, `chain.verified` vrai, **zéro violation, zéro violation au rejeu** ; `alembic` inchangé ; `validé` et `réfuté` inatteignables par construction (provenance `unknown`) | aucune décision économique ; la conformité du § F.2 conditionne la porte § L.5 et le STOP avant merge de C3b | `results/c3b_producteur/eval_f2_conformite/` (`ATTENDU.md`, rapport au commit de preuves) |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
