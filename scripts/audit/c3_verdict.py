@@ -575,15 +575,25 @@ def _estimability_of(
 
     if "estimability" in evaluation and evaluation["estimability"] is not None:
         declared = cc.require_mapping(evaluation, "estimability", where="evaluation")
+        # R-22, cas 4 : une valeur fournie non finie est une violation (§ I.1, ligne 15), et seuls les champs
+        # typés sont recopiés — le diagnostic reste écrivable.
+        try:
+            cc.canon(dict(declared))
+        except cc.NonFiniteValueError as exc:
+            violations.append(
+                f"evaluation.estimability : valeur fournie non finie ({exc}) (§ I.1, ligne 15)"
+            )
+        stated_values: dict[str, bool] = {}
         for key, recomputed in (("E1", est.e1), ("E2", est.e2), ("ok", est.ok)):
             if key in declared:
                 stated = cc.require_bool(declared, key, where="evaluation.estimability")
+                stated_values[key] = stated
                 if stated != recomputed:
                     violations.append(
                         f"estimabilité {key} déclarée {stated!r}, recalculée {recomputed!r} "
                         "— le statut recalculé fait foi"
                     )
-        payload["declared"] = dict(declared)
+        payload["declared"] = stated_values
     return est.ok, payload
 
 

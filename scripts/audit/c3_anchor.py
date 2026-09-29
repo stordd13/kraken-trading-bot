@@ -130,7 +130,10 @@ def variant_record(manifest: cc.Manifest, *, manifest_sha256: str) -> dict[str, 
 
 
 def load_registry(path: Path) -> dict[str, Any]:
-    """Le registre, ou un registre vide s'il n'existe pas encore ; mal formé → erreur d'entrée."""
+    """Le registre, ou un registre vide s'il n'existe pas encore ; mal formé → erreur d'entrée. Chaque
+    enregistrement est canonicalisé à la lecture : une valeur **fournie** non finie, dans quelque enregistrement
+    que ce soit, est une violation (§ I.1, ligne 15 : diagnostic ``invalide``, code 1), jamais une trace du writer
+    à la réécriture (R-22, cas 1)."""
     if not Path(path).exists():
         return {"variants": {}}
     try:
@@ -140,6 +143,7 @@ def load_registry(path: Path) -> dict[str, Any]:
     variants = cc.require_mapping(raw, "variants", where="registry")
     for key in variants:
         cc.require_mapping(variants, key, where="registry.variants")
+    cc.canon(dict(variants))
     return {"variants": dict(variants)}
 
 

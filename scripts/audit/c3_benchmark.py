@@ -154,6 +154,10 @@ class PairBenchmark:
     comparability: dict[str, Any]
 
     def to_dict(self) -> dict[str, Any]:
+        """L'image écrivable de la paire (R-22, cas 2) : la NAV en décimal, telle que construite — sa conversion
+        en double peut déborder sur des bougies finies ; les rendements seulement s'ils sont tous finis, sinon
+        ``null`` — la paire est alors non comparable (§ C.5, finitude ; § C.6), et ``comparability.all_finite`` le
+        dit."""
         return {
             "buildable": self.buildable,
             "comparable": self.comparable,
@@ -163,8 +167,8 @@ class PairBenchmark:
             "entry_price": None if self.entry_price is None else str(self.entry_price),
             "exit_price": None if self.exit_price is None else str(self.exit_price),
             "qty": None if self.qty is None else str(self.qty),
-            "nav": [float(v) for v in self.nav],
-            "returns": list(self.returns),
+            "nav": [str(v) for v in self.nav],
+            "returns": list(self.returns) if all(math.isfinite(r) for r in self.returns) else None,
             "cagr_pct": self.cagr_pct,
             "comparability": self.comparability,
         }

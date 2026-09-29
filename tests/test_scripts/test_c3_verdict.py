@@ -4534,11 +4534,6 @@ def test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit(tmp_path: Pa
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
-)
 def test_R22_un_non_fini_fourni_dans_l_estimabilite_declaree_est_un_diagnostic(
     tmp_path: Path,
 ) -> None:

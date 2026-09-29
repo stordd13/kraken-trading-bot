@@ -732,11 +732,6 @@ def test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refu
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
-)
 def test_R22_un_non_fini_dans_un_autre_enregistrement_du_registre_est_un_diagnostic(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

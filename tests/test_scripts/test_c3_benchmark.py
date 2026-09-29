@@ -627,11 +627,6 @@ def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_rend_le_candidat_non_e
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
-)
 def test_R22_un_bh_a_rendement_non_fini_sur_des_bougies_finies_rend_la_paire_non_comparable(
     tmp_path: Path,
 ) -> None:
