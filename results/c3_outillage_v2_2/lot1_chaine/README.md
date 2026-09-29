@@ -135,4 +135,4 @@ des `scripts/audit/` touchés sans écart neuf (base `lint_base.out` : `c3_commo
 Interdits (`tests/interdits_lot1.out`, rc=0) : diff vide contre `8c114fe` sur `src/`, `scripts/backtest.py`, runners
 P6/P7, `rejeu_common.py`, le protocole, les paquets d'amendements, `results/c3_v2_2/`, `results/c3b_producteur/`.
 
-CI : lue après le push de ce commit, consignée au suivant.
+CI : run 36599366877 sur `c8db3c0` (commit de ce rapport), **verte en première tentative, aucune relance** — `tests/ci_status_lot1.out`.
