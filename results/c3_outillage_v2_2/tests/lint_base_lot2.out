@@ -1,0 +1,6 @@
+# lint base lot 2 — 2026-09-29T19:49:41Z
+# base 8c114fe (worktree détaché) ; mypy mypy 1.19.1 (compiled: yes)
+mypy_strict scripts/audit/c3_entry.py 1
+mypy_strict scripts/audit/c3_continuity.py 3
+mypy_strict scripts/audit/c3b_common.py 0
+rc=0

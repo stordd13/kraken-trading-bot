@@ -4,7 +4,8 @@
 # 2. mypy src/ : exactement « Found 65 errors » (convention du projet, sans --ignore-missing-imports).
 # 3. mypy strict de chaque scripts/audit/ du chantier (MYPYPATH=src:scripts:scripts/audit --follow-imports=silent
 #    --strict), une invocation par fichier ; le nombre d'erreurs par fichier est comparé à la base 8c114fe
-#    (lint_base.out) : aucun écart neuf.
+#    (lint_base.out ; lot 2 : c3_entry, c3_continuity, c3b_common mesurés à la base par lint_base_lot2.sh,
+#    lint_base_lot2.out) : aucun écart neuf.
 set -o pipefail
 set -u
 unset VIRTUAL_ENV
@@ -17,7 +18,8 @@ CI_LIST=(scripts/audit/_common.py scripts/audit/_db.py scripts/audit/c3*.py scri
   scripts/audit/reconstruct_1w.py tests/test_scripts/test_c3*.py tests/test_scripts/test_warmup_at.py
   tests/test_scripts/test_reconstruct_1w.py tests/test_scripts/test_audit_common.py)
 AUDIT=(scripts/audit/c3_common.py scripts/audit/c3_anchor.py scripts/audit/c3_benchmark.py
-  scripts/audit/c3_select.py scripts/audit/c3_verdict.py scripts/audit/c3b_evaluate.py)
+  scripts/audit/c3_select.py scripts/audit/c3_verdict.py scripts/audit/c3b_evaluate.py
+  scripts/audit/c3_entry.py scripts/audit/c3_continuity.py scripts/audit/c3b_common.py)
 {
   echo "# lint — $LABEL — $(date -u +%FT%TZ)"
   echo "# HEAD $(git rev-parse HEAD) branche $(git branch --show-current)"
@@ -38,7 +40,7 @@ for f in "${AUDIT[@]}"; do
   esac
   echo "mypy_strict $f $n" >> "$OUT"
   if [ "$LABEL" != "base" ]; then
-    b=$(grep -E "^mypy_strict $f " "$DIR/lint_base.out" | awk '{print $3}')
+    b=$(grep -hE "^mypy_strict $f " "$DIR/lint_base.out" "$DIR/lint_base_lot2.out" | head -n 1 | awk '{print $3}')
     if [ "$n" = "?" ] || [ -z "$b" ] || [ "$n" -gt "$b" ]; then echo "  écart neuf (base $b)" >> "$OUT"; fail=1; fi
   fi
 done
