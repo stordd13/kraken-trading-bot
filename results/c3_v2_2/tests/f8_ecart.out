@@ -1,0 +1,32 @@
+# f8_ecart — 2026-09-29T08:37:31Z
+# HEAD cf56900 branche feat/c3-amendements-v2.2
+witness_returns(329): n=329 cagr_fsum=22.29011252169326 cagr_numpy=22.29011252169326 ecart=0.0 ulps=0.0 majoration=2.655741430322847e-12
+varying_returns(1, 329): n=329 cagr_fsum=-51.005554489860785 cagr_numpy=-51.005554489860785 ecart=0.0 ulps=0.0 majoration=2.882377147404834e-11
+varying_returns(2, 329): n=329 cagr_fsum=-19.505773941756345 cagr_numpy=-19.505773941756345 ecart=0.0 ulps=0.0 majoration=2.6707933930872933e-11
+varying_returns(3, 329): n=329 cagr_fsum=28.05553742778788 cagr_numpy=28.05553742778788 ecart=0.0 ulps=0.0 majoration=2.7248162040818092e-11
+varying_returns(4, 329): n=329 cagr_fsum=102.83654888008611 cagr_numpy=102.83654888008611 ecart=0.0 ulps=0.0 majoration=4.317134405097228e-11
+varying_returns(5, 329): n=329 cagr_fsum=-17.75416250781303 cagr_numpy=-17.75416250781302 ecart=1.0658141036401503e-14 ulps=3.0 majoration=2.473476712786282e-11
+varying_returns(6, 329): n=329 cagr_fsum=25.18814980649402 cagr_numpy=25.18814980649402 ecart=0.0 ulps=0.0 majoration=2.763482915837455e-11
+varying_returns(7, 329): n=329 cagr_fsum=-53.25039675770016 cagr_numpy=-53.25039675770016 ecart=0.0 ulps=0.0 majoration=2.954257921427163e-11
+varying_returns(8, 329): n=329 cagr_fsum=-22.376805934762224 cagr_numpy=-22.376805934762224 ecart=0.0 ulps=0.0 majoration=2.7766231648495322e-11
+varying_returns(9, 329): n=329 cagr_fsum=29.281781557983688 cagr_numpy=29.28178155798371 ecart=2.1316282072803006e-14 ulps=6.0 majoration=2.8315278864833538e-11
+varying_returns(10, 329): n=329 cagr_fsum=-67.51040016628377 cagr_numpy=-67.51040016628377 ecart=0.0 ulps=0.0 majoration=3.451086330335047e-11
+varying_returns(11, 329): n=329 cagr_fsum=36.1484059225226 cagr_numpy=36.1484059225226 ecart=0.0 ulps=0.0 majoration=2.8068278946915027e-11
+varying_returns(12, 329): n=329 cagr_fsum=51.59559280865129 cagr_numpy=51.59559280865129 ecart=0.0 ulps=0.0 majoration=3.212164272235171e-11
+varying_returns(13, 329): n=329 cagr_fsum=20.655798952391223 cagr_numpy=20.6557989523912 ecart=2.1316282072803006e-14 ulps=6.0 majoration=2.705698832998607e-11
+varying_returns(14, 329): n=329 cagr_fsum=71.61445710634351 cagr_numpy=71.6144571063435 ecart=1.4210854715202004e-14 ulps=1.0 majoration=3.604292717992775e-11
+varying_returns(15, 329): n=329 cagr_fsum=41.04655280537119 cagr_numpy=41.04655280537119 ecart=0.0 ulps=0.0 majoration=3.1412156067446054e-11
+varying_returns(16, 329): n=329 cagr_fsum=-0.9143689360498475 cagr_numpy=-0.9143689360498586 ecart=1.1102230246251565e-14 ulps=100.0 majoration=2.1883265040241158e-11
+varying_returns(17, 329): n=329 cagr_fsum=-51.87955414528436 cagr_numpy=-51.87955414528436 ecart=0.0 ulps=0.0 majoration=3.1717361448261365e-11
+varying_returns(18, 329): n=329 cagr_fsum=-0.5922514892587105 cagr_numpy=-0.5922514892587216 ecart=1.1102230246251565e-14 ulps=100.0 majoration=2.1947751591597587e-11
+varying_returns(19, 329): n=329 cagr_fsum=-0.11575083151863508 cagr_numpy=-0.11575083151863508 ecart=0.0 ulps=0.0 majoration=2.123219975405673e-11
+varying_returns(20, 329): n=329 cagr_fsum=-68.67822842675623 cagr_numpy=-68.67822842675623 ecart=0.0 ulps=0.0 majoration=3.73043377659461e-11
+nav_path(BTC/USDC, 0) -> rendements: n=768 cagr_fsum=13.547979323923421 cagr_numpy=13.547979323923421 ecart=0.0 ulps=0.0 majoration=5.287537720324916e-12
+nav_path(BTC/USDC, 1) -> rendements: n=768 cagr_fsum=22.19610616000356 cagr_numpy=22.19610616000356 ecart=0.0 ulps=0.0 majoration=5.812623168970274e-12
+nav_path(BTC/USDC, 2) -> rendements: n=768 cagr_fsum=31.4848535825603 cagr_numpy=31.4848535825603 ecart=0.0 ulps=0.0 majoration=6.449290560672308e-12
+nav_path(SOL/USDC, 0) -> rendements: n=768 cagr_fsum=13.737254011343802 cagr_numpy=13.737254011343802 ecart=0.0 ulps=0.0 majoration=5.2953708285552065e-12
+nav_path(SOL/USDC, 1) -> rendements: n=768 cagr_fsum=22.050728908286544 cagr_numpy=22.050728908286544 ecart=0.0 ulps=0.0 majoration=5.814273100857262e-12
+nav_path(SOL/USDC, 2) -> rendements: n=768 cagr_fsum=30.970523150709894 cagr_numpy=30.970523150709894 ecart=0.0 ulps=0.0 majoration=6.395526934480716e-12
+series=27 ecart_max=2.1316282072803006e-14 ulps_max=100.0 ecart_sur_majoration_max=0.0007878290744272934
+numpy=2.4.1 python=3.12.11
+rc=0
