@@ -68,3 +68,14 @@ tests/test_scripts/test_c3_verdict.py:4427: AssertionError: assert 'candles_eval
 tests/test_scripts/test_c3b_evaluate.py:2097: AssertionError: assert None == {'dd': 0.168, 'sigma': 0.336}
 9 failed, 525 deselected in 0.76s
 runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## R-22 (cas 1-4) et hors réserve — 2026-09-29T09:34:44Z — HEAD 269a1ce
+# -k "R22 or hors_R" tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3_benchmark.py tests/test_scripts/test_c3_select.py tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3b_evaluate.py
+scripts/audit/_common.py:51: ValueError: variants.923287939788b0f5c09780fc3705e8b438345d61468328c4bf4b6adbc6b1d0f3.research_log_entry: flottant non fini (nan) — JSON n'a ni NaN ni infini
+scripts/audit/_common.py:51: ValueError: pairs.BTC/USDC.returns[101]: flottant non fini (inf) — JSON n'a ni NaN ni infini
+tests/test_scripts/test_c3_select.py:1102: AssertionError: D4 n'a pas retiré le candidat avant la suite : ValueError('math domain error')
+tests/test_scripts/test_c3_verdict.py:4419: AssertionError: l'export hors règle d'entrée n'est pas refusé
+tests/test_scripts/test_c3_verdict.py:4419: AssertionError: l'export hors règle d'entrée n'est pas refusé
+scripts/audit/_common.py:51: ValueError: estimabilite.declared.note: flottant non fini (nan) — JSON n'a ni NaN ni infini
+scripts/audit/c3_common.py:732: OverflowError: math range error
+7 failed, 756 deselected in 1.00s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)

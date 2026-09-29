@@ -1056,3 +1056,48 @@ def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par
     assert violations == []
     assert record.first_failed_gate == "D4" and record.status == "NOT_ESTIMABLE"
     assert record.candidate_reason == "F_NOT_ESTIMABLE"
+
+
+# ---------------------------------------------------------------------------
+# R-22, cas 3 (phase1.md § 1) — D4 « rendements tous finis » : le candidat sort par D4, code 0
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
+)
+def test_R22_une_nav_extreme_a_rendement_non_fini_retire_le_candidat_par_D4() -> None:
+    """§ A.8 D4 : « rendements quotidiens définis et **tous finis** » (et `log1p(r)` défini pour `r > −1`) — deux
+    points de NAV finis et positifs, 1e-300 puis 1e300 : le premier rendement vaut exactement −1 en double, le
+    suivant déborde. Le candidat sort par D4 (§ I.1, ligne 6), `NOT_ESTIMABLE`, sans rien lire au-delà. Aujourd'hui
+    le D4 du code vaut `domain_ok` (`c3_select.py:342`) : il laisse passer, et `cc.cagr_pct` lève
+    (`math domain error`)."""
+    payload = fx.manifest()
+    manifest = cc.load_manifest(payload)
+    candidate = manifest.candidates[0]
+    obs = fx.observations(payload)
+    key = next(
+        k for k, e in obs.items() if e["pair"] == candidate.pair and e["params"] == candidate.params
+    )
+    values = obs[key]["equity_daily"][fx.PREFIX]["values"]
+    values[300] = 1e-300
+    values[301] = 1e300
+    violations: list[str] = []
+    try:
+        record = cs.evaluate_candidate(
+            candidate,
+            key,
+            obs[key],
+            manifest=manifest,
+            anchor=manifest.anchor(),
+            prefix_days=fx.PREFIX_DAYS,
+            pair_d1_ok=True,
+            bench_candidate={},
+            scorer=cs.default_scorer,
+            violations=violations,
+        )
+    except (cc.MissingEvidenceError, ValueError, ArithmeticError) as exc:
+        raise AssertionError(f"D4 n'a pas retiré le candidat avant la suite : {exc!r}") from exc
+    assert record.first_failed_gate == "D4" and record.status == "NOT_ESTIMABLE"

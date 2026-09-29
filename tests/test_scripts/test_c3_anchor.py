@@ -725,3 +725,34 @@ def test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refu
     _mutate(payload, ("min_order_quote",), mode)
     code, out = _run(tmp_path, payload)
     assert code == 2 and out is None
+
+
+# ---------------------------------------------------------------------------
+# R-22, cas 1 (phase1.md § 1) — un non-fini fourni dans le registre : diagnostic, jamais une trace
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=ValueError,
+    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
+)
+def test_R22_un_non_fini_dans_un_autre_enregistrement_du_registre_est_un_diagnostic(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ I.1 : une valeur **fournie** non finie est une violation, ligne 15, code 1 ; « un artefact de diagnostic est
+    écrit, code 1, et porte `invalide: true` et la liste des violations ». Aujourd'hui le registre est réécrit sans
+    être canonicalisé (`c3_anchor.py:335`) : le writer strict lève, trace, code 1 sans diagnostic."""
+    _, root = _run(tmp_path, fx.manifest())
+    assert root is not None
+    registry_path = tmp_path / "variants.json"
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    registry["variants"][root["variant_key"]]["research_log_entry"] = float("nan")
+    registry_path.write_text(json.dumps(registry, allow_nan=True), encoding="utf-8")
+    child = fx.manifest(
+        variant_id="synth-child", parent={"is_root": False, "variant_key": root["variant_key"]}
+    )
+    code, out = _run(tmp_path, child, name="child.json", output="anchor_child.json")
+    assert code == 1
+    assert out is not None and out["invalide"] is True
+    assert "VIOLATION" in capsys.readouterr().err

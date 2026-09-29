@@ -2096,3 +2096,31 @@ def test_R15_evaluation_json_declares_the_prefix_lambdas_it_used(
     evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert evaluation.get("lambdas") == LAMBDAS
     assert not [k for k in keys_of(evaluation) if "sensitiv" in k]
+
+
+# ---------------------------------------------------------------------------
+# Outillage v2.2, hors réserve (phase1.md § 1, constat annexe) — contrat du producteur 0/2/3
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=OverflowError,
+    reason="outillage v2.2, hors réserve : contrat producteur 0/2/3 (c3b_evaluate.py:544) — outillage à venir",
+)
+def test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Contrat du producteur (brief C3b) : 0 évalué, 2 refus, 3 contrôle en échec — jamais une trace. Une clôture de
+    sortie ×10 000 sur une fenêtre de 4,2 jours fait déborder le CAGR du comparateur (`cc.cagr_pct`, `math.exp`) ;
+    aujourd'hui `cb.build_pair` est appelé hors du `try` de l'étape 10b (`c3b_evaluate.py:544`)."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    data = dict(pc.market(anchor=FIN))
+    rows = data[("BTC/USDT", 5)]
+    data[("BTC/USDT", 5)] = [
+        pc._ohlc("BTC/USDT", 5, c.timestamp, c.close * 10000) if c.timestamp == EXIT_STAMP else c
+        for c in rows
+    ]
+    install_closes(monkeypatch, data)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert code == 3

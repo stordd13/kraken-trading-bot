@@ -4425,3 +4425,25 @@ def test_R15_le_parseur_chain_expose_la_septieme_entree() -> None:
     l'ensemble exact du test du parseur (option indicative)."""
     actions = {a.dest for a in cv.build_chain_parser()._actions}
     assert "candles_eval" in actions
+
+
+# ---------------------------------------------------------------------------
+# R-22, cas 4 (phase1.md § 1) — un non-fini fourni dans `evaluation.estimability` : diagnostic, code 1
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=ValueError,
+    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
+)
+def test_R22_un_non_fini_fourni_dans_l_estimabilite_declaree_est_un_diagnostic(
+    tmp_path: Path,
+) -> None:
+    """§ I.1 : valeur fournie non finie → violation, ligne 15, « un artefact de diagnostic est écrit, code 1, et
+    porte `invalide: true` ». Aujourd'hui `estimability` est recopié entier (`c3_verdict.py:413`) et le writer
+    strict lève."""
+    artifacts = _sound()
+    artifacts["evaluation"]["estimability"] = {"note": float("nan")}
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    assert cc.read_json(tmp_path / "verdict.json")["invalide"] is True

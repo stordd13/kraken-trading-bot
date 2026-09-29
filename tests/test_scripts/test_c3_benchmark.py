@@ -627,3 +627,30 @@ def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_rend_le_candidat_non_e
     block, _ = cb.candidate_block(ctx.pop("projection"), **ctx)
     assert block["estimable"] is False
     assert block["first_failed"] == "D4" and block["reason"] == "F_NOT_ESTIMABLE"
+
+
+# ---------------------------------------------------------------------------
+# R-22, cas 2 (phase1.md § 1) — un B&H à rendement non fini : § C.5 → paire non comparable, code 0
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=ValueError,
+    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
+)
+def test_R22_un_bh_a_rendement_non_fini_sur_des_bougies_finies_rend_la_paire_non_comparable(
+    tmp_path: Path,
+) -> None:
+    """§ C.5 : finitude — « toutes valeurs finies », sinon non comparable ; § C.6 : candidats `NOT_ESTIMABLE`,
+    code 0. Deux clôtures quotidiennes finies (1e-300 puis 1e300) font un rendement qui déborde le double :
+    aujourd'hui `to_dict` écrit ce rendement (`c3_benchmark.py:166-168`) et le writer strict lève."""
+    w = _chain(tmp_path)
+    candles = fx.candles(w["payload"])
+    daily = candles["pairs"]["BTC/USDC"]["daily"]
+    daily[100]["close"] = "1E-300"
+    daily[101]["close"] = "1E+300"
+    cc.write_json(w["candles"], candles)
+    assert cb.main(_argv(w)) == 0
+    pair = cc.read_json(w["benchmark"])["pairs"]["BTC/USDC"]
+    assert pair["comparable"] is False and pair["comparability"]["all_finite"] is False
