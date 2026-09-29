@@ -250,6 +250,21 @@ def test_R16_un_bloc_de_liquidation_d_evaluation_qui_porte_gross_usdc_est_une_er
     assert "gross_quote" in capsys.readouterr().err
 
 
+def test_R18_une_evaluation_executee_sans_comparateur_d_evaluation_est_refusee(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.2 : « Le comparateur d'évaluation n'est pas exigé » **sur la route du refus** seulement ; sur une
+    évaluation exécutée, son absence est une erreur d'entrée (§ I.1, ligne 2), code 2, rien publié, et le message la
+    nomme (plan du lot 2, D4)."""
+    w = _world(tmp_path)
+    argv = _argv(w)
+    at = argv.index("--benchmark-eval")
+    del argv[at : at + 2]
+    assert cn.main(argv) == 2
+    assert not w["continuity"].exists()
+    assert "benchmark-eval" in capsys.readouterr().err
+
+
 # ---------------------------------------------------------------------------
 # Chaque clause en échec, à sa place
 # ---------------------------------------------------------------------------

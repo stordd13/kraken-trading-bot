@@ -3,6 +3,13 @@
 Étape 5 de la chaîne du § L.1. Depuis v2.1 (AM-24), une évaluation déclarée réelle est admise si et
 seulement si elle porte ses trois porteurs (``flat_start_proof``, ``invocation.single_call``,
 ``first_fill_at``) — contrôle en tête, refus R0 sinon ; une évaluation synthétique reste admise.
+
+**Forme de refus (§ C.5, § L.1 v2.2, AM-06).** Un artefact d'évaluation qui porte un bloc ``refused`` (comparateur
+d'évaluation non constructible) est admis sans porteurs et suit sa propre route : **aucune clause du § B n'est
+évaluée**, le comparateur d'évaluation n'est pas exigé (``--benchmark-eval`` n'est ni lu ni haché), et le bloc
+``refused`` n'est pas lu ici — le verdict le lit après avoir recoupé l'identité à la configuration retenue
+(retouche C-1). Le contrôle d'identité et de fenêtre s'applique ; un bloc ``refused`` accompagné de séries se
+contredit (violation). ``continuity.json`` porte alors ``refused_route: true`` et aucune clause.
 Elle lit le manifeste, l'ancrage, un artefact d'évaluation et le bloc de comparabilité du
 comparateur d'évaluation, et écrit ``continuity.json`` — l'état de chaque clause, **jamais une
 issue**.
@@ -56,6 +63,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -348,17 +356,27 @@ def benchmark_comparable(
 # ---------------------------------------------------------------------------
 
 
-def run_continuity(
+@dataclass(frozen=True)
+class EvaluatedConfiguration:
+    """L'identité et la fenêtre de l'évaluation, recoupées au manifeste et à l'ancrage — communes aux deux routes."""
+
+    anchor: datetime
+    end: datetime
+    strategy: str
+    pair: str
+    identity: str
+    candidate: cc.Candidate
+
+
+def evaluated_configuration(
     manifest: cc.Manifest,
     anchor_raw: Mapping[str, Any],
     evaluation: Mapping[str, Any],
-    benchmark_eval: Mapping[str, Any],
     *,
     violations: list[str],
-) -> dict[str, Any]:
-    # § L.1 v2.1 (AM-24) : l'admission de l'évaluation, en tête — une évaluation réelle sans l'un de ses trois
-    # porteurs est refusée R0, code 2, rien publié, avec le nom de ce qui manque.
-    synthetic = cc.evaluation_admission(evaluation)
+) -> EvaluatedConfiguration:
+    """Le contrôle d'identité et de fenêtre : ancrage recalculé et recoupé (violation), configuration de l'univers
+    (sinon R0), coûts déclarés pour sa paire, ``period == [T, fin]`` (sinon R0)."""
     anchor = manifest.anchor()
     declared_anchor = cc.require_datetime(anchor_raw, "anchor", where="anchor")
     if declared_anchor != anchor:
@@ -386,6 +404,54 @@ def run_continuity(
             "R0_INVALID_RUN",
             f"evaluation.period [{p_start.isoformat()}, {p_end.isoformat()}] != [T, fin] = [{anchor.isoformat()}, {end.isoformat()}]",
         )
+    return EvaluatedConfiguration(anchor, end, strategy, pair, identity, candidate)
+
+
+def run_refusal_route(
+    manifest: cc.Manifest,
+    anchor_raw: Mapping[str, Any],
+    evaluation: Mapping[str, Any],
+    *,
+    violations: list[str],
+) -> dict[str, Any]:
+    """§ C.5, § L.1 v2.2 (AM-06) — la route de la forme de refus : admission sans porteurs, contradiction
+    « refus + séries » (violation), contrôle d'identité et de fenêtre ; **aucune clause du § B n'est évaluée**, le
+    comparateur d'évaluation n'est pas lu, le bloc ``refused`` non plus (retouche C-1 : le verdict le lit après le
+    recoupement de l'identité à la configuration retenue)."""
+    synthetic = cc.evaluation_admission(evaluation)
+    carried = cc.refusal_series_carried(evaluation)
+    if carried:
+        violations.append(
+            f"evaluation : un bloc `refused` et des séries {carried} — l'artefact d'évaluation se contredit "
+            "(§ C.5 v2.2, § I.1 ligne 15)"
+        )
+    config = evaluated_configuration(manifest, anchor_raw, evaluation, violations=violations)
+    return {
+        "synthetic": synthetic,
+        "strategy": config.strategy,
+        "pair": config.pair,
+        "identity": config.identity,
+        "evaluation_window": {"start": config.anchor.isoformat(), "end": config.end.isoformat()},
+        "refused_route": True,
+        "note": "forme de refus (§ C.5 v2.2) : aucune clause du § B n'est évaluée, le comparateur d'évaluation "
+        "n'est pas exigé (§ L.1 v2.2) ; le verdict recoupe l'identité, puis rejoue la non-constructibilité",
+    }
+
+
+def run_continuity(
+    manifest: cc.Manifest,
+    anchor_raw: Mapping[str, Any],
+    evaluation: Mapping[str, Any],
+    benchmark_eval: Mapping[str, Any],
+    *,
+    violations: list[str],
+) -> dict[str, Any]:
+    # § L.1 v2.1 (AM-24) : l'admission de l'évaluation, en tête — une évaluation réelle sans l'un de ses trois
+    # porteurs est refusée R0, code 2, rien publié, avec le nom de ce qui manque.
+    synthetic = cc.evaluation_admission(evaluation)
+    config = evaluated_configuration(manifest, anchor_raw, evaluation, violations=violations)
+    anchor, end, strategy, pair = config.anchor, config.end, config.strategy, config.pair
+    identity, candidate = config.identity, config.candidate
     bench_pair = cc.require_str(benchmark_eval, "pair", where="benchmark_eval")
     if bench_pair != pair:
         raise cc.EntryRefusedError(
@@ -446,6 +512,13 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
         return ["ARTEFACT INVALIDE — continuité non publiée"] + [
             f"  violation : {v}" for v in payload["violations"]
         ]
+    if "refused_route" in payload:
+        return [
+            f"continuité de {payload['identity'][:16]} ({payload['pair']}) sur "
+            f"[{payload['evaluation_window']['start']}, {payload['evaluation_window']['end']}] — forme de refus "
+            "(§ C.5 v2.2) : aucune clause évaluée"
+            + (" — évaluation synthétique" if payload["synthetic"] else "")
+        ]
     out = [
         f"continuité de {payload['identity'][:16]} ({payload['pair']}) sur "
         f"[{payload['evaluation_window']['start']}, {payload['evaluation_window']['end']}] — état {payload['state']}"
@@ -465,8 +538,10 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    for name in ("manifest", "anchor", "evaluation", "benchmark-eval", "output"):
+    for name in ("manifest", "anchor", "evaluation", "output"):
         parser.add_argument(f"--{name}", type=Path, required=True)
+    # § L.1 v2.2 (AM-06) : exigé sur la route exécutée, ni lu ni haché sur la forme de refus (plan du lot 2, D4).
+    parser.add_argument("--benchmark-eval", type=Path, default=None)
     parser.add_argument(
         "--now", default=None, help="Horodatage ISO UTC de generated_at, pour le déterminisme."
     )
@@ -484,13 +559,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"--now: {exc}", file=sys.stderr)
         return 2
     raws: dict[str, Any] = {}
-    for name in INPUT_NAMES:
+    # Le comparateur d'évaluation est lu après la route (§ L.1 v2.2 : il n'est pas exigé sur la forme de refus).
+    for name in ("manifest", "anchor", "evaluation"):
         try:
             raws[name] = cc.read_json(getattr(args, name))
         except (OSError, ValueError) as exc:
             print(f"--{name.replace('_', '-')}: {exc}", file=sys.stderr)
             return 2
-    inputs = {name: getattr(args, name) for name in INPUT_NAMES}
+    inputs = {name: getattr(args, name) for name in ("manifest", "anchor", "evaluation")}
 
     violations: list[str] = []
     core: dict[str, Any] | None = None
@@ -500,16 +576,33 @@ def main(argv: Sequence[str] | None = None) -> int:
         violations += cc.check_inputs_match(
             raws["anchor"], {"manifest": args.manifest}, where="anchor"
         )
-        for name in ("evaluation", "benchmark_eval"):
-            if not isinstance(raws[name], Mapping):
-                raise cc.MissingEvidenceError(f"{name}: bloc attendu")
-        core = run_continuity(
-            manifest,
-            raws["anchor"],
-            raws["evaluation"],
-            raws["benchmark_eval"],
-            violations=violations,
-        )
+        if not isinstance(raws["evaluation"], Mapping):
+            raise cc.MissingEvidenceError("evaluation: bloc attendu")
+        if cc.is_refusal_form(raws["evaluation"]):
+            core = run_refusal_route(
+                manifest, raws["anchor"], raws["evaluation"], violations=violations
+            )
+        else:
+            if args.benchmark_eval is None:
+                raise cc.MissingEvidenceError(
+                    "--benchmark-eval : le comparateur d'évaluation est exigé hors de la forme de refus "
+                    "(§ L.1 v2.2)"
+                )
+            try:
+                raws["benchmark_eval"] = cc.read_json(args.benchmark_eval)
+            except (OSError, ValueError) as exc:
+                print(f"--benchmark-eval: {exc}", file=sys.stderr)
+                return 2
+            inputs["benchmark_eval"] = args.benchmark_eval
+            if not isinstance(raws["benchmark_eval"], Mapping):
+                raise cc.MissingEvidenceError("benchmark_eval: bloc attendu")
+            core = run_continuity(
+                manifest,
+                raws["anchor"],
+                raws["evaluation"],
+                raws["benchmark_eval"],
+                violations=violations,
+            )
     except cc.EntryRefusedError as exc:
         if violations:
             violations.append(f"refus d'entrée constaté après violation : {exc}")

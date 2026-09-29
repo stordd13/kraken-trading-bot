@@ -4214,12 +4214,6 @@ def test_revue_Fin2_2_le_diagnostic_ne_dit_pas_rien_publie(tmp_path: Path) -> No
 # § C.5 v2.2 (AM-06) — refus amont d'un comparateur non constructible, lu et recoupé par la chaîne (R-18)
 # ---------------------------------------------------------------------------
 
-R18 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir",
-)
-
 
 def _main(argv: list[str]) -> int:
     """`cv.main`, un `SystemExit` d'argparse (option que l'outillage ne connaît pas encore) rendu en code."""
@@ -4259,7 +4253,6 @@ def _refusal_argv(w: dict[str, Any]) -> list[str]:
     return _chain_argv(w) + ["--candles-eval", str(w["candles_eval"])]
 
 
-@R18
 def test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif(
     tmp_path: Path,
 ) -> None:
@@ -4281,7 +4274,6 @@ def test_R18_un_refus_qui_porte_des_series_se_contredit(tmp_path: Path) -> None:
     assert _main(_refusal_argv(w)) == 1
 
 
-@R18
 def test_R18_un_refus_que_l_export_dement_est_une_violation(tmp_path: Path) -> None:
     """§ C.5 v2.2 : « elle rejoue la non-constructibilité sur l'export de bougies d'évaluation (§ L.2), et un refus
     que l'export dément est une violation (§ I.1, ligne 15) » — ici l'export porte les deux estampilles."""
@@ -4290,7 +4282,6 @@ def test_R18_un_refus_que_l_export_dement_est_une_violation(tmp_path: Path) -> N
     assert cc.read_json(w["out"] / "verdict.json")["invalide"] is True
 
 
-@R18
 def test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -4309,6 +4300,85 @@ def test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0(
     assert _main(_refusal_argv(w)) == 2
     assert not (w["out"] / "verdict.json").exists()
     assert "R0_INVALID_RUN" in capsys.readouterr().err
+
+
+#: § C.5 v2.2, recopié du texte (règle agent 3) : la raison que porte le bloc `refused`, et la liste close des motifs
+#: de `E_NO_BENCHMARK` (« un motif pris dans une liste close »).
+REFUSAL_REASON_C5 = "comparator_not_buildable"
+MOTIFS_C5 = ("comparator_not_buildable", "comparator_not_comparable")
+
+
+def test_R18_les_motifs_et_la_raison_du_refus_sont_ceux_du_texte() -> None:
+    """§ C.5 v2.2 : « un bloc `refused` qui porte la raison `comparator_not_buildable` et un motif » ; « un motif pris
+    dans une liste close : `comparator_not_buildable` : le refus amont ci-dessus ; `comparator_not_comparable` : un test
+    du tableau ci-dessus en échec ». Recopiés ici, épinglés aux constantes du code, et présents au texte."""
+    assert cc.REFUSAL_REASONS == (REFUSAL_REASON_C5,)
+    assert cc.BENCHMARK_MOTIFS == MOTIFS_C5
+    text = (_project_root / "docs" / "protocole_c3.md").read_text(encoding="utf-8")
+    assert all(f"`{motif}`" in text for motif in MOTIFS_C5)
+
+
+def test_R18_un_comparateur_non_comparable_porte_le_motif_comparator_not_comparable(
+    tmp_path: Path,
+) -> None:
+    """§ C.5 v2.2 : « `comparator_not_comparable` : un test du tableau ci-dessus en échec, nommé à côté » — le motif
+    accompagne la raison `E_NO_BENCHMARK` sur la route exécutée, le test en échec nommé (plan du lot 2, D7)."""
+    artifacts = _sound()
+    comp = artifacts["continuity"]["comparator"]
+    comp["tests"]["ff_ok"] = False
+    comp["state"] = "FAILED"
+    artifacts["continuity"]["benchmark_comparable"] = False
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.reason == "E_NO_BENCHMARK"
+    assert decision.motif == "comparator_not_comparable"
+    assert decision.motif_detail is not None and "ff_ok" in decision.motif_detail
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["motif"] == "comparator_not_comparable" and "ff_ok" in payload["motif_detail"]
+
+
+def test_R18_l_identite_du_refus_est_recoupee_avant_toute_lecture_du_bloc_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.2 (retouche C-1) : « L'identité de la configuration portée par le refus est recoupée à la
+    configuration retenue **avant** toute lecture du bloc `refused` ». Refus d'une autre configuration **et** bloc
+    malformé : c'est le refus `R0_INVALID_RUN` qui sort, pas l'erreur de forme du bloc."""
+    w = _refusal_world(tmp_path)
+    refusal = cc.read_json(w["evaluation"])
+    other = next(
+        c
+        for c in w["payload"]["universe"]["candidates"]
+        if c["pair"] == refusal["pair"] and c["params"] != refusal["params"]
+    )
+    refusal["params"] = other["params"]
+    refusal["refused"] = {"reason": "hors liste", "window": {}, "motif": None}
+    cc.write_json(w["evaluation"], refusal)
+    assert _main(_refusal_argv(w)) == 2
+    assert not (w["out"] / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "R0_INVALID_RUN" in err and "ENTREE INVALIDE" not in err
+
+
+def test_R18_la_chaine_sur_une_forme_de_refus_n_exige_pas_le_comparateur_d_evaluation(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.2 : sur la route du refus, « Le comparateur d'évaluation n'est pas exigé ; l'export de bougies
+    d'évaluation l'est » — la chaîne sans `--benchmark-eval` publie l'issue ; ni la continuité ni le verdict ne
+    hachent de comparateur d'évaluation (plan du lot 2, D4)."""
+    w = _refusal_world(tmp_path)
+    argv = _refusal_argv(w)
+    at = argv.index("--benchmark-eval")
+    del argv[at : at + 2]
+    assert _main(argv) == 0
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert (
+        payload["raison"] == "E_NO_BENCHMARK" and "benchmark_eval" not in payload["inputs_sha256"]
+    )
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert (
+        continuity["refused_route"] is True and "benchmark_eval" not in continuity["inputs_sha256"]
+    )
 
 
 # ---------------------------------------------------------------------------

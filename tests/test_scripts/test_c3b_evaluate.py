@@ -1413,7 +1413,6 @@ def test_a_non_buildable_comparator_stops_before_the_engine(
     install_closes(monkeypatch, data)
     run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert built == []
-    assert not (tmp_path / "out").exists()
 
 
 def test_a_candle_after_fin_is_refused_by_the_producer(
@@ -2008,14 +2007,7 @@ def test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain(
 # § C.5 v2.2 (AM-06) — le producteur écrit la forme de refus et l'export de bougies d'évaluation (R-18)
 # ---------------------------------------------------------------------------
 
-R18 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir",
-)
 
-
-@R18
 def test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2037,6 +2029,33 @@ def test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export(
     assert not {"returns_config", "returns_bench", "equity_daily", "replications"} & set(evaluation)
     assert (out / evaluate.CANDLES_EVAL).exists()
     assert built == []
+
+
+def test_R18_the_refusal_form_exits_0_and_writes_only_its_artefacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ C.5 v2.2 : sans bougie d'exécution d'entrée, le producteur n'exécute pas l'évaluation et écrit sa forme de
+    refus ; plan du lot 2, D3 (GO du 29/09, candidat v2.3 : la table du § I.1 ne dit pas ce code) : code 0, aucune
+    erreur journalisée, et exactement la forme de refus, l'export de bougies d'évaluation (§ L.1 v2.2 : exigé sur
+    cette route) et la provenance — ni comparateur d'évaluation ni sensibilité. La forme de refus est admise sans
+    porteurs (§ L.1 v2.2) et ne porte aucune série."""
+    world, _, built = stubbed(tmp_path, monkeypatch)
+    data = dict(pc.market(anchor=FIN))
+    data[("BTC/USDT", 5)] = [c for c in data[("BTC/USDT", 5)] if c.timestamp != ENTRY_STAMP]
+    install_closes(monkeypatch, data)
+    out = tmp_path / "out"
+    code, logs = run_eval(world, out, candidate=world.btc.identity)
+    assert (code, errors(logs)) == (0, [])
+    assert built == []
+    written = {evaluate.EVALUATION, evaluate.CANDLES_EVAL, evaluate.PROVENANCE}
+    assert {p.name for p in out.iterdir()} == written
+    provenance = cc.read_json(out / evaluate.PROVENANCE)
+    assert set(provenance["outputs"]) == written - {evaluate.PROVENANCE}
+    assert provenance["flat_start_observed"] is None
+    refusal = cc.read_json(out / evaluate.EVALUATION)
+    assert set(refusal) == {"synthetic", "strategy", "pair", "params", "period", "refused"}
+    assert refusal["synthetic"] is False and refusal["refused"]["motif"]
+    assert cc.evaluation_admission(refusal) is False
 
 
 # ---------------------------------------------------------------------------

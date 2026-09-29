@@ -89,6 +89,17 @@ fichier (``run_verdict``, modes verdict et ``chain``) les exige toujours. **Abst
 sans objet — le texte ne dit pas ce cas (plan du lot 1, D3, candidat v2.3) ; avec une configuration retenue, un ``λ``
 non publié est une violation.
 
+**Forme de refus de l'évaluation (§ C.5, § L.1, § L.2 v2.2, AM-06).** Un artefact d'évaluation qui porte un bloc
+``refused`` (comparateur d'évaluation non constructible) suit sa propre route : admis sans porteurs, sans contrat du
+§ F.2 ; l'identité qu'il porte est recoupée à la configuration retenue **avant** toute lecture du bloc (retouche
+C-1 ; discordance, et abstention, → ``R0_INVALID_RUN``, plan du lot 2, D6) ; puis le bloc (raison en liste close,
+fenêtre ``[T, fin]``) ; puis la non-constructibilité est **rejouée** sur ``candles_eval.json`` — un refus que l'export
+dément est une violation. L'issue est ``inconclusif``, raison la première du § H.1 parmi les constats
+(``E_NO_BENCHMARK``, ou ``P_PROVENANCE`` avant elle), ``continuite=-`` ; le comparateur d'évaluation n'est pas exigé.
+``motif`` (liste close du § C.5) accompagne la raison ``E_NO_BENCHMARK`` : ``comparator_not_buildable`` sur cette
+route, ``comparator_not_comparable`` quand le comparateur d'évaluation est en échec, ``motif_detail`` disant ce qui
+manque ou le test en échec (plan du lot 2, D7).
+
 Pure, read-only hors de sa sortie. Aucun accès base de données.
 
 Usage::
@@ -174,6 +185,9 @@ class Decision:
     estimability: dict[str, Any] | None = field(default=None)
     continuity_state: str | None = None
     synthetic: bool | None = None
+    #: § C.5 v2.2 : le motif de ``E_NO_BENCHMARK`` (``cc.BENCHMARK_MOTIFS``), ce qu'il nomme à côté.
+    motif: str | None = None
+    motif_detail: str | None = None
 
 
 def _gate_results(*, net_pnl: float, cagr_pct: float, delta_dd: float) -> dict[str, bool]:
@@ -368,6 +382,48 @@ def _cross_check_replay(
         )
 
 
+def _rebuild_comparator(
+    manifest: cc.Manifest,
+    artifacts: Mapping[str, Any],
+    *,
+    pair: str,
+    start: datetime,
+    end: datetime,
+) -> cb.PairBenchmark:
+    """§ L.2 v2.2 — le comparateur d'évaluation reconstruit sur l'export : ``candles_eval.json`` sous sa règle d'entrée
+    (une seule paire, celle de la configuration évaluée ; aucune estampille après ``fin``, ``cb.load_candles`` sur le
+    manifeste réduit à cette paire — sinon erreur d'entrée, jamais tronqué), puis le B&H plein notionnel sur
+    ``[T, fin]`` (``cb.build_pair``, convention du § C.3, coûts et capital du manifeste). Partagé par les recoupements
+    d'une évaluation exécutée et par le rejeu de la non-constructibilité d'une forme de refus (§ C.5 v2.2)."""
+    export = cc.require_mapping(artifacts, "candles_eval", where="artefacts")
+    listed = sorted(cc.require_mapping(export, "pairs", where="candles_eval"))
+    if listed != [pair]:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"candles_eval.pairs {listed} : l'export de bougies d'évaluation porte une seule paire, celle de la "
+            f"configuration évaluée ({pair!r}) — erreur d'entrée, jamais tronquée (§ L.2 v2.2)",
+        )
+    reduced = replace(manifest, candidates=tuple(c for c in manifest.candidates if c.pair == pair))
+    if not reduced.candidates:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"la paire évaluée {pair!r} n'est pas une paire de l'univers du manifeste (§ L.2 v2.2)",
+        )
+    parsed = cb.load_candles(export, reduced, end=end)
+    spread, slippage = manifest.pair_costs[pair]
+    return cb.build_pair(
+        pair,
+        parsed[pair],
+        start=start,
+        end=end,
+        exec_interval=manifest.exec_interval,
+        spread=spread,
+        slippage=slippage,
+        taker=manifest.taker,
+        capital=manifest.capital,
+    )
+
+
 def _producer_recoupements(
     artifacts: Mapping[str, Any],
     *,
@@ -428,36 +484,8 @@ def _producer_recoupements(
             f"({len(recomputed)}) — première différence au rendement {first} (§ L.2 v2.2)"
         )
 
-    # 2. L'export de bougies d'évaluation, sous sa règle d'entrée.
-    export = cc.require_mapping(artifacts, "candles_eval", where="artefacts")
-    listed = sorted(cc.require_mapping(export, "pairs", where="candles_eval"))
-    if listed != [pair]:
-        raise cc.EntryRefusedError(
-            "R0_INVALID_RUN",
-            f"candles_eval.pairs {listed} : l'export de bougies d'évaluation porte une seule paire, celle de la "
-            f"configuration évaluée ({pair!r}) — erreur d'entrée, jamais tronquée (§ L.2 v2.2)",
-        )
-    reduced = replace(manifest, candidates=tuple(c for c in manifest.candidates if c.pair == pair))
-    if not reduced.candidates:
-        raise cc.EntryRefusedError(
-            "R0_INVALID_RUN",
-            f"la paire évaluée {pair!r} n'est pas une paire de l'univers du manifeste (§ L.2 v2.2)",
-        )
-    parsed = cb.load_candles(export, reduced, end=end)
-
-    # 3. Le B&H plein notionnel sur [T, fin], et la NAV du comparateur d'évaluation.
-    spread, slippage = manifest.pair_costs[pair]
-    rebuilt = cb.build_pair(
-        pair,
-        parsed[pair],
-        start=start,
-        end=end,
-        exec_interval=manifest.exec_interval,
-        spread=spread,
-        slippage=slippage,
-        taker=manifest.taker,
-        capital=manifest.capital,
-    )
+    # 2-3. L'export de bougies d'évaluation sous sa règle d'entrée, puis le B&H plein notionnel sur [T, fin].
+    rebuilt = _rebuild_comparator(manifest, artifacts, pair=pair, start=start, end=end)
     comparator = cc.require_mapping(artifacts, "benchmark_eval", where="artefacts")
     nav = cc.require_finite_series(comparator, "nav", where="benchmark_eval", min_len=0)
     declared_lambdas = cc.require_mapping(evaluation, "lambdas", where="evaluation")
@@ -654,6 +682,8 @@ class ContinuityView:
     comparator_state: str
     derived_state: str
     derived_identity: str
+    #: § C.5 v2.2 : les tests du comparateur d'évaluation en échec (fenêtre comprise), nommés à côté du motif.
+    comparator_failed: tuple[str, ...] = ()
 
 
 def _continuity_view(
@@ -816,6 +846,158 @@ def _continuity_view(
         comparator_state=derived_comparator,
         derived_state=derived_state,
         derived_identity=derived_identity,
+        comparator_failed=tuple(
+            name for name, ok in {**tests, "window_ok": window_ok}.items() if not ok
+        ),
+    )
+
+
+def _refusal_continuity_view(
+    continuity: Mapping[str, Any],
+    *,
+    evaluation: Mapping[str, Any],
+    anchor: Mapping[str, Any],
+    violations: list[str],
+) -> str:
+    """§ L.1, § L.2 v2.2 (AM-06) — `continuity.json` sur la route de la forme de refus, lu strictement : il porte
+    ``refused_route`` vrai et **aucune clause** (l'étape 5 n'en évalue aucune) ; l'identité, la paire, ``synthetic``
+    et la fenêtre d'évaluation sont dérivés et recoupés comme sur la route exécutée (revue Fin 6) — une contradiction
+    est une violation. Renvoie l'identité dérivée de ``evaluation.{strategy, pair, params}``."""
+    where = "continuity"
+    strategy = cc.require_str(evaluation, "strategy", where="evaluation")
+    pair_eval = cc.require_str(evaluation, "pair", where="evaluation")
+    params = cc.require_mapping(evaluation, "params", where="evaluation")
+    anchor_t = cc.require_datetime(anchor, "anchor", where="anchor")
+    window_end = cc.require_datetime(
+        cc.require_mapping(anchor, "window", where="anchor"), "end", where="anchor.window"
+    )
+    refused_route = cc.require_bool(continuity, "refused_route", where=where)
+    identity = cc.require_str(continuity, "identity", where=where)
+    pair = cc.require_str(continuity, "pair", where=where)
+    synthetic = cc.require_bool(continuity, "synthetic", where=where)
+    evaluation_window = _window_of(continuity, "evaluation_window", where=where)
+    if not refused_route:
+        violations.append(
+            f"{where}.refused_route faux sur une évaluation sous forme de refus — l'étape 5 n'a pas suivi la route "
+            "du refus (§ L.1 v2.2)"
+        )
+    derived_identity = cc.candidate_identity(strategy, pair_eval, params)
+    if identity != derived_identity:
+        violations.append(
+            f"{where}.identity déclaré {identity[:16]}, dérivé {derived_identity[:16]} de "
+            "evaluation.{strategy, pair, params} — l'identité dérivée fait foi"
+        )
+    if pair != pair_eval:
+        violations.append(f"{where}.pair {pair!r} != evaluation.pair {pair_eval!r}")
+    evaluation_synthetic = cc.require_bool(evaluation, "synthetic", where="evaluation")
+    if synthetic is not evaluation_synthetic:
+        violations.append(
+            f"{where}.synthetic déclaré {synthetic!r}, evaluation.synthetic {evaluation_synthetic!r} — "
+            "la déclaration de l'évaluation fait foi (§ L.1)"
+        )
+    if evaluation_window != (anchor_t, window_end):
+        violations.append(
+            f"{where}.evaluation_window {_iso(evaluation_window)} != [anchor.anchor, anchor.window.end] "
+            f"= {_iso((anchor_t, window_end))}"
+        )
+    return derived_identity
+
+
+def _read_refusal(
+    evaluation: Mapping[str, Any], *, anchor: datetime, end: datetime
+) -> dict[str, str]:
+    """§ C.5 v2.2 — le bloc ``refused``, lu **après** le recoupement de l'identité à la configuration retenue (C-1) :
+    la raison, en liste close (``cc.REFUSAL_REASONS``, sinon erreur de forme) ; la fenêtre, ``[T, fin]`` (sinon
+    ``R0_INVALID_RUN``, comme ``period`` à la continuité) ; le motif, une chaîne non vide."""
+    where = "evaluation.refused"
+    block = cc.require_mapping(evaluation, "refused", where="evaluation")
+    reason = cc.require_str(block, "reason", where=where, allowed=cc.REFUSAL_REASONS)
+    window = _window_of(block, "window", where=where)
+    if window != (anchor, end):
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"{where}.window {_iso(window)} != [T, fin] = {_iso((anchor, end))} — ce n'est pas le refus de "
+            "l'évaluation de [T, fin] (§ C.5 v2.2)",
+        )
+    motif = cc.require_str(block, "motif", where=where)
+    if not motif:
+        raise cc.MissingEvidenceError(f"{where}.motif: chaîne vide")
+    return {"reason": reason, "motif": motif}
+
+
+def _decide_refused(
+    artifacts: Mapping[str, Mapping[str, Any]],
+    evaluation: Mapping[str, Any],
+    *,
+    synthetic: bool,
+    violations: list[str],
+) -> Decision:
+    """§ C.5, § L.1, § L.2 v2.2 (AM-06) — la route de la forme de refus, dans l'ordre du texte.
+
+    Un bloc ``refused`` accompagné de séries se contredit (violation). Le contrat d'entrée, l'ancre, la sélection et
+    la continuité (``refused_route``) sont lus comme sur la route exécutée. **L'identité d'abord** (retouche C-1) :
+    celle que porte le refus est recoupée à la configuration retenue avant toute lecture du bloc ``refused`` ; une
+    discordance est un refus ``R0_INVALID_RUN`` — en abstention aussi, aucune configuration n'étant retenue (lettre
+    de C-1 ; plan du lot 2, D6, candidat v2.3). Puis le bloc, puis le **rejeu de la non-constructibilité** sur
+    ``candles_eval.json`` (``_rebuild_comparator``) : un comparateur qui s'y construit dément le refus, violation.
+    L'issue est ``inconclusif`` ; la raison, la première du § H.1 parmi les constats de la chaîne ; ``continuite=-``
+    (aucune clause évaluée, § L.2 v2.2) ; ``motif`` ``comparator_not_buildable`` quand la raison est
+    ``E_NO_BENCHMARK`` (plan du lot 2, D7)."""
+    carried = cc.refusal_series_carried(evaluation)
+    if carried:
+        violations.append(
+            f"evaluation : un bloc `refused` et des séries {carried} — l'artefact d'évaluation se contredit "
+            "(§ C.5 v2.2, § I.1 ligne 15)"
+        )
+    entry = cc.require_mapping(artifacts, "entry", where="artefacts")
+    _entry_contract(entry, violations=violations)
+    anchor = cc.require_mapping(artifacts, "anchor", where="artefacts")
+    provenance = cc.require_str(
+        anchor, "universe_provenance", where="anchor", allowed=cc.PROVENANCES
+    )
+    selection = cc.require_mapping(artifacts, "selection", where="artefacts")
+    selection_status, derived_retained, _reason = _selection_view(
+        selection, provenance=provenance, violations=violations
+    )
+    continuity = cc.require_mapping(artifacts, "continuity", where="artefacts")
+    identity = _refusal_continuity_view(
+        continuity, evaluation=evaluation, anchor=anchor, violations=violations
+    )
+    start = cc.require_datetime(anchor, "anchor", where="anchor")
+    end = cc.require_datetime(
+        cc.require_mapping(anchor, "window", where="anchor"), "end", where="anchor.window"
+    )
+    if identity != derived_retained:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"la forme de refus porte la configuration {identity[:16]}, la sélection a retenu "
+            f"{(derived_retained or '-')[:16]} — l'identité est recoupée à la configuration retenue avant toute "
+            "lecture du bloc refused (§ L.1 v2.2, retouche C-1)",
+        )
+    _read_refusal(evaluation, anchor=start, end=end)
+    manifest = cc.load_manifest(cc.require_mapping(artifacts, "manifest", where="artefacts"))
+    pair = cc.require_str(evaluation, "pair", where="evaluation")
+    rebuilt = _rebuild_comparator(manifest, artifacts, pair=pair, start=start, end=end)
+    if rebuilt.buildable:
+        violations.append(
+            "refus comparator_not_buildable démenti : le comparateur d'évaluation se construit sur candles_eval.json "
+            "— un refus que l'export dément est une violation (§ C.5 v2.2, § I.1 ligne 15)"
+        )
+    reasons = ["E_NO_BENCHMARK"]
+    if not cc.PROVENANCE_CAN_SUPPORT_VALIDE[provenance]:
+        reasons.append("P_PROVENANCE")
+    reason = cc.worst_reason(*reasons)
+    motif = "comparator_not_buildable" if reason == "E_NO_BENCHMARK" else None
+    return Decision(
+        issue=cc.ISSUE_INCONCLUSIF,
+        reason=reason,
+        retained=derived_retained,
+        selection_status=selection_status,
+        provenance=provenance,
+        continuity_state=None,
+        synthetic=synthetic,
+        motif=motif,
+        motif_detail=rebuilt.reason if motif is not None else None,
     )
 
 
@@ -891,6 +1073,9 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     # 0. Confinement, puis contrat d'entrée (R0 avant toute autre chose).
     evaluation = cc.require_mapping(artifacts, "evaluation", where="artefacts")
     synthetic = cc.evaluation_admission(evaluation)
+    # § C.5, § L.1 v2.2 (AM-06) : la forme de refus suit sa route — aucun contrat du § F.2, aucune clause du § B.
+    if cc.is_refusal_form(evaluation):
+        return _decide_refused(artifacts, evaluation, synthetic=synthetic, violations=violations)
     # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument est évalué avant toute lecture.
     _evaluation_contract(evaluation)
     entry = cc.require_mapping(artifacts, "entry", where="artefacts")
@@ -968,11 +1153,19 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
         "synthetic": synthetic,
     }
     if reasons:
+        reason = cc.worst_reason(*reasons)
+        # § C.5 v2.2 : le comparateur d'évaluation en échec porte le motif `comparator_not_comparable`, les tests en
+        # échec nommés à côté (plan du lot 2, D7).
+        not_comparable = reason == "E_NO_BENCHMARK"
         return Decision(
             issue=cc.ISSUE_INCONCLUSIF,
-            reason=cc.worst_reason(*reasons),
+            reason=reason,
             gates={},
             bounds_positive=None,
+            motif="comparator_not_comparable" if not_comparable else None,
+            motif_detail=f"tests § C.5 en échec : {', '.join(view.comparator_failed)}"
+            if not_comparable
+            else None,
             **common,
         )
     if not all(gates.values()):
@@ -1327,14 +1520,16 @@ def verify_producer_inputs(
     ``candles_eval.json`` n'a pas d'amont qui l'enregistre (entrée hors chaîne) : son empreinte est celle que porte
     ``verdict.inputs_sha256``, et son contenu est rejoué (``_producer_recoupements``). Les discordances sont des
     violations ; elles n'entrent pas dans ``chain.checks``, qui reste la liste des recoupements entre amonts
-    (plan du lot 1, D5)."""
+    (plan du lot 1, D5). Sur la forme de refus, le comparateur d'évaluation n'est ni lu ni haché, ni ici ni à la
+    continuité (§ L.1 v2.2 ; plan du lot 2, D4) : son lien n'est pas recoupé."""
     out = cc.check_inputs_match(raws["anchor"], {"manifest": paths["manifest"]}, where="anchor")
     out += cc.check_inputs_match(
         raws["selection"], {"benchmark": paths["benchmark"]}, where="selection"
     )
-    out += cc.check_inputs_match(
-        raws["continuity"], {"benchmark_eval": paths["benchmark_eval"]}, where="continuity"
-    )
+    if "benchmark_eval" in paths:
+        out += cc.check_inputs_match(
+            raws["continuity"], {"benchmark_eval": paths["benchmark_eval"]}, where="continuity"
+        )
     return out
 
 
@@ -1364,6 +1559,8 @@ def build_payload(
             "portee": PORTEE_SYNTH if synthetic else None,
             "verdict": decision.issue,
             "raison": decision.reason,
+            "motif": decision.motif,
+            "motif_detail": decision.motif_detail,
             "selection": decision.retained,
             "statut_selection": decision.selection_status,
             "continuite": decision.continuity_state,
@@ -1414,6 +1611,8 @@ def build_diagnostic_payload(
             "portee": PORTEE_SYNTH if synthetic else None,
             "verdict": None,
             "raison": None,
+            "motif": None,
+            "motif_detail": None,
             "verdict_string": None,
             "chain": dict(chain),
             "diagnostic": None
@@ -1439,6 +1638,8 @@ def render_lines(payload: Mapping[str, Any]) -> list[str]:
         out += [f"  violation : {v}" for v in payload["violations"]]
         return out
     out += [payload["verdict_string"], ""]
+    if payload["motif"] is not None:
+        out.append(f"motif : {payload['motif']} — {payload['motif_detail']}")
     est = payload["estimabilite"]
     if est is not None:
         out.append(
@@ -1494,7 +1695,7 @@ def _warn_stale_output(output: Path, inputs: Mapping[str, Path]) -> None:
 
 
 def run_verdict(
-    paths: Mapping[str, Path],
+    paths: Mapping[str, Path | None],
     *,
     output: Path,
     campaign: str,
@@ -1515,27 +1716,52 @@ def run_verdict(
     avant toute écriture. Le verdict seul n'inscrit pas (il ne porte pas de registre : plan du lot 1, D6).
     """
     artifacts: dict[str, Mapping[str, Any]] = {}
+    inputs: dict[str, Path] = {}
+    # Le comparateur d'évaluation est lu après la route (§ L.1 v2.2 : il n'est pas exigé sur la forme de refus).
     for name in INPUT_NAMES:
+        path = paths[name]
+        if name == "benchmark_eval":
+            continue
+        if path is None:
+            print(f"--{name.replace('_', '-')}: requis", file=sys.stderr)
+            return 2
         try:
-            artifacts[name] = cc.read_json(paths[name])
+            artifacts[name] = cc.read_json(path)
         except (OSError, ValueError) as exc:
             print(f"--{name}: {exc}", file=sys.stderr)
             return 2
-    inputs: dict[str, Path] = {name: Path(paths[name]) for name in INPUT_NAMES}
+        inputs[name] = Path(path)
     # Revue Fin (1) : le confinement précède tout chemin de publication, diagnostic compris — une
     # violation constatée ensuite ne peut pas ramener une évaluation réelle sur disque.
     try:
         if not isinstance(artifacts["evaluation"], Mapping):
             raise cc.MissingEvidenceError("evaluation: bloc attendu")
         synthetic = cc.evaluation_admission(artifacts["evaluation"])
-        # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument précède toute lecture, `verify_chain` compris.
-        _evaluation_contract(artifacts["evaluation"])
+        refused = cc.is_refusal_form(artifacts["evaluation"])
+        # § F.2 (b) v2.1 et § I.1 v2.1 : le contrat d'instrument précède toute lecture, `verify_chain` compris ;
+        # la forme de refus n'a pas de contrat du § F.2 (aucune série, § C.5 v2.2).
+        if not refused:
+            _evaluation_contract(artifacts["evaluation"])
     except cc.EntryRefusedError as exc:
         print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
         return 2
     except cc.MissingEvidenceError as exc:
         print(f"ENTREE INVALIDE {exc}", file=sys.stderr)
         return 2
+    if not refused:
+        bench_path = paths["benchmark_eval"]
+        if bench_path is None:
+            print(
+                "--benchmark-eval : le comparateur d'évaluation est exigé hors de la forme de refus (§ L.1 v2.2)",
+                file=sys.stderr,
+            )
+            return 2
+        try:
+            artifacts["benchmark_eval"] = cc.read_json(bench_path)
+        except (OSError, ValueError) as exc:
+            print(f"--benchmark_eval: {exc}", file=sys.stderr)
+            return 2
+        inputs["benchmark_eval"] = Path(bench_path)
     _warn_stale_output(output, inputs)
 
     violations: list[str] = []
@@ -1778,22 +2004,20 @@ def run_chain(args: argparse.Namespace) -> int:
     )
     if code != 0:
         return code
-    code = run_step(
-        "continuity",
-        c3_continuity.main,
-        [
-            "--manifest",
-            manifest,
-            "--anchor",
-            str(files["anchor"]),
-            "--evaluation",
-            str(args.evaluation),
-            "--benchmark-eval",
-            str(args.benchmark_eval),
-            "--output",
-            str(files["continuity"]),
-        ],
-    )
+    continuity_argv = [
+        "--manifest",
+        manifest,
+        "--anchor",
+        str(files["anchor"]),
+        "--evaluation",
+        str(args.evaluation),
+        "--output",
+        str(files["continuity"]),
+    ]
+    # § L.1 v2.2 (AM-06) : le comparateur d'évaluation n'est pas exigé sur la forme de refus (plan du lot 2, D4).
+    if args.benchmark_eval is not None:
+        continuity_argv += ["--benchmark-eval", str(args.benchmark_eval)]
+    code = run_step("continuity", c3_continuity.main, continuity_argv)
     if code != 0:
         return code
     if args.candles_eval is None:
@@ -1802,7 +2026,7 @@ def run_chain(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
         return 2
-    paths = {
+    paths: dict[str, Path | None] = {
         "entry": files["entry"],
         "anchor": files["anchor"],
         "selection": files["select"],
@@ -1811,7 +2035,7 @@ def run_chain(args: argparse.Namespace) -> int:
         "manifest": Path(args.manifest),
         "benchmark": files["benchmark"],
         "candles_eval": Path(args.candles_eval),
-        "benchmark_eval": Path(args.benchmark_eval),
+        "benchmark_eval": None if args.benchmark_eval is None else Path(args.benchmark_eval),
     }
     return run_verdict(
         paths,
@@ -1839,7 +2063,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--benchmark", type=Path, required=True)
     parser.add_argument("--candles-eval", type=Path, required=True)
-    parser.add_argument("--benchmark-eval", type=Path, required=True)
+    # § L.1 v2.2 (AM-06) : exigé sur la route exécutée, ni lu ni haché sur la forme de refus (plan du lot 2, D4).
+    parser.add_argument("--benchmark-eval", type=Path, default=None)
     parser.add_argument("--campaign", default="C3A")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
@@ -1858,7 +2083,8 @@ def build_chain_parser() -> argparse.ArgumentParser:
     parser.add_argument("--coverage", type=Path, default=None)
     parser.add_argument("--candles", type=Path, default=None)
     parser.add_argument("--evaluation", type=Path, required=True)
-    parser.add_argument("--benchmark-eval", type=Path, required=True)
+    # § L.1 v2.2 (AM-06) : exigé sur la route exécutée, ni lu ni haché sur la forme de refus (plan du lot 2, D4).
+    parser.add_argument("--benchmark-eval", type=Path, default=None)
     # § L.1 v2.2, ligne 0 : la septième entrée ; absente, la chaîne s'arrête avant le verdict (code 2).
     parser.add_argument("--candles-eval", type=Path, default=None)
     parser.add_argument("--registry", type=Path, required=True)
@@ -1878,7 +2104,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except ValueError as exc:
         print(f"--now: {exc}", file=sys.stderr)
         return 2
-    paths = {name: getattr(args, name) for name in INPUT_NAMES}
+    paths: dict[str, Path | None] = {name: getattr(args, name) for name in INPUT_NAMES}
     return run_verdict(paths, output=args.output, campaign=args.campaign, now=now)
 
 

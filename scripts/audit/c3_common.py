@@ -234,7 +234,8 @@ class EntryRefusedError(MissingEvidenceError):
 #: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative) ;
 #: ``verdict`` et ``deferred_evaluation`` (enregistrement du registre de variantes, § A.6 v2.2 : l'issue et son
 #: statut sont inscrits à l'étape 6, absents avant ; l'évaluation différée, seulement quand l'issue ouvre la voie de
-#: sortie prospective du § 10.1).
+#: sortie prospective du § 10.1) ; ``refused`` (§ C.5 v2.2 : le bloc de la forme de refus de l'artefact d'évaluation,
+#: absent d'une évaluation exécutée).
 OPTIONAL_FIELDS: frozenset[str] = frozenset(
     {
         "estimability",
@@ -249,6 +250,7 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
         "deployment_pairs",
         "verdict",
         "deferred_evaluation",
+        "refused",
     }
 )
 
@@ -1173,8 +1175,14 @@ def evaluation_admission(evaluation: Mapping[str, Any]) -> bool:
     `c3_verdict`, avant tout chemin de publication. ``synthetic`` est obligatoire et strictement typé (absent,
     nul, mal typé → erreur de forme). ``true`` : exercice synthétique, admis. ``false`` : évaluation réelle,
     admise **si et seulement si** elle porte ses trois porteurs ; il en manque un → refus ``R0_INVALID_RUN``,
-    code 2, rien publié, avec le nom de ce qui manque. Renvoie ``synthetic``."""
+    code 2, rien publié, avec le nom de ce qui manque. Renvoie ``synthetic``.
+
+    § L.1 v2.2 (AM-06) : la **forme de refus** (bloc ``refused``) est admise sans les porteurs, qu'elle soit
+    déclarée réelle ou synthétique — aucune exécution n'a eu lieu. Son bloc n'est pas lu ici : l'identité qu'elle
+    porte est recoupée à la configuration retenue avant toute lecture du bloc (retouche C-1)."""
     synthetic = require_bool(evaluation, "synthetic", where="evaluation")
+    if is_refusal_form(evaluation):
+        return synthetic
     if synthetic:
         return True
     missing: list[str] = []
@@ -1195,6 +1203,32 @@ def evaluation_admission(evaluation: Mapping[str, Any]) -> bool:
             "(§ B.2, § B.4, § C.3)",
         )
     return False
+
+
+#: § C.5 v2.2 (AM-06) — la raison que porte le bloc ``refused`` de la forme de refus : liste close d'une entrée.
+REFUSAL_REASONS: tuple[str, ...] = ("comparator_not_buildable",)
+#: § C.5 v2.2 — « Le motif est un champ de l'issue, pas une raison » : la liste close des motifs de ``E_NO_BENCHMARK``.
+BENCHMARK_MOTIFS: tuple[str, ...] = ("comparator_not_buildable", "comparator_not_comparable")
+#: § C.5 v2.2 — les séries d'une évaluation exécutée ; la forme de refus n'en porte **aucune** (« un artefact
+#: d'évaluation qui porte à la fois un bloc ``refused`` et des séries se contredit : c'est une violation »).
+EVALUATION_SERIES: tuple[str, ...] = (
+    "equity_daily",
+    "returns_config",
+    "returns_bench",
+    "replications",
+)
+
+
+def is_refusal_form(evaluation: Mapping[str, Any]) -> bool:
+    """§ C.5, § L.1 v2.2 : l'artefact d'évaluation porte-t-il un bloc ``refused`` ? **Présence et type seuls** : le
+    contenu du bloc n'est pas lu ici (retouche C-1). C'est ce qui choisit la route (plan du lot 2, D5)."""
+    return optional_mapping(evaluation, "refused", where="evaluation") is not None
+
+
+def refusal_series_carried(evaluation: Mapping[str, Any]) -> list[str]:
+    """§ C.5 v2.2 : les séries (``EVALUATION_SERIES``) que porte un artefact sous forme de refus — non vide, il se
+    contredit (violation, § I.1 ligne 15)."""
+    return [key for key in EVALUATION_SERIES if key in evaluation]
 
 
 #: § C.5 — les tests de comparabilité du comparateur d'évaluation, liste close, **lus et typés tous

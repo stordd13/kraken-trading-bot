@@ -157,6 +157,7 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "deployment_pairs",
             "verdict",
             "deferred_evaluation",
+            "refused",
         }
     )
     assert cc.NULLABLE_FIELDS == frozenset(
