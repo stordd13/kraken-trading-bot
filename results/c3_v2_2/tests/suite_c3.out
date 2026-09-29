@@ -1,6 +1,6 @@
-# suite_c3 — 2026-09-29T09:38:33Z
-# HEAD 5600eaf branche feat/c3-amendements-v2.2
-# indexé : docs/protocole_c3.md results/c3_v2_2/tests/index_m.out results/c3_v2_2/tests/index_m.py results/c3_v2_2/tests/index_m.sh 
+# suite_c3 — 2026-09-29T09:41:05Z
+# HEAD 5d98a2e branche feat/c3-amendements-v2.2
+# indexé : docs/protocole_c3.md results/c3_v2_2/tests/index_m.out 
 # commande : poetry run pytest -q -p no:cacheprovider -rxX tests/test_scripts/test_c3*.py tests/test_scripts/test_c3b*.py
 pytest_exit=0
 XFAIL tests/test_scripts/test_c3_anchor.py::test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree[absente] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
@@ -50,7 +50,7 @@ XFAIL tests/test_scripts/test_c3b_evaluate.py::test_R18_a_non_buildable_comparat
 XFAIL tests/test_scripts/test_c3b_evaluate.py::test_R19_evaluation_json_metrics_carry_executions - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
 XFAIL tests/test_scripts/test_c3b_evaluate.py::test_R19_no_trade_is_admitted_with_zero_executions - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
 XFAIL tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3 - outillage v2.2, hors réserve : contrat producteur 0/2/3 (c3b_evaluate.py:544) — outillage à venir
-1148 passed, 47 xfailed in 120.69s (0:02:00)
+1148 passed, 47 xfailed in 120.53s (0:02:00)
 ruff_check=0 ruff_format=0
 diff_vide_src_scripts_audit=0
 rc=0

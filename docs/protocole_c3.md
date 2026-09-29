@@ -1,5 +1,12 @@
 # Protocole de validation chronologique — C3, version 2
 
+> **Révision v2.2 — amendée le 2026-09-29.** Douze amendements datés (AM-00 à AM-12 ; AM-07 est fusionné
+> dans AM-03), `docs/amendements_c3_v2.2.md`, adoptés par Bruno au gate d'amendement après lecture adverse
+> (Claude). Les décisions de gate et les réserves d'application (R-15 à R-22) sont consignées dans la section
+> « Adoption » de ce paquet. **Nouveau sha256 : consigné hors du fichier.** Le sha256 de v2.1,
+> `9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129`, reste celui que portent les artefacts
+> de C3b ; un manifeste v2.2 est une nouvelle variante (§ A.6).
+>
 > **Révision v2.1 — amendée le 2026-09-23.** Vingt-huit amendements datés (AM-00 à AM-27),
 > `docs/amendements_c3_v2.1.md`, adoptés par Bruno au gate d'amendement du 2026-09-23, sous les décisions de
 > gate et les quatorze réserves d'application (R-01 à R-14) que ce paquet consigne dans sa section
@@ -28,6 +35,30 @@
 > **C3a terminé ≠ C3 terminé ; C3 terminé ≠ stratégie validée.** C3a livre ce document, l'outillage de sélection
 > et ses tests. **C3b** livre l'intégration et la vérification de l'exécution continue. Aucun des deux ne
 > sélectionne quoi que ce soit pour le paper.
+
+## Amendements — v2.2
+
+Révision datée du **2026-09-29** : douze amendements (AM-00 à AM-12 ; AM-07 est un renvoi vers AM-03), adoptés
+par Bruno après lecture adverse (Claude) d'AM-03, AM-06 et AM-08, avec huit réserves d'application (R-15 à
+R-22). **Les textes avant / après, les motifs, les décisions de gate et les réserves sont dans
+`docs/amendements_c3_v2.2.md` ; ce document ne les redit pas** (§ 0.7). Correspondance entre les candidats et les
+amendements :
+
+| # | Candidat (`PROJECT_CONTEXT.md` § 9, `phase1.md`) | Amendement |
+|---|---|---|
+| 1 | § A.8 l.515 : `grid_levels`, axe de `decision_timeframes` | AM-01 |
+| 2 | § A.8 l.605-606 : « lisent le 1 w » → « alimente une porte de décision » | AM-02 |
+| 3 | Recoupement `returns_config ← equity_daily` côté chaîne (ex-S-3) | AM-03 |
+| 4 | S-1 : `min_order_usdc`, `gross_usdc` | AM-04 |
+| 5 | Application du § 10.1 au registre de variantes | AM-05 |
+| 6 | E5 : `E_NO_BENCHMARK` inatteignable sur un comparateur non constructible | AM-06 |
+| 7 | E11 : la chaîne ne recoupe ni λ ni `returns_bench` | AM-03 (AM-07 : renvoi) |
+| 8 | `first_fill_at` nul refusé en R0 | AM-08 |
+| 9 | Dates de couverture indéfinies quand `covered_units == 0` | AM-09 |
+| C | Cinq sorties code 1 hors table § I.1 (`phase1.md` § 1) | Cas 1 à 4 : aucun texte, l'outillage seul est en défaut (R-22). Cas 5 : AM-10 |
+| — | Note postérieure au gel de v2.1 (§ F.8, `fsum` contre `numpy`) | AM-11 |
+| — | Index des symboles | AM-12 |
+| — | En-tête et empreinte | AM-00 |
 
 ## Amendements — v2.1
 
