@@ -1,8 +1,8 @@
 # Amendements au protocole C3 — v2.1 → v2.2
 
-> **Statut : PROPOSÉ le 2026-09-29.** Le GO de Bruno au STOP de lecture adverse fige ce texte pour
-> application. L'**adoption** est le commit qui porte la section « Adoption » ; ce commit vient après
-> l'application, parce que la section porte l'empreinte de v2.2. Les rôles : la lecture adverse est faite par
+> **Statut : PROPOSÉ le 2026-09-29, retouché au STOP 1 le même jour (C-1 à C-6).** Le GO de Bruno au STOP de
+> lecture adverse fige ce texte pour application. L'**adoption** est le commit qui porte la section
+> « Adoption » ; ce commit vient après l'application, parce que la section porte l'empreinte de v2.2. Les rôles : la lecture adverse est faite par
 > Claude (relecteur), sur l'Avant / Après d'AM-03, AM-06 et AM-08 ; Bruno adopte. Ce paquet est un texte, et il se
 > relit comme un texte.
 >
@@ -195,14 +195,18 @@ rien des valeurs que le producteur garantit par construction.
 > | les deux `λ` que l'évaluation déclare avoir utilisés | `benchmark.json`, produit à l'étape 3 de la même chaîne pour la configuration évaluée | égalité exacte avec les `λ_dd` et `λ_σ` que l'étape 3 a publiés (§ C.4, § F.2 f) |
 > | `returns_bench`, les rendements du comparateur, par appariement | l'**export de bougies d'évaluation** `candles_eval.json`, entrée hors chaîne (§ L.1, ligne 0) | B&H plein notionnel sur `[T, fin]` sous la convention du § C.3 ; blend statique du § C.4 aux `λ` publiés par l'étape 3 ; NAV du blend calculée en décimal, marquée sur la grille quotidienne, passée en double précision ; rendements par la formule de la première ligne |
 >
+> Le comparateur d'évaluation (§ C.5, entrée à part) est recoupé sur ce même recalcul : sa NAV sur la grille
+> quotidienne, passée en double, est égale au bit à celle du B&H plein notionnel recalculé, dont le blend est
+> tiré ; une discordance est une violation. Les cinq tests du § C.5 portent donc sur l'objet même dont
+> `returns_bench` est tiré.
+>
 > **L'export de bougies d'évaluation** porte une seule paire, celle de la configuration évaluée, et aucune
 > estampille postérieure à la fin de la fenêtre d'évaluation. Sinon c'est une erreur d'entrée (§ I.1, ligne 2),
 > jamais tronquée, pour la raison qu'en donne le § A.7, règle 2.
 >
-> **Recalcul impossible et recalcul discordant ne se confondent pas.**
-> - Si l'export ne permet pas de construire le comparateur (estampille d'exécution d'entrée ou de sortie
->   absente, § C.3), le comparateur est **non constructible** : `E_NO_BENCHMARK`, avec le motif du § C.5.
-> - Si le recalcul est possible et qu'il donne une autre valeur que la déclarée, c'est une violation.
+> Sur une évaluation **non refusée**, un recalcul impossible sur l'export est une **violation** (§ I.1,
+> ligne 15) : le producteur a déclaré un comparateur que l'entrée ne permet pas de retrouver. Le seul
+> comparateur non constructible légitime est celui de la forme de refus (§ C.5).
 >
 > **Ce que ces recoupements ne prouvent pas.** Ils établissent que les séries déclarées sont celles
 > qu'impliquent `equity_daily`, l'export de bougies et les `λ` de l'étape 3. Ils ne prouvent pas que
@@ -270,6 +274,11 @@ rien des valeurs que le producteur garantit par construction.
     **[v]** `c3_benchmark.py:91-95`).
   - Reconstruire le comparateur par `cb.build_pair` **[v]** `c3_benchmark.py:173` et `cb.blend_nav` **[v]**
     `:289`, puis comparer au bit. Le parseur `chain` expose `--candles-eval`.
+- **Frontière (retouche C-3).** Sur une évaluation non refusée, un recalcul impossible est une violation ; la liste
+  close des motifs du § C.5 n'en a que deux.
+- **Comparateur d'évaluation (retouche C-4).** `benchmark_eval.json` porte aujourd'hui les seuls tests et la fenêtre
+  **[v]** `c3b_evaluate.py:576-581` : il doit exporter la NAV du B&H sur la grille quotidienne, et la chaîne la
+  compare au bit au B&H recalculé.
 - **Producteur (`c3b_evaluate`).**
   - Déclarer les `λ` utilisés dans `evaluation.json`. La règle du brief C3b « λ … jamais dans
     `evaluation.json` » **[v]** `agent/AGENT_C3B_PRODUCTEUR.md:427` est levée pour les `λ` du préfixe ; la
@@ -284,6 +293,9 @@ rien des valeurs que le producteur garantit par construction.
   - `returns_bench` différent du recalcul sur `candles_eval.json`.
 - **Entrée.** `candles_eval.json` portant une estampille postérieure à `fin`, ou une seconde paire → refus,
   code 2.
+- **Comparateur (C-4).** NAV du comparateur d'évaluation ≠ NAV du B&H recalculé → violation.
+- **Frontière (C-3).** Évaluation non refusée dont l'export n'a pas l'estampille d'entrée → violation, et non
+  `E_NO_BENCHMARK`.
 - **Parseur.** Le parseur `chain` expose `candles_eval` : jumeau de `test_c3_verdict.py:2551`.
 - **Producteur.** `evaluation.json` déclare les `λ` du préfixe, et aucune clé de sensibilité : jumeaux de
   `test_c3b_evaluate.py:1023-1036` et `:1827-1848`, dont l'interdit « aucune clé `lambda` » est contredit par ce
@@ -473,8 +485,7 @@ ce qui arrive quand le producteur ne peut pas **construire** le comparateur d'é
 > **Le motif est un champ de l'issue, pas une raison.** `E_NO_BENCHMARK` couvre plusieurs constats, et l'artefact
 > de verdict porte, à côté de la raison, un motif pris dans une liste close :
 > - `comparator_not_buildable` : le refus amont ci-dessus ;
-> - `comparator_not_comparable` : un test du tableau ci-dessus en échec, nommé à côté ;
-> - `comparator_not_recomputable` : le recalcul du § L.2 est impossible sur l'export.
+> - `comparator_not_comparable` : un test du tableau ci-dessus en échec, nommé à côté.
 >
 > La liste des raisons du § H.1 ne change pas.
 
@@ -488,8 +499,12 @@ ce qui arrive quand le producteur ne peut pas **construire** le comparateur d'é
 > - **Admission.** Un artefact d'évaluation sous forme de refus (bloc `refused`, aucune série) est admis sans les
 >   porteurs ci-dessus, qu'il soit déclaré réel ou synthétique. Aucune exécution n'a eu lieu : il n'y a rien à
 >   prouver de son départ ni de son premier remplissage.
-> - **Sa route.** L'étape 5 n'évalue aucune clause du § B, et les états du § B.8 ne s'appliquent pas à cette
->   route. Le comparateur d'évaluation n'est pas exigé ; l'export de bougies d'évaluation l'est (§ L.2).
+> - **Identité d'abord.** L'identité de la configuration portée par le refus est recoupée à la configuration
+>   retenue **avant** toute lecture du bloc `refused` ; une discordance est un refus `R0_INVALID_RUN` (§ B.8,
+>   table des actions, première ligne).
+> - **Sa route.** L'étape 5 n'évalue aucune clause du § B, et les clauses c1-c5 et les blocs `stamp_cell` et
+>   `comparator` ne sont pas évalués sur cette route ; le contrôle d'identité, lui, s'applique. Le comparateur
+>   d'évaluation n'est pas exigé ; l'export de bougies d'évaluation l'est (§ L.2).
 > - **Son issue.** L'étape 6 publie l'issue du § C.5, et la raison portée est la première que la liste du § H.1
 >   donne parmi les constats de la chaîne.
 
@@ -501,7 +516,9 @@ et celui des observations. »
 
 > **L'état de la continuité** est l'agrégat des clauses du § B.8. Sur la route du refus amont (§ C.5, § L.1),
 > aucune clause n'est évaluée : ce champ est **sans objet**, et la chaîne porte `-`. C'est une valeur du champ
-> de chaîne, pas un état de clause : la liste close du § B.8 ne change pas.
+> de chaîne, pas un état de clause : la liste close du § B.8 ne change pas. `-` est la valeur de ce champ chaque
+> fois qu'aucun état de clause n'entre dans l'issue : refus amont, où aucune clause n'est évaluée, et
+> abstention (§ A.11), où elles sont lues et recoupées sans être rapportées.
 
 **Après (§ J)** — item ajouté après l'item 12 :
 
@@ -525,6 +542,10 @@ et celui des observations. »
   devient recoupé.
 - L'item 13 nomme le vecteur et sa borne (correction 4 du GO) : sans cela, on aurait consigné un non-mesurable
   sans dire pourquoi il est tolérable.
+- **Deux motifs, pas trois (retouche C-3 du STOP 1).** Sur une évaluation non refusée, un recalcul impossible est
+  une violation (AM-03), pas un `E_NO_BENCHMARK` : le seul comparateur non constructible légitime est celui de la
+  forme de refus. Le § 10.1 ne compte ni un code 1 ni un `E_NO_BENCHMARK` : la retouche change ce que le rapport
+  dit du producteur, pas le budget de relance.
 
 **Impact outillage — R-18, bloquant manifeste.**
 - **Producteur.** Sur `comparator_not_buildable`, écrire la forme de refus et `candles_eval.json`, au lieu du
@@ -544,7 +565,11 @@ et celui des observations. »
   - évaluation refusée → `inconclusif (E_NO_BENCHMARK)`, motif `comparator_not_buildable`, code 0,
     `continuite=-` ;
   - `refused` accompagné de séries → violation ;
-  - refus démenti par un export qui porte les deux estampilles → violation.
+  - refus démenti par un export qui porte les deux estampilles → violation ;
+  - refus portant une identité ≠ configuration retenue → `R0_INVALID_RUN`, code 2, rien publié (C-1).
+- **Abstention → `continuite=-`** (C-5) : déjà vrai et déjà testé, `test_c3_verdict.py:3758`
+  (`test_revue_Fin2_1_l_abstention_recoupe_la_continuite_et_porte_continuite_tiret`). C'est un témoin
+  (i), dont le docstring est recité sur le § L.2 v2.2 ; ce n'est pas un `xfail`.
 - Le cas « ni l'un ni les autres → code 2 » est vrai aujourd'hui : il n'est donc pas un adverse.
 
 **Statut proposé.** À adopter.
@@ -572,17 +597,23 @@ table et la phrase de précédence du § B.8 ne changent pas.
 **Après (§ L.1).**
 
 > Une évaluation déclarée réelle (`synthetic: false`) est admise **si et seulement si** elle porte
-> `flat_start_proof`, `invocation.single_call`, `first_fill_at` et `metrics.total_trades` (§ B.2, § B.4, § C.3
-> — les trois clauses déclaratives). `metrics.total_trades` est le nombre d'exécutions du run d'évaluation. S'il
-> lui en manque un, c'est un refus `R0_INVALID_RUN`, code 2, rien publié, avec le nom de ce qui manque.
+> `flat_start_proof`, `invocation.single_call`, `first_fill_at` et `metrics.executions` (§ B.2, § B.4, § C.3
+> — les trois clauses déclaratives). `metrics.executions` est le nombre d'exécutions (remplissages) du run
+> d'évaluation. S'il lui en manque un, c'est un refus `R0_INVALID_RUN`, code 2, rien publié, avec le nom de ce
+> qui manque.
 >
 > **`first_fill_at` peut être nul, et dans un seul cas : l'évaluation n'a rien exécuté.**
-> - `first_fill_at` est nul **si et seulement si** `total_trades == 0` ; ces deux déclarations se recoupent.
-> - `total_trades == 0` **implique** `equity_daily` constante, égale au capital `C` ; l'outillage le recalcule.
+> - `first_fill_at` est nul **si et seulement si** `executions == 0` ; ces deux déclarations se recoupent.
+> - `executions == 0` **implique** `equity_daily` constante, égale au capital `C` ; l'outillage le recalcule.
 > - Une contradiction entre ces faits est une violation (§ I.1, ligne 15).
 > - **Rien n'est exigé dans l'autre sens** : une equity constante ne prouve pas l'absence d'exécution.
 >
-> Une évaluation réelle sans exécution est admise, et sa clause 5 est `NON VÉRIFIABLE` (§ B.8).
+> Une évaluation réelle sans exécution est admise, et sa clause 5 est `NON VÉRIFIABLE` (§ B.8). Avec
+> `executions == 0`, une position nulle à `fin` et un bloc de liquidation dont la liste de lots est exportée et
+> vide, la clause 3 est `VÉRIFIÉE` à vide : il n'y avait rien à liquider, et le contrat le dit (§ B.3, titre) —
+> comme `stamp_cell` sans estampille (§ B.4). Une évaluation sans exécution qui exporte sa liste de lots reçoit
+> donc l'issue économique du § H, jamais `R1_NOT_NORMALISED` ; sans liste de lots, la clause 3 reste
+> `NON VÉRIFIABLE` (§ B.8).
 
 **Avant (§ B.8, « Ce qu'exige `validé` »).**
 
@@ -611,35 +642,45 @@ table et la phrase de précédence du § B.8 ne changent pas.
 - **Pourquoi une implication, et pas une équivalence** (correction 1 du GO du 29/09).
   - L'absence d'exécution rend l'equity constante égale à `C` : ni frais, ni variation d'inventaire.
   - La réciproque suppose que chaque exécution paie des frais strictement positifs. Sous un modèle de frais
-    nuls, deux exécutions au même prix laissent l'equity plate avec `total_trades > 0` ; exiger la réciproque
+    nuls, deux exécutions au même prix laissent l'equity plate avec `executions > 0` ; exiger la réciproque
     ferait crier violation à tort.
-- **Pourquoi un porteur déclaré et recoupé.** `total_trades` est déclaratif, comme `first_fill_at`. Les deux se
+- **Pourquoi `executions`, et pas `total_trades` (retouche C-6 du STOP 1).** `total_trades` existe dans le moteur
+  avec le sens `pairs_completed + liquidated_positions` **[v]** `scripts/backtest.py:3326` ; une clé homonyme à
+  sens différent serait copiée un jour telle quelle par la couche d'export. `executions` est le nombre
+  d'exécutions (remplissages) du run d'évaluation.
+- **La clause 3 d'une évaluation sans exécution (retouche C-2 du STOP 1), lue dans le code.** Le producteur exporte
+  toujours la liste des lots, vide quand rien n'est liquidé **[v]** `c3b_common.py:375`. Sur un bloc à
+  `trades == 0`, sans position et à `lots: []`, la clause 3 sort aujourd'hui `VERIFIED` **[v]**
+  `c3_common.py:2008-2012`, `c3_continuity.py:196-211`, ce que le lot 4a a exercé sur données réelles. Un bloc
+  **sans** liste de lots rend `NOT_VERIFIABLE` **[v]** `c3_continuity.py:201-210`, conformément au § B.8. D'où la
+  rédaction « liste de lots exportée et vide », décidée au STOP 1 ; aucun adverse de plus en R-19.
+- **Pourquoi un porteur déclaré et recoupé.** `executions` est déclaratif, comme `first_fill_at`. Les deux se
   recoupent l'un l'autre, et l'implication vers `equity_daily` se recalcule : la clause ne repose pas sur une
   seule déclaration.
 
 **Impact outillage — R-19, bloquant manifeste.**
 - **`cc.evaluation_admission`** **[v]** `c3_common.py:1150-1176` :
-  - `metrics.total_trades` devient obligatoire ;
+  - `metrics.executions` devient obligatoire ;
   - `first_fill_at` devient présent et nullable, sous condition.
-- **Recoupements** : `first_fill_at` nul ⟺ `total_trades == 0`, et `total_trades == 0` ⟹ equity constante `= C`
+- **Recoupements** : `first_fill_at` nul ⟺ `executions == 0`, et `executions == 0` ⟹ equity constante `= C`
   (continuité ou verdict).
 - **`c3_verdict`** : la règle « c1 ou c5 `NON VÉRIFIABLE` sur une évaluation réelle → violation » **[v]**
   `c3_verdict.py:556-564` admet c5 `NON VÉRIFIABLE` quand `first_fill_at` est nul.
-- **Producteur** : il exporte `metrics.total_trades`, le nombre d'exécutions, c'est-à-dire les remplissages dont
+- **Producteur** : il exporte `metrics.executions`, le nombre d'exécutions, c'est-à-dire les remplissages dont
   `first_fill_at` est le premier. Aujourd'hui `metrics` n'a que trois clés **[v]** `c3b_evaluate.py:686-690`, et
   les exécutions sont `engine.metrics.trades` **[v]** `:812-814`.
-- **Fixtures** : `fx.evaluation` porte `metrics.total_trades`.
+- **Fixtures** : `fx.evaluation` porte `metrics.executions`.
 
 **Test attendu — R-19.**
 - **Producteur**, jumeaux de `test_c3b_evaluate.py:924`, `:1023-1036` et `:1827-1848` :
-  - sans exécution, `metrics.total_trades == 0` et l'admission ne refuse pas ;
-  - le jeu de clés de `metrics` comprend `total_trades`.
-- **Continuité** : évaluation réelle, `first_fill_at` nul, `total_trades` 0, equity constante `= C` → code 0,
+  - sans exécution, `metrics.executions == 0` et l'admission ne refuse pas ;
+  - le jeu de clés de `metrics` comprend `executions`.
+- **Continuité** : évaluation réelle, `first_fill_at` nul, `executions` 0, equity constante `= C` → code 0,
   c5 `NOT_VERIFIABLE`.
 - **Verdict** :
   - le même monde → aucune violation, issue ≠ `validé` ;
-  - `first_fill_at` nul avec `total_trades > 0` → violation ;
-  - `total_trades == 0` avec une equity non constante → violation.
+  - `first_fill_at` nul avec `executions > 0` → violation ;
+  - `executions == 0` avec une equity non constante → violation.
 - Rien n'est testé dans le sens abandonné.
 - Témoins (i) dont seul le docstring est recité sur v2.2 : `test_c3_continuity.py:201`,
   `test_c3_verdict.py:1864` et `:1898`, `:1949`. Leurs fixtures portent un remplissage, et l'attendu reste le
@@ -825,20 +866,19 @@ suivants sont consignés, et ne sont pas corrigés dans ce paquet.
    Tranché : `equity_daily` et l'export restent déclaratifs (§ J, item 12).
 4. **AM-05, évaluation différée.** Elle ne doit pas être refusée comme une seconde campagne. Tranché : c'est un
    état du registre (date et empreinte attendue).
-5. **`total_trades` : même nom, deux sens.**
+5. **`total_trades` : même nom, deux sens. Réglé au STOP 1 (C-6) : la clé est `metrics.executions`.**
    - Le moteur porte une métrique `total_trades` dont le sens n'est pas celui d'AM-08 : `pairs_completed +
      liquidated_positions` sur le grid **[v]** `scripts/backtest.py:3326`, et le nombre de ventes sur le moteur
      signal (§ A.8, D3).
-   - AM-08 définit `metrics.total_trades` comme le **nombre d'exécutions** ; le producteur doit exporter ce
+   - AM-08 définissait `metrics.total_trades` comme le **nombre d'exécutions** ; le producteur devait exporter ce
      compte-là **[v]** `c3b_evaluate.py:812-814`.
    - Les deux valent zéro ensemble sur les deux moteurs, sauf peut-être un lot soldé en poussière, à vérifier à
      l'outillage (R-19).
-6. **`continuite=-` en abstention.**
+6. **`continuite=-` en abstention. Réglé au STOP 1 (C-5), dans AM-06 ; ce n'est plus un candidat v2.3.**
    - L'outillage porte `continuite=-` quand aucune configuration n'est retenue **[v]** `c3_verdict.py:724-727`,
      `:897`. Le § L.2 ne définit `-` que pour l'identité retenue.
    - C'est une convention d'outillage non écrite. AM-06 emploie le même `-` pour « sans objet » sur la route du
-     refus amont, sans étendre la phrase à l'abstention.
-   - Candidat v2.3.
+     refus amont ; C-5 étend la phrase à l'abstention.
 7. **§ A.6, « Cette liste est exactement ce que la clause D5 asserte ».** C'est inexact avant ce paquet : les
    seuils, le mode de `λ` et la graine ne sont pas assertés par D5, et la famille d'AM-05 non plus. Candidat
    v2.3, non corrigé.
