@@ -790,12 +790,6 @@ def test_agregat_prend_la_pire_clause_est_un_test_de_precedence_hors_perimetre()
 # § L.1 v2.2 (AM-08) — une évaluation réelle sans exécution est admise (R-19)
 # ---------------------------------------------------------------------------
 
-R19 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
-)
-
 
 def _no_execution_world(tmp_path: Path) -> dict[str, Any]:
     """Évaluation réelle sans exécution, cohérente : `first_fill_at` nul, `metrics.executions` 0, `equity_daily`
@@ -818,7 +812,6 @@ def _no_execution_world(tmp_path: Path) -> dict[str, Any]:
     return w
 
 
-@R19
 def test_R19_une_evaluation_reelle_sans_execution_est_admise_c5_non_verifiable(
     tmp_path: Path,
 ) -> None:

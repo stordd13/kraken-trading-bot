@@ -10,7 +10,8 @@ v2.1, ``cc.evaluation_admission``) :
   plus : elle est produite par le programme dont elle décrit l'état ;
 * ``invocation.single_call`` (§ B.4) — écrit par le seul chemin qui appelle ``run`` une fois (``run_once``) ;
 * ``first_fill_at`` (§ C.3) — la plus petite estampille de ``metrics.trades``, strictement après ``T`` ; ``null``
-  sans trade (la chaîne le traite : l'admission le refuse).
+  sans trade ; § L.1 v2.2 (AM-08) : ``metrics.executions``, le nombre d'exécutions (les remplissages de
+  ``metrics.trades``, dont ``first_fill_at`` est le premier — nul si et seulement si zéro), porteur qui le recoupe.
 
 Partie 2 (lot 4b), par les primitives de la chaîne et elles seules (décision 3, « une seule fonction, une seule
 convention », § F.2 c) :
@@ -470,6 +471,7 @@ def evaluation_payload(
     first_fill: str | None,
     proof: Mapping[str, Any],
     net_pnl: float,
+    executions: int,
 ) -> dict[str, Any]:
     """Le payload du run, base d'``evaluation.json`` : les clés de l'artefact d'évaluation (fixture ``evaluation``,
     ``test_c3_common.py:1680-1708``) **moins** celles du § F.2 (``returns_config``, ``returns_bench``,
@@ -488,7 +490,7 @@ def evaluation_payload(
         "invocation": dict(invocation),
         "first_fill_at": first_fill,
         "flat_start_proof": dict(proof),
-        "metrics": {"net_pnl": net_pnl},
+        "metrics": {"net_pnl": net_pnl, "executions": executions},
     }
 
 
@@ -726,13 +728,20 @@ def evaluation_artefact(
     est remplacé par celui du § F.2, qui reprend le ``net_pnl`` du run. Une autre clé commune serait un contrôle en
     échec (3) : l'assemblage n'écrase rien d'autre. § L.2 v2.2 (AM-03) : ``lambdas``, les deux ``λ`` du préfixe que
     l'évaluation a utilisés — les flottants mêmes de ``benchmark.json`` (``float(Decimal(str(λ))) == λ``), que la
-    chaîne recoupe à l'étape 3 ; la sensibilité à ``λ`` ré-estimé reste hors de l'artefact."""
+    chaîne recoupe à l'étape 3 ; la sensibilité à ``λ`` ré-estimé reste hors de l'artefact. § L.1 v2.2 (AM-08) :
+    ``metrics.executions`` du run est repris dans ``metrics``."""
     shared = sorted((set(base) & set(f2)) - {"metrics"})
     if shared or f2["metrics"]["net_pnl"] != base["metrics"]["net_pnl"]:
         raise c3bc.ProducerControlError(
             "evaluation_assembly", [f"clés communes {shared} ou net_pnl discordant"]
         )
-    return {**base, **f2, "lambdas": {m: float(lambdas[m]) for m in cc.MATCHINGS}}
+    metrics = {**f2["metrics"], "executions": base["metrics"]["executions"]}
+    return {
+        **base,
+        **f2,
+        "metrics": metrics,
+        "lambdas": {m: float(lambdas[m]) for m in cc.MATCHINGS},
+    }
 
 
 def sensitivity_payload(
@@ -887,6 +896,8 @@ async def evaluate(
                 first_fill=first_fill,
                 proof=proof,
                 net_pnl=metrics["net_pnl"],
+                # § L.1 v2.2 (AM-08, retouche C-6) : les remplissages, jamais `total_trades` du moteur.
+                executions=len(engine.metrics.trades),
             )
         except c3bc.ProducerControlError:
             raise

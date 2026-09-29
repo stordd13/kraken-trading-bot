@@ -235,7 +235,10 @@ class EntryRefusedError(MissingEvidenceError):
 #: ``verdict`` et ``deferred_evaluation`` (enregistrement du registre de variantes, § A.6 v2.2 : l'issue et son
 #: statut sont inscrits à l'étape 6, absents avant ; l'évaluation différée, seulement quand l'issue ouvre la voie de
 #: sortie prospective du § 10.1) ; ``refused`` (§ C.5 v2.2 : le bloc de la forme de refus de l'artefact d'évaluation,
-#: absent d'une évaluation exécutée).
+#: absent d'une évaluation exécutée) ; ``executions`` (§ L.1 v2.2 : ``metrics.executions``, porteur exigé par
+#: l'admission d'une évaluation réelle, qu'un exercice synthétique peut ne pas porter). ``first_fill_at`` reste
+#: optionnel et non nullable (un champ est l'un ou l'autre) : un synthétique peut l'omettre ; sur une réelle, sa
+#: présence est contrôlée à l'admission et sa nullité recoupée à ``metrics.executions`` (§ L.1 v2.2, AM-08).
 OPTIONAL_FIELDS: frozenset[str] = frozenset(
     {
         "estimability",
@@ -251,6 +254,7 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
         "verdict",
         "deferred_evaluation",
         "refused",
+        "executions",
     }
 )
 
@@ -1161,12 +1165,13 @@ LIQUIDATION_NORMALISED_OF_C3: dict[str, bool | None] = {
     "FAILED": False,
 }
 
-#: § L.1 v2.1 (AM-24) — les trois porteurs sans lesquels une évaluation déclarée réelle n'est pas admise : les
-#: trois clauses déclaratives du § B (§ B.2, § B.4, § C.3).
+#: § L.1 v2.2 (AM-08) — les porteurs sans lesquels une évaluation déclarée réelle n'est pas admise : les trois
+#: clauses déclaratives du § B (§ B.2, § B.4, § C.3), et le nombre d'exécutions qui recoupe la troisième.
 REAL_EVALUATION_CARRIERS: tuple[str, ...] = (
     "flat_start_proof",
     "invocation.single_call",
     "first_fill_at",
+    "metrics.executions",
 )
 
 
@@ -1193,16 +1198,67 @@ def evaluation_admission(evaluation: Mapping[str, Any]) -> bool:
         require_bool(invocation, "single_call", where="evaluation.invocation")
     except MissingEvidenceError:
         missing.append("invocation.single_call")
-    if optional_str(evaluation, "first_fill_at", where="evaluation") is None:
+    # § L.1 v2.2 (AM-08) : `metrics.executions`, le nombre d'exécutions, entier ≥ 0 ; `first_fill_at` présent, nul
+    # admis — et seulement sans exécution, ce que `execution_recoupements` recoupe. Nul sans le compte qui le recoupe,
+    # sa recevabilité n'est pas décidable : les deux manques sont nommés (plan du lot 2, D8).
+    try:
+        metrics = require_mapping(evaluation, "metrics", where="evaluation")
+        require_int(metrics, "executions", where="evaluation.metrics", minimum=0)
+        executions_carried = True
+    except (MissingEvidenceError, InvalidValueError):
+        executions_carried = False
+    first_fill = optional_str(evaluation, "first_fill_at", where="evaluation")
+    if "first_fill_at" not in evaluation or (first_fill is None and not executions_carried):
         missing.append("first_fill_at")
+    if not executions_carried:
+        missing.append("metrics.executions")
     if missing:
         raise EntryRefusedError(
             "R0_INVALID_RUN",
-            f"évaluation réelle (synthetic: false) sans {', '.join(missing)} — § L.1 v2.1 : admise si et "
-            "seulement si elle porte flat_start_proof, invocation.single_call et first_fill_at "
-            "(§ B.2, § B.4, § C.3)",
+            f"évaluation réelle (synthetic: false) sans {', '.join(missing)} — § L.1 v2.2 : admise si et "
+            "seulement si elle porte flat_start_proof, invocation.single_call, first_fill_at et metrics.executions "
+            "(§ B.2, § B.4, § C.3) ; first_fill_at nul n'est recevable qu'avec metrics.executions, qui le recoupe",
         )
     return False
+
+
+def execution_recoupements(evaluation: Mapping[str, Any], *, capital: Decimal) -> list[str]:
+    """§ L.1 v2.2 (AM-08) — les faits d'une évaluation sans exécution se recoupent ; une contradiction est une
+    violation (§ I.1, ligne 15). Dès que ``metrics.executions`` est porté (toujours sur une évaluation réelle, § L.1) :
+
+    * ``first_fill_at`` est nul **si et seulement si** ``executions == 0`` ;
+    * ``executions == 0`` **implique** ``equity_daily`` constante, égale au capital ``C`` — recalculé sur les valeurs
+      exportées, au bit.
+
+    Rien n'est exigé dans l'autre sens : une equity constante ne prouve pas l'absence d'exécution. Rend les
+    violations constatées."""
+    metrics = require_mapping(evaluation, "metrics", where="evaluation")
+    executions = optional_int(metrics, "executions", where="evaluation.metrics")
+    if executions is None:
+        return []
+    if executions < 0:
+        return [
+            f"evaluation.metrics.executions = {executions} : un nombre d'exécutions est ≥ 0 (§ L.1 v2.2)"
+        ]
+    out: list[str] = []
+    first_fill = optional_str(evaluation, "first_fill_at", where="evaluation")
+    if (first_fill is None) != (executions == 0):
+        stated = "nul" if first_fill is None else first_fill
+        out.append(
+            f"evaluation.first_fill_at {stated} avec metrics.executions = {executions} — first_fill_at est nul si "
+            "et seulement si executions == 0 (§ L.1 v2.2)"
+        )
+    if executions == 0:
+        equity = require_mapping(evaluation, "equity_daily", where="evaluation")
+        values = require_finite_series(equity, "values", where="evaluation.equity_daily", min_len=1)
+        c = float(capital)
+        off = [i for i, value in enumerate(values) if value != c]
+        if off:
+            out.append(
+                f"evaluation.equity_daily : {len(off)} valeur(s) ≠ C = {capital} (premier écart au point {off[0]}) "
+                "avec metrics.executions = 0 — sans exécution, l'equity est constante, égale au capital (§ L.1 v2.2)"
+            )
+    return out
 
 
 #: § C.5 v2.2 (AM-06) — la raison que porte le bloc ``refused`` de la forme de refus : liste close d'une entrée.

@@ -276,6 +276,12 @@ def clause_4_warmup_at_anchor(
 
 def clause_5_first_execution(evaluation: Mapping[str, Any], *, anchor: datetime) -> dict[str, str]:
     raw = cc.optional_str(evaluation, "first_fill_at", where="evaluation")
+    if raw is None and "first_fill_at" in evaluation:
+        return _clause(
+            "NOT_VERIFIABLE",
+            "aucun remplissage déclaré (first_fill_at nul) : sur une évaluation sans exécution, la clause 5 est "
+            "NON VÉRIFIABLE (§ L.1, § B.8 v2.2)",
+        )
     if raw is None:
         return _clause(
             "NOT_VERIFIABLE",

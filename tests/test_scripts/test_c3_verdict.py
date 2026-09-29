@@ -1929,9 +1929,14 @@ def test_synthetic_absent_nul_ou_chaine_est_une_erreur_d_entree(tmp_path: Path, 
     assert not (tmp_path / "verdict.json").exists()
 
 
-#: § L.1 v2.1 : « `flat_start_proof`, `invocation.single_call` et `first_fill_at` » — les trois porteurs sans
-#: lesquels une évaluation déclarée réelle n'est pas admise.
-REAL_CARRIERS_L1 = ("flat_start_proof", "invocation.single_call", "first_fill_at")
+#: § L.1 v2.2 (AM-08) : « `flat_start_proof`, `invocation.single_call`, `first_fill_at` et `metrics.executions` » —
+#: les porteurs sans lesquels une évaluation déclarée réelle n'est pas admise (les témoins reçoivent le quatrième).
+REAL_CARRIERS_L1 = (
+    "flat_start_proof",
+    "invocation.single_call",
+    "first_fill_at",
+    "metrics.executions",
+)
 
 
 def _carry(evaluation: dict[str, Any], carriers: tuple[str, ...] = REAL_CARRIERS_L1) -> None:
@@ -1942,6 +1947,8 @@ def _carry(evaluation: dict[str, Any], carriers: tuple[str, ...] = REAL_CARRIERS
         evaluation["invocation"] = {"single_call": True}
     if "first_fill_at" in carriers:
         evaluation["first_fill_at"] = (fx.ANCHOR + timedelta(minutes=10)).isoformat()
+    if "metrics.executions" in carriers:
+        evaluation["metrics"]["executions"] = 3
 
 
 def _real_with_carriers(artifacts: dict[str, Any]) -> None:
@@ -4385,12 +4392,6 @@ def test_R18_la_chaine_sur_une_forme_de_refus_n_exige_pas_le_comparateur_d_evalu
 # § L.1 v2.2 (AM-08) — évaluation réelle sans exécution : admise, c5 non vérifiable, jamais `validé` (R-19)
 # ---------------------------------------------------------------------------
 
-R19 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
-)
-
 
 def _no_execution(
     artifacts: dict[str, Any], *, executions: int = 0, constant_equity: bool = True
@@ -4418,7 +4419,6 @@ def _no_execution(
     continuity["state"] = "NOT_VERIFIABLE"
 
 
-@R19
 def test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_jamais_valide() -> (
     None
 ):
@@ -4435,7 +4435,6 @@ def test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_j
     assert decision.issue != cc.ISSUE_VALIDE
 
 
-@R19
 def test_R19_first_fill_at_nul_avec_des_executions_est_une_violation(tmp_path: Path) -> None:
     """§ L.1 v2.2 : « `first_fill_at` est nul si et seulement si `executions == 0` […] Une contradiction entre ces
     faits est une violation (§ I.1, ligne 15). »"""
@@ -4444,13 +4443,68 @@ def test_R19_first_fill_at_nul_avec_des_executions_est_une_violation(tmp_path: P
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
 
 
-@R19
 def test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation(tmp_path: Path) -> None:
     """§ L.1 v2.2 : « `executions == 0` implique `equity_daily` constante, égale au capital `C` ; l'outillage le
     recalcule » — la contradiction est une violation. Rien n'est testé dans l'autre sens."""
     artifacts = _sound()
     _no_execution(artifacts, constant_equity=False)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+
+
+def _violations_of(tmp_path: Path) -> list[str]:
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True
+    violations: list[str] = payload["violations"]
+    return violations
+
+
+def test_R19_un_premier_remplissage_avec_zero_execution_est_une_violation(tmp_path: Path) -> None:
+    """§ L.1 v2.2 : « `first_fill_at` est nul **si et seulement si** `executions == 0` » — l'autre sens : un premier
+    remplissage déclaré avec zéro exécution se contredit (§ I.1, ligne 15). c5 DÉCLARÉ, continuité cohérente : seul
+    le recoupement le voit."""
+    artifacts = _sound()
+    _no_execution(artifacts)
+    artifacts["evaluation"]["first_fill_at"] = (fx.ANCHOR + timedelta(minutes=10)).isoformat()
+    continuity = artifacts["continuity"]
+    continuity["clauses"]["c5"] = {"state": "DECLARED", "detail": "premier remplissage après T"}
+    continuity["state"] = cc.continuity_aggregate(
+        {k: v["state"] for k, v in continuity["clauses"].items()}
+    )
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    violations = _violations_of(tmp_path)
+    assert any("first_fill_at" in v and "executions" in v for v in violations), violations
+
+
+def test_R19_zero_execution_et_equity_constante_differente_de_C_est_une_violation(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.2 : « `executions == 0` implique `equity_daily` constante, **égale au capital `C`** ; l'outillage le
+    recalcule ». Constante à 999 : les rendements sont nuls (le recalcul du § L.2 tient), seule l'implication la voit."""
+    artifacts = _sound()
+    _no_execution(artifacts)
+    artifacts["evaluation"]["equity_daily"]["values"] = [999.0] * (N_DAYS + 1)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    violations = _violations_of(tmp_path)
+    assert any("equity_daily" in v and "executions = 0" in v for v in violations), violations
+    assert not any("returns_config" in v for v in violations), violations
+
+
+def test_R19_zero_execution_equity_non_constante_rendements_coherents_est_une_violation(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.2 : l'implication `executions == 0` ⟹ equity constante, **seule** : les rendements déclarés sont le
+    recalcul exact de l'equity exportée (§ L.2 tient) — le test xfail homologue, lui, est vu d'abord par ce recalcul."""
+    artifacts = _sound()
+    _no_execution(artifacts)
+    values = [1000.0] * (N_DAYS + 1)
+    values[N_DAYS // 2] = 1001.0
+    _reseries(artifacts, fx.returns_of(values), [0.0] * N_DAYS, net_pnl=0.0)
+    artifacts["evaluation"]["metrics"]["executions"] = 0
+    assert artifacts["evaluation"]["equity_daily"]["values"] != [1000.0] * (N_DAYS + 1)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    violations = _violations_of(tmp_path)
+    assert any("equity_daily" in v and "executions = 0" in v for v in violations), violations
+    assert not any("returns_config" in v for v in violations), violations
 
 
 # ---------------------------------------------------------------------------

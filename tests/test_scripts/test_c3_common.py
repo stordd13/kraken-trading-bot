@@ -158,6 +158,7 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "verdict",
             "deferred_evaluation",
             "refused",
+            "executions",
         }
     )
     assert cc.NULLABLE_FIELDS == frozenset(
@@ -1721,7 +1722,11 @@ def evaluation(
 
     § L.2 v2.2 : `equity_daily` part de `C` et compose la série de configuration demandée ; `returns_config` en est
     le recalcul par la formule du texte (`returns_of`), au bit ; `lambdas` sont les `λ` du préfixe déclarés (défaut
-    `0` : le comparateur cash par défaut), `returns_bench` est pris tel quel."""
+    `0` : le comparateur cash par défaut), `returns_bench` est pris tel quel.
+
+    § L.1 v2.2 (AM-08) : un monde qui déclare un premier remplissage déclare aussi son nombre d'exécutions
+    (`metrics.executions`, au moins le premier et les lots de liquidation) ; un monde sans premier remplissage ne le
+    déclare pas (plan du lot 2, D8) — les mondes sans exécution le posent eux-mêmes."""
     cand = manifest_payload["universe"]["candidates"][candidate_index]
     pair = cand["pair"]
     pairs = sorted({c["pair"] for c in manifest_payload["universe"]["candidates"]})
@@ -1782,6 +1787,8 @@ def evaluation(
             "delta_dd": procedure["delta_hat"]["dd"],
         },
     }
+    if metrics is None and first_fill_at is not None:
+        out["metrics"]["executions"] = liquidation_positions + 1
     return out
 
 

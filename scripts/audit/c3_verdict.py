@@ -790,9 +790,14 @@ def _continuity_view(
             "la déclaration de l'évaluation fait foi (§ L.1)"
         )
     # § B.8 v2.1, « Ce qu'exige validé » : sur une évaluation réelle, admise avec ses porteurs (§ L.1), c1 et
-    # c5 valent DÉCLARÉ ou ÉCHEC ; une continuité qui les dit non vérifiables contredit l'évaluation.
+    # c5 valent DÉCLARÉ ou ÉCHEC ; une continuité qui les dit non vérifiables contredit l'évaluation. § B.8 v2.2
+    # (AM-08) : c5 NON VÉRIFIABLE est légitime sur une évaluation réelle sans exécution — `first_fill_at` nul, recoupé
+    # à `metrics.executions` (`cc.execution_recoupements`) ; `validé` lui reste inatteignable (equity constante ⟹ E1).
     if not evaluation_synthetic:
+        first_fill = cc.optional_str(evaluation, "first_fill_at", where="evaluation")
         for key in ("c1", "c5"):
+            if key == "c5" and first_fill is None:
+                continue
             if states[key] == "NOT_VERIFIABLE":
                 violations.append(
                     f"{where}.clauses.{key} NOT_VERIFIABLE sur une évaluation réelle, qui porte sa preuve "
@@ -1106,6 +1111,15 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
         retained=derived_retained,
         violations=violations,
     )
+    # § L.1 v2.2 (AM-08) : une évaluation sans exécution — `first_fill_at` nul ⟺ zéro exécution, et zéro exécution ⟹
+    # equity constante égale à C (du manifeste quand il est au dictionnaire, sinon la valeur gelée du § 0.5, que
+    # `c3_anchor` asserte au manifeste).
+    capital = (
+        cc.load_manifest(cc.require_mapping(artifacts, "manifest", where="artefacts")).capital
+        if "manifest" in artifacts
+        else cc.CAPITAL
+    )
+    violations.extend(cc.execution_recoupements(evaluation, capital=capital))
     estimable, estimability_payload = _estimability_of(
         evaluation, replications, replay, violations=violations
     )

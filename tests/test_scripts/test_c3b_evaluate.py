@@ -2062,14 +2062,7 @@ def test_R18_the_refusal_form_exits_0_and_writes_only_its_artefacts(
 # § L.1 v2.2 (AM-08) — le nombre d'exécutions, et l'admission d'une évaluation réelle sans exécution (R-19)
 # ---------------------------------------------------------------------------
 
-R19 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
-)
 
-
-@R19
 def test_R19_no_trade_is_admitted_with_zero_executions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2088,7 +2081,6 @@ def test_R19_no_trade_is_admitted_with_zero_executions(
         raise AssertionError(f"refusée à l'admission : {exc}") from exc
 
 
-@R19
 def test_R19_evaluation_json_metrics_carry_executions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2098,6 +2090,20 @@ def test_R19_evaluation_json_metrics_carry_executions(
     assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
     evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert set(evaluation["metrics"]) == {"net_pnl", "cagr_pct", "delta_dd", "executions"}
+
+
+def test_R19_executions_is_the_number_of_fills(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ L.1 v2.2 : « `metrics.executions` est le nombre d'exécutions (remplissages) du run d'évaluation » — les trades
+    de `engine.metrics.trades` (achats, ventes, liquidation terminale), dont `first_fill_at` est le premier ; ni les
+    seuls trades de liquidation, ni `total_trades` du moteur (retouche C-6)."""
+    world, engine, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    executions = evaluation["metrics"]["executions"]
+    assert executions == len(engine._trades)
+    assert executions > evaluation["liquidation"]["trades"] > 0
 
 
 # ---------------------------------------------------------------------------
