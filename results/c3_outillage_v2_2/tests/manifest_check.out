@@ -1,0 +1,13 @@
+# manifest_check — 2026-09-29T22:10:24Z — HEAD 892111fad6bf55e01966a605452e1502b34fc963
+manifest_sha256=c3769a6a23147f10da4289981b26737270e98b660d216b415acf94b027cc1ff7
+manifest_28_09_sha256=d96ed10d59a13c0a79506866e263034a37cdcaf4f3661ecaf69b9d5645abc7f4
+chemins_ajoute=family,min_order_quote
+chemins_retire=min_order_usdc
+chemins_reecrit=protocol_sha256,research_log_entry,run_scope,variant_id
+chemins_attendus=0
+diff_manifeste=0
+protocole_v22=0 declare=1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a fichier=1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a
+c3_anchor_local=0
+ancrage_T=0 T=2020-09-11T21:36:00+00:00 attendu=2020-09-11T21:36:00+00:00
+temporaire_supprime=0
+rc=0
