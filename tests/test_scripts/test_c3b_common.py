@@ -1118,14 +1118,6 @@ def test_duplicate_or_off_grid_observed_stamps_are_control_errors(
         c3bc.coverage_series(observed, [], start=WINDOW_START, end=ANCHOR, interval=1440)
 
 
-R20 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir",
-)
-
-
-@R20
 def test_R20_a_series_without_covered_unit_is_written_with_null_dates() -> None:
     """§ A.7 v2.2 (AM-09) : « Ces deux dates sont nulles si et seulement si la série n'a aucune unité couverte au
     sens de D1 » — la série est écrite, elle n'est plus refusée (ancien test : refus `coverage_no_covered_unit`,

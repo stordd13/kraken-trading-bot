@@ -990,12 +990,6 @@ def test_un_suffixe_de_monnaie_hors_des_positions_nommees_n_est_ni_lu_ni_refuse(
 # § A.7 v2.2 (AM-09) — dates de couverture nulles si et seulement si aucune unité couverte (R-20)
 # ---------------------------------------------------------------------------
 
-R20 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir",
-)
-
 
 def _no_covered_unit(cov: dict[str, Any], *, null_dates: bool) -> None:
     """La série 1 w de BTC sans aucune estampille, cohérente par construction (`fx.degrade_coverage`)."""
@@ -1008,7 +1002,6 @@ def _no_covered_unit(cov: dict[str, Any], *, null_dates: bool) -> None:
         block["last_day"] = None
 
 
-@R20
 def test_R20_une_serie_sans_unite_couverte_a_dates_nulles_passe_l_entree(tmp_path: Path) -> None:
     """§ A.7 v2.2 : dates nulles ⟺ aucune unité couverte. Une telle série est cohérente : I-A.7 la valide, et c'est
     D1 (§ A.8, portée paire) qui retirera la paire à la sélection — pas un refus du run."""
@@ -1018,7 +1011,6 @@ def test_R20_une_serie_sans_unite_couverte_a_dates_nulles_passe_l_entree(tmp_pat
     assert code == 0 and payload["refusal"] is None
 
 
-@R20
 def test_R20_des_dates_nulles_sur_une_serie_couverte_sont_une_violation(tmp_path: Path) -> None:
     """§ A.7 v2.2 : « Une date nulle sur une série qui a des unités couvertes […] contredit l'artefact (§ I.1,
     ligne 15). »"""
@@ -1034,7 +1026,6 @@ def test_R20_des_dates_nulles_sur_une_serie_couverte_sont_une_violation(tmp_path
     assert code == 1 and payload["invalide"] is True
 
 
-@R20
 def test_R20_des_dates_presentes_sur_une_serie_sans_unite_couverte_sont_une_violation(
     tmp_path: Path,
 ) -> None:

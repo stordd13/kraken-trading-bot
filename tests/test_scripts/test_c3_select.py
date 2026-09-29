@@ -963,6 +963,33 @@ def _astra_gap(declared_gap: float | None) -> Any:
     return mutate
 
 
+def test_R20_une_serie_sans_unite_couverte_retire_la_paire_par_D1(tmp_path: Path) -> None:
+    """§ A.7 v2.2 (AM-09) : une série sans unité couverte porte des dates nulles et passe l'entrée ; motif d'AM-09 :
+    « Une paire sans données doit sortir par D1 et devenir descriptive (§ I.1, ligne 3). Elle ne doit pas faire
+    refuser tout le run. » La série 1 w de BTC sans aucune estampille : D1 retire les candidats BTC, la sélection
+    publie."""
+
+    def no_week(cov: dict[str, Any]) -> None:
+        n = cc.expected_candles(fx.WINDOW_START, fx.ANCHOR, cc.WEEK_MINUTES)
+        fx.degrade_coverage(cov, "BTC/USDC", cc.WEEK_MINUTES, n_missing=n, offset_units=0)
+        block = cov["pairs"]["BTC/USDC"][str(cc.WEEK_MINUTES)]
+        assert block["covered_units"] == 0
+        block["first_day"] = None
+        block["last_day"] = None
+
+    w = chain(tmp_path, mutate_coverage=no_week)
+    assert w["entry_code"] == 0
+    code, payload = run(w)
+    assert code == 0 and payload is not None
+    obs = cc.read_json(w["observations"])
+    btc = {_identity_of(obs, key) for key, e in obs.items() if e["pair"] == "BTC/USDC"}
+    records = _by_identity(payload)
+    assert btc and all(
+        records[i]["clauses"]["D1"] is False and records[i]["first_failed_gate"] == "D1"
+        for i in btc
+    )
+
+
 def test_revue_R3b_le_contre_exemple_d_Astra_ne_publie_jamais_SELECTION_VALIDE(
     tmp_path: Path,
 ) -> None:

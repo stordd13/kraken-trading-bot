@@ -572,8 +572,9 @@ def a07_coverage(ctx: Context) -> Outcome:
                 unit = cc.require_str(series, "unit", where=swhere, allowed=("day", "week"))
                 cc.require_sequence(series, "missing_stamps", where=swhere)
                 cc.require_float(series, "longest_gap_days", where=swhere)
-                cc.require_str(series, "first_day", where=swhere)
-                cc.require_str(series, "last_day", where=swhere)
+                # § A.7 v2.2 (AM-09) : nulles si et seulement si aucune unité couverte — recoupé ci-dessous.
+                cc.nullable_str(series, "first_day", where=swhere)
+                cc.nullable_str(series, "last_day", where=swhere)
                 recomputed = cc.expected_units(ctx.manifest.window_start, ctx.anchor, iv)
                 if expected_units != recomputed:
                     out.problems.append(
@@ -583,16 +584,17 @@ def a07_coverage(ctx: Context) -> Outcome:
                     out.problems.append(f"{swhere}.unit: {unit!r} != {cc.coverage_unit(iv)!r}")
                 # Revue R3 (b) : tout ce qui est dérivable des estampilles manquantes et des bornes
                 # est recalculé et recoupé — une contradiction est un problème de couverture,
-                # jamais un D1 vert par déclaration.
-                out.problems.extend(
-                    cc.coverage_recompute(
-                        series,
-                        start=ctx.manifest.window_start,
-                        end=ctx.anchor,
-                        interval=iv,
-                        where=swhere,
-                    )["problems"]
+                # jamais un D1 vert par déclaration. § A.7 v2.2 (AM-09) : des dates qui contredisent la couverture
+                # recalculée sont une violation (§ I.1, ligne 15), pas un problème de couverture.
+                recoupe = cc.coverage_recompute(
+                    series,
+                    start=ctx.manifest.window_start,
+                    end=ctx.anchor,
+                    interval=iv,
+                    where=swhere,
                 )
+                out.problems.extend(recoupe["problems"])
+                ctx.violations.extend(recoupe["violations"])
     except cc.MissingEvidenceError as exc:
         out.problems.append(str(exc))
     if not out.problems:

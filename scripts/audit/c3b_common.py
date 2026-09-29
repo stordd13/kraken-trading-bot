@@ -619,10 +619,11 @@ def _unit_key(stamp: datetime, interval: int) -> date | datetime:
 
 def covered_bounds(
     missing: Sequence[datetime], *, start: datetime, end: datetime, interval: int
-) -> tuple[str, str]:
+) -> tuple[str, str] | tuple[None, None]:
     """``first_day`` / ``last_day`` : premier jour de la première unité **couverte** et dernier jour de la
     dernière (§ A.7 l.416, « les premier et dernier jours couverts »), bornés à ``[start, end]``. Aucune unité
-    couverte : les deux dates sont indéfinies et la forme en exige deux — refus (candidat v2.2)."""
+    couverte : les deux dates sont nulles (§ A.7 v2.2, AM-09 : « nulles si et seulement si la série n'a aucune unité
+    couverte au sens de D1 ») — la série est écrite, la paire sortira par D1 ; plus de refus."""
     units = _units(start, end, interval)
     keys = {unit.hi if interval == cc.WEEK_MINUTES else unit.first_day: unit.hi for unit in units}
     by_unit: dict[datetime, list[datetime]] = {unit.hi: [] for unit in units}
@@ -632,13 +633,7 @@ def covered_bounds(
             by_unit[keys[key]].append(stamp)
     covered = [unit for unit in units if _unit_covered(unit, by_unit[unit.hi], interval)]
     if not covered:
-        raise ProducerRefusal(
-            "coverage_no_covered_unit",
-            [
-                f"série {interval}: aucune unité couverte sur ({start.isoformat()}, {end.isoformat()}] — "
-                "premier et dernier jours couverts indéfinis (§ A.7), candidat v2.2"
-            ],
-        )
+        return None, None
     first = max(covered[0].first_day, start.date())
     last = min(covered[-1].last_day, end.date())
     return first.isoformat(), last.isoformat()
@@ -701,8 +696,8 @@ def coverage_series(
     draft = cc.coverage_recompute(series, start=start, end=end, interval=interval, where=where)
     series["covered_units"] = draft["covered_recomputed"]
     final = cc.coverage_recompute(series, start=start, end=end, interval=interval, where=where)
-    if final["problems"]:
-        raise ProducerControlError("coverage_recompute", list(final["problems"]))
+    if final["problems"] or final["violations"]:
+        raise ProducerControlError("coverage_recompute", [*final["problems"], *final["violations"]])
     return series
 
 

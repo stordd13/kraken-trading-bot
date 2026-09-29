@@ -271,7 +271,9 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
 #: (§ F.2 e v2.1 : une combinaison sans réplication retenue ne porte pas de borne) ;
 #: ``raison`` — le verdict inscrit au registre de variantes (§ A.6 v2.2) : ``null`` pour ``validé`` et ``réfuté`` ;
 #: ``first_failed_gate`` — `selection.candidates[]` : ``null`` pour un candidat qui n'a échoué à aucune clause (lu par
-#: le statut au critère d'arrêt, § 10.1, ligne conditionnelle).
+#: le statut au critère d'arrêt, § 10.1, ligne conditionnelle) ;
+#: ``first_day``, ``last_day`` — l'artefact de couverture (§ A.7 v2.2, AM-09) : nulles si et seulement si la série n'a
+#: aucune unité couverte au sens de D1 (``coverage_recompute`` le recoupe).
 NULLABLE_FIELDS: frozenset[str] = frozenset(
     {
         "stale_by_candles",
@@ -292,6 +294,8 @@ NULLABLE_FIELDS: frozenset[str] = frozenset(
         "bound",
         "raison",
         "first_failed_gate",
+        "first_day",
+        "last_day",
     }
 )
 
@@ -1939,20 +1943,36 @@ def coverage_recompute(
             f"{where}.longest_gap_days: {gap_declared!r} != {gap_recomputed!r} recalculé "
             f"({longest_run} estampilles consécutives manquantes)"
         )
-    first_day = require_str(block, "first_day", where=where)
-    last_day = require_str(block, "last_day", where=where)
-    try:
-        first_d = datetime.fromisoformat(first_day).date()
-        last_d = datetime.fromisoformat(last_day).date()
-    except ValueError:
-        problems.append(
-            f"{where}.first_day/last_day: dates illisibles ({first_day!r}, {last_day!r})"
-        )
-    else:
-        if not (start.date() <= first_d <= last_d <= end.date()):
-            problems.append(
-                f"{where}.first_day/last_day: [{first_day}, {last_day}] hors de la fenêtre ou inversés"
+    # § A.7 v2.2 (AM-09) : les deux dates sont nulles si et seulement si la série n'a aucune unité couverte au sens de
+    # D1 (le recalcul) ; l'écart, dans un sens ou dans l'autre, contredit l'artefact (§ I.1, ligne 15) — une
+    # violation, rendue à part, jamais un problème de couverture (plan du lot 2, D10).
+    violations: list[str] = []
+    first_day = nullable_str(block, "first_day", where=where)
+    last_day = nullable_str(block, "last_day", where=where)
+    if first_day is None or last_day is None:
+        if first_day is not None or last_day is not None or covered_recomputed > 0:
+            violations.append(
+                f"{where}.first_day/last_day ({first_day!r}, {last_day!r}) avec {covered_recomputed} unité(s) "
+                "couverte(s) recalculée(s) — nulles si et seulement si aucune unité n'est couverte (§ A.7 v2.2)"
             )
+    else:
+        if covered_recomputed == 0:
+            violations.append(
+                f"{where}.first_day/last_day [{first_day}, {last_day}] sur une série sans unité couverte — nulles si "
+                "et seulement si aucune unité n'est couverte (§ A.7 v2.2)"
+            )
+        try:
+            first_d = datetime.fromisoformat(first_day).date()
+            last_d = datetime.fromisoformat(last_day).date()
+        except ValueError:
+            problems.append(
+                f"{where}.first_day/last_day: dates illisibles ({first_day!r}, {last_day!r})"
+            )
+        else:
+            if not (start.date() <= first_d <= last_d <= end.date()):
+                problems.append(
+                    f"{where}.first_day/last_day: [{first_day}, {last_day}] hors de la fenêtre ou inversés"
+                )
     return {
         "expected_recomputed": expected_recomputed,
         "observed_recomputed": observed_recomputed,
@@ -1962,6 +1982,7 @@ def coverage_recompute(
         "longest_gap_days_recomputed": gap_recomputed,
         "n_missing": len(stamps),
         "problems": problems,
+        "violations": violations,
     }
 
 

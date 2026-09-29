@@ -181,6 +181,8 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "bound",
             "raison",
             "first_failed_gate",
+            "first_day",
+            "last_day",
         }
     )
     assert not (cc.OPTIONAL_FIELDS & cc.NULLABLE_FIELDS), (
