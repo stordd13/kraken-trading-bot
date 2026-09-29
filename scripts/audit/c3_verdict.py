@@ -27,7 +27,7 @@ un désaccord est une **violation** (exit 1), jamais une valeur recopiée.
 **Fin de chaîne § L.2.** La chaîne porte **neuf champs** — issue, raison, identité retenue, statut de
 sélection, état de la continuité, identité de variante (la clé ``sig(canon(manifeste))``,
 plan § 4 l.5′), provenance, sha256 du protocole, sha256 des observations. ``verdict.json`` porte les
-empreintes de ses cinq entrées (``inputs_sha256``) dans ses deux formes, normale et diagnostic ;
+empreintes de ses neuf entrées (``inputs_sha256``) dans ses deux formes, normale et diagnostic ;
 ``verify_chain`` exige le succès enregistré de chaque amont et recoupe leurs empreintes entre elles et
 avec les fichiers fournis — une discordance est une violation. Les empreintes **détectent une
 discordance** ; elles ne prouvent pas que l'invocation courante a réussi : c'est le rôle de la
@@ -75,17 +75,34 @@ le manque nommé ; admise, chaîne ``C3_<campagne>`` sans ligne de portée, et l
 ``synthetic: false``. Ce contrôle est le **premier** de ``decide()`` et de ``run_verdict()`` : aucun
 chemin de publication — verdict calculé, abstention, diagnostic — ne le précède (revue Fin, défaut 1).
 
+**Ce que le producteur garantit, la chaîne le recalcule (§ L.2 v2.2, AM-03).** Quatre entrées de plus :
+le manifeste (coûts, capital et intervalle d'exécution de la convention du § C.3, lus comme le producteur), le
+``benchmark.json`` de l'étape 3 (les ``λ`` publiés), l'export de bougies d'évaluation ``candles_eval.json`` (septième
+entrée hors chaîne, § L.1 ligne 0) et le comparateur d'évaluation. ``decide`` recalcule au bit ``returns_config`` sur
+``equity_daily``, la NAV du B&H plein notionnel sur ``[T, fin]`` (recoupée à celle du comparateur d'évaluation) et
+``returns_bench`` aux ``λ`` de l'étape 3 (recoupés à ceux que l'évaluation déclare) ; toute discordance, et tout
+recalcul impossible sur une évaluation non refusée, est une violation (§ I.1, ligne 15) ; un export hors règle
+d'entrée (une seule paire, aucune estampille après ``fin``) est une erreur d'entrée, code 2. **Contrat de couche** :
+``decide`` fait ces recoupements dès que les quatre entrées sont au dictionnaire (toutes ou aucune) ; la couche
+fichier (``run_verdict``, modes verdict et ``chain``) les exige toujours. **Abstention où l'étape 3 n'a publié aucun
+``λ``** pour la configuration évaluée (non estimable au préfixe) : les recoupements ``λ`` et ``returns_bench`` sont
+sans objet — le texte ne dit pas ce cas (plan du lot 1, D3, candidat v2.3) ; avec une configuration retenue, un ``λ``
+non publié est une violation.
+
 Pure, read-only hors de sa sortie. Aucun accès base de données.
 
 Usage::
 
     poetry run python scripts/audit/c3_verdict.py \\
         --entry entry.json --anchor anchor.json --selection selection.json \\
-        --continuity continuity.json --evaluation evaluation.json --output verdict.json
+        --continuity continuity.json --evaluation evaluation.json --manifest m.json \\
+        --benchmark benchmark.json --candles-eval candles_eval.json --benchmark-eval b.json \\
+        --output verdict.json
 
     poetry run python scripts/audit/c3_verdict.py chain \\
         --manifest m.json --observations o.json --coverage c.json --candles k.json \\
-        --evaluation e.json --benchmark-eval b.json --registry variants.json --out-dir out/
+        --evaluation e.json --benchmark-eval b.json --candles-eval ke.json \\
+        --registry variants.json --out-dir out/
 
 Exit codes: 0 ok, 1 violation, 2 usage ou entrée invalide (§ I.1).
 """
@@ -94,8 +111,9 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 import sys
 from typing import Any
@@ -105,10 +123,15 @@ sys.path.insert(0, str(_ROOT / "src"))
 sys.path.insert(0, str(_ROOT / "scripts"))
 sys.path.insert(0, str(_ROOT / "scripts" / "audit"))
 
+import c3_benchmark as cb  # noqa: E402
 import c3_common as cc  # noqa: E402
 
 STEP = "verdict"
-INPUT_NAMES: tuple[str, ...] = ("entry", "anchor", "selection", "continuity", "evaluation")
+#: Les entrées que la chaîne recoupe entre elles (``verify_chain``).
+CHAIN_INPUT_NAMES: tuple[str, ...] = ("entry", "anchor", "selection", "continuity", "evaluation")
+#: § L.2 v2.2 (AM-03) : les lieux de lecture des recoupements de ce que le producteur garantit.
+PRODUCER_INPUT_NAMES: tuple[str, ...] = ("manifest", "benchmark", "candles_eval", "benchmark_eval")
+INPUT_NAMES: tuple[str, ...] = CHAIN_INPUT_NAMES + PRODUCER_INPUT_NAMES
 SYNTH_PREFIX = "C3_SYNTH_"
 PORTEE_SYNTH = "exercice synthétique de l'outillage — aucune portée économique (§ L.1)"
 ABSTENTION_REASONS: tuple[str, ...] = ("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR")
@@ -320,6 +343,156 @@ def _cross_check_replay(
             f"rejeu : metrics.delta_dd déclaré {delta_dd!r}, Δ̂ dd rejoué {replay.delta_hat['dd']!r} "
             "(§ F.2 c)"
         )
+
+
+def _producer_recoupements(
+    artifacts: Mapping[str, Any],
+    *,
+    evaluation: Mapping[str, Any],
+    anchor: Mapping[str, Any],
+    returns: Sequence[float],
+    bench: Mapping[str, Sequence[float]],
+    retained: str | None,
+    violations: list[str],
+) -> None:
+    """§ L.2 v2.2 (AM-03) — ce que le producteur garantit, la chaîne le recalcule, au bit, dans l'ordre de la grille.
+
+    * ``returns_config`` sur ``equity_daily`` de l'évaluation elle-même, par ``cc.recompute_daily`` (la fonction du
+      producteur : ``r_t = E_t / E_{t−1} − 1``, un point précédé d'une valeur ``≤ 0`` ne porte pas de rendement) ;
+    * l'export ``candles_eval.json`` : une seule paire, celle de la configuration évaluée, aucune estampille après
+      ``fin`` (``cb.load_candles`` sur le manifeste réduit à cette paire) — sinon erreur d'entrée (§ I.1, ligne 2),
+      jamais tronquée ;
+    * le B&H plein notionnel sur ``[T, fin]`` (``cb.build_pair``, convention du § C.3, coûts et capital du manifeste) :
+      non constructible sur une évaluation non refusée → violation (retouche C-3) ; sinon sa NAV, passée en double, est
+      celle du comparateur d'évaluation (retouche C-4) ;
+    * les ``λ`` que l'évaluation déclare, égaux à ceux que l'étape 3 a publiés pour sa configuration, et
+      ``returns_bench`` recalculé sur le blend statique du § C.4 à ces ``λ``, NAV décimale passée en double.
+
+    Contrat de couche : sans aucune des quatre entrées au dictionnaire, rien n'est recoupé ici — la couche fichier
+    les exige toujours ; avec une partie seulement, erreur d'entrée."""
+    present = [name for name in PRODUCER_INPUT_NAMES if name in artifacts]
+    if not present:
+        return
+    if len(present) != len(PRODUCER_INPUT_NAMES):
+        missing = [name for name in PRODUCER_INPUT_NAMES if name not in present]
+        raise cc.MissingEvidenceError(
+            f"artefacts : entrées {missing} absentes — les quatre lieux de lecture du § L.2 v2.2 sont exigés "
+            "ensemble"
+        )
+    manifest = cc.load_manifest(cc.require_mapping(artifacts, "manifest", where="artefacts"))
+    strategy = cc.require_str(evaluation, "strategy", where="evaluation")
+    pair = cc.require_str(evaluation, "pair", where="evaluation")
+    identity = cc.candidate_identity(
+        strategy, pair, cc.require_mapping(evaluation, "params", where="evaluation")
+    )
+    start = cc.require_datetime(anchor, "anchor", where="anchor")
+    end = cc.require_datetime(
+        cc.require_mapping(anchor, "window", where="anchor"), "end", where="anchor.window"
+    )
+    days = (end - start).total_seconds() / 86400.0
+
+    # 1. returns_config ← equity_daily.
+    equity = cc.require_mapping(evaluation, "equity_daily", where="evaluation")
+    values = cc.require_finite_series(equity, "values", where="evaluation.equity_daily", min_len=2)
+    recomputed = cc.recompute_daily(values, days=days).returns
+    if tuple(returns) != recomputed:
+        first = next(
+            (i for i, (a, b) in enumerate(zip(returns, recomputed, strict=False)) if a != b),
+            min(len(returns), len(recomputed)),
+        )
+        violations.append(
+            f"evaluation.returns_config ({len(returns)} rendements) n'est pas le recalcul sur equity_daily "
+            f"({len(recomputed)}) — première différence au rendement {first} (§ L.2 v2.2)"
+        )
+
+    # 2. L'export de bougies d'évaluation, sous sa règle d'entrée.
+    export = cc.require_mapping(artifacts, "candles_eval", where="artefacts")
+    listed = sorted(cc.require_mapping(export, "pairs", where="candles_eval"))
+    if listed != [pair]:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"candles_eval.pairs {listed} : l'export de bougies d'évaluation porte une seule paire, celle de la "
+            f"configuration évaluée ({pair!r}) — erreur d'entrée, jamais tronquée (§ L.2 v2.2)",
+        )
+    reduced = replace(manifest, candidates=tuple(c for c in manifest.candidates if c.pair == pair))
+    if not reduced.candidates:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"la paire évaluée {pair!r} n'est pas une paire de l'univers du manifeste (§ L.2 v2.2)",
+        )
+    parsed = cb.load_candles(export, reduced, end=end)
+
+    # 3. Le B&H plein notionnel sur [T, fin], et la NAV du comparateur d'évaluation.
+    spread, slippage = manifest.pair_costs[pair]
+    rebuilt = cb.build_pair(
+        pair,
+        parsed[pair],
+        start=start,
+        end=end,
+        exec_interval=manifest.exec_interval,
+        spread=spread,
+        slippage=slippage,
+        taker=manifest.taker,
+        capital=manifest.capital,
+    )
+    comparator = cc.require_mapping(artifacts, "benchmark_eval", where="artefacts")
+    nav = cc.require_finite_series(comparator, "nav", where="benchmark_eval", min_len=0)
+    declared_lambdas = cc.require_mapping(evaluation, "lambdas", where="evaluation")
+    if set(declared_lambdas) != set(cc.MATCHINGS):
+        raise cc.MissingEvidenceError(
+            f"evaluation.lambdas : appariements {sorted(declared_lambdas)} != {list(cc.MATCHINGS)}"
+        )
+    lambdas = {
+        m: cc.require_float(declared_lambdas, m, where="evaluation.lambdas") for m in cc.MATCHINGS
+    }
+    if not rebuilt.buildable:
+        violations.append(
+            f"comparateur d'évaluation non reconstructible sur candles_eval.json ({rebuilt.reason}) — sur une "
+            "évaluation non refusée, un recalcul impossible est une violation (§ L.2 v2.2)"
+        )
+        return
+    rebuilt_nav = tuple(float(v) for v in rebuilt.nav)
+    if tuple(nav) != rebuilt_nav:
+        violations.append(
+            f"benchmark_eval.nav ({len(nav)} points) n'est pas la NAV du B&H plein notionnel recalculée sur "
+            f"candles_eval.json ({len(rebuilt_nav)}) (§ L.2 v2.2)"
+        )
+
+    # 4. Les λ de l'étape 3, puis returns_bench sur le blend à ces λ.
+    published = cc.require_mapping(
+        cc.require_mapping(
+            cc.require_mapping(artifacts, "benchmark", where="artefacts"),
+            "candidates",
+            where="benchmark",
+        ),
+        identity,
+        where="benchmark.candidates",
+    )
+    if not cc.require_bool(published, "estimable", where="benchmark.candidates[évaluée]"):
+        if retained is not None:
+            violations.append(
+                "benchmark.json ne publie aucun λ pour la configuration évaluée, alors qu'une configuration est "
+                "retenue — recalcul de returns_bench impossible (§ L.2 v2.2)"
+            )
+        # Abstention, λ non publiés : recoupements λ et returns_bench sans objet (plan du lot 1, D3).
+        return
+    for m in cc.MATCHINGS:
+        stage3 = cc.require_float(published, f"lambda_{m}", where="benchmark.candidates[évaluée]")
+        if lambdas[m] != stage3:
+            violations.append(
+                f"λ_{m} déclaré par l'évaluation {lambdas[m]!r}, publié par l'étape 3 {stage3!r} (§ L.2 v2.2)"
+            )
+        blend = cb.blend_nav(rebuilt.nav, Decimal(str(stage3)), manifest.capital)
+        expected = cc.recompute_daily([float(v) for v in blend], days=days).returns
+        if tuple(bench[m]) != expected:
+            first = next(
+                (i for i, (a, b) in enumerate(zip(bench[m], expected, strict=False)) if a != b),
+                min(len(bench[m]), len(expected)),
+            )
+            violations.append(
+                f"evaluation.returns_bench.{m} n'est pas le recalcul sur candles_eval.json au λ de l'étape 3 — "
+                f"première différence au rendement {first} (§ L.2 v2.2)"
+            )
 
 
 def _bounds_all_positive(
@@ -676,7 +849,8 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     v2.1 : avant toute lecture), puis le contrat d'entrée (refus R0 avant toute autre chose, § H), puis
     **la lecture stricte complète des cinq artefacts** : ancre, sélection (listes, statut dérivé),
     continuité (états contre leur liste close, résumés dérivés et recoupés), évaluation (séries, six
-    combinaisons, métriques des portes, six bornes). Aucun chemin de publication — abstention,
+    combinaisons, métriques des portes, six bornes) et, quand elles sont au dictionnaire, les quatre entrées du
+    § L.2 v2.2, recoupées au bit (``_producer_recoupements``). Aucun chemin de publication — abstention,
     inconclusif par raison run, réfuté, validé — ne précède cette lecture : une preuve manquante est
     un code 2, jamais un inconclusif publié. La décision suit ensuite l'ordre du § H : abstention,
     continuité (clauses), estimabilité (§ H.0), portes, bornes.
@@ -704,6 +878,16 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
     returns, bench = _read_series(evaluation)
     replay, replay_meta = _replay(evaluation, anchor, returns, bench)
     _cross_check_replay(replications, replay, evaluation, violations=violations)
+    # § L.2 v2.2 (AM-03) : ce que le producteur garantit, recalculé avant toute décision, abstention comprise.
+    _producer_recoupements(
+        artifacts,
+        evaluation=evaluation,
+        anchor=anchor,
+        returns=returns,
+        bench=bench,
+        retained=derived_retained,
+        violations=violations,
+    )
     estimable, estimability_payload = _estimability_of(
         evaluation, replications, replay, violations=violations
     )
@@ -1036,6 +1220,26 @@ def verify_chain(
     return violations, checks
 
 
+def verify_producer_inputs(
+    raws: Mapping[str, Mapping[str, Any]], paths: Mapping[str, Path]
+) -> list[str]:
+    """§ L.2 v2.2 : les lieux de lecture des recoupements sont ceux de la même chaîne. Chaque fichier fourni est
+    **re-haché** (``cc.check_inputs_match``) et comparé à l'empreinte que son consommateur amont a enregistrée : le
+    manifeste à ``anchor``, ``benchmark.json`` à ``selection``, le comparateur d'évaluation à ``continuity``.
+    ``candles_eval.json`` n'a pas d'amont qui l'enregistre (entrée hors chaîne) : son empreinte est celle que porte
+    ``verdict.inputs_sha256``, et son contenu est rejoué (``_producer_recoupements``). Les discordances sont des
+    violations ; elles n'entrent pas dans ``chain.checks``, qui reste la liste des recoupements entre amonts
+    (plan du lot 1, D5)."""
+    out = cc.check_inputs_match(raws["anchor"], {"manifest": paths["manifest"]}, where="anchor")
+    out += cc.check_inputs_match(
+        raws["selection"], {"benchmark": paths["benchmark"]}, where="selection"
+    )
+    out += cc.check_inputs_match(
+        raws["continuity"], {"benchmark_eval": paths["benchmark_eval"]}, where="continuity"
+    )
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Artefact
 # ---------------------------------------------------------------------------
@@ -1199,7 +1403,7 @@ def run_verdict(
     now: datetime,
     chain_steps: Sequence[Mapping[str, Any]] = (),
 ) -> int:
-    """Lit les cinq artefacts, vérifie la chaîne, décide, écrit ``verdict.json`` (0 ou 1) ou rien (2).
+    """Lit les neuf entrées, vérifie la chaîne, décide, écrit ``verdict.json`` (0 ou 1) ou rien (2).
 
     ``chain.verified`` (définition fixée, revue Fin 2) : intégrité mécanique de la chaîne — codes
     de succès des amonts, cohérence interne de chaque amont, empreintes concordantes ; vrai
@@ -1246,6 +1450,7 @@ def run_verdict(
             artifacts, inputs, violations=violations, checks=chain["checks"]
         )
         chain["verified"] = not chain_violations
+        violations.extend(verify_producer_inputs(artifacts, inputs))
         variant_key = cc.require_str(artifacts["anchor"], "variant_key", where="anchor")
         recorded = cc.require_mapping(artifacts["entry"], "inputs_sha256", where="entry")
         observations_sha256 = cc.require_str(recorded, "observations", where="entry.inputs_sha256")
@@ -1474,12 +1679,22 @@ def run_chain(args: argparse.Namespace) -> int:
     )
     if code != 0:
         return code
+    if args.candles_eval is None:
+        print(
+            "CHAINE ARRETEE avant le verdict : --candles-eval requis (§ L.1 v2.2, ligne 0 : septième entrée)",
+            file=sys.stderr,
+        )
+        return 2
     paths = {
         "entry": files["entry"],
         "anchor": files["anchor"],
         "selection": files["select"],
         "continuity": files["continuity"],
         "evaluation": Path(args.evaluation),
+        "manifest": Path(args.manifest),
+        "benchmark": files["benchmark"],
+        "candles_eval": Path(args.candles_eval),
+        "benchmark_eval": Path(args.benchmark_eval),
     }
     return run_verdict(
         paths, output=out / "verdict.json", campaign=args.campaign, now=now, chain_steps=steps
@@ -1498,6 +1713,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--selection", type=Path, required=True)
     parser.add_argument("--continuity", type=Path, required=True)
     parser.add_argument("--evaluation", type=Path, required=True)
+    # § L.2 v2.2 (AM-03) : les lieux de lecture des recoupements de ce que le producteur garantit.
+    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--benchmark", type=Path, required=True)
+    parser.add_argument("--candles-eval", type=Path, required=True)
+    parser.add_argument("--benchmark-eval", type=Path, required=True)
     parser.add_argument("--campaign", default="C3A")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument(
@@ -1517,6 +1737,8 @@ def build_chain_parser() -> argparse.ArgumentParser:
     parser.add_argument("--candles", type=Path, default=None)
     parser.add_argument("--evaluation", type=Path, required=True)
     parser.add_argument("--benchmark-eval", type=Path, required=True)
+    # § L.1 v2.2, ligne 0 : la septième entrée ; absente, la chaîne s'arrête avant le verdict (code 2).
+    parser.add_argument("--candles-eval", type=Path, default=None)
     parser.add_argument("--registry", type=Path, required=True)
     parser.add_argument("--out-dir", type=Path, required=True)
     parser.add_argument("--campaign", default="C3A")

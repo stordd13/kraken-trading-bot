@@ -1902,6 +1902,9 @@ def test_the_full_chain_verifies_a_produced_evaluation(
             str(eval_out / evaluate.EVALUATION),
             "--benchmark-eval",
             str(eval_out / evaluate.BENCHMARK_EVAL),
+            # § L.1 v2.2, ligne 0 : la septième entrée, que le producteur écrit déjà.
+            "--candles-eval",
+            str(eval_out / evaluate.CANDLES_EVAL),
             "--registry",
             str(registry),
             "--out-dir",

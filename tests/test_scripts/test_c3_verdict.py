@@ -114,13 +114,32 @@ def _evaluation_series(
     }
 
 
+def _on_grid(returns_config: Any, returns_bench: Any) -> tuple[list[float], Any, dict[str, Any]]:
+    """§ L.2 v2.2 : `returns_config` est le recalcul sur `equity_daily` (`r_t = E_t / E_{t−1} − 1`). La trajectoire
+    compose la série demandée depuis `C` (`fx.equity_of`) et les rendements en sont tirés (`fx.returns_of`) ; le
+    comparateur passe par la même composition, pour que deux séries demandées égales restent égales au bit."""
+    values = fx.equity_of(returns_config)
+    bench = {
+        m: fx.returns_of(fx.equity_of(s)) for m, s in fx.bench_by_matching(returns_bench).items()
+    }
+    equity = {"start": fx.ANCHOR.isoformat(), "end": fx.WINDOW_END.isoformat(), "values": values}
+    return fx.returns_of(values), bench, equity
+
+
 def _reseries(
     artifacts: dict[str, Any], returns_config: Any, returns_bench: Any, *, net_pnl: float = 42.0
 ) -> None:
-    """Remplace les séries de l'évaluation et tout ce qui en dérive — l'artefact reste cohérent."""
-    artifacts["evaluation"].update(
-        _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
-    )
+    """Remplace les séries de l'évaluation et tout ce qui en dérive — l'artefact reste cohérent. Dans un monde du
+    § L.2 v2.2 (entrée `candles_eval` posée, `_v22_world`), seules les séries sont remplacées : `equity_daily` et
+    l'export restent les lieux de lecture que la chaîne recoupe."""
+    if "candles_eval" in artifacts:
+        artifacts["evaluation"].update(
+            _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
+        )
+        return
+    config, bench, equity = _on_grid(returns_config, returns_bench)
+    artifacts["evaluation"].update(_evaluation_series(config, bench, net_pnl=net_pnl))
+    artifacts["evaluation"]["equity_daily"] = equity
 
 
 def _artifacts(
@@ -132,7 +151,8 @@ def _artifacts(
     bounds: dict[str, float] | None = None,
     provenance: str = cc.PROVENANCE_CLEAN,
 ) -> dict[str, dict[str, Any]]:
-    series = _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
+    config, bench, equity = _on_grid(returns_config, returns_bench)
+    series = _evaluation_series(config, bench, net_pnl=net_pnl)
     if metrics is not None:
         series["metrics"].update(metrics)
     for combination, bound in (bounds or {}).items():
@@ -205,6 +225,8 @@ def _artifacts(
             "strategy": "s",
             "pair": "BTC/USDC",
             "params": {"a": 1},
+            "equity_daily": equity,
+            "lambdas": {"dd": 0.0, "sigma": 0.0},
             **series,
         },
     }
@@ -424,6 +446,10 @@ def test_le_parseur_n_expose_que_des_chemins_et_un_horodatage() -> None:
         "selection",
         "continuity",
         "evaluation",
+        "manifest",
+        "benchmark",
+        "candles_eval",
+        "benchmark_eval",
         "campaign",
         "output",
         "now",
@@ -761,13 +787,53 @@ def test_une_combinaison_manquante_est_un_contrat_rompu() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]:
-    """Écrit les cinq artefacts dans l'ordre de la chaîne, en posant des empreintes cohérentes
-    (manifeste et observations fictifs mais identiques partout ; anchor, entry et evaluation réels)."""
-    paths = {
-        name: tmp_path / f"{name}.json"
-        for name in ("entry", "anchor", "selection", "continuity", "evaluation")
+def _producer_inputs(artifacts: Mapping[str, Any]) -> dict[str, Any]:
+    """§ L.2 v2.2 : les quatre lieux de lecture, ceux que le monde porte ou, par défaut, ceux d'un monde cash
+    (`λ = 0`, `_artifacts`) — le manifeste des fixtures, `λ` publiés nuls et estimables pour la configuration
+    évaluée, l'export `[T, fin]` réduit à sa paire, le comparateur d'évaluation et sa NAV. Une évaluation déformée
+    par le test (paire ou identité illisibles) retombe sur la configuration du témoin : c'est le verdict qu'on
+    éprouve, pas l'écriture de la fixture."""
+    evaluation = artifacts.get("evaluation")
+    evaluation = evaluation if isinstance(evaluation, Mapping) else {}
+    pair = evaluation.get("pair") if isinstance(evaluation.get("pair"), str) else "BTC/USDC"
+    pair = pair if pair in fx.PAIR_COSTS else "BTC/USDC"
+    try:
+        identity = cc.candidate_identity(
+            evaluation["strategy"], evaluation["pair"], evaluation["params"]
+        )
+    except (KeyError, TypeError, ValueError):  # évaluation déformée exprès par le test
+        identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
+    export = fx.candles(fx.manifest(), start=fx.ANCHOR, end=fx.WINDOW_END)
+    export["pairs"] = {pair: export["pairs"][pair]}
+    return {
+        "manifest": artifacts.get("manifest", fx.manifest()),
+        "benchmark": artifacts.get(
+            "benchmark",
+            {
+                "candidates": {
+                    identity: {
+                        "pair": pair,
+                        "estimable": True,
+                        "lambda_dd": 0.0,
+                        "lambda_sigma": 0.0,
+                    }
+                }
+            },
+        ),
+        "candles_eval": artifacts.get("candles_eval", export),
+        "benchmark_eval": artifacts.get("benchmark_eval", fx.benchmark_eval(pair)),
     }
+
+
+def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]:
+    """Écrit les neuf entrées dans l'ordre de la chaîne, en posant des empreintes cohérentes (observations
+    fictives mais identiques partout ; manifeste, anchor, entry, benchmark, evaluation et comparateur réels).
+    § L.2 v2.2 : les quatre lieux de lecture sont ceux du monde, ou ceux d'un monde cash (`_producer_inputs`)."""
+    paths = {name: tmp_path / f"{name}.json" for name in cv.INPUT_NAMES}
+    producer = _producer_inputs(artifacts)
+    for name, content in producer.items():
+        cc.write_json(paths[name], content)
+    manifest_sha = cc.file_sha256(paths["manifest"])
 
     def stamp(name: str, inputs: dict[str, str]) -> None:
         art = artifacts[name]
@@ -778,21 +844,22 @@ def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]
         ):
             art["inputs_sha256"] = inputs
 
-    stamp("anchor", {"manifest": MANIFEST_SHA})
+    stamp("anchor", {"manifest": manifest_sha})
     cc.write_json(paths["anchor"], artifacts["anchor"])
     anchor_sha = cc.file_sha256(paths["anchor"])
     stamp(
-        "entry", {"manifest": MANIFEST_SHA, "anchor": anchor_sha, "observations": OBSERVATIONS_SHA}
+        "entry", {"manifest": manifest_sha, "anchor": anchor_sha, "observations": OBSERVATIONS_SHA}
     )
     cc.write_json(paths["entry"], artifacts["entry"])
     entry_sha = cc.file_sha256(paths["entry"])
     stamp(
         "selection",
         {
-            "manifest": MANIFEST_SHA,
+            "manifest": manifest_sha,
             "anchor": anchor_sha,
             "entry": entry_sha,
             "observations": OBSERVATIONS_SHA,
+            "benchmark": cc.file_sha256(paths["benchmark"]),
         },
     )
     cc.write_json(paths["selection"], artifacts["selection"])
@@ -802,15 +869,16 @@ def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]
     stamp(
         "continuity",
         {
-            "manifest": MANIFEST_SHA,
+            "manifest": manifest_sha,
             "anchor": anchor_sha,
             "evaluation": cc.file_sha256(paths["evaluation"]),
+            "benchmark_eval": cc.file_sha256(paths["benchmark_eval"]),
         },
     )
     cc.write_json(paths["continuity"], artifacts["continuity"])
     argv: list[str] = []
-    for name in ("entry", "anchor", "selection", "continuity", "evaluation"):
-        argv += [f"--{name}", str(paths[name])]
+    for name in cv.INPUT_NAMES:
+        argv += [f"--{name.replace('_', '-')}", str(paths[name])]
     argv += ["--output", str(tmp_path / "verdict.json"), "--now", "2026-09-21T00:00:00+00:00"]
     return argv
 
@@ -2295,10 +2363,35 @@ def _chain_world(
     if index is None:
         index = 0  # abstention : l'évaluation porte sur un candidat de l'univers, sans retenue
     cand = w["payload"]["universe"]["candidates"][index]
+    # § L.2 v2.2 : l'export de bougies d'évaluation (septième entrée) et, quand l'étape 3 les a publiés, les λ de la
+    # configuration évaluée, lus dans le benchmark.json de la chaîne sonde (déterministe : celui de la chaîne) ;
+    # returns_bench est le blend statique à ces λ sur le B&H de l'export, NAV décimale passée en double.
+    pair = cand["pair"]
+    export = fx.candles(w["payload"], start=fx.ANCHOR, end=fx.WINDOW_END)
+    export["pairs"] = {pair: export["pairs"][pair]}
+    w["candles_eval"] = tmp_path / "candles_eval.json"
+    cc.write_json(w["candles_eval"], export)
+    identity = cc.candidate_identity(cand["strategy"], pair, cand["params"])
+    published = cc.read_json(tmp_path / "probe" / "b.json")["candidates"][identity]
+    if published["estimable"]:
+        lambdas = {"dd": published["lambda_dd"], "sigma": published["lambda_sigma"]}
+        eval_kw.setdefault("lambdas", lambdas)
+        eval_kw.setdefault(
+            "returns_bench",
+            {
+                m: fx.returns_of(
+                    [
+                        float(v)
+                        for v in cb.blend_nav(fx.bh_nav(pair), Decimal(str(lam)), Decimal(1000))
+                    ]
+                )
+                for m, lam in lambdas.items()
+            },
+        )
     w["evaluation"] = tmp_path / "evaluation.json"
     w["benchmark_eval"] = tmp_path / "benchmark_eval.json"
     cc.write_json(w["evaluation"], fx.evaluation(w["payload"], candidate_index=index, **eval_kw))
-    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(cand["pair"]))
+    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(pair))
     w["out"] = tmp_path / "run"
     return w
 
@@ -2327,6 +2420,8 @@ def _chain_argv(
         argv += ["--coverage", str(w["coverage"])]
     if candles:
         argv += ["--candles", str(w["candles"])]
+    if "candles_eval" in w:
+        argv += ["--candles-eval", str(w["candles_eval"])]
     return argv
 
 
@@ -4139,7 +4234,6 @@ def test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_mot
     assert " | continuite=- | " in payload["verdict_string"]
 
 
-@R18
 def test_R18_un_refus_qui_porte_des_series_se_contredit(tmp_path: Path) -> None:
     """§ C.5 v2.2 : « Un artefact d'évaluation qui porte à la fois un bloc `refused` et des séries se contredit :
     c'est une violation » (§ I.1, ligne 15, code 1)."""
@@ -4253,12 +4347,6 @@ def test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation(tmp_
 # § L.2 v2.2 (AM-03) — ce que le producteur garantit, la chaîne le recalcule (R-15)
 # ---------------------------------------------------------------------------
 
-R15 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir",
-)
-
 #: λ déclarés par l'étape 3 pour la configuration du monde (`_artifacts`), et repris par l'évaluation.
 LAMBDAS_V22 = {"dd": 0.5, "sigma": 0.4}
 
@@ -4302,6 +4390,21 @@ def _v22_world(artifacts: dict[str, Any]) -> dict[str, Any]:
         for m, lam in LAMBDAS_V22.items()
     }
     equity = fx.nav_path("BTC/USDC", 7, N_DAYS + 1, drift=0.0006)
+    artifacts["manifest"] = payload
+    artifacts["benchmark"] = {
+        "candidates": {
+            identity: {
+                "estimable": True,
+                "lambda_dd": LAMBDAS_V22["dd"],
+                "lambda_sigma": LAMBDAS_V22["sigma"],
+            }
+        }
+    }
+    artifacts["candles_eval"] = export
+    artifacts["benchmark_eval"] = {
+        **fx.benchmark_eval("BTC/USDC"),
+        "nav": [float(v) for v in bench.nav],
+    }
     _reseries(artifacts, _returns_of(equity), returns_bench)
     evaluation = artifacts["evaluation"]
     evaluation["equity_daily"] = {
@@ -4310,16 +4413,6 @@ def _v22_world(artifacts: dict[str, Any]) -> dict[str, Any]:
         "values": equity,
     }
     evaluation["lambdas"] = dict(LAMBDAS_V22)
-    artifacts["benchmark"] = {
-        "candidates": {
-            identity: {"lambda_dd": LAMBDAS_V22["dd"], "lambda_sigma": LAMBDAS_V22["sigma"]}
-        }
-    }
-    artifacts["candles_eval"] = export
-    artifacts["benchmark_eval"] = {
-        **fx.benchmark_eval("BTC/USDC"),
-        "nav": [float(v) for v in bench.nav],
-    }
     return {"bench": bench, "equity": equity, "returns_bench": returns_bench}
 
 
@@ -4328,7 +4421,6 @@ def _decide(artifacts: dict[str, Any]) -> tuple[Any, list[str]]:
     return cv.decide(artifacts, violations=violations), violations
 
 
-@R15
 def test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une_violation() -> (
     None
 ):
@@ -4343,7 +4435,6 @@ def test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une
     assert any("returns_config" in v for v in violations), violations
 
 
-@R15
 def test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation() -> None:
     """§ L.2 v2.2, deuxième ligne : « égalité exacte avec les `λ_dd` et `λ_σ` que l'étape 3 a publiés »."""
     artifacts = _sound()
@@ -4353,7 +4444,6 @@ def test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_viola
     assert any("lambda" in v or "λ" in v for v in violations), violations
 
 
-@R15
 def test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation() -> None:
     """§ L.2 v2.2, troisième ligne : `returns_bench` recalculé sur l'export de bougies d'évaluation (B&H § C.3,
     blend § C.4 aux λ de l'étape 3) ; une discordance au bit est une violation."""
@@ -4366,7 +4456,6 @@ def test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation(
     assert any("returns_bench" in v for v in violations), violations
 
 
-@R15
 def test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_une_violation() -> (
     None
 ):
@@ -4379,7 +4468,6 @@ def test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_u
     assert any("nav" in v for v in violations), violations
 
 
-@R15
 def test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_est_une_violation() -> (
     None
 ):
@@ -4395,7 +4483,6 @@ def test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_e
     assert decision.reason != "E_NO_BENCHMARK"
 
 
-@R15
 @pytest.mark.parametrize("defaut", ["estampille après fin", "seconde paire"])
 def test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse(defaut: str) -> None:
     """§ L.2 v2.2 : « L'export de bougies d'évaluation porte une seule paire, celle de la configuration évaluée,
@@ -4419,12 +4506,27 @@ def test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse(defaut: str) 
     assert refused, "l'export hors règle d'entrée n'est pas refusé"
 
 
-@R15
 def test_R15_le_parseur_chain_expose_la_septieme_entree() -> None:
     """§ L.1 v2.2, ligne 0 : sept entrées, dont « l'export de bougies d'évaluation `candles_eval.json` ». Jumeau de
     l'ensemble exact du test du parseur (option indicative)."""
     actions = {a.dest for a in cv.build_chain_parser()._actions}
     assert "candles_eval" in actions
+
+
+def test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit(tmp_path: Path) -> None:
+    """§ L.2 v2.2 : « à l'étape de verdict (§ L.1, pas 6), elle recalcule chacune depuis un lieu de lecture nommé, et
+    toute discordance est une violation (§ I.1, ligne 15) ». Par la CLI (plan du lot 1, D8, A1) : la couche fichier
+    lit les quatre entrées et le verdict les recoupe — le monde « un ulp » écrit sur disque sort en code 1, un
+    diagnostic nommant `returns_config`, jamais un verdict publié."""
+    artifacts = _sound()
+    world = _v22_world(artifacts)
+    config = _returns_of(world["equity"])
+    config[10] = math.nextafter(config[10], math.inf)
+    _reseries(artifacts, config, world["returns_bench"])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+    assert any("returns_config" in v for v in payload["violations"]), payload["violations"]
 
 
 # ---------------------------------------------------------------------------
