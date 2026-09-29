@@ -20,10 +20,12 @@ def section(am: str) -> list[str]:
     return lines[start:end]
 
 
-def apres(am: str, entete: str, *, n: int = 1) -> str:
+def apres(am: str, entete: str | None, *, n: int = 1) -> str:
+    """``entete=None`` vise l'en-tête sans parenthèse, « **Après.** »."""
     lines = section(am)
-    hits = [i for i, line in enumerate(lines) if line.startswith(f"**Après ({entete}")]
-    assert len(hits) >= n, f"{am} : en-tête « Après ({entete} » introuvable"
+    prefix = "**Après.**" if entete is None else f"**Après ({entete}"
+    hits = [i for i, line in enumerate(lines) if line.startswith(prefix)]
+    assert len(hits) >= n, f"{am} : en-tête « {prefix} » introuvable"
     i = hits[n - 1] + 1
     while i < len(lines) and not lines[i].startswith(">"):
         i += 1

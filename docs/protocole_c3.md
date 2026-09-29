@@ -1671,7 +1671,15 @@ Q3   Δ^dd post-ancrage > 0
 ```
 
 **Leurs valeurs et leurs classes sont celles du § A.10**, section d'origine des seuils ; les répéter ici les
-ferait diverger. Seuls les domaines de mesure changent.
+ferait diverger. Seuls les domaines de mesure changent, et le chemin de sommation du rendement géométrique.
+- **Les deux chemins.** Au préfixe (`P2`), la somme des `log1p` est une somme correctement arrondie. À
+  l'évaluation (`Q2`), c'est le chemin du § F.2 (c), le seul que la chaîne rejoue au bit.
+- **L'écart est borné.** Sur une même série de `n` rendements, les deux sommes diffèrent au plus de
+  `1,01 · n · u · Σ|log1p r|`, avec `u = 2⁻⁵³` : c'est la borne de toute sommation en double précision, quel
+  qu'en soit l'ordre, à laquelle s'ajoute l'arrondi final. Le CAGR diffère d'autant, multiplié par
+  `(100 + CAGR) · 365 / n_jours`, à quelques ulps près.
+- **Il est sans effet décisionnel.** Cet écart ne reçoit ni seuil ni classe (§ 0.5). `P2` et `Q2` portent sur
+  des fenêtres disjointes et ne se comparent jamais entre elles.
 
 **Ce que chacune lit, parce que la distinction a déjà induit une erreur dans ce document :**
 
