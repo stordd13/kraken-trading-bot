@@ -1,3 +1,12 @@
 ## AM-04 témoin « suffixe hors positions ni lu ni refusé » — 2026-09-29T09:04:13Z — HEAD 451a148
 cible=scripts/audit/c3_entry.py témoins=tests/test_scripts/test_c3_entry.py::test_un_suffixe_de_monnaie_hors_des_positions_nommees_n_est_ni_lu_ni_refuse
 sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## F : test du sha — un octet de plus dans le protocole — 2026-09-29T09:48:30Z — HEAD ff77c60
+cible=docs/protocole_c3.md témoins=tests/test_scripts/test_c3_common.py::test_le_dernier_sha_consigne_hors_du_fichier_est_celui_du_protocole_livre
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## F : tests du sha — empreinte v2.2 de la table altérée — 2026-09-29T09:48:32Z — HEAD ff77c60
+cible=docs/amendements_c3_v2.2.md témoins=tests/test_scripts/test_c3_common.py::test_le_dernier_sha_consigne_hors_du_fichier_est_celui_du_protocole_livre tests/test_scripts/test_c3_common.py::test_aucun_sha_de_protocole_n_est_ecrit_en_dur_dans_l_outillage_ni_les_tests
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## F : test « aucun sha en dur » seul — empreinte v2.2 de la table altérée — 2026-09-29T09:48:42Z — HEAD ff77c60
+cible=docs/amendements_c3_v2.2.md témoins=tests/test_scripts/test_c3_common.py::test_aucun_sha_de_protocole_n_est_ecrit_en_dur_dans_l_outillage_ni_les_tests
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
