@@ -1,0 +1,2 @@
+    if False:
+        equity = require_mapping(evaluation, "equity_daily", where="evaluation")

@@ -1,0 +1,3 @@
+    if rebuilt.buildable:
+        violations.append(
+            "refus comparator_not_buildable démenti

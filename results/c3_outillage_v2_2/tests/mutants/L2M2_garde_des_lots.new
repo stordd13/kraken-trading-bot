@@ -1,0 +1,1 @@
+            cc.require_decimal(lot, f"amount_{base}", where=lwhere)

@@ -1,0 +1,13 @@
+        try:
+            comparator, benchmark_eval = evaluation_comparator(
+                candles, manifest=manifest, candidate=candidate, anchor=anchor, end=end
+            )
+        except c3bc.ProducerControlError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - contrat 0/2/3 : une construction en échec est un contrôle, jamais une trace
+            # Hors réserve (plan du lot 2, D2) : la garde vit à son site, avant le moteur — dans l'étape 10b, le moteur
+            # tournerait avant de savoir le comparateur constructible (§ C.5 v2.2).
+            print(traceback.format_exc(), file=sys.stderr)
+            raise c3bc.ProducerControlError(
+                "comparator_failed", [f"{type(exc).__name__}: {exc}"]
+            ) from exc

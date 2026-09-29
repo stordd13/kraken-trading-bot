@@ -1,0 +1,3 @@
+        comparator, benchmark_eval = evaluation_comparator(
+            candles, manifest=manifest, candidate=candidate, anchor=anchor, end=end
+        )

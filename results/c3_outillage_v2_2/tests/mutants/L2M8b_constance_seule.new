@@ -1,0 +1,1 @@
+        off = [i for i, value in enumerate(values) if value != values[0]]

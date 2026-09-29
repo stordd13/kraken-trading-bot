@@ -1,0 +1,2 @@
+            cc.check_quote_amount_keys(lot, stem=cc.QUOTE_STEM_ACCOUNTING, where=lwhere)
+            cc.require_decimal(lot, f"amount_{base}", where=lwhere)

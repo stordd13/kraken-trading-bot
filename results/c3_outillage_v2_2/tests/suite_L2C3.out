@@ -1,0 +1,22 @@
+# suite — L2C3 — 2026-09-29T20:20:04Z
+# HEAD 5d41fb295158df3ba3268fe82ec3b2a08e99456c branche feat/c3-outillage-v2.2
+# fichiers suivis modifiés : 0
+# commande : poetry run pytest -q -p no:cacheprovider -rsxX -k "not test_determinism_parallel_vs_serial_full"
+tunnel_5433=ouvert
+pytest_exit=0
+fin=2026-09-29T20:29:08Z
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:108: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:114: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:99: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_des_dates_nulles_sur_une_serie_couverte_sont_une_violation - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_des_dates_presentes_sur_une_serie_sans_unite_couverte_sont_une_violation - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_une_serie_sans_unite_couverte_a_dates_nulles_passe_l_entree - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3b_common.py::test_R20_a_series_without_covered_unit_is_written_with_null_dates - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3 - outillage v2.2, hors réserve : CADUC par AM-10 (décision de gate du 29/09, lot 1) — sous v2.2 `cc.cagr_pct` ne lève plus, le CAGR du B&H plein notionnel déborde sans entrer dans l'évaluation (blends finis) : code 0, l'attendu code 3 est inatteignable sans convention ; remplacé au lot 2 par un adverse qui force une exception dans build_pair
+resume=3317 passed, 6 skipped, 24 deselected, 5 xfailed in 543.13s (0:09:03)
+failed_error_xpass=0
+brut=/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/2e728105-d14c-4f3d-8f3b-4f43a265175d/scratchpad/suite_L2C3.raw
+rc=0

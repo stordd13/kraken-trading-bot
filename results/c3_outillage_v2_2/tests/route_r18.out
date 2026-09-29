@@ -1,0 +1,9 @@
+# route du test R-18 « refus avec séries » — 2026-09-29T21:01:23Z
+# HEAD c566b336593218d7db5e8b4dac77084cb58b7a74 branche feat/c3-outillage-v2.2
+# commande : pytest -q -s -p no:cacheprovider tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit
+# route au lot 1 (lot1_chaine/README.md § 4) : violation C-3 au verdict (export sans estampille d'entrée)
+VIOLATION evaluation : un bloc `refused` et des séries ['equity_daily', 'returns_config', 'returns_bench', 'replications'] — l'artefact d'évaluation se contredit (§ C.5 v2.2, § I.1 ligne 15)
+CHAINE ARRETEE à l'étape continuity (code de retour 1) — aucun verdict
+1 passed in 1.24s
+pytest_exit=0 (attendu 0) refus_plus_series=2 (attendu ≥ 1) arret_continuite_code_1=1 (attendu 1) violation_C3=0 (attendu 0)
+rc=0

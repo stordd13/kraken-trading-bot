@@ -1,0 +1,2 @@
+        cc.check_quote_amount_keys(block, stem=cc.QUOTE_STEM_ACCOUNTING, where="liquidation")
+        for index, lot in enumerate(block["lots"]):
