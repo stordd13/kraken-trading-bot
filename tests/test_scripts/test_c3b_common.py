@@ -745,10 +745,10 @@ def test_lots_are_the_forced_liquidation_trades_in_order() -> None:
     lots = c3bc.lots_from_trades(trades)
     tagged = [t for t in trades if t.forced_liquidation]
     assert len(trades) == 5 and len(lots) == 3
-    assert lots == [
+    # La clé du montant en cotation vit dans le jumeau R-16 : § A.7 v2.2 (AM-04) nomme `gross_quote`.
+    assert [{k: v for k, v in lot.items() if not k.startswith("gross_")} for lot in lots] == [
         {
             "amount_base": str(t.amount_crypto),
-            "gross_usdc": str(t.amount_usdc),
             "fee": str(t.fee),
             "pnl": None if t.pnl is None else str(t.pnl),
             "entry_price": lots[i]["entry_price"],
@@ -918,8 +918,10 @@ def test_the_entry_keys_are_those_of_the_p7_result(
     expected = (p7 - {"phase", "window_idx", "test"}) | {"decision_timeframes", "exec_interval"}
     expected_period = {key for key in p7_period if not key.startswith("test_")}
     _, _, entries = real_world
+    # Le nom du plancher d'ordre vit dans le jumeau R-16 : § A.7 v2.2 (AM-04), `min_order_quote`.
+    plancher = {"min_order_usdc", "min_order_quote"}
     for entry in entries.values():
-        assert set(entry) == expected
+        assert set(entry) - plancher == expected - plancher
         assert set(entry["period"]) == expected_period
         for block in ("liquidation", "equity_daily", "rejections", "warmup"):
             assert set(entry[block]) == {"train"}
@@ -1248,3 +1250,40 @@ def assert_source_discipline(relpath: str) -> None:
 
 def test_the_common_layer_never_coerces_nor_opens_a_database_by_itself() -> None:
     assert_source_discipline("scripts/audit/c3b_common.py")
+
+
+R16 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
+)
+
+
+@R16
+def test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote() -> None:
+    """§ A.7 v2.2, ligne Comptabilité : « la clé `gross_quote`, dans le bloc et dans chaque lot, quelle que soit
+    la paire » ; aucune clé `gross_` suffixée par une monnaie."""
+    summary, trades = engine_like_liquidation(
+        [(Decimal("0.5"), Decimal("100")), (Decimal("0.25"), Decimal("80"))],
+        reference=Decimal("90"),
+    )
+    tagged = [t for t in trades if t.forced_liquidation]
+    lots = c3bc.lots_from_trades(trades)
+    assert [lot.get("gross_quote") for lot in lots] == [str(t.amount_usdc) for t in tagged]
+    block = c3bc.liquidation_block(summary, trades)
+    assert "gross_quote" in block
+    assert not [k for k in block if k.startswith("gross_") and k != "gross_quote"]
+    assert not [
+        k for lot in block["lots"] for k in lot if k.startswith("gross_") and k != "gross_quote"
+    ]
+
+
+@R16
+def test_R16_l_observation_exportee_porte_min_order_quote(
+    real_world: tuple[cc.Manifest, datetime, dict[str, dict[str, Any]]],
+) -> None:
+    """§ A.7 v2.2, ligne Contrats : la clé du plancher d'ordre est `min_order_quote` quelle que soit la paire ;
+    l'argument `min_order_usdc` du moteur ne bouge pas (test `build_engine`, inchangé)."""
+    _, _, entries = real_world
+    for entry in entries.values():
+        assert "min_order_quote" in entry and "min_order_usdc" not in entry

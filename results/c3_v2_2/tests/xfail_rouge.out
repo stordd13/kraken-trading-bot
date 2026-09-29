@@ -8,3 +8,17 @@ tests/test_scripts/test_c3_verdict.py:2354: AssertionError: l'enregistrement de 
 tests/test_scripts/test_c3_common.py:564: AssertionError: assert '9300f4e53bfd...4cc8a3ccd4129' == '100089db1255...e7640dfbf3e01'
 6 failed, 628 deselected in 1.26s
 runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-04 (R-16) — 2026-09-29T09:03:32Z — HEAD 451a148
+# -k "R16" tests/test_scripts/test_c3_chronology.py tests/test_scripts/test_c3_entry.py tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3b_common.py
+tests/test_scripts/test_c3_chronology.py:331: AssertionError: assert {'exchange', ...ts_file', ...} == {'exchange', ...ts_file', ...}
+tests/test_scripts/test_c3_entry.py:912: AssertionError: l'observation ne porte pas `min_order_quote` (§ A.7 v2.2)
+tests/test_scripts/test_c3_entry.py:912: AssertionError: l'observation ne porte pas `min_order_quote` (§ A.7 v2.2)
+tests/test_scripts/test_c3_entry.py:931: assert (0 == 2)
+tests/test_scripts/test_c3_entry.py:949: assert (0 == 2)
+tests/test_scripts/test_c3_entry.py:967: assert (0 == 2)
+tests/test_scripts/test_c3_anchor.py:724: AssertionError: le manifeste ne porte pas `min_order_quote` (AM-04)
+tests/test_scripts/test_c3_anchor.py:724: AssertionError: le manifeste ne porte pas `min_order_quote` (AM-04)
+tests/test_scripts/test_c3b_common.py:1272: AssertionError: assert [None, None] == ['44.98200', '22.491000']
+tests/test_scripts/test_c3b_common.py:1289: AssertionError: assert ('min_order_quote' in {'dca_counters': None, 'decision_timeframes': ['1d', '1w', '4h'], 'effective_params': {'params': {'atr_multiplier': {'...'start': '2020-01-06T00:00:00+00:00', 'values': [1000.0, 997.4775, 997.4775, 997.4775, 997.4775, 997.4775, ...]}}, ...})
+10 failed, 366 deselected in 0.76s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)

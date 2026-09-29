@@ -270,7 +270,6 @@ MANDATORY: tuple[tuple[str, ...], ...] = (
     ("fees", "pair_costs_file"),
     ("fees", "pair_costs"),
     ("fees", "pair_costs", "BTC/USDC", "spread"),
-    ("min_order_usdc",),
     ("universe",),
     ("universe", "provenance"),
     ("universe", "candidates"),
@@ -700,4 +699,29 @@ def test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refus
         variant_id="synth-other", parent={"is_root": False, "variant_key": root["variant_key"]}
     )
     code, out = _run(tmp_path, other, name="other.json", output="anchor_other.json")
+    assert code == 2 and out is None
+
+
+# ---------------------------------------------------------------------------
+# § A.7 v2.2 (AM-04) — le plancher d'ordre du manifeste s'appelle `min_order_quote` (R-16)
+# ---------------------------------------------------------------------------
+
+R16 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
+)
+
+
+@R16
+@pytest.mark.parametrize("mode", ["absente", "nulle"])
+def test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree(
+    tmp_path: Path, mode: str
+) -> None:
+    """AM-04 v2.2, impact outillage (décision du 29/09) : la clé du manifeste devient `min_order_quote` ; le
+    plancher d'ordre est au minimum du manifeste (§ A.6). Jumeau de l'ancien élément `("min_order_usdc",)`."""
+    payload = fx.manifest()
+    assert "min_order_quote" in payload, "le manifeste ne porte pas `min_order_quote` (AM-04)"
+    _mutate(payload, ("min_order_quote",), mode)
+    code, out = _run(tmp_path, payload)
     assert code == 2 and out is None

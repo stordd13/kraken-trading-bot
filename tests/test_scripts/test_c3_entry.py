@@ -241,7 +241,6 @@ MANDATORY: tuple[tuple[str, ...], ...] = (
     ("pair_costs",),
     ("pair_costs", "spread"),
     ("pair_costs_file",),
-    ("min_order_usdc",),
     ("period",),
     ("period", "train_start"),
     ("period", "train_end"),
@@ -307,7 +306,7 @@ def test_chaque_bloc_obligatoire_absent_ou_nul_refuse_l_entree_a_la_forme(
         (("warmup", "train", "4h", "stale_by_candles"), "0"),
         (("liquidation", "train", "positions"), "2"),
         (("liquidation", "train", "lots"), {"a": 1}),
-        (("liquidation", "train", "lots"), [{"gross_usdc": "1", "fee": "0.0025"}]),
+        (("liquidation", "train", "lots"), [{"gross_quote": "1", "fee": "0.0025"}]),
         (("exec_interval",), "5"),
         (("liquidation",), "none"),
         (("dca_counters",), []),
@@ -443,7 +442,6 @@ def test_intervalle_de_decision_different_du_manifeste_refuse_l_entree(tmp_path:
         (("exchange",), "kraken"),
         (("pair_costs_file",), "autre.json"),
         (("pair_costs", "slippage"), "0.0009"),
-        (("min_order_usdc",), 10.0),
         (("train", "starting_balance"), 999.0),
         (("exec_interval",), 15),
     ],
@@ -454,7 +452,6 @@ def test_intervalle_de_decision_different_du_manifeste_refuse_l_entree(tmp_path:
         "exchange",
         "pair_costs_file",
         "slippage",
-        "min_order",
         "capital",
         "exec_interval 15",
     ],
@@ -888,3 +885,96 @@ def test_revue_R3b_serie_tronquee_au_debut_avec_trou_declare_nul_est_refusee(
     _coverage_mutate(w, truncated)
     code, payload = _run(w)
     assert code == 2 and payload["refusal"]["assertion"] == "I-A.7"
+
+
+# ---------------------------------------------------------------------------
+# § A.7 v2.2 (AM-04) — montants en monnaie de cotation, clés `_quote` aux positions nommées (R-16)
+# ---------------------------------------------------------------------------
+
+R16 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
+)
+
+
+@R16
+@pytest.mark.parametrize("mode", ["absente", "nulle"])
+def test_R16_le_plancher_d_ordre_min_order_quote_absent_ou_nul_refuse_l_entree(
+    tmp_path: Path, mode: str
+) -> None:
+    """§ A.7 v2.2, ligne Contrats : `min_order_quote` est dans la liste blanche ; absent ou nul → erreur de forme
+    (§ I.1, ligne 2), I-A.1. Jumeau de l'ancien élément `("min_order_usdc",)` de `MANDATORY`."""
+    w = _sound(tmp_path)
+
+    def mutate(obs: dict[str, Any]) -> None:
+        entry = _first(obs)
+        assert "min_order_quote" in entry, (
+            "l'observation ne porte pas `min_order_quote` (§ A.7 v2.2)"
+        )
+        _set_path(entry, ("min_order_quote",), mode)
+
+    _mutate_observations(w, mutate)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+
+
+@R16
+def test_R16_un_plancher_d_ordre_different_du_manifeste_refuse_l_entree_D5(tmp_path: Path) -> None:
+    """§ A.8 D5 : « plancher d'ordre égal à celui du manifeste », porté par `min_order_quote` (§ A.7 v2.2).
+    Jumeau de l'ancien cas `min_order` du test D5."""
+    w = _sound(tmp_path)
+    _mutate_observations(
+        w, lambda obs: _set_path(_first(obs), ("min_order_quote",), "valeur", 10.0)
+    )
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.2"
+
+
+@R16
+def test_R16_un_plancher_d_ordre_suffixe_par_une_monnaie_refuse_l_entree_a_la_forme(
+    tmp_path: Path,
+) -> None:
+    """§ A.7 v2.2 : « à cette position, une clé `min_order_` suffixée par le nom d'une monnaie (`min_order_usdc`,
+    `min_order_usdt`, …) est une erreur de forme (§ I.1, ligne 2) »."""
+    w = _sound(tmp_path)
+
+    def resuffix(obs: dict[str, Any]) -> None:
+        entry = _first(obs)
+        value = entry["min_order_quote"] if "min_order_quote" in entry else entry["min_order_usdc"]
+        entry["min_order_usdc"] = value
+
+    _mutate_observations(w, resuffix)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+
+
+@R16
+def test_R16_un_bloc_de_liquidation_qui_porte_gross_usdc_refuse_l_entree_a_la_forme(
+    tmp_path: Path,
+) -> None:
+    """§ A.7 v2.2, ligne Comptabilité : « un bloc ou un lot qui porte une clé `gross_` suffixée par le nom d'une
+    monnaie (`gross_usdc`, `gross_usdt`, …) est une erreur de forme » — le détail nomme `gross_quote`."""
+    w = _sound(tmp_path)
+
+    def resuffix(obs: dict[str, Any]) -> None:
+        block = _first(obs)["liquidation"][fx.PREFIX]
+        value = block["gross_quote"] if "gross_quote" in block else block["gross_usdc"]
+        block["gross_usdc"] = value
+
+    _mutate_observations(w, resuffix)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+    assert "gross_quote" in payload["refusal"]["detail"]
+
+
+def test_un_suffixe_de_monnaie_hors_des_positions_nommees_n_est_ni_lu_ni_refuse(
+    tmp_path: Path,
+) -> None:
+    """§ A.7 v2.2 (AM-04) : « Ces contrats de forme ne valent qu'aux positions qu'ils nomment : ailleurs, un
+    suffixe d'actif ou de monnaie n'est ni lu ni refusé (règle 1 ci-dessous). » Témoin vert, vérifié par
+    mutation (garde de forme étendue à toute clé de premier niveau suffixée `_usdt` → rouge)."""
+    w = _sound(tmp_path)
+    _mutate_observations(w, lambda obs: _first(obs).__setitem__("notes_usdt", "hors liste blanche"))
+    code, payload = _run(w)
+    assert code == 0 and payload["refusal"] is None

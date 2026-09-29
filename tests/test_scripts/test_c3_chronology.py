@@ -302,15 +302,7 @@ def test_la_liste_blanche_de_la_projection_est_celle_du_A7() -> None:
         "dca_counters",
     }
     assert set(projection["identity"]) == {"strategy", "pair", "params", "effective_params"}
-    assert set(projection["contracts"]) == {
-        "metrics_version",
-        "replay_version",
-        "exchange",
-        "fees",
-        "pair_costs",
-        "pair_costs_file",
-        "min_order_usdc",
-    }
+    # Le jeu des contrats vit dans le jumeau R-16 ci-dessous : § A.7 v2.2 (AM-04) nomme `min_order_quote`.
     assert projection["bounds"] == {
         "start": fx.WINDOW_START.isoformat(),
         "end": fx.ANCHOR.isoformat(),
@@ -319,3 +311,29 @@ def test_la_liste_blanche_de_la_projection_est_celle_du_A7() -> None:
     other = fx.observation(entry["strategy"], entry["pair"], entry["params"], 0, futures_variant=7)
     assert cc.sig(cc.project_prefix(other, fx.PREFIX, where="t")) == cc.sig(projection)
     assert other["test"] != entry["test"], "les futurs diffèrent bien"
+
+
+R16 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
+)
+
+
+@R16
+def test_R16_les_contrats_de_la_projection_sont_ceux_du_A7_v22() -> None:
+    """§ A.7 v2.2 (AM-04), ligne Contrats : « `metrics_version`, `replay_version`, `exchange`, `fees`, `pair_costs`,
+    `pair_costs_file`, `min_order_quote` »."""
+    m = fx.manifest()
+    obs = fx.observations(m)
+    entry = next(iter(obs.values()))
+    projection = cc.project_prefix(entry, fx.PREFIX, where="t")
+    assert set(projection["contracts"]) == {
+        "metrics_version",
+        "replay_version",
+        "exchange",
+        "fees",
+        "pair_costs",
+        "pair_costs_file",
+        "min_order_quote",
+    }

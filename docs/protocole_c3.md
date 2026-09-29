@@ -410,11 +410,11 @@ Tout autre segment est **hors liste blanche**.
 | Portée | Champs retenus |
 |---|---|
 | Identité et provenance | `strategy`, `pair`, `params`, `effective_params` |
-| Contrats | `metrics_version`, `replay_version`, `exchange`, `fees`, `pair_costs`, `pair_costs_file`, `min_order_usdc` |
+| Contrats | `metrics_version`, `replay_version`, `exchange`, `fees`, `pair_costs`, `pair_costs_file`, `min_order_quote`. **Contrat de forme du plancher d'ordre** : il s'exprime en unités de la monnaie de cotation de la paire (§ 0.5), et sa clé est `min_order_quote` **quelle que soit la paire** ; à cette position, une clé `min_order_` suffixée par le nom d'une monnaie (`min_order_usdc`, `min_order_usdt`, …) est une erreur de forme (§ I.1, ligne 2) |
 | Bornes | **les seules bornes du segment de préfixe** : son début et sa fin |
 | Métriques | le bloc de métriques **du segment de préfixe**, entier |
 | Trajectoire | `equity_daily[<préfixe>]` : `start`, `end`, `values` |
-| Comptabilité | `liquidation[<préfixe>]`, entier. **Contrat de forme des quantités en actif de base** : les clés `amount_base`, `residual_trade_base`, `dust_written_off_base`, `inventory_divergence_base`, dans le bloc et dans chaque lot, **quelle que soit la paire** ; un bloc qui porte une clé suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur de forme (§ I.1, ligne 2). Le renommage vit dans la couche d'export du runner ; le moteur `scripts/backtest.py` est intouché |
+| Comptabilité | `liquidation[<préfixe>]`, entier. **Contrat de forme des quantités en actif de base** : les clés `amount_base`, `residual_trade_base`, `dust_written_off_base`, `inventory_divergence_base`, dans le bloc et dans chaque lot, **quelle que soit la paire** ; un bloc qui porte une clé suffixée par le nom d'un actif (`_btc`, `_eth`, …) est une erreur de forme (§ I.1, ligne 2). **Contrat de forme des montants en monnaie de cotation** : la clé `gross_quote`, dans le bloc et dans chaque lot, **quelle que soit la paire** ; un bloc ou un lot qui porte une clé `gross_` suffixée par le nom d'une monnaie (`gross_usdc`, `gross_usdt`, …) est une erreur de forme (§ I.1, ligne 2). **Ces contrats de forme ne valent qu'aux positions qu'ils nomment** : ailleurs, un suffixe d'actif ou de monnaie n'est ni lu ni refusé (règle 1 ci-dessous). Le renommage vit dans la couche d'export du runner ; le moteur `scripts/backtest.py`, et son argument `min_order_usdc`, sont intouchés |
 | Amorçage | `warmup[<préfixe>]`, entier, **et** le bloc d'amorçage mesuré au début du préfixe |
 | Exécution | `rejections[<préfixe>]`, `dca_counters[<préfixe>]` |
 | **Couverture** | l'**artefact de couverture** décrit ci-dessous, pour la paire du candidat, sur `[début, T]` |
