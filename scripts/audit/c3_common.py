@@ -724,12 +724,23 @@ def check_returns(returns: Sequence[float], *, label: str) -> np.ndarray:
     return arr
 
 
-def cagr_pct(returns: Sequence[float], days: float) -> float:
-    """Rendement géométrique annualisé en %/an, par somme de `log1p` (§ F.2 c)."""
+def cagr_pct(returns: Sequence[float], days: float) -> float | None:
+    """Rendement géométrique annualisé en %/an, par somme de `log1p` (§ F.2 c).
+
+    **Non défini — ``None``, jamais une exception** (§ A.8 D4 v2.2, AM-10) : quand un rendement n'est pas fini ou vaut
+    ``≤ −1`` (``log1p`` n'y existe pas), ou quand l'annualisation déborde la double précision (``math.exp`` au-delà de
+    709,78). C'est une valeur **calculée** par l'outillage, pas fournie : D4 retire le candidat (§ I.1, ligne 6),
+    ce n'est pas une violation."""
     if days <= 0:
         raise InvalidInputError("days doit être strictement positif")
+    if not all(math.isfinite(r) and r > RETURN_DOMAIN_FLOOR for r in returns):
+        return None
     total = math.fsum(math.log1p(r) for r in returns)
-    return (math.exp(total * ANNUALISATION_DAYS / days) - 1.0) * 100.0
+    try:
+        value = (math.exp(total * ANNUALISATION_DAYS / days) - 1.0) * 100.0
+    except OverflowError:
+        return None
+    return value if math.isfinite(value) else None
 
 
 def block_start_indices(rng: np.random.Generator, n: int, block_length: int, b: int) -> np.ndarray:
@@ -1588,6 +1599,7 @@ class DailyRecompute:
     returns: tuple[float, ...]
     undefined_returns: int
     domain_ok: bool
+    returns_finite: bool
     cagr_pct: float | None
     mdd_daily: float
     sigma_daily: float | None
@@ -1622,13 +1634,22 @@ def recompute_daily(values: Sequence[float], *, days: float) -> DailyRecompute:
             undefined += 1
             index.append(index[-1])
     domain_ok = len(vals) >= 2 and all(v > 0 for v in vals)
+    # § A.8 D4 v2.2 : des NAV finies peuvent donner un rendement non fini (rapport qui déborde) ou exactement −1
+    # (quotient qui s'arrondit à 0) — D4 exige des rendements « définis et tous finis », et un CAGR fini (AM-10) ;
+    # aucun calcul dérivé ne lève sur eux, et `returns` reste la série recalculée, telle quelle.
+    returns_finite = all(math.isfinite(r) and r > RETURN_DOMAIN_FLOOR for r in returns)
     cagr = cagr_pct(returns, days) if domain_ok and returns else None
-    sigma = statistics.stdev(returns) if len(returns) > 1 else None
+    sigma = (
+        statistics.stdev(returns)
+        if len(returns) > 1 and all(math.isfinite(r) for r in returns)
+        else None
+    )
     return DailyRecompute(
         n_points=len(vals),
         returns=tuple(returns),
         undefined_returns=undefined,
         domain_ok=domain_ok,
+        returns_finite=returns_finite,
         cagr_pct=cagr,
         mdd_daily=max_drawdown_pct(index),
         sigma_daily=sigma,

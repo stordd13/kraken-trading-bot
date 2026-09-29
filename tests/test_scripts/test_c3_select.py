@@ -1021,14 +1021,7 @@ def test_revue_Fin_5_un_diagnostic_d_entree_non_type_est_une_erreur_d_entree(
 # § A.8 D4 v2.2 (AM-10) — le CAGR qui découle de rendements finis doit être fini (R-21)
 # ---------------------------------------------------------------------------
 
-R21 = pytest.mark.xfail(
-    strict=True,
-    raises=OverflowError,
-    reason="R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée",
-)
 
-
-@R21
 def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par_D4() -> None:
     """§ A.8 D4 v2.2 : le candidat « sort par D4 (§ I.1, ligne 6) » — statut `NOT_ESTIMABLE`, raison
     `F_NOT_ESTIMABLE`, code 0 ; « ce n'est pas une violation (ligne 15) ». Préfixe réduit à 0,01 j : seul un
@@ -1063,11 +1056,6 @@ def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
-)
 def test_R22_une_nav_extreme_a_rendement_non_fini_retire_le_candidat_par_D4() -> None:
     """§ A.8 D4 : « rendements quotidiens définis et **tous finis** » (et `log1p(r)` défini pour `r > −1`) — deux
     points de NAV finis et positifs, 1e-300 puis 1e300 : le premier rendement vaut exactement −1 en double, le

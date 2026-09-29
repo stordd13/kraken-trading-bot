@@ -2106,8 +2106,13 @@ def test_R15_evaluation_json_declares_the_prefix_lambdas_it_used(
 
 @pytest.mark.xfail(
     strict=True,
-    raises=OverflowError,
-    reason="outillage v2.2, hors réserve : contrat producteur 0/2/3 (c3b_evaluate.py:544) — outillage à venir",
+    raises=AssertionError,
+    reason=(
+        "outillage v2.2, hors réserve : CADUC par AM-10 (décision de gate du 29/09, lot 1) — sous v2.2 `cc.cagr_pct` "
+        "ne lève plus, le CAGR du B&H plein notionnel déborde sans entrer dans l'évaluation (blends finis) : code 0, "
+        "l'attendu code 3 est inatteignable sans convention ; remplacé au lot 2 par un adverse qui force une "
+        "exception dans build_pair"
+    ),
 )
 def test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
