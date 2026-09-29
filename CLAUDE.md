@@ -12,7 +12,9 @@ l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Inst
 `v2.9.0-c1-metrics`) et C2 (replay, `v2.10.0-c2-replay`) mergés ; rejeu grid clos `inconclusif` (20/09). **C3a mergée
 (23/09, `v2.11.0-c3a-protocole`)** : outillage complet, artefact du rejeu **refusé à l'entrée**. **Protocole amendé en
 v2.1 (23/09, `docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129`)** sur `feat/c3-amendements-v2.1`, merge sous
-décision humaine. **C3b paquet 1 clos (producteur conforme, 28/09) ; suite : v2.2, puis manifeste** ; aucune sélection, rien à
+décision humaine. **C3b paquet 1 clos (producteur conforme, 28/09). Protocole amendé en v2.2 (29/09,
+`docs/amendements_c3_v2.2.md`, sha256 `1bed7696…292a`)** sur `feat/c3-amendements-v2.2`, merge sous décision humaine ;
+**suite : outillage v2.2 (`results/c3_v2_2/outillage_v2_2.md`), puis manifeste** ; aucune sélection, rien à
 trader ; R&D sur le papier
 (`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
 `docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
@@ -35,26 +37,31 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | Résultats de backtests (quoi est où, verdicts) | `results/INDEX.md` |
 | **Nouvelle idée de stratégie** (filtre d'entrée, ticket § 6 sur le papier avant tout code) | `docs/CONTRAINTES_POST_B4.md` |
 | **Audit red-team B4 / portée des conclusions** | `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` (+ addendum en tête de `results/B4_bybit_backtest_report.md`) |
-| **Comment une configuration est sélectionnée** (protocole v2.1 — spécification de TOUTE sélection future) | `docs/protocole_c3.md` (+ `docs/amendements_c3_v2.1.md`) |
+| **Comment une configuration est sélectionnée** (protocole v2.2 — spécification de TOUTE sélection future) | `docs/protocole_c3.md` (+ `docs/amendements_c3_v2.2.md`, `docs/amendements_c3_v2.1.md`) |
+| **Amendement v2.2** (paquet, réserves R-15 à R-22, outillage à écrire) | `docs/amendements_c3_v2.2.md` (section « Adoption ») + `results/c3_v2_2/` (`report.md`, `outillage_v2_2.md`) |
 | **Critère d'arrêt** (clôture de famille, alpha-stop projet, kill-switch live) | `docs/CONTRAINTES_POST_B4.md` § 10 |
 | **Brief du chantier C3a** (périmètre, gates, décisions figées) | `agent/c3a_protocole_chronologique_v2.md` |
-| **Outillage C3** (chaîne `c3_*.py`, codes de sortie, règles appliquées et leur section d'origine v2.1, seul run réel) | `skills/backtest.md` § « Validation C3 » |
-| **Producteur C3b** (paquet 1 clos ; suite : v2.2, puis manifeste) — `c3b_prefix.py`, `c3b_evaluate.py`, garde-fous, exploitation serveur | `skills/backtest.md` § « Producteur C3b » (+ `results/c3b_producteur/report.md`) |
+| **Outillage C3** (chaîne `c3_*.py`, codes de sortie, règles appliquées et leur section d'origine v2.1 ; v2.2 pas encore outillée, 46 `xfail` strict) | `skills/backtest.md` § « Validation C3 » |
+| **Producteur C3b** (paquet 1 clos ; suite : outillage v2.2, puis manifeste) — `c3b_prefix.py`, `c3b_evaluate.py`, garde-fous, exploitation serveur | `skills/backtest.md` § « Producteur C3b » (+ `results/c3b_producteur/report.md`) |
 | **Rapport de session C3a** (revues Fin, conventions, exigences C3b accumulées) | `agent/rapport_session_c3a_20260922.md` |
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
 
-> **Protocole C3 v2.1 (amendé le 23 sept 2026 — `docs/amendements_c3_v2.1.md`, sha256
-> `9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129`).** `docs/protocole_c3.md` spécifie **toute**
-> sélection future et ne se modifie que par amendement daté (v2.0 gelée au `d931293` : historique C3a). **Aucune
-> sélection ne se fait hors de ce document.** v2.1 : rejeu complet du tirage § F.2 par la chaîne (égalité au bit,
+> **Protocole C3 v2.2 (amendé le 29 sept 2026 — `docs/amendements_c3_v2.2.md`, sha256
+> `1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a`).** `docs/protocole_c3.md` spécifie **toute**
+> sélection future et ne se modifie que par amendement daté (v2.0 gelée au `d931293` : historique C3a ; v2.1,
+> `9300f4e5…4129` : historique C3b). **Aucune sélection ne se fait hors de ce document.** v2.2 : la chaîne recalcule
+> ce que le producteur garantit (§ L.2, septième entrée `candles_eval.json`), refus amont d'un comparateur non
+> constructible lu et recoupé (§ C.5), évaluation sans exécution admise (§ L.1, `metrics.executions`), clés `_quote`
+> (§ A.7), registre et critère d'arrêt (§ A.6), D4 étendu au CAGR ; **ces règles ne sont pas encore outillées**
+> (réserves R-15 à R-22, liste close `results/c3_v2_2/outillage_v2_2.md`, bloquante pour le manifeste). v2.1 : rejeu complet du tirage § F.2 par la chaîne (égalité au bit,
 > environnement `{python, numpy, machine, libc}`), E2 conjonctive, c3 non normalisée → `inconclusif
 > (R1_NOT_NORMALISED)`, bloc de liquidation contradictoire → violation, évaluation réelle admise avec `flat_start_proof`,
 > `invocation.single_call` et `first_fill_at` (§ L.1). L'outillage `scripts/audit/c3_*.py` (7 modules, 932 tests)
 > est décrit dans `skills/backtest.md` § « Validation C3 ». Sorties réelles : un refus (livrable C3a, manifeste
 > v2.0), puis la chaîne complète sur la fenêtre d'instrument 2020 (C3b, issue non lue). **Le producteur conforme est
 > livré (C3b) ; aucune campagne ne traverse la chaîne tant que le manifeste n'est pas gelé.** Son contrat est fixé
-> par v2.1 ; `validé` / `réfuté` deviennent atteignables sur données réelles par ce chemin et par aucun autre.
+> par v2.2 ; `validé` / `réfuté` deviennent atteignables sur données réelles par ce chemin et par aucun autre.
 > Critère d'arrêt pré-enregistré : `docs/CONTRAINTES_POST_B4.md` § 10.
 
 ## Règles d'or (absolues)

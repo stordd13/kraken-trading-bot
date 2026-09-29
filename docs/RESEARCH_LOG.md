@@ -348,6 +348,21 @@ avec cette entrée.
 | 17 | `alembic` `c3bd1e7a0001` inchangé ; attendu tenu sur ses 5 items vérifiables (le 6ᵉ, les bornes, repose sur des appuis déclarés) | `server/alembic_{before,after}.txt` |
 | 17 | Défauts de ma part : au STOP 1, un premier passage de mutants avait 4 survivants, tous du côté des tests (monde de test trop court, candidat en premier bloc, données non discriminantes), corrigés, puis 35 rouges sur 35 ; le chemin de l'archive du lot 3 était faux dans le pilote, vu avant le lancement | `results/c3b_producteur/eval_f2_conformite/README.md` § 3, § 6 |
 
+### Adoption du protocole C3 v2.2 (entrée 18, inscrite le 2026-09-29 — aucun run)
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 18 | 2026-09-29 | Amendement v2.2 du protocole C3 — chantier documentaire, **aucun run** | sans objet | aucune donnée lue ; aucune base, aucun serveur, aucun tunnel | branche `feat/c3-amendements-v2.2` depuis `dev` @ `8689636` ; `src/` et `scripts/audit/*.py` inchangés ; protocole v2.2 sha256 `1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a` | sans objet | sans objet — aucune issue possible | outillage v2.2 (`results/c3_v2_2/outillage_v2_2.md`), puis manifeste de la première campagne, portant le sha256 v2.2 | `docs/amendements_c3_v2.2.md` (section « Adoption »), `results/c3_v2_2/report.md` |
+
+- **Protocole** : `docs/protocole_c3.md` v2.2, amendé le 2026-09-29 — douze amendements (AM-00 à AM-12), adoptés par
+  Bruno après lecture adverse de Claude sur AM-03, AM-06 et AM-08 (six retouches, C-1 à C-6) ; huit réserves
+  d'application (R-15 à R-22). Le sha256 de v2.1 (`9300f4e5…4129`) reste celui des artefacts de C3b, historiques ;
+  sous v2.2, `c3_anchor` refuse leur manifeste, comme celui du livrable C3a (v2.0).
+- **Ce qui précède le manifeste** : l'outillage des réserves bloquantes pour le manifeste (R-15 recoupements § L.2,
+  R-16 clés `_quote`, R-18 refus amont, R-19 évaluation sans exécution). Avant la première campagne comptée :
+  R-17 (registre et critère d'arrêt), R-21 (D4 et CAGR), R-22 (sorties code 1 hors table).
+- **Compteur du § 10.2** : inchangé (jalon : premier verdict grid avant le 2027-01-31).
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
@@ -362,3 +377,5 @@ l'adoption de v2.1 : section précédente.)_
   - Restent avant la première campagne : l'amendement v2.2 et le manifeste gelé. `CAMPAIGN_UNLOCK` est créé à ce
     moment-là.
   - Le paragraphe ci-dessus n'est pas réécrit (ajout seul).
+- **Protocole C3 v2.2 adopté le 29/09/2026** (entrée 18). Le manifeste de la première campagne porte le sha256 v2.2 ;
+  il suit l'outillage v2.2 (réserves bloquantes pour le manifeste : R-15, R-16, R-18, R-19). Ajout seul.

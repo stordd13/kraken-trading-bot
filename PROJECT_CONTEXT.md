@@ -1,7 +1,7 @@
 # KrakenBot — Contexte Projet (Septembre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 28 septembre 2026, **à la clôture du producteur C3b (paquet 1)** ; précédente : 24 septembre, à la reconstruction 1 w (amendement v2.1 du protocole C3 le 23 septembre). B4 close le 15 sept (merge `4c98b6b`
+> Dernière mise à jour : 29 septembre 2026, **à l'adoption du protocole C3 v2.2** ; précédente : 28 septembre, à la clôture du producteur C3b (paquet 1) ; avant : 24 septembre, à la reconstruction 1 w (amendement v2.1 du protocole C3 le 23 septembre). B4 close le 15 sept (merge `4c98b6b`
 > dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec
 > un instrument depuis invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ;
 > sélection paper vide. Instrument réparé : **C1 métriques** (tag `v2.9.0-c1-metrics`) et **C2 fidélité replay** (tag
@@ -183,7 +183,23 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
     - porte : `results/c3b_producteur/closure/gate_L5/` ;
     - journal : `docs/RESEARCH_LOG.md`, entrées 15-17 ;
     - commandes : `skills/backtest.md` § « Producteur C3b ».
-  - **Suite** : v2.2 (candidats au § 9), puis le manifeste de la première campagne.
+  - **Suite** : v2.2 (puce suivante), l'outillage v2.2, puis le manifeste de la première campagne.
+
+- ✅ **Protocole C3 v2.2 (adopté le 29 sept — branche `feat/c3-amendements-v2.2` depuis `dev` @ `8689636`, merge sous
+  décision humaine)** : douze amendements (AM-00 à AM-12), `docs/amendements_c3_v2.2.md` ; sha256 v2.2
+  `1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a`. Lecture adverse (Claude) sur AM-03, AM-06,
+  AM-08 : six retouches (C-1 à C-6) ; adoption Bruno.
+  - **Ce qui change** : la chaîne recalcule ce que le producteur garantit (§ L.2 : `returns_config`, λ,
+    `returns_bench`, NAV du comparateur ; septième entrée `candles_eval.json`) ; refus amont d'un comparateur non
+    constructible lu et recoupé (§ C.5) ; évaluation réelle sans exécution admise (§ L.1, `metrics.executions`) ;
+    clés `_quote` (§ A.7) ; dates de couverture nullables ; registre et critère d'arrêt (§ A.6) ; D4 étendu au
+    CAGR ; deux chemins de sommation (§ F.8) ; `grid_levels` et « alimente une porte de décision » (§ A.8).
+  - **Rien n'est outillé** : aucune ligne de `scripts/audit/*.py` ni de `src/`. Les règles nouvelles sont portées
+    par 46 tests `xfail` strict (réserves R-15 à R-22 et un item hors réserve) ; la liste close du chantier suivant
+    est `results/c3_v2_2/outillage_v2_2.md`. **Bloquants manifeste** : R-15, R-16, R-18, R-19 ; **bloquants
+    campagne** : R-17, R-21, R-22.
+  - Artefacts C3b : historiques v2.1 (sous v2.2, l'ancrage refuse leur manifeste).
+  - Rapport : `results/c3_v2_2/report.md` ; journal : `docs/RESEARCH_LOG.md`, entrée 18.
 
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
@@ -439,7 +455,7 @@ Détail : `ROADMAP.md`.
   artefact du rejeu refusé à l'entrée) ; **protocole v2.1 amendé le 23 sept** (branche `feat/c3-amendements-v2.1`,
   merge sous décision humaine) ; **C3b** : producteur conforme, décision de reconstruction 1 w, puis manifeste et
   campagne réelle sous la chaîne. **Phase courante : C3b paquet 1 clos (producteur, merge sous décision humaine) ;
-  suite : v2.2, puis manifeste.**
+  protocole v2.2 adopté le 29/09 ; suite : outillage v2.2, puis manifeste.**
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
@@ -669,7 +685,7 @@ Détail : `ROADMAP.md`.
     - Rapport : `results/c3b_producteur/lot2_writer/README.md`.
 
 **Sorties en code 1 de la chaîne, hors table § I.1** (constats C3b, lots 2 et 4b ; non corrigées : les six modules
-`c3_*` sont hors liste close). Chacune sort par une exception non rattrapée, sans artefact ni ligne `VIOLATION`, là où
+`c3_*` sont hors liste close ; classées le 29/09 — cas 1-4 en (c), R-22 ; `OverflowError` en (b), AM-10, R-21). Chacune sort par une exception non rattrapée, sans artefact ni ligne `VIOLATION`, là où
 le § I.1 promet un diagnostic.
 - `c3_anchor.py:335` : registre recopié, jamais canonicalisé.
 - `c3_benchmark.py:166-168` (et `:436-438`, `:504-506`) : `float(Decimal)` qui déborde ; `returns` écrit même quand
@@ -682,7 +698,10 @@ le § I.1 promet un diagnostic.
 
 Détail : `results/c3b_producteur/lot2_writer/README.md` § 4.3 et `eval_f2_conformite/README.md` § 6.
 
-**Candidats amendement v2.2** — à regrouper avec la re-passe Astra ; listés ici, jamais implémentés.
+**Candidats amendement v2.2** — **traités par v2.2 le 29/09** (`docs/amendements_c3_v2.2.md`) : 1 → AM-01, 2 → AM-02,
+3 et 7 → AM-03, 4 → AM-04, 5 → AM-05, 6 → AM-06, 8 → AM-08, 9 → AM-09 ; sorties code 1 : cas 1-4 → R-22 (outillage
+seul), cas 5 → AM-10 ; note § F.8 → AM-11. Outillage : liste close `results/c3_v2_2/outillage_v2_2.md`. Liste
+d'origine, inchangée :
 1. **§ A.8 l.515** omet `grid_levels`, qui est un axe de `decision_timeframes` (`results/sol_d2_1w_modes/report.md`
    § 8.1-1).
 2. **§ A.8 l.605-606** : « lisent le 1 w » devrait dire « alimente une porte de décision » (même rapport, § 8.1-2).
