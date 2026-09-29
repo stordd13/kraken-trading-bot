@@ -549,6 +549,11 @@ def _adoption_section() -> str:
     return text.split("## Adoption", 1)[1].split("\n## ", 1)[0]
 
 
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="en attente de l'empreinte v2.2 (AM-00, section Adoption) : pont levé au commit des tests du sha",
+)
 def test_le_sha_v21_consigne_hors_du_fichier_est_celui_du_protocole_livre() -> None:
     """En-tête v2.1 (AM-00, R-01) : « Nouveau sha256 : consigné hors du fichier » — la ligne consignée à la
     section « Adoption » du paquet adopté est l'empreinte du protocole livré, celle que `protocol_descriptor`

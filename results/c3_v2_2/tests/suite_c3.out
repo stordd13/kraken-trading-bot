@@ -1,0 +1,15 @@
+# suite_c3 — 2026-09-29T08:59:28Z
+# HEAD b8b2390 branche feat/c3-amendements-v2.2
+# indexé : docs/protocole_c3.md results/c3_v2_2/tests/suite_c3.sh results/c3_v2_2/tests/xfail_rouge.out results/c3_v2_2/tests/xfail_rouge.sh tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3_common.py tests/test_scripts/test_c3_verdict.py 
+# commande : poetry run pytest -q -p no:cacheprovider -rxX tests/test_scripts/test_c3*.py tests/test_scripts/test_c3b*.py
+pytest_exit=0
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_un_manifeste_sans_famille_est_refuse - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_une_relance_au_dela_de_l_unique_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_une_seconde_campagne_sur_une_famille_au_verdict_compte_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL tests/test_scripts/test_c3_common.py::test_le_sha_v21_consigne_hors_du_fichier_est_celui_du_protocole_livre - en attente de l'empreinte v2.2 (AM-00, section Adoption) : pont levé au commit des tests du sha
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante - R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir
+1153 passed, 6 xfailed in 113.23s (0:01:53)
+ruff_check=0 ruff_format=0
+diff_vide_src_scripts_audit=0
+rc=0

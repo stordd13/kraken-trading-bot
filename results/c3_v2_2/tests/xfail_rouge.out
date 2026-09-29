@@ -1,0 +1,10 @@
+## AM-05 (R-17) et pont sha — 2026-09-29T08:59:20Z — HEAD b8b2390
+# -k "R17 or sha_v21" tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3_common.py
+tests/test_scripts/test_c3_anchor.py:636: assert (0 == 2)
+tests/test_scripts/test_c3_anchor.py:655: assert (0 == 2)
+tests/test_scripts/test_c3_anchor.py:680: assert (0 == 2)
+tests/test_scripts/test_c3_anchor.py:703: assert (0 == 2)
+tests/test_scripts/test_c3_verdict.py:2354: AssertionError: l'enregistrement de la variante ne porte pas l'issue
+tests/test_scripts/test_c3_common.py:564: AssertionError: assert '9300f4e53bfd...4cc8a3ccd4129' == '100089db1255...e7640dfbf3e01'
+6 failed, 628 deselected in 1.26s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)

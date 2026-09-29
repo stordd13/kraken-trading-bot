@@ -2336,6 +2336,27 @@ CHAIN_FILES = (
 )
 
 
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir",
+)
+def test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante(
+    tmp_path: Path,
+) -> None:
+    """§ A.6 v2.2 : « À l'étape 6 (§ L.1), le verdict inscrit dans l'enregistrement de sa variante l'issue, la
+    raison, et le statut compté ou non compté » ; § L.1 v2.2, ligne 6. Noms de clés indicatifs."""
+    w = _chain_world(tmp_path)
+    assert cv.main(_chain_argv(w)) == 0
+    payload = cc.read_json(w["out"] / "verdict.json")
+    anchor = cc.read_json(w["out"] / "anchor.json")
+    record = cc.read_json(w["registry"])["variants"][anchor["variant_key"]]
+    assert "verdict" in record, "l'enregistrement de la variante ne porte pas l'issue"
+    assert record["verdict"]["issue"] == payload["verdict"]
+    assert record["verdict"]["raison"] == payload["raison"]
+    assert isinstance(record["verdict"]["compte"], bool)
+
+
 def test_chain_complete_sur_fixtures_verdict_et_neuf_champs_correspondants(tmp_path: Path) -> None:
     w = _chain_world(tmp_path)
     assert cv.main(_chain_argv(w)) == 0

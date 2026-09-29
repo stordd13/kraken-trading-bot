@@ -355,6 +355,7 @@ sa forme machine.
   benchmark ou de protocole** est un **nouvel essai même à fenêtre, univers et ancrage identiques**, et
   l'empreinte du manifeste complet rend cette distinction **reproductible** au lieu de déclarative.
 - Le manifeste porte donc, **au minimum et sans exception** : la fenêtre et `F` ; l'univers et sa provenance ;
+  **la famille** du mécanisme évalué, au sens du critère d'arrêt (`docs/CONTRAINTES_POST_B4.md` § 10.1) ;
   **la source de données et l'intervalle de bougies** ; **le modèle de fees et les coûts par paire** ; **le
   capital `C`** ; le plancher d'ordre ; la règle de sélection ; **chaque seuil avec sa classe** (§ 0.5) ; la
   définition du benchmark et **le mode de `λ`** (§ C.4) ; **les portes ponctuelles post-ancrage et les paramètres
@@ -379,6 +380,20 @@ sa forme machine.
 - Toute empreinte différente est **une nouvelle variante**, qui doit déclarer son parent. **C'est là que le
   contrôle mord.**
 - Le registre est le pendant machine de `docs/RESEARCH_LOG.md` et renvoie à son entrée.
+- **Le registre tient l'état du critère d'arrêt, et l'ancrage l'applique.** Le critère d'arrêt a sa section
+  d'origine hors de ce document (`docs/CONTRAINTES_POST_B4.md` § 10.1), où il n'est pas redit ; ce point en
+  donne l'application mécanique.
+  - **À l'étape 6** (§ L.1), le verdict inscrit dans l'enregistrement de sa variante l'issue, la raison, et le
+    statut *compté* ou *non compté* que le § 10.1 leur attribue.
+  - Quand l'issue ouvre la voie de sortie prospective du § 10.1, il y inscrit aussi, au moment du verdict, la
+    **date déclarée** et l'**empreinte attendue** `sig(canon(manifeste))` du manifeste de l'évaluation
+    différée.
+  - **À l'étape 1**, l'ancrage lit les enregistrements de la famille que le manifeste déclare. Il refuse
+    (`R0_INVALID_RUN`, code 2, § I.1, ligne 2) toute variante que le § 10.1 exclut : une seconde campagne sur
+    une famille qui porte déjà un verdict compté, ou une relance au-delà de l'unique.
+  - Sur une telle famille, **seule est acceptée** la variante dont l'empreinte est l'empreinte attendue inscrite
+    au verdict. L'évaluation différée est un état du registre, pas une exception de lecture.
+  - L'issue publiée et le statut compté ne sont tenus qu'à un endroit.
 
 ### A.7 La projection d'ancrage, et sa liste blanche
 
@@ -1972,7 +1987,8 @@ est pré-enregistrée** : le § 10 de `docs/CONTRAINTES_POST_B4.md` (critère d'
 de ce protocole) dit d'avance quels verdicts de cette chaîne closent une famille, combien de familles et combien
 de temps le projet s'accorde avant de s'arrêter, et ce qui doit exister avant tout ordre live. Ce protocole
 **produit les événements** que ce critère lit — les issues et leurs raisons — et **ne le contient pas** : le
-critère reste une règle de gestion, avec son auteur, hors des § 0 à M. La décision peut être prise, et elle
+critère reste une règle de gestion, avec son auteur, hors des § 0 à M ; son application mécanique au registre de
+variantes est au § A.6. La décision peut être prise, et elle
 passe alors par le § 5 et le ticket § 6 de `docs/CONTRAINTES_POST_B4.md`. **Elle est annoncée
 comme telle, avec son auteur et son motif, et n'est jamais déduite d'un verdict de ce protocole.** Un rapport
 qui écrirait « la famille est close parce que le protocole a rendu `réfuté` » commettrait l'inférence que ce
@@ -2001,7 +2017,7 @@ Aucun pas n'est sauté ni réordonné.
 | 3 | `c3_benchmark` | comparateur du préfixe, `λ` et son mode |
 | 4 | `c3_select` | projection, admissibilité, scores, classement, choix ou abstention |
 | 5 | `c3_continuity` | contrat du § B sur un artefact d'évaluation, avec l'état de vérifiabilité de chaque clause |
-| 6 | `c3_verdict` | l'issue et **la chaîne de verdict** |
+| 6 | `c3_verdict` | l'issue et **la chaîne de verdict** ; l'issue et son statut au critère d'arrêt, inscrits à l'enregistrement de la variante (§ A.6) |
 
 **Ce qui était atteignable en C3a, et ce qui l'est depuis v2.1.** En C3a, les étapes 5 et 6 n'étaient
 exerçables que sur des fixtures synthétiques, et l'outillage refusait toute évaluation déclarée réelle
