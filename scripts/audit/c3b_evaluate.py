@@ -637,28 +637,21 @@ def evaluation_series(
 
     **Avant tout tirage** : trois longueurs différentes (§ F.2 d : « indices appariés impossibles ») → contrôle en
     échec (3) ``series_length`` ; puis ``cc.check_returns`` sur chaque série — un non-fini ou un rendement ``≤ −1``
-    est une entrée invalide (§ F.2 e) → contrôle en échec (3) ``f2_invalid_input``, aucun artefact. Même issue quand
-    ``recompute_daily`` lève ``OverflowError`` : son CAGR passe par ``math.exp`` (``cc.cagr_pct``), qui lève là où
-    l'exponentielle de numpy rend ``inf`` — c'est le CAGR observé non fini du § F.2 (e), constaté avant le tirage."""
-    try:
-        daily = cc.recompute_daily(values, days=days)
-        returns_config = list(daily.returns)
-        returns_bench = {
-            matching: list(
-                cc.recompute_daily(
-                    [float(v) for v in cb.blend_nav(nav_bh, lambdas[matching], capital)],
-                    days=days,
-                ).returns
-            )
-            for matching in cc.MATCHINGS
-        }
-    except OverflowError as exc:
-        raise c3bc.ProducerControlError(
-            "f2_invalid_input",
-            [
-                f"CAGR observé non fini ({exc}, cc.cagr_pct) — entrée invalide (§ F.2 e), aucun tirage"
-            ],
-        ) from exc
+    est une entrée invalide (§ F.2 e) → contrôle en échec (3) ``f2_invalid_input``, aucun artefact. Un CAGR observé
+    non fini n'est plus une exception de ``recompute_daily`` : depuis R-21 (§ A.8 D4 v2.2, AM-10), ``cc.cagr_pct`` le
+    rend non défini ; il est pris par ``cc.replay_bootstrap`` (``f2_block`` → ``f2_invalid_input``, code 3), et toute
+    exception résiduelle par l'étape 10b (code 3)."""
+    daily = cc.recompute_daily(values, days=days)
+    returns_config = list(daily.returns)
+    returns_bench = {
+        matching: list(
+            cc.recompute_daily(
+                [float(v) for v in cb.blend_nav(nav_bh, lambdas[matching], capital)],
+                days=days,
+            ).returns
+        )
+        for matching in cc.MATCHINGS
+    }
     lengths = {"returns_config": len(returns_config)}
     lengths.update({f"returns_bench.{m}": len(series) for m, series in returns_bench.items()})
     if len(set(lengths.values())) != 1:
