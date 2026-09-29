@@ -536,11 +536,15 @@ Plus rigoureux que le cross-validate simple. Fenêtre glissante :
 **Ce walk-forward n'est pas une validation chronologique** (audit 16/09, note WF de `PROJECT_CONTEXT.md`) : le top-5 est
 choisi sur le test global. Toute sélection relève du protocole C3 — section suivante.
 
-## Validation C3 (protocole v2.1 — ce que fait l'outillage de sélection, et ce qu'il ne fait pas)
+## Validation C3 (protocole v2.2 — ce que fait l'outillage de sélection, et ce qu'il ne fait pas)
 
-Source : `docs/protocole_c3.md` **v2.1**, amendé le 2026-09-23, sha256
-**`9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129`** ; amendements, décisions de gate et
-réserves (R-01 à R-14) : `docs/amendements_c3_v2.1.md`, section « Adoption ». Historique : v2.0 gelée au `d931293`
+Source : `docs/protocole_c3.md` **v2.2**, amendé le 2026-09-29, sha256
+**`1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a`** ; amendements, décisions de gate et
+réserves (R-15 à R-22) : `docs/amendements_c3_v2.2.md`, section « Adoption » ; v2.1 (sha256 `9300f4e5…4129`,
+R-01 à R-14) : `docs/amendements_c3_v2.1.md`. **L'outillage suit encore v2.1** : les règles nouvelles de v2.2
+(§ A.6 registre et critère d'arrêt, § A.7 clés `_quote` et dates nullables, § A.8 D4 et CAGR, § C.5 refus amont,
+§ L.1 septième entrée et `metrics.executions`, § L.2 recoupements) sont portées par 46 tests `xfail` strict, levés
+par le chantier outillage (`results/c3_v2_2/outillage_v2_2.md`). Historique : v2.0 gelée au `d931293`
 (sha256 `9b62915069e59e9b…`), rapport de session C3a `agent/rapport_session_c3a_20260922.md`. **La norme est le
 protocole, et lui seul** (§ 0.7). Depuis v2.1, **chaque règle que l'outillage applique a sa section d'origine au
 texte** — les conventions d'outillage datées de C3a sont soit ratifiées (22/09), soit abrogées (21/09). Cette
@@ -648,8 +652,8 @@ décision de reconstruire les six estampilles 1 w de 2022 précède le manifeste
 
 **Tests** : `tests/test_scripts/test_c3_*.py` (8 fichiers, **932** : verdict 415, entry 138, anchor 131, common 83,
 continuity 69, select 59, benchmark 28, chronology 9). Les attendus citent le texte v2.1 et sont **épinglés** aux
-constantes du code — liste des raisons relue dans le bloc du § H.1, table du § B.8 relue dans le protocole, sha v2.1
-relu dans le paquet adopté ; la procédure du § F.2 est réécrite **côté test depuis l'expression du texte** (`fx`),
+constantes du code — liste des raisons relue dans le bloc du § H.1, table du § B.8 relue dans le protocole, dernière
+empreinte (v2.2) relue dans le paquet adopté ; la procédure du § F.2 est réécrite **côté test depuis l'expression du texte** (`fx`),
 jamais importée du noyau ; témoins vérifiés par mutation là où ils étaient verts à l'écriture ; scan AST contre
 `bool(…)` sur donnée externe et `.get(clé, défaut)` hors `OPTIONAL_FIELDS`.
 

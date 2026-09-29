@@ -603,3 +603,54 @@ def test_revue_Fin_5_le_temoin_reste_estimable_apres_la_lecture_complete() -> No
     ctx = _candidate_context()
     block, _ = cb.candidate_block(ctx.pop("projection"), **ctx)
     assert block["estimable"] is True and block["first_failed"] is None
+
+
+# ---------------------------------------------------------------------------
+# § A.8 D4 v2.2 (AM-10) — le CAGR qui découle de rendements finis doit être fini (R-21)
+# ---------------------------------------------------------------------------
+
+R21 = pytest.mark.xfail(
+    strict=True,
+    raises=OverflowError,
+    reason="R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée",
+)
+
+
+@R21
+def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_rend_le_candidat_non_estimable() -> None:
+    """§ A.8 D4 v2.2 : « rendements quotidiens définis et tous finis, dénominateurs non nuls, et le CAGR annualisé
+    qui en découle, fini » ; un CAGR qui déborde « n'est pas défini, et le candidat sort par D4 (§ I.1, ligne 6) ».
+    Le débordement n'existe que sur un préfixe court (< 361 j pour `E_0 = C`, motif d'AM-10) : la durée est
+    réduite ici, les rendements sont ceux, finis, du témoin."""
+    ctx = _candidate_context()
+    ctx["days"] = 0.01
+    block, _ = cb.candidate_block(ctx.pop("projection"), **ctx)
+    assert block["estimable"] is False
+    assert block["first_failed"] == "D4" and block["reason"] == "F_NOT_ESTIMABLE"
+
+
+# ---------------------------------------------------------------------------
+# R-22, cas 2 (phase1.md § 1) — un B&H à rendement non fini : § C.5 → paire non comparable, code 0
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=ValueError,
+    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
+)
+def test_R22_un_bh_a_rendement_non_fini_sur_des_bougies_finies_rend_la_paire_non_comparable(
+    tmp_path: Path,
+) -> None:
+    """§ C.5 : finitude — « toutes valeurs finies », sinon non comparable ; § C.6 : candidats `NOT_ESTIMABLE`,
+    code 0. Deux clôtures quotidiennes finies (1e-300 puis 1e300) font un rendement qui déborde le double :
+    aujourd'hui `to_dict` écrit ce rendement (`c3_benchmark.py:166-168`) et le writer strict lève."""
+    w = _chain(tmp_path)
+    candles = fx.candles(w["payload"])
+    daily = candles["pairs"]["BTC/USDC"]["daily"]
+    daily[100]["close"] = "1E-300"
+    daily[101]["close"] = "1E+300"
+    cc.write_json(w["candles"], candles)
+    assert cb.main(_argv(w)) == 0
+    pair = cc.read_json(w["benchmark"])["pairs"]["BTC/USDC"]
+    assert pair["comparable"] is False and pair["comparability"]["all_finite"] is False

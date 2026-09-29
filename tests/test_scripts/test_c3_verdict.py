@@ -21,7 +21,9 @@ les **conséquences** des règles, ce qu'un index de symboles ne peut pas faire 
 from __future__ import annotations
 
 from collections.abc import Mapping
+import dataclasses
 from datetime import timedelta
+from decimal import Decimal
 from functools import cache
 import math
 from pathlib import Path
@@ -1952,7 +1954,9 @@ def test_c1_ou_c5_non_verifiable_sur_une_evaluation_reelle_est_une_violation(
 ) -> None:
     """§ B.8 v2.1, « Ce qu'exige validé » : c1 et c5 `DÉCLARÉ` sur une évaluation réelle — elle porte sa
     preuve de départ à plat et son premier remplissage (§ L.1) ; une continuité qui les dit non vérifiables
-    contredit l'évaluation : violation (§ I.1, ligne 15), jamais `validé`."""
+    contredit l'évaluation : violation (§ I.1, ligne 15), jamais `validé`. § B.8 v2.2 (AM-08) : c5
+    `NON VÉRIFIABLE` n'est légitime que sans exécution (`first_fill_at` nul) ; cette évaluation porte un
+    remplissage, l'attendu reste la violation."""
     artifacts = _sound()
     _real_with_carriers(artifacts)
     artifacts["continuity"]["clauses"][clause] = {"state": "NOT_VERIFIABLE", "detail": "absent"}
@@ -2336,6 +2340,27 @@ CHAIN_FILES = (
 )
 
 
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir",
+)
+def test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante(
+    tmp_path: Path,
+) -> None:
+    """§ A.6 v2.2 : « À l'étape 6 (§ L.1), le verdict inscrit dans l'enregistrement de sa variante l'issue, la
+    raison, et le statut compté ou non compté » ; § L.1 v2.2, ligne 6. Noms de clés indicatifs."""
+    w = _chain_world(tmp_path)
+    assert cv.main(_chain_argv(w)) == 0
+    payload = cc.read_json(w["out"] / "verdict.json")
+    anchor = cc.read_json(w["out"] / "anchor.json")
+    record = cc.read_json(w["registry"])["variants"][anchor["variant_key"]]
+    assert "verdict" in record, "l'enregistrement de la variante ne porte pas l'issue"
+    assert record["verdict"]["issue"] == payload["verdict"]
+    assert record["verdict"]["raison"] == payload["raison"]
+    assert isinstance(record["verdict"]["compte"], bool)
+
+
 def test_chain_complete_sur_fixtures_verdict_et_neuf_champs_correspondants(tmp_path: Path) -> None:
     w = _chain_world(tmp_path)
     assert cv.main(_chain_argv(w)) == 0
@@ -2549,7 +2574,8 @@ def test_chain_sur_le_livrable_reel_v20_s_arrete_a_l_ancrage_code_2_rien_d_ecrit
 
 
 def test_le_parseur_chain_n_expose_que_des_chemins_une_campagne_et_un_horodatage() -> None:
-    actions = {a.dest for a in cv.build_chain_parser()._actions} - {"help"}
+    # La septième entrée (§ L.1 v2.2, AM-03) vit dans le jumeau R-15 : `candles_eval`.
+    actions = {a.dest for a in cv.build_chain_parser()._actions} - {"help", "candles_eval"}
     assert actions == {
         "manifest",
         "observations",
@@ -3760,7 +3786,9 @@ def test_revue_Fin2_1_l_abstention_recoupe_la_continuite_et_porte_continuite_tir
 ) -> None:
     """Abstention + continuité contredite (c4 VERIFIED, résumé faux) → violation, diagnostic 1 ;
     abstention + continuité cohérente → 0, la chaîne porte `continuite=-` (aucune configuration
-    retenue, l'évaluation n'est pas celle d'une retenue)."""
+    retenue, l'évaluation n'est pas celle d'une retenue). § L.2 v2.2 (AM-06, retouche C-5) : « `-` est la
+    valeur de ce champ chaque fois qu'aucun état de clause n'entre dans l'issue : […] abstention (§ A.11), où
+    elles sont lues et recoupées sans être rapportées »."""
     artifacts = _sound()
     _abstain(artifacts)
     argv = _write_cli_inputs(tmp_path / "ok", artifacts)
@@ -4045,3 +4073,377 @@ def test_revue_Fin2_2_le_diagnostic_ne_dit_pas_rien_publie(tmp_path: Path) -> No
     assert all(
         "rien publié" not in v and "issue non définie" not in v for v in payload["violations"]
     )
+
+
+# ---------------------------------------------------------------------------
+# § C.5 v2.2 (AM-06) — refus amont d'un comparateur non constructible, lu et recoupé par la chaîne (R-18)
+# ---------------------------------------------------------------------------
+
+R18 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir",
+)
+
+
+def _main(argv: list[str]) -> int:
+    """`cv.main`, un `SystemExit` d'argparse (option que l'outillage ne connaît pas encore) rendu en code."""
+    try:
+        return cv.main(argv)
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else 2
+
+
+def _refusal_world(
+    tmp_path: Path, *, missing_exec: str | None = "entry", with_series: bool = False
+) -> dict[str, Any]:
+    """Le monde de chaîne des fixtures, l'évaluation remplacée par sa **forme de refus** (§ C.5 v2.2 : identité,
+    fenêtre `[T, fin]`, bloc `refused`, aucune série) et l'export de bougies d'évaluation (§ L.1 v2.2, septième
+    entrée) sur la seule paire évaluée. Interface indicative : noms de clés et option à fixer par l'outillage."""
+    w = _chain_world(tmp_path)
+    evaluation = cc.read_json(w["evaluation"])
+    refused = {
+        "reason": "comparator_not_buildable",
+        "window": dict(evaluation["period"]),
+        "motif": "estampille d'exécution d'entrée absente (§ C.3)",
+    }
+    if with_series:
+        refusal = {**evaluation, "refused": refused}
+    else:
+        refusal = {k: evaluation[k] for k in ("synthetic", "strategy", "pair", "params", "period")}
+        refusal["refused"] = refused
+    cc.write_json(w["evaluation"], refusal)
+    export = fx.candles(w["payload"], start=fx.ANCHOR, end=fx.WINDOW_END, missing_exec=missing_exec)
+    export["pairs"] = {evaluation["pair"]: export["pairs"][evaluation["pair"]]}
+    w["candles_eval"] = tmp_path / "candles_eval.json"
+    cc.write_json(w["candles_eval"], export)
+    return w
+
+
+def _refusal_argv(w: dict[str, Any]) -> list[str]:
+    return _chain_argv(w) + ["--candles-eval", str(w["candles_eval"])]
+
+
+@R18
+def test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif(
+    tmp_path: Path,
+) -> None:
+    """§ C.5 v2.2 : « La chaîne […] publie `inconclusif (E_NO_BENCHMARK)`, code 0 (§ I.1, ligne 10) » ; le motif
+    `comparator_not_buildable` est un champ de l'issue ; § L.2 v2.2 : « ce champ est sans objet, et la chaîne
+    porte `-` »."""
+    w = _refusal_world(tmp_path)
+    assert _main(_refusal_argv(w)) == 0
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "E_NO_BENCHMARK"
+    assert payload["motif"] == "comparator_not_buildable"
+    assert " | continuite=- | " in payload["verdict_string"]
+
+
+@R18
+def test_R18_un_refus_qui_porte_des_series_se_contredit(tmp_path: Path) -> None:
+    """§ C.5 v2.2 : « Un artefact d'évaluation qui porte à la fois un bloc `refused` et des séries se contredit :
+    c'est une violation » (§ I.1, ligne 15, code 1)."""
+    w = _refusal_world(tmp_path, with_series=True)
+    assert _main(_refusal_argv(w)) == 1
+
+
+@R18
+def test_R18_un_refus_que_l_export_dement_est_une_violation(tmp_path: Path) -> None:
+    """§ C.5 v2.2 : « elle rejoue la non-constructibilité sur l'export de bougies d'évaluation (§ L.2), et un refus
+    que l'export dément est une violation (§ I.1, ligne 15) » — ici l'export porte les deux estampilles."""
+    w = _refusal_world(tmp_path, missing_exec=None)
+    assert _main(_refusal_argv(w)) == 1
+    assert cc.read_json(w["out"] / "verdict.json")["invalide"] is True
+
+
+@R18
+def test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.2 (retouche C-1) : « L'identité de la configuration portée par le refus est recoupée à la
+    configuration retenue avant toute lecture du bloc `refused` ; une discordance est un refus `R0_INVALID_RUN` »
+    — code 2, rien publié (§ I.1, ligne 2)."""
+    w = _refusal_world(tmp_path)
+    refusal = cc.read_json(w["evaluation"])
+    other = next(
+        c
+        for c in w["payload"]["universe"]["candidates"]
+        if c["pair"] == refusal["pair"] and c["params"] != refusal["params"]
+    )
+    refusal["params"] = other["params"]
+    cc.write_json(w["evaluation"], refusal)
+    assert _main(_refusal_argv(w)) == 2
+    assert not (w["out"] / "verdict.json").exists()
+    assert "R0_INVALID_RUN" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# § L.1 v2.2 (AM-08) — évaluation réelle sans exécution : admise, c5 non vérifiable, jamais `validé` (R-19)
+# ---------------------------------------------------------------------------
+
+R19 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
+)
+
+
+def _no_execution(
+    artifacts: dict[str, Any], *, executions: int = 0, constant_equity: bool = True
+) -> None:
+    """Évaluation réelle portant ses porteurs, sans exécution : `first_fill_at` nul, rendements nuls, equity à
+    `C` (ou non, pour la contradiction), `metrics.executions` posé ; continuité cohérente (c5 non vérifiable,
+    `stamp_cell` sans estampille)."""
+    _real_with_carriers(artifacts)
+    _reseries(artifacts, [0.0] * N_DAYS, [0.0] * N_DAYS, net_pnl=0.0)
+    evaluation = artifacts["evaluation"]
+    evaluation["first_fill_at"] = None
+    evaluation["metrics"]["executions"] = executions
+    values = [1000.0] * (N_DAYS + 1)
+    if not constant_equity:
+        values[N_DAYS // 2] = 1001.0
+    evaluation["equity_daily"] = {
+        "start": fx.ANCHOR.isoformat(),
+        "end": fx.WINDOW_END.isoformat(),
+        "values": values,
+    }
+    continuity = artifacts["continuity"]
+    continuity["clauses"]["c5"] = {"state": "NOT_VERIFIABLE", "detail": "aucune exécution"}
+    continuity["stamp_cell"] = {"state": "NOT_VERIFIABLE", "detail": "aucune estampille"}
+    continuity["stamp_same_daily_cell"] = False
+    continuity["state"] = "NOT_VERIFIABLE"
+
+
+@R19
+def test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_jamais_valide() -> (
+    None
+):
+    """§ L.1 v2.2 : admise ; § B.8 v2.2 : « Sa clause 5 est alors `NON VÉRIFIABLE`, `validé` lui est inatteignable,
+    et son issue est celle que le § H lui donne » — sans violation."""
+    artifacts = _sound()
+    _no_execution(artifacts)
+    violations: list[str] = []
+    try:
+        decision = cv.decide(artifacts, violations=violations)
+    except cc.EntryRefusedError as exc:
+        raise AssertionError(f"refusée : {exc}") from exc
+    assert violations == []
+    assert decision.issue != cc.ISSUE_VALIDE
+
+
+@R19
+def test_R19_first_fill_at_nul_avec_des_executions_est_une_violation(tmp_path: Path) -> None:
+    """§ L.1 v2.2 : « `first_fill_at` est nul si et seulement si `executions == 0` […] Une contradiction entre ces
+    faits est une violation (§ I.1, ligne 15). »"""
+    artifacts = _sound()
+    _no_execution(artifacts, executions=3)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+
+
+@R19
+def test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation(tmp_path: Path) -> None:
+    """§ L.1 v2.2 : « `executions == 0` implique `equity_daily` constante, égale au capital `C` ; l'outillage le
+    recalcule » — la contradiction est une violation. Rien n'est testé dans l'autre sens."""
+    artifacts = _sound()
+    _no_execution(artifacts, constant_equity=False)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+
+
+# ---------------------------------------------------------------------------
+# § L.2 v2.2 (AM-03) — ce que le producteur garantit, la chaîne le recalcule (R-15)
+# ---------------------------------------------------------------------------
+
+R15 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir",
+)
+
+#: λ déclarés par l'étape 3 pour la configuration du monde (`_artifacts`), et repris par l'évaluation.
+LAMBDAS_V22 = {"dd": 0.5, "sigma": 0.4}
+
+
+def _returns_of(values: list[float]) -> list[float]:
+    """§ L.2 v2.2 : « `r_t = E_t / E_{t−1} − 1`, en double précision, sur les valeurs exportées, dans l'ordre de la
+    grille » — écrite ici depuis le texte, jamais importée de l'outillage."""
+    return [values[t] / values[t - 1] - 1.0 for t in range(1, len(values))]
+
+
+def _v22_world(artifacts: dict[str, Any]) -> dict[str, Any]:
+    """Le monde de `_sound()` rendu conforme aux trois recoupements du § L.2 v2.2 : `returns_config` tiré
+    d'`equity_daily`, λ déclarés = λ de l'étape 3, `returns_bench` et NAV du comparateur tirés de l'export de
+    bougies d'évaluation (B&H du § C.3 sur `[T, fin]`, blend du § C.4). Entrées nouvelles sous des clés
+    indicatives (`benchmark`, `candles_eval`, `benchmark_eval`) ; renvoie le B&H construit."""
+    identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
+    payload = fx.manifest()
+    export = fx.candles(payload, start=fx.ANCHOR, end=fx.WINDOW_END)
+    export["pairs"] = {"BTC/USDC": export["pairs"]["BTC/USDC"]}
+    manifest = cc.load_manifest(payload)
+    btc = next(c for c in manifest.candidates if c.pair == "BTC/USDC")
+    parsed = cb.load_candles(
+        export, dataclasses.replace(manifest, candidates=(btc,)), end=fx.WINDOW_END
+    )
+    spread, slippage = (Decimal(x) for x in fx.PAIR_COSTS["BTC/USDC"])
+    capital = Decimal(1000)
+    bench = cb.build_pair(
+        "BTC/USDC",
+        parsed["BTC/USDC"],
+        start=fx.ANCHOR,
+        end=fx.WINDOW_END,
+        exec_interval=fx.EXEC_INTERVAL,
+        spread=spread,
+        slippage=slippage,
+        taker=Decimal(fx.TAKER),
+        capital=capital,
+    )
+    assert bench.buildable and bench.comparable
+    returns_bench = {
+        m: _returns_of([float(v) for v in cb.blend_nav(bench.nav, Decimal(str(lam)), capital)])
+        for m, lam in LAMBDAS_V22.items()
+    }
+    equity = fx.nav_path("BTC/USDC", 7, N_DAYS + 1, drift=0.0006)
+    _reseries(artifacts, _returns_of(equity), returns_bench)
+    evaluation = artifacts["evaluation"]
+    evaluation["equity_daily"] = {
+        "start": fx.ANCHOR.isoformat(),
+        "end": fx.WINDOW_END.isoformat(),
+        "values": equity,
+    }
+    evaluation["lambdas"] = dict(LAMBDAS_V22)
+    artifacts["benchmark"] = {
+        "candidates": {
+            identity: {"lambda_dd": LAMBDAS_V22["dd"], "lambda_sigma": LAMBDAS_V22["sigma"]}
+        }
+    }
+    artifacts["candles_eval"] = export
+    artifacts["benchmark_eval"] = {
+        **fx.benchmark_eval("BTC/USDC"),
+        "nav": [float(v) for v in bench.nav],
+    }
+    return {"bench": bench, "equity": equity, "returns_bench": returns_bench}
+
+
+def _decide(artifacts: dict[str, Any]) -> tuple[Any, list[str]]:
+    violations: list[str] = []
+    return cv.decide(artifacts, violations=violations), violations
+
+
+@R15
+def test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une_violation() -> (
+    None
+):
+    """§ L.2 v2.2, première ligne : `returns_config` recalculé sur `equity_daily` de l'artefact d'évaluation,
+    « toute discordance est une violation » ; « la comparaison est une égalité au bit »."""
+    artifacts = _sound()
+    world = _v22_world(artifacts)
+    config = _returns_of(world["equity"])
+    config[10] = math.nextafter(config[10], math.inf)
+    _reseries(artifacts, config, world["returns_bench"])
+    _, violations = _decide(artifacts)
+    assert any("returns_config" in v for v in violations), violations
+
+
+@R15
+def test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation() -> None:
+    """§ L.2 v2.2, deuxième ligne : « égalité exacte avec les `λ_dd` et `λ_σ` que l'étape 3 a publiés »."""
+    artifacts = _sound()
+    _v22_world(artifacts)
+    artifacts["evaluation"]["lambdas"]["dd"] = 0.51
+    _, violations = _decide(artifacts)
+    assert any("lambda" in v or "λ" in v for v in violations), violations
+
+
+@R15
+def test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation() -> None:
+    """§ L.2 v2.2, troisième ligne : `returns_bench` recalculé sur l'export de bougies d'évaluation (B&H § C.3,
+    blend § C.4 aux λ de l'étape 3) ; une discordance au bit est une violation."""
+    artifacts = _sound()
+    world = _v22_world(artifacts)
+    bench = {m: list(v) for m, v in world["returns_bench"].items()}
+    bench["dd"][10] = math.nextafter(bench["dd"][10], math.inf)
+    _reseries(artifacts, _returns_of(world["equity"]), bench)
+    _, violations = _decide(artifacts)
+    assert any("returns_bench" in v for v in violations), violations
+
+
+@R15
+def test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_une_violation() -> (
+    None
+):
+    """§ L.2 v2.2 (retouche C-4) : « sa NAV sur la grille quotidienne, passée en double, est égale au bit à celle
+    du B&H plein notionnel recalculé, dont le blend est tiré ; une discordance est une violation »."""
+    artifacts = _sound()
+    _v22_world(artifacts)
+    artifacts["benchmark_eval"]["nav"][10] *= 1.0000001
+    _, violations = _decide(artifacts)
+    assert any("nav" in v for v in violations), violations
+
+
+@R15
+def test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_est_une_violation() -> (
+    None
+):
+    """§ L.2 v2.2 (retouche C-3) : « Sur une évaluation non refusée, un recalcul impossible sur l'export est une
+    violation (§ I.1, ligne 15) […] Le seul comparateur non constructible légitime est celui de la forme de refus
+    (§ C.5). » — pas un `E_NO_BENCHMARK`."""
+    artifacts = _sound()
+    _v22_world(artifacts)
+    export = fx.candles(fx.manifest(), start=fx.ANCHOR, end=fx.WINDOW_END, missing_exec="entry")
+    artifacts["candles_eval"] = {**export, "pairs": {"BTC/USDC": export["pairs"]["BTC/USDC"]}}
+    decision, violations = _decide(artifacts)
+    assert violations, "recalcul impossible sur une évaluation non refusée : violation attendue"
+    assert decision.reason != "E_NO_BENCHMARK"
+
+
+@R15
+@pytest.mark.parametrize("defaut", ["estampille après fin", "seconde paire"])
+def test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse(defaut: str) -> None:
+    """§ L.2 v2.2 : « L'export de bougies d'évaluation porte une seule paire, celle de la configuration évaluée,
+    et aucune estampille postérieure à la fin de la fenêtre d'évaluation. Sinon c'est une erreur d'entrée
+    (§ I.1, ligne 2), jamais tronquée »."""
+    artifacts = _sound()
+    _v22_world(artifacts)
+    if defaut == "estampille après fin":
+        export = fx.candles(
+            fx.manifest(), start=fx.ANCHOR, end=fx.WINDOW_END, extra_stamp_after_end=True
+        )
+        export["pairs"] = {"BTC/USDC": export["pairs"]["BTC/USDC"]}
+    else:
+        export = fx.candles(fx.manifest(), start=fx.ANCHOR, end=fx.WINDOW_END)
+    artifacts["candles_eval"] = export
+    refused = False
+    try:
+        _decide(artifacts)
+    except cc.EntryRefusedError:
+        refused = True
+    assert refused, "l'export hors règle d'entrée n'est pas refusé"
+
+
+@R15
+def test_R15_le_parseur_chain_expose_la_septieme_entree() -> None:
+    """§ L.1 v2.2, ligne 0 : sept entrées, dont « l'export de bougies d'évaluation `candles_eval.json` ». Jumeau de
+    l'ensemble exact du test du parseur (option indicative)."""
+    actions = {a.dest for a in cv.build_chain_parser()._actions}
+    assert "candles_eval" in actions
+
+
+# ---------------------------------------------------------------------------
+# R-22, cas 4 (phase1.md § 1) — un non-fini fourni dans `evaluation.estimability` : diagnostic, code 1
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=ValueError,
+    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
+)
+def test_R22_un_non_fini_fourni_dans_l_estimabilite_declaree_est_un_diagnostic(
+    tmp_path: Path,
+) -> None:
+    """§ I.1 : valeur fournie non finie → violation, ligne 15, « un artefact de diagnostic est écrit, code 1, et
+    porte `invalide: true` ». Aujourd'hui `estimability` est recopié entier (`c3_verdict.py:413`) et le writer
+    strict lève."""
+    artifacts = _sound()
+    artifacts["evaluation"]["estimability"] = {"note": float("nan")}
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    assert cc.read_json(tmp_path / "verdict.json")["invalide"] is True

@@ -1,0 +1,81 @@
+## AM-05 (R-17) et pont sha — 2026-09-29T08:59:20Z — HEAD b8b2390
+# -k "R17 or sha_v21" tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3_common.py
+tests/test_scripts/test_c3_anchor.py:636: assert (0 == 2)
+tests/test_scripts/test_c3_anchor.py:655: assert (0 == 2)
+tests/test_scripts/test_c3_anchor.py:680: assert (0 == 2)
+tests/test_scripts/test_c3_anchor.py:703: assert (0 == 2)
+tests/test_scripts/test_c3_verdict.py:2354: AssertionError: l'enregistrement de la variante ne porte pas l'issue
+tests/test_scripts/test_c3_common.py:564: AssertionError: assert '9300f4e53bfd...4cc8a3ccd4129' == '100089db1255...e7640dfbf3e01'
+6 failed, 628 deselected in 1.26s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-04 (R-16) — 2026-09-29T09:03:32Z — HEAD 451a148
+# -k "R16" tests/test_scripts/test_c3_chronology.py tests/test_scripts/test_c3_entry.py tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3b_common.py
+tests/test_scripts/test_c3_chronology.py:331: AssertionError: assert {'exchange', ...ts_file', ...} == {'exchange', ...ts_file', ...}
+tests/test_scripts/test_c3_entry.py:912: AssertionError: l'observation ne porte pas `min_order_quote` (§ A.7 v2.2)
+tests/test_scripts/test_c3_entry.py:912: AssertionError: l'observation ne porte pas `min_order_quote` (§ A.7 v2.2)
+tests/test_scripts/test_c3_entry.py:931: assert (0 == 2)
+tests/test_scripts/test_c3_entry.py:949: assert (0 == 2)
+tests/test_scripts/test_c3_entry.py:967: assert (0 == 2)
+tests/test_scripts/test_c3_anchor.py:724: AssertionError: le manifeste ne porte pas `min_order_quote` (AM-04)
+tests/test_scripts/test_c3_anchor.py:724: AssertionError: le manifeste ne porte pas `min_order_quote` (AM-04)
+tests/test_scripts/test_c3b_common.py:1272: AssertionError: assert [None, None] == ['44.98200', '22.491000']
+tests/test_scripts/test_c3b_common.py:1289: AssertionError: assert ('min_order_quote' in {'dca_counters': None, 'decision_timeframes': ['1d', '1w', '4h'], 'effective_params': {'params': {'atr_multiplier': {'...'start': '2020-01-06T00:00:00+00:00', 'values': [1000.0, 997.4775, 997.4775, 997.4775, 997.4775, 997.4775, ...]}}, ...})
+10 failed, 366 deselected in 0.76s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-09 (R-20) — 2026-09-29T09:07:05Z — HEAD 608ea37
+# -k "R20" tests/test_scripts/test_c3_entry.py tests/test_scripts/test_c3b_common.py
+tests/test_scripts/test_c3_entry.py:1012: assert (2 == 0)
+tests/test_scripts/test_c3_entry.py:1028: assert (2 == 1)
+tests/test_scripts/test_c3_entry.py:1040: assert (0 == 1)
+tests/test_scripts/test_c3b_common.py:1136: AssertionError: refus coverage_no_covered_unit : § A.7 v2.2 veut une série à dates nulles
+4 failed, 230 deselected in 0.29s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-10 (R-21) — 2026-09-29T09:10:30Z — HEAD b5aecd8
+# -k "R21" tests/test_scripts/test_c3_benchmark.py tests/test_scripts/test_c3_select.py
+scripts/audit/c3_common.py:732: OverflowError: math range error
+scripts/audit/c3_common.py:732: OverflowError: math range error
+2 failed, 87 deselected in 0.20s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-06 (R-18) — 2026-09-29T09:19:11Z — HEAD 4f310ef
+# -k "R18" tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3b_evaluate.py
+tests/test_scripts/test_c3_verdict.py:4130: AssertionError: assert 2 == 0
+tests/test_scripts/test_c3_verdict.py:4142: AssertionError: assert 2 == 1
+tests/test_scripts/test_c3_verdict.py:4150: AssertionError: assert 2 == 1
+tests/test_scripts/test_c3_verdict.py:4172: assert 'R0_INVALID_RUN' in 'usage: c3_verdict.py chain [-h] --manifest MANIFEST --observations\n                           OBSERVATIONS [--covera...rs/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-844/test_R18_un_refus_d_une_autre_0/candles_eval.json\n'
+tests/test_scripts/test_c3b_evaluate.py:2032: AssertionError: aucun artefact d'évaluation sous forme de refus
+5 failed, 515 deselected in 2.90s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-08 (R-19) — 2026-09-29T09:26:02Z — HEAD 6bbb262
+# -k "R19" tests/test_scripts/test_c3b_evaluate.py tests/test_scripts/test_c3_continuity.py tests/test_scripts/test_c3_verdict.py
+tests/test_scripts/test_c3b_evaluate.py:2055: AssertionError: `metrics.executions` absent (§ L.1 v2.2)
+tests/test_scripts/test_c3b_evaluate.py:2072: AssertionError: assert {'cagr_pct', ...d', 'net_pnl'} == {'cagr_pct', ...s', 'net_pnl'}
+tests/test_scripts/test_c3_continuity.py:797: assert (2 == 0)
+tests/test_scripts/test_c3_verdict.py:4226: AssertionError: refusée : R0_INVALID_RUN: évaluation réelle (synthetic: false) sans first_fill_at — § L.1 v2.1 : admise si et seulement si elle porte flat_start_proof, invocation.single_call et first_fill_at (§ B.2, § B.4, § C.3)
+tests/test_scripts/test_c3_verdict.py:4237: AssertionError: assert 2 == 1
+tests/test_scripts/test_c3_verdict.py:4246: AssertionError: assert 2 == 1
+6 failed, 589 deselected in 0.87s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-03 (R-15) — 2026-09-29T09:30:50Z — HEAD 8509d9e
+# -k "R15" tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3b_evaluate.py
+tests/test_scripts/test_c3_verdict.py:4343: AssertionError: []
+tests/test_scripts/test_c3_verdict.py:4353: AssertionError: []
+tests/test_scripts/test_c3_verdict.py:4366: AssertionError: []
+tests/test_scripts/test_c3_verdict.py:4379: AssertionError: []
+tests/test_scripts/test_c3_verdict.py:4394: AssertionError: recalcul impossible sur une évaluation non refusée : violation attendue
+tests/test_scripts/test_c3_verdict.py:4419: AssertionError: l'export hors règle d'entrée n'est pas refusé
+tests/test_scripts/test_c3_verdict.py:4419: AssertionError: l'export hors règle d'entrée n'est pas refusé
+tests/test_scripts/test_c3_verdict.py:4427: AssertionError: assert 'candles_eval' in {'benchmark_eval', 'campaign', 'candles', 'coverage', 'evaluation', 'help', ...}
+tests/test_scripts/test_c3b_evaluate.py:2097: AssertionError: assert None == {'dd': 0.168, 'sigma': 0.336}
+9 failed, 525 deselected in 0.76s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## R-22 (cas 1-4) et hors réserve — 2026-09-29T09:34:44Z — HEAD 269a1ce
+# -k "R22 or hors_R" tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3_benchmark.py tests/test_scripts/test_c3_select.py tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3b_evaluate.py
+scripts/audit/_common.py:51: ValueError: variants.923287939788b0f5c09780fc3705e8b438345d61468328c4bf4b6adbc6b1d0f3.research_log_entry: flottant non fini (nan) — JSON n'a ni NaN ni infini
+scripts/audit/_common.py:51: ValueError: pairs.BTC/USDC.returns[101]: flottant non fini (inf) — JSON n'a ni NaN ni infini
+tests/test_scripts/test_c3_select.py:1102: AssertionError: D4 n'a pas retiré le candidat avant la suite : ValueError('math domain error')
+tests/test_scripts/test_c3_verdict.py:4419: AssertionError: l'export hors règle d'entrée n'est pas refusé
+tests/test_scripts/test_c3_verdict.py:4419: AssertionError: l'export hors règle d'entrée n'est pas refusé
+scripts/audit/_common.py:51: ValueError: estimabilite.declared.note: flottant non fini (nan) — JSON n'a ni NaN ni infini
+scripts/audit/c3_common.py:732: OverflowError: math range error
+7 failed, 756 deselected in 1.00s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)

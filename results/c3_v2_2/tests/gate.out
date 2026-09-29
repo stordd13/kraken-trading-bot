@@ -1,0 +1,127 @@
+# gate — 2026-09-29T10:00:01Z
+# HEAD d9c4aa3ebfd8cf7fa33cca9805ae6f564413d19d branche feat/c3-amendements-v2.2
+# arbre : 1 fichier(s) suivi(s) modifié(s)
+tunnel_5433=ouvert (non ouvert par la porte ; neutralisé pour pytest par gate_sans_tunnel)
+sha_fichier=1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a
+sha_adoption=1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a
+sha_descripteur=1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a
+sha_trois_voies=0
+pytest_exit=0
+resume=3246 passed, 19 skipped, 24 deselected, 46 xfailed in 167.71s (0:02:47)
+suite_verte=0
+zero_echec_zero_xpass=0
+## tests ignorés, par raison (tests base : ignorés sans tunnel, comme en CI)
+8 : Database not reachable (tunnel down or no local Postgres). Start the tunnel with `tunnel_ssh_hetzner` then rerun.
+4 : Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+2 : Database not reachable (tunnel down or no local Postgres).
+2 : Database not reachable
+1 : Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+1 : Database not reachable (tunnel down)
+1 : BYBIT_INTEGRATION=trade required (real order)
+xfailed=46 liste_outillage=46
+xfail_egal_liste=0
+xfail_egaux_a_la_liste=0
+## xfail, avec leur raison
+XFAIL test_c3_anchor.py::test_R17_un_manifeste_sans_famille_est_refuse - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL test_c3_anchor.py::test_R17_une_seconde_campagne_sur_une_famille_au_verdict_compte_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL test_c3_anchor.py::test_R17_une_relance_au_dela_de_l_unique_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL test_c3_anchor.py::test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL test_c3_anchor.py::test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree[absente] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3_anchor.py::test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree[nulle] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3_anchor.py::test_R22_un_non_fini_dans_un_autre_enregistrement_du_registre_est_un_diagnostic - R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir
+XFAIL test_c3_benchmark.py::test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_rend_le_candidat_non_estimable - R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée
+XFAIL test_c3_benchmark.py::test_R22_un_bh_a_rendement_non_fini_sur_des_bougies_finies_rend_la_paire_non_comparable - R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir
+XFAIL test_c3_chronology.py::test_R16_les_contrats_de_la_projection_sont_ceux_du_A7_v22 - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3_continuity.py::test_R19_une_evaluation_reelle_sans_execution_est_admise_c5_non_verifiable - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL test_c3_entry.py::test_R16_le_plancher_d_ordre_min_order_quote_absent_ou_nul_refuse_l_entree[absente] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3_entry.py::test_R16_le_plancher_d_ordre_min_order_quote_absent_ou_nul_refuse_l_entree[nulle] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3_entry.py::test_R16_un_plancher_d_ordre_different_du_manifeste_refuse_l_entree_D5 - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3_entry.py::test_R16_un_plancher_d_ordre_suffixe_par_une_monnaie_refuse_l_entree_a_la_forme - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3_entry.py::test_R16_un_bloc_de_liquidation_qui_porte_gross_usdc_refuse_l_entree_a_la_forme - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3_entry.py::test_R20_une_serie_sans_unite_couverte_a_dates_nulles_passe_l_entree - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL test_c3_entry.py::test_R20_des_dates_nulles_sur_une_serie_couverte_sont_une_violation - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL test_c3_entry.py::test_R20_des_dates_presentes_sur_une_serie_sans_unite_couverte_sont_une_violation - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL test_c3_select.py::test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par_D4 - R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée
+XFAIL test_c3_select.py::test_R22_une_nav_extreme_a_rendement_non_fini_retire_le_candidat_par_D4 - R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir
+XFAIL test_c3_verdict.py::test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante - R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir
+XFAIL test_c3_verdict.py::test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL test_c3_verdict.py::test_R18_un_refus_que_l_export_dement_est_une_violation - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL test_c3_verdict.py::test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0 - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL test_c3_verdict.py::test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_jamais_valide - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL test_c3_verdict.py::test_R19_first_fill_at_nul_avec_des_executions_est_une_violation - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL test_c3_verdict.py::test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL test_c3_verdict.py::test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3_verdict.py::test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3_verdict.py::test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3_verdict.py::test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3_verdict.py::test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_est_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3_verdict.py::test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse[estampille apr\xe8s fin] - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3_verdict.py::test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse[seconde paire] - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3_verdict.py::test_R15_le_parseur_chain_expose_la_septieme_entree - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3_verdict.py::test_R22_un_non_fini_fourni_dans_l_estimabilite_declaree_est_un_diagnostic - R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir
+XFAIL test_c3b_common.py::test_R20_a_series_without_covered_unit_is_written_with_null_dates - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL test_c3b_common.py::test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3b_common.py::test_R16_l_observation_exportee_porte_min_order_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL test_c3b_evaluate.py::test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL test_c3b_evaluate.py::test_R19_no_trade_is_admitted_with_zero_executions - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL test_c3b_evaluate.py::test_R19_evaluation_json_metrics_carry_executions - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL test_c3b_evaluate.py::test_R15_evaluation_json_declares_the_prefix_lambdas_it_used - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3 - outillage v2.2, hors réserve : contrat producteur 0/2/3 (c3b_evaluate.py:544) — outillage à venir
+ruff=0
+mypy=Found 65 errors in 18 files (checked 83 source files)
+mypy_src_65=0
+gold_fichier_et_moteur_inchanges_depuis_8689636=0
+gold_note=le test gold est lié à la base : ignoré sans tunnel ; il passait 2/2 à 8689636 (results/c3b_producteur/closure/tests/mypy_gold.out), et ni lui ni le moteur n'ont changé
+diff_vide_chemins_geles=0
+diff_src_scripts_audit=0 ligne(s)
+fichiers_dans_liste_close=0
+## git diff --stat 8689636 HEAD
+ CLAUDE.md                                |   25 +-
+ PROJECT_CONTEXT.md                       |   29 +-
+ ROADMAP.md                               |   10 +-
+ agent/AGENT_C3_AMENDEMENT_V2_2.md        |  181 +++++
+ docs/CODE_MAP.md                         |    1 +
+ docs/RESEARCH_LOG.md                     |   17 +
+ docs/amendements_c3_v2.2.md              | 1078 ++++++++++++++++++++++++++++++
+ docs/protocole_c3.md                     |  236 ++++++-
+ results/INDEX.md                         |    3 +-
+ results/c3_v2_2/outillage_v2_2.md        |  207 ++++++
+ results/c3_v2_2/phase1.md                |  433 ++++++++++++
+ results/c3_v2_2/tests/apres.py           |   37 +
+ results/c3_v2_2/tests/f8_ecart.out       |   32 +
+ results/c3_v2_2/tests/f8_ecart.sh        |   67 ++
+ results/c3_v2_2/tests/index_m.out        |   23 +
+ results/c3_v2_2/tests/index_m.py         |   71 ++
+ results/c3_v2_2/tests/index_m.sh         |   45 ++
+ results/c3_v2_2/tests/mutant.sh          |   40 ++
+ results/c3_v2_2/tests/mutants.log        |   12 +
+ results/c3_v2_2/tests/pkg_check.out      |    7 +
+ results/c3_v2_2/tests/pkg_check.sh       |   60 ++
+ results/c3_v2_2/tests/suite_c3.out       |   55 ++
+ results/c3_v2_2/tests/suite_c3.sh        |   47 ++
+ results/c3_v2_2/tests/texte_conforme.py  |   73 ++
+ results/c3_v2_2/tests/xfail_rouge.out    |   81 +++
+ results/c3_v2_2/tests/xfail_rouge.sh     |   27 +
+ skills/backtest.md                       |   18 +-
+ tests/test_scripts/test_c3_anchor.py     |  176 ++++-
+ tests/test_scripts/test_c3_benchmark.py  |   51 ++
+ tests/test_scripts/test_c3_chronology.py |   36 +-
+ tests/test_scripts/test_c3_common.py     |   40 +-
+ tests/test_scripts/test_c3_continuity.py |   51 +-
+ tests/test_scripts/test_c3_entry.py      |  158 ++++-
+ tests/test_scripts/test_c3_select.py     |   86 +++
+ tests/test_scripts/test_c3_verdict.py    |  408 ++++++++++-
+ tests/test_scripts/test_c3b_common.py    |   70 +-
+ tests/test_scripts/test_c3b_evaluate.py  |  162 ++++-
+ 37 files changed, 4032 insertions(+), 121 deletions(-)
+c3a=2 passed in 0.08s
+livrable_c3a_refuse_sous_v22=0
+miroir_B8_identique=0
+miroir_B8_identique_et_vert=0
+paquet_complet=0
+livrables_suivis=0
+texte_conforme=23 bloc(s) ok, 0 absent(s)
+texte_applique_egal_paquet=0
+index_M_regenere=0
+rc=0

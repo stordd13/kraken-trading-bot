@@ -921,19 +921,17 @@ def test_a_fill_at_or_before_T_is_3(
     assert not (tmp_path / "out" / evaluate.EVALUATION).exists()
 
 
-def test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses(
+def test_no_trade_writes_a_null_first_fill_at(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Brief : « ``null`` si aucun trade (la chaîne le traite) ». La chaîne le traite par un refus : § L.1 v2.1, une
-    évaluation réelle sans ``first_fill_at`` n'est pas admise (``R0_INVALID_RUN``, le porteur nommé) — écart
-    candidat v2.2 (plan § 8). Le bloc de liquidation ne liquide rien : l'exemption ``trades == 0`` s'applique."""
+    """Brief : « ``null`` si aucun trade (la chaîne le traite) ». Le bloc de liquidation ne liquide rien :
+    l'exemption ``trades == 0`` s'applique. Ce que la chaîne en fait sous v2.2 (admission, c5 non vérifiable) vit
+    dans le jumeau R-19 ; sous v2.1 c'était un refus en R0 (écart candidat v2.2, tranché par AM-08)."""
     world, _, _ = stubbed(tmp_path, monkeypatch, lots=(), trades=())
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (0, [])
     run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert run["first_fill_at"] is None and run["liquidation"]["trades"] == 0
-    with pytest.raises(cc.EntryRefusedError, match="first_fill_at"):
-        cc.evaluation_admission(run)
 
 
 @pytest.mark.parametrize(("gap", "code"), [(2e-6, 3), (5e-7, 0)])
@@ -1398,17 +1396,17 @@ def test_comparable_is_the_recomputed_conjunction(
     assert produced[evaluate.SENSITIVITY]["matches"] == {"dd": None, "sigma": None}
 
 
-def test_a_non_buildable_comparator_is_2_before_the_engine(
+def test_a_non_buildable_comparator_stops_before_the_engine(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Plan, E5 : sans la bougie d'exécution de 19:15, le comparateur n'a pas de prix d'entrée (§ C.5, « observation
-    admissible aux deux bornes ») : refus (2) avant la construction du moteur, rien d'écrit."""
+    admissible aux deux bornes ») : le moteur n'est pas construit (§ C.5 v2.2 : « le producteur n'exécute pas
+    l'évaluation »). Ce qu'il écrit alors — la forme de refus — vit dans le jumeau R-18."""
     world, _, built = stubbed(tmp_path, monkeypatch)
     data = dict(pc.market(anchor=FIN))
     data[("BTC/USDT", 5)] = [c for c in data[("BTC/USDT", 5)] if c.timestamp != ENTRY_STAMP]
     install_closes(monkeypatch, data)
-    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
-    assert (code, errors(logs)) == (2, ["comparator_not_buildable"])
+    run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert built == []
     assert not (tmp_path / "out").exists()
 
@@ -1834,18 +1832,12 @@ def test_evaluation_json_has_exactly_the_keys_of_the_fixture(
     evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     reference = fx.evaluation(fx.manifest())
     assert set(evaluation) == set(reference)
-    assert (
-        set(evaluation["metrics"])
-        == set(reference["metrics"])
-        == {
-            "net_pnl",
-            "cagr_pct",
-            "delta_dd",
-        }
-    )
+    # Le jeu exact des clés de `metrics` vit dans le jumeau R-19 : § L.1 v2.2 (AM-08) y ajoute `executions`.
+    assert set(evaluation["metrics"]) == set(reference["metrics"])
     for combination, item in evaluation["replications"].items():
         assert set(item) == set(reference["replications"][combination])
-    assert not [k for k in keys_of(evaluation) if "lambda" in k or "sensitiv" in k]
+    # Les λ du préfixe, déclarés par l'évaluation (§ L.2 v2.2, AM-03), vivent dans le jumeau R-15.
+    assert not [k for k in keys_of(evaluation) if "sensitiv" in k]
 
 
 def test_the_full_chain_verifies_a_produced_evaluation(
@@ -2002,3 +1994,133 @@ def test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain(
     assert sensitivity["lambda_mode"] == "reestimated" and sensitivity["status"] == "DESCRIPTIF"
     assert sensitivity["lambda_label"] == cc.LAMBDA_LABEL
     assert sensitivity["window"] == {"start": T.isoformat(), "end": FIN.isoformat()}
+
+
+# ---------------------------------------------------------------------------
+# § C.5 v2.2 (AM-06) — le producteur écrit la forme de refus et l'export de bougies d'évaluation (R-18)
+# ---------------------------------------------------------------------------
+
+R18 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir",
+)
+
+
+@R18
+def test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ C.5 v2.2 : « Il écrit l'artefact d'évaluation sous sa forme de refus : l'identité de la configuration, la
+    fenêtre `[T, fin]`, et un bloc `refused` qui porte la raison `comparator_not_buildable` et un motif, sans
+    aucune série » ; § L.1 v2.2 : sur cette route, « l'export de bougies d'évaluation [est exigé] ». Jumeau de
+    l'ancien refus (2), rien d'écrit. Noms de clés indicatifs."""
+    world, _, built = stubbed(tmp_path, monkeypatch)
+    data = dict(pc.market(anchor=FIN))
+    data[("BTC/USDT", 5)] = [c for c in data[("BTC/USDT", 5)] if c.timestamp != ENTRY_STAMP]
+    install_closes(monkeypatch, data)
+    run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    out = tmp_path / "out"
+    assert (out / evaluate.EVALUATION).exists(), "aucun artefact d'évaluation sous forme de refus"
+    evaluation = cc.read_json(out / evaluate.EVALUATION)
+    assert evaluation["refused"]["reason"] == "comparator_not_buildable"
+    assert evaluation["refused"]["window"] == {"start": T.isoformat(), "end": FIN.isoformat()}
+    assert {"strategy", "pair", "params"} <= set(evaluation)
+    assert not {"returns_config", "returns_bench", "equity_daily", "replications"} & set(evaluation)
+    assert (out / evaluate.CANDLES_EVAL).exists()
+    assert built == []
+
+
+# ---------------------------------------------------------------------------
+# § L.1 v2.2 (AM-08) — le nombre d'exécutions, et l'admission d'une évaluation réelle sans exécution (R-19)
+# ---------------------------------------------------------------------------
+
+R19 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
+)
+
+
+@R19
+def test_R19_no_trade_is_admitted_with_zero_executions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ L.1 v2.2 : l'évaluation réelle porte `metrics.executions`, « le nombre d'exécutions (remplissages) du run
+    d'évaluation » ; `first_fill_at` nul ⟺ `executions == 0` ; « Une évaluation réelle sans exécution est
+    admise ». Jumeau de l'ancien refus en R0 (§ L.1 v2.1)."""
+    world, _, _ = stubbed(tmp_path, monkeypatch, lots=(), trades=())
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (0, [])
+    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    assert run["metrics"].get("executions") == 0, "`metrics.executions` absent (§ L.1 v2.2)"
+    assert run["first_fill_at"] is None
+    try:
+        cc.evaluation_admission(run)
+    except cc.EntryRefusedError as exc:
+        raise AssertionError(f"refusée à l'admission : {exc}") from exc
+
+
+@R19
+def test_R19_evaluation_json_metrics_carry_executions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ L.1 v2.2 : `metrics.executions` est un porteur obligatoire de l'évaluation réelle ; `metrics` porte donc
+    `net_pnl`, `cagr_pct`, `delta_dd` et `executions` (jumeau de l'ancien triplet exact)."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    assert set(evaluation["metrics"]) == {"net_pnl", "cagr_pct", "delta_dd", "executions"}
+
+
+# ---------------------------------------------------------------------------
+# § L.2 v2.2 (AM-03) — l'évaluation déclare les λ du préfixe qu'elle a utilisés (R-15)
+# ---------------------------------------------------------------------------
+
+R15 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir",
+)
+
+
+@R15
+def test_R15_evaluation_json_declares_the_prefix_lambdas_it_used(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ L.2 v2.2, deuxième ligne : « les deux `λ` que l'évaluation déclare avoir utilisés », recoupés à ceux de
+    l'étape 3 ; ce sont ceux du préfixe, jamais ré-estimés (§ F.2 f) — la sensibilité reste hors de l'artefact.
+    Clé indicative `lambdas`."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    assert evaluation.get("lambdas") == LAMBDAS
+    assert not [k for k in keys_of(evaluation) if "sensitiv" in k]
+
+
+# ---------------------------------------------------------------------------
+# Outillage v2.2, hors réserve (phase1.md § 1, constat annexe) — contrat du producteur 0/2/3
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=OverflowError,
+    reason="outillage v2.2, hors réserve : contrat producteur 0/2/3 (c3b_evaluate.py:544) — outillage à venir",
+)
+def test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Contrat du producteur (brief C3b) : 0 évalué, 2 refus, 3 contrôle en échec — jamais une trace. Une clôture de
+    sortie ×10 000 sur une fenêtre de 4,2 jours fait déborder le CAGR du comparateur (`cc.cagr_pct`, `math.exp`) ;
+    aujourd'hui `cb.build_pair` est appelé hors du `try` de l'étape 10b (`c3b_evaluate.py:544`)."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    data = dict(pc.market(anchor=FIN))
+    rows = data[("BTC/USDT", 5)]
+    data[("BTC/USDT", 5)] = [
+        pc._ohlc("BTC/USDT", 5, c.timestamp, c.close * 10000) if c.timestamp == EXIT_STAMP else c
+        for c in rows
+    ]
+    install_closes(monkeypatch, data)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert code == 3

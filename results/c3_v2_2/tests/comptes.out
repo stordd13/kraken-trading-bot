@@ -1,0 +1,29 @@
+# comptes — 2026-09-29T10:59:48Z
+# HEAD 9716682 branche feat/c3-amendements-v2.2 ; base 8689636
+collecte /var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/tmp.Ny3IXwYj7x/wt_base : exit=0 ; 3270/3294 tests collected (24 deselected) in 2.73s
+collecte /Users/stordd/doc/GitHub/kraken-trading-bot : exit=0 ; 3311/3335 tests collected (24 deselected) in 0.63s
+worktree_retire=0
+collectes_sans_erreur=0
+collectes : base=3270 head=3311 (base attendue 3264+6=3270)
+collecte_base_egale_cloture=0
+collecte_head_egale_porte=0
+retires=9 ajoutes=50 dont xfail=46 verts=4
+xfail_tous_neufs=0
+equation : 3264 (clôture) − 13 (base, ignorés sans tunnel) − 9 (retirés) + 4 (verts neufs) = 3246 ; porte = 3246
+equation_juste=0
+## retirés (présents à la base, absents à HEAD)
+- test_scripts/test_c3_anchor.py::test_chaque_champ_obligatoire_absent_ou_nul_refuse_l_entree[absente-min_order_usdc]
+- test_scripts/test_c3_anchor.py::test_chaque_champ_obligatoire_absent_ou_nul_refuse_l_entree[nulle-min_order_usdc]
+- test_scripts/test_c3_common.py::test_le_sha_v21_consigne_hors_du_fichier_est_celui_du_protocole_livre
+- test_scripts/test_c3_entry.py::test_chaque_bloc_obligatoire_absent_ou_nul_refuse_l_entree_a_la_forme[absente-min_order_usdc]
+- test_scripts/test_c3_entry.py::test_chaque_bloc_obligatoire_absent_ou_nul_refuse_l_entree_a_la_forme[nulle-min_order_usdc]
+- test_scripts/test_c3_entry.py::test_chaque_contrat_D5_different_du_manifeste_refuse_l_entree[min_order]
+- test_scripts/test_c3b_common.py::test_a_series_without_covered_unit_is_refused
+- test_scripts/test_c3b_evaluate.py::test_a_non_buildable_comparator_is_2_before_the_engine
+- test_scripts/test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses
+## verts neufs (absents à la base, présents à HEAD, non xfail)
+- test_scripts/test_c3_common.py::test_le_dernier_sha_consigne_hors_du_fichier_est_celui_du_protocole_livre
+- test_scripts/test_c3_entry.py::test_un_suffixe_de_monnaie_hors_des_positions_nommees_n_est_ni_lu_ni_refuse
+- test_scripts/test_c3b_evaluate.py::test_a_non_buildable_comparator_stops_before_the_engine
+- test_scripts/test_c3b_evaluate.py::test_no_trade_writes_a_null_first_fill_at
+rc=0

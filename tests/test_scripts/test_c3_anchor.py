@@ -270,7 +270,6 @@ MANDATORY: tuple[tuple[str, ...], ...] = (
     ("fees", "pair_costs_file"),
     ("fees", "pair_costs"),
     ("fees", "pair_costs", "BTC/USDC", "spread"),
-    ("min_order_usdc",),
     ("universe",),
     ("universe", "provenance"),
     ("universe", "candidates"),
@@ -581,4 +580,179 @@ def test_revue_R3_nan_dans_un_seuil_du_manifeste_est_une_violation_code_1(
     assert out["invalide"] is True and out["anchor"] is None
     assert any("non-finite" in v or "non fini" in v for v in out["violations"])
     assert not (tmp_path / "variants.json").exists()
+    assert "VIOLATION" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# § A.6 v2.2 (AM-05) — le registre tient l'état du critère d'arrêt, l'ancrage l'applique (R-17)
+# ---------------------------------------------------------------------------
+
+#: Interface **indicative** : l'attendu est normatif (§ A.6 v2.2), les noms de clés sont à fixer par le chantier
+#: outillage (`results/c3_v2_2/outillage_v2_2.md`), qui peut les adapter sans toucher à l'attendu.
+FAMILY_KEY = "family"
+VERDICT_KEY = "verdict"
+DEFERRED_KEY = "deferred_evaluation"
+
+R17 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir",
+)
+
+
+def _family_manifest(**kw: Any) -> dict[str, Any]:
+    payload = fx.manifest(**kw)
+    payload[FAMILY_KEY] = "grid"
+    return payload
+
+
+def _record_verdict(
+    tmp_path: Path,
+    key: str,
+    *,
+    issue: str,
+    raison: str | None,
+    compte: bool,
+    deferred: dict[str, str] | None = None,
+) -> None:
+    """Ce que l'étape 6 inscrit dans l'enregistrement de la variante (§ A.6 v2.2), posé ici à la main."""
+    registry_path = tmp_path / "variants.json"
+    registry = cc.read_json(registry_path)
+    record = registry["variants"][key]
+    record[VERDICT_KEY] = {"issue": issue, "raison": raison, "compte": compte}
+    if deferred is not None:
+        record[DEFERRED_KEY] = deferred
+    cc.write_json(registry_path, registry)
+
+
+@R17
+def test_R17_un_manifeste_sans_famille_est_refuse(tmp_path: Path) -> None:
+    """§ A.6 v2.2 : le manifeste porte « au minimum et sans exception » […] « la famille du mécanisme évalué » ;
+    absente, c'est une erreur d'entrée (§ I.1, ligne 2), rien n'est enregistré."""
+    payload = fx.manifest()
+    payload.pop(FAMILY_KEY, None)
+    code, out = _run(tmp_path, payload)
+    assert code == 2 and out is None
+    assert not (tmp_path / "variants.json").exists()
+
+
+@R17
+def test_R17_une_seconde_campagne_sur_une_famille_au_verdict_compte_est_refusee(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ A.6 v2.2 : l'ancrage refuse (`R0_INVALID_RUN`, code 2) « une seconde campagne sur une famille qui porte
+    déjà un verdict compté »."""
+    _, root = _run(tmp_path, _family_manifest())
+    assert root is not None
+    _record_verdict(tmp_path, root["variant_key"], issue="réfuté", raison=None, compte=True)
+    child = _family_manifest(
+        variant_id="synth-child",
+        provenance="unknown",
+        parent={"is_root": False, "variant_key": root["variant_key"]},
+    )
+    code, out = _run(tmp_path, child, name="child.json", output="anchor_child.json")
+    assert code == 2 and out is None
+    assert "R0_INVALID_RUN" in capsys.readouterr().err
+
+
+@R17
+def test_R17_une_relance_au_dela_de_l_unique_est_refusee(tmp_path: Path) -> None:
+    """§ A.6 v2.2 : l'ancrage refuse « une relance au-delà de l'unique » ; la relance unique, elle, passe
+    (`docs/CONTRAINTES_POST_B4.md` § 10.1, section d'origine)."""
+    _, root = _run(tmp_path, _family_manifest())
+    assert root is not None
+    _record_verdict(
+        tmp_path, root["variant_key"], issue="inconclusif", raison="E_NO_BENCHMARK", compte=False
+    )
+    relance = _family_manifest(
+        variant_id="synth-relance", parent={"is_root": False, "variant_key": root["variant_key"]}
+    )
+    code, first = _run(tmp_path, relance, name="relance.json", output="anchor_relance.json")
+    assert code == 0 and first is not None
+    _record_verdict(
+        tmp_path, first["variant_key"], issue="inconclusif", raison="E_NO_BENCHMARK", compte=False
+    )
+    third = _family_manifest(
+        variant_id="synth-third", parent={"is_root": False, "variant_key": first["variant_key"]}
+    )
+    code, out = _run(tmp_path, third, name="third.json", output="anchor_third.json")
+    assert code == 2 and out is None
+
+
+@R17
+def test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee(
+    tmp_path: Path,
+) -> None:
+    """§ A.6 v2.2 : sur une famille qui porte un verdict compté, « seule est acceptée la variante dont l'empreinte
+    est l'empreinte attendue inscrite au verdict » — toute autre est refusée."""
+    _, root = _run(tmp_path, _family_manifest())
+    assert root is not None
+    _record_verdict(
+        tmp_path,
+        root["variant_key"],
+        issue="inconclusif",
+        raison="F_CANNOT_SEPARATE",
+        compte=True,
+        deferred={"date": "2028-06-29T00:00:00+00:00", "variant_key": "a" * 64},
+    )
+    other = _family_manifest(
+        variant_id="synth-other", parent={"is_root": False, "variant_key": root["variant_key"]}
+    )
+    code, out = _run(tmp_path, other, name="other.json", output="anchor_other.json")
+    assert code == 2 and out is None
+
+
+# ---------------------------------------------------------------------------
+# § A.7 v2.2 (AM-04) — le plancher d'ordre du manifeste s'appelle `min_order_quote` (R-16)
+# ---------------------------------------------------------------------------
+
+R16 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
+)
+
+
+@R16
+@pytest.mark.parametrize("mode", ["absente", "nulle"])
+def test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree(
+    tmp_path: Path, mode: str
+) -> None:
+    """AM-04 v2.2, impact outillage (décision du 29/09) : la clé du manifeste devient `min_order_quote` ; le
+    plancher d'ordre est au minimum du manifeste (§ A.6). Jumeau de l'ancien élément `("min_order_usdc",)`."""
+    payload = fx.manifest()
+    assert "min_order_quote" in payload, "le manifeste ne porte pas `min_order_quote` (AM-04)"
+    _mutate(payload, ("min_order_quote",), mode)
+    code, out = _run(tmp_path, payload)
+    assert code == 2 and out is None
+
+
+# ---------------------------------------------------------------------------
+# R-22, cas 1 (phase1.md § 1) — un non-fini fourni dans le registre : diagnostic, jamais une trace
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=ValueError,
+    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
+)
+def test_R22_un_non_fini_dans_un_autre_enregistrement_du_registre_est_un_diagnostic(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ I.1 : une valeur **fournie** non finie est une violation, ligne 15, code 1 ; « un artefact de diagnostic est
+    écrit, code 1, et porte `invalide: true` et la liste des violations ». Aujourd'hui le registre est réécrit sans
+    être canonicalisé (`c3_anchor.py:335`) : le writer strict lève, trace, code 1 sans diagnostic."""
+    _, root = _run(tmp_path, fx.manifest())
+    assert root is not None
+    registry_path = tmp_path / "variants.json"
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    registry["variants"][root["variant_key"]]["research_log_entry"] = float("nan")
+    registry_path.write_text(json.dumps(registry, allow_nan=True), encoding="utf-8")
+    child = fx.manifest(
+        variant_id="synth-child", parent={"is_root": False, "variant_key": root["variant_key"]}
+    )
+    code, out = _run(tmp_path, child, name="child.json", output="anchor_child.json")
+    assert code == 1
+    assert out is not None and out["invalide"] is True
     assert "VIOLATION" in capsys.readouterr().err
