@@ -1496,6 +1496,7 @@ def test_revue_R3b_le_plus_long_run_est_pris_parmi_plusieurs_trous() -> None:
 
 from collections.abc import Mapping, Sequence  # noqa: E402
 import copy  # noqa: E402
+import dataclasses  # noqa: E402
 from functools import cache  # noqa: E402
 import platform  # noqa: E402
 
@@ -1631,6 +1632,53 @@ def varying_returns(seed: int, n: int = N_EVAL_POINTS - 1) -> list[float]:
     return rng.normal(0.0005, 0.02, n).tolist()
 
 
+def equity_of(returns: Sequence[float], *, capital: float = 1000.0) -> list[float]:
+    """Une trajectoire quotidienne qui part de `C` (§ B.2) et compose les rendements donnés, en double précision."""
+    values = [float(capital)]
+    for r in returns:
+        values.append(values[-1] * (1.0 + float(r)))
+    return values
+
+
+def returns_of(values: Sequence[float]) -> list[float]:
+    """§ L.2 v2.2, première ligne : « `r_t = E_t / E_{t−1} − 1`, en double précision, sur les valeurs exportées,
+    dans l'ordre de la grille ; un point précédé d'une valeur `≤ 0` ne porte pas de rendement » — écrite ici depuis
+    le texte, jamais importée de l'outillage."""
+    return [values[t] / values[t - 1] - 1.0 for t in range(1, len(values)) if values[t - 1] > 0]
+
+
+@cache
+def bh_nav(pair: str) -> tuple[Decimal, ...]:
+    """La NAV décimale du B&H plein notionnel (§ C.3) de la paire sur `[T, fin]`, construite sur l'export d'évaluation
+    par défaut (`candles(manifest(), start=ANCHOR, end=WINDOW_END)`) : celle dont la chaîne tire le comparateur
+    d'évaluation et ses blends (§ L.2 v2.2)."""
+    import c3_benchmark as cb
+
+    payload = manifest()
+    export = candles(payload, start=ANCHOR, end=WINDOW_END)
+    loaded = cc.load_manifest(payload)
+    reduced = dataclasses.replace(
+        loaded, candidates=tuple(c for c in loaded.candidates if c.pair == pair)
+    )
+    parsed = cb.load_candles(
+        {**export, "pairs": {pair: export["pairs"][pair]}}, reduced, end=WINDOW_END
+    )
+    spread, slippage = (Decimal(x) for x in PAIR_COSTS[pair])
+    bench = cb.build_pair(
+        pair,
+        parsed[pair],
+        start=ANCHOR,
+        end=WINDOW_END,
+        exec_interval=EXEC_INTERVAL,
+        spread=spread,
+        slippage=slippage,
+        taker=Decimal(TAKER),
+        capital=Decimal(1000),
+    )
+    assert bench.buildable and bench.comparable
+    return bench.nav
+
+
 def flat_start_proof(
     *, at: datetime = ANCHOR, cash: str = "1000", qty: str = "0", pending: int = 0
 ) -> dict[str, Any]:
@@ -1656,16 +1704,21 @@ def evaluation(
     net_pnl: float = 42.0,
     metrics: dict[str, Any] | None = None,
     bounds: dict[str, float] | None = None,
+    lambdas: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Un artefact d'évaluation **synthétique** de la configuration retenue, sur [T, fin] : le contrat lu par
     c3_verdict (§ F.2, § F.8) et les blocs que c3_continuity vérifie (§ B). Suites, bornes, `cagr_pct` et
     `delta_dd` sont ceux de la procédure § F.2 v2.1 (graine du manifeste, index de la paire parmi les paires
-    triées de l'univers) ; seul `net_pnl` (Q1) est déclaré. Défaut : le témoin contre du cash."""
+    triées de l'univers) ; seul `net_pnl` (Q1) est déclaré. Défaut : le témoin contre du cash.
+
+    § L.2 v2.2 : `equity_daily` part de `C` et compose la série de configuration demandée ; `returns_config` en est
+    le recalcul par la formule du texte (`returns_of`), au bit ; `lambdas` sont les `λ` du préfixe déclarés (défaut
+    `0` : le comparateur cash par défaut), `returns_bench` est pris tel quel."""
     cand = manifest_payload["universe"]["candidates"][candidate_index]
     pair = cand["pair"]
     pairs = sorted({c["pair"] for c in manifest_payload["universe"]["candidates"]})
-    values = nav_path(pair, candidate_index + 7, N_EVAL_POINTS, drift=0.0006)
-    config = returns_config if returns_config is not None else witness_returns()
+    values = equity_of(returns_config if returns_config is not None else witness_returns())
+    config = returns_of(values)
     bench = bench_by_matching(
         returns_bench if returns_bench is not None else [0.0] * (N_EVAL_POINTS - 1)
     )
@@ -1709,6 +1762,7 @@ def evaluation(
         "flat_start_proof": flat_start_proof,
         "returns_config": list(config),
         "returns_bench": bench,
+        "lambdas": dict(lambdas) if lambdas is not None else {"dd": 0.0, "sigma": 0.0},
         "environment": environment(),
         "B": cc.BOOTSTRAP_B,
         "replications": replicated,
@@ -1729,9 +1783,11 @@ def benchmark_eval(
     comparable: bool = True,
     contradict: bool = False,
     window: dict[str, str] | None = None,
+    nav: list[float] | None = None,
 ) -> dict[str, Any]:
     """Le bloc de comparabilité du comparateur d'évaluation (§ C.5), synthétique ; ``window``
-    remplace la fenêtre [T, fin] déclarée (revue Fin, défaut 3)."""
+    remplace la fenêtre [T, fin] déclarée (revue Fin, défaut 3). § L.2 v2.2 : ``nav``, la NAV du B&H plein notionnel
+    sur la grille quotidienne passée en double (défaut : celle de l'export d'évaluation par défaut, ``bh_nav``)."""
     tests = {
         "entry_stamp_present": True,
         "exit_stamp_present": True,
@@ -1747,4 +1803,5 @@ def benchmark_eval(
         else {"start": ANCHOR.isoformat(), "end": WINDOW_END.isoformat()},
         "comparable": declared,
         "comparability": tests,
+        "nav": list(nav) if nav is not None else [float(v) for v in bh_nav(pair)],
     }

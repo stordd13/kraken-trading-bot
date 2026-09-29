@@ -482,12 +482,17 @@ def errors(logs: list[dict[str, Any]]) -> list[str]:
 
 def continuity(tmp_path: Path, world: World, evaluation: Path) -> tuple[int, dict[str, Any] | None]:
     """``c3_continuity`` en processus sur l'artefact produit, avec un comparateur d'évaluation **synthétique**
-    (``fx.benchmark_eval``, fenêtre ``[T, fin]``) — le critère de fin du lot 4a."""
+    (``fx.benchmark_eval``, fenêtre ``[T, fin]``) — le critère de fin du lot 4a. § L.2 v2.2 : sa NAV est celle que le
+    producteur a exportée (la paire du monde producteur n'est pas une paire du monde de ``fx``)."""
     run = cc.read_json(evaluation)
     bench = tmp_path / "benchmark_eval_synth.json"
     cc.write_json(
         bench,
-        fx.benchmark_eval(run["pair"], window={"start": T.isoformat(), "end": FIN.isoformat()}),
+        fx.benchmark_eval(
+            run["pair"],
+            window={"start": T.isoformat(), "end": FIN.isoformat()},
+            nav=cc.read_json(evaluation.parent / evaluate.BENCHMARK_EVAL)["nav"],
+        ),
     )
     output = tmp_path / "continuity.json"
     code = ccont.main(
@@ -2077,14 +2082,7 @@ def test_R19_evaluation_json_metrics_carry_executions(
 # § L.2 v2.2 (AM-03) — l'évaluation déclare les λ du préfixe qu'elle a utilisés (R-15)
 # ---------------------------------------------------------------------------
 
-R15 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir",
-)
 
-
-@R15
 def test_R15_evaluation_json_declares_the_prefix_lambdas_it_used(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

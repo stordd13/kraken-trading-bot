@@ -23,10 +23,12 @@ convention », § F.2 c) :
 * la **procédure § F.2** : ``cc.replay_bootstrap`` (graine de l'ancrage, index de la paire dans les paires **triées**
   de l'ancrage) — exactement ce que ``c3_verdict._replay`` rejoue (``c3_verdict.py:250-278``).
 
-Sorties : ``evaluation.json`` (les clés de la fixture ``evaluation`` de ``test_c3_common.py``, aucune autre),
-``benchmark_eval.json`` (les clés que ``c3_continuity.comparator_block`` lit), ``candles_eval.json`` (forme de
-``candles.json``, la paire évaluée seule), ``evaluation_sensitivity.json`` (λ ré-estimé, § F.2 f : descriptif, hors
-chaîne) et ``evaluation_run_provenance.json``, à part.
+Sorties : ``evaluation.json`` (les clés de la fixture ``evaluation`` de ``test_c3_common.py``, aucune autre, dont les
+``λ`` du préfixe qu'elle a utilisés, § L.2 v2.2), ``benchmark_eval.json`` (les clés que
+``c3_continuity.comparator_block`` lit, et la NAV du B&H plein notionnel sur la grille quotidienne que la chaîne
+recoupe, § L.2 v2.2), ``candles_eval.json`` (forme de ``candles.json``, la paire évaluée seule),
+``evaluation_sensitivity.json`` (λ ré-estimé, § F.2 f : descriptif, hors chaîne) et ``evaluation_run_provenance.json``,
+à part.
 
 Ordre des contrôles — tout ce qui précède la base est pur, et un refus n'écrit rien :
 
@@ -535,7 +537,8 @@ def evaluation_comparator(
     exige ``returns_bench``, qu'aucune NAV ne fournit ici (écart E5, candidat v2.2). ``benchmark_eval`` porte les clés
     que ``c3_continuity.comparator_block`` lit (``c3_continuity.py:300-312``) : ``comparability`` projetée sur les
     cinq tests de ``cc.COMPARABILITY_TESTS``, ``comparable`` **recalculé** comme leur conjonction — jamais posé ; s'il
-    diffère de celui de ``build_pair``, contrôle en échec (3)."""
+    diffère de celui de ``build_pair``, contrôle en échec (3). § L.2 v2.2 (AM-03, retouche C-4) : ``nav``, la NAV du B&H
+    plein notionnel sur la grille quotidienne passée en double, que la chaîne recoupe au bit sur ``candles_eval.json``."""
     try:
         parsed = cb.load_candles(candles, replace(manifest, candidates=(candidate,)), end=end)
     except (cc.MissingEvidenceError, cc.InvalidValueError) as exc:
@@ -578,6 +581,7 @@ def evaluation_comparator(
         "window": {"start": anchor.isoformat(), "end": end.isoformat()},
         "comparable": comparable,
         "comparability": tests,
+        "nav": [float(v) for v in bench.nav],
     }
     return bench, payload
 
@@ -691,16 +695,20 @@ def f2_block(
     }
 
 
-def evaluation_artefact(base: Mapping[str, Any], f2: Mapping[str, Any]) -> dict[str, Any]:
+def evaluation_artefact(
+    base: Mapping[str, Any], f2: Mapping[str, Any], *, lambdas: Mapping[str, Decimal]
+) -> dict[str, Any]:
     """``evaluation.json`` : le payload du run (lot 4a, ``evaluation_payload``) complété des clés § F.2 ; ``metrics``
     est remplacé par celui du § F.2, qui reprend le ``net_pnl`` du run. Une autre clé commune serait un contrôle en
-    échec (3) : l'assemblage n'écrase rien d'autre."""
+    échec (3) : l'assemblage n'écrase rien d'autre. § L.2 v2.2 (AM-03) : ``lambdas``, les deux ``λ`` du préfixe que
+    l'évaluation a utilisés — les flottants mêmes de ``benchmark.json`` (``float(Decimal(str(λ))) == λ``), que la
+    chaîne recoupe à l'étape 3 ; la sensibilité à ``λ`` ré-estimé reste hors de l'artefact."""
     shared = sorted((set(base) & set(f2)) - {"metrics"})
     if shared or f2["metrics"]["net_pnl"] != base["metrics"]["net_pnl"]:
         raise c3bc.ProducerControlError(
             "evaluation_assembly", [f"clés communes {shared} ou net_pnl discordant"]
         )
-    return {**base, **f2}
+    return {**base, **f2, "lambdas": {m: float(lambdas[m]) for m in cc.MATCHINGS}}
 
 
 def sensitivity_payload(
@@ -1101,7 +1109,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             inputs=draw,
             net_pnl=result.payload["metrics"]["net_pnl"],
         )
-        evaluation = evaluation_artefact(result.payload, f2)
+        evaluation = evaluation_artefact(result.payload, f2, lambdas=lambdas)
         sensitivity = sensitivity_payload(
             result.comparator,
             series.daily,
