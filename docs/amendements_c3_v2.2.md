@@ -1,10 +1,11 @@
 # Amendements au protocole C3 — v2.1 → v2.2
 
-> **Statut : PROPOSÉ le 2026-09-29, retouché au STOP 1 le même jour (C-1 à C-6).** Le GO de Bruno au STOP de
-> lecture adverse fige ce texte pour application. L'**adoption** est le commit qui porte la section
-> « Adoption » ; ce commit vient après l'application, parce que la section porte l'empreinte de v2.2. Les rôles : la lecture adverse est faite par
-> Claude (relecteur), sur l'Avant / Après d'AM-03, AM-06 et AM-08 ; Bruno adopte. Ce paquet est un texte, et il se
-> relit comme un texte.
+> **Statut : ADOPTÉ le 2026-09-29** (Bruno), sous les décisions de gate et les réserves d'application de la
+> section « Adoption » ci-dessous, qui porte aussi l'empreinte de v2.2. Historique : proposé le 2026-09-29,
+> retouché au STOP de lecture adverse le même jour (C-1 à C-6), dont le GO a figé le texte pour application ;
+> appliqué au protocole, un commit par amendement ; adopté au commit qui porte cette section. Les rôles : la
+> lecture adverse est faite par Claude (relecteur), sur l'Avant / Après d'AM-03, AM-06 et AM-08 ; Bruno adopte.
+> Ce paquet est un texte, et il se relit comme un texte.
 >
 > **La règle qui autorise ce document** est celle du § 0.7 et de l'en-tête du protocole : toute modification
 > postérieure au gel est un **amendement daté**, qui dit ce qui a changé et pourquoi. Un amendement **crée une
@@ -24,6 +25,154 @@
 >
 > Les faits lus dans le code au SHA `8689636` sont tagués **[v]**, avec leur `fichier:ligne`. Le texte du protocole
 > ne nomme aucune ligne de code comme règle : il nomme des sections.
+
+## Adoption — 2026-09-29
+
+**Adopté par Bruno le 2026-09-29**, au gate d'amendement, sous les décisions et les réserves ci-dessous.
+Application : branche `feat/c3-amendements-v2.2` depuis `dev` @ `8689636` — texte du protocole et tests
+`tests/test_scripts/test_c3_*.py`, `test_c3b_*.py` ; **aucune ligne de `scripts/audit/*.py` ni de `src/`**. Deux
+STOP : la lecture adverse (après le paquet, avant toute application), puis l'arrêt avant push. Le reste de ce
+document est le paquet tel qu'il a été proposé, retouché et appliqué ; là où l'application s'en écarte, cette
+section le dit, et c'est elle qui fait foi avec le texte du protocole.
+
+### Empreinte du protocole
+
+| Révision | sha256 de `docs/protocole_c3.md` | Commit |
+|---|---|---|
+| v2.0 (gel du 2026-09-21) | `9b62915069e59e9b0f35120c60a77f48a72b278aa9102b3096dfcb8dc25e23c2` | `d931293` |
+| v2.1 (amendée le 2026-09-23) | `9300f4e53bfd36633df6524c2d7ad168a732739ca3dd1765c024cc8a3ccd4129` | `b3524ac` |
+| v2.2 (ce paquet) | `1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a` | `ac7710f` (AM-00, dernier commit de texte) |
+
+**sha256 v2.2 :** `1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a`
+
+Un fichier ne peut pas porter sa propre empreinte (R-01 de v2.1) : le sha v2.2 est consigné ici, dans
+`docs/RESEARCH_LOG.md`, `skills/backtest.md` et `CLAUDE.md` ; `c3_common.protocol_descriptor` le recalcule dans
+chaque artefact, et `tests/test_scripts/test_c3_common.py` épingle la **dernière** ligne `**sha256 vX.Y :**` de cette
+section au fichier. Toute retouche du protocole sans amendement daté la fait diverger. Sous v2.2, `c3_anchor` refuse
+tout manifeste qui déclare v2.1 ou v2.0 : le livrable C3a (v2.0) et les artefacts de C3b (v2.1) sont historiques.
+
+### Décisions de gate (Bruno, 2026-09-29)
+
+**Avant rédaction** — `results/c3_v2_2/phase1.md` § 10 (treize décisions, remarque d'ordre), plus les quatre
+corrections du GO de phase 2. Rappel, sans les redire : classification (C) — cas 1 à 4 en (c), cas 5 en (b) →
+AM-10 ; AM-06 forme A ; motif (i) / (ii) et jumeaux ; pont `xfail` du test du sha ; numérotation (AM-01 à AM-09 sur
+les candidats, AM-07 renvoi, AM-10 et suivants, R-15 et suivantes) ; clé `min_order_quote` au manifeste ; AM-05
+(famille au manifeste, statut compté écrit à l'étape 6, renvoi au § 10.1) ; porteur « zéro exécution » recoupé ;
+ligne § 0.7 d'AM-03 ; un adverse par réserve ; `results/INDEX.md` ; note du § F.8 dans v2.2 (AM-11) ; table
+confirmée ; AM-08 en implication seule ; AM-04 borné aux positions nommées ; évaluation différée comme état du
+registre ; item 13 du § J avec vecteur et borne.
+
+**STOP de lecture adverse** — lecture adverse faite par Claude (relecteur) sur l'Avant / Après d'AM-03, AM-06 et
+AM-08 rendu au STOP (paquet `82fb522`). Bruno a accepté les six constats ; ils sont appliqués au paquet par le
+commit `b8b2390`, avant toute application au protocole.
+
+| # | Objet de la retouche | Constat / réponse |
+|---|---|---|
+| C-1 | AM-06, § L.1 : l'identité portée par un refus est recoupée à la configuration retenue avant toute lecture du bloc `refused` ; c1-c5, `stamp_cell`, `comparator` non évalués, contrôle d'identité maintenu | accepté, retouche C-1 |
+| C-2 | AM-08, § L.1 : la clause 3 d'une évaluation sans exécution est vérifiée à vide, jamais `R1_NOT_NORMALISED` | accepté, retouche C-2. Constat lu dans le code : c3 sort déjà `VERIFIED` sur `lots: []` (aucun adverse de plus en R-19). **Rédaction décidée au STOP** : « liste de lots exportée et vide » ; le mot à mot « sans lot » contredisait la ligne c3 du § B.8 (identités exactes sans lots → `NON VÉRIFIABLE`) |
+| C-3 | AM-03 / AM-06 : sur une évaluation non refusée, un recalcul impossible sur l'export est une violation ; deux motifs, `comparator_not_buildable` et `comparator_not_comparable` | accepté, retouche C-3. Le § 10.1 ne compte ni code 1 ni `E_NO_BENCHMARK` : la retouche change ce que le rapport dit du producteur, pas le budget de relance |
+| C-4 | AM-03, § L.2 : le comparateur d'évaluation (entrée à part) est recoupé sur le même recalcul | accepté, retouche C-4. **Rédaction décidée au STOP** : NAV du « B&H plein notionnel recalculé, dont le blend est tiré » ; le mot à mot « blend recalculé » était faux dès que λ < 1 |
+| C-5 | AM-06, § L.2 : `-` est la valeur du champ « état de la continuité » en abstention aussi | accepté, retouche C-5 ; le constat de rédaction 6 est réglé. **Rédaction décidée au STOP** : « chaque fois qu'aucun état de clause n'entre dans l'issue » ; en abstention l'étape 5 évalue les clauses sans qu'elles soient rapportées |
+| C-6 | AM-08 : la clé est `metrics.executions`, pas `metrics.total_trades` (homonyme d'une métrique du moteur à sens différent) | accepté, retouche C-6 |
+| — | Formule de `returns_config` ; égalité des λ ; règle d'entrée de `candles_eval.json` ; § J, item 13 ; implication seule d'AM-08 ; paragraphe « Ce qu'exige `validé` » | **rien trouvé** |
+
+Ligne Astra (brief, au mot près) :
+
+> Re-passe Astra non faite (Astra non à jour depuis v2.0 ; réservée aux familles de stratégies). AM-3+7, AM-6 et AM-8 changent ce que la chaîne vérifie — ce sont les amendements où une lecture adverse aurait servi. À défaut, lecture adverse écrite par Claude avant adoption, consignée à la table de gate ; adoption par Bruno.
+
+### Réserves d'application (2026-09-29)
+
+L'outillage que v2.2 impose n'est pas écrit dans ce chantier. Chaque réserve est portée par des tests
+`xfail(strict=True, raises=…)`, rouges aujourd'hui pour la raison consignée dans
+`results/c3_v2_2/tests/xfail_rouge.out` ; leur levée est l'entrée du chantier outillage
+(`results/c3_v2_2/outillage_v2_2.md`). L'attendu de ces tests est normatif ; leur interface d'appel est indicative.
+
+- **R-15 (AM-03) — § L.2, § L.1 ligne 0 — bloquant manifeste.** La chaîne recalcule `returns_config` sur
+  `equity_daily`, recoupe les λ déclarés à `benchmark.json`, recalcule `returns_bench` et la NAV du comparateur
+  d'évaluation sur `candles_eval.json` (septième entrée) ; recalcul impossible sur une évaluation non refusée →
+  violation ; le producteur déclare ses λ.
+  - `xfail` (9) : `test_c3_verdict.py` — `test_R15_returns_config_ecarte_d_un_ulp…`, `test_R15_des_lambdas_declares…`,
+    `test_R15_returns_bench_different…`, `test_R15_la_nav_du_comparateur…`, `test_R15_une_evaluation_non_refusee…`,
+    `test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse` (×2), `test_R15_le_parseur_chain_expose…` ;
+    `test_c3b_evaluate.py` — `test_R15_evaluation_json_declares_the_prefix_lambdas_it_used`.
+  - Artefacts C3b non conformes : toute évaluation (4a `evaluation_run.json` versionné, 4b `evaluation.json`
+    archivé non lu) ne déclare aucun λ ; `benchmark_eval.json` ne porte pas de NAV ; `candles_eval.json` n'est pas
+    une entrée de chaîne.
+- **R-16 (AM-04) — § A.7 — bloquant manifeste.** Clés `min_order_quote` et `gross_quote` à l'export, à la
+  lecture et au manifeste ; garde de forme sur les deux seules positions nommées.
+  - `xfail` (10) : `test_c3_chronology.py` (contrats de π_T) ; `test_c3_entry.py` (`min_order_quote` absente ou
+    nulle ×2, D5, `min_order_usdc` à la position, `gross_usdc` dans le bloc) ; `test_c3_anchor.py` (clé du manifeste
+    ×2) ; `test_c3b_common.py` (lots et bloc `gross_quote`, observation `min_order_quote`).
+  - Artefacts C3b non conformes : `prefix_conformite/server/run1/observations.json` (12 `min_order_usdc`,
+    66 `gross_usdc`), `eval_conformite/server/designated/run1/evaluation_run.json` (1 `gross_usdc`), manifeste du
+    lot 3 ; les 12 empreintes de projection de `selection.json` ne sont plus recalculables à l'identique (les
+    identités de candidat ne changent pas).
+- **R-17 (AM-05) — § A.6 — bloquant campagne.** Famille au manifeste ; statut compté écrit par `c3_verdict` à
+  l'étape 6 ; refus par `c3_anchor` des variantes que le § 10.1 exclut, évaluation différée comme état du registre ;
+  registre de campagne unique et persistant.
+  - `xfail` (5) : `test_c3_anchor.py` (manifeste sans famille, seconde campagne sur famille au verdict compté,
+    relance au-delà de l'unique, empreinte autre que la différée) ; `test_c3_verdict.py` (inscription de l'issue).
+  - Artefacts C3b non conformes : `prefix_conformite/manifest.json` (pas de famille), `server/chain/variants.json`
+    (ni famille ni issue).
+- **R-18 (AM-06) — § C.5, § L.1, § L.2 — bloquant manifeste.** Le producteur écrit la forme de refus et
+  l'export ; l'admission reconnaît la forme de refus (identité d'abord) ; la continuité route sans contrat § B ; le
+  verdict publie `E_NO_BENCHMARK` avec le motif, rejoue la non-constructibilité, porte `continuite=-`.
+  - `xfail` (5) : `test_c3_verdict.py` (issue et motif, refus avec séries, refus démenti, identité ≠ retenue) ;
+    `test_c3b_evaluate.py` (forme de refus et export écrits).
+  - Artefacts C3b non conformes : aucun (aucune évaluation refusée n'a été produite).
+- **R-19 (AM-08) — § L.1, § B.8 — bloquant manifeste.** Porteur `metrics.executions` exporté et exigé ;
+  `first_fill_at` nul ⟺ `executions == 0` ; `executions == 0` ⟹ equity constante `= C` ; c5 non vérifiable admis
+  sans exécution.
+  - `xfail` (6) : `test_c3b_evaluate.py` (admission sans exécution, `metrics` avec `executions`) ;
+    `test_c3_continuity.py` (réelle sans exécution → c5 non vérifiable, c3 vérifiée à vide) ; `test_c3_verdict.py`
+    (aucune violation et jamais `validé`, deux contradictions).
+  - Artefacts C3b non conformes : toute évaluation, qui ne porte pas `metrics.executions` (correction de
+    `phase1.md` § 4, qui disait qu'AM-08 ne cassait rien : vrai de l'élargissement, faux depuis que le porteur est
+    exigé).
+- **R-20 (AM-09) — § A.7 — non bloquant.** Dates de couverture nulles si et seulement si aucune unité couverte.
+  - `xfail` (4) : `test_c3b_common.py` (série écrite à dates nulles) ; `test_c3_entry.py` (trois combinaisons).
+  - Artefacts C3b non conformes : aucun.
+- **R-21 (AM-10) — § A.8 D4 — non bloquant manifeste, bloquant campagne.** Le CAGR qui déborde retire le
+  candidat par D4, sans exception ; impossible sur le préfixe de 1 362 jours, possible sur une fenêtre courte.
+  - `xfail` (2) : `test_c3_benchmark.py`, `test_c3_select.py` (`raises=OverflowError`).
+  - Artefacts C3b non conformes : aucun.
+- **R-22 (cas 1 à 4 de `phase1.md` § 1, aucun texte) — § I.1 (forme du diagnostic), § C.5, § C.6, § A.8 D4 —
+  non bloquant manifeste, bloquant campagne.** Le texte prescrit déjà la forme ; l'outillage produit une trace.
+  - `xfail` (4) : `test_c3_anchor.py` (cas 1), `test_c3_benchmark.py` (cas 2), `test_c3_select.py` (cas 3),
+    `test_c3_verdict.py` (cas 4).
+  - Artefacts C3b non conformes : aucun.
+
+**Hors réserve** (contrat du producteur C3b, 0/2/3 — pas le protocole) : `cb.build_pair` hors du `try` à
+`c3b_evaluate.py:544` ; un `xfail` (`test_c3b_evaluate.py`, `raises=OverflowError`).
+
+**Pont** : `test_c3_common.py`, test du sha v2.1 ↔ protocole, `xfail(strict=True, raises=AssertionError)` du
+premier commit de texte (`451a148`) au commit des tests du sha ; ce n'est pas une réserve.
+
+### Écarts de rédaction et d'application
+
+- **Texte.** Chaque bloc « Après » est appliqué tel quel, vérifié par `results/c3_v2_2/tests/texte_conforme.py`
+  (espaces normalisés). Seule la mise en page diffère : AM-08 met la phrase d'admission du § L.1 et sa suite dans
+  leurs propres paragraphes ; AM-02 et AM-03 (§ J, item 12) recoupent des lignes. AM-00 : la date d'adoption est
+  le 2026-09-29.
+- **AM-12.** L'index réel diffère de la prévision du paquet : `E_NO_BENCHMARK` ne gagne que § J (la retouche C-3
+  l'a retiré du § L.2), `D4` ne change pas, `P2` gagne § F.8 (AM-11) et `R1_NOT_NORMALISED` gagne § L.1 (C-2).
+  C'est la sortie du script, validé sur l'index v2.1, qui fait foi (`index_m.sh`).
+- **Tests.**
+  - Scission des miroirs en jumeaux `xfail` : les assertions que v2.2 contredit passent dans un jumeau, le reste
+    reste vert.
+  - Miroirs non relevés par `phase1.md` § 2, trouvés à l'application : jeux de clés de `evaluation.json`
+    (`test_c3b_evaluate.py`, triplet exact de `metrics` et interdit « aucune clé `lambda` ») ; jeu de clés de
+    l'observation contre le résultat P7 (`test_c3b_common.py`) ; lots `gross_usdc` du même fichier.
+  - Le cas de forme `test_c3_entry.py` « lot sans amount » reste vert en (i), comme prévu.
+  - Les adverses de chaîne R-18 rougissent aujourd'hui sur l'option `--candles-eval` que la chaîne ne connaît pas
+    encore (septième entrée) ; leur attendu porte la règle.
+  - AM-10 (R-21) est testé au niveau des fonctions, à durée de préfixe réduite : le débordement n'existe pas sur
+    le préfixe des fixtures.
+  - R-22 et l'item hors réserve sont dans un commit `test` à part (`5600eaf`), sans texte.
+  - Le pont est levé au commit des tests du sha, et non au commit AM-00 : à AM-00, le test lit encore le paquet
+    v2.1 et la ligne de sha v2.2 n'existe pas.
+- **Vérification par mutation.** Le témoin « suffixe hors positions ni lu ni refusé » (AM-04) rougit sous un
+  mutant de garde non bornée et reverdit après restauration (`mutants.log`).
 
 ## Décisions qui fondent ce paquet (Bruno, 29/09)
 
