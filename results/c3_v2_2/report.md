@@ -2,7 +2,7 @@
 
 > **Chantier documentaire, aucun run.** Brief `agent/AGENT_C3_AMENDEMENT_V2_2.md` (Bruno, 29/09). Branche
 > `feat/c3-amendements-v2.2`, depuis `dev` @ `8689636`. Le SHA livré est le commit qui porte ce rapport et la sortie
-> de `tests/gate.sh`. **État : STOP 2, avant push.** Ni push ni merge sans le GO de Bruno ; le merge est une
+> de `tests/gate.sh`. **État : poussé au `1189470` après le GO du STOP 2, CI verte ; non mergé.** Le merge est une
 > décision humaine.
 >
 > **Protocole v2.2 adopté le 2026-09-29** : `docs/protocole_c3.md`, sha256
@@ -105,7 +105,7 @@ Sortie : `tests/gate.out`, second passage, 2026-09-29T10:00:01Z, `rc=0`. Le prem
 | `phase1.md` et `outillage_v2_2.md` committés | `livrables_suivis` | 0 |
 | texte appliqué = paquet | `texte_applique_egal_paquet` | 0 : 23 blocs, 0 absent |
 | index § M régénéré | `index_M_regenere` | 0 |
-| branche poussée, CI lue avec `gh`, verte | — | **pas encore** : c'est l'étape après le STOP 2 |
+| branche poussée, CI lue avec `gh`, verte | `tests/ci_status.out` | 0 : run 36559243970 sur `1189470`, `success` à la première tentative, aucune relance. Résumé pytest de la CI (`gh run view 36559243970 --log`) : 3 246 passés, 43 ignorés (les 19 de la porte, plus les 24 `_full`, que la CI ne désélectionne pas et qui s'y ignorent sans base), 46 `xfailed` |
 
 ### 4.1 Écarts à la porte
 
@@ -271,11 +271,10 @@ en va de même des λ déclarés (AM-03).
 
 ## 8. Pour la suite
 
-- **Push** (GO de Bruno au STOP 2) : `git push -u origin feat/c3-amendements-v2.2`, puis CI lue par `gh`.
-  - Relance des jobs en échec pour le seul flaky connu `test_rejeu_effect`. Tout autre rouge est un STOP, pas une
-    relance.
-  - Le statut committé (`tests/ci_status.sh`, `.out`) dit quel job a été relancé et pourquoi.
-  - Pas de merge.
+- **Push fait** (GO de Bruno au STOP 2) : `feat/c3-amendements-v2.2` poussée au `1189470`, CI verte sans relance
+  (`tests/ci_status.out`). La règle de relance (le seul flaky `test_rejeu_effect`, tout autre rouge est un STOP) est
+  écrite dans `tests/ci_status.sh`. Pas de merge.
+- **Serveur** : rien à tirer. Aucun code n'a changé, et le collector ne verra pas la différence.
 - **Merge sur `dev`** : décision humaine. `docs/CODE_MAP.md` se régénère au merge.
 - **Chantier outillage v2.2** : `outillage_v2_2.md`. D'abord les bloquants manifeste (R-15, R-16, R-18, R-19) ; puis
   R-17, R-21 et R-22 avant la première campagne comptée.
