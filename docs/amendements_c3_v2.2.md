@@ -109,7 +109,7 @@ L'outillage que v2.2 impose n'est pas écrit dans ce chantier. Chaque réserve e
     identités de candidat ne changent pas).
 - **R-17 (AM-05) — § A.6 — bloquant campagne.** Famille au manifeste ; statut compté écrit par `c3_verdict` à
   l'étape 6 ; refus par `c3_anchor` des variantes que le § 10.1 exclut, évaluation différée comme état du registre ;
-  registre de campagne unique et persistant.
+  registre de campagne unique et persistant (conséquence d'AM-05).
   - `xfail` (5) : `test_c3_anchor.py` (manifeste sans famille, seconde campagne sur famille au verdict compté,
     relance au-delà de l'unique, empreinte autre que la différée) ; `test_c3_verdict.py` (inscription de l'issue).
   - Artefacts C3b non conformes : `prefix_conformite/manifest.json` (pas de famille), `server/chain/variants.json`
