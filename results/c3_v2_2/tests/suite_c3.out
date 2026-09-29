@@ -1,5 +1,5 @@
-# suite_c3 — 2026-09-29T09:12:52Z
-# HEAD f9023ba branche feat/c3-amendements-v2.2
+# suite_c3 — 2026-09-29T09:15:07Z
+# HEAD 302996c branche feat/c3-amendements-v2.2
 # indexé : docs/protocole_c3.md 
 # commande : poetry run pytest -q -p no:cacheprovider -rxX tests/test_scripts/test_c3*.py tests/test_scripts/test_c3b*.py
 pytest_exit=0
@@ -25,7 +25,7 @@ XFAIL tests/test_scripts/test_c3_verdict.py::test_R17_la_chaine_inscrit_l_issue_
 XFAIL tests/test_scripts/test_c3b_common.py::test_R16_l_observation_exportee_porte_min_order_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
 XFAIL tests/test_scripts/test_c3b_common.py::test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
 XFAIL tests/test_scripts/test_c3b_common.py::test_R20_a_series_without_covered_unit_is_written_with_null_dates - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
-1148 passed, 22 xfailed in 115.95s (0:01:55)
+1148 passed, 22 xfailed in 116.16s (0:01:56)
 ruff_check=0 ruff_format=0
 diff_vide_src_scripts_audit=0
 rc=0

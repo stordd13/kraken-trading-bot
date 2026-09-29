@@ -623,10 +623,10 @@ D1 → D6. Son score décisionnel n'est pas publié : on ne calcule pas quand m�
 >
 > - **D2 sur SOL.** Le régime 1 w exige 50 bougies **[v]** `scripts/backtest.py:305`, `:420-425`. Au 2021-03-01,
 >   SOL en porte **29** (première estampille 1 w le 2020-08-17) ; la 50ᵉ tombe le **2021-07-26**. D2 retire donc
->   tout candidat SOL dont une porte de décision lit le 1 w : **SOL est partiel dans la première campagne, ou
->   absent** si tous les modes de la famille lisent le 1 w. BTC et ETH sont amorcés sur toutes leurs séries au
->   début du préfixe. Une paire dont un timeframe de décision n'est pas amorcé au 2021-03-01 sort par D2 sur ses
->   candidats, et la clause de promotion du § I.1 s'applique telle quelle.
+>   tout candidat SOL dont le 1 w alimente une porte de décision : **SOL est partiel dans la première campagne, ou
+>   absent** si le 1 w alimente une porte de décision dans tous les modes de la famille. BTC et ETH sont amorcés
+>   sur toutes leurs séries au début du préfixe. Une paire dont un timeframe de décision n'est pas amorcé au
+>   2021-03-01 sort par D2 sur ses candidats, et la clause de promotion du § I.1 s'applique telle quelle.
 > - **D1 sur le 1 w.** Six des huit estampilles 1 w isolées tombent **dans le préfixe** — 2022-06-06,
 >   2022-07-04, 2022-09-05, 2022-10-03, 2022-11-07, 2022-12-05, les mêmes sur les trois paires ; les deux autres
 >   (2025-02-03, 2025-03-03) tombent dans la période évaluée. Sur les 194 périodes hebdomadaires de
