@@ -2258,7 +2258,7 @@ régénéré à chaque révision et recollé ici.
 | `Q2` | § F.8 | § A.8, § F.2, § F.5, § H.0, § H.1 |
 | `Q3` | § F.8 | § A.8, § F.2, § F.5, § H.0, § H.1 |
 | `P1` | § A.10 | § A.11, § G.1, § H.1, § I.1 |
-| `P2` | § A.10 | § A.11, § H.1 |
+| `P2` | § A.10 | § A.11, § F.8, § H.1 |
 | `P3` | § A.10 | § A.11, § G.1, § H.1, § I.1 |
 | `D1` | § A.8 | § A.7, § A.10, § A.11, § C.5, § G.1, § H.1, § I.1, § J |
 | `D2` | § A.8 | § 0.5, § A.3, § B.5, § D.3, § H.1, § I.1, § L.3 |
@@ -2268,17 +2268,17 @@ régénéré à chaque révision et recollé ici.
 | `D6` | § A.8 | § A.10, § A.11, § B.3, § B.4, § G.1, § H.1, § I.1 |
 | `E1` | § A.13 | § F.8, § H.0 |
 | `E2` | § A.13 | § A.8, § H.0 |
-| `R0_INVALID_RUN` | § I.1 | § B.2, § B.8, § F.2, § H.1, § I.2, § L.1 |
+| `R0_INVALID_RUN` | § I.1 | § A.6, § B.2, § B.8, § F.2, § H.1, § I.2, § L.1 |
 | `P_PROVENANCE` | § I.1 | § H.1 |
 | `D_WARMUP_PREFIX` | § I.1 | § B.5, § D.3, § H.1 |
 | `A_NO_ADMISSIBLE_CANDIDATE` | § I.1 | § A.8, § A.11, § H.1 |
 | `A_BELOW_FLOOR` | § I.1 | § A.11, § H.1 |
 | `D_WARMUP_ANCHOR` | § I.1 | § B.5, § B.8, § H.1 |
-| `E_NO_BENCHMARK` | § I.1 | § B.8, § C.5, § H.1 |
+| `E_NO_BENCHMARK` | § I.1 | § B.8, § C.5, § H.1, § J |
 | `E_STAMP_MISMATCH` | § I.1 | § B.4, § B.8, § H.1 |
 | `F_NOT_ESTIMABLE` | § I.1 | § A.13, § F.2, § F.8, § H.0, § H.1 |
 | `F_CANNOT_SEPARATE` | § I.1 | § F.5, § H.1 |
-| `R1_NOT_NORMALISED` | § I.1 | § A.8, § B.3, § B.8, § H.1 |
+| `R1_NOT_NORMALISED` | § I.1 | § A.8, § B.3, § B.8, § H.1, § L.1 |
 | `D_NOT_ADMISSIBLE` | § I.1 | § H.1 |
 | `C_COVERAGE` | § I.1 | § A.8, § H.1 |
 
