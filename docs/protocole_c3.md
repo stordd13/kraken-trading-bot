@@ -1080,10 +1080,11 @@ liste de priorité du § H.1.
 
 **Ce qu'exige `validé`** sur la continuité : c2 `DÉCLARÉ`, c3 `VÉRIFIÉ`, c4 `VÉRIFIÉ`, `comparator` `VÉRIFIÉ`,
 `stamp_cell` `VÉRIFIÉ` ou `NON VÉRIFIABLE`, et **c1, c5 `DÉCLARÉ` sur une évaluation réelle** — une
-évaluation réelle qui ne porte pas sa preuve de départ à plat ou son premier remplissage n'est pas admise
-(§ L.1). **En exercice synthétique** (§ L.1), c1 et c5 `NON VÉRIFIABLE` sont tolérés : l'exercice éprouve
-l'outillage, pas une évaluation. L'agrégat `VÉRIFIÉ` est inconstructible par la table ci-dessus, et c'est
-voulu.
+évaluation réelle qui ne porte pas sa preuve de départ à plat n'est pas admise (§ L.1). Une évaluation réelle
+**sans exécution** est admise avec un premier remplissage nul (§ L.1). Sa clause 5 est alors
+`NON VÉRIFIABLE`, `validé` lui est inatteignable, et son issue est celle que le § H lui donne. **En exercice
+synthétique** (§ L.1), c1 et c5 `NON VÉRIFIABLE` sont tolérés : l'exercice éprouve l'outillage, pas une
+évaluation. L'agrégat `VÉRIFIÉ` est inconstructible par la table ci-dessus, et c'est voulu.
 
 ---
 
@@ -2067,13 +2068,30 @@ Aucun pas n'est sauté ni réordonné.
 **Ce qui était atteignable en C3a, et ce qui l'est depuis v2.1.** En C3a, les étapes 5 et 6 n'étaient
 exerçables que sur des fixtures synthétiques, et l'outillage refusait toute évaluation déclarée réelle
 (`evaluation.synthetic: false` → refus). **Ce confinement est levé par cette révision, sous deux conditions
-cumulatives** : le paquet v2.1 adopté (ce texte) **et** un producteur conforme livré par C3b. Une évaluation
-déclarée réelle (`synthetic: false`) est admise **si et seulement si** elle porte `flat_start_proof`,
-`invocation.single_call` et `first_fill_at` (§ B.2, § B.4, § C.3 — les trois clauses déclaratives, en état
-`DÉCLARÉ`) ; il lui en manque une → refus `R0_INVALID_RUN`, code 2, rien publié, avec le nom de ce qui manque.
-La règle est appliquée en tête de `c3_continuity` comme de `c3_verdict`. Une évaluation synthétique reste
-admise, préfixe `C3_SYNTH_` et ligne de portée en tête (§ L.2). `validé` et `réfuté` deviennent atteignables sur
-données réelles **par ce chemin et par aucun autre**.
+cumulatives** : le paquet v2.1 adopté (ce texte) **et** un producteur conforme livré par C3b.
+
+Une évaluation déclarée réelle (`synthetic: false`) est admise **si et seulement si** elle porte
+`flat_start_proof`, `invocation.single_call`, `first_fill_at` et `metrics.executions` (§ B.2, § B.4, § C.3
+— les trois clauses déclaratives). `metrics.executions` est le nombre d'exécutions (remplissages) du run
+d'évaluation. S'il lui en manque un, c'est un refus `R0_INVALID_RUN`, code 2, rien publié, avec le nom de ce
+qui manque.
+
+**`first_fill_at` peut être nul, et dans un seul cas : l'évaluation n'a rien exécuté.**
+- `first_fill_at` est nul **si et seulement si** `executions == 0` ; ces deux déclarations se recoupent.
+- `executions == 0` **implique** `equity_daily` constante, égale au capital `C` ; l'outillage le recalcule.
+- Une contradiction entre ces faits est une violation (§ I.1, ligne 15).
+- **Rien n'est exigé dans l'autre sens** : une equity constante ne prouve pas l'absence d'exécution.
+
+Une évaluation réelle sans exécution est admise, et sa clause 5 est `NON VÉRIFIABLE` (§ B.8). Avec
+`executions == 0`, une position nulle à `fin` et un bloc de liquidation dont la liste de lots est exportée et
+vide, la clause 3 est `VÉRIFIÉE` à vide : il n'y avait rien à liquider, et le contrat le dit (§ B.3, titre) —
+comme `stamp_cell` sans estampille (§ B.4). Une évaluation sans exécution qui exporte sa liste de lots reçoit
+donc l'issue économique du § H, jamais `R1_NOT_NORMALISED` ; sans liste de lots, la clause 3 reste
+`NON VÉRIFIABLE` (§ B.8).
+
+La règle est appliquée en tête de `c3_continuity` comme de `c3_verdict`. Une évaluation synthétique reste admise,
+préfixe `C3_SYNTH_` et ligne de portée en tête (§ L.2). `validé` et `réfuté` deviennent atteignables sur données
+réelles **par ce chemin et par aucun autre**.
 
 **Forme de refus de l'artefact d'évaluation (§ C.5).**
 - **Admission.** Un artefact d'évaluation sous forme de refus (bloc `refused`, aucune série) est admis sans les

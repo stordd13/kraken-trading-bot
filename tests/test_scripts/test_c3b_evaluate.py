@@ -921,19 +921,17 @@ def test_a_fill_at_or_before_T_is_3(
     assert not (tmp_path / "out" / evaluate.EVALUATION).exists()
 
 
-def test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses(
+def test_no_trade_writes_a_null_first_fill_at(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Brief : « ``null`` si aucun trade (la chaîne le traite) ». La chaîne le traite par un refus : § L.1 v2.1, une
-    évaluation réelle sans ``first_fill_at`` n'est pas admise (``R0_INVALID_RUN``, le porteur nommé) — écart
-    candidat v2.2 (plan § 8). Le bloc de liquidation ne liquide rien : l'exemption ``trades == 0`` s'applique."""
+    """Brief : « ``null`` si aucun trade (la chaîne le traite) ». Le bloc de liquidation ne liquide rien :
+    l'exemption ``trades == 0`` s'applique. Ce que la chaîne en fait sous v2.2 (admission, c5 non vérifiable) vit
+    dans le jumeau R-19 ; sous v2.1 c'était un refus en R0 (écart candidat v2.2, tranché par AM-08)."""
     world, _, _ = stubbed(tmp_path, monkeypatch, lots=(), trades=())
     code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert (code, errors(logs)) == (0, [])
     run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert run["first_fill_at"] is None and run["liquidation"]["trades"] == 0
-    with pytest.raises(cc.EntryRefusedError, match="first_fill_at"):
-        cc.evaluation_admission(run)
 
 
 @pytest.mark.parametrize(("gap", "code"), [(2e-6, 3), (5e-7, 0)])
@@ -1834,15 +1832,8 @@ def test_evaluation_json_has_exactly_the_keys_of_the_fixture(
     evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     reference = fx.evaluation(fx.manifest())
     assert set(evaluation) == set(reference)
-    assert (
-        set(evaluation["metrics"])
-        == set(reference["metrics"])
-        == {
-            "net_pnl",
-            "cagr_pct",
-            "delta_dd",
-        }
-    )
+    # Le jeu exact des clés de `metrics` vit dans le jumeau R-19 : § L.1 v2.2 (AM-08) y ajoute `executions`.
+    assert set(evaluation["metrics"]) == set(reference["metrics"])
     for combination, item in evaluation["replications"].items():
         assert set(item) == set(reference["replications"][combination])
     assert not [k for k in keys_of(evaluation) if "lambda" in k or "sensitiv" in k]
@@ -2037,3 +2028,45 @@ def test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export(
     assert not {"returns_config", "returns_bench", "equity_daily", "replications"} & set(evaluation)
     assert (out / evaluate.CANDLES_EVAL).exists()
     assert built == []
+
+
+# ---------------------------------------------------------------------------
+# § L.1 v2.2 (AM-08) — le nombre d'exécutions, et l'admission d'une évaluation réelle sans exécution (R-19)
+# ---------------------------------------------------------------------------
+
+R19 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
+)
+
+
+@R19
+def test_R19_no_trade_is_admitted_with_zero_executions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ L.1 v2.2 : l'évaluation réelle porte `metrics.executions`, « le nombre d'exécutions (remplissages) du run
+    d'évaluation » ; `first_fill_at` nul ⟺ `executions == 0` ; « Une évaluation réelle sans exécution est
+    admise ». Jumeau de l'ancien refus en R0 (§ L.1 v2.1)."""
+    world, _, _ = stubbed(tmp_path, monkeypatch, lots=(), trades=())
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (0, [])
+    run = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    assert run["metrics"].get("executions") == 0, "`metrics.executions` absent (§ L.1 v2.2)"
+    assert run["first_fill_at"] is None
+    try:
+        cc.evaluation_admission(run)
+    except cc.EntryRefusedError as exc:
+        raise AssertionError(f"refusée à l'admission : {exc}") from exc
+
+
+@R19
+def test_R19_evaluation_json_metrics_carry_executions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ L.1 v2.2 : `metrics.executions` est un porteur obligatoire de l'évaluation réelle ; `metrics` porte donc
+    `net_pnl`, `cagr_pct`, `delta_dd` et `executions` (jumeau de l'ancien triplet exact)."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    assert set(evaluation["metrics"]) == {"net_pnl", "cagr_pct", "delta_dd", "executions"}

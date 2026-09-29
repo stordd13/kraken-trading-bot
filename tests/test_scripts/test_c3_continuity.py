@@ -210,7 +210,9 @@ def test_une_evaluation_reelle_sans_porteur_est_refusee_en_tete(
 ) -> None:
     """§ L.1 v2.1 : une évaluation réelle est admise « si et seulement si elle porte `flat_start_proof`,
     `invocation.single_call` et `first_fill_at` […] ; il lui en manque une → refus `R0_INVALID_RUN`, code 2,
-    rien publié, avec le nom de ce qui manque » — « la règle est appliquée en tête de `c3_continuity` »."""
+    rien publié, avec le nom de ce qui manque » — « la règle est appliquée en tête de `c3_continuity` ».
+    § L.1 v2.2 (AM-08) : `first_fill_at` ne peut être nul que sans exécution ; la fixture en porte (témoin),
+    l'attendu reste le refus. Le cas sans exécution vit dans R-19."""
     eval_kw: dict[str, Any] = {"synthetic": False, "flat_start_proof": fx.flat_start_proof()}
     eval_kw.update(kw)
     w = _world(tmp_path, **eval_kw)
@@ -749,3 +751,50 @@ def test_agregat_prend_la_pire_clause_est_un_test_de_precedence_hors_perimetre()
         cc.continuity_aggregate({})
     with pytest.raises(cc.MissingEvidenceError):
         cc.continuity_aggregate({"c1": "FOO", "c2": "DECLARED"})
+
+
+# ---------------------------------------------------------------------------
+# § L.1 v2.2 (AM-08) — une évaluation réelle sans exécution est admise (R-19)
+# ---------------------------------------------------------------------------
+
+R19 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
+)
+
+
+def _no_execution_world(tmp_path: Path) -> dict[str, Any]:
+    """Évaluation réelle sans exécution, cohérente : `first_fill_at` nul, `metrics.executions` 0, `equity_daily`
+    constante égale à `C`, rendements nuls, bloc de liquidation à zéro trade et liste de lots exportée vide."""
+    w = _world(
+        tmp_path,
+        synthetic=False,
+        flat_start_proof=fx.flat_start_proof(),
+        first_fill_at=None,
+        liquidation_positions=0,
+        returns_config=[0.0] * (fx.N_EVAL_POINTS - 1),
+        net_pnl=0.0,
+    )
+
+    def no_execution(evaluation: dict[str, Any]) -> None:
+        evaluation["equity_daily"]["values"] = [1000.0] * len(evaluation["equity_daily"]["values"])
+        evaluation["metrics"]["executions"] = 0
+
+    _mutate_eval(w, no_execution)
+    return w
+
+
+@R19
+def test_R19_une_evaluation_reelle_sans_execution_est_admise_c5_non_verifiable(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.2 : « Une évaluation réelle sans exécution est admise, et sa clause 5 est `NON VÉRIFIABLE` » ;
+    retouche C-2 : « avec `executions == 0`, une position nulle à `fin` et un bloc de liquidation dont la liste de
+    lots est exportée et vide, la clause 3 est `VÉRIFIÉE` à vide »."""
+    w = _no_execution_world(tmp_path)
+    code, payload = _run(w)
+    assert code == 0 and payload is not None
+    states = _states(payload)
+    assert states["c5"] == "NOT_VERIFIABLE"
+    assert states["c3"] == "VERIFIED"

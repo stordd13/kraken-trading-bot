@@ -45,3 +45,13 @@ tests/test_scripts/test_c3_verdict.py:4172: assert 'R0_INVALID_RUN' in 'usage: c
 tests/test_scripts/test_c3b_evaluate.py:2032: AssertionError: aucun artefact d'évaluation sous forme de refus
 5 failed, 515 deselected in 2.90s
 runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-08 (R-19) — 2026-09-29T09:26:02Z — HEAD 6bbb262
+# -k "R19" tests/test_scripts/test_c3b_evaluate.py tests/test_scripts/test_c3_continuity.py tests/test_scripts/test_c3_verdict.py
+tests/test_scripts/test_c3b_evaluate.py:2055: AssertionError: `metrics.executions` absent (§ L.1 v2.2)
+tests/test_scripts/test_c3b_evaluate.py:2072: AssertionError: assert {'cagr_pct', ...d', 'net_pnl'} == {'cagr_pct', ...s', 'net_pnl'}
+tests/test_scripts/test_c3_continuity.py:797: assert (2 == 0)
+tests/test_scripts/test_c3_verdict.py:4226: AssertionError: refusée : R0_INVALID_RUN: évaluation réelle (synthetic: false) sans first_fill_at — § L.1 v2.1 : admise si et seulement si elle porte flat_start_proof, invocation.single_call et first_fill_at (§ B.2, § B.4, § C.3)
+tests/test_scripts/test_c3_verdict.py:4237: AssertionError: assert 2 == 1
+tests/test_scripts/test_c3_verdict.py:4246: AssertionError: assert 2 == 1
+6 failed, 589 deselected in 0.87s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)

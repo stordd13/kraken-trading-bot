@@ -1952,7 +1952,9 @@ def test_c1_ou_c5_non_verifiable_sur_une_evaluation_reelle_est_une_violation(
 ) -> None:
     """§ B.8 v2.1, « Ce qu'exige validé » : c1 et c5 `DÉCLARÉ` sur une évaluation réelle — elle porte sa
     preuve de départ à plat et son premier remplissage (§ L.1) ; une continuité qui les dit non vérifiables
-    contredit l'évaluation : violation (§ I.1, ligne 15), jamais `validé`."""
+    contredit l'évaluation : violation (§ I.1, ligne 15), jamais `validé`. § B.8 v2.2 (AM-08) : c5
+    `NON VÉRIFIABLE` n'est légitime que sans exécution (`first_fill_at` nul) ; cette évaluation porte un
+    remplissage, l'attendu reste la violation."""
     artifacts = _sound()
     _real_with_carriers(artifacts)
     artifacts["continuity"]["clauses"][clause] = {"state": "NOT_VERIFIABLE", "detail": "absent"}
@@ -4170,3 +4172,75 @@ def test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0(
     assert _main(_refusal_argv(w)) == 2
     assert not (w["out"] / "verdict.json").exists()
     assert "R0_INVALID_RUN" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# § L.1 v2.2 (AM-08) — évaluation réelle sans exécution : admise, c5 non vérifiable, jamais `validé` (R-19)
+# ---------------------------------------------------------------------------
+
+R19 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
+)
+
+
+def _no_execution(
+    artifacts: dict[str, Any], *, executions: int = 0, constant_equity: bool = True
+) -> None:
+    """Évaluation réelle portant ses porteurs, sans exécution : `first_fill_at` nul, rendements nuls, equity à
+    `C` (ou non, pour la contradiction), `metrics.executions` posé ; continuité cohérente (c5 non vérifiable,
+    `stamp_cell` sans estampille)."""
+    _real_with_carriers(artifacts)
+    _reseries(artifacts, [0.0] * N_DAYS, [0.0] * N_DAYS, net_pnl=0.0)
+    evaluation = artifacts["evaluation"]
+    evaluation["first_fill_at"] = None
+    evaluation["metrics"]["executions"] = executions
+    values = [1000.0] * (N_DAYS + 1)
+    if not constant_equity:
+        values[N_DAYS // 2] = 1001.0
+    evaluation["equity_daily"] = {
+        "start": fx.ANCHOR.isoformat(),
+        "end": fx.WINDOW_END.isoformat(),
+        "values": values,
+    }
+    continuity = artifacts["continuity"]
+    continuity["clauses"]["c5"] = {"state": "NOT_VERIFIABLE", "detail": "aucune exécution"}
+    continuity["stamp_cell"] = {"state": "NOT_VERIFIABLE", "detail": "aucune estampille"}
+    continuity["stamp_same_daily_cell"] = False
+    continuity["state"] = "NOT_VERIFIABLE"
+
+
+@R19
+def test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_jamais_valide() -> (
+    None
+):
+    """§ L.1 v2.2 : admise ; § B.8 v2.2 : « Sa clause 5 est alors `NON VÉRIFIABLE`, `validé` lui est inatteignable,
+    et son issue est celle que le § H lui donne » — sans violation."""
+    artifacts = _sound()
+    _no_execution(artifacts)
+    violations: list[str] = []
+    try:
+        decision = cv.decide(artifacts, violations=violations)
+    except cc.EntryRefusedError as exc:
+        raise AssertionError(f"refusée : {exc}") from exc
+    assert violations == []
+    assert decision.issue != cc.ISSUE_VALIDE
+
+
+@R19
+def test_R19_first_fill_at_nul_avec_des_executions_est_une_violation(tmp_path: Path) -> None:
+    """§ L.1 v2.2 : « `first_fill_at` est nul si et seulement si `executions == 0` […] Une contradiction entre ces
+    faits est une violation (§ I.1, ligne 15). »"""
+    artifacts = _sound()
+    _no_execution(artifacts, executions=3)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+
+
+@R19
+def test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation(tmp_path: Path) -> None:
+    """§ L.1 v2.2 : « `executions == 0` implique `equity_daily` constante, égale au capital `C` ; l'outillage le
+    recalcule » — la contradiction est une violation. Rien n'est testé dans l'autre sens."""
+    artifacts = _sound()
+    _no_execution(artifacts, constant_equity=False)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
