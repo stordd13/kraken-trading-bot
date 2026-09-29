@@ -1015,3 +1015,44 @@ def test_revue_Fin_5_un_diagnostic_d_entree_non_type_est_une_erreur_d_entree(
     cc.write_json(w["entry"], entry)
     code, payload = run(w)
     assert code == 2 and payload is None
+
+
+# ---------------------------------------------------------------------------
+# § A.8 D4 v2.2 (AM-10) — le CAGR qui découle de rendements finis doit être fini (R-21)
+# ---------------------------------------------------------------------------
+
+R21 = pytest.mark.xfail(
+    strict=True,
+    raises=OverflowError,
+    reason="R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée",
+)
+
+
+@R21
+def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par_D4() -> None:
+    """§ A.8 D4 v2.2 : le candidat « sort par D4 (§ I.1, ligne 6) » — statut `NOT_ESTIMABLE`, raison
+    `F_NOT_ESTIMABLE`, code 0 ; « ce n'est pas une violation (ligne 15) ». Préfixe réduit à 0,01 j : seul un
+    préfixe court fait déborder un CAGR sur des rendements finis (motif d'AM-10)."""
+    payload = fx.manifest()
+    manifest = cc.load_manifest(payload)
+    candidate = manifest.candidates[0]
+    obs = fx.observations(payload)
+    key = next(
+        k for k, e in obs.items() if e["pair"] == candidate.pair and e["params"] == candidate.params
+    )
+    violations: list[str] = []
+    record = cs.evaluate_candidate(
+        candidate,
+        key,
+        obs[key],
+        manifest=manifest,
+        anchor=manifest.anchor(),
+        prefix_days=0.01,
+        pair_d1_ok=True,
+        bench_candidate={},
+        scorer=cs.default_scorer,
+        violations=violations,
+    )
+    assert violations == []
+    assert record.first_failed_gate == "D4" and record.status == "NOT_ESTIMABLE"
+    assert record.candidate_reason == "F_NOT_ESTIMABLE"

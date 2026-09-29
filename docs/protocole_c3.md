@@ -469,7 +469,7 @@ rend **tout le run inexploitable** (§ I-A), sans sauvetage partiel.
 | **D1** | Couverture du préfixe | jours couverts ≥ **97 %** des jours du préfixe **et** trou maximal ≤ **min(31 j, 3 % des jours du préfixe)**, sur les séries 5 min, 4 h, 1 j **et 1 w** | paire | qualité des données |
 | **D2** | Amorçage au **début du préfixe** | `sufficient == True` sur **chaque timeframe qui alimente une porte de décision** de la stratégie du candidat | candidat | qualité des données |
 | **D3** | Couverture en allers-retours achevés | **≥ 25** cycles achevés sur le préfixe, au sens défini ci-dessous | candidat | préférence économique |
-| **D4** | Estimabilité | rendements quotidiens définis et **tous finis**, dénominateurs non nuls | candidat | contrainte mathématique |
+| **D4** | Estimabilité | rendements quotidiens définis et **tous finis**, dénominateurs non nuls, **et le CAGR annualisé qui en découle, fini** | candidat | contrainte mathématique |
 | **D5** | Provenance de l'instrument | `metrics_version == 2`, `replay_version == 2`, modèle de fees, coûts par paire, source, intervalle, capital et plancher d'ordre égaux à ceux du manifeste, bornes **exactement** `[début, T]` | **run** | contrat |
 | **D6** | Comptabilité terminale normalisée | le préfixe porte une liquidation terminale costée | candidat | contrat |
 
@@ -592,7 +592,10 @@ Une borne plus stricte sur les rendements quotidiens — par exemple `r > −0,5
 données**, pas une contrainte mathématique, et **ce protocole n'en adopte aucune** : une journée à −50 % est
 possible sur les actifs du périmètre, et l'exclure d'office écarterait une observation réelle. Un jour porteur
 de `r ≤ −0,5` déclenche une **alerte de qualité des données à investiguer**, imprimée, **qui ne retire aucun
-candidat**.
+candidat**. **Le CAGR qui déborde.** Des rendements tous finis peuvent donner un CAGR que l'annualisation fait
+déborder de la double précision dans laquelle le protocole calcule (§ F.2 c). Ce CAGR n'est alors pas défini, et le
+candidat sort par D4 (§ I.1, ligne 6). Ce n'est pas une violation (ligne 15) : le CAGR est une valeur **calculée**
+par l'outillage, pas une valeur **fournie**.
 
 **D6 — la règle, et sa raison.** Le préfixe **porte** une liquidation terminale costée. À défaut, le candidat
 est écarté avec la raison `R1_NOT_NORMALISED` — **et la raison importe** : il n'est pas écarté « parce qu'il est

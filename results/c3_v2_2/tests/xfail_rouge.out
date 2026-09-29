@@ -30,3 +30,9 @@ tests/test_scripts/test_c3_entry.py:1040: assert (0 == 1)
 tests/test_scripts/test_c3b_common.py:1136: AssertionError: refus coverage_no_covered_unit : § A.7 v2.2 veut une série à dates nulles
 4 failed, 230 deselected in 0.29s
 runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-10 (R-21) — 2026-09-29T09:10:30Z — HEAD b5aecd8
+# -k "R21" tests/test_scripts/test_c3_benchmark.py tests/test_scripts/test_c3_select.py
+scripts/audit/c3_common.py:732: OverflowError: math range error
+scripts/audit/c3_common.py:732: OverflowError: math range error
+2 failed, 87 deselected in 0.20s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
