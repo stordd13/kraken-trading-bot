@@ -720,14 +720,7 @@ def test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acce
 # § A.7 v2.2 (AM-04) — le plancher d'ordre du manifeste s'appelle `min_order_quote` (R-16)
 # ---------------------------------------------------------------------------
 
-R16 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
-)
 
-
-@R16
 @pytest.mark.parametrize("mode", ["absente", "nulle"])
 def test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree(
     tmp_path: Path, mode: str

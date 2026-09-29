@@ -65,11 +65,14 @@ ENGINE_GRID = "grid"
 
 #: § A.7 v2.1 : le moteur écrit ``_btc`` pour toutes les paires (convention ``btc_held``,
 #: ``backtest.py:3288-3293``) ; la couche d'export renomme, liste fermée. ``amount_base`` est écrit
-#: directement dans chaque lot reconstruit.
+#: directement dans chaque lot reconstruit. § A.7 v2.2 (AM-04) : le montant brut en monnaie de cotation, que le
+#: moteur écrit ``gross_usdc`` pour toutes les paires (``backtest.py:3296``), devient ``gross_quote`` ; ``gross_quote``
+#: est écrit directement dans chaque lot reconstruit.
 LIQUIDATION_RENAME: Mapping[str, str] = {
     "residual_trade_btc": "residual_trade_base",
     "dust_written_off_btc": "dust_written_off_base",
     "inventory_divergence_btc": "inventory_divergence_base",
+    "gross_usdc": "gross_quote",
 }
 
 #: Série quotidienne de ``candles.json`` (§ C.3 : les closes de minuit du comparateur).
@@ -311,7 +314,8 @@ def build_engine(
         strategy_params_override=dict(candidate.params),
         fee_model=manifest.fee_model,
         pair_costs=dict(pair_costs),
-        min_order_usdc=manifest.min_order_usdc,
+        # § A.7 v2.2 (AM-04) : l'argument du moteur garde son nom ; la valeur est le plancher `min_order_quote`.
+        min_order_usdc=manifest.min_order_quote,
     )
 
 
@@ -320,7 +324,7 @@ def lots_from_trades(trades: Sequence[Any]) -> list[dict[str, str | None]]:
 
     ``liquidation_summary`` ne porte pas ``lots`` : la liste de ``_force_close_open_positions`` est locale
     (``backtest.py:3185``). Chaque trade ``forced_liquidation`` (``:3124-3146``) est un lot, dans l'ordre :
-    ``amount_base = amount_crypto``, ``gross_usdc = amount_usdc``, ``fee``, ``pnl``. Le prix d'entrée inverse
+    ``amount_base = amount_crypto``, ``gross_quote = amount_usdc`` (§ A.7 v2.2), ``fee``, ``pnl``. Le prix d'entrée inverse
     ``pnl = net − amount × entry_price`` (``:3107``, ``net = gross − fee``) : ``entry_price = (gross − fee −
     pnl) / amount``, ``null`` avec ``pnl`` quand le coût est inconnu. **Exact à la précision du contexte
     ``Decimal`` seulement** (28 chiffres, contexte jamais modifié par le moteur ni la chaîne) ; la chaîne ne
@@ -342,7 +346,7 @@ def lots_from_trades(trades: Sequence[Any]) -> list[dict[str, str | None]]:
         lots.append(
             {
                 "amount_base": str(amount),
-                "gross_usdc": str(gross),
+                "gross_quote": str(gross),
                 "fee": str(fee),
                 "pnl": None if pnl is None else str(pnl),
                 "entry_price": None if entry is None else str(entry),
@@ -356,7 +360,8 @@ def liquidation_block(summary: Mapping[str, Any], trades: Sequence[Any]) -> dict
 
     Aucune clé ``_btc`` ne survit ; une collision entre une clé renommée et une clé présente, une clé ``_btc``
     hors de la liste fermée, ou un ``lots`` déjà porté par le moteur sont des contrôles en échec (le moteur
-    aurait changé sous le producteur). ``cc.check_base_quantity_keys`` est appliqué au bloc et à chaque lot.
+    aurait changé sous le producteur). ``cc.check_base_quantity_keys`` et, § A.7 v2.2, ``cc.check_quote_amount_keys``
+    (un ``gross_`` suffixé par une monnaie hors de la table de renommage) sont appliqués au bloc et à chaque lot.
     """
     block: dict[str, Any] = {}
     problems: list[str] = []
@@ -375,8 +380,12 @@ def liquidation_block(summary: Mapping[str, Any], trades: Sequence[Any]) -> dict
     block["lots"] = lots_from_trades(trades)
     try:
         cc.check_base_quantity_keys(block, where="liquidation")
+        cc.check_quote_amount_keys(block, stem=cc.QUOTE_STEM_ACCOUNTING, where="liquidation")
         for index, lot in enumerate(block["lots"]):
             cc.check_base_quantity_keys(lot, where=f"liquidation.lots[{index}]")
+            cc.check_quote_amount_keys(
+                lot, stem=cc.QUOTE_STEM_ACCOUNTING, where=f"liquidation.lots[{index}]"
+            )
     except cc.MissingEvidenceError as exc:
         raise ProducerControlError("liquidation_rename", [str(exc)]) from exc
     return block
@@ -412,7 +421,7 @@ def observation_entry(
         "replay_version": REPLAY_VERSION,
         "pair_costs_file": manifest.pair_costs_file,
         "pair_costs": {"spread": str(pair_costs.spread), "slippage": str(pair_costs.slippage)},
-        "min_order_usdc": manifest.min_order_usdc,
+        "min_order_quote": manifest.min_order_quote,
         "effective_params": effective_params,
         "liquidation": {prefix: dict(liquidation)},
         "equity_daily": None if equity_daily is None else {prefix: dict(equity_daily)},

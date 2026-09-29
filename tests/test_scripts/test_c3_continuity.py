@@ -232,6 +232,24 @@ def test_une_evaluation_reelle_avec_ses_porteurs_est_admise(tmp_path: Path) -> N
     assert states["c1"] == states["c2"] == states["c5"] == "DECLARED"
 
 
+def test_R16_un_bloc_de_liquidation_d_evaluation_qui_porte_gross_usdc_est_une_erreur_de_forme(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ A.7 v2.2, ligne Comptabilité : le contrat de forme `gross_quote` vaut au bloc de liquidation où qu'il soit lu —
+    à la clause 3 comme à D6 (`cc.liquidation_identities`, partagée) ; une clé `gross_` suffixée par une monnaie est
+    une erreur de forme (§ I.1, ligne 2), code 2, rien publié, et le message nomme `gross_quote`."""
+    w = _world(tmp_path)
+
+    def resuffix(evaluation: dict[str, Any]) -> None:
+        block = evaluation["liquidation"]
+        block["gross_usdc"] = block["gross_quote"]
+
+    _mutate_eval(w, resuffix)
+    code, payload = _run(w)
+    assert code == 2 and payload is None
+    assert "gross_quote" in capsys.readouterr().err
+
+
 # ---------------------------------------------------------------------------
 # Chaque clause en échec, à sa place
 # ---------------------------------------------------------------------------

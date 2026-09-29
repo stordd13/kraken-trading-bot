@@ -139,10 +139,13 @@ def _liquidation_form(block: Mapping[str, Any], pair: str, *, where: str) -> Non
     ``inventory_divergence_base``, et ``amount_base`` par lot) ; une clé suffixée par le nom d'un actif
     (``_btc``, ``_eth``, …) est une erreur de forme (§ I.1, ligne 2). Le moteur écrit ``_btc`` pour toutes
     les paires (convention ``btc_held``, `backtest.py:3288-3293`) : le renommage vit dans la couche
-    d'export du runner (C3b), jamais ici."""
+    d'export du runner (C3b), jamais ici. § A.7 v2.2 (AM-04) : le montant brut en monnaie de cotation est
+    ``gross_quote``, dans le bloc et dans chaque lot, quelle que soit la paire ; une clé ``gross_`` suffixée par une
+    monnaie (``gross_usdc``, ``gross_usdt``, …) est une erreur de forme (``cc.check_quote_amount_keys``)."""
     del pair  # la paire n'entre pas dans les noms de clés, voir la docstring
     base = "base"
     cc.check_base_quantity_keys(block, where=where)
+    cc.check_quote_amount_keys(block, stem=cc.QUOTE_STEM_ACCOUNTING, where=where)
     cc.require_int(block, "positions", where=where, minimum=0)
     cc.require_int(block, "trades", where=where, minimum=0)
     for key in (
@@ -152,7 +155,7 @@ def _liquidation_form(block: Mapping[str, Any], pair: str, *, where: str) -> Non
         "residual_net_proceeds",
         "pnl",
         "fees",
-        "gross_usdc",
+        "gross_quote",
         f"residual_trade_{base}",
         f"dust_written_off_{base}",
         f"inventory_divergence_{base}",
@@ -171,8 +174,9 @@ def _liquidation_form(block: Mapping[str, Any], pair: str, *, where: str) -> Non
             if not isinstance(lot, Mapping):
                 raise cc.MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
             cc.check_base_quantity_keys(lot, where=lwhere)
+            cc.check_quote_amount_keys(lot, stem=cc.QUOTE_STEM_ACCOUNTING, where=lwhere)
             cc.require_decimal(lot, f"amount_{base}", where=lwhere)
-            cc.require_decimal(lot, "gross_usdc", where=lwhere)
+            cc.require_decimal(lot, "gross_quote", where=lwhere)
             cc.require_decimal(lot, "fee", where=lwhere)
             cc.nullable_decimal(lot, "entry_price", where=lwhere)
             cc.nullable_decimal(lot, "pnl", where=lwhere)
@@ -261,7 +265,10 @@ def a01_form(ctx: Context) -> Outcome:
             costs = cc.require_mapping(entry, "pair_costs", where=where)
             cc.require_decimal(costs, "spread", where=f"{where}.pair_costs")
             cc.require_decimal(costs, "slippage", where=f"{where}.pair_costs")
-            cc.require_float(entry, "min_order_usdc", where=where)
+            # § A.7 v2.2 (AM-04), ligne Contrats : le plancher d'ordre est `min_order_quote` ; à cette position,
+            # une clé `min_order_` suffixée par une monnaie est une erreur de forme.
+            cc.check_quote_amount_keys(entry, stem=cc.QUOTE_STEM_CONTRACTS, where=where)
+            cc.require_float(entry, "min_order_quote", where=where)
             cc.optional_int(entry, "exec_interval", where=where)
             pair = cc.require_str(entry, "pair", where=where)
             segments = list(cc.require_mapping(entry, "equity_daily", where=where))
@@ -315,9 +322,9 @@ def a02_d5(ctx: Context) -> Outcome:
                 manifest.pair_costs_file,
             ),
             (
-                "min_order_usdc",
-                cc.require_float(entry, "min_order_usdc", where=where),
-                manifest.min_order_usdc,
+                "min_order_quote",
+                cc.require_float(entry, "min_order_quote", where=where),
+                manifest.min_order_quote,
             ),
         ]
         costs = cc.require_mapping(entry, "pair_costs", where=where)

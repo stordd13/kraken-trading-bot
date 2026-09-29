@@ -908,7 +908,8 @@ def manifest(
             "pair_costs_file": "config/pair_costs_b4.json",
             "pair_costs": {p: {"spread": s, "slippage": sl} for p, (s, sl) in PAIR_COSTS.items()},
         },
-        "min_order_usdc": 5.0,
+        # § A.7 v2.2 (AM-04), décision du 29/09 : la clé du manifeste est `min_order_quote`.
+        "min_order_quote": 5.0,
         "universe": {"provenance": provenance, "candidates": candidates},
         # § A.6 v2.2 (AM-05) : la famille du mécanisme évalué, au sens du critère d'arrêt.
         "family": "grid",
@@ -1084,7 +1085,7 @@ def liquidation_segment(
         lot_rows.append(
             {
                 f"amount_{base_asset(pair)}": str(amount),
-                "gross_usdc": str(gross),
+                "gross_quote": str(gross),
                 "fee": str(fee),
                 "entry_price": str(reference * Decimal("0.98")),
                 "pnl": str(gross - fee - amount * reference * Decimal("0.98")),
@@ -1103,7 +1104,7 @@ def liquidation_segment(
         f"inventory_divergence_{base_asset(pair)}": "1E-27",
         "pnl": "-1.11608608129261557311025728",
         "fees": str(fees),
-        "gross_usdc": str(gross_total),
+        "gross_quote": str(gross_total),
         "timestamp": timestamp.isoformat() if positions else None,
         "reference_price": str(reference) if positions else None,
         "price": str(price) if positions else None,
@@ -1186,7 +1187,7 @@ def observation(
         "replay_version": 2,
         "pair_costs_file": "config/pair_costs_b4.json",
         "pair_costs": {"spread": PAIR_COSTS[pair][0], "slippage": PAIR_COSTS[pair][1]},
-        "min_order_usdc": 5.0,
+        "min_order_quote": 5.0,
         "phase": "1",
         "window_idx": None,
         "period": {

@@ -891,14 +891,7 @@ def test_revue_R3b_serie_tronquee_au_debut_avec_trou_declare_nul_est_refusee(
 # § A.7 v2.2 (AM-04) — montants en monnaie de cotation, clés `_quote` aux positions nommées (R-16)
 # ---------------------------------------------------------------------------
 
-R16 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
-)
 
-
-@R16
 @pytest.mark.parametrize("mode", ["absente", "nulle"])
 def test_R16_le_plancher_d_ordre_min_order_quote_absent_ou_nul_refuse_l_entree(
     tmp_path: Path, mode: str
@@ -919,7 +912,6 @@ def test_R16_le_plancher_d_ordre_min_order_quote_absent_ou_nul_refuse_l_entree(
     assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
 
 
-@R16
 def test_R16_un_plancher_d_ordre_different_du_manifeste_refuse_l_entree_D5(tmp_path: Path) -> None:
     """§ A.8 D5 : « plancher d'ordre égal à celui du manifeste », porté par `min_order_quote` (§ A.7 v2.2).
     Jumeau de l'ancien cas `min_order` du test D5."""
@@ -931,7 +923,6 @@ def test_R16_un_plancher_d_ordre_different_du_manifeste_refuse_l_entree_D5(tmp_p
     assert code == 2 and payload["refusal"]["assertion"] == "I-A.2"
 
 
-@R16
 def test_R16_un_plancher_d_ordre_suffixe_par_une_monnaie_refuse_l_entree_a_la_forme(
     tmp_path: Path,
 ) -> None:
@@ -949,7 +940,6 @@ def test_R16_un_plancher_d_ordre_suffixe_par_une_monnaie_refuse_l_entree_a_la_fo
     assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
 
 
-@R16
 def test_R16_un_bloc_de_liquidation_qui_porte_gross_usdc_refuse_l_entree_a_la_forme(
     tmp_path: Path,
 ) -> None:
@@ -961,6 +951,22 @@ def test_R16_un_bloc_de_liquidation_qui_porte_gross_usdc_refuse_l_entree_a_la_fo
         block = _first(obs)["liquidation"][fx.PREFIX]
         value = block["gross_quote"] if "gross_quote" in block else block["gross_usdc"]
         block["gross_usdc"] = value
+
+    _mutate_observations(w, resuffix)
+    code, payload = _run(w)
+    assert code == 2 and payload["refusal"]["assertion"] == "I-A.1"
+    assert "gross_quote" in payload["refusal"]["detail"]
+
+
+def test_R16_un_lot_qui_porte_gross_usdc_refuse_l_entree_a_la_forme(tmp_path: Path) -> None:
+    """§ A.7 v2.2, ligne Comptabilité : « la clé `gross_quote`, dans le bloc et dans chaque lot […] ; un bloc **ou un
+    lot** qui porte une clé `gross_` suffixée par le nom d'une monnaie (`gross_usdc`, `gross_usdt`, …) est une erreur
+    de forme (§ I.1, ligne 2) » — la position du lot, que le test du bloc n'exerce pas ; le détail nomme `gross_quote`."""
+    w = _sound(tmp_path)
+
+    def resuffix(obs: dict[str, Any]) -> None:
+        lot = _first(obs)["liquidation"][fx.PREFIX]["lots"][0]
+        lot["gross_usdc"] = lot["gross_quote"]
 
     _mutate_observations(w, resuffix)
     code, payload = _run(w)

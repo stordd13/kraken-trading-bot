@@ -662,9 +662,10 @@ def test_contre_exemple_2_poussiere_differente_de_la_divergence_ne_fait_pas_echo
         pytest.param(lambda liq: liq["lots"].pop(), "lots_count", id="un lot de moins que trades"),
         pytest.param(
             lambda liq: liq["lots"][0].__setitem__(
-                "gross_usdc", str(Decimal(liq["lots"][0]["gross_usdc"]) + 1)
+                "gross_quote", str(Decimal(liq["lots"][0]["gross_quote"]) + 1)
             ),
             "lots_gross_sum",
+            # § A.7 v2.2 (AM-04) : la clé est `gross_quote` ; l'identifiant du cas est gardé (comptes par identifiants).
             id="Σ gross ≠ gross_usdc",
         ),
         pytest.param(
@@ -911,10 +912,10 @@ def test_revue_R3_gross_different_de_amount_x_price_ne_passe_pas_D6(tmp_path: Pa
     def wrong_gross(obs: dict[str, Any]) -> None:
         liq = _liq(obs)
         lot = liq["lots"][0]
-        gross = Decimal(lot["gross_usdc"]) + Decimal("0.5")
-        lot["gross_usdc"] = str(gross)
+        gross = Decimal(lot["gross_quote"]) + Decimal("0.5")
+        lot["gross_quote"] = str(gross)
         lot["fee"] = str(gross * Decimal(fx.TAKER))
-        liq["gross_usdc"] = str(sum(Decimal(item["gross_usdc"]) for item in liq["lots"]))
+        liq["gross_quote"] = str(sum(Decimal(item["gross_quote"]) for item in liq["lots"]))
         liq["fees"] = str(sum(Decimal(item["fee"]) for item in liq["lots"]))
 
     w = chain(tmp_path, mutate_observations=wrong_gross)

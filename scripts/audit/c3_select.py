@@ -228,9 +228,9 @@ def _assert_d5(
             manifest.pair_costs_file,
         ),
         (
-            "min_order_usdc",
-            cc.require_float(contracts, "min_order_usdc", where=where),
-            manifest.min_order_usdc,
+            "min_order_quote",
+            cc.require_float(contracts, "min_order_quote", where=where),
+            manifest.min_order_quote,
         ),
         ("pair_costs.spread", cc.require_decimal(costs, "spread", where=where), spread),
         ("pair_costs.slippage", cc.require_decimal(costs, "slippage", where=where), slippage),

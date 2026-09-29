@@ -313,14 +313,6 @@ def test_la_liste_blanche_de_la_projection_est_celle_du_A7() -> None:
     assert other["test"] != entry["test"], "les futurs diffèrent bien"
 
 
-R16 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
-)
-
-
-@R16
 def test_R16_les_contrats_de_la_projection_sont_ceux_du_A7_v22() -> None:
     """§ A.7 v2.2 (AM-04), ligne Contrats : « `metrics_version`, `replay_version`, `exchange`, `fees`, `pair_costs`,
     `pair_costs_file`, `min_order_quote` »."""

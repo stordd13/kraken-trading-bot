@@ -1263,7 +1263,8 @@ class Manifest:
     taker: Decimal
     pair_costs_file: str
     pair_costs: Mapping[str, tuple[Decimal, Decimal]]
-    min_order_usdc: float
+    #: § A.7 v2.2 (AM-04) — le plancher d'ordre, en unités de la monnaie de cotation ; clé du manifeste `min_order_quote`.
+    min_order_quote: float
     provenance: str
     #: § A.6 v2.2 (AM-05) — la famille du mécanisme évalué, au sens du critère d'arrêt (CONTRAINTES § 10.1).
     family: str
@@ -1336,7 +1337,8 @@ def load_manifest(raw: Any) -> Manifest:
             require_decimal(block, "spread", where=f"{where}.fees.pair_costs.{pair}"),
             require_decimal(block, "slippage", where=f"{where}.fees.pair_costs.{pair}"),
         )
-    min_order = require_float(raw, "min_order_usdc", where=where)
+    # § A.7 v2.2 (AM-04), décision du 29/09 : la clé du manifeste est `min_order_quote`.
+    min_order = require_float(raw, "min_order_quote", where=where)
     universe = require_mapping(raw, "universe", where=where)
     provenance = require_str(universe, "provenance", where=f"{where}.universe", allowed=PROVENANCES)
     # § A.6 v2.2 (AM-05) : « au minimum et sans exception […] la famille du mécanisme évalué ».
@@ -1453,7 +1455,7 @@ def load_manifest(raw: Any) -> Manifest:
         taker=taker,
         pair_costs_file=pair_costs_file,
         pair_costs=pair_costs,
-        min_order_usdc=min_order,
+        min_order_quote=min_order,
         provenance=provenance,
         family=family,
         candidates=tuple(candidates),
@@ -1550,7 +1552,7 @@ PREFIX_WHITELIST_CONTRACTS: tuple[str, ...] = (
     "fees",
     "pair_costs",
     "pair_costs_file",
-    "min_order_usdc",
+    "min_order_quote",
 )
 
 
@@ -1928,6 +1930,26 @@ def check_base_quantity_keys(block: Mapping[str, Any], *, where: str) -> None:
                 )
 
 
+#: § A.7 v2.2 (AM-04) — les montants en monnaie de cotation portent le suffixe `_quote` **aux deux positions nommées
+#: seules** : la ligne Contrats (premier niveau d'une observation, plancher d'ordre) et la ligne Comptabilité (bloc de
+#: liquidation et chaque lot, montant brut). Ailleurs, un suffixe de monnaie n'est ni lu ni refusé (règle 1 du § A.7).
+QUOTE_STEM_CONTRACTS = "min_order"
+QUOTE_STEM_ACCOUNTING = "gross"
+
+
+def check_quote_amount_keys(block: Mapping[str, Any], *, stem: str, where: str) -> None:
+    """§ A.7 v2.2 : à la position qu'elle nomme, une clé `<stem>_` suffixée par le nom d'une monnaie (`_usdc`,
+    `_usdt`, …) est une erreur de forme (§ I.1, ligne 2), même à côté de sa jumelle `_quote` — le message nomme la clé
+    attendue. Symétrique de `check_base_quantity_keys` ; bornée au seul radical de la position : toute autre clé du
+    bloc n'est ni lue ni refusée."""
+    for key in block:
+        if key.startswith(f"{stem}_") and key != f"{stem}_quote":
+            raise MissingEvidenceError(
+                f"{where}.{key}: montant suffixé par une monnaie — la clé attendue est `{stem}_quote`, quelle "
+                "que soit la paire (§ A.7 v2.2)"
+            )
+
+
 def liquidation_identities(
     block: Mapping[str, Any] | None,
     *,
@@ -1941,7 +1963,7 @@ def liquidation_identities(
 
     Par lot : `amount_i > 0`, `gross_i == amount_i × price` (le prix du bloc — un seul prix de
     liquidation, `backtest.py:3104`), `fee_i == gross_i × taker` (`:3105`), `entry_price` et `pnl`
-    nuls ensemble ; agrégats : Σ fee = fees, Σ gross = gross_usdc, nombre de lots = trades, lots à
+    nuls ensemble ; agrégats : Σ fee = fees, Σ gross = gross_quote, nombre de lots = trades, lots à
     coût connu = positions, Σ amount des lots inconnus = residual_trade_base. `lots` absent ⇒ la
     magnitude du taker est indécidable ⇒ non vérifié. Aucun seuil. Partagé par la sélection (D6 au
     préfixe) et la continuité (clause 3 à l'évaluation).
@@ -1973,12 +1995,13 @@ def liquidation_identities(
             "reported": reported,
         }
     check_base_quantity_keys(block, where=where)
+    check_quote_amount_keys(block, stem=QUOTE_STEM_ACCOUNTING, where=where)
     positions = require_int(block, "positions", where=where, minimum=0)
     trades = require_int(block, "trades", where=where, minimum=0)
     residual_trade = require_decimal(block, "residual_trade_base", where=where)
     residual_net = require_decimal(block, "residual_net_proceeds", where=where)
     fees = require_decimal(block, "fees", where=where)
-    gross = require_decimal(block, "gross_usdc", where=where)
+    gross = require_decimal(block, "gross_quote", where=where)
     unknown = trades - positions
     check("trades_positions", unknown in (0, 1), f"trades − positions = {unknown}, attendu 0 ou 1")
     check(
@@ -2037,7 +2060,7 @@ def liquidation_identities(
             timestamp <= end,
             f"{timestamp.isoformat()} > borne {end.isoformat()}",
         )
-        check("gross_positive", gross > zero, f"gross_usdc {gross} <= 0 avec trades > 0")
+        check("gross_positive", gross > zero, f"gross_quote {gross} <= 0 avec trades > 0")
         check(
             "fees_positive",
             fees > zero,
@@ -2073,7 +2096,8 @@ def liquidation_identities(
         if not isinstance(lot, Mapping):
             raise MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
         check_base_quantity_keys(lot, where=lwhere)
-        gross_i = require_decimal(lot, "gross_usdc", where=lwhere)
+        check_quote_amount_keys(lot, stem=QUOTE_STEM_ACCOUNTING, where=lwhere)
+        gross_i = require_decimal(lot, "gross_quote", where=lwhere)
         fee_i = require_decimal(lot, "fee", where=lwhere)
         amount_i = require_decimal(lot, "amount_base", where=lwhere)
         entry_price = nullable_decimal(lot, "entry_price", where=lwhere)
@@ -2088,7 +2112,9 @@ def liquidation_identities(
             )
         elif gross_i != amount_i * price:
             lots_ok = False
-            details.append(f"lot[{i}]: gross_usdc {gross_i} != amount × price = {amount_i * price}")
+            details.append(
+                f"lot[{i}]: gross_quote {gross_i} != amount × price = {amount_i * price}"
+            )
         expected_fee = gross_i * taker
         if fee_i != expected_fee:
             lots_ok = False
@@ -2113,7 +2139,7 @@ def liquidation_identities(
         "au moins un lot contredit amount > 0, gross = amount × price ou fee = gross × taker",
     )
     check("lots_fees_sum", fee_sum == fees, f"Σ fee_i {fee_sum} != fees {fees}")
-    check("lots_gross_sum", gross_sum == gross, f"Σ gross_i {gross_sum} != gross_usdc {gross}")
+    check("lots_gross_sum", gross_sum == gross, f"Σ gross_i {gross_sum} != gross_quote {gross}")
     check("lots_count", len(lots) == trades, f"{len(lots)} lots != trades {trades}")
     check("lots_known", known == positions, f"{known} lots à coût connu != positions {positions}")
     check(

@@ -2,3 +2,4 @@
 2026-09-29T16:38:06Z close : port 5433 fermé (pids tués : 62101 62103 ) ; nc -z échoue
 2026-09-29T16:38:06Z state : fermé
 2026-09-29T19:49:18Z state : fermé
+2026-09-29T19:50:20Z open : port 5433 ouvert
