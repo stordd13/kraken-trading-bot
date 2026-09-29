@@ -231,7 +231,10 @@ class EntryRefusedError(MissingEvidenceError):
 #: stratégie) ;
 #: ``exec_interval`` (porteur de l'intervalle d'exécution dans une observation — absent de l'export
 #: réel, D5 le consigne ``not_assertable``) ; ``run_scope`` (note de portée d'un manifeste réel) ;
-#: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative).
+#: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative) ;
+#: ``verdict`` et ``deferred_evaluation`` (enregistrement du registre de variantes, § A.6 v2.2 : l'issue et son
+#: statut sont inscrits à l'étape 6, absents avant ; l'évaluation différée, seulement quand l'issue ouvre la voie de
+#: sortie prospective du § 10.1).
 OPTIONAL_FIELDS: frozenset[str] = frozenset(
     {
         "estimability",
@@ -244,6 +247,8 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
         "exec_interval",
         "run_scope",
         "deployment_pairs",
+        "verdict",
+        "deferred_evaluation",
     }
 )
 
@@ -257,7 +262,10 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
 #: ``reason`` — `benchmark.pairs[].reason` et `selection.reason` : ``null`` quand rien n'est à signaler ;
 #: ``liquidation_normalised`` — `continuity.json` : ``true`` prouvé par lot, ``false`` en échec, ``null`` non vérifiable ;
 #: ``bound`` — `evaluation.replications[combinaison]` : ``null`` si et seulement si la suite retenue est vide
-#: (§ F.2 e v2.1 : une combinaison sans réplication retenue ne porte pas de borne).
+#: (§ F.2 e v2.1 : une combinaison sans réplication retenue ne porte pas de borne) ;
+#: ``raison`` — le verdict inscrit au registre de variantes (§ A.6 v2.2) : ``null`` pour ``validé`` et ``réfuté`` ;
+#: ``first_failed_gate`` — `selection.candidates[]` : ``null`` pour un candidat qui n'a échoué à aucune clause (lu par
+#: le statut au critère d'arrêt, § 10.1, ligne conditionnelle).
 NULLABLE_FIELDS: frozenset[str] = frozenset(
     {
         "stale_by_candles",
@@ -276,6 +284,8 @@ NULLABLE_FIELDS: frozenset[str] = frozenset(
         "reason",
         "liquidation_normalised",
         "bound",
+        "raison",
+        "first_failed_gate",
     }
 )
 
@@ -1255,6 +1265,8 @@ class Manifest:
     pair_costs: Mapping[str, tuple[Decimal, Decimal]]
     min_order_usdc: float
     provenance: str
+    #: § A.6 v2.2 (AM-05) — la famille du mécanisme évalué, au sens du critère d'arrêt (CONTRAINTES § 10.1).
+    family: str
     candidates: tuple[Candidate, ...]
     engines: Mapping[str, str]
     thresholds: Mapping[str, Mapping[str, Any]]
@@ -1327,6 +1339,10 @@ def load_manifest(raw: Any) -> Manifest:
     min_order = require_float(raw, "min_order_usdc", where=where)
     universe = require_mapping(raw, "universe", where=where)
     provenance = require_str(universe, "provenance", where=f"{where}.universe", allowed=PROVENANCES)
+    # § A.6 v2.2 (AM-05) : « au minimum et sans exception […] la famille du mécanisme évalué ».
+    family = require_str(raw, "family", where=where)
+    if not family:
+        raise MissingEvidenceError(f"{where}.family: chaîne vide")
     strategies_block = require_mapping(raw, "strategies", where=where)
     engines: dict[str, str] = {}
     strategy_tfs: dict[str, tuple[str, ...]] = {}
@@ -1439,6 +1455,7 @@ def load_manifest(raw: Any) -> Manifest:
         pair_costs=pair_costs,
         min_order_usdc=min_order,
         provenance=provenance,
+        family=family,
         candidates=tuple(candidates),
         engines=engines,
         thresholds=thresholds,

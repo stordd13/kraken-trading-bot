@@ -132,6 +132,29 @@ CHAIN_INPUT_NAMES: tuple[str, ...] = ("entry", "anchor", "selection", "continuit
 #: § L.2 v2.2 (AM-03) : les lieux de lecture des recoupements de ce que le producteur garantit.
 PRODUCER_INPUT_NAMES: tuple[str, ...] = ("manifest", "benchmark", "candles_eval", "benchmark_eval")
 INPUT_NAMES: tuple[str, ...] = CHAIN_INPUT_NAMES + PRODUCER_INPUT_NAMES
+#: ``docs/CONTRAINTES_POST_B4.md`` § 10.1 (section d'origine, non redite) — le statut au critère d'arrêt de chaque
+#: issue que la chaîne publie, par (issue, raison) : ``True`` compté, ``False`` non compté. Inscrit par l'étape 6 à
+#: l'enregistrement de la variante (§ A.6 v2.2, AM-05) ; une issue hors table n'est pas inscrite (garde générique).
+COUNTED: dict[tuple[str, str | None], bool] = {
+    (cc.ISSUE_VALIDE, None): True,
+    (cc.ISSUE_REFUTE, None): True,
+    (cc.ISSUE_INCONCLUSIF, "A_BELOW_FLOOR"): True,
+    (cc.ISSUE_INCONCLUSIF, "F_NOT_ESTIMABLE"): True,
+    (cc.ISSUE_INCONCLUSIF, "F_CANNOT_SEPARATE"): True,
+    (cc.ISSUE_INCONCLUSIF, "A_NO_ADMISSIBLE_CANDIDATE"): True,
+    (cc.ISSUE_INCONCLUSIF, "R0_INVALID_RUN"): False,
+    (cc.ISSUE_INCONCLUSIF, "P_PROVENANCE"): False,
+    (cc.ISSUE_INCONCLUSIF, "D_WARMUP_PREFIX"): False,
+    (cc.ISSUE_INCONCLUSIF, "D_WARMUP_ANCHOR"): False,
+    (cc.ISSUE_INCONCLUSIF, "R1_NOT_NORMALISED"): False,
+    (cc.ISSUE_INCONCLUSIF, "E_NO_BENCHMARK"): False,
+    (cc.ISSUE_INCONCLUSIF, "E_STAMP_MISMATCH"): False,
+}
+#: § 10.1, ligne conditionnelle : ``A_NO_ADMISSIBLE_CANDIDATE`` n'est **pas** compté quand au moins un candidat a
+#: été retiré par l'une de ces clauses — lu sur ``selection.candidates[*].first_failed_gate`` (plan du lot 1, D13).
+UNCOUNTED_IF_REMOVED_BY: dict[str, tuple[str, ...]] = {
+    "A_NO_ADMISSIBLE_CANDIDATE": ("D1", "D2", "D6"),
+}
 SYNTH_PREFIX = "C3_SYNTH_"
 PORTEE_SYNTH = "exercice synthétique de l'outillage — aucune portée économique (§ L.1)"
 ABSTENTION_REASONS: tuple[str, ...] = ("A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR")
@@ -1060,6 +1083,71 @@ def _selection_view(
 
 
 # ---------------------------------------------------------------------------
+# § A.6 v2.2 (AM-05) — l'issue et son statut au critère d'arrêt, inscrits à l'enregistrement de la variante
+# ---------------------------------------------------------------------------
+
+
+def counted_status(decision: Decision, selection: Mapping[str, Any]) -> bool:
+    """Le statut *compté* ou *non compté* que ``CONTRAINTES_POST_B4.md`` § 10.1 attribue à l'issue publiée
+    (``COUNTED``, et sa ligne conditionnelle ``UNCOUNTED_IF_REMOVED_BY`` lue sur les candidats de la sélection)."""
+    key = (decision.issue, decision.reason)
+    if key not in COUNTED:
+        raise cc.UndefinedIssueError(
+            f"issue {decision.issue!r} raison {decision.reason!r} hors de la table du § 10.1 — non inscrite"
+        )
+    if decision.reason not in UNCOUNTED_IF_REMOVED_BY:
+        return COUNTED[key]
+    clauses = UNCOUNTED_IF_REMOVED_BY[decision.reason]
+    for i, item in enumerate(cc.require_sequence(selection, "candidates", where="selection")):
+        where = f"selection.candidates[{i}]"
+        if not isinstance(item, Mapping):
+            raise cc.MissingEvidenceError(f"{where}: bloc attendu, reçu {type(item).__name__}")
+        gate = cc.nullable_str(item, "first_failed_gate", where=where)
+        if gate in clauses:
+            return False
+    return COUNTED[key]
+
+
+def registry_inscription(
+    registry_path: Path,
+    *,
+    variant_key: str,
+    inscription: Mapping[str, Any],
+    violations: list[str],
+) -> dict[str, Any] | None:
+    """§ A.6 v2.2 : le verdict inscrit **une fois** l'issue, la raison et le statut compté dans l'enregistrement de sa
+    variante. Rend le registre à écrire, ou ``None`` s'il n'y a rien à écrire (inscription identique déjà
+    présente). Variante absente du registre, ou inscription existante différente : violation (§ I.1, ligne 15), le
+    registre n'est pas réécrit. L'évaluation différée n'est pas inscrite : le texte ne dit pas d'où la date et le
+    manifeste attendus viennent (plan du lot 1, D7, candidat v2.3)."""
+    try:
+        raw = cc.read_json(registry_path)
+    except (OSError, ValueError) as exc:
+        raise cc.MissingEvidenceError(f"registry: {exc}") from exc
+    variants = cc.require_mapping(raw, "variants", where="registry")
+    if variant_key not in variants:
+        violations.append(
+            f"registre : la variante {variant_key[:16]} de l'ancrage est absente du registre — l'issue n'est "
+            "pas inscrite (§ A.6 v2.2)"
+        )
+        return None
+    record = cc.require_mapping(variants, variant_key, where="registry.variants")
+    existing = cc.optional_mapping(record, "verdict", where=f"registry.variants.{variant_key[:16]}")
+    if existing is not None:
+        if cc.canon(dict(existing)) != cc.canon(dict(inscription)):
+            violations.append(
+                f"registre : la variante {variant_key[:16]} porte déjà un verdict inscrit différent "
+                f"({dict(existing)}) de celui-ci ({dict(inscription)}) — écrit une fois, jamais réécrit (§ A.6 v2.2)"
+            )
+        return None
+    updated = {
+        **dict(raw),
+        "variants": {**dict(variants), variant_key: {**dict(record), "verdict": dict(inscription)}},
+    }
+    return updated
+
+
+# ---------------------------------------------------------------------------
 # § L.2 — la chaîne à neuf champs
 # ---------------------------------------------------------------------------
 
@@ -1412,6 +1500,7 @@ def run_verdict(
     campaign: str,
     now: datetime,
     chain_steps: Sequence[Mapping[str, Any]] = (),
+    registry: Path | None = None,
 ) -> int:
     """Lit les neuf entrées, vérifie la chaîne, décide, écrit ``verdict.json`` (0 ou 1) ou rien (2).
 
@@ -1420,6 +1509,10 @@ def run_verdict(
     seulement dans un artefact normal (code 0), faux sur toute violation (chaîne ou non) ou refus —
     un refus sans violation ne publie rien (code 2), un refus après violation publie un diagnostic
     ``verified: false``. Il ne dit rien de la qualité de l'issue (``verdict`` / ``raison``).
+
+    § A.6 v2.2 (AM-05) : en mode ``chain`` (``registry`` fourni), l'issue publiée (code 0) et son statut au critère
+    d'arrêt sont inscrits à l'enregistrement de la variante, une fois ; une contradiction est une violation, vue
+    avant toute écriture. Le verdict seul n'inscrit pas (il ne porte pas de registre : plan du lot 1, D6).
     """
     artifacts: dict[str, Mapping[str, Any]] = {}
     for name in INPUT_NAMES:
@@ -1447,6 +1540,7 @@ def run_verdict(
 
     violations: list[str] = []
     decision: Decision | None = None
+    registry_update: dict[str, Any] | None = None
     chain: dict[str, Any] = {
         "mode": "chain" if chain_steps else "verdict",
         "steps": [dict(step) for step in chain_steps],
@@ -1465,6 +1559,16 @@ def run_verdict(
         recorded = cc.require_mapping(artifacts["entry"], "inputs_sha256", where="entry")
         observations_sha256 = cc.require_str(recorded, "observations", where="entry.inputs_sha256")
         decision = decide(artifacts, violations=violations)
+        if registry is not None and not violations:
+            selection = cc.require_mapping(artifacts, "selection", where="artefacts")
+            inscription = {
+                "issue": decision.issue,
+                "raison": decision.reason,
+                "compte": counted_status(decision, selection),
+            }
+            registry_update = registry_inscription(
+                registry, variant_key=variant_key, inscription=inscription, violations=violations
+            )
     except cc.UndefinedIssueError as exc:
         # Garde générique (aucun site c3 ne la lève depuis v2.1, AM-19) : constatée après une violation,
         # la violation prime (§ I.1 l.15) ; seule, aucune issue n'est publiée, code 2.
@@ -1533,6 +1637,9 @@ def run_verdict(
     digest = cc.write_json(output, payload)
     print("\n".join(render_lines(payload)))
     print(f"written {output} sha256 {digest}")
+    if registry is not None and registry_update is not None:
+        registry_digest = cc.write_json(registry, registry_update)
+        print(f"written {registry} sha256 {registry_digest} (issue inscrite, § A.6 v2.2)")
     return 0
 
 
@@ -1707,7 +1814,12 @@ def run_chain(args: argparse.Namespace) -> int:
         "benchmark_eval": Path(args.benchmark_eval),
     }
     return run_verdict(
-        paths, output=out / "verdict.json", campaign=args.campaign, now=now, chain_steps=steps
+        paths,
+        output=out / "verdict.json",
+        campaign=args.campaign,
+        now=now,
+        chain_steps=steps,
+        registry=Path(args.registry),
     )
 
 

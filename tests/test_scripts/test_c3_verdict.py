@@ -2435,11 +2435,6 @@ CHAIN_FILES = (
 )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir",
-)
 def test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante(
     tmp_path: Path,
 ) -> None:
@@ -2454,6 +2449,51 @@ def test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_va
     assert record["verdict"]["issue"] == payload["verdict"]
     assert record["verdict"]["raison"] == payload["raison"]
     assert isinstance(record["verdict"]["compte"], bool)
+
+
+#: ``docs/CONTRAINTES_POST_B4.md`` § 10.1, table « Un verdict compte », recopiée du texte (règle agent 3) : pour
+#: chaque issue que la chaîne publie, (issue, raison) → compté. Les sorties code 1 et 2 n'ont pas d'issue.
+TABLE_10_1: dict[tuple[str, str | None], bool] = {
+    ("validé", None): True,
+    ("réfuté", None): True,
+    ("inconclusif", "A_BELOW_FLOOR"): True,
+    ("inconclusif", "F_NOT_ESTIMABLE"): True,
+    ("inconclusif", "F_CANNOT_SEPARATE"): True,
+    ("inconclusif", "A_NO_ADMISSIBLE_CANDIDATE"): True,
+    ("inconclusif", "R0_INVALID_RUN"): False,
+    ("inconclusif", "P_PROVENANCE"): False,
+    ("inconclusif", "D_WARMUP_PREFIX"): False,
+    ("inconclusif", "D_WARMUP_ANCHOR"): False,
+    ("inconclusif", "R1_NOT_NORMALISED"): False,
+    ("inconclusif", "E_NO_BENCHMARK"): False,
+    ("inconclusif", "E_STAMP_MISMATCH"): False,
+}
+
+
+def test_R17_la_table_du_10_1_est_celle_du_texte() -> None:
+    """§ A.6 v2.2 : le statut *compté* ou *non compté* « que le § 10.1 leur attribue » ; la table du texte, épinglée à
+    la constante du code (règle agent 3). Ligne conditionnelle : `A_NO_ADMISSIBLE_CANDIDATE` « quand au moins un
+    candidat a été retiré par D1, D2 ou D6 » n'est pas compté."""
+    assert cv.COUNTED == TABLE_10_1
+    assert cv.UNCOUNTED_IF_REMOVED_BY == {"A_NO_ADMISSIBLE_CANDIDATE": ("D1", "D2", "D6")}
+
+
+def test_A2_une_reinscription_discordante_au_registre_est_une_violation(tmp_path: Path) -> None:
+    """§ A.6 v2.2 (AM-05, impact outillage) : l'issue et son statut sont « écrits une fois. Une réécriture différente
+    est une violation » (plan du lot 1, D8, A2) — code 1, diagnostic, registre intact."""
+    w = _chain_world(tmp_path)
+    assert cv.main(_chain_argv(w)) == 0
+    anchor = cc.read_json(w["out"] / "anchor.json")
+    registry = cc.read_json(w["registry"])
+    record = registry["variants"][anchor["variant_key"]]
+    other = cc.ISSUE_REFUTE if record["verdict"]["issue"] != cc.ISSUE_REFUTE else cc.ISSUE_VALIDE
+    record["verdict"] = {**record["verdict"], "issue": other}
+    cc.write_json(w["registry"], registry)
+    before = cc.file_sha256(w["registry"])
+    assert cv.main(_chain_argv(w)) == 1
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["invalide"] is True and any("registre" in v for v in payload["violations"])
+    assert cc.file_sha256(w["registry"]) == before
 
 
 def test_chain_complete_sur_fixtures_verdict_et_neuf_champs_correspondants(tmp_path: Path) -> None:

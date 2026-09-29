@@ -155,6 +155,8 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "exec_interval",
             "run_scope",
             "deployment_pairs",
+            "verdict",
+            "deferred_evaluation",
         }
     )
     assert cc.NULLABLE_FIELDS == frozenset(
@@ -175,6 +177,8 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "reason",
             "liquidation_normalised",
             "bound",
+            "raison",
+            "first_failed_gate",
         }
     )
     assert not (cc.OPTIONAL_FIELDS & cc.NULLABLE_FIELDS), (
@@ -906,6 +910,8 @@ def manifest(
         },
         "min_order_usdc": 5.0,
         "universe": {"provenance": provenance, "candidates": candidates},
+        # § A.6 v2.2 (AM-05) : la famille du mécanisme évalué, au sens du critère d'arrêt.
+        "family": "grid",
         "strategies": {STRATEGY: {"engine": "grid", "decision_timeframes": list(DECISION_TFS)}},
         "selection_rule": {
             "text": "§ A.10 : D1-D6, puis P1∧P2∧P3, puis classement par Δ^dd (§ A.9)",

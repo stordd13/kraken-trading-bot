@@ -593,12 +593,6 @@ FAMILY_KEY = "family"
 VERDICT_KEY = "verdict"
 DEFERRED_KEY = "deferred_evaluation"
 
-R17 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir",
-)
-
 
 def _family_manifest(**kw: Any) -> dict[str, Any]:
     payload = fx.manifest(**kw)
@@ -625,7 +619,6 @@ def _record_verdict(
     cc.write_json(registry_path, registry)
 
 
-@R17
 def test_R17_un_manifeste_sans_famille_est_refuse(tmp_path: Path) -> None:
     """§ A.6 v2.2 : le manifeste porte « au minimum et sans exception » […] « la famille du mécanisme évalué » ;
     absente, c'est une erreur d'entrée (§ I.1, ligne 2), rien n'est enregistré."""
@@ -636,7 +629,6 @@ def test_R17_un_manifeste_sans_famille_est_refuse(tmp_path: Path) -> None:
     assert not (tmp_path / "variants.json").exists()
 
 
-@R17
 def test_R17_une_seconde_campagne_sur_une_famille_au_verdict_compte_est_refusee(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -655,7 +647,6 @@ def test_R17_une_seconde_campagne_sur_une_famille_au_verdict_compte_est_refusee(
     assert "R0_INVALID_RUN" in capsys.readouterr().err
 
 
-@R17
 def test_R17_une_relance_au_dela_de_l_unique_est_refusee(tmp_path: Path) -> None:
     """§ A.6 v2.2 : l'ancrage refuse « une relance au-delà de l'unique » ; la relance unique, elle, passe
     (`docs/CONTRAINTES_POST_B4.md` § 10.1, section d'origine)."""
@@ -679,7 +670,6 @@ def test_R17_une_relance_au_dela_de_l_unique_est_refusee(tmp_path: Path) -> None
     assert code == 2 and out is None
 
 
-@R17
 def test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee(
     tmp_path: Path,
 ) -> None:
@@ -700,6 +690,30 @@ def test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refus
     )
     code, out = _run(tmp_path, other, name="other.json", output="anchor_other.json")
     assert code == 2 and out is None
+
+
+def test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee(
+    tmp_path: Path,
+) -> None:
+    """§ A.6 v2.2 : « Sur une telle famille, seule est acceptée la variante dont l'empreinte est l'empreinte attendue
+    inscrite au verdict. L'évaluation différée est un état du registre, pas une exception de lecture. » Témoin vert,
+    vérifié par mutation (plan du lot 1 : l'ancrage qui refuse aussi cette empreinte rougit ce test)."""
+    _, root = _run(tmp_path, _family_manifest())
+    assert root is not None
+    deferred = _family_manifest(
+        variant_id="synth-differee", parent={"is_root": False, "variant_key": root["variant_key"]}
+    )
+    _record_verdict(
+        tmp_path,
+        root["variant_key"],
+        issue="inconclusif",
+        raison="F_CANNOT_SEPARATE",
+        compte=True,
+        deferred={"date": "2028-06-29T00:00:00+00:00", "variant_key": cc.sig(deferred)},
+    )
+    code, out = _run(tmp_path, deferred, name="differee.json", output="anchor_differee.json")
+    assert code == 0 and out is not None
+    assert out["variant_key"] == cc.sig(deferred) and out["registry"]["new_entry"] is True
 
 
 # ---------------------------------------------------------------------------
