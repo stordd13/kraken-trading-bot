@@ -1,0 +1,13 @@
+# greffon_portee — 2026-09-29T10:58:22Z
+# HEAD 9716682 branche feat/c3-amendements-v2.2
+chemin=results/c3_v2_2/tests/gate_sans_tunnel.py
+fichiers_suivis_hors_chantier_qui_le_nomment=0
+aucun_nommage_hors_chantier=0
+absent_config_pytest_conftest_ci=0
+collecte_ordinaire_exit=0
+non_enregistre_invocation_ordinaire=0
+temoin_enregistre_sous_gate_sh=0
+non_importable_hors_gate_sh=0
+collecte_repertoire=no tests collected in 0.01s
+non_collecte=0
+rc=0

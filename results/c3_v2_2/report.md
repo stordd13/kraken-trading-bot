@@ -20,7 +20,7 @@
 | Tests : jumeaux `xfail` des miroirs contredits, adverses neufs, pont levé, tests du sha généralisés | `tests/test_scripts/test_c3*.py`, `test_c3b*.py` |
 | Propagation | `CLAUDE.md`, `skills/backtest.md`, `docs/RESEARCH_LOG.md` (entrée 18), `PROJECT_CONTEXT.md`, `ROADMAP.md`, `docs/CODE_MAP.md`, `results/INDEX.md` |
 | Liste close du chantier outillage | `results/c3_v2_2/outillage_v2_2.md` |
-| Scripts de contrôle et leurs sorties | `results/c3_v2_2/tests/` : `suite_c3.sh`, `pkg_check.sh`, `xfail_rouge.sh`, `mutant.sh`, `f8_ecart.sh`, `index_m.sh`/`.py`, `texte_conforme.py`, `apres.py`, `gate.sh`, `gate_sans_tunnel.py` |
+| Scripts de contrôle et leurs sorties | `results/c3_v2_2/tests/` : `suite_c3.sh`, `pkg_check.sh`, `xfail_rouge.sh`, `mutant.sh`, `f8_ecart.sh`, `index_m.sh`/`.py`, `texte_conforme.py`, `apres.py`, `gate.sh`, `gate_sans_tunnel.py`, `greffon_portee.sh`, `comptes.sh`, `ci_status.sh` |
 
 ## 2. Par amendement
 
@@ -53,12 +53,15 @@ ABSENT (défaut 6 du § 7).
 
 ## 3. Tests
 
-- **Livré** (`tests/suite_c3.out`, suites C3 et C3b) : 1 149 passés, 46 `xfail` strict.
-  - Les cas paramétrés `min_order_usdc` des listes `MANDATORY` et D5 sont retirés ; leur attendu v2.2 vit dans les
-    jumeaux R-16.
+- **Livré** (`tests/suite_c3.out`, suites C3 et C3b) : 1 149 passés, 46 `xfail` strict. Le détail, par
+  identifiant, est au § 4.2.
+  - Cinq cas paramétrés `min_order_usdc` sont retirés : `MANDATORY` de l'ancrage ×2, `MANDATORY` de l'entrée ×2,
+    D5 ×1. Leur attendu v2.2 vit dans les jumeaux R-16.
   - L'ancien refus « aucune unité couverte » du producteur est remplacé par son jumeau R-20.
+  - Trois tests sont renommés à la scission ou à la généralisation : le test du sha v2.1 devient « le dernier
+    sha », et les deux tests verts du producteur scindés (comparateur non constructible, zéro trade) sont renommés.
   - Un témoin vert est ajouté : le suffixe de monnaie hors des positions nommées (AM-04).
-  - Les deux tests du sha sont réécrits, et le pont est levé.
+  - Le pont est levé.
 - **Décompte des `xfail`** : R-15 9, R-16 10, R-17 5, R-18 5, R-19 6, R-20 4, R-21 2, R-22 4, hors réserve 1.
 - **Rouges pour la bonne raison.** `tests/xfail_rouge.out` relance chaque lot en `--runxfail` et consigne l'exception
   et la ligne d'échec. `raises=` est fixé sur l'exception constatée :
@@ -88,11 +91,11 @@ Sortie : `tests/gate.out`, second passage, 2026-09-29T10:00:01Z, `rc=0`. Le prem
 | Critère du brief | Clé de `gate.out` | Résultat |
 |---|---|---|
 | sha à trois voies (fichier = dernière ligne d'Adoption = `cc.protocol_descriptor`) | `sha_trois_voies` | 0 : `1bed7696…292a` |
-| suite complète verte au sens CI | `suite_verte`, `zero_echec_zero_xpass` | 0 : 3 246 passés, 46 `xfailed`, 19 ignorés, 24 désélectionnés (`_full`) ; 0 FAILED, 0 ERROR, 0 XPASS |
+| suite complète verte au sens CI | `suite_verte`, `zero_echec_zero_xpass` | 0 : 3 246 passés, 46 `xfailed`, 19 ignorés, 24 désélectionnés (`_full`) ; 0 FAILED, 0 ERROR, 0 XPASS. **Écart 2** (§ 4.1) : 13 tests base ignorés |
 | `xfail` strict comptés et listés avec leur R | `xfail_egaux_a_la_liste` | 0 : 46 = 46 de `outillage_v2_2.md`, chaque `xfail` listé avec sa raison |
 | ruff propre | `ruff` | 0 (`src/` et liste C3 de la CI) |
 | `mypy src/` = 65 | `mypy_src_65` | 0 : 65 erreurs dans 18 fichiers |
-| hashes gold intacts | `gold_fichier_et_moteur_inchanges_depuis_8689636` | 0 : test gold et moteur inchangés depuis `8689636` (voir ci-dessous) |
+| hashes gold intacts | `gold_fichier_et_moteur_inchanges_depuis_8689636` | **Écart 1** (§ 4.1) : gold non rejoué ; 0 au sens de la clé (test gold, `src/`, `scripts/backtest.py` inchangés depuis `8689636`) |
 | diff de contrôle vide (moteur, runners, `c3*.py`, config, livrables C3a/C3b, CONTRAINTES) | `diff_vide_chemins_geles` | 0 |
 | `git diff --stat 8689636 HEAD -- src scripts/audit/*.py` vide | `diff_src_scripts_audit` | 0 ligne |
 | tout fichier changé est dans la liste close | `fichiers_dans_liste_close` | 0 (37 fichiers) |
@@ -104,21 +107,65 @@ Sortie : `tests/gate.out`, second passage, 2026-09-29T10:00:01Z, `rc=0`. Le prem
 | index § M régénéré | `index_M_regenere` | 0 |
 | branche poussée, CI lue avec `gh`, verte | — | **pas encore** : c'est l'étape après le STOP 2 |
 
-**Sans tunnel, et pourquoi c'est sans risque.** Le tunnel 5433 était ouvert au lancement de la porte, et il ne
-l'avait pas été par ce chantier. La porte ne l'a ni fermé ni utilisé. Le greffon `gate_sans_tunnel.py` refuse à
-pytest toute connexion à `127.0.0.1` ou `localhost` sur 5432 et 5433 ; les tests liés à la base s'ignorent donc
-comme en CI.
+### 4.1 Écarts à la porte
 
-Cela ne change rien au résultat, parce que `src/` et `scripts/audit/` n'ont **aucune ligne de diff** depuis
-`8689636` : aucun test lié à la base n'a pu changer de comportement. Le gold passait 2/2 à `8689636`
-(`results/c3b_producteur/closure/tests/mypy_gold.out`), et ni le test ni le moteur n'ont changé.
+La porte passe avec deux critères qui ne sont pas tenus dans la forme du brief et du plan. Ils sont acceptés par
+Bruno au STOP 2, et consignés ici comme écarts.
+
+**Le fait qui couvre les deux** : `git diff 8689636 HEAD -- src scripts/audit/*.py` est **vide** (`gate.out`,
+`diff_src_scripts_audit=0`). `scripts/backtest.py`, les runners et `config` le sont aussi
+(`diff_vide_chemins_geles=0`). Entre la clôture C3b (`fe82fe5`) et `8689636`, `tests`, `src` et `scripts` n'ont pas
+changé. Aucun test lié à la base n'a donc pu changer de comportement depuis la dernière suite qui les a exécutés.
+Ce chantier n'a rien écrit dans la base.
+
+| # | Écart | Ce que disent le brief et le plan | Ce qui est livré | Ce qui le couvre |
+|---|---|---|---|---|
+| 1 | gold non rejoué | brief : « hashes gold intacts » ; plan, critère 4 : « gold inchangé depuis `8689636`, 2 passés » | le test gold est lié à la base et s'ignore sans tunnel. La clé de la porte ne vérifie que l'absence de diff sur le test, `src/` et `scripts/backtest.py` depuis `8689636` | le fait ci-dessus, plus le gold 2/2 à la clôture C3b (`results/c3b_producteur/closure/tests/mypy_gold.out`, `gold_2_passed=0`) |
+| 2 | 13 tests base ignorés | brief : « suite verte au sens CI » ; plan, critère 2 : « suite complète », « sans ouvrir de tunnel » | le tunnel 5433 était **ouvert** au lancement, et pas par ce chantier. Le greffon `gate_sans_tunnel.py`, un moyen hors plan, refuse à pytest les ports 5432 et 5433. Résultat : 13 tests base ignorés, en plus des 6 d'intégration Bybit que la CI ignore aussi | le fait ci-dessus, plus la clôture C3b, où ces 13 tests passaient (`suite_locale.out`, tunnel ouvert). La réconciliation du § 4.2 montre que ce sont exactement eux qui manquent |
 
 Les ignorés, lus dans `gate.out` :
 
 | Raison | Nombre |
 |---|---|
 | base injoignable : gold, déterminisme P6, fidélité C2, rejeu (couverture, benchmark, clamp) | 13 |
-| intégration Bybit (`BYBIT_INTEGRATION`), ignorés en CI aussi | 6 |
+| intégration Bybit (`BYBIT_INTEGRATION`), ignorés à la clôture C3b et en CI aussi | 6 |
+
+### 4.2 Réconciliation des comptes
+
+Script `tests/comptes.sh`, sortie `tests/comptes.out`, `rc=0`.
+- **Méthode.** Collecte seule des identifiants de tests, à `8689636` (worktree temporaire hors du dépôt, retiré) et à
+  HEAD, avec la commande de la porte et le greffon des deux côtés.
+- **Collectes cohérentes.** Celle de la base vaut 3 270, soit les 3 264 passés et 6 ignorés de la clôture. Celle de
+  HEAD vaut 3 311, soit les 3 246 passés, 19 ignorés et 46 `xfail` de la porte.
+
+**3 264** (clôture C3b) **− 13** (tests base, ignorés sans tunnel) **− 9** (identifiants retirés) **+ 4** (verts
+neufs) **= 3 246** ; la porte en compte 3 246. Les 46 `xfail` sont tous des identifiants neufs.
+
+- **Les 9 retirés :**
+  - 5 cas paramétrés `min_order_usdc` (ancrage ×2, entrée ×2, D5 ×1), dont l'attendu v2.2 est dans des jumeaux
+    R-16 ;
+  - l'ancien refus R-20 du producteur, dont l'attendu est dans son jumeau ;
+  - 3 tests renommés : `test_le_sha_v21_…`, `test_a_non_buildable_comparator_is_2_before_the_engine`,
+    `test_no_trade_writes_a_null_first_fill_at_that_the_chain_refuses`.
+- **Les 4 verts neufs :**
+  - ces 3 renommés (`test_le_dernier_sha_…`, `…_stops_before_the_engine`, `…_null_first_fill_at`) ;
+  - le témoin d'AM-04.
+- Aucun test n'a disparu en route. Le seul changement net est −6 + 1 : les six attendus v2.1 passés dans des
+  jumeaux `xfail`, et le témoin neuf.
+
+### 4.3 Portée du greffon
+
+Script `tests/greffon_portee.sh`, sortie `tests/greffon_portee.out`, `rc=0`. Le greffon vit en
+`results/c3_v2_2/tests/gate_sans_tunnel.py`. Il est chargé **seulement** par `gate.sh`, qui passe `-p gate_sans_tunnel`
+et ajoute son répertoire au `PYTHONPATH`.
+- Aucun fichier suivi hors de `results/c3_v2_2/` ne le nomme. Il est absent de `pyproject.toml`
+  (`[tool.pytest.ini_options]`), de `tests/conftest.py` et de `.github/`.
+- Une invocation pytest ordinaire ne l'enregistre pas (`--trace-config`). Le témoin l'enregistre sous `-p` et le
+  `PYTHONPATH` de `gate.sh`, ce qui prouve que l'observation le verrait.
+- Il n'est pas importable depuis la racine du dépôt sans ce `PYTHONPATH`.
+- pytest ne le collecte pas, même lancé sur son répertoire (`python_files = ["test_*.py"]`, `testpaths = ["tests"]`).
+
+Les tests base locaux de tout autre usage s'exécutent donc comme avant, tunnel ouvert.
 
 ## 5. Conformité des artefacts C3b sous v2.2
 
@@ -145,10 +192,7 @@ en va de même des λ déclarés (AM-03).
 - **AM-10 est testé au niveau des fonctions**, avec une durée de préfixe réduite. Le débordement du CAGR sur des
   rendements finis n'existe pas sur le préfixe des fixtures (767 j) : il exige moins de ~361 j. Aucun monde à
   fenêtre courte n'a été construit.
-- **Pas de tunnel.** La porte a tourné tunnel neutralisé pour pytest (greffon `gate_sans_tunnel.py`, voir § 7). Les
-  tests liés à la base, dont le gold et le déterminisme P6 court, s'ignorent comme en CI. C'est sans risque ici :
-  `src/` et `scripts/audit/` n'ont aucune ligne de diff depuis `8689636`, où ces tests passaient (clôture C3b), donc
-  aucun test base n'a pu changer de comportement. Le décompte des ignorés est dans `gate.out`.
+- **Pas de tunnel.** Voir les écarts 1 et 2 du § 4.1.
 - **Les 24 `_full`** sont désélectionnés, comme à chaque chantier ; § L.5 ne s'applique pas à un chantier sans code.
 
 ## 7. Défauts et constats (hors table)
@@ -205,7 +249,8 @@ en va de même des λ déclarés (AM-03).
    (« hors_regle »). C'est sans effet, et c'est dit au commit `5600eaf`.
 8. **Tunnel trouvé ouvert à la porte**, ouvert hors de ce chantier. Je ne l'ai pas fermé : il n'est pas à moi. Je l'ai
    neutralisé pour le seul processus pytest par un greffon qui refuse les connexions à 5432 et 5433. C'est un moyen
-   neuf, qui n'était pas au plan ; il est dit ici et dans `gate.out`.
+   neuf, qui n'était pas au plan ; il est dit ici, dans `gate.out`, et consigné comme écart 2 (§ 4.1). Sa portée
+   est vérifiée au § 4.3.
 9. **Premier passage de la porte rouge sur son propre parseur** (09:56Z, `rc=1`). Tous les autres critères valaient
    0, pytest compris (0 échec, 0 XPASS, 46 `xfailed`). Seule la comparaison des `xfail` avec la liste de l'outillage
    échouait. La cause est la regex de `gate.sh` : `\S+` coupait l'id paramétré à son espace (`[estampille …]`),
@@ -226,8 +271,11 @@ en va de même des λ déclarés (AM-03).
 
 ## 8. Pour la suite
 
-- **Au GO de Bruno** : `git push -u origin feat/c3-amendements-v2.2`, CI lue par `gh run watch`, relance `--failed`
-  si le flaky connu `test_rejeu_effect` tombe, statut committé. Pas de merge.
+- **Push** (GO de Bruno au STOP 2) : `git push -u origin feat/c3-amendements-v2.2`, puis CI lue par `gh`.
+  - Relance des jobs en échec pour le seul flaky connu `test_rejeu_effect`. Tout autre rouge est un STOP, pas une
+    relance.
+  - Le statut committé (`tests/ci_status.sh`, `.out`) dit quel job a été relancé et pourquoi.
+  - Pas de merge.
 - **Merge sur `dev`** : décision humaine. `docs/CODE_MAP.md` se régénère au merge.
 - **Chantier outillage v2.2** : `outillage_v2_2.md`. D'abord les bloquants manifeste (R-15, R-16, R-18, R-19) ; puis
   R-17, R-21 et R-22 avant la première campagne comptée.
