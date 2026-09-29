@@ -1,0 +1,1 @@
+        if cc.canon(dict(existing)) != cc.canon(dict(inscription)):

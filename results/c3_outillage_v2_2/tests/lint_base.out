@@ -1,0 +1,13 @@
+# lint — base — 2026-09-29T15:11:00Z
+# HEAD 6e9f4c0ffd607e6675ea3b78f4e7e8819b83ce07 branche feat/c3-outillage-v2.2
+ruff_check_ci=0
+ruff_format_ci=0
+ruff_check_depot=0
+mypy_src=Found 65 errors in 18 files (checked 83 source files)
+mypy_strict scripts/audit/c3_common.py 4
+mypy_strict scripts/audit/c3_anchor.py 0
+mypy_strict scripts/audit/c3_benchmark.py 2
+mypy_strict scripts/audit/c3_select.py 0
+mypy_strict scripts/audit/c3_verdict.py 0
+mypy_strict scripts/audit/c3b_evaluate.py 0
+rc=0

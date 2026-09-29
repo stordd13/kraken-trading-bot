@@ -1,0 +1,34 @@
+# C3 outillage v2.2, lot 1 — identifiants déclarés (plan du lot 1 et décisions de gate), lus par comptes.sh.
+# Les ids paramétrés sont écrits comme pytest les imprime (Unicode échappé : \xe8).
+[neufs]
+tests/test_scripts/test_c3_verdict.py::test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit
+tests/test_scripts/test_c3_verdict.py::test_R17_la_table_du_10_1_est_celle_du_texte
+tests/test_scripts/test_c3_verdict.py::test_A2_une_reinscription_discordante_au_registre_est_une_violation
+tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+[leves]
+# R-15 (9) — C1 (producteur) et C2 (chaîne)
+tests/test_scripts/test_c3b_evaluate.py::test_R15_evaluation_json_declares_the_prefix_lambdas_it_used
+tests/test_scripts/test_c3_verdict.py::test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une_violation
+tests/test_scripts/test_c3_verdict.py::test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation
+tests/test_scripts/test_c3_verdict.py::test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation
+tests/test_scripts/test_c3_verdict.py::test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_une_violation
+tests/test_scripts/test_c3_verdict.py::test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_est_une_violation
+tests/test_scripts/test_c3_verdict.py::test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse[estampille apr\xe8s fin]
+tests/test_scripts/test_c3_verdict.py::test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse[seconde paire]
+tests/test_scripts/test_c3_verdict.py::test_R15_le_parseur_chain_expose_la_septieme_entree
+# XPASS au commit R-15 chaîne (D12a) : passe par la violation C-3
+tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit
+# R-21 (2) et R-22 cas 3 — C3
+tests/test_scripts/test_c3_benchmark.py::test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_rend_le_candidat_non_estimable
+tests/test_scripts/test_c3_select.py::test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par_D4
+tests/test_scripts/test_c3_select.py::test_R22_une_nav_extreme_a_rendement_non_fini_retire_le_candidat_par_D4
+# R-22 cas 1, 2, 4 — C4
+tests/test_scripts/test_c3_anchor.py::test_R22_un_non_fini_dans_un_autre_enregistrement_du_registre_est_un_diagnostic
+tests/test_scripts/test_c3_benchmark.py::test_R22_un_bh_a_rendement_non_fini_sur_des_bougies_finies_rend_la_paire_non_comparable
+tests/test_scripts/test_c3_verdict.py::test_R22_un_non_fini_fourni_dans_l_estimabilite_declaree_est_un_diagnostic
+# R-17 (5) — C5
+tests/test_scripts/test_c3_anchor.py::test_R17_un_manifeste_sans_famille_est_refuse
+tests/test_scripts/test_c3_anchor.py::test_R17_une_seconde_campagne_sur_une_famille_au_verdict_compte_est_refusee
+tests/test_scripts/test_c3_anchor.py::test_R17_une_relance_au_dela_de_l_unique_est_refusee
+tests/test_scripts/test_c3_anchor.py::test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee
+tests/test_scripts/test_c3_verdict.py::test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante

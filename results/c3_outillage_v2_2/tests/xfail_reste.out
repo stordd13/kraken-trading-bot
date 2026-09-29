@@ -1,0 +1,26 @@
+# xfail R-18 de chaîne restés — 2026-09-29T16:31:20Z
+# HEAD 8275827cbf619ca66675d5b0836aafb91e06162f branche feat/c3-outillage-v2.2
+# commande : pytest -q -p no:cacheprovider --runxfail --tb=short -k "R18_une_evaluation_sous_forme or R18_un_refus_que_l_export or R18_un_refus_d_une_autre" tests/test_scripts/test_c3_verdict.py
+# nature à 8c114fe :
+#   # -k "R18" tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3b_evaluate.py
+#   tests/test_scripts/test_c3_verdict.py:4130: AssertionError: assert 2 == 0
+#   tests/test_scripts/test_c3_verdict.py:4142: AssertionError: assert 2 == 1
+#   tests/test_scripts/test_c3_verdict.py:4150: AssertionError: assert 2 == 1
+#   tests/test_scripts/test_c3_verdict.py:4172: assert 'R0_INVALID_RUN' in 'usage: c3_verdict.py chain [-h] --manifest MANIFEST --observations\n                    
+# nature au HEAD :
+_ test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif _
+E   AssertionError: assert 2 == 0
+E    +  where 2 = _main(['chain', '--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-889/test_R18...xm9x6xm3q00000gn/T/pytest-of-stordd/pytest-889/test_R18_une_evaluation_sous
+E    +    where ['chain', '--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-889/test_R18...xm9x6xm3q00000gn/T/pytest-of-stordd/pytest-889/test_R18_une_evaluation_sous_f0/obse
+___________ test_R18_un_refus_que_l_export_dement_est_une_violation ____________
+E   AssertionError: assert 2 == 1
+E    +  where 2 = _main(['chain', '--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-889/test_R18...xm9x6xm3q00000gn/T/pytest-of-stordd/pytest-889/test_R18_un_refus_que_l_expo
+E    +    where ['chain', '--manifest', '/private/var/folders/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-889/test_R18...xm9x6xm3q00000gn/T/pytest-of-stordd/pytest-889/test_R18_un_refus_que_l_export0/obse
+__ test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0 __
+E   assert 'R0_INVALID_RUN' in "ENTREE INVALIDE evaluation.invocation: clé absente\nCHAINE ARRETEE à l'étape continuity (code de retour 2) — aucun verdict\n"
+E    +  where "ENTREE INVALIDE evaluation.invocation: clé absente\nCHAINE ARRETEE à l'étape continuity (code de retour 2) — aucun verdict\n" = CaptureResult(out="ancrage T = 2025-05-07T04:48:00+00:00 (F = 0.7, fenêtre 20
+E    +    where CaptureResult(out="ancrage T = 2025-05-07T04:48:00+00:00 (F = 0.7, fenêtre 2023-04-01T00:00:00+00:00 -> 2026-04-01T00:...INVALIDE evaluation.invocation: clé absente\nCHAINE ARRETEE à l'étape continuity (c
+E    +      where readouterr = <_pytest.capture.CaptureFixture object at 0x10e711790>.readouterr
+3 failed, 432 deselected in 3.38s
+runxfail_exit=1 (attendu 1) echecs_sur_assertion=3 (attendu 3) usage_argparse=0 (attendu 0) arret_continuite=3 (attendu 3)
+rc=0

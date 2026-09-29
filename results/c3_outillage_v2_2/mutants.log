@@ -1,0 +1,23 @@
+## M1_temoin_R17 — 2026-09-29T16:36:37Z — HEAD 8275827
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M2_table_10_1 — 2026-09-29T16:36:39Z — HEAD 8275827
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R17_la_table_du_10_1_est_celle_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M3_A1_run_verdict — 2026-09-29T16:36:42Z — HEAD 8275827
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M4_A2_reinscription — 2026-09-29T16:36:47Z — HEAD 8275827
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A2_une_reinscription_discordante_au_registre_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M5_D3_lambdas — 2026-09-29T16:36:50Z — HEAD 8275827
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation tests/test_scripts/test_c3_verdict.py::test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M6_D9_sha_avant — 2026-09-29T16:36:52Z — HEAD 8275827
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21 tests/test_scripts/test_c3_verdict.py::test_chain_sur_le_livrable_reel_v20_s_arrete_a_l_ancrage_code_2_rien_d_ecrit
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M3b_sans_A1 — 2026-09-29T16:37:59Z — HEAD 8275827
+mutant M3 contre tests/test_scripts/test_c3_verdict.py et test_c3b_evaluate.py, A1 exclu : 1 failed, 527 passed, 1 deselected, 10 xfailed in 65.82s (0:01:05)
+tué_par=tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit  restauré_diff_vide=0
+attendu (constat) : tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit seul
+## mutants_lot1 rc=0

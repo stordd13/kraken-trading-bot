@@ -1,0 +1,23 @@
+# comptes — lot1 (suite C5) — 2026-09-29T16:30:40Z
+# HEAD 8275827cbf619ca66675d5b0836aafb91e06162f branche feat/c3-outillage-v2.2 ; base 8c114fe
+collecte wt_base k=[not test_determinism_parallel_vs_serial_full] : exit=0 ; 3311/3335 tests collected (24 deselected) in 2.75s
+collecte kraken-trading-bot k=[not test_determinism_parallel_vs_serial_full] : exit=0 ; 3315/3339 tests collected (24 deselected) in 0.64s
+collecte kraken-trading-bot k=[] : exit=0 ; 3339 tests collected in 0.59s
+collectes : base=3311 head=3315 head_sans_k=3339
+retires_vide=0
+ajoutes_egal_declares=0
+  neuf : tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+  neuf : tests/test_scripts/test_c3_verdict.py::test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit
+  neuf : tests/test_scripts/test_c3_verdict.py::test_A2_une_reinscription_discordante_au_registre_est_une_violation
+  neuf : tests/test_scripts/test_c3_verdict.py::test_R17_la_table_du_10_1_est_celle_du_texte
+k_desélectionne_exactement_24_full=0
+xfail : base=46 head=25 leves=21
+xfail_head_inclus_base=0
+leves_egal_declares=0
+resume base={'passed': 3259, 'skipped': 6, 'deselected': 24, 'xfailed': 46} head={'passed': 3284, 'skipped': 6, 'deselected': 24, 'xfailed': 25}
+equation : 3259 (base) + 21 (levés) + 4 (neufs) = 3284 ; head = 3284
+equation_juste=0
+ignores_inchanges=0
+deselectionnes_inchanges=0
+xfailed_resume_egal_lignes=0
+rc=0
