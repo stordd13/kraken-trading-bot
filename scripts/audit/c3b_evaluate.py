@@ -828,8 +828,9 @@ async def evaluate(
     tout run, comme X1 au lot 3) ; puis le moteur de la fabrique, la preuve de départ à plat **avant** ``run``,
     **un seul** ``run(pair, T, fin)``, l'export et les contrôles. Base injoignable, lecture seule non assertée ou
     lecture en échec : refus (2) ; comparateur non constructible : forme de refus, **aucun moteur construit** (§ C.5
-    v2.2 : « le producteur n'exécute pas l'évaluation ») ; bougie hors ``[T, fin]`` : contrôle (3) ; toute autre
-    exception du moteur : contrôle (3)."""
+    v2.2 : « le producteur n'exécute pas l'évaluation ») ; bougie hors ``[T, fin]`` : contrôle (3) ; construction du
+    comparateur en échec (``cb.load_candles``, ``cb.build_pair``, tests § C.5), toute autre exception : contrôle (3),
+    ``comparator_failed``, avant le moteur ; toute autre exception du moteur : contrôle (3)."""
     db = ReadOnlyDatabaseManager(url)
     end = manifest.window_end
     try:
@@ -843,9 +844,19 @@ async def evaluate(
         candles = c3bc.candles_artefact(
             {candidate.pair: closes}, start=anchor, end=end, exec_interval=manifest.exec_interval
         )
-        comparator, benchmark_eval = evaluation_comparator(
-            candles, manifest=manifest, candidate=candidate, anchor=anchor, end=end
-        )
+        try:
+            comparator, benchmark_eval = evaluation_comparator(
+                candles, manifest=manifest, candidate=candidate, anchor=anchor, end=end
+            )
+        except c3bc.ProducerControlError:
+            raise
+        except Exception as exc:  # noqa: BLE001 - contrat 0/2/3 : une construction en échec est un contrôle, jamais une trace
+            # Hors réserve (plan du lot 2, D2) : la garde vit à son site, avant le moteur — dans l'étape 10b, le moteur
+            # tournerait avant de savoir le comparateur constructible (§ C.5 v2.2).
+            print(traceback.format_exc(), file=sys.stderr)
+            raise c3bc.ProducerControlError(
+                "comparator_failed", [f"{type(exc).__name__}: {exc}"]
+            ) from exc
         if benchmark_eval is None:
             # § C.5 v2.2 (AM-06) : le comparateur n'est pas constructible — l'évaluation n'est pas exécutée.
             return Evaluated(

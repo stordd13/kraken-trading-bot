@@ -2129,6 +2129,25 @@ def test_R15_evaluation_json_declares_the_prefix_lambdas_it_used(
 # ---------------------------------------------------------------------------
 
 
+def test_hors_R_an_exception_in_build_pair_is_a_control_error_3(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Contrat du producteur (brief C3b) : 0 évalué, 2 refus, 3 contrôle en échec — jamais une trace. Une vraie
+    exception dans ``cb.build_pair`` sort en contrôle en échec (3), ``comparator_failed``, avant le moteur, rien
+    d'écrit (plan du lot 2, D2 : la garde vit à son site). Remplace le test caduc ci-dessous (décision de gate du
+    29/09), qui garde son marqueur."""
+    world, _, built = stubbed(tmp_path, monkeypatch)
+
+    def broken(*args: Any, **kwargs: Any) -> Any:
+        raise ArithmeticError("panne simulée de build_pair")
+
+    monkeypatch.setattr(evaluate.cb, "build_pair", broken)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (3, ["comparator_failed"])
+    assert built == []
+    assert not (tmp_path / "out").exists()
+
+
 @pytest.mark.xfail(
     strict=True,
     raises=AssertionError,
