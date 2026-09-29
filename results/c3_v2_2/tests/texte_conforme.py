@@ -8,9 +8,9 @@ usage : python texte_conforme.py → une ligne `ok|ABSENT <AM> <en-tête>` par b
 
 from __future__ import annotations
 
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[3]
 PACKAGE = ROOT / "docs" / "amendements_c3_v2.2.md"

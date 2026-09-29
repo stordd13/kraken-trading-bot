@@ -11,9 +11,9 @@ de références vide (règle de lecture du § M : une porte que rien n'applique)
 
 from __future__ import annotations
 
+from pathlib import Path
 import re
 import sys
-from pathlib import Path
 
 HEAD = re.compile(r"^(?:### (?P<sub>[0-9A-Z]+(?:\.[0-9]+)?(?: bis)?) |## § (?P<top>[0-9A-Z]+)\. )")
 ROW = re.compile(r"^\| `(?P<sym>[^`]+)` \| (?P<site>§ [^|]+?) \| (?P<refs>[^|]*)\|$")

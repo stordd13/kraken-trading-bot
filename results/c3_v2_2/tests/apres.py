@@ -14,9 +14,7 @@ PACKAGE = Path(__file__).resolve().parents[3] / "docs" / "amendements_c3_v2.2.md
 def section(am: str) -> list[str]:
     lines = PACKAGE.read_text(encoding="utf-8").splitlines()
     start = next(i for i, line in enumerate(lines) if line.startswith(f"## {am} "))
-    end = next(
-        (i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines)
-    )
+    end = next((i for i in range(start + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
     return lines[start:end]
 
 
