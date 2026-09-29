@@ -428,7 +428,10 @@ L'artefact de couverture est une **entrée du protocole, pas une sortie de son o
 **avant** la sélection, et sa production n'appartient pas à la chaîne du § L.1 — c'est ce qui permet à
 l'outillage de rester **pur et sans accès base**. Il porte, par paire et par timeframe : le **compte de bougies
 observées**, le **compte attendu** sur `[début, T]`, la liste des **estampilles manquantes**, le **plus long
-trou en jours**, et les premier et dernier jours couverts. Son empreinte entre dans celle du manifeste (§ A.6),
+trou en jours**, et les premier et dernier jours couverts. Ces deux dates sont **nulles si et seulement si** la
+série n'a aucune unité couverte au sens de D1 (§ A.8). Une date nulle sur une série qui a des unités couvertes, ou
+une date présente sur une série qui n'en a aucune, contredit l'artefact (§ I.1, ligne 15). Son empreinte entre
+dans celle du manifeste (§ A.6),
 et la validité d'entrée (§ I-A) vérifie qu'il couvre exactement `[début, T]` et les paires de l'univers.
 
 En C3a, il est **synthétique**, produit par les fixtures. Une application réelle le produit depuis la base,

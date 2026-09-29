@@ -22,3 +22,11 @@ tests/test_scripts/test_c3b_common.py:1272: AssertionError: assert [None, None] 
 tests/test_scripts/test_c3b_common.py:1289: AssertionError: assert ('min_order_quote' in {'dca_counters': None, 'decision_timeframes': ['1d', '1w', '4h'], 'effective_params': {'params': {'atr_multiplier': {'...'start': '2020-01-06T00:00:00+00:00', 'values': [1000.0, 997.4775, 997.4775, 997.4775, 997.4775, 997.4775, ...]}}, ...})
 10 failed, 366 deselected in 0.76s
 runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-09 (R-20) — 2026-09-29T09:07:05Z — HEAD 608ea37
+# -k "R20" tests/test_scripts/test_c3_entry.py tests/test_scripts/test_c3b_common.py
+tests/test_scripts/test_c3_entry.py:1012: assert (2 == 0)
+tests/test_scripts/test_c3_entry.py:1028: assert (2 == 1)
+tests/test_scripts/test_c3_entry.py:1040: assert (0 == 1)
+tests/test_scripts/test_c3b_common.py:1136: AssertionError: refus coverage_no_covered_unit : § A.7 v2.2 veut une série à dates nulles
+4 failed, 230 deselected in 0.29s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)

@@ -1118,11 +1118,26 @@ def test_duplicate_or_off_grid_observed_stamps_are_control_errors(
         c3bc.coverage_series(observed, [], start=WINDOW_START, end=ANCHOR, interval=1440)
 
 
-def test_a_series_without_covered_unit_is_refused() -> None:
-    """Écart E3 : premier et dernier jours couverts indéfinis — refus, candidat v2.2."""
-    with pytest.raises(c3bc.ProducerRefusal) as caught:
-        c3bc.coverage_series([], [], start=WINDOW_START, end=ANCHOR, interval=240)
-    assert caught.value.reason == "coverage_no_covered_unit"
+R20 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir",
+)
+
+
+@R20
+def test_R20_a_series_without_covered_unit_is_written_with_null_dates() -> None:
+    """§ A.7 v2.2 (AM-09) : « Ces deux dates sont nulles si et seulement si la série n'a aucune unité couverte au
+    sens de D1 » — la série est écrite, elle n'est plus refusée (ancien test : refus `coverage_no_covered_unit`,
+    écart E3 de C3b, candidat v2.2 tranché)."""
+    try:
+        series = c3bc.coverage_series([], [], start=WINDOW_START, end=ANCHOR, interval=240)
+    except c3bc.ProducerRefusal as exc:
+        raise AssertionError(
+            f"refus {exc.reason} : § A.7 v2.2 veut une série à dates nulles"
+        ) from exc
+    assert series["covered_units"] == 0
+    assert series["first_day"] is None and series["last_day"] is None
 
 
 def test_the_coverage_artefact_is_what_a07_reads(tmp_path: Path) -> None:

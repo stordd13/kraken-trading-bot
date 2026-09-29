@@ -1,6 +1,6 @@
-# suite_c3 — 2026-09-29T09:04:19Z
-# HEAD 451a148 branche feat/c3-amendements-v2.2
-# indexé : docs/protocole_c3.md results/c3_v2_2/tests/mutant.sh results/c3_v2_2/tests/mutants.log results/c3_v2_2/tests/xfail_rouge.out tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3_chronology.py tests/test_scripts/test_c3_entry.py tests/test_scripts/test_c3b_common.py 
+# suite_c3 — 2026-09-29T09:07:18Z
+# HEAD 608ea37 branche feat/c3-amendements-v2.2
+# indexé : docs/protocole_c3.md results/c3_v2_2/tests/xfail_rouge.out tests/test_scripts/test_c3_entry.py tests/test_scripts/test_c3b_common.py 
 # commande : poetry run pytest -q -p no:cacheprovider -rxX tests/test_scripts/test_c3*.py tests/test_scripts/test_c3b*.py
 pytest_exit=0
 XFAIL tests/test_scripts/test_c3_anchor.py::test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree[absente] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
@@ -16,10 +16,14 @@ XFAIL tests/test_scripts/test_c3_entry.py::test_R16_le_plancher_d_ordre_min_orde
 XFAIL tests/test_scripts/test_c3_entry.py::test_R16_un_bloc_de_liquidation_qui_porte_gross_usdc_refuse_l_entree_a_la_forme - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
 XFAIL tests/test_scripts/test_c3_entry.py::test_R16_un_plancher_d_ordre_different_du_manifeste_refuse_l_entree_D5 - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
 XFAIL tests/test_scripts/test_c3_entry.py::test_R16_un_plancher_d_ordre_suffixe_par_une_monnaie_refuse_l_entree_a_la_forme - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_des_dates_nulles_sur_une_serie_couverte_sont_une_violation - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_des_dates_presentes_sur_une_serie_sans_unite_couverte_sont_une_violation - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_une_serie_sans_unite_couverte_a_dates_nulles_passe_l_entree - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
 XFAIL tests/test_scripts/test_c3_verdict.py::test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante - R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir
 XFAIL tests/test_scripts/test_c3b_common.py::test_R16_l_observation_exportee_porte_min_order_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
 XFAIL tests/test_scripts/test_c3b_common.py::test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
-1149 passed, 16 xfailed in 114.41s (0:01:54)
+XFAIL tests/test_scripts/test_c3b_common.py::test_R20_a_series_without_covered_unit_is_written_with_null_dates - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+1148 passed, 20 xfailed in 115.78s (0:01:55)
 ruff_check=0 ruff_format=0
 diff_vide_src_scripts_audit=0
 rc=0
