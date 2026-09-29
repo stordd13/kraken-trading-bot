@@ -36,3 +36,12 @@ scripts/audit/c3_common.py:732: OverflowError: math range error
 scripts/audit/c3_common.py:732: OverflowError: math range error
 2 failed, 87 deselected in 0.20s
 runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-06 (R-18) — 2026-09-29T09:19:11Z — HEAD 4f310ef
+# -k "R18" tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3b_evaluate.py
+tests/test_scripts/test_c3_verdict.py:4130: AssertionError: assert 2 == 0
+tests/test_scripts/test_c3_verdict.py:4142: AssertionError: assert 2 == 1
+tests/test_scripts/test_c3_verdict.py:4150: AssertionError: assert 2 == 1
+tests/test_scripts/test_c3_verdict.py:4172: assert 'R0_INVALID_RUN' in 'usage: c3_verdict.py chain [-h] --manifest MANIFEST --observations\n                           OBSERVATIONS [--covera...rs/nk/n3qvd0rj1mbffbxm9x6xm3q00000gn/T/pytest-of-stordd/pytest-844/test_R18_un_refus_d_une_autre_0/candles_eval.json\n'
+tests/test_scripts/test_c3b_evaluate.py:2032: AssertionError: aucun artefact d'évaluation sous forme de refus
+5 failed, 515 deselected in 2.90s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)

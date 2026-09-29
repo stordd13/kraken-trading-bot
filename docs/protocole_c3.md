@@ -1268,6 +1268,28 @@ pas 0) par un producteur qui ne connaît pas `T` ; il déclare ses bornes, et `c
 producteur n'a pas menti, il a construit autre chose que ce que ce manifeste demande. Un `window_ok` déclaré qui
 contredit le recoupement est, lui, une violation (§ B.8, résumés dérivés).
 
+**Comparateur d'évaluation non constructible : le refus amont est ratifié, et lu par la chaîne.** *C'est la
+section d'origine de cette route (§ 0.7).*
+- **Le producteur.** Quand il ne peut pas construire le comparateur d'évaluation — estampille d'exécution
+  d'entrée ou de sortie absente, et aucune bougie de substitution (§ C.3) —, le producteur n'exécute pas
+  l'évaluation. Il écrit l'artefact d'évaluation sous sa **forme de refus** : l'identité de la configuration,
+  la fenêtre `[T, fin]`, et un bloc `refused` qui porte la raison `comparator_not_buildable` et un motif,
+  **sans aucune série**.
+- **La chaîne.** Elle lit cette forme (§ L.1) et publie `inconclusif (E_NO_BENCHMARK)`, code 0 (§ I.1,
+  ligne 10).
+- **Le refus est recoupé.** La chaîne ne le croit pas : elle **rejoue la non-constructibilité** sur l'export de
+  bougies d'évaluation (§ L.2), et un refus que l'export dément est une violation (§ I.1, ligne 15).
+- **Deux formes interdites.** Un artefact d'évaluation qui porte à la fois un bloc `refused` et des séries se
+  contredit : c'est une violation. Un artefact qui ne porte ni l'un ni les autres est une erreur de forme
+  (§ I.1, ligne 2).
+
+**Le motif est un champ de l'issue, pas une raison.** `E_NO_BENCHMARK` couvre plusieurs constats, et l'artefact
+de verdict porte, à côté de la raison, un motif pris dans une liste close :
+- `comparator_not_buildable` : le refus amont ci-dessus ;
+- `comparator_not_comparable` : un test du tableau ci-dessus en échec, nommé à côté.
+
+La liste des raisons du § H.1 ne change pas.
+
 ### C.6 Cas non calculables
 
 Aucun croisement de `λ` sur la grille de recherche, **résidu d'appariement supérieur à 10 % de la cible
@@ -1964,6 +1986,15 @@ paramètres, graines et versions consignés dans l'artefact.
     sur macOS, la bibliothèque mathématique du système — `platform.libc_ver()` y est vide. **Cette limite n'a pas
     d'effet opérationnel tant que le producteur et la chaîne tournent sur le serveur** (la recette de C2) : c'est
     cette règle d'exploitation qui tient lieu de garantie, pas le champ `libc`.
+13. **L'omission d'une bougie dans l'export d'évaluation** (§ C.5, § L.2).
+    - **Le vecteur.** Un export qui omet la bougie d'exécution d'entrée ou de sortie rend le comparateur non
+      constructible. Le producteur refuse, et la chaîne, qui rejoue le refus sur ce même export, le confirme.
+      L'issue `E_NO_BENCHMARK` n'est pas comptée pour la famille et ouvre la relance
+      (`docs/CONTRAINTES_POST_B4.md` § 10.1). C'est une relance obtenue par omission. La chaîne ne peut pas la
+      distinguer d'une absence réelle, puisqu'elle ne lit pas la base (§ L.4).
+    - **La borne.** Ce n'est pas la chaîne qui borne ce vecteur, c'est la relance unique du critère d'arrêt
+      (`docs/CONTRAINTES_POST_B4.md` § 10.1, section d'origine, non redite ici) : une omission n'achète qu'une
+      relance par famille, et la suite est tranchée par ce critère. Aucun substitut de mesure n'est proposé.
 
 ---
 
@@ -2036,12 +2067,31 @@ La règle est appliquée en tête de `c3_continuity` comme de `c3_verdict`. Une 
 admise, préfixe `C3_SYNTH_` et ligne de portée en tête (§ L.2). `validé` et `réfuté` deviennent atteignables sur
 données réelles **par ce chemin et par aucun autre**.
 
+**Forme de refus de l'artefact d'évaluation (§ C.5).**
+- **Admission.** Un artefact d'évaluation sous forme de refus (bloc `refused`, aucune série) est admis sans les
+  porteurs ci-dessus, qu'il soit déclaré réel ou synthétique. Aucune exécution n'a eu lieu : il n'y a rien à
+  prouver de son départ ni de son premier remplissage.
+- **Identité d'abord.** L'identité de la configuration portée par le refus est recoupée à la configuration
+  retenue **avant** toute lecture du bloc `refused` ; une discordance est un refus `R0_INVALID_RUN` (§ B.8,
+  table des actions, première ligne).
+- **Sa route.** L'étape 5 n'évalue aucune clause du § B, et les clauses c1-c5 et les blocs `stamp_cell` et
+  `comparator` ne sont pas évalués sur cette route ; le contrôle d'identité, lui, s'applique. Le comparateur
+  d'évaluation n'est pas exigé ; l'export de bougies d'évaluation l'est (§ L.2).
+- **Son issue.** L'étape 6 publie l'issue du § C.5, et la raison portée est la première que la liste du § H.1
+  donne parmi les constats de la chaîne.
+
 ### L.2 La chaîne de verdict
 
 Aucun paramètre libre, aucune entrée humaine : deux personnes exécutant le verdict sur les mêmes artefacts
 obtiennent **la même chaîne**. Elle porte au minimum l'issue, la raison, l'identité canonique retenue ou `-`, le
 statut de sélection, l'état de la continuité, l'identité de variante, la provenance de l'univers, le sha256 de
 ce document, et celui des observations. **Le rapport cite la chaîne, il ne la paraphrase pas.**
+
+**L'état de la continuité** est l'agrégat des clauses du § B.8. Sur la route du refus amont (§ C.5, § L.1),
+aucune clause n'est évaluée : ce champ est **sans objet**, et la chaîne porte `-`. C'est une valeur du champ
+de chaîne, pas un état de clause : la liste close du § B.8 ne change pas. `-` est la valeur de ce champ chaque
+fois qu'aucun état de clause n'entre dans l'issue : refus amont, où aucune clause n'est évaluée, et
+abstention (§ A.11), où elles sont lues et recoupées sans être rapportées.
 
 **Préfixe et portée.** Une chaîne d'exercice synthétique est préfixée `C3_SYNTH_` et son artefact porte, en
 première ligne, une portée qui dit qu'elle n'a aucune portée économique ; une chaîne réelle est préfixée `C3_`

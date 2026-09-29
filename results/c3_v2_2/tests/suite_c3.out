@@ -1,6 +1,6 @@
-# suite_c3 — 2026-09-29T09:15:07Z
-# HEAD 302996c branche feat/c3-amendements-v2.2
-# indexé : docs/protocole_c3.md 
+# suite_c3 — 2026-09-29T09:19:26Z
+# HEAD 4f310ef branche feat/c3-amendements-v2.2
+# indexé : docs/protocole_c3.md results/c3_v2_2/tests/apres.py results/c3_v2_2/tests/xfail_rouge.out tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3b_evaluate.py 
 # commande : poetry run pytest -q -p no:cacheprovider -rxX tests/test_scripts/test_c3*.py tests/test_scripts/test_c3b*.py
 pytest_exit=0
 XFAIL tests/test_scripts/test_c3_anchor.py::test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree[absente] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
@@ -22,10 +22,15 @@ XFAIL tests/test_scripts/test_c3_entry.py::test_R20_des_dates_presentes_sur_une_
 XFAIL tests/test_scripts/test_c3_entry.py::test_R20_une_serie_sans_unite_couverte_a_dates_nulles_passe_l_entree - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
 XFAIL tests/test_scripts/test_c3_select.py::test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par_D4 - R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée
 XFAIL tests/test_scripts/test_c3_verdict.py::test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante - R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0 - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_que_l_export_dement_est_une_violation - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
 XFAIL tests/test_scripts/test_c3b_common.py::test_R16_l_observation_exportee_porte_min_order_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
 XFAIL tests/test_scripts/test_c3b_common.py::test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
 XFAIL tests/test_scripts/test_c3b_common.py::test_R20_a_series_without_covered_unit_is_written_with_null_dates - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
-1148 passed, 22 xfailed in 116.16s (0:01:56)
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+1148 passed, 27 xfailed in 118.76s (0:01:58)
 ruff_check=0 ruff_format=0
 diff_vide_src_scripts_audit=0
 rc=0

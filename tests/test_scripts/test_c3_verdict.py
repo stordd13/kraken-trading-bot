@@ -3781,7 +3781,9 @@ def test_revue_Fin2_1_l_abstention_recoupe_la_continuite_et_porte_continuite_tir
 ) -> None:
     """Abstention + continuité contredite (c4 VERIFIED, résumé faux) → violation, diagnostic 1 ;
     abstention + continuité cohérente → 0, la chaîne porte `continuite=-` (aucune configuration
-    retenue, l'évaluation n'est pas celle d'une retenue)."""
+    retenue, l'évaluation n'est pas celle d'une retenue). § L.2 v2.2 (AM-06, retouche C-5) : « `-` est la
+    valeur de ce champ chaque fois qu'aucun état de clause n'entre dans l'issue : […] abstention (§ A.11), où
+    elles sont lues et recoupées sans être rapportées »."""
     artifacts = _sound()
     _abstain(artifacts)
     argv = _write_cli_inputs(tmp_path / "ok", artifacts)
@@ -4066,3 +4068,105 @@ def test_revue_Fin2_2_le_diagnostic_ne_dit_pas_rien_publie(tmp_path: Path) -> No
     assert all(
         "rien publié" not in v and "issue non définie" not in v for v in payload["violations"]
     )
+
+
+# ---------------------------------------------------------------------------
+# § C.5 v2.2 (AM-06) — refus amont d'un comparateur non constructible, lu et recoupé par la chaîne (R-18)
+# ---------------------------------------------------------------------------
+
+R18 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir",
+)
+
+
+def _main(argv: list[str]) -> int:
+    """`cv.main`, un `SystemExit` d'argparse (option que l'outillage ne connaît pas encore) rendu en code."""
+    try:
+        return cv.main(argv)
+    except SystemExit as exc:
+        return exc.code if isinstance(exc.code, int) else 2
+
+
+def _refusal_world(
+    tmp_path: Path, *, missing_exec: str | None = "entry", with_series: bool = False
+) -> dict[str, Any]:
+    """Le monde de chaîne des fixtures, l'évaluation remplacée par sa **forme de refus** (§ C.5 v2.2 : identité,
+    fenêtre `[T, fin]`, bloc `refused`, aucune série) et l'export de bougies d'évaluation (§ L.1 v2.2, septième
+    entrée) sur la seule paire évaluée. Interface indicative : noms de clés et option à fixer par l'outillage."""
+    w = _chain_world(tmp_path)
+    evaluation = cc.read_json(w["evaluation"])
+    refused = {
+        "reason": "comparator_not_buildable",
+        "window": dict(evaluation["period"]),
+        "motif": "estampille d'exécution d'entrée absente (§ C.3)",
+    }
+    if with_series:
+        refusal = {**evaluation, "refused": refused}
+    else:
+        refusal = {k: evaluation[k] for k in ("synthetic", "strategy", "pair", "params", "period")}
+        refusal["refused"] = refused
+    cc.write_json(w["evaluation"], refusal)
+    export = fx.candles(w["payload"], start=fx.ANCHOR, end=fx.WINDOW_END, missing_exec=missing_exec)
+    export["pairs"] = {evaluation["pair"]: export["pairs"][evaluation["pair"]]}
+    w["candles_eval"] = tmp_path / "candles_eval.json"
+    cc.write_json(w["candles_eval"], export)
+    return w
+
+
+def _refusal_argv(w: dict[str, Any]) -> list[str]:
+    return _chain_argv(w) + ["--candles-eval", str(w["candles_eval"])]
+
+
+@R18
+def test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif(
+    tmp_path: Path,
+) -> None:
+    """§ C.5 v2.2 : « La chaîne […] publie `inconclusif (E_NO_BENCHMARK)`, code 0 (§ I.1, ligne 10) » ; le motif
+    `comparator_not_buildable` est un champ de l'issue ; § L.2 v2.2 : « ce champ est sans objet, et la chaîne
+    porte `-` »."""
+    w = _refusal_world(tmp_path)
+    assert _main(_refusal_argv(w)) == 0
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["verdict"] == cc.ISSUE_INCONCLUSIF and payload["raison"] == "E_NO_BENCHMARK"
+    assert payload["motif"] == "comparator_not_buildable"
+    assert " | continuite=- | " in payload["verdict_string"]
+
+
+@R18
+def test_R18_un_refus_qui_porte_des_series_se_contredit(tmp_path: Path) -> None:
+    """§ C.5 v2.2 : « Un artefact d'évaluation qui porte à la fois un bloc `refused` et des séries se contredit :
+    c'est une violation » (§ I.1, ligne 15, code 1)."""
+    w = _refusal_world(tmp_path, with_series=True)
+    assert _main(_refusal_argv(w)) == 1
+
+
+@R18
+def test_R18_un_refus_que_l_export_dement_est_une_violation(tmp_path: Path) -> None:
+    """§ C.5 v2.2 : « elle rejoue la non-constructibilité sur l'export de bougies d'évaluation (§ L.2), et un refus
+    que l'export dément est une violation (§ I.1, ligne 15) » — ici l'export porte les deux estampilles."""
+    w = _refusal_world(tmp_path, missing_exec=None)
+    assert _main(_refusal_argv(w)) == 1
+    assert cc.read_json(w["out"] / "verdict.json")["invalide"] is True
+
+
+@R18
+def test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.2 (retouche C-1) : « L'identité de la configuration portée par le refus est recoupée à la
+    configuration retenue avant toute lecture du bloc `refused` ; une discordance est un refus `R0_INVALID_RUN` »
+    — code 2, rien publié (§ I.1, ligne 2)."""
+    w = _refusal_world(tmp_path)
+    refusal = cc.read_json(w["evaluation"])
+    other = next(
+        c
+        for c in w["payload"]["universe"]["candidates"]
+        if c["pair"] == refusal["pair"] and c["params"] != refusal["params"]
+    )
+    refusal["params"] = other["params"]
+    cc.write_json(w["evaluation"], refusal)
+    assert _main(_refusal_argv(w)) == 2
+    assert not (w["out"] / "verdict.json").exists()
+    assert "R0_INVALID_RUN" in capsys.readouterr().err
