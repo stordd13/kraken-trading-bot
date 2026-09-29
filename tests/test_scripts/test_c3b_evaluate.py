@@ -1836,7 +1836,8 @@ def test_evaluation_json_has_exactly_the_keys_of_the_fixture(
     assert set(evaluation["metrics"]) == set(reference["metrics"])
     for combination, item in evaluation["replications"].items():
         assert set(item) == set(reference["replications"][combination])
-    assert not [k for k in keys_of(evaluation) if "lambda" in k or "sensitiv" in k]
+    # Les λ du préfixe, déclarés par l'évaluation (§ L.2 v2.2, AM-03), vivent dans le jumeau R-15.
+    assert not [k for k in keys_of(evaluation) if "sensitiv" in k]
 
 
 def test_the_full_chain_verifies_a_produced_evaluation(
@@ -2070,3 +2071,28 @@ def test_R19_evaluation_json_metrics_carry_executions(
     assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
     evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
     assert set(evaluation["metrics"]) == {"net_pnl", "cagr_pct", "delta_dd", "executions"}
+
+
+# ---------------------------------------------------------------------------
+# § L.2 v2.2 (AM-03) — l'évaluation déclare les λ du préfixe qu'elle a utilisés (R-15)
+# ---------------------------------------------------------------------------
+
+R15 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir",
+)
+
+
+@R15
+def test_R15_evaluation_json_declares_the_prefix_lambdas_it_used(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ L.2 v2.2, deuxième ligne : « les deux `λ` que l'évaluation déclare avoir utilisés », recoupés à ceux de
+    l'étape 3 ; ce sont ceux du préfixe, jamais ré-estimés (§ F.2 f) — la sensibilité reste hors de l'artefact.
+    Clé indicative `lambdas`."""
+    world, _, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    assert evaluation.get("lambdas") == LAMBDAS
+    assert not [k for k in keys_of(evaluation) if "sensitiv" in k]

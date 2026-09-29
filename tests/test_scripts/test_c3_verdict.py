@@ -21,7 +21,9 @@ les **conséquences** des règles, ce qu'un index de symboles ne peut pas faire 
 from __future__ import annotations
 
 from collections.abc import Mapping
+import dataclasses
 from datetime import timedelta
+from decimal import Decimal
 from functools import cache
 import math
 from pathlib import Path
@@ -2572,7 +2574,8 @@ def test_chain_sur_le_livrable_reel_v20_s_arrete_a_l_ancrage_code_2_rien_d_ecrit
 
 
 def test_le_parseur_chain_n_expose_que_des_chemins_une_campagne_et_un_horodatage() -> None:
-    actions = {a.dest for a in cv.build_chain_parser()._actions} - {"help"}
+    # La septième entrée (§ L.1 v2.2, AM-03) vit dans le jumeau R-15 : `candles_eval`.
+    actions = {a.dest for a in cv.build_chain_parser()._actions} - {"help", "candles_eval"}
     assert actions == {
         "manifest",
         "observations",
@@ -4244,3 +4247,181 @@ def test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation(tmp_
     artifacts = _sound()
     _no_execution(artifacts, constant_equity=False)
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+
+
+# ---------------------------------------------------------------------------
+# § L.2 v2.2 (AM-03) — ce que le producteur garantit, la chaîne le recalcule (R-15)
+# ---------------------------------------------------------------------------
+
+R15 = pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir",
+)
+
+#: λ déclarés par l'étape 3 pour la configuration du monde (`_artifacts`), et repris par l'évaluation.
+LAMBDAS_V22 = {"dd": 0.5, "sigma": 0.4}
+
+
+def _returns_of(values: list[float]) -> list[float]:
+    """§ L.2 v2.2 : « `r_t = E_t / E_{t−1} − 1`, en double précision, sur les valeurs exportées, dans l'ordre de la
+    grille » — écrite ici depuis le texte, jamais importée de l'outillage."""
+    return [values[t] / values[t - 1] - 1.0 for t in range(1, len(values))]
+
+
+def _v22_world(artifacts: dict[str, Any]) -> dict[str, Any]:
+    """Le monde de `_sound()` rendu conforme aux trois recoupements du § L.2 v2.2 : `returns_config` tiré
+    d'`equity_daily`, λ déclarés = λ de l'étape 3, `returns_bench` et NAV du comparateur tirés de l'export de
+    bougies d'évaluation (B&H du § C.3 sur `[T, fin]`, blend du § C.4). Entrées nouvelles sous des clés
+    indicatives (`benchmark`, `candles_eval`, `benchmark_eval`) ; renvoie le B&H construit."""
+    identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
+    payload = fx.manifest()
+    export = fx.candles(payload, start=fx.ANCHOR, end=fx.WINDOW_END)
+    export["pairs"] = {"BTC/USDC": export["pairs"]["BTC/USDC"]}
+    manifest = cc.load_manifest(payload)
+    btc = next(c for c in manifest.candidates if c.pair == "BTC/USDC")
+    parsed = cb.load_candles(
+        export, dataclasses.replace(manifest, candidates=(btc,)), end=fx.WINDOW_END
+    )
+    spread, slippage = (Decimal(x) for x in fx.PAIR_COSTS["BTC/USDC"])
+    capital = Decimal(1000)
+    bench = cb.build_pair(
+        "BTC/USDC",
+        parsed["BTC/USDC"],
+        start=fx.ANCHOR,
+        end=fx.WINDOW_END,
+        exec_interval=fx.EXEC_INTERVAL,
+        spread=spread,
+        slippage=slippage,
+        taker=Decimal(fx.TAKER),
+        capital=capital,
+    )
+    assert bench.buildable and bench.comparable
+    returns_bench = {
+        m: _returns_of([float(v) for v in cb.blend_nav(bench.nav, Decimal(str(lam)), capital)])
+        for m, lam in LAMBDAS_V22.items()
+    }
+    equity = fx.nav_path("BTC/USDC", 7, N_DAYS + 1, drift=0.0006)
+    _reseries(artifacts, _returns_of(equity), returns_bench)
+    evaluation = artifacts["evaluation"]
+    evaluation["equity_daily"] = {
+        "start": fx.ANCHOR.isoformat(),
+        "end": fx.WINDOW_END.isoformat(),
+        "values": equity,
+    }
+    evaluation["lambdas"] = dict(LAMBDAS_V22)
+    artifacts["benchmark"] = {
+        "candidates": {
+            identity: {"lambda_dd": LAMBDAS_V22["dd"], "lambda_sigma": LAMBDAS_V22["sigma"]}
+        }
+    }
+    artifacts["candles_eval"] = export
+    artifacts["benchmark_eval"] = {
+        **fx.benchmark_eval("BTC/USDC"),
+        "nav": [float(v) for v in bench.nav],
+    }
+    return {"bench": bench, "equity": equity, "returns_bench": returns_bench}
+
+
+def _decide(artifacts: dict[str, Any]) -> tuple[Any, list[str]]:
+    violations: list[str] = []
+    return cv.decide(artifacts, violations=violations), violations
+
+
+@R15
+def test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une_violation() -> (
+    None
+):
+    """§ L.2 v2.2, première ligne : `returns_config` recalculé sur `equity_daily` de l'artefact d'évaluation,
+    « toute discordance est une violation » ; « la comparaison est une égalité au bit »."""
+    artifacts = _sound()
+    world = _v22_world(artifacts)
+    config = _returns_of(world["equity"])
+    config[10] = math.nextafter(config[10], math.inf)
+    _reseries(artifacts, config, world["returns_bench"])
+    _, violations = _decide(artifacts)
+    assert any("returns_config" in v for v in violations), violations
+
+
+@R15
+def test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation() -> None:
+    """§ L.2 v2.2, deuxième ligne : « égalité exacte avec les `λ_dd` et `λ_σ` que l'étape 3 a publiés »."""
+    artifacts = _sound()
+    _v22_world(artifacts)
+    artifacts["evaluation"]["lambdas"]["dd"] = 0.51
+    _, violations = _decide(artifacts)
+    assert any("lambda" in v or "λ" in v for v in violations), violations
+
+
+@R15
+def test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation() -> None:
+    """§ L.2 v2.2, troisième ligne : `returns_bench` recalculé sur l'export de bougies d'évaluation (B&H § C.3,
+    blend § C.4 aux λ de l'étape 3) ; une discordance au bit est une violation."""
+    artifacts = _sound()
+    world = _v22_world(artifacts)
+    bench = {m: list(v) for m, v in world["returns_bench"].items()}
+    bench["dd"][10] = math.nextafter(bench["dd"][10], math.inf)
+    _reseries(artifacts, _returns_of(world["equity"]), bench)
+    _, violations = _decide(artifacts)
+    assert any("returns_bench" in v for v in violations), violations
+
+
+@R15
+def test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_une_violation() -> (
+    None
+):
+    """§ L.2 v2.2 (retouche C-4) : « sa NAV sur la grille quotidienne, passée en double, est égale au bit à celle
+    du B&H plein notionnel recalculé, dont le blend est tiré ; une discordance est une violation »."""
+    artifacts = _sound()
+    _v22_world(artifacts)
+    artifacts["benchmark_eval"]["nav"][10] *= 1.0000001
+    _, violations = _decide(artifacts)
+    assert any("nav" in v for v in violations), violations
+
+
+@R15
+def test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_est_une_violation() -> (
+    None
+):
+    """§ L.2 v2.2 (retouche C-3) : « Sur une évaluation non refusée, un recalcul impossible sur l'export est une
+    violation (§ I.1, ligne 15) […] Le seul comparateur non constructible légitime est celui de la forme de refus
+    (§ C.5). » — pas un `E_NO_BENCHMARK`."""
+    artifacts = _sound()
+    _v22_world(artifacts)
+    export = fx.candles(fx.manifest(), start=fx.ANCHOR, end=fx.WINDOW_END, missing_exec="entry")
+    artifacts["candles_eval"] = {**export, "pairs": {"BTC/USDC": export["pairs"]["BTC/USDC"]}}
+    decision, violations = _decide(artifacts)
+    assert violations, "recalcul impossible sur une évaluation non refusée : violation attendue"
+    assert decision.reason != "E_NO_BENCHMARK"
+
+
+@R15
+@pytest.mark.parametrize("defaut", ["estampille après fin", "seconde paire"])
+def test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse(defaut: str) -> None:
+    """§ L.2 v2.2 : « L'export de bougies d'évaluation porte une seule paire, celle de la configuration évaluée,
+    et aucune estampille postérieure à la fin de la fenêtre d'évaluation. Sinon c'est une erreur d'entrée
+    (§ I.1, ligne 2), jamais tronquée »."""
+    artifacts = _sound()
+    _v22_world(artifacts)
+    if defaut == "estampille après fin":
+        export = fx.candles(
+            fx.manifest(), start=fx.ANCHOR, end=fx.WINDOW_END, extra_stamp_after_end=True
+        )
+        export["pairs"] = {"BTC/USDC": export["pairs"]["BTC/USDC"]}
+    else:
+        export = fx.candles(fx.manifest(), start=fx.ANCHOR, end=fx.WINDOW_END)
+    artifacts["candles_eval"] = export
+    refused = False
+    try:
+        _decide(artifacts)
+    except cc.EntryRefusedError:
+        refused = True
+    assert refused, "l'export hors règle d'entrée n'est pas refusé"
+
+
+@R15
+def test_R15_le_parseur_chain_expose_la_septieme_entree() -> None:
+    """§ L.1 v2.2, ligne 0 : sept entrées, dont « l'export de bougies d'évaluation `candles_eval.json` ». Jumeau de
+    l'ensemble exact du test du parseur (option indicative)."""
+    actions = {a.dest for a in cv.build_chain_parser()._actions}
+    assert "candles_eval" in actions

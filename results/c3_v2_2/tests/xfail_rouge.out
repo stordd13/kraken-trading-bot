@@ -55,3 +55,16 @@ tests/test_scripts/test_c3_verdict.py:4237: AssertionError: assert 2 == 1
 tests/test_scripts/test_c3_verdict.py:4246: AssertionError: assert 2 == 1
 6 failed, 589 deselected in 0.87s
 runxfail_exit=1 (attendu : 1, chaque test désigné en échec)
+## AM-03 (R-15) — 2026-09-29T09:30:50Z — HEAD 8509d9e
+# -k "R15" tests/test_scripts/test_c3_verdict.py tests/test_scripts/test_c3b_evaluate.py
+tests/test_scripts/test_c3_verdict.py:4343: AssertionError: []
+tests/test_scripts/test_c3_verdict.py:4353: AssertionError: []
+tests/test_scripts/test_c3_verdict.py:4366: AssertionError: []
+tests/test_scripts/test_c3_verdict.py:4379: AssertionError: []
+tests/test_scripts/test_c3_verdict.py:4394: AssertionError: recalcul impossible sur une évaluation non refusée : violation attendue
+tests/test_scripts/test_c3_verdict.py:4419: AssertionError: l'export hors règle d'entrée n'est pas refusé
+tests/test_scripts/test_c3_verdict.py:4419: AssertionError: l'export hors règle d'entrée n'est pas refusé
+tests/test_scripts/test_c3_verdict.py:4427: AssertionError: assert 'candles_eval' in {'benchmark_eval', 'campaign', 'candles', 'coverage', 'evaluation', 'help', ...}
+tests/test_scripts/test_c3b_evaluate.py:2097: AssertionError: assert None == {'dd': 0.168, 'sigma': 0.336}
+9 failed, 525 deselected in 0.76s
+runxfail_exit=1 (attendu : 1, chaque test désigné en échec)

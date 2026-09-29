@@ -190,6 +190,7 @@ tranche** :
 | Convention d'exécution des deux côtés | **§ C.3** | renvoi |
 | Classe d'un nombre décisionnel | **§ 0.5** | renvoi |
 | États de continuité et actions du verdict | **§ B.8** | renvoi |
+| Recoupements, par la chaîne, de ce que le producteur garantit | **§ L.2** | renvoi |
 
 **Une reformulation, même fidèle, est un défaut de rédaction** : elle survivra à la prochaine correction de la
 section d'origine et la contredira.
@@ -1523,8 +1524,9 @@ les six suites, les comptes d'écartées, `Δ̂` par appariement, le `CAGR` de l
 **rejouées**. Le rejeu n'est exécuté que dans l'environnement que l'artefact déclare : sinon, contrat rompu
 (§ F.2 b), jamais une comparaison tolérante. Des séries de longueurs différentes rendent les indices appariés
 impossibles (§ F.2 a) : le rejeu est **inexécutable**, erreur de forme (§ I.1, ligne 2), code 2. **Ce qui
-reste déclaratif** : les séries quotidiennes elles-mêmes et `net_pnl` (porte `Q1`), qu'aucune série de
-l'artefact ne permet de recalculer (§ J, item 12).
+reste déclaratif** : `equity_daily`, l'export de bougies d'évaluation et `net_pnl` (porte `Q1`), qu'aucune
+série de l'artefact ne permet de recalculer (§ J, item 12). Les séries de rendements, elles, sont recoupées sur
+ces entrées (§ L.2).
 
 **(e) Entrées invalides et échecs numériques — deux choses distinctes, une seule règle.**
 
@@ -1988,10 +1990,12 @@ paramètres, graines et versions consignés dans l'artefact.
     déclarée : USDT Binance → USDC Bybit). → Non modélisé ; la transposition est déclarée avec son argument, les
     coûts de la cible sont ceux de la paire de déploiement, et aucun facteur de correction n'est appliqué.
 12. **Ce que le rejeu du § F.2 ne couvre pas** (§ F.2 b, d). → La chaîne rejoue le tirage et **recalcule** les
-    suites, les écartées, `Δ̂`, le `CAGR` et les bornes ; ce qu'elle ne peut pas recalculer reste **déclaratif** :
-    les séries quotidiennes elles-mêmes, et `net_pnl` (porte `Q1`), qu'aucune série de l'artefact ne permet de
-    reconstruire. Et l'égalité d'environnement (§ F.2 b) ne distingue pas tout ce qui change un calcul au dernier
-    bit : ni deux hôtes de même architecture et de même bibliothèque C dont les jeux d'instructions diffèrent, ni,
+    suites, les écartées, `Δ̂`, le `CAGR` et les bornes, et elle recoupe les séries de rendements sur leurs lieux
+    de lecture (§ L.2). Ce qu'elle ne peut pas recalculer reste **déclaratif** : `equity_daily` et l'export de
+    bougies d'évaluation, sur lesquels ces recoupements s'appuient, et `net_pnl` (porte `Q1`), qu'aucune série de
+    l'artefact ne permet de reconstruire. Et l'égalité d'environnement (§ F.2 b) ne distingue pas tout ce qui
+    change un calcul au dernier bit : ni deux hôtes de même architecture et de même bibliothèque C dont les jeux
+    d'instructions diffèrent, ni,
     sur macOS, la bibliothèque mathématique du système — `platform.libc_ver()` y est vide. **Cette limite n'a pas
     d'effet opérationnel tant que le producteur et la chaîne tournent sur le serveur** (la recette de C2) : c'est
     cette règle d'exploitation qui tient lieu de garantie, pas le champ `libc`.
@@ -2057,7 +2061,7 @@ Aucun pas n'est sauté ni réordonné.
 
 | # | Producteur | Artefact |
 |---|---|---|
-| 0 | **hors chaîne** | six entrées, produites avant, jamais par l'outillage de ce protocole : le **manifeste** (§ A.6), les **observations**, l'**artefact de couverture** (§ A.7), l'**export de bougies** `candles.json` (lecture seule de la base), que `c3_benchmark` lit pour construire le comparateur du préfixe (§ C), l'**artefact d'évaluation** (§ F.2, produit par C3b) et le **comparateur d'évaluation** (§ C.5) |
+| 0 | **hors chaîne** | sept entrées, produites avant, jamais par l'outillage de ce protocole : le **manifeste** (§ A.6), les **observations**, l'**artefact de couverture** (§ A.7), l'**export de bougies** `candles.json` (lecture seule de la base), que `c3_benchmark` lit pour construire le comparateur du préfixe (§ C), l'**artefact d'évaluation** (§ F.2, produit par C3b), le **comparateur d'évaluation** (§ C.5) et l'**export de bougies d'évaluation** `candles_eval.json` (lecture seule de la base), sur lequel la chaîne recoupe le comparateur d'évaluation (§ L.2) |
 | 1 | `c3_anchor` | ancrage recalculé, estampilles admissibles, enregistrement au registre de variantes |
 | 2 | `c3_entry` | validité d'entrée (§ I-A) → `results/c3a_entry_validation/` — poursuite selon la table du § I.1 |
 | 3 | `c3_benchmark` | comparateur du préfixe, `λ` et son mode |
@@ -2134,6 +2138,37 @@ pas de `verified`.
 sortie dans son artefact ; la sous-commande `chain` invoque chaque étape en processus et **contrôle le code de
 retour effectif** avant de lire l'artefact. Une enveloppe qui se dit `ok` avec un code non nul est une
 violation.
+
+**Ce que le producteur garantit, la chaîne le recalcule.** *C'est la section d'origine de ces recoupements
+(§ 0.7).* Trois valeurs de l'artefact d'évaluation sont garanties par construction chez le producteur
+(§ F.2 d). La chaîne ne les tient pas pour acquises : à l'étape de verdict (§ L.1, pas 6), elle recalcule
+chacune depuis un **lieu de lecture** nommé, et **toute discordance est une violation** (§ I.1, ligne 15 : une
+valeur que le rejeu ne retrouve pas). La comparaison est une égalité au bit, dans l'ordre de la grille
+quotidienne.
+
+| Valeur que l'évaluation déclare | Lieu de lecture | Recalcul |
+|---|---|---|
+| `returns_config`, les rendements quotidiens de la configuration | `equity_daily`, dans l'artefact d'évaluation lui-même | `r_t = E_t / E_{t−1} − 1`, en double précision, sur les valeurs exportées, dans l'ordre de la grille ; un point précédé d'une valeur `≤ 0` ne porte pas de rendement |
+| les deux `λ` que l'évaluation déclare avoir utilisés | `benchmark.json`, produit à l'étape 3 de la même chaîne pour la configuration évaluée | égalité exacte avec les `λ_dd` et `λ_σ` que l'étape 3 a publiés (§ C.4, § F.2 f) |
+| `returns_bench`, les rendements du comparateur, par appariement | l'**export de bougies d'évaluation** `candles_eval.json`, entrée hors chaîne (§ L.1, ligne 0) | B&H plein notionnel sur `[T, fin]` sous la convention du § C.3 ; blend statique du § C.4 aux `λ` publiés par l'étape 3 ; NAV du blend calculée en décimal, marquée sur la grille quotidienne, passée en double précision ; rendements par la formule de la première ligne |
+
+Le comparateur d'évaluation (§ C.5, entrée à part) est recoupé sur ce même recalcul : sa NAV sur la grille
+quotidienne, passée en double, est égale au bit à celle du B&H plein notionnel recalculé, dont le blend est
+tiré ; une discordance est une violation. Les cinq tests du § C.5 portent donc sur l'objet même dont
+`returns_bench` est tiré.
+
+**L'export de bougies d'évaluation** porte une seule paire, celle de la configuration évaluée, et aucune
+estampille postérieure à la fin de la fenêtre d'évaluation. Sinon c'est une erreur d'entrée (§ I.1, ligne 2),
+jamais tronquée, pour la raison qu'en donne le § A.7, règle 2.
+
+Sur une évaluation **non refusée**, un recalcul impossible sur l'export est une **violation** (§ I.1,
+ligne 15) : le producteur a déclaré un comparateur que l'entrée ne permet pas de retrouver. Le seul
+comparateur non constructible légitime est celui de la forme de refus (§ C.5).
+
+**Ce que ces recoupements ne prouvent pas.** Ils établissent que les séries déclarées sont celles
+qu'impliquent `equity_daily`, l'export de bougies et les `λ` de l'étape 3. Ils ne prouvent pas que
+`equity_daily` soit la trajectoire du moteur, ni que l'export soit fidèle à la base : ces deux entrées restent
+déclaratives (§ J, items 12 et 13).
 
 ### L.3 Diff de contrôle
 
