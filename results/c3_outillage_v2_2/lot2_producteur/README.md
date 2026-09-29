@@ -144,6 +144,9 @@ commit (`refused`, `executions`, `first_day`, `last_day`) ; e → M1-M6 rejoués
 4. **Numérotation des mutants.** Le plan en annonçait treize ; il y en a dix-huit (L2M3b, L2M8b et L2M14 à L2M17 ajoutés,
    un par test neuf qui n'en avait pas) ; la numérotation du plan est gardée pour les treize.
 5. Une commande shell a échoué sur une variable non découpée (zsh) ; relancée avec la liste explicite, sans effet.
+6. **Premier appel de `ci_status.sh` avec un SHA court** (`4f25205`) : `gh run list --commit` ne l'apparie pas, le script
+   a rendu `run=absent`, rc=2, alors que le run existait. Relancé avec le SHA complet (forme du lot 1) ; la sortie
+   versionnée est celle du second appel.
 
 ## 7. Tunnel, base, lint, interdits
 
@@ -153,4 +156,4 @@ de la suite existante (lecture seule, aucun test base ajouté ni modifié), ferm
 `mypy src/` = 65, mypy strict sans écart neuf sur les neuf `scripts/audit/` touchés par le chantier (base :
 `lint_base.out`, `lint_base_lot2.out`). Interdits (`tests/interdits_lot2.out`, rc=0) : diff vide contre `8c114fe`.
 
-CI : voir `tests/ci_status_lot2.out` (commit suivant).
+CI : run 36631049528 sur `4f25205` (commit de ce rapport), **verte en première tentative, aucune relance** — `tests/ci_status_lot2.out`.
