@@ -1,0 +1,22 @@
+# archive gate — 2026-09-30T08:41:20Z
+files_listed=0
+files_count=56
+files_sha=0
+tar_create=0
+tgz_sha=0
+list_equal=0
+forbidden_entries=0
+no_repo_no_env=0
+tgz_sha_check=0
+extract=0
+diff_out=0
+cmp_pilot=0
+extracted_sha=0
+tgz_sha256=1908f2a7d13e0fa39615a0ea81e9657a86948fe266eb9dce2c5125d0a2a73087
+rm_run=0
+rm_at=2026-09-30T08:41:21Z
+run_absent=0
+parent=absent
+remote_rc=0
+ssh_exit=0
+rc=0

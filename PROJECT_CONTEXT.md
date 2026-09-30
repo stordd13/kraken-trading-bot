@@ -194,12 +194,33 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
     constructible lu et recoupé (§ C.5) ; évaluation réelle sans exécution admise (§ L.1, `metrics.executions`) ;
     clés `_quote` (§ A.7) ; dates de couverture nullables ; registre et critère d'arrêt (§ A.6) ; D4 étendu au
     CAGR ; deux chemins de sommation (§ F.8) ; `grid_levels` et « alimente une porte de décision » (§ A.8).
-  - **Rien n'est outillé** : aucune ligne de `scripts/audit/*.py` ni de `src/`. Les règles nouvelles sont portées
+  - **Rien n'était outillé au 29/09** (outillé depuis : puce suivante) : aucune ligne de `scripts/audit/*.py` ni de
+    `src/`. Les règles nouvelles sont portées
     par 46 tests `xfail` strict (réserves R-15 à R-22 et un item hors réserve) ; la liste close du chantier suivant
     est `results/c3_v2_2/outillage_v2_2.md`. **Bloquants manifeste** : R-15, R-16, R-18, R-19 ; **bloquants
     campagne** : R-17, R-21, R-22.
   - Artefacts C3b : historiques v2.1 (sous v2.2, l'ancrage refuse leur manifeste).
   - Rapport : `results/c3_v2_2/report.md` ; journal : `docs/RESEARCH_LOG.md`, entrée 18.
+
+- ✅ **Outillage v2.2 livré et conformité v2.2 prouvée au serveur (29-30 sept)**
+  - **Branche** `feat/c3-outillage-v2.2`, partie de `dev` @ `8c114fe`, en trois lots. Merge sous décision humaine
+    (STOP 2).
+  - **Lots 1-2** : les huit réserves R-15 à R-22 sont levées dans `scripts/audit/`, sans toucher `src/` ni le
+    moteur.
+    - 45 xfail levés, plus 1 caduc déclaré (AM-10), et 19 tests neufs.
+    - Suite locale 3 323 passés ; `mypy src/` = 65.
+  - **Lot 3, conformité**, au `08cba3d`, sur la fenêtre d'instrument 2020 hors campagne, provenance `unknown` :
+    - les quatre temps sont rejoués trois fois (workers 4 / 1 / 4) ;
+    - six étapes en code 0, `chain.verified` vrai, 0 violation, 0 violation au rejeu, les trois fois ;
+    - 23 artefacts identiques au bit sur les trois exécutions ;
+    - **issue non lue**.
+  - **Porte § L.5 option 1** : 24/24 `_full` au serveur au `4089fd5`.
+  - `CAMPAIGN_UNLOCK` absent.
+  - **Candidat v2.3 à trancher avant campagne** : l'évaluation différée (lot 1, D7), dont le texte ne dit pas la
+    source.
+  - **Où lire** : rapport `results/c3_outillage_v2_2/report.md` ; journal `docs/RESEARCH_LOG.md`, entrée 19.
+  - **Suite** : merge (Bruno, avec `CODE_MAP` et les lignes périmées listées au rapport § 9), puis conversation
+    manifeste.
 
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs

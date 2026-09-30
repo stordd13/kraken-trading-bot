@@ -1,0 +1,34 @@
+# interdits — S3 — 2026-09-30T09:11:19Z
+# HEAD 4089fd5c657be64a569c012964fd7de4aed0b52e branche feat/c3-outillage-v2.2 ; base 8c114fe ; lot 3 depuis 5f61ac928ef4edf914b863d300a5d0859d028f99
+diff_vide src commit=0 index=0
+diff_vide scripts/backtest.py commit=0 index=0
+diff_vide scripts/run_p6_backtests.py commit=0 index=0
+diff_vide scripts/run_p7_grid_search.py commit=0 index=0
+diff_vide scripts/audit/rejeu_common.py commit=0 index=0
+diff_vide docs/protocole_c3.md commit=0 index=0
+diff_vide docs/amendements_c3_v2.1.md commit=0 index=0
+diff_vide docs/amendements_c3_v2.2.md commit=0 index=0
+diff_vide results/c3_v2_2 commit=0 index=0
+diff_vide results/c3b_producteur commit=0 index=0
+lot3_diff_vide scripts depuis=0 index=0 non_suivis=0
+lot3_diff_vide tests depuis=0 index=0 non_suivis=0
+lot3_diff_vide src depuis=0 index=0 non_suivis=0
+lot3_diff_vide config depuis=0 index=0 non_suivis=0
+lot3_diff_vide pyproject.toml depuis=0 index=0 non_suivis=0
+lot3_diff_vide poetry.lock depuis=0 index=0 non_suivis=0
+lot3_diff_vide .github depuis=0 index=0 non_suivis=0
+lot3_diff_vide agent depuis=0 index=0 non_suivis=0
+lot3_diff_vide skills depuis=0 index=0 non_suivis=0
+lot3_diff_vide CLAUDE.md depuis=0 index=0 non_suivis=0
+lot3_diff_vide docs/protocole_c3.md depuis=0 index=0 non_suivis=0
+lot3_diff_vide docs/amendements_c3_v2.1.md depuis=0 index=0 non_suivis=0
+lot3_diff_vide docs/amendements_c3_v2.2.md depuis=0 index=0 non_suivis=0
+lot3_diff_vide docs/CONTRAINTES_POST_B4.md depuis=0 index=0 non_suivis=0
+lot3_diff_vide results/c3_v2_2 depuis=0 index=0 non_suivis=0
+lot3_diff_vide results/c3b_producteur depuis=0 index=0 non_suivis=0
+lot3_fichiers_changes=62
+lot3_liste_blanche=0
+lot3_aucun_artefact=0
+lot3_campaign_unlock=absent
+lot3_docker=0
+rc=0

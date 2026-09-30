@@ -380,6 +380,24 @@ refuse son manifeste. Les **quatre temps** sont rejoués (préfixe, chaîne 1-4,
 - **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
   diagnostic avant l'accord de Bruno. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
 
+### Issue de l'entrée 19 (inscrite après le run — aucune lecture économique, issue non lue)
+
+- **Lancement** : un seul, au `08cba3d` (S1). Pilote `5a2cc18d…`, exécuté depuis le clone et consigné dans
+  `status.txt`. Le 2026-09-30 de 07:10:19 à 07:14:28Z, sur le serveur, en lecture seule assertée par Postgres.
+- **CI et relecture** : le run a eu lieu après la CI verte sur S1 (tentative 1), la relecture de l'attendu (STOP 1)
+  et le GO de lancement de Bruno.
+- **Archive** : `~/archive/c3_outillage_conf_20260930/` (sha256 `17a1e6e8…0211`, 139 fichiers), vérifiée par codes
+  seulement avant le `rm -rf` du run (07:15:05Z).
+- **Rien n'a été lu du chemin sélection** hors de `status.txt`.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 19 | Trois exécutions (workers 4 / 1 / 4) : producteur préfixe **0** ; `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select` autonomes **0** ; producteur d'évaluation **`0 event=evaluated`** ; `chain` **0**, avec les six codes d'étape en 0, **`chain.verified` vrai, violations vides, zéro violation au rejeu** — les trois fois. L'issue publiée **n'est pas lue** (`validé` et `réfuté` sont inatteignables par construction : provenance `unknown`) | `results/c3_outillage_v2_2/conformite/server/status.txt` |
+| 19 | **23 artefacts identiques au bit** sur les trois exécutions (`compared=23 differing=0 absent=0`), liste attendue exacte ; aucun sha d'artefact versionné (booléens seulement) | `status.txt`, `verify_attendu.out` |
+| 19 | `alembic` `c3bd1e7a0001` inchangé ; service `8689636`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` absent ; attendu **tenu sur ses 10 items vérifiables** (le 11ᵉ, les bornes, repose sur des appuis déclarés) | `conformite/server/verify_attendu.out` |
+| 19 | Porte § L.5 option 1 au `4089fd5` (S2) : **24/24 `_full`** (agrégat JUnit `tests:24,failures:0,errors:0,skipped:0,missing:0`), le 2026-09-30 de 07:25:15 à 08:36:55Z. Ce ne sont pas des runs du producteur : backtests P6 comparés par hash, aucune métrique lue | `results/c3_outillage_v2_2/gate_L5/` |
+| 19 | Défauts de ma part, tous trouvés **avant** le lancement : témoin de la preuve d'`interdits.sh` rouge sur mon propre harnais ; ordre de copie dans mon script de simulation ; deux fragilités portables du pilote (`wc -l`, lien symbolique), trouvées par la simulation locale | `results/c3_outillage_v2_2/report.md` § 6.2 |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
@@ -396,3 +414,10 @@ l'adoption de v2.1 : section précédente.)_
   - Le paragraphe ci-dessus n'est pas réécrit (ajout seul).
 - **Protocole C3 v2.2 adopté le 29/09/2026** (entrée 18). Le manifeste de la première campagne porte le sha256 v2.2 ;
   il suit l'outillage v2.2 (réserves bloquantes pour le manifeste : R-15, R-16, R-18, R-19). Ajout seul.
+- **Outillage v2.2 livré et conformité v2.2 prouvée le 30/09/2026** (entrée 19, avec son issue).
+  - Les réserves bloquantes pour le manifeste (R-15, R-16, R-18, R-19) et pour la campagne (R-17, R-21, R-22) sont
+    outillées.
+  - Merge sur `dev` sous décision humaine.
+  - Restent avant la première campagne : le manifeste gelé, portant le sha256 v2.2, et le candidat v2.3 de
+    l'évaluation différée, à trancher en conversation manifeste (`results/c3_outillage_v2_2/report.md` § 5).
+  - `CAMPAIGN_UNLOCK` est créé à ce moment-là, par Bruno. Ajout seul.

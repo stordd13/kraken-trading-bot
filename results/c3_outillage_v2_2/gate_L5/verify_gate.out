@@ -1,0 +1,8 @@
+tenu  — 1 gardes : guard=0 au SHA S2, pytest présent, krakenbot du clone, pilote = blob du SHA
+tenu  — 2 base : alembic 0 avant et après, identiques, c3bd1e7a0001 (head)
+tenu  — 3 les 24 combos en rc=0 et JUnit 1/0/0/0, full=0, agrégat tests:24 sans échec, erreur, skip ni manquant
+tenu  — 4 extrait : pytest_summary.txt porte 24 lignes call et 24 lignes 1 passed
+tenu  — 5 innocuité : arbre du clone propre, interpréteur du clone, collector et service inchangés
+tenu  — 6 pilote : code de sortie 0
+6/6 items tenus
+rc=0
