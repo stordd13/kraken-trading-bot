@@ -1,0 +1,9 @@
+# non_divulgation — mutant_M15d — 2026-09-30T16:44:52Z
+# HEAD 18a321250f72a935f5f8517c6b1f5e17370bd5a4 branche feat/c3-outillage-v2.3
+# fichiers suivis modifiés (non commités) : 1
+module scripts/audit/c3_common.py : f-strings=194 print=0
+module scripts/audit/c3_anchor.py : f-strings=41 print=9
+digest_du_registre_imprime scripts/audit/c3_verdict.py:2007 ['registry_digest']
+module scripts/audit/c3_verdict.py : f-strings=132 print=24
+sites=1
+rc=1

@@ -1,0 +1,8 @@
+# base_db — C4 — 2026-09-30T16:45:25Z
+# HEAD 18a321250f72a935f5f8517c6b1f5e17370bd5a4 branche feat/c3-outillage-v2.3
+tunnel_5433=ouvert
+ignores_base_sans_tunnel(suite_C4)=13
+pytest_exit=0
+resume=92 passed, 24 deselected in 307.77s (0:05:07)
+failed_error=0 ignores_base_restants=0
+rc=0

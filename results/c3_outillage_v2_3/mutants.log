@@ -1,0 +1,160 @@
+## mutants_lot1 — début 2026-09-30T16:43:12Z — HEAD 18a321250f72a935f5f8517c6b1f5e17370bd5a4
+## M1 load_manifest lit le bloc en optionnel (absent → date par défaut) — 2026-09-30T16:43:14Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_anchor.py::test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1 tests/test_scripts/test_c3_common.py::test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2 borne >= 365 j devenue > 365 j — 2026-09-30T16:43:16Z — HEAD 18a3212
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M3 borne 365 → 364 — 2026-09-30T16:43:18Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M4 contrôle de la date retiré de l'étape 1 — 2026-09-30T16:43:20Z — HEAD 18a3212
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M5 prédicat : conjonctif issue/raison retiré — 2026-09-30T16:43:28Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M6a prédicat : Q1 ignoré — 2026-09-30T16:43:30Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M6b prédicat : Q2 ignoré — 2026-09-30T16:43:32Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M6c prédicat : Q3 ignoré — 2026-09-30T16:43:34Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M7 prédicat : Δ̂ ignoré — 2026-09-30T16:43:36Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M8 prédicat : Δ̂ > 0 devenu Δ̂ >= 0 — 2026-09-30T16:43:38Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.1 D : deferred_evaluation_of omis — 2026-09-30T16:43:41Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.2 D : family omis — 2026-09-30T16:43:43Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.3 D : window omis — 2026-09-30T16:43:45Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.4 D : candidate omis — 2026-09-30T16:43:47Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.5 D : data omis — 2026-09-30T16:43:49Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.6 D : engines omis — 2026-09-30T16:43:51Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.7 D : decision_timeframes omis — 2026-09-30T16:43:53Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.8 D : fees omis — 2026-09-30T16:43:55Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.9 D : min_order_quote omis — 2026-09-30T16:43:57Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M9.10 D : universe_provenance omis — 2026-09-30T16:43:59Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M10a D : engines non restreint — 2026-09-30T16:44:01Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M10b D : pair_costs non restreint — 2026-09-30T16:44:03Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M10c D : decision_timeframes non trié — 2026-09-30T16:44:05Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M10d D : surcharge par candidat ignorée — 2026-09-30T16:44:07Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M10e D au verdict : provenance de la campagne au lieu de clean — 2026-09-30T16:44:09Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M10f D : data entier (clés hors table comprises) — 2026-09-30T16:44:12Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M10g D : research_log_entry ajouté — 2026-09-30T16:44:14Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte tests/test_scripts/test_c3_verdict.py::test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M11a run : of = sig(entrant) — 2026-09-30T16:44:16Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M11b run : fenêtre depuis la date différée de l'entrant — 2026-09-30T16:44:18Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M11c run : provenance constante clean — 2026-09-30T16:44:20Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M11d run : premier candidat au lieu de l'unique — 2026-09-30T16:44:22Z — HEAD 18a3212
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M12a ancrage : empreinte brute (état v2.2) — 2026-09-30T16:44:24Z — HEAD 18a3212
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M12b ancrage : tout accepté sur famille close — 2026-09-30T16:44:26Z — HEAD 18a3212
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M13 garde « une fois par famille » retirée — 2026-09-30T16:44:29Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M14 bloc différé ignoré à la réinscription — 2026-09-30T16:44:35Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M15a ancrage : empreinte dérivée imprimée dans le refus — 2026-09-30T16:44:37Z — HEAD 18a3212
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M15b verdict : bloc différé interpolé dans la violation de discordance — 2026-09-30T16:44:42Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M15c verdict : bloc différé imprimé sur la ligne d'inscription — 2026-09-30T16:44:47Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M15d verdict : digest du registre rétabli (D13) — 2026-09-30T16:44:52Z — HEAD 18a3212
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M15d-grep — 2026-09-30T16:44:52Z — non_divulgation.sh sous M15d
+sous_mutant_rc=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_rc=0 (attendu 0)
+## mutants_lot1 rc=0 — fin 2026-09-30T16:44:52Z
