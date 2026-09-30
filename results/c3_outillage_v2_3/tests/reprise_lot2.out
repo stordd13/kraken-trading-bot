@@ -1,0 +1,310 @@
+# reprise_lot2 — 2026-09-30T20:31:17Z — HEAD dcef3012b0a725177eca7115a341006dc689ac02
+## results/c3_outillage_v2_2/conformite/server/run_conformite.sh -> results/c3_outillage_v2_3/conformite/server/run_conformite.sh : lignes source changées=9, lignes reprise=9
+< # C3 outillage v2.2, lot 3 — pilote serveur de la conformité sous v2.2 (plans/lot3.md § 5 ; attendu déclaré avant le
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — pilote serveur de la conformité sous v2.3 (results/c3_outillage_v2_2/plans/lot3.md § 5 ; attendu déclaré avant le
+< #   bash ~/runs/c3_outillage/conf/repo/results/c3_outillage_v2_2/conformite/server/run_conformite.sh <S1, 40 hex>
+> #   bash ~/runs/c3_outillage_v2_3/conf/repo/results/c3_outillage_v2_3/conformite/server/run_conformite.sh <S1, 40 hex>
+< RUN=/home/bruno/runs/c3_outillage/conf
+> RUN=/home/bruno/runs/c3_outillage_v2_3/conf
+< SELF=results/c3_outillage_v2_2/conformite/server/run_conformite.sh
+< MANIFEST=results/c3_outillage_v2_2/conformite/manifest.json
+< MANIFEST_SHA=c3769a6a23147f10da4289981b26737270e98b660d216b415acf94b027cc1ff7
+< PROTOCOL_SHA=1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a
+> SELF=results/c3_outillage_v2_3/conformite/server/run_conformite.sh
+> MANIFEST=results/c3_outillage_v2_3/conformite/manifest.json
+> MANIFEST_SHA=24bde67dd88005e22f05b4917c7fa973ab37b384ac19df3acb6a3e56e704565a
+> PROTOCOL_SHA=d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6
+< CAMPAIGN=OUTILLAGE_V22_CONF
+< NOW=2026-09-29T00:00:00+00:00
+> CAMPAIGN=OUTILLAGE_V23_CONF
+> NOW=2026-09-30T00:00:00+00:00
+## results/c3_outillage_v2_2/conformite/server/verify_attendu.py -> results/c3_outillage_v2_3/conformite/server/verify_attendu.py : lignes source changées=6, lignes reprise=7
+< """C3 outillage v2.2, lot 3 — vérification de l'attendu de conformité (``../attendu.md``), item par item.
+> """C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — vérification de l'attendu de conformité (``../attendu.md``),
+> item par item.
+<     python3 results/c3_outillage_v2_2/conformite/server/verify_attendu.py --sha <S1, 40 hex>
+>     python3 results/c3_outillage_v2_3/conformite/server/verify_attendu.py --sha <S1, 40 hex>
+< PROTOCOL_SHA = "1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a"
+< MANIFEST_SHA = "c3769a6a23147f10da4289981b26737270e98b660d216b415acf94b027cc1ff7"
+< KRAKENBOT_SUFFIX = "/runs/c3_outillage/conf/repo/src/krakenbot/__init__.py"
+> PROTOCOL_SHA = "d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6"
+> MANIFEST_SHA = "24bde67dd88005e22f05b4917c7fa973ab37b384ac19df3acb6a3e56e704565a"
+> KRAKENBOT_SUFFIX = "/runs/c3_outillage_v2_3/conf/repo/src/krakenbot/__init__.py"
+<             "1 gardes : guard=0 au SHA S1, krakenbot du clone, protocole v2.2, manifeste déclaré, "
+>             "1 gardes : guard=0 au SHA S1, krakenbot du clone, protocole v2.3, manifeste déclaré, "
+## results/c3_outillage_v2_2/gate_L5/run_gate.sh -> results/c3_outillage_v2_3/gate_L5/run_gate.sh : lignes source changées=6, lignes reprise=6
+< # C3 outillage v2.2, lot 3 — porte pré-merge § L.5, option 1 (docs/protocole_c3.md) : les 24 tests
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — porte pré-merge § L.5, option 1 (docs/protocole_c3.md) : les 24 tests
+< # 28/09) avec quatre écarts déclarés (plans/lot3.md § 6) :
+> # 28/09) avec quatre écarts déclarés (results/c3_outillage_v2_2/plans/lot3.md § 6) :
+< #   4. RUN=~/runs/c3_outillage/gate.
+< #   bash ~/runs/c3_outillage/gate/repo/results/c3_outillage_v2_2/gate_L5/run_gate.sh <S2, 40 hex>
+> #   4. RUN=~/runs/c3_outillage_v2_3/gate.
+> #   bash ~/runs/c3_outillage_v2_3/gate/repo/results/c3_outillage_v2_3/gate_L5/run_gate.sh <S2, 40 hex>
+< RUN=/home/bruno/runs/c3_outillage/gate
+> RUN=/home/bruno/runs/c3_outillage_v2_3/gate
+< SELF=results/c3_outillage_v2_2/gate_L5/run_gate.sh
+> SELF=results/c3_outillage_v2_3/gate_L5/run_gate.sh
+## results/c3_outillage_v2_2/tests/preflight.sh -> results/c3_outillage_v2_3/tests/preflight.sh : lignes source changées=5, lignes reprise=5
+< # C3 outillage v2.2, lot 3 — preflight du serveur avant une phase (conf | gate), LECTURE SEULE, lancé par `bash` depuis
+< # le dépôt (plans/lot3.md § 5, § 6 ; modèle : results/c3b_producteur/closure/tests/preflight_server.sh).
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — preflight du serveur avant une phase (conf | gate), LECTURE SEULE, lancé par `bash` depuis
+> # le dépôt (results/c3_outillage_v2_2/plans/lot3.md § 5, § 6 ; modèle : results/c3b_producteur/closure/tests/preflight_server.sh).
+< OUT=results/c3_outillage_v2_2/tests/preflight_${PHASE}.out
+> OUT=results/c3_outillage_v2_3/tests/preflight_${PHASE}.out
+< if [ -e "/home/bruno/runs/c3_outillage/$PHASE" ]; then echo "run_dir=PRESENT"; ok=1; else echo "run_dir=absent"; fi
+< if [ -e "/home/bruno/archive/c3_outillage_${PHASE}_$DAY" ]; then echo "archive_du_jour=PRESENT"; ok=1; else echo "archive_du_jour=absent"; fi
+> if [ -e "/home/bruno/runs/c3_outillage_v2_3/$PHASE" ]; then echo "run_dir=PRESENT"; ok=1; else echo "run_dir=absent"; fi
+> if [ -e "/home/bruno/archive/c3_outillage_v2_3_${PHASE}_$DAY" ]; then echo "archive_du_jour=PRESENT"; ok=1; else echo "archive_du_jour=absent"; fi
+## results/c3_outillage_v2_2/tests/launch.sh -> results/c3_outillage_v2_3/tests/launch.sh : lignes source changées=13, lignes reprise=13
+< # C3 outillage v2.2, lot 3 — mise en place et lancement d'une phase (conf | gate) sur le serveur, lancé par `bash`
+< # depuis le dépôt (plans/lot3.md § 5, § 6 ; modèle : results/c3b_producteur/closure/tests/launch_gate.sh).
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — mise en place et lancement d'une phase (conf | gate) sur le serveur, lancé par `bash`
+> # depuis le dépôt (results/c3_outillage_v2_2/plans/lot3.md § 5, § 6 ; modèle : results/c3b_producteur/closure/tests/launch_gate.sh).
+< #   0. SHA = HEAD local = tip de origin/feat/c3-outillage-v2.2 (git ls-remote) : transport par push, jamais de bundle ;
+< #   1. ~/runs/c3_outillage/<phase> créé (échoue s'il existe) ;
+> #   0. SHA = HEAD local = tip de origin/feat/c3-outillage-v2.3 (git ls-remote) : transport par push, jamais de bundle ;
+> #   1. ~/runs/c3_outillage_v2_3/<phase> créé (échoue s'il existe) ;
+< #   5. session tmux `c3-outillage-<phase>-<AAAAMMJJ>` : `bash -lc` sur le pilote DU CLONE, avec le SHA en argument ;
+> #   5. session tmux `c3-outillage-v23-<phase>-<AAAAMMJJ>` : `bash -lc` sur le pilote DU CLONE, avec le SHA en argument ;
+<   conf) PILOT=results/c3_outillage_v2_2/conformite/server/run_conformite.sh ;;
+<   gate) PILOT=results/c3_outillage_v2_2/gate_L5/run_gate.sh ;;
+>   conf) PILOT=results/c3_outillage_v2_3/conformite/server/run_conformite.sh ;;
+>   gate) PILOT=results/c3_outillage_v2_3/gate_L5/run_gate.sh ;;
+< OUT=results/c3_outillage_v2_2/tests/launch_${PHASE}.out
+> OUT=results/c3_outillage_v2_3/tests/launch_${PHASE}.out
+< RUN=/home/bruno/runs/c3_outillage/$PHASE
+< SESSION=c3-outillage-$PHASE-$(date -u +%Y%m%d)
+> RUN=/home/bruno/runs/c3_outillage_v2_3/$PHASE
+> SESSION=c3-outillage-v23-$PHASE-$(date -u +%Y%m%d)
+< remote_tip=$(git ls-remote origin refs/heads/feat/c3-outillage-v2.2 | cut -f1)
+> remote_tip=$(git ls-remote origin refs/heads/feat/c3-outillage-v2.3 | cut -f1)
+< "${SSH[@]}" "mkdir -p /home/bruno/runs/c3_outillage && mkdir $RUN" >> "$OUT" 2>&1
+> "${SSH[@]}" "mkdir -p /home/bruno/runs/c3_outillage_v2_3 && mkdir $RUN" >> "$OUT" 2>&1
+< git -C repo fetch -q origin feat/c3-outillage-v2.2 || exit 12
+> git -C repo fetch -q origin feat/c3-outillage-v2.3 || exit 12
+## results/c3_outillage_v2_2/tests/wait.sh -> results/c3_outillage_v2_3/tests/wait.sh : lignes source changées=3, lignes reprise=3
+< # C3 outillage v2.2, lot 3 — attente de la fin du pilote d'une phase (conf | gate), lancé par `bash` en arrière-plan
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — attente de la fin du pilote d'une phase (conf | gate), lancé par `bash` en arrière-plan
+< OUT=results/c3_outillage_v2_2/tests/wait_${PHASE}.out
+> OUT=results/c3_outillage_v2_3/tests/wait_${PHASE}.out
+< G=/home/bruno/runs/c3_outillage/$PHASE/out
+> G=/home/bruno/runs/c3_outillage_v2_3/$PHASE/out
+## results/c3_outillage_v2_2/tests/fetch.sh -> results/c3_outillage_v2_3/tests/fetch.sh : lignes source changées=5, lignes reprise=5
+< # C3 outillage v2.2, lot 3 — rapatriement des extraits d'une phase (conf | gate), lancé par `bash` depuis le dépôt
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — rapatriement des extraits d'une phase (conf | gate), lancé par `bash` depuis le dépôt
+<   conf) DEST=results/c3_outillage_v2_2/conformite/server
+>   conf) DEST=results/c3_outillage_v2_3/conformite/server
+<   gate) DEST=results/c3_outillage_v2_2/gate_L5
+>   gate) DEST=results/c3_outillage_v2_3/gate_L5
+< OUT=results/c3_outillage_v2_2/tests/fetch_${PHASE}.out
+> OUT=results/c3_outillage_v2_3/tests/fetch_${PHASE}.out
+< G=/home/bruno/runs/c3_outillage/$PHASE/out
+> G=/home/bruno/runs/c3_outillage_v2_3/$PHASE/out
+## results/c3_outillage_v2_2/tests/archive.sh -> results/c3_outillage_v2_3/tests/archive.sh : lignes source changées=13, lignes reprise=13
+< # C3 outillage v2.2, lot 3 — archive d'une phase (conf | gate) sur le serveur, vérifiée avant `rm -rf`, lancé par
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — archive d'une phase (conf | gate) sur le serveur, vérifiée avant `rm -rf`, lancé par
+< # `rm -rf ~/runs/c3_outillage/<phase>` seulement si tout vaut 0 (le .env copié part avec le clone), et `rmdir` du
+> # `rm -rf ~/runs/c3_outillage_v2_3/<phase>` seulement si tout vaut 0 (le .env copié part avec le clone), et `rmdir` du
+<   conf) DEST=results/c3_outillage_v2_2/conformite/server
+<     PILOT=results/c3_outillage_v2_2/conformite/server/run_conformite.sh ;;
+<   gate) DEST=results/c3_outillage_v2_2/gate_L5
+<     PILOT=results/c3_outillage_v2_2/gate_L5/run_gate.sh ;;
+>   conf) DEST=results/c3_outillage_v2_3/conformite/server
+>     PILOT=results/c3_outillage_v2_3/conformite/server/run_conformite.sh ;;
+>   gate) DEST=results/c3_outillage_v2_3/gate_L5
+>     PILOT=results/c3_outillage_v2_3/gate_L5/run_gate.sh ;;
+< OUT=results/c3_outillage_v2_2/tests/archive_${PHASE}.out
+< NAME=c3_outillage_${PHASE}_server_$DATE.tgz
+> OUT=results/c3_outillage_v2_3/tests/archive_${PHASE}.out
+> NAME=c3_outillage_v2_3_${PHASE}_server_$DATE.tgz
+< RUN=/home/bruno/runs/c3_outillage/$PHASE
+< ARC=/home/bruno/archive/c3_outillage_${PHASE}_$DATE
+< TGZ=$ARC/c3_outillage_${PHASE}_server_$DATE.tgz
+> RUN=/home/bruno/runs/c3_outillage_v2_3/$PHASE
+> ARC=/home/bruno/archive/c3_outillage_v2_3_${PHASE}_$DATE
+> TGZ=$ARC/c3_outillage_v2_3_${PHASE}_server_$DATE.tgz
+<   rmdir --ignore-fail-on-non-empty /home/bruno/runs/c3_outillage
+<   echo "parent=$(if [ -e /home/bruno/runs/c3_outillage ]; then echo present; else echo absent; fi)"
+>   rmdir --ignore-fail-on-non-empty /home/bruno/runs/c3_outillage_v2_3
+>   echo "parent=$(if [ -e /home/bruno/runs/c3_outillage_v2_3 ]; then echo present; else echo absent; fi)"
+## results/c3_outillage_v2_2/tests/postflight.sh -> results/c3_outillage_v2_3/tests/postflight.sh : lignes source changées=15, lignes reprise=24
+< # C3 outillage v2.2, lot 3 — postflight du serveur après les deux phases, LECTURE SEULE, lancé par `bash` depuis le
+< # dépôt (plans/lot3.md § 6).
+< # usage : bash postflight.sh <AAAAMMJJ conf> <AAAAMMJJ gate> <HEAD du service relevé au preflight>
+< # Relève : ~/runs/c3_outillage absent ; aucune session tmux `c3-outillage-*` ; les deux archives présentes et
+< # `sha256sum -c --status` sur leur .sha256 ; collector actif ; HEAD du service égal à celui du preflight, 0 ligne sale ;
+< # CAMPAIGN_UNLOCK absent de l'arbre du service. Sortie : postflight.out ; rc=0 ssi tout tient.
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — postflight du serveur après les deux phases, LECTURE SEULE, lancé
+> # par `bash` depuis le dépôt (plans/lot2.md § 5, brief § 4).
+> # usage : bash postflight.sh <AAAAMMJJ conf> <AAAAMMJJ gate> <HEAD du service relevé au preflight> <NRestarts du preflight>
+> # Relève : ~/runs/c3_outillage_v2_3 absent ; aucune session tmux `c3-outillage-*` ; les deux archives présentes et
+> # `sha256sum -c --status` sur leur .sha256 ; collector actif et NRestarts égal à celui du preflight ; HEAD du service
+> # égal à celui du preflight, 0 ligne sale ; alembic head inchangé (`c3bd1e7a0001 (head)`, depuis l'arbre du service,
+> # sans PYTHONPATH) ; CAMPAIGN_UNLOCK absent de l'arbre du service. Sortie : postflight.out ; rc=0 ssi tout tient.
+> # Écarts au postflight v2.2, déclarés : NRestarts comparé au preflight, alembic head relevé (brief § 4).
+> NRESTARTS=${4:?NRestarts du preflight}
+< OUT=results/c3_outillage_v2_2/tests/postflight.out
+> OUT=results/c3_outillage_v2_3/tests/postflight.out
+<   ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$DCONF" "$DGATE" "$SERVICE_HEAD" <<'REMOTE'
+>   ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$DCONF" "$DGATE" <<'REMOTE'
+< if [ -e /home/bruno/runs/c3_outillage ]; then echo "runs_c3_outillage=PRESENT"; else echo "runs_c3_outillage=absent"; fi
+> PY=/home/bruno/.cache/pypoetry/virtualenvs/krakenbot-3rJ6HBr0-py3.12/bin/python
+> if [ -e /home/bruno/runs/c3_outillage_v2_3 ]; then echo "runs_c3_outillage_v2_3=PRESENT"; else echo "runs_c3_outillage_v2_3=absent"; fi
+<   ARC=/home/bruno/archive/c3_outillage_$1_$2
+<   if (cd "$ARC" 2>/dev/null && sha256sum -c --status "c3_outillage_$1_server_$2.tgz.sha256"); then
+>   ARC=/home/bruno/archive/c3_outillage_v2_3_$1_$2
+>   if (cd "$ARC" 2>/dev/null && sha256sum -c --status "c3_outillage_v2_3_$1_server_$2.tgz.sha256"); then
+< c=$(systemctl is-active krakenbot-collector 2>&1)
+< echo "collector=$c $(systemctl show -p NRestarts krakenbot-collector 2>&1)"
+> echo "collector=$(systemctl is-active krakenbot-collector 2>&1) $(systemctl show -p NRestarts krakenbot-collector 2>&1)"
+> if (cd "$SERVICE" && "$PY" -m alembic current 2>&1) | grep -qF "c3bd1e7a0001 (head)"; then
+>   echo "alembic_head=0"
+> else
+>   echo "alembic_head=1"
+> fi
+< grep -qx "runs_c3_outillage=absent" "$OUT" || fail=1
+> grep -qx "runs_c3_outillage_v2_3=absent" "$OUT" || fail=1
+< grep -qE "^collector=active " "$OUT" || fail=1
+> grep -qx "collector=active NRestarts=$NRESTARTS" "$OUT" || fail=1
+> grep -qx "alembic_head=0" "$OUT" || fail=1
+## results/c3_outillage_v2_2/tests/verify_conformite.sh -> results/c3_outillage_v2_3/tests/verify_conformite.sh : lignes source changées=3, lignes reprise=3
+< # C3 outillage v2.2, lot 3 — vérification de l'attendu de conformité sur les extraits rapatriés (conformite/server/ :
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — vérification de l'attendu de conformité sur les extraits rapatriés (conformite/server/ :
+< OUT=results/c3_outillage_v2_2/conformite/server/verify_attendu.out
+< python3 results/c3_outillage_v2_2/conformite/server/verify_attendu.py --sha "$SHA" > "$OUT" 2>&1
+> OUT=results/c3_outillage_v2_3/conformite/server/verify_attendu.out
+> python3 results/c3_outillage_v2_3/conformite/server/verify_attendu.py --sha "$SHA" > "$OUT" 2>&1
+## results/c3_outillage_v2_2/tests/verify_gate.sh -> results/c3_outillage_v2_3/tests/verify_gate.sh : lignes source changées=5, lignes reprise=5
+< # C3 outillage v2.2, lot 3 — vérification de la porte § L.5 option 1 (plans/lot3.md § 6), item par item, sur les
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — vérification de la porte § L.5 option 1 (results/c3_outillage_v2_2/plans/lot3.md § 6), item par item, sur les
+< #   défauts : results/c3_outillage_v2_2/gate_L5, <répertoire>/verify_gate.out, sha256 de gate_L5/run_gate.sh.
+> #   défauts : results/c3_outillage_v2_3/gate_L5, <répertoire>/verify_gate.out, sha256 de gate_L5/run_gate.sh.
+< DIR=${2:-results/c3_outillage_v2_2/gate_L5}
+> DIR=${2:-results/c3_outillage_v2_3/gate_L5}
+< PILOT_SHA=${4:-$(shasum -a 256 results/c3_outillage_v2_2/gate_L5/run_gate.sh | cut -d' ' -f1)}
+< KRAKENBOT_SUFFIX=/runs/c3_outillage/gate/repo/src/krakenbot/__init__.py
+> PILOT_SHA=${4:-$(shasum -a 256 results/c3_outillage_v2_3/gate_L5/run_gate.sh | cut -d' ' -f1)}
+> KRAKENBOT_SUFFIX=/runs/c3_outillage_v2_3/gate/repo/src/krakenbot/__init__.py
+## results/c3_outillage_v2_2/tests/verify_adverse.sh -> results/c3_outillage_v2_3/tests/verify_adverse.sh : lignes source changées=5, lignes reprise=5
+< # C3 outillage v2.2, lot 3 — condition du GO (29/09) : les vérificateurs sont prouvés avant de servir (règle agent 1).
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — brief § 4 et condition du GO v2.2 (29/09) : les vérificateurs sont prouvés avant de servir (règle agent 1).
+< OUT=results/c3_outillage_v2_2/tests/verify_adverse.out
+< VERIFY_CONF=results/c3_outillage_v2_2/conformite/server/verify_attendu.py
+< VERIFY_GATE=results/c3_outillage_v2_2/tests/verify_gate.sh
+> OUT=results/c3_outillage_v2_3/tests/verify_adverse.out
+> VERIFY_CONF=results/c3_outillage_v2_3/conformite/server/verify_attendu.py
+> VERIFY_GATE=results/c3_outillage_v2_3/tests/verify_gate.sh
+< DRYRUN_OUT="$T/dryrun.out" DRYRUN_KEEP="$T/keep" bash results/c3_outillage_v2_2/tests/pilot_dryrun.sh
+> DRYRUN_OUT="$T/dryrun.out" DRYRUN_KEEP="$T/keep" bash results/c3_outillage_v2_3/tests/pilot_dryrun.sh
+## results/c3_outillage_v2_2/tests/pilot_dryrun.sh -> results/c3_outillage_v2_3/tests/pilot_dryrun.sh : lignes source changées=8, lignes reprise=8
+< # C3 outillage v2.2, lot 3 — le pilote de conformité exercé en local dans un monde simulé, sans base, sans serveur,
+< # avant S1 (plans/lot3.md § 5) : une panne du pilote se voit ici, pas sur le serveur.
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — le pilote de conformité exercé en local dans un monde simulé, sans base, sans serveur,
+> # avant S1 (results/c3_outillage_v2_2/plans/lot3.md § 5) : une panne du pilote se voit ici, pas sur le serveur.
+< OUT=${DRYRUN_OUT:-results/c3_outillage_v2_2/tests/pilot_dryrun.out}
+< SELF=results/c3_outillage_v2_2/conformite/server/run_conformite.sh
+< MANIFEST=results/c3_outillage_v2_2/conformite/manifest.json
+> OUT=${DRYRUN_OUT:-results/c3_outillage_v2_3/tests/pilot_dryrun.out}
+> SELF=results/c3_outillage_v2_3/conformite/server/run_conformite.sh
+> MANIFEST=results/c3_outillage_v2_3/conformite/manifest.json
+<   local run=$T/$name/runs/c3_outillage/$phase
+>   local run=$T/$name/runs/c3_outillage_v2_3/$phase
+<     -e "s|^RUN=/home/bruno/runs/c3_outillage/$phase\$|RUN=$run|" "$pilot" > "$run/repo/$pilot"
+>     -e "s|^RUN=/home/bruno/runs/c3_outillage_v2_3/$phase\$|RUN=$run|" "$pilot" > "$run/repo/$pilot"
+< GATE=results/c3_outillage_v2_2/gate_L5/run_gate.sh
+> GATE=results/c3_outillage_v2_3/gate_L5/run_gate.sh
+## results/c3_outillage_v2_2/tests/events.sh -> results/c3_outillage_v2_3/tests/events.sh : lignes source changées=4, lignes reprise=4
+< # C3 outillage v2.2, lot 3 — la liste close des événements d'erreur des producteurs, recopiée dans le pilote de
+< # conformité (variable EVENTS), est prouvée égale à celle que le code nomme (plans/lot3.md § 5).
+> # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — la liste close des événements d'erreur des producteurs, recopiée dans le pilote de
+> # conformité (variable EVENTS), est prouvée égale à celle que le code nomme (results/c3_outillage_v2_2/plans/lot3.md § 5).
+< OUT=results/c3_outillage_v2_2/tests/events.out
+< PILOT=results/c3_outillage_v2_2/conformite/server/run_conformite.sh
+> OUT=results/c3_outillage_v2_3/tests/events.out
+> PILOT=results/c3_outillage_v2_3/conformite/server/run_conformite.sh
+## results/c3_outillage_v2_2/tests/manifest_check.sh -> results/c3_outillage_v2_3/tests/manifest_check.sh : lignes source changées=26, lignes reprise=37
+< # C3 outillage v2.2, lot 3 — le manifeste de conformité v2.2 vérifié avant S1 (plans/lot3.md § 4 item 2, § 7).
+< #  1. Chemins JSON changés contre le manifeste du 28/09 = exactement la liste déclarée : `family` et `min_order_quote`
+< #     ajoutés, `min_order_usdc` retiré, `protocol_sha256`, `research_log_entry`, `run_scope`, `variant_id` réécrits.
+< #  2. `protocol_sha256` du manifeste = sha256 de docs/protocole_c3.md (v2.2).
+< #  3. `c3_anchor` en local — pur, sans base ; registre et sortie dans un répertoire temporaire hors du dépôt, supprimé
+< #     ensuite — code 0, et T = 2020-09-11T21:36:00+00:00, seul champ lu de sa sortie.
+< #  4. sha256 du manifeste, déclaré à l'attendu.
+< # Sortie : manifest_check.out, une ligne `clé=valeur` par fait, puis rc=0 ssi 1 à 3 tiennent.
+> # C3 outillage v2.3, lot 2 — le manifeste de conformité v2.3 vérifié avant S1 (plans/lot2.md § 4 ; repris de
+> # results/c3_outillage_v2_2/tests/manifest_check.sh).
+> #  1. Chemins JSON changés contre le manifeste de la conformité v2.2 (results/c3_outillage_v2_2/conformite/manifest.json)
+> #     = exactement la liste déclarée : `deferred_evaluation.date` ajouté ; rien de retiré ; `protocol_sha256`,
+> #     `research_log_entry`, `run_scope`, `variant_id` réécrits (K1).
+> #  2. `protocol_sha256` du manifeste = sha256 de docs/protocole_c3.md (v2.3).
+> #  3. `deferred_evaluation.date` − `window.end` : exactement 365 jours (D8 : le bord admis de la borne, § A.6 v2.3).
+> #  4. `c3_anchor` en local — pur, sans base ; registre et sortie dans un répertoire temporaire hors du dépôt, supprimé
+> #     ensuite — code 0 (la date passe l'étape 1), et T = 2020-09-11T21:36:00+00:00, seul champ lu de sa sortie.
+> #  5. sha256 du manifeste, déclaré à l'attendu.
+> # Sortie : manifest_check.out, une ligne `clé=valeur` par fait, puis rc=0 ssi 1 à 4 tiennent.
+> unset VIRTUAL_ENV
+< OUT=results/c3_outillage_v2_2/tests/manifest_check.out
+< NEW=results/c3_outillage_v2_2/conformite/manifest.json
+< OLD=results/c3b_producteur/prefix_conformite/manifest.json
+< PROTOCOL_V22=1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a
+> OUT=results/c3_outillage_v2_3/tests/manifest_check.out
+> NEW=results/c3_outillage_v2_3/conformite/manifest.json
+> OLD=results/c3_outillage_v2_2/conformite/manifest.json
+> PROTOCOL_V23=d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6
+< NOW=2026-09-29T00:00:00+00:00
+> NOW=2026-09-30T00:00:00+00:00
+< echo "manifest_28_09_sha256=$(shasum -a 256 "$OLD" | cut -d' ' -f1)" >> "$OUT"
+> echo "manifest_v22_sha256=$(shasum -a 256 "$OLD" | cut -d' ' -f1)" >> "$OUT"
+< # 1. chemins changés (clés seulement, jamais les valeurs)
+> # 1. chemins changés (clés seulement, jamais les valeurs), et 3. l'écart de la date
+> from datetime import datetime
+> raw_new = json.load(open(sys.argv[2], encoding="utf-8"))
+< new = flatten(json.load(open(sys.argv[2], encoding="utf-8")))
+> new = flatten(raw_new)
+<     "ajoute": ["family", "min_order_quote"],
+<     "retire": ["min_order_usdc"],
+>     "ajoute": ["deferred_evaluation.date"],
+>     "retire": [],
+<     print(f"chemins_{kind}={','.join(seen[kind])}")
+< ok = seen == expected
+< print(f"chemins_attendus={'0' if ok else '1'}")
+< sys.exit(0 if ok else 1)
+>     print(f"chemins_{kind}={','.join(seen[kind]) or '-'}")
+> paths_ok = seen == expected
+> print(f"chemins_attendus={'0' if paths_ok else '1'}")
+> end = datetime.fromisoformat(raw_new["window"]["end"])
+> date = datetime.fromisoformat(raw_new["deferred_evaluation"]["date"])
+> days = (date - end).total_seconds() / 86400.0
+> gap_ok = days == 365.0
+> print(f"ecart_date_differee_jours={days:.6f} attendu=365.000000 ecart_ok={'0' if gap_ok else '1'}")
+> sys.exit(0 if paths_ok and gap_ok else 1)
+< r=$?; echo "diff_manifeste=$r" >> "$OUT"; [ $r -ne 0 ] && fail=1
+> r=$?; echo "diff_manifeste_et_ecart=$r" >> "$OUT"; [ $r -ne 0 ] && fail=1
+< if [ "$declared" = "$PROTOCOL_V22" ] && [ "$actual" = "$PROTOCOL_V22" ]; then r=0; else r=1; fail=1; fi
+< echo "protocole_v22=$r declare=$declared fichier=$actual" >> "$OUT"
+> if [ "$declared" = "$PROTOCOL_V23" ] && [ "$actual" = "$PROTOCOL_V23" ]; then r=0; else r=1; fail=1; fi
+> echo "protocole_v23=$r declare=${declared:0:16}… fichier=${actual:0:16}…" >> "$OUT"
+< # 3. c3_anchor local, hors dépôt
+> # 4. c3_anchor local, hors dépôt
+## results/c3_outillage_v2_2/tests/lint_lot3.sh -> results/c3_outillage_v2_3/tests/lint_lot2.sh : lignes source changées=9, lignes reprise=10
+< # C3 outillage v2.2, lot 3 — lint des seuls fichiers Python du lot, EN VÉRIFICATION SEULEMENT : `ruff check` et
+< # `ruff format --check`, jamais `--fix` ni formatage (interdit du lot). Les scripts bash sont vérifiés en syntaxe par
+< # `bash -n`. Lancé par `bash` depuis le dépôt.
+< # Sortie : lint_lot3.out ; rc=0 ssi tout est vert.
+> # C3 outillage v2.3, lot 2 (repris de results/c3_outillage_v2_2/tests/lint_lot3.sh) — lint des seuls fichiers Python
+> # du lot, EN VÉRIFICATION SEULEMENT : `ruff check` et `ruff format --check`, jamais `--fix` ni formatage (le lot n'écrit
+> # aucun code). Les scripts bash du lot sont vérifiés en syntaxe par `bash -n`. Lancé par `bash` depuis le dépôt.
+> # Sortie : lint_lot2.out ; rc=0 ssi tout est vert.
+> unset VIRTUAL_ENV
+< OUT=results/c3_outillage_v2_2/tests/lint_lot3.out
+< PY_FILES=(results/c3_outillage_v2_2/conformite/server/verify_attendu.py)
+< SH_FILES=(results/c3_outillage_v2_2/conformite/server/run_conformite.sh results/c3_outillage_v2_2/gate_L5/run_gate.sh
+<   results/c3_outillage_v2_2/tests/{preflight,launch,wait,fetch,archive,postflight,verify_conformite,verify_gate,verify_adverse,pilot_dryrun,events,manifest_check,interdits,interdits_adverse,lint_lot3}.sh)
+> OUT=results/c3_outillage_v2_3/tests/lint_lot2.out
+> PY_FILES=(results/c3_outillage_v2_3/conformite/server/verify_attendu.py)
+> SH_FILES=(results/c3_outillage_v2_3/conformite/server/run_conformite.sh results/c3_outillage_v2_3/gate_L5/run_gate.sh
+>   results/c3_outillage_v2_3/tests/{preflight,launch,wait,fetch,archive,postflight,verify_conformite,verify_gate,verify_adverse,pilot_dryrun,events,manifest_check,interdits_lot2,interdits_lot2_adverse,reprise_lot2,lint_
+< echo "# lint_lot3 — $(date -u +%FT%TZ) — HEAD $(git rev-parse HEAD)" >> "$OUT"
+> echo "# lint_lot2 — $(date -u +%FT%TZ) — HEAD $(git rev-parse HEAD)" >> "$OUT"
+rc=0

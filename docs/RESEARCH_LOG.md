@@ -413,6 +413,24 @@ refuse son manifeste. Les **quatre temps** sont rejoués (préfixe, chaîne 1-4,
 - **Ce qui précède le manifeste** : l'outillage v2.3 (`docs/amendements_c3_v2.3.md`, « Réserves d'application »).
 - **Compteur du § 10.2** : inchangé.
 
+### C3 outillage v2.3, lot 2 — conformité du producteur et de la chaîne sous v2.3 sur la fenêtre 2020 (entrée 21, inscrite le 2026-09-30, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique, issue non lue)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, et il est hors quota. C'est un run
+neuf, parce que la conformité du 30/09 (entrée 19, v2.2) n'a plus de valeur probante sous v2.3 : `c3_anchor` refuse son
+manifeste (sha v2.2, pas de `deferred_evaluation.date`). Les **quatre temps** sont rejoués (préfixe, chaîne 1-4,
+évaluation, chaîne complète), **trois fois**, au code du chantier outillage v2.3 (lot 1). Attendu complet, item par
+item : `results/c3_outillage_v2_3/conformite/attendu.md`, committé avec cette entrée. Le run se fait au SHA de ce commit,
+après la relecture de Bruno (STOP 1) et son GO de lancement.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 21 | 2026-09-30 | C3 outillage v2.3, lot 2 — essai d'instrument : `c3b_prefix.py` → `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select` → `c3b_evaluate.py --selection` → `c3_verdict.py chain` (six étapes, neuf entrées), **trois exécutions** (`--workers` 4 / 1 / 4 au préfixe, même `--now`, même chemin absolu), registre **neuf par exécution** ; `--campaign OUTILLAGE_V23_CONF`, étiquette d'instrument (dette 21 intacte) ; **aucune lecture économique, issue non lue** | `grok_grid_atr_adaptive_v4`, 4 paramétrages (classes C1, C2, C5, C6) × `BTC/USDT`, `ETH/USDT`, `SOL/USDT` = **12 candidats** ; famille de test `test-conformite-instrument-2020` (jamais une famille de campagne) ; provenance `unknown` : aucun `validé` atteignable, et la voie du § 10.1 ne s'ouvre pas (aucune évaluation différée inscrite) ; chemin sélection seul, aucune identité, paire, métrique ni issue ne remonte au dépôt | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; fenêtre de conformité `2020-01-06 → 2020-12-28`, `T = 2020-09-11T21:36Z` ; lectures bornées à `≤ T` (préfixe) et `≤ fin` (évaluation), amorçage `≥ 400 j` avant ; `deferred_evaluation.date = 2021-12-28` (365 j exactement après la fin, une déclaration, jamais une fenêtre lue) ; **hors campagne** (garde-fou 6, `CAMPAIGN_UNLOCK` absent) | branche `feat/c3-outillage-v2.3`, exécuté au commit de cette entrée (code identique à `a30d62a`, `interdits_lot2_S1.out`) ; métriques v2, `replay_version` 2 ; protocole v2.3 `d030ab23…79e6` ; manifeste `24bde67d…565a` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6) ; `min_order_quote 5.0` (valeur du rejeu, inerte sur le grid) | producteur préfixe 0 ×3 ; chaîne 1-4 autonome 0 ×4 ×3 (l'ancrage admet la date) ; producteur d'évaluation `0 evaluated` ×3 ; chaîne complète : six codes d'étape en 0, `chain.verified` vrai, violations vides, zéro violation au rejeu, ×3 ; **23 artefacts identiques au bit sur les trois exécutions** (booléens seulement, aucun sha d'artefact versionné) ; `alembic` `c3bd1e7a0001` inchangé ; service et collector inchangés ; `validé` et `réfuté` inatteignables par construction (provenance `unknown`) | aucune décision économique ; la conformité v2.3 est, avec la porte § L.5 option 1, la porte du chantier outillage v2.3 ; merge sous décision humaine | `results/c3_outillage_v2_3/conformite/` (`attendu.md`, `manifest.json`, pilote, preuves au commit suivant) ; `results/c3_outillage_v2_3/report.md` |
+
+- **Garde-fou 6, mécanique** : le producteur refuse (code 2) toute fenêtre qui finit après le 2021-03-01 tant que
+  `results/c3b_producteur/CAMPAIGN_UNLOCK` n'existe pas. Ce fichier n'existe pas, et ce lot ne le crée pas.
+- **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
+  diagnostic avant l'accord de Bruno. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme

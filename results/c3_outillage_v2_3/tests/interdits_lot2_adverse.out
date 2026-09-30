@@ -1,0 +1,15 @@
+# interdits_lot2_adverse — 2026-09-30T20:33:24Z — HEAD dcef3012b0a725177eca7115a341006dc689ac02
+cas=temoin rc=0 attendu=0 restaure=0
+cas=code_du_lot1_touche rc=1 attendu=non0 restaure=0
+cas=test_touche rc=1 attendu=non0 restaure=0
+cas=claude_md rc=1 attendu=non0 restaure=0
+cas=project_context rc=1 attendu=non0 restaure=0
+cas=readme_lot1 rc=1 attendu=non0 restaure=0
+cas=protocole rc=1 attendu=non0 restaure=0
+cas=artefact_verdict rc=1 attendu=non0 restaure=0
+cas=artefact_registre rc=1 attendu=non0 restaure=0
+cas=autre_manifeste rc=1 attendu=non0 restaure=0
+cas=empreinte_hors_regle rc=1 attendu=non0 restaure=0
+cas=hors_liste_blanche rc=1 attendu=non0 restaure=0
+cas=nomme_dette23 rc=1 attendu=non0 restaure=0
+rc=0
