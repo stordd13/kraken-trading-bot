@@ -1,0 +1,66 @@
+# interdits_lot2 — C0 — 2026-09-30T20:28:05Z
+# HEAD a30d62a2fec51a4c277d51a5d20047892b2fbcca branche feat/c3-outillage-v2.3 ; base b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9 ; lot 1 a30d62a2fec51a4c277d51a5d20047892b2fbcca
+gele_base src head=0 index=0 arbre=0 non_suivis=0
+gele_base config head=0 index=0 arbre=0 non_suivis=0
+gele_base pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele_base poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele_base .github head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/backtest.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/run_p6_backtests.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/run_p7_grid_search.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/rejeu_common.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_common.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_prefix.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_evaluate.py head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/protocole_c3.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.1.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.2.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.3.md head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_v2_3_gel head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 scripts head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 tests head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 src head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 config head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 .github head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 agent head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 skills head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 CLAUDE.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 PROJECT_CONTEXT.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/INDEX.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/CODE_MAP.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/protocole_c3.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.1.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.2.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.3.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/CONTRAINTES_POST_B4.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_v2_3_gel head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_3/lot1 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_3/plans/lot1.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_3/mutants.log head=0 index=0 arbre=0 non_suivis=0
+protocole_sha_egal_consigne=0 (d030ab239de317f6…)
+## fichiers changés depuis le lot 1 (HEAD ∪ index ∪ arbre ∪ non suivis ; gel_v2_3.patch exclu)
+  results/c3_outillage_v2_3/plans/lot2.md
+  results/c3_outillage_v2_3/tests/interdits_lot2.sh
+  results/c3_outillage_v2_3/tests/interdits_lot2_C0.out
+  results/c3_outillage_v2_3/tests/tunnel.out
+liste_blanche=0
+etranger=absent (non suivi ; constat, pas un écart)
+## fichiers du commit courant (index contre HEAD)
+  A	results/c3_outillage_v2_3/plans/lot2.md
+  A	results/c3_outillage_v2_3/tests/interdits_lot2.sh
+  M	results/c3_outillage_v2_3/tests/tunnel.out
+arbre_hors_index=0 fichier(s) suivi(s) modifiés non indexés
+aucun_artefact=0
+campaign_unlock=absent
+empreintes_64_ajoutees=1 dont_protocole=1 dont_fichiers_du_chantier_ou_archives=0 table_adoption=4
+aucun_sha_artefact=0
+dette23=0
+rc=0
