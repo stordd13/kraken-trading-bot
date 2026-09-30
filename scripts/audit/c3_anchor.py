@@ -10,6 +10,14 @@
   ré-exécuter le même manifeste est idempotent (même enregistrement, registre inchangé) ; une clé
   nouvelle déclare son parent, et c'est là que le contrôle mord : parent absent du registre → refus ;
   seconde racine dans un registre non vide → refus (elle contournerait la parenté).
+* **§ A.6 v2.2 (AM-05)** — le registre tient l'état du critère d'arrêt, et l'ancrage l'applique : pour une clé
+  nouvelle, les enregistrements de la famille que le manifeste déclare sont lus ; une famille qui porte un verdict
+  compté n'accepte que l'empreinte de l'évaluation différée inscrite au verdict ; une famille qui a consommé sa
+  relance unique (deux verdicts non comptés) n'accepte plus rien — refus ``R0_INVALID_RUN``, code 2
+  (``CONTRAINTES_POST_B4.md`` § 10.1, section d'origine, non redite ici). Les champs d'issue (``verdict``,
+  ``deferred_evaluation``), écrits par ``c3_verdict`` à l'étape 6, sont hors ``RECORD_KEYS`` : l'idempotence tient.
+  Le sha256 déclaré du protocole est asserté **avant** le typage du manifeste : un manifeste d'un autre protocole
+  n'est pas relu sous le schéma de celui-ci.
 
 **Les valeurs gelées sont assertées, pas seulement leur forme** — liste close de quatre assertions,
 tout écart étant un contrat rompu (``R0_INVALID_RUN``, code 2, rien d'écrit) : la fraction d'ancrage,
@@ -65,6 +73,7 @@ RECORD_KEYS: tuple[str, ...] = (
     "universe_provenance",
     "manifest_sha256",
     "research_log_entry",
+    "family",
 )
 
 
@@ -126,11 +135,76 @@ def variant_record(manifest: cc.Manifest, *, manifest_sha256: str) -> dict[str, 
         "universe_provenance": manifest.provenance,
         "manifest_sha256": manifest_sha256,
         "research_log_entry": manifest.research_log_entry,
+        "family": manifest.family,
     }
 
 
+def assert_declared_protocol(raw: Any) -> None:
+    """Le sha256 déclaré du protocole, asserté **avant** ``cc.load_manifest`` (plan du lot 1, D9) : un manifeste d'un
+    autre protocole n'est pas relu sous le schéma de celui-ci — v2.2 exige la famille, que les manifestes v2.0 et
+    v2.1 ne portent pas. Même refus, même valeur gelée que ``assert_frozen_values``, qui la refait."""
+    if not isinstance(raw, Mapping):
+        raise cc.MissingEvidenceError(f"manifest: bloc attendu, reçu {type(raw).__name__}")
+    declared = cc.require_str(raw, "protocol_sha256", where="manifest")
+    current = cc.protocol_descriptor()["sha256"]
+    if declared != current:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"valeurs gelées : protocol_sha256 {declared[:16]} != sha256 courant {current[:16]} de "
+            f"{cc.PROTOCOL_RELPATH} — le manifeste ne déclare pas ce protocole ; il n'est pas relu sous son schéma",
+        )
+
+
+def stop_criterion(variants: Mapping[str, Any], *, family: str, key: str) -> None:
+    """§ A.6 v2.2 (AM-05), à l'étape 1 : l'ancrage lit les enregistrements de la famille et refuse
+    (``R0_INVALID_RUN``, code 2) toute variante nouvelle que ``CONTRAINTES_POST_B4.md`` § 10.1 exclut — une seconde
+    campagne sur une famille qui porte déjà un verdict compté, ou une relance au-delà de l'unique (deux verdicts non
+    comptés). Sur une famille au verdict compté, **seule est acceptée** la variante dont l'empreinte est l'empreinte
+    attendue de l'évaluation différée inscrite au verdict : un état du registre, pas une exception de lecture."""
+    counted: list[str] = []
+    not_counted = 0
+    expected: set[str] = set()
+    for other in variants:
+        where = f"registry.variants.{other[:16]}"
+        stored = cc.require_mapping(variants, other, where="registry.variants")
+        if cc.require_str(stored, "family", where=where) != family:
+            continue
+        verdict = cc.optional_mapping(stored, "verdict", where=where)
+        if verdict is not None:
+            cc.require_str(verdict, "issue", where=f"{where}.verdict", allowed=cc.ISSUES)
+            cc.nullable_str(verdict, "raison", where=f"{where}.verdict")
+            if cc.require_bool(verdict, "compte", where=f"{where}.verdict"):
+                counted.append(other)
+            else:
+                not_counted += 1
+        deferred = cc.optional_mapping(stored, "deferred_evaluation", where=where)
+        if deferred is not None:
+            cc.require_datetime(deferred, "date", where=f"{where}.deferred_evaluation")
+            expected.add(
+                cc.require_str(deferred, "variant_key", where=f"{where}.deferred_evaluation")
+            )
+    if counted:
+        if key in expected:
+            return
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"la famille {family!r} porte déjà un verdict compté ({counted[0][:16]}) : seule l'évaluation différée "
+            f"inscrite au verdict est acceptée, et l'empreinte {key[:16]} n'est pas la sienne (§ A.6 v2.2 ; "
+            "CONTRAINTES § 10.1)",
+        )
+    if not_counted >= 2:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"la famille {family!r} a consommé sa relance unique ({not_counted} verdicts non comptés) — une "
+            "relance au-delà de l'unique est refusée (§ A.6 v2.2 ; CONTRAINTES § 10.1)",
+        )
+
+
 def load_registry(path: Path) -> dict[str, Any]:
-    """Le registre, ou un registre vide s'il n'existe pas encore ; mal formé → erreur d'entrée."""
+    """Le registre, ou un registre vide s'il n'existe pas encore ; mal formé → erreur d'entrée. Chaque
+    enregistrement est canonicalisé à la lecture : une valeur **fournie** non finie, dans quelque enregistrement
+    que ce soit, est une violation (§ I.1, ligne 15 : diagnostic ``invalide``, code 1), jamais une trace du writer
+    à la réécriture (R-22, cas 1)."""
     if not Path(path).exists():
         return {"variants": {}}
     try:
@@ -140,6 +214,7 @@ def load_registry(path: Path) -> dict[str, Any]:
     variants = cc.require_mapping(raw, "variants", where="registry")
     for key in variants:
         cc.require_mapping(variants, key, where="registry.variants")
+    cc.canon(dict(variants))
     return {"variants": dict(variants)}
 
 
@@ -170,6 +245,7 @@ def register(
                 "— le recalcul fait foi, le registre n'est pas réécrit"
             )
         return {"variants": dict(variants)}, False
+    stop_criterion(variants, family=str(record["family"]), key=key)
     parent = record["parent"]
     if parent["is_root"]:
         if variants:
@@ -301,6 +377,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     key = ""
     new_entry = False
     try:
+        assert_declared_protocol(raw)
         manifest = cc.load_manifest(raw)
         problems = assert_frozen_values(manifest)
         if problems:

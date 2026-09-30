@@ -1,0 +1,1 @@
+        if key.endswith(("_usdc", "_usdt")) and key != f"{stem}_quote":

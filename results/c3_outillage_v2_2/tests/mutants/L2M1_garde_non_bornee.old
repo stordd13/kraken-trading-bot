@@ -1,0 +1,1 @@
+        if key.startswith(f"{stem}_") and key != f"{stem}_quote":

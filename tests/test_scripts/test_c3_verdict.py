@@ -114,13 +114,32 @@ def _evaluation_series(
     }
 
 
+def _on_grid(returns_config: Any, returns_bench: Any) -> tuple[list[float], Any, dict[str, Any]]:
+    """§ L.2 v2.2 : `returns_config` est le recalcul sur `equity_daily` (`r_t = E_t / E_{t−1} − 1`). La trajectoire
+    compose la série demandée depuis `C` (`fx.equity_of`) et les rendements en sont tirés (`fx.returns_of`) ; le
+    comparateur passe par la même composition, pour que deux séries demandées égales restent égales au bit."""
+    values = fx.equity_of(returns_config)
+    bench = {
+        m: fx.returns_of(fx.equity_of(s)) for m, s in fx.bench_by_matching(returns_bench).items()
+    }
+    equity = {"start": fx.ANCHOR.isoformat(), "end": fx.WINDOW_END.isoformat(), "values": values}
+    return fx.returns_of(values), bench, equity
+
+
 def _reseries(
     artifacts: dict[str, Any], returns_config: Any, returns_bench: Any, *, net_pnl: float = 42.0
 ) -> None:
-    """Remplace les séries de l'évaluation et tout ce qui en dérive — l'artefact reste cohérent."""
-    artifacts["evaluation"].update(
-        _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
-    )
+    """Remplace les séries de l'évaluation et tout ce qui en dérive — l'artefact reste cohérent. Dans un monde du
+    § L.2 v2.2 (entrée `candles_eval` posée, `_v22_world`), seules les séries sont remplacées : `equity_daily` et
+    l'export restent les lieux de lecture que la chaîne recoupe."""
+    if "candles_eval" in artifacts:
+        artifacts["evaluation"].update(
+            _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
+        )
+        return
+    config, bench, equity = _on_grid(returns_config, returns_bench)
+    artifacts["evaluation"].update(_evaluation_series(config, bench, net_pnl=net_pnl))
+    artifacts["evaluation"]["equity_daily"] = equity
 
 
 def _artifacts(
@@ -132,7 +151,8 @@ def _artifacts(
     bounds: dict[str, float] | None = None,
     provenance: str = cc.PROVENANCE_CLEAN,
 ) -> dict[str, dict[str, Any]]:
-    series = _evaluation_series(returns_config, returns_bench, net_pnl=net_pnl)
+    config, bench, equity = _on_grid(returns_config, returns_bench)
+    series = _evaluation_series(config, bench, net_pnl=net_pnl)
     if metrics is not None:
         series["metrics"].update(metrics)
     for combination, bound in (bounds or {}).items():
@@ -205,6 +225,8 @@ def _artifacts(
             "strategy": "s",
             "pair": "BTC/USDC",
             "params": {"a": 1},
+            "equity_daily": equity,
+            "lambdas": {"dd": 0.0, "sigma": 0.0},
             **series,
         },
     }
@@ -424,6 +446,10 @@ def test_le_parseur_n_expose_que_des_chemins_et_un_horodatage() -> None:
         "selection",
         "continuity",
         "evaluation",
+        "manifest",
+        "benchmark",
+        "candles_eval",
+        "benchmark_eval",
         "campaign",
         "output",
         "now",
@@ -761,13 +787,53 @@ def test_une_combinaison_manquante_est_un_contrat_rompu() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]:
-    """Écrit les cinq artefacts dans l'ordre de la chaîne, en posant des empreintes cohérentes
-    (manifeste et observations fictifs mais identiques partout ; anchor, entry et evaluation réels)."""
-    paths = {
-        name: tmp_path / f"{name}.json"
-        for name in ("entry", "anchor", "selection", "continuity", "evaluation")
+def _producer_inputs(artifacts: Mapping[str, Any]) -> dict[str, Any]:
+    """§ L.2 v2.2 : les quatre lieux de lecture, ceux que le monde porte ou, par défaut, ceux d'un monde cash
+    (`λ = 0`, `_artifacts`) — le manifeste des fixtures, `λ` publiés nuls et estimables pour la configuration
+    évaluée, l'export `[T, fin]` réduit à sa paire, le comparateur d'évaluation et sa NAV. Une évaluation déformée
+    par le test (paire ou identité illisibles) retombe sur la configuration du témoin : c'est le verdict qu'on
+    éprouve, pas l'écriture de la fixture."""
+    evaluation = artifacts.get("evaluation")
+    evaluation = evaluation if isinstance(evaluation, Mapping) else {}
+    pair = evaluation.get("pair") if isinstance(evaluation.get("pair"), str) else "BTC/USDC"
+    pair = pair if pair in fx.PAIR_COSTS else "BTC/USDC"
+    try:
+        identity = cc.candidate_identity(
+            evaluation["strategy"], evaluation["pair"], evaluation["params"]
+        )
+    except (KeyError, TypeError, ValueError):  # évaluation déformée exprès par le test
+        identity = cc.candidate_identity("s", "BTC/USDC", {"a": 1})
+    export = fx.candles(fx.manifest(), start=fx.ANCHOR, end=fx.WINDOW_END)
+    export["pairs"] = {pair: export["pairs"][pair]}
+    return {
+        "manifest": artifacts.get("manifest", fx.manifest()),
+        "benchmark": artifacts.get(
+            "benchmark",
+            {
+                "candidates": {
+                    identity: {
+                        "pair": pair,
+                        "estimable": True,
+                        "lambda_dd": 0.0,
+                        "lambda_sigma": 0.0,
+                    }
+                }
+            },
+        ),
+        "candles_eval": artifacts.get("candles_eval", export),
+        "benchmark_eval": artifacts.get("benchmark_eval", fx.benchmark_eval(pair)),
     }
+
+
+def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]:
+    """Écrit les neuf entrées dans l'ordre de la chaîne, en posant des empreintes cohérentes (observations
+    fictives mais identiques partout ; manifeste, anchor, entry, benchmark, evaluation et comparateur réels).
+    § L.2 v2.2 : les quatre lieux de lecture sont ceux du monde, ou ceux d'un monde cash (`_producer_inputs`)."""
+    paths = {name: tmp_path / f"{name}.json" for name in cv.INPUT_NAMES}
+    producer = _producer_inputs(artifacts)
+    for name, content in producer.items():
+        cc.write_json(paths[name], content)
+    manifest_sha = cc.file_sha256(paths["manifest"])
 
     def stamp(name: str, inputs: dict[str, str]) -> None:
         art = artifacts[name]
@@ -778,21 +844,22 @@ def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]
         ):
             art["inputs_sha256"] = inputs
 
-    stamp("anchor", {"manifest": MANIFEST_SHA})
+    stamp("anchor", {"manifest": manifest_sha})
     cc.write_json(paths["anchor"], artifacts["anchor"])
     anchor_sha = cc.file_sha256(paths["anchor"])
     stamp(
-        "entry", {"manifest": MANIFEST_SHA, "anchor": anchor_sha, "observations": OBSERVATIONS_SHA}
+        "entry", {"manifest": manifest_sha, "anchor": anchor_sha, "observations": OBSERVATIONS_SHA}
     )
     cc.write_json(paths["entry"], artifacts["entry"])
     entry_sha = cc.file_sha256(paths["entry"])
     stamp(
         "selection",
         {
-            "manifest": MANIFEST_SHA,
+            "manifest": manifest_sha,
             "anchor": anchor_sha,
             "entry": entry_sha,
             "observations": OBSERVATIONS_SHA,
+            "benchmark": cc.file_sha256(paths["benchmark"]),
         },
     )
     cc.write_json(paths["selection"], artifacts["selection"])
@@ -802,15 +869,16 @@ def _write_cli_inputs(tmp_path: Path, artifacts: Mapping[str, Any]) -> list[str]
     stamp(
         "continuity",
         {
-            "manifest": MANIFEST_SHA,
+            "manifest": manifest_sha,
             "anchor": anchor_sha,
             "evaluation": cc.file_sha256(paths["evaluation"]),
+            "benchmark_eval": cc.file_sha256(paths["benchmark_eval"]),
         },
     )
     cc.write_json(paths["continuity"], artifacts["continuity"])
     argv: list[str] = []
-    for name in ("entry", "anchor", "selection", "continuity", "evaluation"):
-        argv += [f"--{name}", str(paths[name])]
+    for name in cv.INPUT_NAMES:
+        argv += [f"--{name.replace('_', '-')}", str(paths[name])]
     argv += ["--output", str(tmp_path / "verdict.json"), "--now", "2026-09-21T00:00:00+00:00"]
     return argv
 
@@ -1861,9 +1929,14 @@ def test_synthetic_absent_nul_ou_chaine_est_une_erreur_d_entree(tmp_path: Path, 
     assert not (tmp_path / "verdict.json").exists()
 
 
-#: § L.1 v2.1 : « `flat_start_proof`, `invocation.single_call` et `first_fill_at` » — les trois porteurs sans
-#: lesquels une évaluation déclarée réelle n'est pas admise.
-REAL_CARRIERS_L1 = ("flat_start_proof", "invocation.single_call", "first_fill_at")
+#: § L.1 v2.2 (AM-08) : « `flat_start_proof`, `invocation.single_call`, `first_fill_at` et `metrics.executions` » —
+#: les porteurs sans lesquels une évaluation déclarée réelle n'est pas admise (les témoins reçoivent le quatrième).
+REAL_CARRIERS_L1 = (
+    "flat_start_proof",
+    "invocation.single_call",
+    "first_fill_at",
+    "metrics.executions",
+)
 
 
 def _carry(evaluation: dict[str, Any], carriers: tuple[str, ...] = REAL_CARRIERS_L1) -> None:
@@ -1874,6 +1947,8 @@ def _carry(evaluation: dict[str, Any], carriers: tuple[str, ...] = REAL_CARRIERS
         evaluation["invocation"] = {"single_call": True}
     if "first_fill_at" in carriers:
         evaluation["first_fill_at"] = (fx.ANCHOR + timedelta(minutes=10)).isoformat()
+    if "metrics.executions" in carriers:
+        evaluation["metrics"]["executions"] = 3
 
 
 def _real_with_carriers(artifacts: dict[str, Any]) -> None:
@@ -2295,10 +2370,35 @@ def _chain_world(
     if index is None:
         index = 0  # abstention : l'évaluation porte sur un candidat de l'univers, sans retenue
     cand = w["payload"]["universe"]["candidates"][index]
+    # § L.2 v2.2 : l'export de bougies d'évaluation (septième entrée) et, quand l'étape 3 les a publiés, les λ de la
+    # configuration évaluée, lus dans le benchmark.json de la chaîne sonde (déterministe : celui de la chaîne) ;
+    # returns_bench est le blend statique à ces λ sur le B&H de l'export, NAV décimale passée en double.
+    pair = cand["pair"]
+    export = fx.candles(w["payload"], start=fx.ANCHOR, end=fx.WINDOW_END)
+    export["pairs"] = {pair: export["pairs"][pair]}
+    w["candles_eval"] = tmp_path / "candles_eval.json"
+    cc.write_json(w["candles_eval"], export)
+    identity = cc.candidate_identity(cand["strategy"], pair, cand["params"])
+    published = cc.read_json(tmp_path / "probe" / "b.json")["candidates"][identity]
+    if published["estimable"]:
+        lambdas = {"dd": published["lambda_dd"], "sigma": published["lambda_sigma"]}
+        eval_kw.setdefault("lambdas", lambdas)
+        eval_kw.setdefault(
+            "returns_bench",
+            {
+                m: fx.returns_of(
+                    [
+                        float(v)
+                        for v in cb.blend_nav(fx.bh_nav(pair), Decimal(str(lam)), Decimal(1000))
+                    ]
+                )
+                for m, lam in lambdas.items()
+            },
+        )
     w["evaluation"] = tmp_path / "evaluation.json"
     w["benchmark_eval"] = tmp_path / "benchmark_eval.json"
     cc.write_json(w["evaluation"], fx.evaluation(w["payload"], candidate_index=index, **eval_kw))
-    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(cand["pair"]))
+    cc.write_json(w["benchmark_eval"], fx.benchmark_eval(pair))
     w["out"] = tmp_path / "run"
     return w
 
@@ -2327,6 +2427,8 @@ def _chain_argv(
         argv += ["--coverage", str(w["coverage"])]
     if candles:
         argv += ["--candles", str(w["candles"])]
+    if "candles_eval" in w:
+        argv += ["--candles-eval", str(w["candles_eval"])]
     return argv
 
 
@@ -2340,11 +2442,6 @@ CHAIN_FILES = (
 )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir",
-)
 def test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante(
     tmp_path: Path,
 ) -> None:
@@ -2359,6 +2456,51 @@ def test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_va
     assert record["verdict"]["issue"] == payload["verdict"]
     assert record["verdict"]["raison"] == payload["raison"]
     assert isinstance(record["verdict"]["compte"], bool)
+
+
+#: ``docs/CONTRAINTES_POST_B4.md`` § 10.1, table « Un verdict compte », recopiée du texte (règle agent 3) : pour
+#: chaque issue que la chaîne publie, (issue, raison) → compté. Les sorties code 1 et 2 n'ont pas d'issue.
+TABLE_10_1: dict[tuple[str, str | None], bool] = {
+    ("validé", None): True,
+    ("réfuté", None): True,
+    ("inconclusif", "A_BELOW_FLOOR"): True,
+    ("inconclusif", "F_NOT_ESTIMABLE"): True,
+    ("inconclusif", "F_CANNOT_SEPARATE"): True,
+    ("inconclusif", "A_NO_ADMISSIBLE_CANDIDATE"): True,
+    ("inconclusif", "R0_INVALID_RUN"): False,
+    ("inconclusif", "P_PROVENANCE"): False,
+    ("inconclusif", "D_WARMUP_PREFIX"): False,
+    ("inconclusif", "D_WARMUP_ANCHOR"): False,
+    ("inconclusif", "R1_NOT_NORMALISED"): False,
+    ("inconclusif", "E_NO_BENCHMARK"): False,
+    ("inconclusif", "E_STAMP_MISMATCH"): False,
+}
+
+
+def test_R17_la_table_du_10_1_est_celle_du_texte() -> None:
+    """§ A.6 v2.2 : le statut *compté* ou *non compté* « que le § 10.1 leur attribue » ; la table du texte, épinglée à
+    la constante du code (règle agent 3). Ligne conditionnelle : `A_NO_ADMISSIBLE_CANDIDATE` « quand au moins un
+    candidat a été retiré par D1, D2 ou D6 » n'est pas compté."""
+    assert cv.COUNTED == TABLE_10_1
+    assert cv.UNCOUNTED_IF_REMOVED_BY == {"A_NO_ADMISSIBLE_CANDIDATE": ("D1", "D2", "D6")}
+
+
+def test_A2_une_reinscription_discordante_au_registre_est_une_violation(tmp_path: Path) -> None:
+    """§ A.6 v2.2 (AM-05, impact outillage) : l'issue et son statut sont « écrits une fois. Une réécriture différente
+    est une violation » (plan du lot 1, D8, A2) — code 1, diagnostic, registre intact."""
+    w = _chain_world(tmp_path)
+    assert cv.main(_chain_argv(w)) == 0
+    anchor = cc.read_json(w["out"] / "anchor.json")
+    registry = cc.read_json(w["registry"])
+    record = registry["variants"][anchor["variant_key"]]
+    other = cc.ISSUE_REFUTE if record["verdict"]["issue"] != cc.ISSUE_REFUTE else cc.ISSUE_VALIDE
+    record["verdict"] = {**record["verdict"], "issue": other}
+    cc.write_json(w["registry"], registry)
+    before = cc.file_sha256(w["registry"])
+    assert cv.main(_chain_argv(w)) == 1
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert payload["invalide"] is True and any("registre" in v for v in payload["violations"])
+    assert cc.file_sha256(w["registry"]) == before
 
 
 def test_chain_complete_sur_fixtures_verdict_et_neuf_champs_correspondants(tmp_path: Path) -> None:
@@ -4079,12 +4221,6 @@ def test_revue_Fin2_2_le_diagnostic_ne_dit_pas_rien_publie(tmp_path: Path) -> No
 # § C.5 v2.2 (AM-06) — refus amont d'un comparateur non constructible, lu et recoupé par la chaîne (R-18)
 # ---------------------------------------------------------------------------
 
-R18 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir",
-)
-
 
 def _main(argv: list[str]) -> int:
     """`cv.main`, un `SystemExit` d'argparse (option que l'outillage ne connaît pas encore) rendu en code."""
@@ -4124,7 +4260,6 @@ def _refusal_argv(w: dict[str, Any]) -> list[str]:
     return _chain_argv(w) + ["--candles-eval", str(w["candles_eval"])]
 
 
-@R18
 def test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif(
     tmp_path: Path,
 ) -> None:
@@ -4139,7 +4274,6 @@ def test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_mot
     assert " | continuite=- | " in payload["verdict_string"]
 
 
-@R18
 def test_R18_un_refus_qui_porte_des_series_se_contredit(tmp_path: Path) -> None:
     """§ C.5 v2.2 : « Un artefact d'évaluation qui porte à la fois un bloc `refused` et des séries se contredit :
     c'est une violation » (§ I.1, ligne 15, code 1)."""
@@ -4147,7 +4281,6 @@ def test_R18_un_refus_qui_porte_des_series_se_contredit(tmp_path: Path) -> None:
     assert _main(_refusal_argv(w)) == 1
 
 
-@R18
 def test_R18_un_refus_que_l_export_dement_est_une_violation(tmp_path: Path) -> None:
     """§ C.5 v2.2 : « elle rejoue la non-constructibilité sur l'export de bougies d'évaluation (§ L.2), et un refus
     que l'export dément est une violation (§ I.1, ligne 15) » — ici l'export porte les deux estampilles."""
@@ -4156,7 +4289,6 @@ def test_R18_un_refus_que_l_export_dement_est_une_violation(tmp_path: Path) -> N
     assert cc.read_json(w["out"] / "verdict.json")["invalide"] is True
 
 
-@R18
 def test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -4177,15 +4309,88 @@ def test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0(
     assert "R0_INVALID_RUN" in capsys.readouterr().err
 
 
+#: § C.5 v2.2, recopié du texte (règle agent 3) : la raison que porte le bloc `refused`, et la liste close des motifs
+#: de `E_NO_BENCHMARK` (« un motif pris dans une liste close »).
+REFUSAL_REASON_C5 = "comparator_not_buildable"
+MOTIFS_C5 = ("comparator_not_buildable", "comparator_not_comparable")
+
+
+def test_R18_les_motifs_et_la_raison_du_refus_sont_ceux_du_texte() -> None:
+    """§ C.5 v2.2 : « un bloc `refused` qui porte la raison `comparator_not_buildable` et un motif » ; « un motif pris
+    dans une liste close : `comparator_not_buildable` : le refus amont ci-dessus ; `comparator_not_comparable` : un test
+    du tableau ci-dessus en échec ». Recopiés ici, épinglés aux constantes du code, et présents au texte."""
+    assert cc.REFUSAL_REASONS == (REFUSAL_REASON_C5,)
+    assert cc.BENCHMARK_MOTIFS == MOTIFS_C5
+    text = (_project_root / "docs" / "protocole_c3.md").read_text(encoding="utf-8")
+    assert all(f"`{motif}`" in text for motif in MOTIFS_C5)
+
+
+def test_R18_un_comparateur_non_comparable_porte_le_motif_comparator_not_comparable(
+    tmp_path: Path,
+) -> None:
+    """§ C.5 v2.2 : « `comparator_not_comparable` : un test du tableau ci-dessus en échec, nommé à côté » — le motif
+    accompagne la raison `E_NO_BENCHMARK` sur la route exécutée, le test en échec nommé (plan du lot 2, D7)."""
+    artifacts = _sound()
+    comp = artifacts["continuity"]["comparator"]
+    comp["tests"]["ff_ok"] = False
+    comp["state"] = "FAILED"
+    artifacts["continuity"]["benchmark_comparable"] = False
+    violations: list[str] = []
+    decision = cv.decide(artifacts, violations=violations)
+    assert violations == [] and decision.reason == "E_NO_BENCHMARK"
+    assert decision.motif == "comparator_not_comparable"
+    assert decision.motif_detail is not None and "ff_ok" in decision.motif_detail
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 0
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["motif"] == "comparator_not_comparable" and "ff_ok" in payload["motif_detail"]
+
+
+def test_R18_l_identite_du_refus_est_recoupee_avant_toute_lecture_du_bloc_refused(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.2 (retouche C-1) : « L'identité de la configuration portée par le refus est recoupée à la
+    configuration retenue **avant** toute lecture du bloc `refused` ». Refus d'une autre configuration **et** bloc
+    malformé : c'est le refus `R0_INVALID_RUN` qui sort, pas l'erreur de forme du bloc."""
+    w = _refusal_world(tmp_path)
+    refusal = cc.read_json(w["evaluation"])
+    other = next(
+        c
+        for c in w["payload"]["universe"]["candidates"]
+        if c["pair"] == refusal["pair"] and c["params"] != refusal["params"]
+    )
+    refusal["params"] = other["params"]
+    refusal["refused"] = {"reason": "hors liste", "window": {}, "motif": None}
+    cc.write_json(w["evaluation"], refusal)
+    assert _main(_refusal_argv(w)) == 2
+    assert not (w["out"] / "verdict.json").exists()
+    err = capsys.readouterr().err
+    assert "R0_INVALID_RUN" in err and "ENTREE INVALIDE" not in err
+
+
+def test_R18_la_chaine_sur_une_forme_de_refus_n_exige_pas_le_comparateur_d_evaluation(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.2 : sur la route du refus, « Le comparateur d'évaluation n'est pas exigé ; l'export de bougies
+    d'évaluation l'est » — la chaîne sans `--benchmark-eval` publie l'issue ; ni la continuité ni le verdict ne
+    hachent de comparateur d'évaluation (plan du lot 2, D4)."""
+    w = _refusal_world(tmp_path)
+    argv = _refusal_argv(w)
+    at = argv.index("--benchmark-eval")
+    del argv[at : at + 2]
+    assert _main(argv) == 0
+    payload = cc.read_json(w["out"] / "verdict.json")
+    assert (
+        payload["raison"] == "E_NO_BENCHMARK" and "benchmark_eval" not in payload["inputs_sha256"]
+    )
+    continuity = cc.read_json(w["out"] / "continuity.json")
+    assert (
+        continuity["refused_route"] is True and "benchmark_eval" not in continuity["inputs_sha256"]
+    )
+
+
 # ---------------------------------------------------------------------------
 # § L.1 v2.2 (AM-08) — évaluation réelle sans exécution : admise, c5 non vérifiable, jamais `validé` (R-19)
 # ---------------------------------------------------------------------------
-
-R19 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
-)
 
 
 def _no_execution(
@@ -4214,7 +4419,6 @@ def _no_execution(
     continuity["state"] = "NOT_VERIFIABLE"
 
 
-@R19
 def test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_jamais_valide() -> (
     None
 ):
@@ -4231,7 +4435,6 @@ def test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_j
     assert decision.issue != cc.ISSUE_VALIDE
 
 
-@R19
 def test_R19_first_fill_at_nul_avec_des_executions_est_une_violation(tmp_path: Path) -> None:
     """§ L.1 v2.2 : « `first_fill_at` est nul si et seulement si `executions == 0` […] Une contradiction entre ces
     faits est une violation (§ I.1, ligne 15). »"""
@@ -4240,7 +4443,6 @@ def test_R19_first_fill_at_nul_avec_des_executions_est_une_violation(tmp_path: P
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
 
 
-@R19
 def test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation(tmp_path: Path) -> None:
     """§ L.1 v2.2 : « `executions == 0` implique `equity_daily` constante, égale au capital `C` ; l'outillage le
     recalcule » — la contradiction est une violation. Rien n'est testé dans l'autre sens."""
@@ -4249,15 +4451,65 @@ def test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation(tmp_
     assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
 
 
+def _violations_of(tmp_path: Path) -> list[str]:
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True
+    violations: list[str] = payload["violations"]
+    return violations
+
+
+def test_R19_un_premier_remplissage_avec_zero_execution_est_une_violation(tmp_path: Path) -> None:
+    """§ L.1 v2.2 : « `first_fill_at` est nul **si et seulement si** `executions == 0` » — l'autre sens : un premier
+    remplissage déclaré avec zéro exécution se contredit (§ I.1, ligne 15). c5 DÉCLARÉ, continuité cohérente : seul
+    le recoupement le voit."""
+    artifacts = _sound()
+    _no_execution(artifacts)
+    artifacts["evaluation"]["first_fill_at"] = (fx.ANCHOR + timedelta(minutes=10)).isoformat()
+    continuity = artifacts["continuity"]
+    continuity["clauses"]["c5"] = {"state": "DECLARED", "detail": "premier remplissage après T"}
+    continuity["state"] = cc.continuity_aggregate(
+        {k: v["state"] for k, v in continuity["clauses"].items()}
+    )
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    violations = _violations_of(tmp_path)
+    assert any("first_fill_at" in v and "executions" in v for v in violations), violations
+
+
+def test_R19_zero_execution_et_equity_constante_differente_de_C_est_une_violation(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.2 : « `executions == 0` implique `equity_daily` constante, **égale au capital `C`** ; l'outillage le
+    recalcule ». Constante à 999 : les rendements sont nuls (le recalcul du § L.2 tient), seule l'implication la voit."""
+    artifacts = _sound()
+    _no_execution(artifacts)
+    artifacts["evaluation"]["equity_daily"]["values"] = [999.0] * (N_DAYS + 1)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    violations = _violations_of(tmp_path)
+    assert any("equity_daily" in v and "executions = 0" in v for v in violations), violations
+    assert not any("returns_config" in v for v in violations), violations
+
+
+def test_R19_zero_execution_equity_non_constante_rendements_coherents_est_une_violation(
+    tmp_path: Path,
+) -> None:
+    """§ L.1 v2.2 : l'implication `executions == 0` ⟹ equity constante, **seule** : les rendements déclarés sont le
+    recalcul exact de l'equity exportée (§ L.2 tient) — le test xfail homologue, lui, est vu d'abord par ce recalcul."""
+    artifacts = _sound()
+    _no_execution(artifacts)
+    values = [1000.0] * (N_DAYS + 1)
+    values[N_DAYS // 2] = 1001.0
+    _reseries(artifacts, fx.returns_of(values), [0.0] * N_DAYS, net_pnl=0.0)
+    artifacts["evaluation"]["metrics"]["executions"] = 0
+    assert artifacts["evaluation"]["equity_daily"]["values"] != [1000.0] * (N_DAYS + 1)
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    violations = _violations_of(tmp_path)
+    assert any("equity_daily" in v and "executions = 0" in v for v in violations), violations
+    assert not any("returns_config" in v for v in violations), violations
+
+
 # ---------------------------------------------------------------------------
 # § L.2 v2.2 (AM-03) — ce que le producteur garantit, la chaîne le recalcule (R-15)
 # ---------------------------------------------------------------------------
-
-R15 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir",
-)
 
 #: λ déclarés par l'étape 3 pour la configuration du monde (`_artifacts`), et repris par l'évaluation.
 LAMBDAS_V22 = {"dd": 0.5, "sigma": 0.4}
@@ -4302,6 +4554,21 @@ def _v22_world(artifacts: dict[str, Any]) -> dict[str, Any]:
         for m, lam in LAMBDAS_V22.items()
     }
     equity = fx.nav_path("BTC/USDC", 7, N_DAYS + 1, drift=0.0006)
+    artifacts["manifest"] = payload
+    artifacts["benchmark"] = {
+        "candidates": {
+            identity: {
+                "estimable": True,
+                "lambda_dd": LAMBDAS_V22["dd"],
+                "lambda_sigma": LAMBDAS_V22["sigma"],
+            }
+        }
+    }
+    artifacts["candles_eval"] = export
+    artifacts["benchmark_eval"] = {
+        **fx.benchmark_eval("BTC/USDC"),
+        "nav": [float(v) for v in bench.nav],
+    }
     _reseries(artifacts, _returns_of(equity), returns_bench)
     evaluation = artifacts["evaluation"]
     evaluation["equity_daily"] = {
@@ -4310,16 +4577,6 @@ def _v22_world(artifacts: dict[str, Any]) -> dict[str, Any]:
         "values": equity,
     }
     evaluation["lambdas"] = dict(LAMBDAS_V22)
-    artifacts["benchmark"] = {
-        "candidates": {
-            identity: {"lambda_dd": LAMBDAS_V22["dd"], "lambda_sigma": LAMBDAS_V22["sigma"]}
-        }
-    }
-    artifacts["candles_eval"] = export
-    artifacts["benchmark_eval"] = {
-        **fx.benchmark_eval("BTC/USDC"),
-        "nav": [float(v) for v in bench.nav],
-    }
     return {"bench": bench, "equity": equity, "returns_bench": returns_bench}
 
 
@@ -4328,7 +4585,6 @@ def _decide(artifacts: dict[str, Any]) -> tuple[Any, list[str]]:
     return cv.decide(artifacts, violations=violations), violations
 
 
-@R15
 def test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une_violation() -> (
     None
 ):
@@ -4343,7 +4599,6 @@ def test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une
     assert any("returns_config" in v for v in violations), violations
 
 
-@R15
 def test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation() -> None:
     """§ L.2 v2.2, deuxième ligne : « égalité exacte avec les `λ_dd` et `λ_σ` que l'étape 3 a publiés »."""
     artifacts = _sound()
@@ -4353,7 +4608,6 @@ def test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_viola
     assert any("lambda" in v or "λ" in v for v in violations), violations
 
 
-@R15
 def test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation() -> None:
     """§ L.2 v2.2, troisième ligne : `returns_bench` recalculé sur l'export de bougies d'évaluation (B&H § C.3,
     blend § C.4 aux λ de l'étape 3) ; une discordance au bit est une violation."""
@@ -4366,7 +4620,6 @@ def test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation(
     assert any("returns_bench" in v for v in violations), violations
 
 
-@R15
 def test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_une_violation() -> (
     None
 ):
@@ -4379,7 +4632,6 @@ def test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_u
     assert any("nav" in v for v in violations), violations
 
 
-@R15
 def test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_est_une_violation() -> (
     None
 ):
@@ -4395,7 +4647,6 @@ def test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_e
     assert decision.reason != "E_NO_BENCHMARK"
 
 
-@R15
 @pytest.mark.parametrize("defaut", ["estampille après fin", "seconde paire"])
 def test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse(defaut: str) -> None:
     """§ L.2 v2.2 : « L'export de bougies d'évaluation porte une seule paire, celle de la configuration évaluée,
@@ -4419,7 +4670,6 @@ def test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse(defaut: str) 
     assert refused, "l'export hors règle d'entrée n'est pas refusé"
 
 
-@R15
 def test_R15_le_parseur_chain_expose_la_septieme_entree() -> None:
     """§ L.1 v2.2, ligne 0 : sept entrées, dont « l'export de bougies d'évaluation `candles_eval.json` ». Jumeau de
     l'ensemble exact du test du parseur (option indicative)."""
@@ -4427,16 +4677,27 @@ def test_R15_le_parseur_chain_expose_la_septieme_entree() -> None:
     assert "candles_eval" in actions
 
 
+def test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit(tmp_path: Path) -> None:
+    """§ L.2 v2.2 : « à l'étape de verdict (§ L.1, pas 6), elle recalcule chacune depuis un lieu de lecture nommé, et
+    toute discordance est une violation (§ I.1, ligne 15) ». Par la CLI (plan du lot 1, D8, A1) : la couche fichier
+    lit les quatre entrées et le verdict les recoupe — le monde « un ulp » écrit sur disque sort en code 1, un
+    diagnostic nommant `returns_config`, jamais un verdict publié."""
+    artifacts = _sound()
+    world = _v22_world(artifacts)
+    config = _returns_of(world["equity"])
+    config[10] = math.nextafter(config[10], math.inf)
+    _reseries(artifacts, config, world["returns_bench"])
+    assert cv.main(_write_cli_inputs(tmp_path, artifacts)) == 1
+    payload = cc.read_json(tmp_path / "verdict.json")
+    assert payload["invalide"] is True and payload["verdict"] is None
+    assert any("returns_config" in v for v in payload["violations"]), payload["violations"]
+
+
 # ---------------------------------------------------------------------------
 # R-22, cas 4 (phase1.md § 1) — un non-fini fourni dans `evaluation.estimability` : diagnostic, code 1
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=ValueError,
-    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
-)
 def test_R22_un_non_fini_fourni_dans_l_estimabilite_declaree_est_un_diagnostic(
     tmp_path: Path,
 ) -> None:

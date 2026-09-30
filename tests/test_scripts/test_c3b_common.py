@@ -1118,14 +1118,6 @@ def test_duplicate_or_off_grid_observed_stamps_are_control_errors(
         c3bc.coverage_series(observed, [], start=WINDOW_START, end=ANCHOR, interval=1440)
 
 
-R20 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir",
-)
-
-
-@R20
 def test_R20_a_series_without_covered_unit_is_written_with_null_dates() -> None:
     """§ A.7 v2.2 (AM-09) : « Ces deux dates sont nulles si et seulement si la série n'a aucune unité couverte au
     sens de D1 » — la série est écrite, elle n'est plus refusée (ancien test : refus `coverage_no_covered_unit`,
@@ -1267,14 +1259,6 @@ def test_the_common_layer_never_coerces_nor_opens_a_database_by_itself() -> None
     assert_source_discipline("scripts/audit/c3b_common.py")
 
 
-R16 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir",
-)
-
-
-@R16
 def test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote() -> None:
     """§ A.7 v2.2, ligne Comptabilité : « la clé `gross_quote`, dans le bloc et dans chaque lot, quelle que soit
     la paire » ; aucune clé `gross_` suffixée par une monnaie."""
@@ -1293,7 +1277,18 @@ def test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote() -> None:
     ]
 
 
-@R16
+def test_R16_un_montant_gross_hors_table_de_renommage_est_un_controle_en_echec() -> None:
+    """§ A.7 v2.2 : la couche d'export renomme la clé du moteur `gross_usdc` en `gross_quote` (liste fermée) ; un autre
+    `gross_` suffixé par une monnaie — le moteur aurait changé sous le producteur — n'est jamais exporté : contrôle en
+    échec, et le problème nomme `gross_quote`."""
+    summary, trades = engine_like_liquidation([(Decimal("0.00024975"), Decimal("100000"))])
+    summary["gross_usdt"] = summary["gross_usdc"]
+    with pytest.raises(c3bc.ProducerControlError) as caught:
+        c3bc.liquidation_block(summary, trades)
+    assert caught.value.control == "liquidation_rename"
+    assert any("gross_usdt" in p and "gross_quote" in p for p in caught.value.problems)
+
+
 def test_R16_l_observation_exportee_porte_min_order_quote(
     real_world: tuple[cc.Manifest, datetime, dict[str, dict[str, Any]]],
 ) -> None:

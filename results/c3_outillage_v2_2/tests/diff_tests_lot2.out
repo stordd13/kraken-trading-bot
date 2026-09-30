@@ -1,0 +1,132 @@
+# diff des tests — lot2 — 2026-09-29T21:01:25Z
+# HEAD c566b336593218d7db5e8b4dac77084cb58b7a74 branche feat/c3-outillage-v2.2 ; base 8c114fe
+## tests/test_scripts/test_c3_anchor.py
+  fonctions base=38 head=39 ; xfail de la base=6
+  neuve déclarée : test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+  décorateur : test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree — marqueur retiré
+  décorateur : test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee — marqueur retiré
+  décorateur : test_R17_un_manifeste_sans_famille_est_refuse — marqueur retiré
+  décorateur : test_R17_une_relance_au_dela_de_l_unique_est_refusee — marqueur retiré
+  décorateur : test_R17_une_seconde_campagne_sur_une_famille_au_verdict_compte_est_refusee — marqueur retiré
+  décorateur : test_R22_un_non_fini_dans_un_autre_enregistrement_du_registre_est_un_diagnostic — marqueur retiré
+  affectation retirée déclarée : R16
+  affectation retirée déclarée : R17
+## tests/test_scripts/test_c3_benchmark.py
+  fonctions base=35 head=35 ; xfail de la base=2
+  décorateur : test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_rend_le_candidat_non_estimable — marqueur retiré
+  décorateur : test_R22_un_bh_a_rendement_non_fini_sur_des_bougies_finies_rend_la_paire_non_comparable — marqueur retiré
+  affectation retirée déclarée : R21
+## tests/test_scripts/test_c3_chronology.py
+  fonctions base=18 head=18 ; xfail de la base=1
+  décorateur : test_R16_les_contrats_de_la_projection_sont_ceux_du_A7_v22 — marqueur retiré
+  affectation retirée déclarée : R16
+## tests/test_scripts/test_c3_common.py
+  fonctions base=90 head=93 ; xfail de la base=0
+  neuve déclarée : bh_nav
+  neuve déclarée : equity_of
+  neuve déclarée : returns_of
+  corps modifié, déclaré : benchmark_eval — fixture : nav (R-15, D1)
+  corps modifié, déclaré : evaluation — fixture : equity composée, returns_config recalculé, lambdas (R-15, D1) ; lot 2 : metrics.executions (R-19, D8)
+  corps modifié, déclaré : liquidation_segment — lot 2 : fixture, gross_quote au bloc et aux lots (R-16)
+  corps modifié, déclaré : manifest — fixture : famille (R-17) ; lot 2 : min_order_quote (R-16)
+  corps modifié, déclaré : observation — lot 2 : fixture, min_order_quote (R-16)
+  corps modifié, déclaré : test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees — D10 : listes épinglées ; lot 2 : refused, executions, first_day, last_day (obligation d)
+## tests/test_scripts/test_c3_continuity.py
+  fonctions base=48 head=50 ; xfail de la base=1
+  neuve déclarée : test_R16_un_bloc_de_liquidation_d_evaluation_qui_porte_gross_usdc_est_une_erreur_de_forme
+  neuve déclarée : test_R18_une_evaluation_executee_sans_comparateur_d_evaluation_est_refusee
+  décorateur : test_R19_une_evaluation_reelle_sans_execution_est_admise_c5_non_verifiable — marqueur retiré
+  affectation retirée déclarée : R19
+## tests/test_scripts/test_c3_entry.py
+  fonctions base=64 head=65 ; xfail de la base=7
+  neuve déclarée : test_R16_un_lot_qui_porte_gross_usdc_refuse_l_entree_a_la_forme
+  décorateur : test_R16_le_plancher_d_ordre_min_order_quote_absent_ou_nul_refuse_l_entree — marqueur retiré
+  décorateur : test_R16_un_bloc_de_liquidation_qui_porte_gross_usdc_refuse_l_entree_a_la_forme — marqueur retiré
+  décorateur : test_R16_un_plancher_d_ordre_different_du_manifeste_refuse_l_entree_D5 — marqueur retiré
+  décorateur : test_R16_un_plancher_d_ordre_suffixe_par_une_monnaie_refuse_l_entree_a_la_forme — marqueur retiré
+  décorateur : test_R20_des_dates_nulles_sur_une_serie_couverte_sont_une_violation — marqueur retiré
+  décorateur : test_R20_des_dates_presentes_sur_une_serie_sans_unite_couverte_sont_une_violation — marqueur retiré
+  décorateur : test_R20_une_serie_sans_unite_couverte_a_dates_nulles_passe_l_entree — marqueur retiré
+  affectation retirée déclarée : R16
+  affectation retirée déclarée : R20
+## tests/test_scripts/test_c3_select.py
+  fonctions base=53 head=54 ; xfail de la base=2
+  neuve déclarée : test_R20_une_serie_sans_unite_couverte_retire_la_paire_par_D1
+  corps modifié, déclaré : test_revue_R3_gross_different_de_amount_x_price_ne_passe_pas_D6 — lot 2 : clés gross_quote de la fixture (R-16, D11)
+  décorateur : test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par_D4 — marqueur retiré
+  décorateur : test_R22_une_nav_extreme_a_rendement_non_fini_retire_le_candidat_par_D4 — marqueur retiré
+  décorateur : test_chaque_identite_exacte_de_D6_fausse_retire_le_candidat — paramètre renommé, déclaré (D11)
+  affectation retirée déclarée : R21
+## tests/test_scripts/test_c3_verdict.py
+  fonctions base=202 head=215 ; xfail de la base=16
+  neuve déclarée : _on_grid
+  neuve déclarée : _producer_inputs
+  neuve déclarée : _violations_of
+  neuve déclarée : test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit
+  neuve déclarée : test_A2_une_reinscription_discordante_au_registre_est_une_violation
+  neuve déclarée : test_R17_la_table_du_10_1_est_celle_du_texte
+  neuve déclarée : test_R18_l_identite_du_refus_est_recoupee_avant_toute_lecture_du_bloc_refused
+  neuve déclarée : test_R18_la_chaine_sur_une_forme_de_refus_n_exige_pas_le_comparateur_d_evaluation
+  neuve déclarée : test_R18_les_motifs_et_la_raison_du_refus_sont_ceux_du_texte
+  neuve déclarée : test_R18_un_comparateur_non_comparable_porte_le_motif_comparator_not_comparable
+  neuve déclarée : test_R19_un_premier_remplissage_avec_zero_execution_est_une_violation
+  neuve déclarée : test_R19_zero_execution_equity_non_constante_rendements_coherents_est_une_violation
+  neuve déclarée : test_R19_zero_execution_et_equity_constante_differente_de_C_est_une_violation
+  corps modifié, déclaré : _artifacts — fixture : séries composées, equity_daily, lambdas
+  corps modifié, déclaré : _carry — lot 2 : les témoins reçoivent metrics.executions (R-19, D8, liste close)
+  corps modifié, déclaré : _chain_argv — fixture : --candles-eval
+  corps modifié, déclaré : _chain_world — fixture : λ de la chaîne sonde, export d'évaluation, blend
+  corps modifié, déclaré : _reseries — fixture : séries composées ; monde R-15 : séries seules (D2)
+  corps modifié, déclaré : _v22_world — fixture : entrée manifest, estimable, entrées posées avant _reseries
+  corps modifié, déclaré : _write_cli_inputs — fixture : quatre entrées v2.2, empreintes réelles, argv (D4)
+  corps modifié, déclaré : test_le_parseur_n_expose_que_des_chemins_et_un_horodatage — D4 : parseur de l'étape 6
+  décorateur : test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation — marqueur retiré
+  décorateur : test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_une_violation — marqueur retiré
+  décorateur : test_R15_le_parseur_chain_expose_la_septieme_entree — marqueur retiré
+  décorateur : test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation — marqueur retiré
+  décorateur : test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une_violation — marqueur retiré
+  décorateur : test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse — marqueur retiré
+  décorateur : test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_est_une_violation — marqueur retiré
+  décorateur : test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante — marqueur retiré
+  décorateur : test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0 — marqueur retiré
+  décorateur : test_R18_un_refus_que_l_export_dement_est_une_violation — marqueur retiré
+  décorateur : test_R18_un_refus_qui_porte_des_series_se_contredit — marqueur retiré
+  décorateur : test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif — marqueur retiré
+  décorateur : test_R19_first_fill_at_nul_avec_des_executions_est_une_violation — marqueur retiré
+  décorateur : test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_jamais_valide — marqueur retiré
+  décorateur : test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation — marqueur retiré
+  décorateur : test_R22_un_non_fini_fourni_dans_l_estimabilite_declaree_est_un_diagnostic — marqueur retiré
+  affectation retirée déclarée : R15
+  affectation retirée déclarée : R18
+  affectation retirée déclarée : R19
+  affectation ajoutée déclarée : MOTIFS_C5
+  affectation ajoutée déclarée : REFUSAL_REASON_C5
+  affectation ajoutée déclarée : TABLE_10_1
+  affectation modifiée, déclarée : REAL_CARRIERS_L1
+## tests/test_scripts/test_c3b_common.py
+  fonctions base=71 head=72 ; xfail de la base=3
+  neuve déclarée : test_R16_un_montant_gross_hors_table_de_renommage_est_un_controle_en_echec
+  décorateur : test_R16_l_observation_exportee_porte_min_order_quote — marqueur retiré
+  décorateur : test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote — marqueur retiré
+  décorateur : test_R20_a_series_without_covered_unit_is_written_with_null_dates — marqueur retiré
+  affectation retirée déclarée : R16
+  affectation retirée déclarée : R20
+## tests/test_scripts/test_c3b_evaluate.py
+  fonctions base=99 head=102 ; xfail de la base=5
+  neuve déclarée : test_R18_the_refusal_form_exits_0_and_writes_only_its_artefacts
+  neuve déclarée : test_R19_executions_is_the_number_of_fills
+  neuve déclarée : test_hors_R_an_exception_in_build_pair_is_a_control_error_3
+  corps modifié, déclaré : continuity — fixture : NAV du comparateur synthétique = celle du producteur
+  corps modifié, déclaré : test_a_non_buildable_comparator_stops_before_the_engine — lot 2, D1 (GO du 29/09) : la ligne « rien d'écrit » (attendu v2.1) retirée
+  corps modifié, déclaré : test_the_full_chain_verifies_a_produced_evaluation — D11 : --candles-eval
+  décorateur : test_R15_evaluation_json_declares_the_prefix_lambdas_it_used — marqueur retiré
+  décorateur : test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export — marqueur retiré
+  décorateur : test_R19_evaluation_json_metrics_carry_executions — marqueur retiré
+  décorateur : test_R19_no_trade_is_admitted_with_zero_executions — marqueur retiré
+  décorateur : test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3 — re-marqué, déclaré (caduc)
+  affectation retirée déclarée : R15
+  affectation retirée déclarée : R18
+  affectation retirée déclarée : R19
+## tests/test_scripts/test_c3b_prefix.py
+  fonctions base=36 head=36 ; xfail de la base=0
+rc=0

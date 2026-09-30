@@ -1,0 +1,8 @@
+    _read_refusal(evaluation, anchor=start, end=end)
+    if identity != derived_retained:
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"la forme de refus porte la configuration {identity[:16]}, la sélection a retenu "
+            f"{(derived_retained or '-')[:16]} — l'identité est recoupée à la configuration retenue avant toute "
+            "lecture du bloc refused (§ L.1 v2.2, retouche C-1)",
+        )

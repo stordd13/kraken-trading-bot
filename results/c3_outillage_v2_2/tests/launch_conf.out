@@ -1,0 +1,15 @@
+# launch conf — 2026-09-30T07:10:08Z — sha 08cba3d966aaf517c251a076fb7b6c60f88470c6
+sha_egal_head_local=0
+origin_tip=08cba3d966aaf517c251a076fb7b6c60f88470c6
+sha_egal_tip_origin=0
+pilote_versionne_au_sha=0
+mkdir_run=0
+clone_head=08cba3d966aaf517c251a076fb7b6c60f88470c6
+clone=0
+env_copy_out_dir=0
+pilot_sha256_blob=5a2cc18db5e6044c487f4ccabe04984a6a3ae8ffc63aad301e39a6dd2860cbaf
+pilot_sha256_clone=5a2cc18db5e6044c487f4ccabe04984a6a3ae8ffc63aad301e39a6dd2860cbaf
+pilot_cmp=0
+tmux_launch=0
+session=c3-outillage-conf-20260930 launched_at=2026-09-30T07:10:19Z
+rc=0

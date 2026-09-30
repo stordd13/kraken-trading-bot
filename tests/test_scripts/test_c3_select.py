@@ -662,9 +662,10 @@ def test_contre_exemple_2_poussiere_differente_de_la_divergence_ne_fait_pas_echo
         pytest.param(lambda liq: liq["lots"].pop(), "lots_count", id="un lot de moins que trades"),
         pytest.param(
             lambda liq: liq["lots"][0].__setitem__(
-                "gross_usdc", str(Decimal(liq["lots"][0]["gross_usdc"]) + 1)
+                "gross_quote", str(Decimal(liq["lots"][0]["gross_quote"]) + 1)
             ),
             "lots_gross_sum",
+            # § A.7 v2.2 (AM-04) : la clé est `gross_quote` ; l'identifiant du cas est gardé (comptes par identifiants).
             id="Σ gross ≠ gross_usdc",
         ),
         pytest.param(
@@ -911,10 +912,10 @@ def test_revue_R3_gross_different_de_amount_x_price_ne_passe_pas_D6(tmp_path: Pa
     def wrong_gross(obs: dict[str, Any]) -> None:
         liq = _liq(obs)
         lot = liq["lots"][0]
-        gross = Decimal(lot["gross_usdc"]) + Decimal("0.5")
-        lot["gross_usdc"] = str(gross)
+        gross = Decimal(lot["gross_quote"]) + Decimal("0.5")
+        lot["gross_quote"] = str(gross)
         lot["fee"] = str(gross * Decimal(fx.TAKER))
-        liq["gross_usdc"] = str(sum(Decimal(item["gross_usdc"]) for item in liq["lots"]))
+        liq["gross_quote"] = str(sum(Decimal(item["gross_quote"]) for item in liq["lots"]))
         liq["fees"] = str(sum(Decimal(item["fee"]) for item in liq["lots"]))
 
     w = chain(tmp_path, mutate_observations=wrong_gross)
@@ -960,6 +961,33 @@ def _astra_gap(declared_gap: float | None) -> Any:
                 cov["pairs"][pair]["5"]["longest_gap_days"] = declared_gap
 
     return mutate
+
+
+def test_R20_une_serie_sans_unite_couverte_retire_la_paire_par_D1(tmp_path: Path) -> None:
+    """§ A.7 v2.2 (AM-09) : une série sans unité couverte porte des dates nulles et passe l'entrée ; motif d'AM-09 :
+    « Une paire sans données doit sortir par D1 et devenir descriptive (§ I.1, ligne 3). Elle ne doit pas faire
+    refuser tout le run. » La série 1 w de BTC sans aucune estampille : D1 retire les candidats BTC, la sélection
+    publie."""
+
+    def no_week(cov: dict[str, Any]) -> None:
+        n = cc.expected_candles(fx.WINDOW_START, fx.ANCHOR, cc.WEEK_MINUTES)
+        fx.degrade_coverage(cov, "BTC/USDC", cc.WEEK_MINUTES, n_missing=n, offset_units=0)
+        block = cov["pairs"]["BTC/USDC"][str(cc.WEEK_MINUTES)]
+        assert block["covered_units"] == 0
+        block["first_day"] = None
+        block["last_day"] = None
+
+    w = chain(tmp_path, mutate_coverage=no_week)
+    assert w["entry_code"] == 0
+    code, payload = run(w)
+    assert code == 0 and payload is not None
+    obs = cc.read_json(w["observations"])
+    btc = {_identity_of(obs, key) for key, e in obs.items() if e["pair"] == "BTC/USDC"}
+    records = _by_identity(payload)
+    assert btc and all(
+        records[i]["clauses"]["D1"] is False and records[i]["first_failed_gate"] == "D1"
+        for i in btc
+    )
 
 
 def test_revue_R3b_le_contre_exemple_d_Astra_ne_publie_jamais_SELECTION_VALIDE(
@@ -1021,14 +1049,7 @@ def test_revue_Fin_5_un_diagnostic_d_entree_non_type_est_une_erreur_d_entree(
 # § A.8 D4 v2.2 (AM-10) — le CAGR qui découle de rendements finis doit être fini (R-21)
 # ---------------------------------------------------------------------------
 
-R21 = pytest.mark.xfail(
-    strict=True,
-    raises=OverflowError,
-    reason="R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée",
-)
 
-
-@R21
 def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par_D4() -> None:
     """§ A.8 D4 v2.2 : le candidat « sort par D4 (§ I.1, ligne 6) » — statut `NOT_ESTIMABLE`, raison
     `F_NOT_ESTIMABLE`, code 0 ; « ce n'est pas une violation (ligne 15) ». Préfixe réduit à 0,01 j : seul un
@@ -1063,11 +1084,6 @@ def test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir",
-)
 def test_R22_une_nav_extreme_a_rendement_non_fini_retire_le_candidat_par_D4() -> None:
     """§ A.8 D4 : « rendements quotidiens définis et **tous finis** » (et `log1p(r)` défini pour `r > −1`) — deux
     points de NAV finis et positifs, 1e-300 puis 1e300 : le premier rendement vaut exactement −1 en double, le

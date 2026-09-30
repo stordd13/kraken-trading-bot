@@ -1,0 +1,2 @@
+        if covered_recomputed == 0:
+            violations.append(

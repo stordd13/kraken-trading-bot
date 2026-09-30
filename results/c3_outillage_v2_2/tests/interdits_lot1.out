@@ -1,0 +1,13 @@
+# interdits — lot1 — 2026-09-29T16:30:57Z
+# HEAD 8275827cbf619ca66675d5b0836aafb91e06162f branche feat/c3-outillage-v2.2 ; base 8c114fe
+diff_vide src commit=0 index=0
+diff_vide scripts/backtest.py commit=0 index=0
+diff_vide scripts/run_p6_backtests.py commit=0 index=0
+diff_vide scripts/run_p7_grid_search.py commit=0 index=0
+diff_vide scripts/audit/rejeu_common.py commit=0 index=0
+diff_vide docs/protocole_c3.md commit=0 index=0
+diff_vide docs/amendements_c3_v2.1.md commit=0 index=0
+diff_vide docs/amendements_c3_v2.2.md commit=0 index=0
+diff_vide results/c3_v2_2 commit=0 index=0
+diff_vide results/c3b_producteur commit=0 index=0
+rc=0

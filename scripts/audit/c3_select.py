@@ -228,9 +228,9 @@ def _assert_d5(
             manifest.pair_costs_file,
         ),
         (
-            "min_order_usdc",
-            cc.require_float(contracts, "min_order_usdc", where=where),
-            manifest.min_order_usdc,
+            "min_order_quote",
+            cc.require_float(contracts, "min_order_quote", where=where),
+            manifest.min_order_quote,
         ),
         ("pair_costs.spread", cc.require_decimal(costs, "spread", where=where), spread),
         ("pair_costs.slippage", cc.require_decimal(costs, "slippage", where=where), slippage),
@@ -338,13 +338,21 @@ def evaluate_candidate(
     )
     record.clauses["D3"] = cc.d3_passes(cycles)
     record.clause_details["D3"] = d3_detail
-    # D4 — rendements dérivés définis, dénominateurs non nuls.
-    record.clauses["D4"] = rec.domain_ok
-    record.clause_details["D4"] = (
-        "rendements quotidiens définis"
-        if rec.domain_ok
-        else f"{rec.undefined_returns} rendement(s) indéfini(s) (NAV <= 0)"
-    )
+    # D4 — rendements dérivés définis et tous finis, dénominateurs non nuls, et le CAGR annualisé qui en découle,
+    # fini (§ A.8 D4 v2.2, AM-10 ; « tous finis » : R-22, cas 3). Un CAGR non défini est calculé, pas fourni : le
+    # candidat sort par D4 (§ I.1, ligne 6), jamais en violation.
+    record.clauses["D4"] = rec.domain_ok and rec.returns_finite and rec.cagr_pct is not None
+    if not rec.domain_ok:
+        d4_detail = f"{rec.undefined_returns} rendement(s) indéfini(s) (NAV <= 0)"
+    elif not rec.returns_finite:
+        d4_detail = "rendement(s) non fini(s) ou <= -1 : log1p indéfini (§ A.8 D4)"
+    elif rec.cagr_pct is None:
+        d4_detail = (
+            "CAGR annualisé non fini : l'annualisation déborde la double précision (§ A.8 D4 v2.2)"
+        )
+    else:
+        d4_detail = "rendements quotidiens définis et tous finis, CAGR fini"
+    record.clause_details["D4"] = d4_detail
     # D5 — réasserté ci-dessus (un écart est un refus, jamais un candidat retiré).
     record.clauses["D5"] = True
     record.clause_details["D5"] = "contrats égaux au manifeste"

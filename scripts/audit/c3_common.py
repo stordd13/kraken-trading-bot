@@ -231,7 +231,14 @@ class EntryRefusedError(MissingEvidenceError):
 #: stratégie) ;
 #: ``exec_interval`` (porteur de l'intervalle d'exécution dans une observation — absent de l'export
 #: réel, D5 le consigne ``not_assertable``) ; ``run_scope`` (note de portée d'un manifeste réel) ;
-#: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative).
+#: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative) ;
+#: ``verdict`` et ``deferred_evaluation`` (enregistrement du registre de variantes, § A.6 v2.2 : l'issue et son
+#: statut sont inscrits à l'étape 6, absents avant ; l'évaluation différée, seulement quand l'issue ouvre la voie de
+#: sortie prospective du § 10.1) ; ``refused`` (§ C.5 v2.2 : le bloc de la forme de refus de l'artefact d'évaluation,
+#: absent d'une évaluation exécutée) ; ``executions`` (§ L.1 v2.2 : ``metrics.executions``, porteur exigé par
+#: l'admission d'une évaluation réelle, qu'un exercice synthétique peut ne pas porter). ``first_fill_at`` reste
+#: optionnel et non nullable (un champ est l'un ou l'autre) : un synthétique peut l'omettre ; sur une réelle, sa
+#: présence est contrôlée à l'admission et sa nullité recoupée à ``metrics.executions`` (§ L.1 v2.2, AM-08).
 OPTIONAL_FIELDS: frozenset[str] = frozenset(
     {
         "estimability",
@@ -244,6 +251,10 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
         "exec_interval",
         "run_scope",
         "deployment_pairs",
+        "verdict",
+        "deferred_evaluation",
+        "refused",
+        "executions",
     }
 )
 
@@ -257,7 +268,12 @@ OPTIONAL_FIELDS: frozenset[str] = frozenset(
 #: ``reason`` — `benchmark.pairs[].reason` et `selection.reason` : ``null`` quand rien n'est à signaler ;
 #: ``liquidation_normalised`` — `continuity.json` : ``true`` prouvé par lot, ``false`` en échec, ``null`` non vérifiable ;
 #: ``bound`` — `evaluation.replications[combinaison]` : ``null`` si et seulement si la suite retenue est vide
-#: (§ F.2 e v2.1 : une combinaison sans réplication retenue ne porte pas de borne).
+#: (§ F.2 e v2.1 : une combinaison sans réplication retenue ne porte pas de borne) ;
+#: ``raison`` — le verdict inscrit au registre de variantes (§ A.6 v2.2) : ``null`` pour ``validé`` et ``réfuté`` ;
+#: ``first_failed_gate`` — `selection.candidates[]` : ``null`` pour un candidat qui n'a échoué à aucune clause (lu par
+#: le statut au critère d'arrêt, § 10.1, ligne conditionnelle) ;
+#: ``first_day``, ``last_day`` — l'artefact de couverture (§ A.7 v2.2, AM-09) : nulles si et seulement si la série n'a
+#: aucune unité couverte au sens de D1 (``coverage_recompute`` le recoupe).
 NULLABLE_FIELDS: frozenset[str] = frozenset(
     {
         "stale_by_candles",
@@ -276,6 +292,10 @@ NULLABLE_FIELDS: frozenset[str] = frozenset(
         "reason",
         "liquidation_normalised",
         "bound",
+        "raison",
+        "first_failed_gate",
+        "first_day",
+        "last_day",
     }
 )
 
@@ -724,12 +744,23 @@ def check_returns(returns: Sequence[float], *, label: str) -> np.ndarray:
     return arr
 
 
-def cagr_pct(returns: Sequence[float], days: float) -> float:
-    """Rendement géométrique annualisé en %/an, par somme de `log1p` (§ F.2 c)."""
+def cagr_pct(returns: Sequence[float], days: float) -> float | None:
+    """Rendement géométrique annualisé en %/an, par somme de `log1p` (§ F.2 c).
+
+    **Non défini — ``None``, jamais une exception** (§ A.8 D4 v2.2, AM-10) : quand un rendement n'est pas fini ou vaut
+    ``≤ −1`` (``log1p`` n'y existe pas), ou quand l'annualisation déborde la double précision (``math.exp`` au-delà de
+    709,78). C'est une valeur **calculée** par l'outillage, pas fournie : D4 retire le candidat (§ I.1, ligne 6),
+    ce n'est pas une violation."""
     if days <= 0:
         raise InvalidInputError("days doit être strictement positif")
+    if not all(math.isfinite(r) and r > RETURN_DOMAIN_FLOOR for r in returns):
+        return None
     total = math.fsum(math.log1p(r) for r in returns)
-    return (math.exp(total * ANNUALISATION_DAYS / days) - 1.0) * 100.0
+    try:
+        value = (math.exp(total * ANNUALISATION_DAYS / days) - 1.0) * 100.0
+    except OverflowError:
+        return None
+    return value if math.isfinite(value) else None
 
 
 def block_start_indices(rng: np.random.Generator, n: int, block_length: int, b: int) -> np.ndarray:
@@ -1138,12 +1169,13 @@ LIQUIDATION_NORMALISED_OF_C3: dict[str, bool | None] = {
     "FAILED": False,
 }
 
-#: § L.1 v2.1 (AM-24) — les trois porteurs sans lesquels une évaluation déclarée réelle n'est pas admise : les
-#: trois clauses déclaratives du § B (§ B.2, § B.4, § C.3).
+#: § L.1 v2.2 (AM-08) — les porteurs sans lesquels une évaluation déclarée réelle n'est pas admise : les trois
+#: clauses déclaratives du § B (§ B.2, § B.4, § C.3), et le nombre d'exécutions qui recoupe la troisième.
 REAL_EVALUATION_CARRIERS: tuple[str, ...] = (
     "flat_start_proof",
     "invocation.single_call",
     "first_fill_at",
+    "metrics.executions",
 )
 
 
@@ -1152,8 +1184,14 @@ def evaluation_admission(evaluation: Mapping[str, Any]) -> bool:
     `c3_verdict`, avant tout chemin de publication. ``synthetic`` est obligatoire et strictement typé (absent,
     nul, mal typé → erreur de forme). ``true`` : exercice synthétique, admis. ``false`` : évaluation réelle,
     admise **si et seulement si** elle porte ses trois porteurs ; il en manque un → refus ``R0_INVALID_RUN``,
-    code 2, rien publié, avec le nom de ce qui manque. Renvoie ``synthetic``."""
+    code 2, rien publié, avec le nom de ce qui manque. Renvoie ``synthetic``.
+
+    § L.1 v2.2 (AM-06) : la **forme de refus** (bloc ``refused``) est admise sans les porteurs, qu'elle soit
+    déclarée réelle ou synthétique — aucune exécution n'a eu lieu. Son bloc n'est pas lu ici : l'identité qu'elle
+    porte est recoupée à la configuration retenue avant toute lecture du bloc (retouche C-1)."""
     synthetic = require_bool(evaluation, "synthetic", where="evaluation")
+    if is_refusal_form(evaluation):
+        return synthetic
     if synthetic:
         return True
     missing: list[str] = []
@@ -1164,16 +1202,93 @@ def evaluation_admission(evaluation: Mapping[str, Any]) -> bool:
         require_bool(invocation, "single_call", where="evaluation.invocation")
     except MissingEvidenceError:
         missing.append("invocation.single_call")
-    if optional_str(evaluation, "first_fill_at", where="evaluation") is None:
+    # § L.1 v2.2 (AM-08) : `metrics.executions`, le nombre d'exécutions, entier ≥ 0 ; `first_fill_at` présent, nul
+    # admis — et seulement sans exécution, ce que `execution_recoupements` recoupe. Nul sans le compte qui le recoupe,
+    # sa recevabilité n'est pas décidable : les deux manques sont nommés (plan du lot 2, D8).
+    try:
+        metrics = require_mapping(evaluation, "metrics", where="evaluation")
+        require_int(metrics, "executions", where="evaluation.metrics", minimum=0)
+        executions_carried = True
+    except (MissingEvidenceError, InvalidValueError):
+        executions_carried = False
+    first_fill = optional_str(evaluation, "first_fill_at", where="evaluation")
+    if "first_fill_at" not in evaluation or (first_fill is None and not executions_carried):
         missing.append("first_fill_at")
+    if not executions_carried:
+        missing.append("metrics.executions")
     if missing:
         raise EntryRefusedError(
             "R0_INVALID_RUN",
-            f"évaluation réelle (synthetic: false) sans {', '.join(missing)} — § L.1 v2.1 : admise si et "
-            "seulement si elle porte flat_start_proof, invocation.single_call et first_fill_at "
-            "(§ B.2, § B.4, § C.3)",
+            f"évaluation réelle (synthetic: false) sans {', '.join(missing)} — § L.1 v2.2 : admise si et "
+            "seulement si elle porte flat_start_proof, invocation.single_call, first_fill_at et metrics.executions "
+            "(§ B.2, § B.4, § C.3) ; first_fill_at nul n'est recevable qu'avec metrics.executions, qui le recoupe",
         )
     return False
+
+
+def execution_recoupements(evaluation: Mapping[str, Any], *, capital: Decimal) -> list[str]:
+    """§ L.1 v2.2 (AM-08) — les faits d'une évaluation sans exécution se recoupent ; une contradiction est une
+    violation (§ I.1, ligne 15). Dès que ``metrics.executions`` est porté (toujours sur une évaluation réelle, § L.1) :
+
+    * ``first_fill_at`` est nul **si et seulement si** ``executions == 0`` ;
+    * ``executions == 0`` **implique** ``equity_daily`` constante, égale au capital ``C`` — recalculé sur les valeurs
+      exportées, au bit.
+
+    Rien n'est exigé dans l'autre sens : une equity constante ne prouve pas l'absence d'exécution. Rend les
+    violations constatées."""
+    metrics = require_mapping(evaluation, "metrics", where="evaluation")
+    executions = optional_int(metrics, "executions", where="evaluation.metrics")
+    if executions is None:
+        return []
+    if executions < 0:
+        return [
+            f"evaluation.metrics.executions = {executions} : un nombre d'exécutions est ≥ 0 (§ L.1 v2.2)"
+        ]
+    out: list[str] = []
+    first_fill = optional_str(evaluation, "first_fill_at", where="evaluation")
+    if (first_fill is None) != (executions == 0):
+        stated = "nul" if first_fill is None else first_fill
+        out.append(
+            f"evaluation.first_fill_at {stated} avec metrics.executions = {executions} — first_fill_at est nul si "
+            "et seulement si executions == 0 (§ L.1 v2.2)"
+        )
+    if executions == 0:
+        equity = require_mapping(evaluation, "equity_daily", where="evaluation")
+        values = require_finite_series(equity, "values", where="evaluation.equity_daily", min_len=1)
+        c = float(capital)
+        off = [i for i, value in enumerate(values) if value != c]
+        if off:
+            out.append(
+                f"evaluation.equity_daily : {len(off)} valeur(s) ≠ C = {capital} (premier écart au point {off[0]}) "
+                "avec metrics.executions = 0 — sans exécution, l'equity est constante, égale au capital (§ L.1 v2.2)"
+            )
+    return out
+
+
+#: § C.5 v2.2 (AM-06) — la raison que porte le bloc ``refused`` de la forme de refus : liste close d'une entrée.
+REFUSAL_REASONS: tuple[str, ...] = ("comparator_not_buildable",)
+#: § C.5 v2.2 — « Le motif est un champ de l'issue, pas une raison » : la liste close des motifs de ``E_NO_BENCHMARK``.
+BENCHMARK_MOTIFS: tuple[str, ...] = ("comparator_not_buildable", "comparator_not_comparable")
+#: § C.5 v2.2 — les séries d'une évaluation exécutée ; la forme de refus n'en porte **aucune** (« un artefact
+#: d'évaluation qui porte à la fois un bloc ``refused`` et des séries se contredit : c'est une violation »).
+EVALUATION_SERIES: tuple[str, ...] = (
+    "equity_daily",
+    "returns_config",
+    "returns_bench",
+    "replications",
+)
+
+
+def is_refusal_form(evaluation: Mapping[str, Any]) -> bool:
+    """§ C.5, § L.1 v2.2 : l'artefact d'évaluation porte-t-il un bloc ``refused`` ? **Présence et type seuls** : le
+    contenu du bloc n'est pas lu ici (retouche C-1). C'est ce qui choisit la route (plan du lot 2, D5)."""
+    return optional_mapping(evaluation, "refused", where="evaluation") is not None
+
+
+def refusal_series_carried(evaluation: Mapping[str, Any]) -> list[str]:
+    """§ C.5 v2.2 : les séries (``EVALUATION_SERIES``) que porte un artefact sous forme de refus — non vide, il se
+    contredit (violation, § I.1 ligne 15)."""
+    return [key for key in EVALUATION_SERIES if key in evaluation]
 
 
 #: § C.5 — les tests de comparabilité du comparateur d'évaluation, liste close, **lus et typés tous
@@ -1242,8 +1357,11 @@ class Manifest:
     taker: Decimal
     pair_costs_file: str
     pair_costs: Mapping[str, tuple[Decimal, Decimal]]
-    min_order_usdc: float
+    #: § A.7 v2.2 (AM-04) — le plancher d'ordre, en unités de la monnaie de cotation ; clé du manifeste `min_order_quote`.
+    min_order_quote: float
     provenance: str
+    #: § A.6 v2.2 (AM-05) — la famille du mécanisme évalué, au sens du critère d'arrêt (CONTRAINTES § 10.1).
+    family: str
     candidates: tuple[Candidate, ...]
     engines: Mapping[str, str]
     thresholds: Mapping[str, Mapping[str, Any]]
@@ -1313,9 +1431,14 @@ def load_manifest(raw: Any) -> Manifest:
             require_decimal(block, "spread", where=f"{where}.fees.pair_costs.{pair}"),
             require_decimal(block, "slippage", where=f"{where}.fees.pair_costs.{pair}"),
         )
-    min_order = require_float(raw, "min_order_usdc", where=where)
+    # § A.7 v2.2 (AM-04), décision du 29/09 : la clé du manifeste est `min_order_quote`.
+    min_order = require_float(raw, "min_order_quote", where=where)
     universe = require_mapping(raw, "universe", where=where)
     provenance = require_str(universe, "provenance", where=f"{where}.universe", allowed=PROVENANCES)
+    # § A.6 v2.2 (AM-05) : « au minimum et sans exception […] la famille du mécanisme évalué ».
+    family = require_str(raw, "family", where=where)
+    if not family:
+        raise MissingEvidenceError(f"{where}.family: chaîne vide")
     strategies_block = require_mapping(raw, "strategies", where=where)
     engines: dict[str, str] = {}
     strategy_tfs: dict[str, tuple[str, ...]] = {}
@@ -1426,8 +1549,9 @@ def load_manifest(raw: Any) -> Manifest:
         taker=taker,
         pair_costs_file=pair_costs_file,
         pair_costs=pair_costs,
-        min_order_usdc=min_order,
+        min_order_quote=min_order,
         provenance=provenance,
+        family=family,
         candidates=tuple(candidates),
         engines=engines,
         thresholds=thresholds,
@@ -1522,7 +1646,7 @@ PREFIX_WHITELIST_CONTRACTS: tuple[str, ...] = (
     "fees",
     "pair_costs",
     "pair_costs_file",
-    "min_order_usdc",
+    "min_order_quote",
 )
 
 
@@ -1588,6 +1712,7 @@ class DailyRecompute:
     returns: tuple[float, ...]
     undefined_returns: int
     domain_ok: bool
+    returns_finite: bool
     cagr_pct: float | None
     mdd_daily: float
     sigma_daily: float | None
@@ -1622,13 +1747,22 @@ def recompute_daily(values: Sequence[float], *, days: float) -> DailyRecompute:
             undefined += 1
             index.append(index[-1])
     domain_ok = len(vals) >= 2 and all(v > 0 for v in vals)
+    # § A.8 D4 v2.2 : des NAV finies peuvent donner un rendement non fini (rapport qui déborde) ou exactement −1
+    # (quotient qui s'arrondit à 0) — D4 exige des rendements « définis et tous finis », et un CAGR fini (AM-10) ;
+    # aucun calcul dérivé ne lève sur eux, et `returns` reste la série recalculée, telle quelle.
+    returns_finite = all(math.isfinite(r) and r > RETURN_DOMAIN_FLOOR for r in returns)
     cagr = cagr_pct(returns, days) if domain_ok and returns else None
-    sigma = statistics.stdev(returns) if len(returns) > 1 else None
+    sigma = (
+        statistics.stdev(returns)
+        if len(returns) > 1 and all(math.isfinite(r) for r in returns)
+        else None
+    )
     return DailyRecompute(
         n_points=len(vals),
         returns=tuple(returns),
         undefined_returns=undefined,
         domain_ok=domain_ok,
+        returns_finite=returns_finite,
         cagr_pct=cagr,
         mdd_daily=max_drawdown_pct(index),
         sigma_daily=sigma,
@@ -1809,20 +1943,36 @@ def coverage_recompute(
             f"{where}.longest_gap_days: {gap_declared!r} != {gap_recomputed!r} recalculé "
             f"({longest_run} estampilles consécutives manquantes)"
         )
-    first_day = require_str(block, "first_day", where=where)
-    last_day = require_str(block, "last_day", where=where)
-    try:
-        first_d = datetime.fromisoformat(first_day).date()
-        last_d = datetime.fromisoformat(last_day).date()
-    except ValueError:
-        problems.append(
-            f"{where}.first_day/last_day: dates illisibles ({first_day!r}, {last_day!r})"
-        )
-    else:
-        if not (start.date() <= first_d <= last_d <= end.date()):
-            problems.append(
-                f"{where}.first_day/last_day: [{first_day}, {last_day}] hors de la fenêtre ou inversés"
+    # § A.7 v2.2 (AM-09) : les deux dates sont nulles si et seulement si la série n'a aucune unité couverte au sens de
+    # D1 (le recalcul) ; l'écart, dans un sens ou dans l'autre, contredit l'artefact (§ I.1, ligne 15) — une
+    # violation, rendue à part, jamais un problème de couverture (plan du lot 2, D10).
+    violations: list[str] = []
+    first_day = nullable_str(block, "first_day", where=where)
+    last_day = nullable_str(block, "last_day", where=where)
+    if first_day is None or last_day is None:
+        if first_day is not None or last_day is not None or covered_recomputed > 0:
+            violations.append(
+                f"{where}.first_day/last_day ({first_day!r}, {last_day!r}) avec {covered_recomputed} unité(s) "
+                "couverte(s) recalculée(s) — nulles si et seulement si aucune unité n'est couverte (§ A.7 v2.2)"
             )
+    else:
+        if covered_recomputed == 0:
+            violations.append(
+                f"{where}.first_day/last_day [{first_day}, {last_day}] sur une série sans unité couverte — nulles si "
+                "et seulement si aucune unité n'est couverte (§ A.7 v2.2)"
+            )
+        try:
+            first_d = datetime.fromisoformat(first_day).date()
+            last_d = datetime.fromisoformat(last_day).date()
+        except ValueError:
+            problems.append(
+                f"{where}.first_day/last_day: dates illisibles ({first_day!r}, {last_day!r})"
+            )
+        else:
+            if not (start.date() <= first_d <= last_d <= end.date()):
+                problems.append(
+                    f"{where}.first_day/last_day: [{first_day}, {last_day}] hors de la fenêtre ou inversés"
+                )
     return {
         "expected_recomputed": expected_recomputed,
         "observed_recomputed": observed_recomputed,
@@ -1832,6 +1982,7 @@ def coverage_recompute(
         "longest_gap_days_recomputed": gap_recomputed,
         "n_missing": len(stamps),
         "problems": problems,
+        "violations": violations,
     }
 
 
@@ -1890,6 +2041,26 @@ def check_base_quantity_keys(block: Mapping[str, Any], *, where: str) -> None:
                 )
 
 
+#: § A.7 v2.2 (AM-04) — les montants en monnaie de cotation portent le suffixe `_quote` **aux deux positions nommées
+#: seules** : la ligne Contrats (premier niveau d'une observation, plancher d'ordre) et la ligne Comptabilité (bloc de
+#: liquidation et chaque lot, montant brut). Ailleurs, un suffixe de monnaie n'est ni lu ni refusé (règle 1 du § A.7).
+QUOTE_STEM_CONTRACTS = "min_order"
+QUOTE_STEM_ACCOUNTING = "gross"
+
+
+def check_quote_amount_keys(block: Mapping[str, Any], *, stem: str, where: str) -> None:
+    """§ A.7 v2.2 : à la position qu'elle nomme, une clé `<stem>_` suffixée par le nom d'une monnaie (`_usdc`,
+    `_usdt`, …) est une erreur de forme (§ I.1, ligne 2), même à côté de sa jumelle `_quote` — le message nomme la clé
+    attendue. Symétrique de `check_base_quantity_keys` ; bornée au seul radical de la position : toute autre clé du
+    bloc n'est ni lue ni refusée."""
+    for key in block:
+        if key.startswith(f"{stem}_") and key != f"{stem}_quote":
+            raise MissingEvidenceError(
+                f"{where}.{key}: montant suffixé par une monnaie — la clé attendue est `{stem}_quote`, quelle "
+                "que soit la paire (§ A.7 v2.2)"
+            )
+
+
 def liquidation_identities(
     block: Mapping[str, Any] | None,
     *,
@@ -1903,7 +2074,7 @@ def liquidation_identities(
 
     Par lot : `amount_i > 0`, `gross_i == amount_i × price` (le prix du bloc — un seul prix de
     liquidation, `backtest.py:3104`), `fee_i == gross_i × taker` (`:3105`), `entry_price` et `pnl`
-    nuls ensemble ; agrégats : Σ fee = fees, Σ gross = gross_usdc, nombre de lots = trades, lots à
+    nuls ensemble ; agrégats : Σ fee = fees, Σ gross = gross_quote, nombre de lots = trades, lots à
     coût connu = positions, Σ amount des lots inconnus = residual_trade_base. `lots` absent ⇒ la
     magnitude du taker est indécidable ⇒ non vérifié. Aucun seuil. Partagé par la sélection (D6 au
     préfixe) et la continuité (clause 3 à l'évaluation).
@@ -1935,12 +2106,13 @@ def liquidation_identities(
             "reported": reported,
         }
     check_base_quantity_keys(block, where=where)
+    check_quote_amount_keys(block, stem=QUOTE_STEM_ACCOUNTING, where=where)
     positions = require_int(block, "positions", where=where, minimum=0)
     trades = require_int(block, "trades", where=where, minimum=0)
     residual_trade = require_decimal(block, "residual_trade_base", where=where)
     residual_net = require_decimal(block, "residual_net_proceeds", where=where)
     fees = require_decimal(block, "fees", where=where)
-    gross = require_decimal(block, "gross_usdc", where=where)
+    gross = require_decimal(block, "gross_quote", where=where)
     unknown = trades - positions
     check("trades_positions", unknown in (0, 1), f"trades − positions = {unknown}, attendu 0 ou 1")
     check(
@@ -1999,7 +2171,7 @@ def liquidation_identities(
             timestamp <= end,
             f"{timestamp.isoformat()} > borne {end.isoformat()}",
         )
-        check("gross_positive", gross > zero, f"gross_usdc {gross} <= 0 avec trades > 0")
+        check("gross_positive", gross > zero, f"gross_quote {gross} <= 0 avec trades > 0")
         check(
             "fees_positive",
             fees > zero,
@@ -2035,7 +2207,8 @@ def liquidation_identities(
         if not isinstance(lot, Mapping):
             raise MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
         check_base_quantity_keys(lot, where=lwhere)
-        gross_i = require_decimal(lot, "gross_usdc", where=lwhere)
+        check_quote_amount_keys(lot, stem=QUOTE_STEM_ACCOUNTING, where=lwhere)
+        gross_i = require_decimal(lot, "gross_quote", where=lwhere)
         fee_i = require_decimal(lot, "fee", where=lwhere)
         amount_i = require_decimal(lot, "amount_base", where=lwhere)
         entry_price = nullable_decimal(lot, "entry_price", where=lwhere)
@@ -2050,7 +2223,9 @@ def liquidation_identities(
             )
         elif gross_i != amount_i * price:
             lots_ok = False
-            details.append(f"lot[{i}]: gross_usdc {gross_i} != amount × price = {amount_i * price}")
+            details.append(
+                f"lot[{i}]: gross_quote {gross_i} != amount × price = {amount_i * price}"
+            )
         expected_fee = gross_i * taker
         if fee_i != expected_fee:
             lots_ok = False
@@ -2075,7 +2250,7 @@ def liquidation_identities(
         "au moins un lot contredit amount > 0, gross = amount × price ou fee = gross × taker",
     )
     check("lots_fees_sum", fee_sum == fees, f"Σ fee_i {fee_sum} != fees {fees}")
-    check("lots_gross_sum", gross_sum == gross, f"Σ gross_i {gross_sum} != gross_usdc {gross}")
+    check("lots_gross_sum", gross_sum == gross, f"Σ gross_i {gross_sum} != gross_quote {gross}")
     check("lots_count", len(lots) == trades, f"{len(lots)} lots != trades {trades}")
     check("lots_known", known == positions, f"{known} lots à coût connu != positions {positions}")
     check(

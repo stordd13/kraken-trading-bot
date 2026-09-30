@@ -1,0 +1,63 @@
+# suite — base — 2026-09-29T15:10:44Z
+# HEAD 6e9f4c0ffd607e6675ea3b78f4e7e8819b83ce07 branche feat/c3-outillage-v2.2
+# fichiers suivis modifiés : 0
+# commande : poetry run pytest -q -p no:cacheprovider -rsxX -k "not test_determinism_parallel_vs_serial_full"
+tunnel_5433=ouvert
+pytest_exit=0
+fin=2026-09-29T15:19:44Z
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:108: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:114: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:99: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree[absente] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R16_le_plancher_d_ordre_min_order_quote_du_manifeste_absent_ou_nul_refuse_l_entree[nulle] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_un_manifeste_sans_famille_est_refuse - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_une_relance_au_dela_de_l_unique_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_une_seconde_campagne_sur_une_famille_au_verdict_compte_est_refusee - R-17 : § A.6 v2.2 (AM-05), le registre tient l'état du critère d'arrêt — outillage à venir
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R22_un_non_fini_dans_un_autre_enregistrement_du_registre_est_un_diagnostic - R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir
+XFAIL tests/test_scripts/test_c3_benchmark.py::test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_rend_le_candidat_non_estimable - R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée
+XFAIL tests/test_scripts/test_c3_benchmark.py::test_R22_un_bh_a_rendement_non_fini_sur_des_bougies_finies_rend_la_paire_non_comparable - R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir
+XFAIL tests/test_scripts/test_c3_chronology.py::test_R16_les_contrats_de_la_projection_sont_ceux_du_A7_v22 - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_continuity.py::test_R19_une_evaluation_reelle_sans_execution_est_admise_c5_non_verifiable - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R16_le_plancher_d_ordre_min_order_quote_absent_ou_nul_refuse_l_entree[absente] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R16_le_plancher_d_ordre_min_order_quote_absent_ou_nul_refuse_l_entree[nulle] - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R16_un_bloc_de_liquidation_qui_porte_gross_usdc_refuse_l_entree_a_la_forme - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R16_un_plancher_d_ordre_different_du_manifeste_refuse_l_entree_D5 - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R16_un_plancher_d_ordre_suffixe_par_une_monnaie_refuse_l_entree_a_la_forme - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_des_dates_nulles_sur_une_serie_couverte_sont_une_violation - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_des_dates_presentes_sur_une_serie_sans_unite_couverte_sont_une_violation - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3_entry.py::test_R20_une_serie_sans_unite_couverte_a_dates_nulles_passe_l_entree - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3_select.py::test_R21_un_cagr_qui_deborde_sur_des_rendements_finis_retire_le_candidat_par_D4 - R-21 : § A.8 D4 v2.2 (AM-10), CAGR fini exigé ; aujourd'hui OverflowError non rattrapée
+XFAIL tests/test_scripts/test_c3_select.py::test_R22_une_nav_extreme_a_rendement_non_fini_retire_le_candidat_par_D4 - R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R15_la_nav_du_comparateur_d_evaluation_differente_du_bh_recalcule_est_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R15_le_parseur_chain_expose_la_septieme_entree - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R15_returns_config_ecarte_d_un_ulp_du_recalcul_sur_equity_daily_est_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse[estampille apr\xe8s fin] - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R15_un_export_d_evaluation_hors_regle_d_entree_est_refuse[seconde paire] - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R15_une_evaluation_non_refusee_sans_estampille_d_entree_dans_l_export_est_une_violation - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R17_la_chaine_inscrit_l_issue_et_son_statut_a_l_enregistrement_de_la_variante - R-17 : § A.6 v2.2 (AM-05), l'étape 6 inscrit l'issue et son statut au registre — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_d_une_autre_configuration_que_la_retenue_est_un_refus_R0 - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_que_l_export_dement_est_une_violation - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R19_first_fill_at_nul_avec_des_executions_est_une_violation - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R19_une_evaluation_reelle_sans_execution_ne_porte_aucune_violation_et_jamais_valide - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL tests/test_scripts/test_c3_verdict.py::test_R22_un_non_fini_fourni_dans_l_estimabilite_declaree_est_un_diagnostic - R-22 : sortie code 1 hors table § I.1 (classification (c), phase1.md § 1) — outillage à venir
+XFAIL tests/test_scripts/test_c3b_common.py::test_R16_l_observation_exportee_porte_min_order_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3b_common.py::test_R16_les_lots_et_le_bloc_de_liquidation_portent_gross_quote - R-16 : § A.7 v2.2 (AM-04), clés `_quote` aux positions nommées — outillage à venir
+XFAIL tests/test_scripts/test_c3b_common.py::test_R20_a_series_without_covered_unit_is_written_with_null_dates - R-20 : § A.7 v2.2 (AM-09), dates de couverture nulles ssi aucune unité couverte — outillage à venir
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_R15_evaluation_json_declares_the_prefix_lambdas_it_used - R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export - R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_R19_evaluation_json_metrics_carry_executions - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_R19_no_trade_is_admitted_with_zero_executions - R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3 - outillage v2.2, hors réserve : contrat producteur 0/2/3 (c3b_evaluate.py:544) — outillage à venir
+resume=3259 passed, 6 skipped, 24 deselected, 46 xfailed in 537.66s (0:08:57)
+failed_error_xpass=0
+brut=/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/33f3b331-1858-4ecf-bbfc-a8b8596c0a8a/scratchpad/suite_base_raw.txt
+rc=0

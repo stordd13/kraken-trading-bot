@@ -1,0 +1,23 @@
+# pilot_dryrun — 2026-09-29T22:10:25Z — HEAD 892111fad6bf55e01966a605452e1502b34fc963
+bash_local=GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)
+pilote_lignes_changees=3
+sim_conforme_exit=0 lignes_status=91
+sim_conforme_bit_equal_3of3=0 compared=23 differing=0 absent=0
+sim_conforme_listing_expected_3of3=0
+sim_eval_run2_exit=1
+sim_eval_run2_eq3 eval/evaluation.json=1 r12=1 r13=0
+sim_chain_violation_exit=1
+sim_chain_violation_chain_1=1
+sim_chain_violation_replay_violations_empty_1=false
+sim_guard_head_exit=2
+sim_guard_head_guard=REFUSED
+gate_pilote_lignes_changees=3
+sim_gate_conforme_exit=0
+sim_gate_conforme_full=0
+sim_gate_conforme_junit_total=tests:24,failures:0,errors:0,skipped:0,missing:0
+sim_gate_conforme_extract=0
+sim_gate_skip_exit=1
+sim_gate_skip_combo7=0 junit=1/0/0/1
+sim_gate_skip_full=FAILED n=1 combos=combo7
+temporaire_supprime=0
+rc=0

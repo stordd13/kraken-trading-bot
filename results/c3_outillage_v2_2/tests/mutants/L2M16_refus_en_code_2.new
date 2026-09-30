@@ -1,0 +1,1 @@
+        return _refuse("comparator_not_buildable", ["mutant : refus (2), rien d'écrit"])

@@ -1,0 +1,18 @@
+# suite — L2C6 — 2026-09-29T20:51:10Z
+# HEAD c566b336593218d7db5e8b4dac77084cb58b7a74 branche feat/c3-outillage-v2.2
+# fichiers suivis modifiés : 0
+# commande : poetry run pytest -q -p no:cacheprovider -rsxX -k "not test_determinism_parallel_vs_serial_full"
+tunnel_5433=ouvert
+pytest_exit=0
+fin=2026-09-29T21:00:15Z
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:108: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:114: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:121: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:140: BYBIT_INTEGRATION=trade required (real order)
+SKIPPED [1] tests/test_connectors/test_bybit_rest_integration.py:99: Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+SKIPPED [1] tests/test_connectors/test_bybit_ws_integration.py:53: Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3 - outillage v2.2, hors réserve : CADUC par AM-10 (décision de gate du 29/09, lot 1) — sous v2.2 `cc.cagr_pct` ne lève plus, le CAGR du B&H plein notionnel déborde sans entrer dans l'évaluation (blends finis) : code 0, l'attendu code 3 est inatteignable sans convention ; remplacé au lot 2 par un adverse qui force une exception dans build_pair
+resume=3323 passed, 6 skipped, 24 deselected, 1 xfailed in 544.04s (0:09:04)
+failed_error_xpass=0
+brut=/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/2e728105-d14c-4f3d-8f3b-4f43a265175d/scratchpad/suite_L2C6.raw
+rc=0

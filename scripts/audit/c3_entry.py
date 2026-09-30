@@ -139,10 +139,13 @@ def _liquidation_form(block: Mapping[str, Any], pair: str, *, where: str) -> Non
     ``inventory_divergence_base``, et ``amount_base`` par lot) ; une clé suffixée par le nom d'un actif
     (``_btc``, ``_eth``, …) est une erreur de forme (§ I.1, ligne 2). Le moteur écrit ``_btc`` pour toutes
     les paires (convention ``btc_held``, `backtest.py:3288-3293`) : le renommage vit dans la couche
-    d'export du runner (C3b), jamais ici."""
+    d'export du runner (C3b), jamais ici. § A.7 v2.2 (AM-04) : le montant brut en monnaie de cotation est
+    ``gross_quote``, dans le bloc et dans chaque lot, quelle que soit la paire ; une clé ``gross_`` suffixée par une
+    monnaie (``gross_usdc``, ``gross_usdt``, …) est une erreur de forme (``cc.check_quote_amount_keys``)."""
     del pair  # la paire n'entre pas dans les noms de clés, voir la docstring
     base = "base"
     cc.check_base_quantity_keys(block, where=where)
+    cc.check_quote_amount_keys(block, stem=cc.QUOTE_STEM_ACCOUNTING, where=where)
     cc.require_int(block, "positions", where=where, minimum=0)
     cc.require_int(block, "trades", where=where, minimum=0)
     for key in (
@@ -152,7 +155,7 @@ def _liquidation_form(block: Mapping[str, Any], pair: str, *, where: str) -> Non
         "residual_net_proceeds",
         "pnl",
         "fees",
-        "gross_usdc",
+        "gross_quote",
         f"residual_trade_{base}",
         f"dust_written_off_{base}",
         f"inventory_divergence_{base}",
@@ -171,8 +174,9 @@ def _liquidation_form(block: Mapping[str, Any], pair: str, *, where: str) -> Non
             if not isinstance(lot, Mapping):
                 raise cc.MissingEvidenceError(f"{lwhere}: bloc attendu, reçu {type(lot).__name__}")
             cc.check_base_quantity_keys(lot, where=lwhere)
+            cc.check_quote_amount_keys(lot, stem=cc.QUOTE_STEM_ACCOUNTING, where=lwhere)
             cc.require_decimal(lot, f"amount_{base}", where=lwhere)
-            cc.require_decimal(lot, "gross_usdc", where=lwhere)
+            cc.require_decimal(lot, "gross_quote", where=lwhere)
             cc.require_decimal(lot, "fee", where=lwhere)
             cc.nullable_decimal(lot, "entry_price", where=lwhere)
             cc.nullable_decimal(lot, "pnl", where=lwhere)
@@ -261,7 +265,10 @@ def a01_form(ctx: Context) -> Outcome:
             costs = cc.require_mapping(entry, "pair_costs", where=where)
             cc.require_decimal(costs, "spread", where=f"{where}.pair_costs")
             cc.require_decimal(costs, "slippage", where=f"{where}.pair_costs")
-            cc.require_float(entry, "min_order_usdc", where=where)
+            # § A.7 v2.2 (AM-04), ligne Contrats : le plancher d'ordre est `min_order_quote` ; à cette position,
+            # une clé `min_order_` suffixée par une monnaie est une erreur de forme.
+            cc.check_quote_amount_keys(entry, stem=cc.QUOTE_STEM_CONTRACTS, where=where)
+            cc.require_float(entry, "min_order_quote", where=where)
             cc.optional_int(entry, "exec_interval", where=where)
             pair = cc.require_str(entry, "pair", where=where)
             segments = list(cc.require_mapping(entry, "equity_daily", where=where))
@@ -315,9 +322,9 @@ def a02_d5(ctx: Context) -> Outcome:
                 manifest.pair_costs_file,
             ),
             (
-                "min_order_usdc",
-                cc.require_float(entry, "min_order_usdc", where=where),
-                manifest.min_order_usdc,
+                "min_order_quote",
+                cc.require_float(entry, "min_order_quote", where=where),
+                manifest.min_order_quote,
             ),
         ]
         costs = cc.require_mapping(entry, "pair_costs", where=where)
@@ -565,8 +572,9 @@ def a07_coverage(ctx: Context) -> Outcome:
                 unit = cc.require_str(series, "unit", where=swhere, allowed=("day", "week"))
                 cc.require_sequence(series, "missing_stamps", where=swhere)
                 cc.require_float(series, "longest_gap_days", where=swhere)
-                cc.require_str(series, "first_day", where=swhere)
-                cc.require_str(series, "last_day", where=swhere)
+                # § A.7 v2.2 (AM-09) : nulles si et seulement si aucune unité couverte — recoupé ci-dessous.
+                cc.nullable_str(series, "first_day", where=swhere)
+                cc.nullable_str(series, "last_day", where=swhere)
                 recomputed = cc.expected_units(ctx.manifest.window_start, ctx.anchor, iv)
                 if expected_units != recomputed:
                     out.problems.append(
@@ -576,16 +584,17 @@ def a07_coverage(ctx: Context) -> Outcome:
                     out.problems.append(f"{swhere}.unit: {unit!r} != {cc.coverage_unit(iv)!r}")
                 # Revue R3 (b) : tout ce qui est dérivable des estampilles manquantes et des bornes
                 # est recalculé et recoupé — une contradiction est un problème de couverture,
-                # jamais un D1 vert par déclaration.
-                out.problems.extend(
-                    cc.coverage_recompute(
-                        series,
-                        start=ctx.manifest.window_start,
-                        end=ctx.anchor,
-                        interval=iv,
-                        where=swhere,
-                    )["problems"]
+                # jamais un D1 vert par déclaration. § A.7 v2.2 (AM-09) : des dates qui contredisent la couverture
+                # recalculée sont une violation (§ I.1, ligne 15), pas un problème de couverture.
+                recoupe = cc.coverage_recompute(
+                    series,
+                    start=ctx.manifest.window_start,
+                    end=ctx.anchor,
+                    interval=iv,
+                    where=swhere,
                 )
+                out.problems.extend(recoupe["problems"])
+                ctx.violations.extend(recoupe["violations"])
     except cc.MissingEvidenceError as exc:
         out.problems.append(str(exc))
     if not out.problems:

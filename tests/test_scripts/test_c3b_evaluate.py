@@ -482,12 +482,17 @@ def errors(logs: list[dict[str, Any]]) -> list[str]:
 
 def continuity(tmp_path: Path, world: World, evaluation: Path) -> tuple[int, dict[str, Any] | None]:
     """``c3_continuity`` en processus sur l'artefact produit, avec un comparateur d'évaluation **synthétique**
-    (``fx.benchmark_eval``, fenêtre ``[T, fin]``) — le critère de fin du lot 4a."""
+    (``fx.benchmark_eval``, fenêtre ``[T, fin]``) — le critère de fin du lot 4a. § L.2 v2.2 : sa NAV est celle que le
+    producteur a exportée (la paire du monde producteur n'est pas une paire du monde de ``fx``)."""
     run = cc.read_json(evaluation)
     bench = tmp_path / "benchmark_eval_synth.json"
     cc.write_json(
         bench,
-        fx.benchmark_eval(run["pair"], window={"start": T.isoformat(), "end": FIN.isoformat()}),
+        fx.benchmark_eval(
+            run["pair"],
+            window={"start": T.isoformat(), "end": FIN.isoformat()},
+            nav=cc.read_json(evaluation.parent / evaluate.BENCHMARK_EVAL)["nav"],
+        ),
     )
     output = tmp_path / "continuity.json"
     code = ccont.main(
@@ -1408,7 +1413,6 @@ def test_a_non_buildable_comparator_stops_before_the_engine(
     install_closes(monkeypatch, data)
     run_eval(world, tmp_path / "out", candidate=world.btc.identity)
     assert built == []
-    assert not (tmp_path / "out").exists()
 
 
 def test_a_candle_after_fin_is_refused_by_the_producer(
@@ -1897,6 +1901,9 @@ def test_the_full_chain_verifies_a_produced_evaluation(
             str(eval_out / evaluate.EVALUATION),
             "--benchmark-eval",
             str(eval_out / evaluate.BENCHMARK_EVAL),
+            # § L.1 v2.2, ligne 0 : la septième entrée, que le producteur écrit déjà.
+            "--candles-eval",
+            str(eval_out / evaluate.CANDLES_EVAL),
             "--registry",
             str(registry),
             "--out-dir",
@@ -2000,14 +2007,7 @@ def test_the_sensitivity_is_the_reestimated_lambda_and_stays_out_of_the_chain(
 # § C.5 v2.2 (AM-06) — le producteur écrit la forme de refus et l'export de bougies d'évaluation (R-18)
 # ---------------------------------------------------------------------------
 
-R18 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-18 : § C.5 v2.2 (AM-06), refus amont d'un comparateur non constructible — outillage à venir",
-)
 
-
-@R18
 def test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2031,18 +2031,38 @@ def test_R18_a_non_buildable_comparator_writes_the_refusal_form_and_the_export(
     assert built == []
 
 
+def test_R18_the_refusal_form_exits_0_and_writes_only_its_artefacts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ C.5 v2.2 : sans bougie d'exécution d'entrée, le producteur n'exécute pas l'évaluation et écrit sa forme de
+    refus ; plan du lot 2, D3 (GO du 29/09, candidat v2.3 : la table du § I.1 ne dit pas ce code) : code 0, aucune
+    erreur journalisée, et exactement la forme de refus, l'export de bougies d'évaluation (§ L.1 v2.2 : exigé sur
+    cette route) et la provenance — ni comparateur d'évaluation ni sensibilité. La forme de refus est admise sans
+    porteurs (§ L.1 v2.2) et ne porte aucune série."""
+    world, _, built = stubbed(tmp_path, monkeypatch)
+    data = dict(pc.market(anchor=FIN))
+    data[("BTC/USDT", 5)] = [c for c in data[("BTC/USDT", 5)] if c.timestamp != ENTRY_STAMP]
+    install_closes(monkeypatch, data)
+    out = tmp_path / "out"
+    code, logs = run_eval(world, out, candidate=world.btc.identity)
+    assert (code, errors(logs)) == (0, [])
+    assert built == []
+    written = {evaluate.EVALUATION, evaluate.CANDLES_EVAL, evaluate.PROVENANCE}
+    assert {p.name for p in out.iterdir()} == written
+    provenance = cc.read_json(out / evaluate.PROVENANCE)
+    assert set(provenance["outputs"]) == written - {evaluate.PROVENANCE}
+    assert provenance["flat_start_observed"] is None
+    refusal = cc.read_json(out / evaluate.EVALUATION)
+    assert set(refusal) == {"synthetic", "strategy", "pair", "params", "period", "refused"}
+    assert refusal["synthetic"] is False and refusal["refused"]["motif"]
+    assert cc.evaluation_admission(refusal) is False
+
+
 # ---------------------------------------------------------------------------
 # § L.1 v2.2 (AM-08) — le nombre d'exécutions, et l'admission d'une évaluation réelle sans exécution (R-19)
 # ---------------------------------------------------------------------------
 
-R19 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
-)
 
-
-@R19
 def test_R19_no_trade_is_admitted_with_zero_executions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2061,7 +2081,6 @@ def test_R19_no_trade_is_admitted_with_zero_executions(
         raise AssertionError(f"refusée à l'admission : {exc}") from exc
 
 
-@R19
 def test_R19_evaluation_json_metrics_carry_executions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2073,18 +2092,25 @@ def test_R19_evaluation_json_metrics_carry_executions(
     assert set(evaluation["metrics"]) == {"net_pnl", "cagr_pct", "delta_dd", "executions"}
 
 
+def test_R19_executions_is_the_number_of_fills(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """§ L.1 v2.2 : « `metrics.executions` est le nombre d'exécutions (remplissages) du run d'évaluation » — les trades
+    de `engine.metrics.trades` (achats, ventes, liquidation terminale), dont `first_fill_at` est le premier ; ni les
+    seuls trades de liquidation, ni `total_trades` du moteur (retouche C-6)."""
+    world, engine, _ = stubbed(tmp_path, monkeypatch)
+    assert run_eval(world, tmp_path / "out", candidate=world.btc.identity)[0] == 0
+    evaluation = cc.read_json(tmp_path / "out" / evaluate.EVALUATION)
+    executions = evaluation["metrics"]["executions"]
+    assert executions == len(engine._trades)
+    assert executions > evaluation["liquidation"]["trades"] > 0
+
+
 # ---------------------------------------------------------------------------
 # § L.2 v2.2 (AM-03) — l'évaluation déclare les λ du préfixe qu'elle a utilisés (R-15)
 # ---------------------------------------------------------------------------
 
-R15 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-15 : § L.2 v2.2 (AM-03), la chaîne recalcule ce que le producteur garantit — outillage à venir",
-)
 
-
-@R15
 def test_R15_evaluation_json_declares_the_prefix_lambdas_it_used(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -2103,10 +2129,34 @@ def test_R15_evaluation_json_declares_the_prefix_lambdas_it_used(
 # ---------------------------------------------------------------------------
 
 
+def test_hors_R_an_exception_in_build_pair_is_a_control_error_3(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Contrat du producteur (brief C3b) : 0 évalué, 2 refus, 3 contrôle en échec — jamais une trace. Une vraie
+    exception dans ``cb.build_pair`` sort en contrôle en échec (3), ``comparator_failed``, avant le moteur, rien
+    d'écrit (plan du lot 2, D2 : la garde vit à son site). Remplace le test caduc ci-dessous (décision de gate du
+    29/09), qui garde son marqueur."""
+    world, _, built = stubbed(tmp_path, monkeypatch)
+
+    def broken(*args: Any, **kwargs: Any) -> Any:
+        raise ArithmeticError("panne simulée de build_pair")
+
+    monkeypatch.setattr(evaluate.cb, "build_pair", broken)
+    code, logs = run_eval(world, tmp_path / "out", candidate=world.btc.identity)
+    assert (code, errors(logs)) == (3, ["comparator_failed"])
+    assert built == []
+    assert not (tmp_path / "out").exists()
+
+
 @pytest.mark.xfail(
     strict=True,
-    raises=OverflowError,
-    reason="outillage v2.2, hors réserve : contrat producteur 0/2/3 (c3b_evaluate.py:544) — outillage à venir",
+    raises=AssertionError,
+    reason=(
+        "outillage v2.2, hors réserve : CADUC par AM-10 (décision de gate du 29/09, lot 1) — sous v2.2 `cc.cagr_pct` "
+        "ne lève plus, le CAGR du B&H plein notionnel déborde sans entrer dans l'évaluation (blends finis) : code 0, "
+        "l'attendu code 3 est inatteignable sans convention ; remplacé au lot 2 par un adverse qui force une "
+        "exception dans build_pair"
+    ),
 )
 def test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch

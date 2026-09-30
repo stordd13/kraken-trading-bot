@@ -1,0 +1,1 @@
+    check_quote_amount_keys(block, stem=QUOTE_STEM_ACCOUNTING, where=where)

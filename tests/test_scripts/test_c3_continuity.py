@@ -232,6 +232,39 @@ def test_une_evaluation_reelle_avec_ses_porteurs_est_admise(tmp_path: Path) -> N
     assert states["c1"] == states["c2"] == states["c5"] == "DECLARED"
 
 
+def test_R16_un_bloc_de_liquidation_d_evaluation_qui_porte_gross_usdc_est_une_erreur_de_forme(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ A.7 v2.2, ligne Comptabilité : le contrat de forme `gross_quote` vaut au bloc de liquidation où qu'il soit lu —
+    à la clause 3 comme à D6 (`cc.liquidation_identities`, partagée) ; une clé `gross_` suffixée par une monnaie est
+    une erreur de forme (§ I.1, ligne 2), code 2, rien publié, et le message nomme `gross_quote`."""
+    w = _world(tmp_path)
+
+    def resuffix(evaluation: dict[str, Any]) -> None:
+        block = evaluation["liquidation"]
+        block["gross_usdc"] = block["gross_quote"]
+
+    _mutate_eval(w, resuffix)
+    code, payload = _run(w)
+    assert code == 2 and payload is None
+    assert "gross_quote" in capsys.readouterr().err
+
+
+def test_R18_une_evaluation_executee_sans_comparateur_d_evaluation_est_refusee(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ L.1 v2.2 : « Le comparateur d'évaluation n'est pas exigé » **sur la route du refus** seulement ; sur une
+    évaluation exécutée, son absence est une erreur d'entrée (§ I.1, ligne 2), code 2, rien publié, et le message la
+    nomme (plan du lot 2, D4)."""
+    w = _world(tmp_path)
+    argv = _argv(w)
+    at = argv.index("--benchmark-eval")
+    del argv[at : at + 2]
+    assert cn.main(argv) == 2
+    assert not w["continuity"].exists()
+    assert "benchmark-eval" in capsys.readouterr().err
+
+
 # ---------------------------------------------------------------------------
 # Chaque clause en échec, à sa place
 # ---------------------------------------------------------------------------
@@ -757,12 +790,6 @@ def test_agregat_prend_la_pire_clause_est_un_test_de_precedence_hors_perimetre()
 # § L.1 v2.2 (AM-08) — une évaluation réelle sans exécution est admise (R-19)
 # ---------------------------------------------------------------------------
 
-R19 = pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="R-19 : § L.1 v2.2 (AM-08), évaluation réelle sans exécution admise — outillage à venir",
-)
-
 
 def _no_execution_world(tmp_path: Path) -> dict[str, Any]:
     """Évaluation réelle sans exécution, cohérente : `first_fill_at` nul, `metrics.executions` 0, `equity_daily`
@@ -785,7 +812,6 @@ def _no_execution_world(tmp_path: Path) -> dict[str, Any]:
     return w
 
 
-@R19
 def test_R19_une_evaluation_reelle_sans_execution_est_admise_c5_non_verifiable(
     tmp_path: Path,
 ) -> None:

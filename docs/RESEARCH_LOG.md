@@ -363,6 +363,41 @@ avec cette entrée.
   R-17 (registre et critère d'arrêt), R-21 (D4 et CAGR), R-22 (sorties code 1 hors table).
 - **Compteur du § 10.2** : inchangé (jalon : premier verdict grid avant le 2027-01-31).
 
+### C3 outillage v2.2, lot 3 — conformité du producteur et de la chaîne sous v2.2 sur la fenêtre 2020 (entrée 19, inscrite le 2026-09-29, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique, issue non lue)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, et il est hors quota. C'est un run
+neuf, parce que la conformité du 28/09 (entrées 15-17, v2.1) n'a plus de valeur probante sous v2.2 : `c3_anchor`
+refuse son manifeste. Les **quatre temps** sont rejoués (préfixe, chaîne 1-4, évaluation, chaîne complète),
+**trois fois**, au code du chantier outillage v2.2. Attendu complet, item par item :
+`results/c3_outillage_v2_2/conformite/attendu.md`, committé avec cette entrée. Le run se fait au SHA de ce commit.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 19 | 2026-09-29 | C3 outillage v2.2, lot 3 — essai d'instrument : `c3b_prefix.py` → `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select` → `c3b_evaluate.py --selection` → `c3_verdict.py chain` (six étapes, neuf entrées dont `candles_eval.json`), **trois exécutions** (`--workers` 4 / 1 / 4 au préfixe, même `--now`, même chemin absolu), registre **neuf par exécution** ; `--campaign OUTILLAGE_V22_CONF`, étiquette d'instrument (dette 21 intacte) ; **aucune lecture économique, issue non lue** | `grok_grid_atr_adaptive_v4`, 4 paramétrages (classes C1, C2, C5, C6) × `BTC/USDT`, `ETH/USDT`, `SOL/USDT` = **12 candidats** ; famille de test `test-conformite-instrument-2020` (jamais une famille de campagne) ; provenance `unknown` : aucun `validé` atteignable ; chemin sélection seul, aucune identité, paire, métrique ni issue ne remonte au dépôt | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; fenêtre de conformité `2020-01-06 → 2020-12-28`, `T = 2020-09-11T21:36Z` ; lectures bornées à `≤ T` (préfixe) et `≤ fin` (évaluation), amorçage `≥ 400 j` avant ; **hors campagne** (garde-fou 6, `CAMPAIGN_UNLOCK` absent) | branche `feat/c3-outillage-v2.2`, exécuté au commit de cette entrée (code identique à `5f61ac9`, `interdits_S1.out`) ; métriques v2, `replay_version` 2 ; protocole v2.2 `1bed7696…292a` ; manifeste `c3769a6a…1ff7` | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6) ; `min_order_quote 5.0` (valeur du rejeu, inerte sur le grid) | producteur préfixe 0 ×3 ; chaîne 1-4 autonome 0 ×4 ×3 ; producteur d'évaluation `0 evaluated` ×3 ; chaîne complète : six codes d'étape en 0, `chain.verified` vrai, violations vides, zéro violation au rejeu, ×3 ; **23 artefacts identiques au bit sur les trois exécutions** (booléens seulement, aucun sha d'artefact versionné) ; `alembic` `c3bd1e7a0001` inchangé ; service et collector inchangés ; `validé` et `réfuté` inatteignables par construction (provenance `unknown`) | aucune décision économique ; la conformité v2.2 est la porte du chantier outillage v2.2, avec la porte § L.5 option 1 ; merge sous décision humaine | `results/c3_outillage_v2_2/conformite/` (`attendu.md`, `manifest.json`, pilote, preuves au commit suivant) ; `results/c3_outillage_v2_2/report.md` |
+
+- **Garde-fou 6, mécanique** : le producteur refuse (code 2) toute fenêtre qui finit après le 2021-03-01 tant que
+  `results/c3b_producteur/CAMPAIGN_UNLOCK` n'existe pas. Ce fichier n'existe pas, et ce lot ne le crée pas.
+- **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
+  diagnostic avant l'accord de Bruno. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
+
+### Issue de l'entrée 19 (inscrite après le run — aucune lecture économique, issue non lue)
+
+- **Lancement** : un seul, au `08cba3d` (S1). Pilote `5a2cc18d…`, exécuté depuis le clone et consigné dans
+  `status.txt`. Le 2026-09-30 de 07:10:19 à 07:14:28Z, sur le serveur, en lecture seule assertée par Postgres.
+- **CI et relecture** : le run a eu lieu après la CI verte sur S1 (tentative 1), la relecture de l'attendu (STOP 1)
+  et le GO de lancement de Bruno.
+- **Archive** : `~/archive/c3_outillage_conf_20260930/` (sha256 `17a1e6e8…0211`, 139 fichiers), vérifiée par codes
+  seulement avant le `rm -rf` du run (07:15:05Z).
+- **Rien n'a été lu du chemin sélection** hors de `status.txt`.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 19 | Trois exécutions (workers 4 / 1 / 4) : producteur préfixe **0** ; `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select` autonomes **0** ; producteur d'évaluation **`0 event=evaluated`** ; `chain` **0**, avec les six codes d'étape en 0, **`chain.verified` vrai, violations vides, zéro violation au rejeu** — les trois fois. L'issue publiée **n'est pas lue** (`validé` et `réfuté` sont inatteignables par construction : provenance `unknown`) | `results/c3_outillage_v2_2/conformite/server/status.txt` |
+| 19 | **23 artefacts identiques au bit** sur les trois exécutions (`compared=23 differing=0 absent=0`), liste attendue exacte ; aucun sha d'artefact versionné (booléens seulement) | `status.txt`, `verify_attendu.out` |
+| 19 | `alembic` `c3bd1e7a0001` inchangé ; service `8689636`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` absent ; attendu **tenu sur ses 10 items vérifiables** (le 11ᵉ, les bornes, repose sur des appuis déclarés) | `conformite/server/verify_attendu.out` |
+| 19 | Porte § L.5 option 1 au `4089fd5` (S2) : **24/24 `_full`** (agrégat JUnit `tests:24,failures:0,errors:0,skipped:0,missing:0`), le 2026-09-30 de 07:25:15 à 08:36:55Z. Ce ne sont pas des runs du producteur : backtests P6 comparés par hash, aucune métrique lue | `results/c3_outillage_v2_2/gate_L5/` |
+| 19 | Défauts de ma part, tous trouvés **avant** le lancement : témoin de la preuve d'`interdits.sh` rouge sur mon propre harnais ; ordre de copie dans mon script de simulation ; deux fragilités portables du pilote (`wc -l`, lien symbolique), trouvées par la simulation locale | `results/c3_outillage_v2_2/report.md` § 6.2 |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
@@ -379,3 +414,10 @@ l'adoption de v2.1 : section précédente.)_
   - Le paragraphe ci-dessus n'est pas réécrit (ajout seul).
 - **Protocole C3 v2.2 adopté le 29/09/2026** (entrée 18). Le manifeste de la première campagne porte le sha256 v2.2 ;
   il suit l'outillage v2.2 (réserves bloquantes pour le manifeste : R-15, R-16, R-18, R-19). Ajout seul.
+- **Outillage v2.2 livré et conformité v2.2 prouvée le 30/09/2026** (entrée 19, avec son issue).
+  - Les réserves bloquantes pour le manifeste (R-15, R-16, R-18, R-19) et pour la campagne (R-17, R-21, R-22) sont
+    outillées.
+  - Merge sur `dev` sous décision humaine.
+  - Restent avant la première campagne : le manifeste gelé, portant le sha256 v2.2, et le candidat v2.3 de
+    l'évaluation différée, à trancher en conversation manifeste (`results/c3_outillage_v2_2/report.md` § 5).
+  - `CAMPAIGN_UNLOCK` est créé à ce moment-là, par Bruno. Ajout seul.

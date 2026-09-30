@@ -1,0 +1,4 @@
+        decision = decide(
+            {k: v for k, v in artifacts.items() if k in CHAIN_INPUT_NAMES},
+            violations=violations,
+        )

@@ -1,0 +1,115 @@
+## M1_temoin_R17 — 2026-09-29T16:36:37Z — HEAD 8275827
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M2_table_10_1 — 2026-09-29T16:36:39Z — HEAD 8275827
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R17_la_table_du_10_1_est_celle_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M3_A1_run_verdict — 2026-09-29T16:36:42Z — HEAD 8275827
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M4_A2_reinscription — 2026-09-29T16:36:47Z — HEAD 8275827
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A2_une_reinscription_discordante_au_registre_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M5_D3_lambdas — 2026-09-29T16:36:50Z — HEAD 8275827
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation tests/test_scripts/test_c3_verdict.py::test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M6_D9_sha_avant — 2026-09-29T16:36:52Z — HEAD 8275827
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21 tests/test_scripts/test_c3_verdict.py::test_chain_sur_le_livrable_reel_v20_s_arrete_a_l_ancrage_code_2_rien_d_ecrit
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M3b_sans_A1 — 2026-09-29T16:37:59Z — HEAD 8275827
+mutant M3 contre tests/test_scripts/test_c3_verdict.py et test_c3b_evaluate.py, A1 exclu : 1 failed, 527 passed, 1 deselected, 10 xfailed in 65.82s (0:01:05)
+tué_par=tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit  restauré_diff_vide=0
+attendu (constat) : tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_qui_porte_des_series_se_contredit seul
+## mutants_lot1 rc=0
+## mutants_lot2 — début 2026-09-29T21:02:08Z — HEAD c566b33
+## M1_temoin_R17 — 2026-09-29T21:02:11Z — HEAD c566b33
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M2_table_10_1 — 2026-09-29T21:02:13Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R17_la_table_du_10_1_est_celle_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M3_A1_run_verdict — 2026-09-29T21:02:16Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M4_A2_reinscription — 2026-09-29T21:02:21Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A2_une_reinscription_discordante_au_registre_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M5_D3_lambdas — 2026-09-29T21:02:24Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R15_des_lambdas_declares_differents_de_ceux_de_l_etape_3_sont_une_violation tests/test_scripts/test_c3_verdict.py::test_R15_returns_bench_different_du_recalcul_sur_l_export_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M6_D9_sha_avant — 2026-09-29T21:02:26Z — HEAD c566b33
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21 tests/test_scripts/test_c3_verdict.py::test_chain_sur_le_livrable_reel_v20_s_arrete_a_l_ancrage_code_2_rien_d_ecrit
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M1_garde_non_bornee — 2026-09-29T21:02:28Z — HEAD c566b33
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_entry.py::test_un_suffixe_de_monnaie_hors_des_positions_nommees_n_est_ni_lu_ni_refuse
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M2_garde_des_lots — 2026-09-29T21:02:31Z — HEAD c566b33
+cible=scripts/audit/c3_entry.py témoins=tests/test_scripts/test_c3_entry.py::test_R16_un_lot_qui_porte_gross_usdc_refuse_l_entree_a_la_forme
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M3_garde_identites — 2026-09-29T21:02:33Z — HEAD c566b33
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_continuity.py::test_R16_un_bloc_de_liquidation_d_evaluation_qui_porte_gross_usdc_est_une_erreur_de_forme
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M3b_garde_export — 2026-09-29T21:02:35Z — HEAD c566b33
+cible=scripts/audit/c3b_common.py témoins=tests/test_scripts/test_c3b_common.py::test_R16_un_montant_gross_hors_table_de_renommage_est_un_controle_en_echec
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M4_C1_ordre — 2026-09-29T21:02:40Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R18_l_identite_du_refus_est_recoupee_avant_toute_lecture_du_bloc_refused
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M5_rejeu_du_refus — 2026-09-29T21:02:44Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_que_l_export_dement_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M6_motif_non_comparable — 2026-09-29T21:02:47Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R18_un_comparateur_non_comparable_porte_le_motif_comparator_not_comparable
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M7_ssi_un_sens — 2026-09-29T21:02:49Z — HEAD c566b33
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_R19_un_premier_remplissage_avec_zero_execution_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M8_implication_retiree — 2026-09-29T21:02:52Z — HEAD c566b33
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_R19_zero_execution_et_equity_constante_differente_de_C_est_une_violation tests/test_scripts/test_c3_verdict.py::test_R19_zero_execution_equity_non_constante_rendements_coherents_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M8b_constance_seule — 2026-09-29T21:02:55Z — HEAD c566b33
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_R19_zero_execution_et_equity_constante_differente_de_C_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M9_executions_liquidation — 2026-09-29T21:02:57Z — HEAD c566b33
+cible=scripts/audit/c3b_evaluate.py témoins=tests/test_scripts/test_c3b_evaluate.py::test_R19_executions_is_the_number_of_fills
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M10_exemption_c5 — 2026-09-29T21:03:00Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_c1_ou_c5_non_verifiable_sur_une_evaluation_reelle_est_une_violation[c5]
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M11_dates_un_sens — 2026-09-29T21:03:02Z — HEAD c566b33
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_entry.py::test_R20_des_dates_presentes_sur_une_serie_sans_unite_couverte_sont_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M12_garde_comparateur — 2026-09-29T21:03:04Z — HEAD c566b33
+cible=scripts/audit/c3b_evaluate.py témoins=tests/test_scripts/test_c3b_evaluate.py::test_hors_R_an_exception_in_build_pair_is_a_control_error_3
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M13_comparateur_exige — 2026-09-29T21:03:07Z — HEAD c566b33
+cible=scripts/audit/c3_continuity.py témoins=tests/test_scripts/test_c3_continuity.py::test_R18_une_evaluation_executee_sans_comparateur_d_evaluation_est_refusee
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M14_motifs_du_texte — 2026-09-29T21:03:09Z — HEAD c566b33
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_R18_les_motifs_et_la_raison_du_refus_sont_ceux_du_texte
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M15_comparateur_requis_a_la_chaine — 2026-09-29T21:03:13Z — HEAD c566b33
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_R18_la_chaine_sur_une_forme_de_refus_n_exige_pas_le_comparateur_d_evaluation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M16_refus_en_code_2 — 2026-09-29T21:03:15Z — HEAD c566b33
+cible=scripts/audit/c3b_evaluate.py témoins=tests/test_scripts/test_c3b_evaluate.py::test_R18_the_refusal_form_exits_0_and_writes_only_its_artefacts
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## M3_rejeu_tueurs — 2026-09-29T21:04:28Z — HEAD c566b33
+mutant M3 contre tests/test_scripts/test_c3_verdict.py et tests/test_scripts/test_c3b_evaluate.py : 4 failed, 544 passed, 1 xfailed in 70.83s (0:01:10)
+tué_par=tests/test_scripts/test_c3_verdict.py::test_A1_la_cli_du_verdict_recoupe_ce_que_le_producteur_garantit
+tué_par=tests/test_scripts/test_c3_verdict.py::test_R18_la_chaine_sur_une_forme_de_refus_n_exige_pas_le_comparateur_d_evaluation
+tué_par=tests/test_scripts/test_c3_verdict.py::test_R18_un_refus_que_l_export_dement_est_une_violation
+tué_par=tests/test_scripts/test_c3_verdict.py::test_R18_une_evaluation_sous_forme_de_refus_rend_E_NO_BENCHMARK_avec_son_motif
+A1_parmi_les_tueurs=1 (attendu 1) refus_avec_series_parmi_les_tueurs=0 (attendu 0 : route R-18) restauré_diff_vide=0
+## L2M8_constat_homologue — 2026-09-29T21:04:29Z — HEAD c566b33
+mutant L2M8 contre test_R19_zero_execution_avec_une_equity_non_constante_est_une_violation : 1 passed in 0.26s
+homologue_vert_sous_mutant=1 (attendu 1 : R-15 le voit d'abord) restauré_diff_vide=0
+## mutants_lot2 rc=0
+## L2M17 — ajouté après le premier passage de mutants_lot2.sh (T14 sans mutant au plan), lancé seul
+## L2M17_dates_exigees_a_l_entree — 2026-09-29T21:04:49Z — HEAD c566b33
+cible=scripts/audit/c3_entry.py témoins=tests/test_scripts/test_c3_select.py::test_R20_une_serie_sans_unite_couverte_retire_la_paire_par_D1
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+## L2M8, T12 seul — contrôle de la ligne combinée (README § 3)
+## L2M8_implication_retiree_T12_seul — 2026-09-29T21:06:12Z — HEAD c566b33
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_R19_zero_execution_equity_non_constante_rendements_coherents_est_une_violation
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)

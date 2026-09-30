@@ -1,0 +1,10 @@
+# interdits_adverse — 2026-09-29T21:52:23Z — HEAD 5f61ac928ef4edf914b863d300a5d0859d028f99
+cas=temoin rc=0 attendu=0 restaure=0
+cas=non_suivi_tests rc=1 attendu=non0 restaure=0
+cas=suivi_modifie_claude_md rc=1 attendu=non0 restaure=0
+cas=hors_liste_blanche rc=1 attendu=non0 restaure=0
+cas=artefact_verdict_json rc=1 attendu=non0 restaure=0
+cas=archive_tgz rc=1 attendu=non0 restaure=0
+cas=nomme_docker rc=1 attendu=non0 restaure=0
+cas=c3b_producteur_modifie rc=1 attendu=non0 restaure=0
+rc=0

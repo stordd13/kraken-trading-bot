@@ -1,0 +1,10 @@
+2026-09-29T15:10:39Z open : port 5433 ouvert
+2026-09-29T16:38:06Z close : port 5433 fermé (pids tués : 62101 62103 ) ; nc -z échoue
+2026-09-29T16:38:06Z state : fermé
+2026-09-29T19:49:18Z state : fermé
+2026-09-29T19:50:20Z open : port 5433 ouvert
+2026-09-29T21:04:55Z close : port 5433 fermé (pids tués : 80274 80276 ) ; nc -z échoue
+2026-09-29T21:04:55Z state : fermé
+2026-09-29T21:50:28Z state : fermé
+2026-09-30T08:41:27Z state : fermé
+2026-09-30T09:11:19Z state : fermé

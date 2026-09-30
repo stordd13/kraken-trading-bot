@@ -155,6 +155,10 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "exec_interval",
             "run_scope",
             "deployment_pairs",
+            "verdict",
+            "deferred_evaluation",
+            "refused",
+            "executions",
         }
     )
     assert cc.NULLABLE_FIELDS == frozenset(
@@ -175,6 +179,10 @@ def test_les_listes_de_champs_optionnels_et_nullables_sont_closes_et_nommees() -
             "reason",
             "liquidation_normalised",
             "bound",
+            "raison",
+            "first_failed_gate",
+            "first_day",
+            "last_day",
         }
     )
     assert not (cc.OPTIONAL_FIELDS & cc.NULLABLE_FIELDS), (
@@ -904,8 +912,11 @@ def manifest(
             "pair_costs_file": "config/pair_costs_b4.json",
             "pair_costs": {p: {"spread": s, "slippage": sl} for p, (s, sl) in PAIR_COSTS.items()},
         },
-        "min_order_usdc": 5.0,
+        # § A.7 v2.2 (AM-04), décision du 29/09 : la clé du manifeste est `min_order_quote`.
+        "min_order_quote": 5.0,
         "universe": {"provenance": provenance, "candidates": candidates},
+        # § A.6 v2.2 (AM-05) : la famille du mécanisme évalué, au sens du critère d'arrêt.
+        "family": "grid",
         "strategies": {STRATEGY: {"engine": "grid", "decision_timeframes": list(DECISION_TFS)}},
         "selection_rule": {
             "text": "§ A.10 : D1-D6, puis P1∧P2∧P3, puis classement par Δ^dd (§ A.9)",
@@ -1078,7 +1089,7 @@ def liquidation_segment(
         lot_rows.append(
             {
                 f"amount_{base_asset(pair)}": str(amount),
-                "gross_usdc": str(gross),
+                "gross_quote": str(gross),
                 "fee": str(fee),
                 "entry_price": str(reference * Decimal("0.98")),
                 "pnl": str(gross - fee - amount * reference * Decimal("0.98")),
@@ -1097,7 +1108,7 @@ def liquidation_segment(
         f"inventory_divergence_{base_asset(pair)}": "1E-27",
         "pnl": "-1.11608608129261557311025728",
         "fees": str(fees),
-        "gross_usdc": str(gross_total),
+        "gross_quote": str(gross_total),
         "timestamp": timestamp.isoformat() if positions else None,
         "reference_price": str(reference) if positions else None,
         "price": str(price) if positions else None,
@@ -1180,7 +1191,7 @@ def observation(
         "replay_version": 2,
         "pair_costs_file": "config/pair_costs_b4.json",
         "pair_costs": {"spread": PAIR_COSTS[pair][0], "slippage": PAIR_COSTS[pair][1]},
-        "min_order_usdc": 5.0,
+        "min_order_quote": 5.0,
         "phase": "1",
         "window_idx": None,
         "period": {
@@ -1496,6 +1507,7 @@ def test_revue_R3b_le_plus_long_run_est_pris_parmi_plusieurs_trous() -> None:
 
 from collections.abc import Mapping, Sequence  # noqa: E402
 import copy  # noqa: E402
+import dataclasses  # noqa: E402
 from functools import cache  # noqa: E402
 import platform  # noqa: E402
 
@@ -1631,6 +1643,53 @@ def varying_returns(seed: int, n: int = N_EVAL_POINTS - 1) -> list[float]:
     return rng.normal(0.0005, 0.02, n).tolist()
 
 
+def equity_of(returns: Sequence[float], *, capital: float = 1000.0) -> list[float]:
+    """Une trajectoire quotidienne qui part de `C` (§ B.2) et compose les rendements donnés, en double précision."""
+    values = [float(capital)]
+    for r in returns:
+        values.append(values[-1] * (1.0 + float(r)))
+    return values
+
+
+def returns_of(values: Sequence[float]) -> list[float]:
+    """§ L.2 v2.2, première ligne : « `r_t = E_t / E_{t−1} − 1`, en double précision, sur les valeurs exportées,
+    dans l'ordre de la grille ; un point précédé d'une valeur `≤ 0` ne porte pas de rendement » — écrite ici depuis
+    le texte, jamais importée de l'outillage."""
+    return [values[t] / values[t - 1] - 1.0 for t in range(1, len(values)) if values[t - 1] > 0]
+
+
+@cache
+def bh_nav(pair: str) -> tuple[Decimal, ...]:
+    """La NAV décimale du B&H plein notionnel (§ C.3) de la paire sur `[T, fin]`, construite sur l'export d'évaluation
+    par défaut (`candles(manifest(), start=ANCHOR, end=WINDOW_END)`) : celle dont la chaîne tire le comparateur
+    d'évaluation et ses blends (§ L.2 v2.2)."""
+    import c3_benchmark as cb
+
+    payload = manifest()
+    export = candles(payload, start=ANCHOR, end=WINDOW_END)
+    loaded = cc.load_manifest(payload)
+    reduced = dataclasses.replace(
+        loaded, candidates=tuple(c for c in loaded.candidates if c.pair == pair)
+    )
+    parsed = cb.load_candles(
+        {**export, "pairs": {pair: export["pairs"][pair]}}, reduced, end=WINDOW_END
+    )
+    spread, slippage = (Decimal(x) for x in PAIR_COSTS[pair])
+    bench = cb.build_pair(
+        pair,
+        parsed[pair],
+        start=ANCHOR,
+        end=WINDOW_END,
+        exec_interval=EXEC_INTERVAL,
+        spread=spread,
+        slippage=slippage,
+        taker=Decimal(TAKER),
+        capital=Decimal(1000),
+    )
+    assert bench.buildable and bench.comparable
+    return bench.nav
+
+
 def flat_start_proof(
     *, at: datetime = ANCHOR, cash: str = "1000", qty: str = "0", pending: int = 0
 ) -> dict[str, Any]:
@@ -1656,16 +1715,25 @@ def evaluation(
     net_pnl: float = 42.0,
     metrics: dict[str, Any] | None = None,
     bounds: dict[str, float] | None = None,
+    lambdas: dict[str, float] | None = None,
 ) -> dict[str, Any]:
     """Un artefact d'évaluation **synthétique** de la configuration retenue, sur [T, fin] : le contrat lu par
     c3_verdict (§ F.2, § F.8) et les blocs que c3_continuity vérifie (§ B). Suites, bornes, `cagr_pct` et
     `delta_dd` sont ceux de la procédure § F.2 v2.1 (graine du manifeste, index de la paire parmi les paires
-    triées de l'univers) ; seul `net_pnl` (Q1) est déclaré. Défaut : le témoin contre du cash."""
+    triées de l'univers) ; seul `net_pnl` (Q1) est déclaré. Défaut : le témoin contre du cash.
+
+    § L.2 v2.2 : `equity_daily` part de `C` et compose la série de configuration demandée ; `returns_config` en est
+    le recalcul par la formule du texte (`returns_of`), au bit ; `lambdas` sont les `λ` du préfixe déclarés (défaut
+    `0` : le comparateur cash par défaut), `returns_bench` est pris tel quel.
+
+    § L.1 v2.2 (AM-08) : un monde qui déclare un premier remplissage déclare aussi son nombre d'exécutions
+    (`metrics.executions`, au moins le premier et les lots de liquidation) ; un monde sans premier remplissage ne le
+    déclare pas (plan du lot 2, D8) — les mondes sans exécution le posent eux-mêmes."""
     cand = manifest_payload["universe"]["candidates"][candidate_index]
     pair = cand["pair"]
     pairs = sorted({c["pair"] for c in manifest_payload["universe"]["candidates"]})
-    values = nav_path(pair, candidate_index + 7, N_EVAL_POINTS, drift=0.0006)
-    config = returns_config if returns_config is not None else witness_returns()
+    values = equity_of(returns_config if returns_config is not None else witness_returns())
+    config = returns_of(values)
     bench = bench_by_matching(
         returns_bench if returns_bench is not None else [0.0] * (N_EVAL_POINTS - 1)
     )
@@ -1709,6 +1777,7 @@ def evaluation(
         "flat_start_proof": flat_start_proof,
         "returns_config": list(config),
         "returns_bench": bench,
+        "lambdas": dict(lambdas) if lambdas is not None else {"dd": 0.0, "sigma": 0.0},
         "environment": environment(),
         "B": cc.BOOTSTRAP_B,
         "replications": replicated,
@@ -1720,6 +1789,8 @@ def evaluation(
             "delta_dd": procedure["delta_hat"]["dd"],
         },
     }
+    if metrics is None and first_fill_at is not None:
+        out["metrics"]["executions"] = liquidation_positions + 1
     return out
 
 
@@ -1729,9 +1800,11 @@ def benchmark_eval(
     comparable: bool = True,
     contradict: bool = False,
     window: dict[str, str] | None = None,
+    nav: list[float] | None = None,
 ) -> dict[str, Any]:
     """Le bloc de comparabilité du comparateur d'évaluation (§ C.5), synthétique ; ``window``
-    remplace la fenêtre [T, fin] déclarée (revue Fin, défaut 3)."""
+    remplace la fenêtre [T, fin] déclarée (revue Fin, défaut 3). § L.2 v2.2 : ``nav``, la NAV du B&H plein notionnel
+    sur la grille quotidienne passée en double (défaut : celle de l'export d'évaluation par défaut, ``bh_nav``)."""
     tests = {
         "entry_stamp_present": True,
         "exit_stamp_present": True,
@@ -1747,4 +1820,5 @@ def benchmark_eval(
         else {"start": ANCHOR.isoformat(), "end": WINDOW_END.isoformat()},
         "comparable": declared,
         "comparability": tests,
+        "nav": list(nav) if nav is not None else [float(v) for v in bh_nav(pair)],
     }
