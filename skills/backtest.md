@@ -538,10 +538,14 @@ choisi sur le test global. Toute sélection relève du protocole C3 — section 
 
 ## Validation C3 (protocole v2.2 — ce que fait l'outillage de sélection, et ce qu'il ne fait pas)
 
-Source : `docs/protocole_c3.md` **v2.2**, amendé le 2026-09-29, sha256
-**`1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a`** ; amendements, décisions de gate et
-réserves (R-15 à R-22) : `docs/amendements_c3_v2.2.md`, section « Adoption » ; v2.1 (sha256 `9300f4e5…4129`,
-R-01 à R-14) : `docs/amendements_c3_v2.1.md`. **L'outillage applique v2.2 depuis le 30/09** : les règles nouvelles de
+Source : `docs/protocole_c3.md` **v2.3**, amendé le 2026-09-30, sha256
+**`d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6`** ; amendements, décisions de gate (G-1 à G-11)
+et squelette normatif (X1 à X8) : `docs/amendements_c3_v2.3.md`, section « Adoption » ; v2.2 (sha256
+`1bed7696…292a`, R-15 à R-22) : `docs/amendements_c3_v2.2.md` ; v2.1 (sha256 `9300f4e5…4129`, R-01 à R-14) :
+`docs/amendements_c3_v2.1.md`. **v2.3 n'est pas outillée** : l'évaluation différée (§ A.6, AM-01 — clé
+`deferred_evaluation.date`, descripteur `D`) est portée par huit tests `xfail` strict, X1 à X8 ; la ligne 10 ter du
+§ I.1 (AM-02) écrit un comportement déjà livré. Sous v2.3, `c3_anchor` refuse tout manifeste qui déclare v2.2.
+**L'outillage applique v2.2 depuis le 30/09** : les règles nouvelles de
 v2.2 (§ A.6 registre et critère d'arrêt, § A.7 clés `_quote` et dates nullables, § A.8 D4 et CAGR, § C.5 refus
 amont, § L.1 septième entrée et `metrics.executions`, § L.2 recoupements) sont outillées : des 46 tests `xfail`
 strict qui les portaient, le chantier outillage (`results/c3_v2_2/outillage_v2_2.md`) en a levé 45, 1 est caduc et

@@ -398,6 +398,21 @@ refuse son manifeste. Les **quatre temps** sont rejoués (préfixe, chaîne 1-4,
 | 19 | Porte § L.5 option 1 au `4089fd5` (S2) : **24/24 `_full`** (agrégat JUnit `tests:24,failures:0,errors:0,skipped:0,missing:0`), le 2026-09-30 de 07:25:15 à 08:36:55Z. Ce ne sont pas des runs du producteur : backtests P6 comparés par hash, aucune métrique lue | `results/c3_outillage_v2_2/gate_L5/` |
 | 19 | Défauts de ma part, tous trouvés **avant** le lancement : témoin de la preuve d'`interdits.sh` rouge sur mon propre harnais ; ordre de copie dans mon script de simulation ; deux fragilités portables du pilote (`wc -l`, lien symbolique), trouvées par la simulation locale | `results/c3_outillage_v2_2/report.md` § 6.2 |
 
+### Adoption du protocole C3 v2.3 (entrée 20, inscrite le 2026-09-30 — aucun run)
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 20 | 2026-09-30 | Gel du protocole C3 v2.3 (mini-amendement « évaluation différée ») — chantier documentaire, **aucun run** | sans objet | aucune donnée lue ; aucune base, aucun serveur, aucun tunnel | branche `feat/c3-amendements-v2.3` depuis `dev` @ `662c104` ; `src/` et `scripts/` inchangés ; protocole v2.3 sha256 `d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6` | sans objet | sans objet — aucune issue possible | outillage v2.3 (huit `xfail` strict X1 à X8), puis manifeste de la première campagne, portant le sha256 v2.3 et la clé `deferred_evaluation.date` | `docs/amendements_c3_v2.3.md` (section « Adoption »), `results/c3_v2_3_gel/report.md` |
+
+- **Protocole** : `docs/protocole_c3.md` v2.3, amendé le 2026-09-30 — trois amendements (AM-00 à AM-02), approuvés par
+  Bruno en conversation manifeste et adoptés au STOP du gel (décisions G-1 à G-11). AM-01 inscrit l'évaluation
+  différée : date déclarée au manifeste (`deferred_evaluation.date`, au moins 365 jours après `window.end`), engagement
+  par l'empreinte d'un descripteur `D`, au registre seul. AM-02 ajoute la ligne 10 ter au § I.1 (code de sortie du
+  producteur, forme de refus). Le sha256 de v2.2 (`1bed7696…292a`) devient historique ; sous v2.3, `c3_anchor` refuse
+  tout manifeste v2.2.
+- **Ce qui précède le manifeste** : l'outillage v2.3 (`docs/amendements_c3_v2.3.md`, « Réserves d'application »).
+- **Compteur du § 10.2** : inchangé.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
@@ -421,3 +436,8 @@ l'adoption de v2.1 : section précédente.)_
   - Restent avant la première campagne : le manifeste gelé, portant le sha256 v2.2, et le candidat v2.3 de
     l'évaluation différée, à trancher en conversation manifeste (`results/c3_outillage_v2_2/report.md` § 5).
   - `CAMPAIGN_UNLOCK` est créé à ce moment-là, par Bruno. Ajout seul.
+- **Protocole C3 v2.3 adopté le 30/09/2026** (entrée 20) : le candidat de l'évaluation différée est tranché (AM-01).
+  - Le manifeste de la première campagne porte le sha256 v2.3 (et non plus v2.2) et la clé
+    `deferred_evaluation.date`.
+  - Il suit l'outillage v2.3 : huit `xfail` strict, X1 à X8.
+  - Merge sur `dev` sous décision humaine. Ajout seul.

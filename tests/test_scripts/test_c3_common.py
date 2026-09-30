@@ -549,7 +549,7 @@ REASONS_H1 = (
 # En-tête (AM-00 de v2.1 et de v2.2 ; R-01 de v2.1) — l'empreinte du protocole, consignée hors du fichier
 # ---------------------------------------------------------------------------
 
-ADOPTED_PACKAGE = _project_root / "docs" / "amendements_c3_v2.2.md"
+ADOPTED_PACKAGE = _project_root / "docs" / "amendements_c3_v2.3.md"
 
 
 def _adoption_section() -> str:
@@ -581,10 +581,10 @@ def test_le_dernier_sha_consigne_hors_du_fichier_est_celui_du_protocole_livre() 
 
 def test_aucun_sha_de_protocole_n_est_ecrit_en_dur_dans_l_outillage_ni_les_tests() -> None:
     """AM-00 : « aucun sha en dur dans les tests » — les empreintes de la table de la section « Adoption » (v2.0,
-    v2.1, v2.2 : trois), lues dans le paquet adopté, n'apparaissent dans aucun fichier Python de `scripts/` ni
+    v2.1, v2.2, v2.3 : quatre), lues dans le paquet adopté, n'apparaissent dans aucun fichier Python de `scripts/` ni
     de `tests/` : l'outillage recalcule, il ne recopie pas."""
     table = _fingerprint_table()
-    assert list(table) == ["v2.0", "v2.1", "v2.2"]
+    assert list(table) == ["v2.0", "v2.1", "v2.2", "v2.3"]
     shas = set(re.findall(r"`([0-9a-f]{64})`", _adoption_section()))
     assert shas == set(table.values())
     for folder in ("scripts", "tests"):
