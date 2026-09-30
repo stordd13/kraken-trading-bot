@@ -1738,6 +1738,40 @@ def deferred_descriptor_at_verdict(
     )
 
 
+def deferred_descriptor_at_run(incoming: Mapping[str, Any]) -> dict[str, Any] | None:
+    """§ A.6 v2.3, colonne « Recoupement au run différé » : `D` **re-dérivé du manifeste entrant, par la même règle** —
+    `deferred_evaluation_of` = `parent.variant_key`, `window` = la fenêtre du manifeste entrant, `candidate` = son
+    **unique** candidat, `universe_provenance` = sa provenance déclarée. ``None`` quand le manifeste entrant n'a pas la
+    forme d'un run différé (parent racine, ou pas exactement un candidat) : aucun descripteur, donc aucune empreinte
+    à comparer."""
+    where = "manifest"
+    parent = require_mapping(incoming, "parent", where=where)
+    if require_bool(parent, "is_root", where=f"{where}.parent"):
+        return None
+    universe = require_mapping(incoming, "universe", where=where)
+    candidates = require_sequence(universe, "candidates", where=f"{where}.universe")
+    if len(candidates) != 1:
+        return None
+    (only,) = candidates
+    if not isinstance(only, Mapping):
+        raise MissingEvidenceError(
+            f"{where}.universe.candidates[0]: bloc attendu, reçu {type(only).__name__}"
+        )
+    window = require_mapping(incoming, "window", where=where)
+    return _deferred_descriptor(
+        incoming,
+        only,
+        of=require_str(parent, "variant_key", where=f"{where}.parent"),
+        window=(
+            require_datetime(window, "start", where=f"{where}.window"),
+            require_datetime(window, "end", where=f"{where}.window"),
+        ),
+        provenance=require_str(
+            universe, "provenance", where=f"{where}.universe", allowed=PROVENANCES
+        ),
+    )
+
+
 # ---------------------------------------------------------------------------
 # § A.7 — la projection d'ancrage π_T, liste blanche exhaustive
 # ---------------------------------------------------------------------------

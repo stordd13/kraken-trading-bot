@@ -2638,12 +2638,6 @@ def test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte(
     assert cv.deferred_descriptor(campaign, retained) == expected
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X7 — l'ancrage n'accepte pas encore la variante différée par son descripteur (X6), et "
-    "c3_verdict n'applique pas « une fois par famille » : outillage v2.3",
-)
 def test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee(
     tmp_path: Path,
 ) -> None:

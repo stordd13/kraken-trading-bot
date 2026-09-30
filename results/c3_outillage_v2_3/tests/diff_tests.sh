@@ -83,9 +83,7 @@ DECLARED_NEW = {
         "test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement",
     },
 }
-DECLARED_ASSIGN_ADDED = {
-    (T + "test_c3_verdict.py", "TABLE_10_1_VOIE"),
-}
+DECLARED_ASSIGN_ADDED: set[tuple[str, str]] = set()
 DECLARED_ASSIGN_REMOVED: set[tuple[str, str]] = set()
 DECLARED_ASSIGN_MODIFIED: set[tuple[str, str]] = set()
 

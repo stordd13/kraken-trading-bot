@@ -1,0 +1,27 @@
+# comptes — suite C4 — 2026-09-30T16:40:36Z
+# HEAD 382bea050e1a7d5323e93e5d213ffafc0db0c7ef branche feat/c3-outillage-v2.3 ; base b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9
+collecte wt_base -k='not test_determinism_parallel_vs_serial_full' : exit=0 ; 3337/3361 tests collected (24 deselected) in 3.09s
+collecte kraken-trading-bot -k='not test_determinism_parallel_vs_serial_full' : exit=0 ; 3341/3365 tests collected (24 deselected) in 0.72s
+collecte kraken-trading-bot -k='' : exit=0 ; 3365 tests collected in 0.66s
+collectes : base=3337 tete=3341
+retires_egal_renomme_ancien=0
+  retiré : tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21
+ajoutes_egal_renomme_nouveau_et_neufs=0
+  ajouté : tests/test_scripts/test_c3_anchor.py::test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe
+  ajouté : tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_le_protocole_courant
+  ajouté : tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+  ajouté : tests/test_scripts/test_c3_verdict.py::test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement
+  ajouté : tests/test_scripts/test_c3_verdict.py::test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee
+k_deselectionne_exactement_24_full=0
+xfail : base=9 tete=1 leves_declares=8
+leves_inclus_xfail_base=0
+xfail_tete_egal_base_moins_leves=0
+  reste xfail : tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3
+aucun_xpass_failed_error=0
+resume base={'passed': 3309, 'skipped': 19, 'deselected': 24, 'xfailed': 9} tete={'passed': 3321, 'skipped': 19, 'deselected': 24, 'xfailed': 1}
+equation : 3309 (base) + 8 (levés) + 4 (neufs) = 3321 ; tête = 3321
+equation_juste=0
+ignores_inchanges=0
+deselectionnes_inchanges_24=0
+xfailed_resume_egal_lignes=0
+rc=0
