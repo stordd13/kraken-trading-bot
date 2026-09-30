@@ -476,7 +476,7 @@ Détail : `ROADMAP.md`.
   artefact du rejeu refusé à l'entrée) ; **protocole v2.1 amendé le 23 sept** (branche `feat/c3-amendements-v2.1`,
   merge sous décision humaine) ; **C3b** : producteur conforme, décision de reconstruction 1 w, puis manifeste et
   campagne réelle sous la chaîne. **Phase courante : C3b paquet 1 clos (producteur, merge sous décision humaine) ;
-  protocole v2.2 adopté le 29/09 ; suite : outillage v2.2, puis manifeste.**
+  protocole v2.2 adopté le 29/09, outillé le 30/09 (conformité prouvée sous v2.2) ; suite : conversation manifeste.**
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,

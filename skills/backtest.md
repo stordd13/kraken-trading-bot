@@ -541,10 +541,12 @@ choisi sur le test global. Toute sélection relève du protocole C3 — section 
 Source : `docs/protocole_c3.md` **v2.2**, amendé le 2026-09-29, sha256
 **`1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a`** ; amendements, décisions de gate et
 réserves (R-15 à R-22) : `docs/amendements_c3_v2.2.md`, section « Adoption » ; v2.1 (sha256 `9300f4e5…4129`,
-R-01 à R-14) : `docs/amendements_c3_v2.1.md`. **L'outillage suit encore v2.1** : les règles nouvelles de v2.2
-(§ A.6 registre et critère d'arrêt, § A.7 clés `_quote` et dates nullables, § A.8 D4 et CAGR, § C.5 refus amont,
-§ L.1 septième entrée et `metrics.executions`, § L.2 recoupements) sont portées par 46 tests `xfail` strict, levés
-par le chantier outillage (`results/c3_v2_2/outillage_v2_2.md`). Historique : v2.0 gelée au `d931293`
+R-01 à R-14) : `docs/amendements_c3_v2.1.md`. **L'outillage applique v2.2 depuis le 30/09** : les règles nouvelles de
+v2.2 (§ A.6 registre et critère d'arrêt, § A.7 clés `_quote` et dates nullables, § A.8 D4 et CAGR, § C.5 refus
+amont, § L.1 septième entrée et `metrics.executions`, § L.2 recoupements) sont outillées : des 46 tests `xfail`
+strict qui les portaient, le chantier outillage (`results/c3_v2_2/outillage_v2_2.md`) en a levé 45, 1 est caduc et
+déclaré ; conformité du producteur et de la chaîne prouvée sous v2.2 au serveur (`results/c3_outillage_v2_2/report.md`).
+Historique : v2.0 gelée au `d931293`
 (sha256 `9b62915069e59e9b…`), rapport de session C3a `agent/rapport_session_c3a_20260922.md`. **La norme est le
 protocole, et lui seul** (§ 0.7). Depuis v2.1, **chaque règle que l'outillage applique a sa section d'origine au
 texte** — les conventions d'outillage datées de C3a sont soit ratifiées (22/09), soit abrogées (21/09). Cette

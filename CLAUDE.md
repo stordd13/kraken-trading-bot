@@ -14,7 +14,7 @@ l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Inst
 v2.1 (23/09, `docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129`)** sur `feat/c3-amendements-v2.1`, merge sous
 décision humaine. **C3b paquet 1 clos (producteur conforme, 28/09). Protocole amendé en v2.2 (29/09,
 `docs/amendements_c3_v2.2.md`, sha256 `1bed7696…292a`)** sur `feat/c3-amendements-v2.2`, merge sous décision humaine ;
-**suite : outillage v2.2 (`results/c3_v2_2/outillage_v2_2.md`), puis manifeste** ; aucune sélection, rien à
+**v2.2 outillée le 30/09 (45 `xfail` levés + 1 caduc déclaré ; conformité du producteur et de la chaîne prouvée sous v2.2, `results/c3_outillage_v2_2/report.md`) ; suite : conversation manifeste** ; aucune sélection, rien à
 trader ; R&D sur le papier
 (`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
 `docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
@@ -41,8 +41,8 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | **Amendement v2.2** (paquet, réserves R-15 à R-22, outillage à écrire) | `docs/amendements_c3_v2.2.md` (section « Adoption ») + `results/c3_v2_2/` (`report.md`, `outillage_v2_2.md`) |
 | **Critère d'arrêt** (clôture de famille, alpha-stop projet, kill-switch live) | `docs/CONTRAINTES_POST_B4.md` § 10 |
 | **Brief du chantier C3a** (périmètre, gates, décisions figées) | `agent/c3a_protocole_chronologique_v2.md` |
-| **Outillage C3** (chaîne `c3_*.py`, codes de sortie, règles appliquées et leur section d'origine v2.1 ; v2.2 pas encore outillée, 46 `xfail` strict) | `skills/backtest.md` § « Validation C3 » |
-| **Producteur C3b** (paquet 1 clos ; suite : outillage v2.2, puis manifeste) — `c3b_prefix.py`, `c3b_evaluate.py`, garde-fous, exploitation serveur | `skills/backtest.md` § « Producteur C3b » (+ `results/c3b_producteur/report.md`) |
+| **Outillage C3** (chaîne `c3_*.py`, codes de sortie, règles appliquées et leur section d'origine ; v2.2 outillée le 30/09 : 45 `xfail` levés + 1 caduc déclaré, aucun autre restant) | `skills/backtest.md` § « Validation C3 » |
+| **Producteur C3b** (paquet 1 clos ; conformité prouvée sous v2.2 le 30/09 ; suite : conversation manifeste) — `c3b_prefix.py`, `c3b_evaluate.py`, garde-fous, exploitation serveur | `skills/backtest.md` § « Producteur C3b » (+ `results/c3b_producteur/report.md`) |
 | **Rapport de session C3a** (revues Fin, conventions, exigences C3b accumulées) | `agent/rapport_session_c3a_20260922.md` |
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
@@ -53,7 +53,7 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 > `9300f4e5…4129` : historique C3b). **Aucune sélection ne se fait hors de ce document.** v2.2 : la chaîne recalcule
 > ce que le producteur garantit (§ L.2, septième entrée `candles_eval.json`), refus amont d'un comparateur non
 > constructible lu et recoupé (§ C.5), évaluation sans exécution admise (§ L.1, `metrics.executions`), clés `_quote`
-> (§ A.7), registre et critère d'arrêt (§ A.6), D4 étendu au CAGR ; **ces règles ne sont pas encore outillées**
+> (§ A.7), registre et critère d'arrêt (§ A.6), D4 étendu au CAGR ; **ces règles sont outillées depuis le 30/09 (45 `xfail` levés + 1 caduc déclaré), conformité prouvée sous v2.2**
 > (réserves R-15 à R-22, liste close `results/c3_v2_2/outillage_v2_2.md`, bloquante pour le manifeste). v2.1 : rejeu complet du tirage § F.2 par la chaîne (égalité au bit,
 > environnement `{python, numpy, machine, libc}`), E2 conjonctive, c3 non normalisée → `inconclusif
 > (R1_NOT_NORMALISED)`, bloc de liquidation contradictoire → violation, évaluation réelle admise avec `flat_start_proof`,
