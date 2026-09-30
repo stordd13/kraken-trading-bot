@@ -18,6 +18,9 @@
   ``deferred_evaluation``), écrits par ``c3_verdict`` à l'étape 6, sont hors ``RECORD_KEYS`` : l'idempotence tient.
   Le sha256 déclaré du protocole est asserté **avant** le typage du manifeste : un manifeste d'un autre protocole
   n'est pas relu sous le schéma de celui-ci.
+* **§ A.6 v2.3 (AM-01)** — ``deferred_evaluation.date``, obligatoire sur tout manifeste (forme : ``cc.load_manifest``),
+  est validée ici : au moins 365 jours après ``window.end`` (``assert_deferred_date``), sinon ``R0_INVALID_RUN``,
+  code 2.
 
 **Les valeurs gelées sont assertées, pas seulement leur forme** — liste close de quatre assertions,
 tout écart étant un contrat rompu (``R0_INVALID_RUN``, code 2, rien d'écrit) : la fraction d'ancrage,
@@ -41,7 +44,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 from typing import Any
@@ -116,6 +119,22 @@ def assert_frozen_values(manifest: cc.Manifest) -> list[str]:
             f"{cc.PROTOCOL_RELPATH} — le manifeste ne déclare pas ce protocole"
         )
     return problems
+
+
+def assert_deferred_date(manifest: cc.Manifest) -> None:
+    """§ A.6 v2.3 (AM-01), à l'étape 1 : `deferred_evaluation.date` est « au moins 12 mois après `window.end` »
+    (§ 10.1, « au moins 12 mois de données neuves ») — décision de gate du 30/09 : **≥ 365 jours**, 365 exactement
+    admis ; trop proche → ``R0_INVALID_RUN``, code 2 (§ I.1, ligne 2), rien d'écrit. Absente ou illisible, la clé a
+    déjà été refusée par ``cc.load_manifest`` (erreur de forme). La date est une déclaration du manifeste, jamais une
+    fenêtre lue."""
+    gap = manifest.deferred_evaluation_date - manifest.window_end
+    if gap < timedelta(days=cc.DEFERRED_MIN_DAYS):
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"deferred_evaluation.date {manifest.deferred_evaluation_date.isoformat()} : "
+            f"{gap.total_seconds() / 86400.0:.6f} j après window.end {manifest.window_end.isoformat()}, minimum "
+            f"{cc.DEFERRED_MIN_DAYS} j (§ A.6 v2.3)",
+        )
 
 
 def variant_record(manifest: cc.Manifest, *, manifest_sha256: str) -> dict[str, Any]:
@@ -382,6 +401,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         problems = assert_frozen_values(manifest)
         if problems:
             raise cc.EntryRefusedError("R0_INVALID_RUN", "valeurs gelées : " + " ; ".join(problems))
+        assert_deferred_date(manifest)
         registry = load_registry(args.registry)
         key = cc.sig(raw)
         record = variant_record(manifest, manifest_sha256=cc.file_sha256(args.manifest))

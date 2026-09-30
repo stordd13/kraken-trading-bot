@@ -139,6 +139,12 @@ COMBINATIONS: tuple[str, ...] = tuple(
 )
 RETURN_DOMAIN_FLOOR = -1.0  # log1p n'existe pas en deçà ; § A.8 D4, contrainte mathématique pure
 
+#: § A.6 v2.3 (AM-01) : `deferred_evaluation.date` est « au moins 12 mois après `window.end` » ; décision de gate du
+#: 30/09 (`docs/amendements_c3_v2.3.md`, section « Adoption ») : **≥ 365 jours**, 365 exactement admis. Validée à
+#: l'étape 1 (`c3_anchor`). Hors du registre `THRESHOLDS` : tout seuil du registre est déclaré par le manifeste
+#: (`selection_rule.thresholds`, § 0.5), forme que le texte ne crée pas pour cette borne.
+DEFERRED_MIN_DAYS = 365
+
 # Noms du rejeu qu'aucune source `c3_*` ne doit importer (§ 0.5, antériorité).
 FORBIDDEN_REJEU_NAMES: tuple[str, ...] = (
     "WINDOW_START",
@@ -234,7 +240,8 @@ class EntryRefusedError(MissingEvidenceError):
 #: ``deployment_pairs`` (transposition déclarée validation → déploiement, § A.6 v2.1, facultative) ;
 #: ``verdict`` et ``deferred_evaluation`` (enregistrement du registre de variantes, § A.6 v2.2 : l'issue et son
 #: statut sont inscrits à l'étape 6, absents avant ; l'évaluation différée, seulement quand l'issue ouvre la voie de
-#: sortie prospective du § 10.1) ; ``refused`` (§ C.5 v2.2 : le bloc de la forme de refus de l'artefact d'évaluation,
+#: sortie prospective du § 10.1 — **au manifeste**, le bloc ``deferred_evaluation`` est obligatoire, § A.6 v2.3,
+#: lu par ``require_mapping``) ; ``refused`` (§ C.5 v2.2 : le bloc de la forme de refus de l'artefact d'évaluation,
 #: absent d'une évaluation exécutée) ; ``executions`` (§ L.1 v2.2 : ``metrics.executions``, porteur exigé par
 #: l'admission d'une évaluation réelle, qu'un exercice synthétique peut ne pas porter). ``first_fill_at`` reste
 #: optionnel et non nullable (un champ est l'un ou l'autre) : un synthétique peut l'omettre ; sur une réelle, sa
@@ -1362,6 +1369,9 @@ class Manifest:
     provenance: str
     #: § A.6 v2.2 (AM-05) — la famille du mécanisme évalué, au sens du critère d'arrêt (CONTRAINTES § 10.1).
     family: str
+    #: § A.6 v2.3 (AM-01) — `deferred_evaluation.date`, déclarée sur tout manifeste ; l'écart à `window.end` est
+    #: validé à l'étape 1 (`c3_anchor`), jamais ici.
+    deferred_evaluation_date: datetime
     candidates: tuple[Candidate, ...]
     engines: Mapping[str, str]
     thresholds: Mapping[str, Mapping[str, Any]]
@@ -1439,6 +1449,11 @@ def load_manifest(raw: Any) -> Manifest:
     family = require_str(raw, "family", where=where)
     if not family:
         raise MissingEvidenceError(f"{where}.family: chaîne vide")
+    # § A.6 v2.3 (AM-01) : « `deferred_evaluation.date` : une date, obligatoire sur tout manifeste » — absente, nulle,
+    # mal typée ou sans fuseau : erreur de forme (§ I.1, ligne 2). L'écart à `window.end` est une valeur, validée à
+    # l'étape 1 (`c3_anchor.assert_deferred_date`).
+    deferred_block = require_mapping(raw, "deferred_evaluation", where=where)
+    deferred_date = require_datetime(deferred_block, "date", where=f"{where}.deferred_evaluation")
     strategies_block = require_mapping(raw, "strategies", where=where)
     engines: dict[str, str] = {}
     strategy_tfs: dict[str, tuple[str, ...]] = {}
@@ -1552,6 +1567,7 @@ def load_manifest(raw: Any) -> Manifest:
         min_order_quote=min_order,
         provenance=provenance,
         family=family,
+        deferred_evaluation_date=deferred_date,
         candidates=tuple(candidates),
         engines=engines,
         thresholds=thresholds,

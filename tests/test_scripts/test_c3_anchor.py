@@ -115,7 +115,8 @@ def _campaign_v21_manifest() -> dict[str, Any]:
     """La fixture de campagne v2.1 : le manifeste conforme des fixtures, sur la fenêtre déclarée du § A.3 v2.1."""
     payload = fx.manifest()
     payload["window"] = dict(V21_WINDOW)
-    return payload
+    # § A.6 v2.3 (AM-01) : la date différée suit la fenêtre (≥ 365 jours après sa fin).
+    return fx.with_deferred_date(payload)
 
 
 def test_la_fenetre_de_la_premiere_campagne_donne_l_ancrage_du_texte(tmp_path: Path) -> None:
@@ -734,12 +735,6 @@ def test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acce
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X1 — c3_anchor ne lit pas encore `deferred_evaluation.date` (clé obligatoire, étape 1) : "
-    "outillage v2.3",
-)
 def test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1(
     tmp_path: Path,
 ) -> None:
@@ -753,12 +748,6 @@ def test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1(
     assert not (tmp_path / "variants.json").exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X2 — c3_anchor ne valide pas encore `deferred_evaluation.date` (≥ 365 jours après "
-    "`window.end`, lisible) : outillage v2.3",
-)
 def test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent(
     tmp_path: Path,
 ) -> None:

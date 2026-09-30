@@ -5,8 +5,9 @@
 #  1. aucune valeur interpolée — champ `{…}` d'une f-string, argument de `%` ou de `.format` — dont l'expression nomme
 #     l'évaluation différée ou son descripteur (identifiant qui contient `deferred` ou `descriptor` — convention de
 #     nommage du lot : tout objet qui porte l'empreinte ou le descripteur a l'un de ces deux mots dans son nom ; le
-#     triplet du verdict v2.2, `inscription`, n'en fait pas partie) : un message peut dire « l'empreinte n'est pas
-#     celle inscrite », jamais la porter ;
+#     triplet du verdict v2.2, `inscription`, n'en fait pas partie ; seule exception nommée, `deferred_evaluation_date`,
+#     la date déclarée au manifeste, publique par construction) : un message peut dire « l'empreinte n'est pas celle
+#     inscrite », jamais la porter ;
 #  2. aucune impression du digest du registre (D13, décision de Bruno du 30/09) : aucun appel `print` dont une valeur
 #     interpolée nomme à la fois le registre et un digest (`registry` et `digest` ou `sha`) ;
 #  3. aucun appel de journalisation (`logging`, `structlog`, `logger`, `log.`) dans ces modules.
@@ -30,6 +31,7 @@ import sys
 
 FILES = ["scripts/audit/c3_common.py", "scripts/audit/c3_anchor.py", "scripts/audit/c3_verdict.py"]
 DEFERRED = re.compile(r"deferred|descriptor", re.IGNORECASE)
+PUBLIC = {"deferred_evaluation_date"}
 REGISTRY = re.compile(r"registry", re.IGNORECASE)
 DIGEST = re.compile(r"digest|sha", re.IGNORECASE)
 LOGGING = re.compile(r"^(logging|structlog|logger|log)$")
@@ -82,7 +84,7 @@ for path in FILES:
         if isinstance(node, ast.JoinedStr):
             n_f += 1
         for expr in interpolated(node) if isinstance(node, (ast.JoinedStr, ast.BinOp, ast.Call)) else []:
-            hits = [n for n in names(expr) if DEFERRED.search(n)]
+            hits = [n for n in names(expr) if DEFERRED.search(n) and n not in PUBLIC]
             if hits:
                 report("interpolation_differee", path, expr.lineno, hits)
         if isinstance(node, ast.Call):
