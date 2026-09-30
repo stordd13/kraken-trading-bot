@@ -1,0 +1,41 @@
+# C3 gel v2.3 — déclarations du chantier, lues par comptes_gel.sh (identifiants pytest, puis objets de premier niveau).
+[neufs]
+tests/test_scripts/test_c3_anchor.py::test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1
+tests/test_scripts/test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+tests/test_scripts/test_c3_common.py::test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide
+tests/test_scripts/test_c3_verdict.py::test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur
+tests/test_scripts/test_c3_verdict.py::test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee
+tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+tests/test_scripts/test_c3_verdict.py::test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee
+[vers_xfail]
+# G-10 : le témoin R-17, jumeau v2.3 (X6, acceptation), devient xfail strict
+tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+[objets_modifies]
+# G-10 : X6 porté par les deux tests R-17 ; G-9 : liste des révisions et paquet épinglé ; helper : paramètre optionnel
+test_c3_anchor.py::test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee
+test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+test_c3_common.py::test_aucun_sha_de_protocole_n_est_ecrit_en_dur_dans_l_outillage_ni_les_tests
+test_c3_common.py::ADOPTED_PACKAGE
+test_c3_verdict.py::_chain_world
+[objets_ajoutes]
+test_c3_anchor.py::_closed_family_with_deferred
+test_c3_anchor.py::test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1
+test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+test_c3_common.py::DEFERRED_MIN_DAYS
+test_c3_common.py::DEFERRED_DATE
+test_c3_common.py::DEFERRED_DESCRIPTOR_FIELDS
+test_c3_common.py::with_deferred_date
+test_c3_common.py::_descriptor
+test_c3_common.py::deferred_descriptor
+test_c3_common.py::deferred_descriptor_at_run
+test_c3_common.py::deferred_manifest
+test_c3_common.py::test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide
+test_c3_verdict.py::DEFERRED_KEY
+test_c3_verdict.py::_opening_world
+test_c3_verdict.py::_assert_opens_the_way
+test_c3_verdict.py::_record
+test_c3_verdict.py::_retained_block
+test_c3_verdict.py::test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur
+test_c3_verdict.py::test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee
+test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+test_c3_verdict.py::test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee

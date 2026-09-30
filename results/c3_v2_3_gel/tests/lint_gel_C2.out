@@ -1,0 +1,13 @@
+# lint_gel — C2 — 2026-09-30T14:38:40Z
+# HEAD b47e4c8ec2cbfead9a0c19e711ed71ad5f321685 branche feat/c3-amendements-v2.3
+py_touches=tests/test_scripts/test_c3_anchor.py tests/test_scripts/test_c3_common.py tests/test_scripts/test_c3_verdict.py 
+ruff_check_src=0
+ruff_format_src=0
+ruff_check_audit_c3=0
+ruff_format_audit_c3=0
+ruff_check_touches=0
+ruff_format_touches=0
+ruff_check_results_du_chantier=0
+mypy=Found 65 errors in 18 files (checked 83 source files)
+mypy_src_65=0
+rc=0

@@ -1,0 +1,8 @@
+# temoins_texte — 2026-09-30T14:39:01Z
+# HEAD b47e4c8ec2cbfead9a0c19e711ed71ad5f321685 branche feat/c3-amendements-v2.3
+mutant apres_AM01_altere vu=0 (texte_conforme rc=1, protocole_egal_base_plus_apres=1)
+mutant hors_zone_B2 vu=0 (texte_conforme rc=1, protocole_changements_localises=1)
+mutant corps_AM02_paquet vu=0 (texte_conforme rc=1, paquet_ecarts_attendus_seuls=1)
+mutant contraintes_10_2 vu=0 (texte_conforme rc=1, contraintes_egal_base_plus_phrase=1)
+arbre_restaure=0
+rc=0

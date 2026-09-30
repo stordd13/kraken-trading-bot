@@ -1,0 +1,8 @@
+# mutants_gel — 2026-09-30T14:38:21Z
+# HEAD b47e4c8ec2cbfead9a0c19e711ed71ad5f321685 branche feat/c3-amendements-v2.3
+mutant M1_ancrage_accepte_tout_sur_famille_close vu=0 (pytest=1 ; 1 failed in 0.08s)
+mutant M2_timeframes_non_tries vu=0 (pytest=1 ; 1 failed in 0.15s)
+mutant M3_engines_non_restreint vu=0 (pytest=1 ; 1 failed in 0.15s)
+mutant M4_pair_costs_non_restreint vu=0 (pytest=1 ; 1 failed in 0.15s)
+arbre_restaure=0 (sha256 identiques, git diff scripts/ vide)
+rc=0

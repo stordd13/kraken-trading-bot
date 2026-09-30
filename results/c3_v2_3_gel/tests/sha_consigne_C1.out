@@ -1,0 +1,21 @@
+# sha_consigne — C1 — 2026-09-30T14:18:31Z
+# HEAD 662c104ef8cb5a9b5c7fb04452f7af817cb5a87a branche feat/c3-amendements-v2.3
+sha_fichier=d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6
+ligne_adoption=v2.3 d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6
+table_adoption=['v2.0', 'v2.1', 'v2.2', 'v2.3']
+adoption_ligne_derniere_et_table=0
+sha_descripteur=d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6
+descripteur_egal=0
+consignation docs/amendements_c3_v2.3.md occurrences=2
+consigne_amendements_c3_v2.3.md=0
+consignation docs/RESEARCH_LOG.md occurrences=1
+consigne_RESEARCH_LOG.md=0
+consignation skills/backtest.md occurrences=1
+consigne_backtest.md=0
+consignation CLAUDE.md occurrences=1
+consigne_CLAUDE.md=0
+epinglage: ADOPTED_PACKAGE = _project_root / "docs" / "amendements_c3_v2.3.md"
+adopted_package_v23=0
+tests_epinglage=2 passed in 0.05s
+tests_epinglage_verts=0
+rc=0
