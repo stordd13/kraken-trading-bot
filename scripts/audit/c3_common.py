@@ -24,6 +24,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Mapping, Sequence
+import copy
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -1646,6 +1647,95 @@ def timeframe_labels(
     if len(set(labels)) != len(labels):
         raise MissingEvidenceError(f"{where}: doublon")
     return tuple(labels)
+
+
+# ---------------------------------------------------------------------------
+# § A.6 v2.3 (AM-01) — le descripteur `D` de l'évaluation différée : une règle, deux lectures
+# ---------------------------------------------------------------------------
+
+
+def _deferred_descriptor(
+    raw: Mapping[str, Any],
+    retained: Mapping[str, Any],
+    *,
+    of: str,
+    window: tuple[datetime, datetime],
+    provenance: str,
+) -> dict[str, Any]:
+    """Le tableau du § A.6 v2.3, **liste close** : ses dix champs, et aucun autre (« tout champ hors de cette liste est
+    hors engagement »). Les deux colonnes du tableau ne diffèrent que par `deferred_evaluation_of`, `window`, le candidat
+    et `universe_provenance`, passés par l'appelant ; le reste est dérivé ici, **par la même règle** au verdict et au run
+    différé : `candidate` = `{strategy, pair, params}` ; `data` = `{exchange, exec_interval, timeframes}` ; `engines` et
+    `fees.pair_costs` restreints à la stratégie et à la paire du candidat ; `decision_timeframes` = la liste effective
+    (surcharge par candidat comprise, § A.8), **triée par étiquette** (G-7). Les valeurs sont celles que le manifeste
+    déclare (comme la clé de variante, `sig(canon(manifeste))`), sauf les deux instants de `window`, normalisés en UTC
+    (décision D2 du plan du lot 1 : un instant, pas une graphie, est engagé)."""
+    where = "manifest"
+    cwhere = f"{where}.candidate"
+    strategy = require_str(retained, "strategy", where=cwhere)
+    pair = require_str(retained, "pair", where=cwhere)
+    params = require_mapping(retained, "params", where=cwhere)
+    block = require_mapping(
+        require_mapping(raw, "strategies", where=where), strategy, where=f"{where}.strategies"
+    )
+    data = require_mapping(raw, "data", where=where)
+    timeframes = require_mapping(data, "timeframes", where=f"{where}.data")
+    override = optional_sequence(retained, "decision_timeframes", where=cwhere)
+    effective = timeframe_labels(
+        override
+        if override is not None
+        else require_sequence(block, "decision_timeframes", where=f"{where}.strategies.{strategy}"),
+        timeframes,
+        where=f"{cwhere}.decision_timeframes",
+    )
+    fees = require_mapping(raw, "fees", where=where)
+    costs = require_mapping(
+        require_mapping(fees, "pair_costs", where=f"{where}.fees"),
+        pair,
+        where=f"{where}.fees.pair_costs",
+    )
+    return {
+        "deferred_evaluation_of": of,
+        "family": require_str(raw, "family", where=where),
+        "window": {"start": window[0].isoformat(), "end": window[1].isoformat()},
+        "candidate": {"strategy": strategy, "pair": pair, "params": copy.deepcopy(dict(params))},
+        "data": {
+            key: copy.deepcopy(_require(data, key, where=f"{where}.data"))
+            for key in ("exchange", "exec_interval", "timeframes")
+        },
+        "engines": {strategy: require_str(block, "engine", where=f"{where}.strategies.{strategy}")},
+        "decision_timeframes": sorted(effective),
+        "fees": {
+            "model": _require(fees, "model", where=f"{where}.fees"),
+            "taker": _require(fees, "taker", where=f"{where}.fees"),
+            "pair_costs": {pair: copy.deepcopy(dict(costs))},
+            "pair_costs_file": _require(fees, "pair_costs_file", where=f"{where}.fees"),
+        },
+        "min_order_quote": _require(raw, "min_order_quote", where=where),
+        "universe_provenance": provenance,
+    }
+
+
+def deferred_descriptor_at_verdict(
+    campaign: Mapping[str, Any], retained: Mapping[str, Any]
+) -> dict[str, Any]:
+    """§ A.6 v2.3, colonne « Valeur au verdict » : `D` dérivé du manifeste brut de la campagne et du bloc candidat brut
+    de la **configuration retenue** — `deferred_evaluation_of` = `sig(canon(manifeste))`, l'empreinte de la variante de
+    campagne ; `window` = `{start: window.end de la campagne, end: date déclarée}` ; `universe_provenance` = la
+    constante `clean` (§ D.1 : l'échantillon différé est postérieur au verdict, jamais consulté)."""
+    where = "manifest"
+    window = require_mapping(campaign, "window", where=where)
+    declared = require_mapping(campaign, "deferred_evaluation", where=where)
+    return _deferred_descriptor(
+        campaign,
+        retained,
+        of=sig(campaign),
+        window=(
+            require_datetime(window, "end", where=f"{where}.window"),
+            require_datetime(declared, "date", where=f"{where}.deferred_evaluation"),
+        ),
+        provenance=PROVENANCE_CLEAN,
+    )
 
 
 # ---------------------------------------------------------------------------
