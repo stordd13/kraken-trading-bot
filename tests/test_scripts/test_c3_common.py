@@ -1822,3 +1822,156 @@ def benchmark_eval(
         "comparability": tests,
         "nav": list(nav) if nav is not None else [float(v) for v in bh_nav(pair)],
     }
+
+
+# ---------------------------------------------------------------------------
+# § A.6 v2.3 (AM-01) — l'évaluation différée : la clé du manifeste et le descripteur `D` (squelette X1-X8)
+# ---------------------------------------------------------------------------
+
+#: § A.6 v2.3 : « au moins 12 mois après `window.end` » ; décision de gate du 30/09 : ≥ 365 jours
+#: (`docs/amendements_c3_v2.3.md`, section « Adoption »).
+DEFERRED_MIN_DAYS = 365
+
+#: Une date déclarée conforme pour la fenêtre des fixtures : 365 jours exactement après `WINDOW_END`.
+DEFERRED_DATE = WINDOW_END + timedelta(days=DEFERRED_MIN_DAYS)
+
+#: § A.6 v2.3, tableau du descripteur `D` (AM-01 ; G-6, G-7), recopié du texte : ses champs, liste close.
+DEFERRED_DESCRIPTOR_FIELDS: tuple[str, ...] = (
+    "deferred_evaluation_of",
+    "family",
+    "window",
+    "candidate",
+    "data",
+    "engines",
+    "decision_timeframes",
+    "fees",
+    "min_order_quote",
+    "universe_provenance",
+)
+
+
+def with_deferred_date(payload: dict[str, Any], date: str | None = None) -> dict[str, Any]:
+    """Le manifeste `payload` qui déclare `deferred_evaluation.date` (§ A.6 v2.3, clé obligatoire sur tout
+    manifeste) ; défaut : 365 jours exactement après sa propre `window.end`."""
+    out = copy.deepcopy(payload)
+    if date is None:
+        end = datetime.fromisoformat(payload["window"]["end"])
+        date = (end + timedelta(days=DEFERRED_MIN_DAYS)).isoformat()
+    out["deferred_evaluation"] = {"date": date}
+    return out
+
+
+def _descriptor(
+    raw: Mapping[str, Any],
+    retained: Mapping[str, Any],
+    *,
+    of: str,
+    window: Mapping[str, Any],
+    provenance: str,
+) -> dict[str, Any]:
+    strategy, pair = retained["strategy"], retained["pair"]
+    block = raw["strategies"][strategy]
+    effective = retained.get("decision_timeframes", block["decision_timeframes"])
+    fees = raw["fees"]
+    return {
+        "deferred_evaluation_of": of,
+        "family": raw["family"],
+        "window": dict(window),
+        "candidate": {
+            "strategy": strategy,
+            "pair": pair,
+            "params": copy.deepcopy(retained["params"]),
+        },
+        "data": {
+            k: copy.deepcopy(raw["data"][k]) for k in ("exchange", "exec_interval", "timeframes")
+        },
+        "engines": {strategy: block["engine"]},
+        "decision_timeframes": sorted(effective),
+        "fees": {
+            "model": fees["model"],
+            "taker": fees["taker"],
+            "pair_costs": {pair: copy.deepcopy(fees["pair_costs"][pair])},
+            "pair_costs_file": fees["pair_costs_file"],
+        },
+        "min_order_quote": raw["min_order_quote"],
+        "universe_provenance": provenance,
+    }
+
+
+def deferred_descriptor(campaign: Mapping[str, Any], retained: Mapping[str, Any]) -> dict[str, Any]:
+    """Le descripteur `D` **au verdict**, dérivé côté test du tableau du § A.6 v2.3 (colonne « Valeur au verdict »),
+    jamais importé de l'outillage : `campaign` est le manifeste brut de la campagne, `retained` le bloc candidat de la
+    configuration retenue. `engines` restreint à sa stratégie (G-6) ; `decision_timeframes` : la liste effective,
+    surcharge par candidat comprise, triée par étiquette (G-7) ; `fees.pair_costs` restreint à sa paire ;
+    `universe_provenance` : la constante `clean`."""
+    return _descriptor(
+        campaign,
+        retained,
+        of=cc.sig(campaign),
+        window={"start": campaign["window"]["end"], "end": campaign["deferred_evaluation"]["date"]},
+        provenance=cc.PROVENANCE_CLEAN,
+    )
+
+
+def deferred_descriptor_at_run(incoming: Mapping[str, Any]) -> dict[str, Any]:
+    """Le même descripteur **re-dérivé du manifeste entrant** (colonne « Recoupement au run différé ») : parent,
+    fenêtre, unique candidat et provenance déclarée du manifeste entrant, le reste par la même règle."""
+    (only,) = incoming["universe"]["candidates"]
+    return _descriptor(
+        incoming,
+        only,
+        of=incoming["parent"]["variant_key"],
+        window=incoming["window"],
+        provenance=incoming["universe"]["provenance"],
+    )
+
+
+def deferred_manifest(
+    campaign: dict[str, Any], retained: Mapping[str, Any], *, variant_id: str = "synth-differee"
+) -> dict[str, Any]:
+    """Le manifeste d'une évaluation différée de `retained` : fenêtre `[window.end, date déclarée]` de la campagne,
+    l'unique candidat, parent = la variante de campagne, provenance `clean` ; les champs hors engagement sont repris
+    de la campagne, et sa propre clé `deferred_evaluation.date` est déclarée (inerte, § A.6 v2.3)."""
+    out = copy.deepcopy(campaign)
+    out["window"] = {
+        "start": campaign["window"]["end"],
+        "end": campaign["deferred_evaluation"]["date"],
+    }
+    out["universe"] = {
+        "provenance": cc.PROVENANCE_CLEAN,
+        "candidates": [copy.deepcopy(dict(retained))],
+    }
+    out["parent"] = {"is_root": False, "variant_key": cc.sig(campaign)}
+    out["variant_id"] = variant_id
+    return with_deferred_date(out)
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="AM-01 v2.3, X8 — c3_common.load_manifest ne lit pas encore `deferred_evaluation.date` : outillage v2.3",
+)
+def test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide() -> None:
+    """§ A.6 v2.3 (AM-01) : « `deferred_evaluation.date` : une date, **obligatoire sur tout manifeste** […] ;
+    absente, non lisible ou trop proche → `R0_INVALID_RUN`, code 2 (§ I.1, ligne 2) ». `load_manifest` en porte la
+    valeur typée (datetime) ; une forme invalide est une erreur de forme, jamais un défaut silencieux. Nom de champ
+    indicatif ; l'écart de 365 jours est une valeur, vérifiée à l'étape 1 (X2)."""
+    manifest_ = cc.load_manifest(with_deferred_date(manifest()))
+    assert getattr(manifest_, "deferred_evaluation_date", None) == DEFERRED_DATE
+    bad: list[dict[str, Any]] = []
+    for block in (
+        None,
+        {"date": None},
+        {},
+        {"date": 20270401},
+        {"date": "dans douze mois"},
+        "2027-04-01",
+    ):
+        payload = manifest()
+        payload.pop("deferred_evaluation", None)
+        if block is not None:
+            payload["deferred_evaluation"] = block
+        bad.append(payload)
+    for payload in bad:
+        with pytest.raises(cc.MissingEvidenceError):
+            cc.load_manifest(payload)
