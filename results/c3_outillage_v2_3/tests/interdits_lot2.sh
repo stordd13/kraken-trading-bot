@@ -7,8 +7,9 @@
 #     les docs gelées, les répertoires clos et le livrable du lot 1 ;
 #  3. le protocole est gelé : sha256 recalculé = dernière ligne `**sha256 vX.Y :**` de l'Adoption du paquet v2.3 ;
 #  4. liste blanche du lot 2 : tout fichier changé depuis a30d62a est sous results/c3_outillage_v2_3/ ou est
-#     docs/RESEARCH_LOG.md ; `gel_v2_3.patch` (pas à ce chantier) n'est jamais suivi, et inchangé s'il est présent
-#     (constat du 30/09, G0 du lot 2 : absent, retiré hors de cette session) ;
+#     docs/RESEARCH_LOG.md ; les fichiers étrangers à la racine (pas à ce chantier, jamais touchés) ne sont jamais
+#     suivis, et sont inchangés s'ils sont présents : `gel_v2_3.patch` (G0 du lot 2 : absent, retiré hors de cette
+#     session) et `lot2_s1.patch` (apparu au preflight de la conformité, 30/09 ; ajouté à cette liste après S1, déclaré) ;
 #  5. aucun artefact du chemin sélection sous results/c3_outillage_v2_3/ (`conformite/manifest.json` excepté par son
 #     nom exact), CAMPAIGN_UNLOCK absent (arbre et HEAD) ;
 #  6. règle 64 hex du lot 2 (plan D3, valable pour ce lot seulement) : toute empreinte de 64 hex ajoutée depuis
@@ -26,8 +27,9 @@ LOT1=a30d62a2fec51a4c277d51a5d20047892b2fbcca
 DIR=results/c3_outillage_v2_3/tests
 OUT="$DIR/interdits_lot2_${LABEL}.out"
 PACKAGE=docs/amendements_c3_v2.3.md
-FOREIGN=gel_v2_3.patch
-FOREIGN_SHA16=1ffa3eec6e2d7051
+#: Fichiers étrangers à la racine : nom et préfixe de 16 hex de leur sha256 au premier constat.
+FOREIGN_LIST=(gel_v2_3.patch:1ffa3eec6e2d7051 lot2_s1.patch:b8dcfa42bb697a2d)
+FOREIGN_NAMES=$(for e in "${FOREIGN_LIST[@]}"; do echo "${e%%:*}"; done)
 {
   echo "# interdits_lot2 — $LABEL — $(date -u +%FT%TZ)"
   echo "# HEAD $(git rev-parse HEAD) branche $(git branch --show-current) ; base $BASE ; lot 1 $LOT1"
@@ -73,8 +75,8 @@ fi
 # 4. liste blanche du lot 2, et le fichier étranger
 ALLOW='^(results/c3_outillage_v2_3/.+|docs/RESEARCH_LOG\.md)$'
 CHANGED=$( { git diff --name-only "$LOT1" HEAD; git diff --cached --name-only "$LOT1"; git diff --name-only "$LOT1";
-  git ls-files --others --exclude-standard; } | grep -vxF "$FOREIGN" | LC_ALL=C sort -u)
-echo "## fichiers changés depuis le lot 1 (HEAD ∪ index ∪ arbre ∪ non suivis ; $FOREIGN exclu)" >> "$OUT"
+  git ls-files --others --exclude-standard; } | grep -vxF "$FOREIGN_NAMES" | LC_ALL=C sort -u)
+echo "## fichiers changés depuis le lot 1 (HEAD ∪ index ∪ arbre ∪ non suivis ; fichiers étrangers exclus)" >> "$OUT"
 printf '%s\n' "$CHANGED" | grep . | sed 's/^/  /' >> "$OUT"
 outside=$(printf '%s\n' "$CHANGED" | grep . | grep -vE "$ALLOW")
 if [ -n "$outside" ]; then
@@ -83,15 +85,19 @@ if [ -n "$outside" ]; then
 else
   echo "liste_blanche=0" >> "$OUT"
 fi
-if git ls-files --error-unmatch "$FOREIGN" > /dev/null 2>&1; then
-  echo "etranger_suivi=1 ($FOREIGN est suivi : interdit)" >> "$OUT"; rc=1
-elif [ ! -e "$FOREIGN" ]; then
-  echo "etranger=absent (non suivi ; constat, pas un écart)" >> "$OUT"
-elif [ "$(shasum -a 256 "$FOREIGN" | cut -c1-16)" = "$FOREIGN_SHA16" ]; then
-  echo "etranger_inchange=0 ($FOREIGN non suivi, sha256_16 $FOREIGN_SHA16)" >> "$OUT"
-else
-  echo "etranger_inchange=1 ($FOREIGN modifié)" >> "$OUT"; rc=1
-fi
+for e in "${FOREIGN_LIST[@]}"; do
+  name=${e%%:*}
+  sha16=${e#*:}
+  if git ls-files --error-unmatch "$name" > /dev/null 2>&1; then
+    echo "etranger_suivi=1 ($name est suivi : interdit)" >> "$OUT"; rc=1
+  elif [ ! -e "$name" ]; then
+    echo "etranger=absent $name (non suivi ; constat, pas un écart)" >> "$OUT"
+  elif [ "$(shasum -a 256 "$name" | cut -c1-16)" = "$sha16" ]; then
+    echo "etranger_inchange=0 ($name non suivi, sha256_16 $sha16)" >> "$OUT"
+  else
+    echo "etranger_inchange=1 ($name modifié)" >> "$OUT"; rc=1
+  fi
+done
 echo "## fichiers du commit courant (index contre HEAD)" >> "$OUT"
 git diff --cached --name-status HEAD | sed 's/^/  /' >> "$OUT"
 echo "arbre_hors_index=$(git diff --name-only | wc -l | tr -d ' ') fichier(s) suivi(s) modifiés non indexés" >> "$OUT"
@@ -116,7 +122,7 @@ fi
 
 # 6. règle 64 hex du lot 2 (D3)
 FOUND=$(mktemp); SAFE=$(mktemp)
-{ git diff "$BASE" | grep -E '^\+' ; git ls-files --others --exclude-standard -z | grep -zvxF "$FOREIGN" \
+{ git diff "$BASE" | grep -E '^\+' ; git ls-files --others --exclude-standard -z | grep -zvxF "$FOREIGN_NAMES" \
   | xargs -0 cat 2> /dev/null; } | grep -oE '[0-9a-f]{64}' | LC_ALL=C sort -u > "$FOUND"
 {
   printf '%s\n' "$ALL_CHANTIER" | grep . | while IFS= read -r f; do [ -f "$f" ] && shasum -a 256 "$f" | cut -d' ' -f1; done
