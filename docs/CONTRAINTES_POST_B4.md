@@ -213,8 +213,10 @@ au ticket § 6 — ce qui en fait, par définition, une autre famille.
 passent **et** `Δ̂ > 0` dans les six combinaisons — seule la borne manque —, la configuration retenue, et elle
 seule, est inscrite à une **évaluation différée** au sens du protocole § D.1 (échantillon jamais consulté) :
 fenêtre `[fin du manifeste, date déclarée]`, sur données gelées après le verdict, **au moins 12 mois de
-données neuves**, mêmes paramètres, même procédure § F.2, une fois. La date et le manifeste sont écrits au
-moment du verdict, pas après. Elle ne consomme pas de budget de familles ; elle est la seule chose qui survit
+données neuves**, mêmes paramètres, même procédure § F.2, une fois. La date et l'engagement sur le manifeste
+(l'empreinte du descripteur, protocole § A.6) sont écrits au moment du verdict, pas après ; le manifeste
+différé lui-même est dérivé mécaniquement au moment du run et recoupé contre l'engagement. Elle ne consomme
+pas de budget de familles ; elle est la seule chose qui survit
 au cap temporel du § 10.2, parce que c'est une date à attendre, pas un chantier.
 
 ### 10.2 Alpha-stop projet — trois familles ou le 2027-09-30

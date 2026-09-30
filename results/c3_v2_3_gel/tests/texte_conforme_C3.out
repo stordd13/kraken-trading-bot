@@ -1,0 +1,24 @@
+# texte_conforme — C3 — 2026-09-30T14:39:02Z
+# HEAD b47e4c8ec2cbfead9a0c19e711ed71ad5f321685 branche feat/c3-amendements-v2.3 ; base 662c104ef8cb5a9b5c7fb04452f7af817cb5a87a
+am01_citations=5 (attendu 5 : avant 1, avant 2, CONTRAINTES avant, après, CONTRAINTES après)
+am01_cinq_citations=0
+apres_puces=5 (attendu 5)
+apres_cinq_puces=0
+ancre_AM00_entete_G4_trouvee_une_fois=0
+ancre_G1_liste_A6_trouvee_une_fois=0
+ancre_AM01_avant1_trouvee_une_fois=0
+ancre_AM01_avant2_trouvee_une_fois=0
+ancre_AM02_ligne_10ter_trouvee_une_fois=0
+ancre_AM02_phrase_trouvee_une_fois=0
+protocole_egal_base_plus_apres=0
+protocole_blocs_changes=6 sections=['### A.6 Le registre de variantes', '### I.1 Portée, raison, code de sortie, ', 'en-tête']
+protocole_changements_localises=0
+ancre_CONTRAINTES_phrase_trouvee_une_fois=0
+contraintes_egal_base_plus_phrase=0
+contraintes_blocs_changes=1 sections=['### 10.1 Clôture de famille']
+contraintes_changements_au_10_1=0
+ecarts_au_draft=['descripteur_G6_G7', 'renvoi_A5_A6', 'renvoi_A5_A6', 'statut']
+paquet_ecarts_attendus_seuls=0
+paquet_sans_section_empreinte_du_draft=0
+index_M_regenere_egal=0 (27 symboles)
+rc=0

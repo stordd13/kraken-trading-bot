@@ -1,0 +1,61 @@
+# interdits_gel — C2 — 2026-09-30T14:34:41Z
+# HEAD 2807167e2358bf3cd3a17326c818510cae8abb20 branche feat/c3-amendements-v2.3 ; base 662c104ef8cb5a9b5c7fb04452f7af817cb5a87a
+gele src head=0 index=0 arbre=0 non_suivis=0
+gele scripts head=0 index=0 arbre=0 non_suivis=0
+gele config head=0 index=0 arbre=0 non_suivis=0
+gele pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele .github head=0 index=0 arbre=0 non_suivis=0
+gele results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+## fichiers changés depuis la base (HEAD ∪ index ∪ arbre ∪ non suivis)
+  CLAUDE.md
+  agent/AGENT_C3_GEL_V2_3.md
+  agent/amendements_c3_v2_3_draft.md
+  docs/CONTRAINTES_POST_B4.md
+  docs/RESEARCH_LOG.md
+  docs/amendements_c3_v2.3.md
+  docs/protocole_c3.md
+  results/c3_v2_3_gel/tests/ci_status.sh
+  results/c3_v2_3_gel/tests/ci_status_C1.out
+  results/c3_v2_3_gel/tests/comptes_gel.out
+  results/c3_v2_3_gel/tests/comptes_gel.sh
+  results/c3_v2_3_gel/tests/declares_gel.txt
+  results/c3_v2_3_gel/tests/interdits_gel.sh
+  results/c3_v2_3_gel/tests/interdits_gel_C1.out
+  results/c3_v2_3_gel/tests/interdits_gel_C2.out
+  results/c3_v2_3_gel/tests/lint_gel.sh
+  results/c3_v2_3_gel/tests/lint_gel_C1.out
+  results/c3_v2_3_gel/tests/lint_gel_C2.out
+  results/c3_v2_3_gel/tests/mutants_gel.out
+  results/c3_v2_3_gel/tests/mutants_gel.sh
+  results/c3_v2_3_gel/tests/sha_consigne.sh
+  results/c3_v2_3_gel/tests/sha_consigne_C1.out
+  results/c3_v2_3_gel/tests/suite_C1.out
+  results/c3_v2_3_gel/tests/suite_C2.out
+  results/c3_v2_3_gel/tests/suite_base.out
+  results/c3_v2_3_gel/tests/suite_gel.sh
+  results/c3_v2_3_gel/tests/temoins_texte.out
+  results/c3_v2_3_gel/tests/temoins_texte.sh
+  results/c3_v2_3_gel/tests/texte_conforme.sh
+  results/c3_v2_3_gel/tests/texte_conforme_C1.out
+  results/c3_v2_3_gel/tests/xfail_rouge.out
+  results/c3_v2_3_gel/tests/xfail_rouge.sh
+  skills/backtest.md
+  tests/test_scripts/test_c3_anchor.py
+  tests/test_scripts/test_c3_common.py
+  tests/test_scripts/test_c3_verdict.py
+liste_blanche=0
+## fichiers du commit courant (index contre HEAD)
+  M	tests/test_scripts/test_c3_anchor.py
+  M	tests/test_scripts/test_c3_common.py
+  M	tests/test_scripts/test_c3_verdict.py
+arbre_hors_index=0 fichier(s) suivi(s) modifiés non indexés
+agent agent/AGENT_C3_GEL_V2_3.md sha256_16=430d5b83b923753e
+agent agent/amendements_c3_v2_3_draft.md sha256_16=5db399e6c4a49d21
+aucun_artefact=0
+campaign_unlock=absent
+empreintes_64_ajoutees=4 dont_protocole=4 table_adoption=4
+aucun_sha_artefact=0
+rc=0

@@ -1,0 +1,20 @@
+# suite — C1 — 2026-09-30T14:18:41Z
+# HEAD 662c104ef8cb5a9b5c7fb04452f7af817cb5a87a branche feat/c3-amendements-v2.3
+# fichiers suivis modifiés (non commités) : 6
+# commande : PYTHONPATH=results/c3_v2_2/tests poetry run pytest -q -p no:cacheprovider -p gate_sans_tunnel -rsxX -k "not test_determinism_parallel_vs_serial_full"
+tunnel_5433=fermé
+pytest_exit=0
+fin=2026-09-30T14:21:38Z
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3
+## ignorés, par raison
+8 : Database not reachable (tunnel down or no local Postgres). Start the tunnel with `tunnel_ssh_hetzner` then rerun.
+4 : Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+2 : Database not reachable (tunnel down or no local Postgres).
+2 : Database not reachable
+1 : Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+1 : Database not reachable (tunnel down)
+1 : BYBIT_INTEGRATION=trade required (real order)
+resume=3310 passed, 19 skipped, 24 deselected, 1 xfailed in 175.71s (0:02:55)
+failed_error_xpass=0
+brut=/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/d5c8ac5d-45aa-4619-b1b0-097e270ffb77/scratchpad/suite_C1.raw
+rc=0

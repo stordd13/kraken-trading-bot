@@ -2359,9 +2359,13 @@ def _retained_index(tmp_path: Path, w: dict[str, Any]) -> int | None:
 
 
 def _chain_world(
-    tmp_path: Path, *, mutate_observations: Any = None, **eval_kw: Any
+    tmp_path: Path,
+    *,
+    mutate_observations: Any = None,
+    manifest_payload: dict[str, Any] | None = None,
+    **eval_kw: Any,
 ) -> dict[str, Any]:
-    w = fx.world(tmp_path)
+    w = fx.world(tmp_path, manifest_payload)
     if mutate_observations is not None:
         obs = cc.read_json(w["observations"])
         mutate_observations(obs)
@@ -2483,6 +2487,236 @@ def test_R17_la_table_du_10_1_est_celle_du_texte() -> None:
     candidat a été retiré par D1, D2 ou D6 » n'est pas compté."""
     assert cv.COUNTED == TABLE_10_1
     assert cv.UNCOUNTED_IF_REMOVED_BY == {"A_NO_ADMISSIBLE_CANDIDATE": ("D1", "D2", "D6")}
+
+
+# ---------------------------------------------------------------------------
+# § A.6 v2.3 (AM-01) — l'inscription de l'évaluation différée au verdict (X3, X4, X5, X7)
+# ---------------------------------------------------------------------------
+
+#: Interface **indicative** (celle du lot 1, gardée par AM-01) : `deferred_evaluation {date, variant_key}` à
+#: l'enregistrement de la variante ; l'attendu est normatif (§ A.6 v2.3).
+DEFERRED_KEY = "deferred_evaluation"
+
+
+def _opening_world(tmp_path: Path, payload: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Un monde de chaîne dont l'issue ouvre la voie de sortie prospective du § 10.1 (effet positif que la borne ne
+    sépare pas de zéro, `_varying(51)` comme `_cannot_separate`) ; son manifeste déclare `deferred_evaluation.date`."""
+    payload = payload if payload is not None else fx.with_deferred_date(fx.manifest())
+    return _chain_world(tmp_path, manifest_payload=payload, returns_config=_varying(51))
+
+
+def _assert_opens_the_way(w: dict[str, Any]) -> None:
+    """`CONTRAINTES_POST_B4.md` § 10.1 : « si l'issue est `inconclusif (F_CANNOT_SEPARATE)` **et** `Q1 ∧ Q2 ∧ Q3`
+    passent **et** `Δ̂ > 0` dans les six combinaisons » — `Δ̂` recalculé côté test par la procédure § F.2 du texte
+    (`fx.f2_procedure`) ; il ne dépend que de l'appariement, les deux appariements couvrent les six combinaisons."""
+    verdict = cc.read_json(w["out"] / "verdict.json")
+    assert (verdict["verdict"], verdict["raison"]) == (cc.ISSUE_INCONCLUSIF, "F_CANNOT_SEPARATE")
+    assert verdict["portes_Q"] == {"Q1": True, "Q2": True, "Q3": True}
+    evaluation = cc.read_json(w["evaluation"])
+    pairs = sorted({c["pair"] for c in w["payload"]["universe"]["candidates"]})
+    procedure = fx.f2_procedure(
+        evaluation["returns_config"],
+        evaluation["returns_bench"],
+        seed=w["payload"]["uncertainty"]["seed"],
+        pair_index=pairs.index(evaluation["pair"]),
+        days=fx.EVAL_DAYS,
+    )
+    assert procedure["delta_hat"]["dd"] > 0 and procedure["delta_hat"]["sigma"] > 0
+
+
+def _record(w: dict[str, Any]) -> dict[str, Any]:
+    anchor = cc.read_json(w["out"] / "anchor.json")
+    return cc.read_json(w["registry"])["variants"][anchor["variant_key"]]
+
+
+def _retained_block(w: dict[str, Any]) -> dict[str, Any]:
+    retained = cc.read_json(w["out"] / "selection.json")["retained"]
+    return next(
+        c
+        for c in w["payload"]["universe"]["candidates"]
+        if cc.candidate_identity(c["strategy"], c["pair"], c["params"]) == retained["identity"]
+    )
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="AM-01 v2.3, X3 — c3_verdict n'inscrit pas encore l'évaluation différée (registry_inscription) : "
+    "outillage v2.3",
+)
+def test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ A.6 v2.3 (AM-01) : « Quand l'issue ouvre la voie de sortie prospective du § 10.1, il y inscrit aussi, au
+    moment du verdict, la **date déclarée** — copiée de la clé `deferred_evaluation.date` du manifeste, jamais choisie
+    au verdict — et l'**empreinte attendue** `sig(canon(D))` du **descripteur** `D` » ; « **Non-divulgation.** […]
+    Elle ne vit qu'au registre, inscrite en mode `chain` seul ; elle n'est **jamais imprimée** hors registre ». Le
+    verdict seul ne porte pas de registre : le mode `chain` est ici le seul qui puisse inscrire."""
+    w = _opening_world(tmp_path)
+    capsys.readouterr()
+    assert cv.main(_chain_argv(w)) == 0
+    printed = capsys.readouterr()
+    _assert_opens_the_way(w)
+    key = cc.sig(fx.deferred_descriptor(w["payload"], _retained_block(w)))
+    date = w["payload"]["deferred_evaluation"]["date"]
+    assert _record(w).get(DEFERRED_KEY) == {"date": date, "variant_key": key}
+    published = "".join(
+        p.read_text(encoding="utf-8") for p in sorted(w["out"].iterdir()) if p.is_file()
+    )
+    assert key[:16] not in printed.out + printed.err + published
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="AM-01 v2.3, X4 — le témoin positif intégré exige l'inscription que c3_verdict n'écrit pas encore : "
+    "outillage v2.3",
+)
+def test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee(
+    tmp_path: Path,
+) -> None:
+    """§ A.6 v2.3 (AM-01) : l'inscription n'a lieu que « quand l'issue ouvre la voie de sortie prospective du
+    § 10.1 ». Témoin positif intégré (décision G-11) : sans lui, ce test serait vert aujourd'hui — l'outillage
+    n'inscrit jamais rien — et ne prouverait rien (règle agent 1). Deux issues qui n'ouvrent pas la voie : `validé`
+    (monde par défaut) et `réfuté` (même effet que le témoin, Q1 en échec)."""
+    opening = tmp_path / "ouvre"
+    opening.mkdir()
+    w = _opening_world(opening)
+    assert cv.main(_chain_argv(w)) == 0
+    _assert_opens_the_way(w)
+    assert DEFERRED_KEY in _record(w), (
+        "témoin : l'issue qui ouvre la voie inscrit l'évaluation différée"
+    )
+    cases: dict[str, tuple[dict[str, Any], tuple[str, str | None]]] = {
+        "valide": ({}, (cc.ISSUE_VALIDE, None)),
+        "refute_q1": ({"returns_config": _varying(51), "net_pnl": -1.0}, (cc.ISSUE_REFUTE, None)),
+    }
+    for name, (kw, expected) in cases.items():
+        case = tmp_path / name
+        case.mkdir()
+        w = _chain_world(case, manifest_payload=fx.with_deferred_date(fx.manifest()), **kw)
+        assert cv.main(_chain_argv(w)) == 0
+        verdict = cc.read_json(w["out"] / "verdict.json")
+        assert (name, verdict["verdict"], verdict["raison"]) == (name, *expected)
+        assert DEFERRED_KEY not in _record(w), name
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AttributeError,
+    reason="AM-01 v2.3, X5 — c3_verdict ne dérive pas encore le descripteur D (nom d'appel indicatif "
+    "`deferred_descriptor`) : outillage v2.3",
+)
+def test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte() -> None:
+    """§ A.6 v2.3, tableau du descripteur `D`, colonne « Valeur au verdict » (AM-01 ; décisions G-6, G-7), recopié ici
+    valeur par valeur (règle agent 3). Le monde exerce chaque règle : deux stratégies (`engines` restreint à celle de
+    la retenue), deux paires (`fees.pair_costs` restreint à la sienne), une surcharge de timeframes de décision dans
+    le désordre (liste effective, **triée par étiquette**), `universe_provenance` la constante `clean`. Le calcul côté
+    test (`fx.deferred_descriptor`), qui sert d'attendu à X3, X6 et X7, est épinglé à la même table."""
+    campaign = fx.with_deferred_date(fx.manifest())
+    campaign["strategies"]["synth_signal"] = {
+        "engine": "signal",
+        "decision_timeframes": ["4h", "1d"],
+    }
+    campaign["universe"]["candidates"].append(
+        {"strategy": "synth_signal", "pair": "BTC/USDC", "params": {"period": 20}}
+    )
+    retained = campaign["universe"]["candidates"][3]
+    retained["decision_timeframes"] = ["4h", "1d"]
+    assert (retained["strategy"], retained["pair"]) == (fx.STRATEGY, "SOL/USDC")
+    spread, slippage = fx.PAIR_COSTS["SOL/USDC"]
+    expected = {
+        "deferred_evaluation_of": cc.sig(campaign),
+        "family": "grid",
+        "window": {"start": "2026-04-01T00:00:00+00:00", "end": "2027-04-01T00:00:00+00:00"},
+        "candidate": {
+            "strategy": "synth_grid",
+            "pair": "SOL/USDC",
+            "params": fx.default_params("SOL/USDC", 0),
+        },
+        "data": {
+            "exchange": "binance",
+            "exec_interval": 5,
+            "timeframes": {"5m": 5, "4h": 240, "1d": 1440, "1w": 10080},
+        },
+        "engines": {"synth_grid": "grid"},
+        "decision_timeframes": ["1d", "4h"],
+        "fees": {
+            "model": "bybit",
+            "taker": "0.0025",
+            "pair_costs": {"SOL/USDC": {"spread": spread, "slippage": slippage}},
+            "pair_costs_file": "config/pair_costs_b4.json",
+        },
+        "min_order_quote": 5.0,
+        "universe_provenance": "clean",
+    }
+    assert tuple(expected) == fx.DEFERRED_DESCRIPTOR_FIELDS
+    assert fx.deferred_descriptor(campaign, retained) == expected
+    assert cv.deferred_descriptor(campaign, retained) == expected
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="AM-01 v2.3, X7 — l'ancrage n'accepte pas encore la variante différée par son descripteur (X6), et "
+    "c3_verdict n'applique pas « une fois par famille » : outillage v2.3",
+)
+def test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee(
+    tmp_path: Path,
+) -> None:
+    """§ A.6 v2.3 (AM-01) : « Sur la variante différée elle-même, la clé est déclarée comme sur toute autre et reste
+    sans effet : **la voie prospective ne s'ouvre qu'une fois par famille** — le verdict d'une variante différée
+    n'inscrit jamais d'évaluation différée. » La variante différée est le monde de chaîne des fixtures (fenêtre
+    [2023-04-01, 2026-04-01], un seul candidat) ; sa campagne, enregistrée d'abord, finit le 2023-04-01 et déclare
+    le 2026-04-01 ; son verdict compté ouvrant la voie est inscrit au registre avec `sig(canon(D))`. L'issue de la
+    variante différée ouvre elle-même la voie (monde de X3) : seule la règle « une fois par famille » l'empêche
+    d'inscrire. Le monde est construit sur la version racine du manifeste (la sonde de `_chain_world` tourne sur un
+    registre neuf, où le parent n'existe pas), puis le manifeste différé, identique au lien de parenté près, est posé
+    à sa place avant la chaîne."""
+    retained = {
+        "strategy": fx.STRATEGY,
+        "pair": "BTC/USDC",
+        "params": fx.default_params("BTC/USDC", 0),
+    }
+    other = {
+        "strategy": fx.STRATEGY,
+        "pair": "SOL/USDC",
+        "params": fx.default_params("SOL/USDC", 0),
+    }
+    campaign = fx.manifest(candidates=[retained, other], variant_id="synth-campagne")
+    campaign["window"] = {"start": "2020-04-01T00:00:00+00:00", "end": fx.WINDOW_START.isoformat()}
+    campaign = fx.with_deferred_date(campaign, fx.WINDOW_END.isoformat())
+    deferred = fx.with_deferred_date(
+        fx.manifest(
+            candidates=[retained],
+            variant_id="synth-differee",
+            parent={"is_root": False, "variant_key": cc.sig(campaign)},
+        )
+    )
+    expected = cc.sig(fx.deferred_descriptor(campaign, retained))
+    assert cc.sig(fx.deferred_descriptor_at_run(deferred)) == expected
+    w = _opening_world(tmp_path, {**deferred, "parent": {"is_root": True}})
+    cc.write_json(w["manifest"], deferred)
+    w["payload"] = deferred
+    campaign_path = fx.write_manifest(tmp_path, campaign, "campagne.json")
+    assert ca.main(fx.anchor_argv(tmp_path, campaign_path, output="anchor_campagne.json")) == 0
+    registry = cc.read_json(w["registry"])
+    inscription = {"date": campaign["deferred_evaluation"]["date"], "variant_key": expected}
+    registry["variants"][cc.sig(campaign)].update(
+        {
+            "verdict": {
+                "issue": cc.ISSUE_INCONCLUSIF,
+                "raison": "F_CANNOT_SEPARATE",
+                "compte": True,
+            },
+            DEFERRED_KEY: inscription,
+        }
+    )
+    cc.write_json(w["registry"], registry)
+    assert cv.main(_chain_argv(w)) == 0
+    _assert_opens_the_way(w)
+    assert DEFERRED_KEY not in _record(w)
+    assert cc.read_json(w["registry"])["variants"][cc.sig(campaign)][DEFERRED_KEY] == inscription
 
 
 def test_A2_une_reinscription_discordante_au_registre_est_une_violation(tmp_path: Path) -> None:

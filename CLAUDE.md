@@ -14,7 +14,9 @@ l'audit red-team du 16/09 a invalidé l'instrument de mesure (addendum B4). Inst
 v2.1 (23/09, `docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129`)** sur `feat/c3-amendements-v2.1`, merge sous
 décision humaine. **C3b paquet 1 clos (producteur conforme, 28/09). Protocole amendé en v2.2 (29/09,
 `docs/amendements_c3_v2.2.md`, sha256 `1bed7696…292a`)** sur `feat/c3-amendements-v2.2`, merge sous décision humaine ;
-**v2.2 outillée le 30/09 (45 `xfail` levés + 1 caduc déclaré ; conformité du producteur et de la chaîne prouvée sous v2.2, `results/c3_outillage_v2_2/report.md`) ; suite : conversation manifeste** ; aucune sélection, rien à
+**v2.2 outillée le 30/09 (45 `xfail` levés + 1 caduc déclaré ; conformité du producteur et de la chaîne prouvée sous v2.2, `results/c3_outillage_v2_2/report.md`). Protocole amendé en v2.3 (30/09,
+`docs/amendements_c3_v2.3.md`, sha256 `d030ab23…79e6`, évaluation différée)** sur `feat/c3-amendements-v2.3`, merge
+sous décision humaine ; **suite : outillage v2.3 (8 `xfail` strict X1-X8), puis manifeste** ; aucune sélection, rien à
 trader ; R&D sur le papier
 (`docs/CONTRAINTES_POST_B4.md`), tout run inscrit à `docs/RESEARCH_LOG.md`, aucune sélection hors
 `docs/protocole_c3.md`.** Les backtests tournent sur les 8.7M rows Binance
@@ -37,7 +39,8 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | Résultats de backtests (quoi est où, verdicts) | `results/INDEX.md` |
 | **Nouvelle idée de stratégie** (filtre d'entrée, ticket § 6 sur le papier avant tout code) | `docs/CONTRAINTES_POST_B4.md` |
 | **Audit red-team B4 / portée des conclusions** | `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md` (+ addendum en tête de `results/B4_bybit_backtest_report.md`) |
-| **Comment une configuration est sélectionnée** (protocole v2.2 — spécification de TOUTE sélection future) | `docs/protocole_c3.md` (+ `docs/amendements_c3_v2.2.md`, `docs/amendements_c3_v2.1.md`) |
+| **Comment une configuration est sélectionnée** (protocole v2.3 — spécification de TOUTE sélection future) | `docs/protocole_c3.md` (+ `docs/amendements_c3_v2.3.md`, `docs/amendements_c3_v2.2.md`, `docs/amendements_c3_v2.1.md`) |
+| **Amendement v2.3** (évaluation différée ; décisions G-1 à G-11, squelette `xfail` X1-X8, outillage à écrire) | `docs/amendements_c3_v2.3.md` (section « Adoption ») + `results/c3_v2_3_gel/report.md` |
 | **Amendement v2.2** (paquet, réserves R-15 à R-22, outillage à écrire) | `docs/amendements_c3_v2.2.md` (section « Adoption ») + `results/c3_v2_2/` (`report.md`, `outillage_v2_2.md`) |
 | **Critère d'arrêt** (clôture de famille, alpha-stop projet, kill-switch live) | `docs/CONTRAINTES_POST_B4.md` § 10 |
 | **Brief du chantier C3a** (périmètre, gates, décisions figées) | `agent/c3a_protocole_chronologique_v2.md` |
@@ -47,10 +50,14 @@ end-stampées en DB avec le modèle de fees Bybit (maker 0.10 % / taker 0.25 %) 
 | Briefs de chantier en cours | `agent/` |
 | **Journal des essais** (obligatoire avant tout run) | `docs/RESEARCH_LOG.md` |
 
-> **Protocole C3 v2.2 (amendé le 29 sept 2026 — `docs/amendements_c3_v2.2.md`, sha256
-> `1bed7696c0b0002b702f34fd549a59fc648968ff2e3056a98d33168bd643292a`).** `docs/protocole_c3.md` spécifie **toute**
+> **Protocole C3 v2.3 (amendé le 30 sept 2026 — `docs/amendements_c3_v2.3.md`, sha256
+> `d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6`).** `docs/protocole_c3.md` spécifie **toute**
 > sélection future et ne se modifie que par amendement daté (v2.0 gelée au `d931293` : historique C3a ; v2.1,
-> `9300f4e5…4129` : historique C3b). **Aucune sélection ne se fait hors de ce document.** v2.2 : la chaîne recalcule
+> `9300f4e5…4129` : historique C3b ; v2.2, `1bed7696…292a` : conformité du 30/09). **Aucune sélection ne se fait hors
+> de ce document.** v2.3 : évaluation différée inscrite au verdict par la date déclarée au manifeste
+> (`deferred_evaluation.date`, ≥ 365 jours après `window.end`) et l'empreinte d'un descripteur `D` (§ A.6, registre
+> seul, jamais imprimée) ; § I.1 ligne 10 ter (code du producteur, forme de refus) ; **v2.3 n'est pas outillée : 8
+> `xfail` strict X1-X8, entrée du chantier outillage v2.3, avant le manifeste**. v2.2 : la chaîne recalcule
 > ce que le producteur garantit (§ L.2, septième entrée `candles_eval.json`), refus amont d'un comparateur non
 > constructible lu et recoupé (§ C.5), évaluation sans exécution admise (§ L.1, `metrics.executions`), clés `_quote`
 > (§ A.7), registre et critère d'arrêt (§ A.6), D4 étendu au CAGR ; **ces règles sont outillées depuis le 30/09 (45 `xfail` levés + 1 caduc déclaré), conformité prouvée sous v2.2**

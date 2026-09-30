@@ -1,5 +1,10 @@
 # Protocole de validation chronologique — C3, version 2
 
+> **Révision v2.3 — amendée le 2026-09-30.** Trois amendements datés (AM-00 à AM-02),
+> `docs/amendements_c3_v2.3.md`, adoptés par Bruno au gate d'amendement du 2026-09-30. **Nouveau sha256 :
+> consigné hors du fichier.** Le sha256 de v2.2 (`1bed7696…292a`) perd son statut d'empreinte courante ; un
+> manifeste v2.3 est une nouvelle variante (§ A.6).
+>
 > **Révision v2.2 — amendée le 2026-09-29.** Douze amendements datés (AM-00 à AM-12 ; AM-07 est fusionné
 > dans AM-03), `docs/amendements_c3_v2.2.md`, adoptés par Bruno au gate d'amendement après lecture adverse
 > (Claude). Les décisions de gate et les réserves d'application (R-15 à R-22) sont consignées dans la section
@@ -391,7 +396,8 @@ sa forme machine.
   **la source de données et l'intervalle de bougies** ; **le modèle de fees et les coûts par paire** ; **le
   capital `C`** ; le plancher d'ordre ; la règle de sélection ; **chaque seuil avec sa classe** (§ 0.5) ; la
   définition du benchmark et **le mode de `λ`** (§ C.4) ; **les portes ponctuelles post-ancrage et les paramètres
-  de la procédure d'incertitude** (§ F.2) ; et le **sha256 de ce document**.
+  de la procédure d'incertitude** (§ F.2) ; **la date de l'évaluation différée** (`deferred_evaluation.date`,
+  ci-dessous) ; et le **sha256 de ce document**.
   Cette liste est exactement ce que la clause D5 asserte « égal à ce qui est déclaré » : deux essais qui ne
   diffèrent que par leur modèle de fees **doivent** porter deux clés de variante distinctes, sans quoi le
   registre manque précisément ce qu'il existe pour tracer.
@@ -418,13 +424,51 @@ sa forme machine.
   - **À l'étape 6** (§ L.1), le verdict inscrit dans l'enregistrement de sa variante l'issue, la raison, et le
     statut *compté* ou *non compté* que le § 10.1 leur attribue.
   - Quand l'issue ouvre la voie de sortie prospective du § 10.1, il y inscrit aussi, au moment du verdict, la
-    **date déclarée** et l'**empreinte attendue** `sig(canon(manifeste))` du manifeste de l'évaluation
-    différée.
+    **date déclarée** — copiée de la clé `deferred_evaluation.date` du manifeste, jamais choisie au verdict —
+    et l'**empreinte attendue** `sig(canon(D))` du **descripteur** `D` de l'évaluation différée, défini
+    ci-dessous. Le manifeste de l'évaluation différée n'est écrit nulle part au verdict : seul son engagement
+    l'est.
+
+  - **La clé du manifeste.** `deferred_evaluation.date` : une date, **obligatoire sur tout manifeste**,
+    validée à l'étape 1 : **au moins 12 mois après `window.end`** (§ 10.1, « au moins 12 mois de données
+    neuves ») ; absente, non lisible ou trop proche → `R0_INVALID_RUN`, code 2 (§ I.1, ligne 2). Sur la
+    variante différée elle-même, la clé est déclarée comme sur toute autre et reste sans effet : **la voie
+    prospective ne s'ouvre qu'une fois par famille** — le verdict d'une variante différée n'inscrit jamais
+    d'évaluation différée.
+
+  - **Le descripteur `D`**, liste close, sérialisé par `canon` (§ A.1 bis). Chaque champ est dérivé du
+    manifeste de campagne et de la sélection au moment du verdict, et re-dérivé du manifeste entrant au moment
+    du run différé, par la même règle :
+
+    | Champ | Valeur au verdict | Recoupement au run différé |
+    |---|---|---|
+    | `deferred_evaluation_of` | l'empreinte de la variante de campagne (`sig(canon(manifeste))`) | `parent.variant_key` du manifeste entrant |
+    | `family` | la famille du manifeste | idem |
+    | `window` | `{start: window.end de la campagne, end: date déclarée}` | `window` du manifeste entrant |
+    | `candidate` | `{strategy, pair, params}` de la **configuration retenue** (§ A.10 ; identité § A.2 recalculable) | l'unique candidat du manifeste entrant |
+    | `data` | `{exchange, exec_interval, timeframes}` du manifeste | idem |
+    | `engines` | `{strategy: engine}` restreint à la stratégie de la **configuration retenue** (`strategies.<strategy>.engine` du manifeste), sur le modèle de `pair_costs` restreint à la paire retenue | idem, pour la stratégie de l'unique candidat du manifeste entrant |
+    | `decision_timeframes` | la liste effective du manifeste pour la configuration retenue (§ A.8 : surcharge par candidat comprise), **triée par étiquette** — un ensemble, comme au § A.8 | celle de l'unique candidat du manifeste entrant, par la même règle |
+    | `fees` | `{model, taker, pair_costs` restreint à la paire retenue`, pair_costs_file}` | idem |
+    | `min_order_quote` | la valeur du manifeste | idem |
+    | `universe_provenance` | la constante `clean` — § D.1 : l'échantillon différé est postérieur au verdict et gelé après lui, jamais consulté | la provenance déclarée du manifeste entrant |
+
+    **Tout champ hors de cette liste est hors engagement**, et contrôlé au moment du run différé par les règles
+    ordinaires de la version alors en vigueur (journal, protocole courant, valeurs gelées, § F.2). En
+    particulier `research_log_entry`, `run_scope`, `variant_id` et `protocol_sha256` n'entrent pas dans `D`.
+
   - **À l'étape 1**, l'ancrage lit les enregistrements de la famille que le manifeste déclare. Il refuse
     (`R0_INVALID_RUN`, code 2, § I.1, ligne 2) toute variante que le § 10.1 exclut : une seconde campagne sur
     une famille qui porte déjà un verdict compté, ou une relance au-delà de l'unique.
-  - Sur une telle famille, **seule est acceptée** la variante dont l'empreinte est l'empreinte attendue inscrite
-    au verdict. L'évaluation différée est un état du registre, pas une exception de lecture.
+
+  - Sur une telle famille, à l'étape 1, l'ancrage **dérive le même descripteur du manifeste entrant, par la
+    même règle**, et **seule est acceptée** la variante dont `sig(canon(D))` égale l'empreinte inscrite au
+    verdict. L'évaluation différée est un état du registre, pas une exception de lecture.
+
+  - **Non-divulgation.** L'empreinte différée engage la configuration retenue sur un espace d'hypothèses
+    énumérable : elle est **brute-forçable par construction**. Elle ne vit qu'au registre, inscrite en mode
+    `chain` seul ; elle n'est **jamais imprimée** hors registre, et un registre qui la porte n'est **jamais
+    versionné ni ouvert** (règle de non-lecture).
   - L'issue publiée et le statut compté ne sont tenus qu'à un endroit.
 
 ### A.7 La projection d'ancrage, et sa liste blanche
@@ -1906,11 +1950,14 @@ Trois portées, et trois seulement :
 | 9 | Aucun survivant du plancher P1-P3 | **run** | `A_BELOW_FLOOR` | **0** | non ; abstention, résultat publié |
 | 10 | Benchmark non constructible ou non comparable | **run** | `E_NO_BENCHMARK` | **0** | non ; issue `inconclusif` |
 | 10 bis | **Liquidation terminale de l'évaluation non normalisée** : clause 3 du § B en échec **ou non vérifiable** sur l'artefact évalué | **run** | `R1_NOT_NORMALISED` | **0** | non ; issue `inconclusif` — aucun verdict directionnel n'est fondé sur cet artefact (§ B.3) |
+| 10 ter | **Producteur** : comparateur d'évaluation non constructible — l'artefact d'évaluation est écrit sous sa **forme de refus** (§ C.5), le moteur jamais construit | — | — | **0** | oui ; la chaîne lit la forme et publie la ligne 10 |
 | 11 | Estampille de liquidation et borne finale en cellules distinctes | **run** | `E_STAMP_MISMATCH` | **0** | non ; issue `inconclusif` |
 | 12 | **Amorçage défaillant à l'ancrage d'évaluation** | **run** | `D_WARMUP_ANCHOR` | **0** | non ; issue `inconclusif` |
 | 13 | Estimabilité post-ancrage en défaut (§ A.13) | **run** | `F_NOT_ESTIMABLE` | **0** | non ; issue `inconclusif` |
 | 14 | La borne ne sépare pas l'effet de zéro | **run** | `F_CANNOT_SEPARATE` | **0** | non ; issue `inconclusif` |
 | 15 | Auto-contrôle d'instrument en défaut : statut recalculé ≠ statut enregistré, non-finitude, ordre non total | **run** | — | **1** | **non** ; c'est une violation, pas un résultat |
+
+La ligne 10 ter dit le code de sortie du **producteur** ; la ligne 10 reste celle de la chaîne.
 
 **La règle de promotion, lignes 4 et 5 — et la liste close des clauses promouvables.**
 

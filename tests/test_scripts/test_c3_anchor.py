@@ -670,50 +670,121 @@ def test_R17_une_relance_au_dela_de_l_unique_est_refusee(tmp_path: Path) -> None
     assert code == 2 and out is None
 
 
+def _closed_family_with_deferred(tmp_path: Path) -> tuple[dict[str, Any], str]:
+    """Une campagne de la famille `grid` enregistrée, puis son verdict compté ouvrant la voie du § 10.1, avec
+    l'inscription d'AM-01 (§ A.6 v2.3) : la date copiée du manifeste et `sig(canon(D))` de la configuration retenue
+    (le premier candidat), `D` dérivé côté test du tableau du texte (`fx.deferred_descriptor`)."""
+    campaign = fx.with_deferred_date(_family_manifest())
+    _, root = _run(tmp_path, campaign)
+    assert root is not None and root["variant_key"] == cc.sig(campaign)
+    retained = campaign["universe"]["candidates"][0]
+    expected = cc.sig(fx.deferred_descriptor(campaign, retained))
+    _record_verdict(
+        tmp_path,
+        root["variant_key"],
+        issue="inconclusif",
+        raison="F_CANNOT_SEPARATE",
+        compte=True,
+        deferred={"date": campaign["deferred_evaluation"]["date"], "variant_key": expected},
+    )
+    return campaign, expected
+
+
 def test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee(
     tmp_path: Path,
 ) -> None:
-    """§ A.6 v2.2 : sur une famille qui porte un verdict compté, « seule est acceptée la variante dont l'empreinte
-    est l'empreinte attendue inscrite au verdict » — toute autre est refusée."""
-    _, root = _run(tmp_path, _family_manifest())
-    assert root is not None
-    _record_verdict(
-        tmp_path,
-        root["variant_key"],
-        issue="inconclusif",
-        raison="F_CANNOT_SEPARATE",
-        compte=True,
-        deferred={"date": "2028-06-29T00:00:00+00:00", "variant_key": "a" * 64},
-    )
-    other = _family_manifest(
-        variant_id="synth-other", parent={"is_root": False, "variant_key": root["variant_key"]}
-    )
-    code, out = _run(tmp_path, other, name="other.json", output="anchor_other.json")
+    """§ A.6 v2.3 (AM-01), X6 côté refus : « Sur une telle famille, à l'étape 1, l'ancrage dérive le même descripteur
+    du manifeste entrant, par la même règle, et seule est acceptée la variante dont `sig(canon(D))` égale l'empreinte
+    inscrite au verdict » — toute autre empreinte de descripteur est refusée (`R0_INVALID_RUN`, code 2). Mis à jour
+    vers la comparaison par descripteur (décision G-10) : l'inscription porte le descripteur de la configuration
+    retenue ; le manifeste entrant est le manifeste différé d'une autre configuration de l'univers."""
+    campaign, expected = _closed_family_with_deferred(tmp_path)
+    other = campaign["universe"]["candidates"][1]
+    incoming = fx.deferred_manifest(campaign, other, variant_id="synth-other")
+    assert cc.sig(fx.deferred_descriptor_at_run(incoming)) != expected
+    code, out = _run(tmp_path, incoming, name="other.json", output="anchor_other.json")
     assert code == 2 and out is None
 
 
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="AM-01 v2.3, X6 — c3_anchor.stop_criterion compare l'empreinte brute du manifeste entrant, pas celle de son "
+    "descripteur D : outillage v2.3",
+)
 def test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee(
     tmp_path: Path,
 ) -> None:
-    """§ A.6 v2.2 : « Sur une telle famille, seule est acceptée la variante dont l'empreinte est l'empreinte attendue
-    inscrite au verdict. L'évaluation différée est un état du registre, pas une exception de lecture. » Témoin vert,
-    vérifié par mutation (plan du lot 1 : l'ancrage qui refuse aussi cette empreinte rougit ce test)."""
-    _, root = _run(tmp_path, _family_manifest())
-    assert root is not None
-    deferred = _family_manifest(
-        variant_id="synth-differee", parent={"is_root": False, "variant_key": root["variant_key"]}
-    )
-    _record_verdict(
-        tmp_path,
-        root["variant_key"],
-        issue="inconclusif",
-        raison="F_CANNOT_SEPARATE",
-        compte=True,
-        deferred={"date": "2028-06-29T00:00:00+00:00", "variant_key": cc.sig(deferred)},
-    )
+    """§ A.6 v2.3 (AM-01), X6 côté acceptation : « Sur une telle famille, à l'étape 1, l'ancrage **dérive le même
+    descripteur du manifeste entrant, par la même règle**, et **seule est acceptée** la variante dont `sig(canon(D))`
+    égale l'empreinte inscrite au verdict. L'évaluation différée est un état du registre, pas une exception de
+    lecture. » Jumeau v2.3 du témoin v2.2 (décision G-10) : l'inscription porte `sig(canon(D))`, plus l'empreinte du
+    manifeste brut ; le manifeste entrant est le manifeste différé de la configuration retenue, dont le descripteur
+    re-dérivé (colonne « Recoupement au run différé ») est celui du verdict."""
+    campaign, expected = _closed_family_with_deferred(tmp_path)
+    deferred = fx.deferred_manifest(campaign, campaign["universe"]["candidates"][0])
+    assert cc.sig(fx.deferred_descriptor_at_run(deferred)) == expected
     code, out = _run(tmp_path, deferred, name="differee.json", output="anchor_differee.json")
     assert code == 0 and out is not None
     assert out["variant_key"] == cc.sig(deferred) and out["registry"]["new_entry"] is True
+
+
+# ---------------------------------------------------------------------------
+# § A.6 v2.3 (AM-01) — la clé du manifeste `deferred_evaluation.date`, validée à l'étape 1 (X1, X2)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="AM-01 v2.3, X1 — c3_anchor ne lit pas encore `deferred_evaluation.date` (clé obligatoire, étape 1) : "
+    "outillage v2.3",
+)
+def test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1(
+    tmp_path: Path,
+) -> None:
+    """§ A.6 v2.3 (AM-01) : « `deferred_evaluation.date` : une date, **obligatoire sur tout manifeste**, validée à
+    l'étape 1 […] ; absente […] → `R0_INVALID_RUN`, code 2 (§ I.1, ligne 2) » ; § A.6, liste « au minimum et sans
+    exception » (G-1). Refus d'entrée : code 2, rien n'est écrit, rien n'est enregistré."""
+    payload = fx.manifest()
+    payload.pop("deferred_evaluation", None)
+    code, out = _run(tmp_path, payload)
+    assert code == 2 and out is None
+    assert not (tmp_path / "variants.json").exists()
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason="AM-01 v2.3, X2 — c3_anchor ne valide pas encore `deferred_evaluation.date` (≥ 365 jours après "
+    "`window.end`, lisible) : outillage v2.3",
+)
+def test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent(
+    tmp_path: Path,
+) -> None:
+    """§ A.6 v2.3 (AM-01) : la date est « validée à l'étape 1 : **au moins 12 mois après `window.end`** […] ; absente,
+    non lisible ou trop proche → `R0_INVALID_RUN`, code 2 » ; décision de gate : « au moins 12 mois » s'entend
+    **≥ 365 jours**. Témoin sain : 365 jours exactement après `window.end` (2026-04-01T00:00Z) passent. Chaque cas
+    dans son propre répertoire, registre neuf : seule la date les distingue du témoin."""
+    assert fx.WINDOW_END.isoformat() == "2026-04-01T00:00:00+00:00"
+    assert fx.DEFERRED_DATE.isoformat() == "2027-04-01T00:00:00+00:00"
+    sain = tmp_path / "sain"
+    sain.mkdir()
+    code, out = _run(sain, fx.with_deferred_date(fx.manifest(), fx.DEFERRED_DATE.isoformat()))
+    assert code == 0 and out is not None
+    cases = {
+        "une_seconde_de_moins": "2027-03-31T23:59:59+00:00",
+        "364_jours": "2027-03-31T00:00:00+00:00",
+        "six_mois": "2026-10-01T00:00:00+00:00",
+        "avant_la_fin": "2026-01-01T00:00:00+00:00",
+        "illisible": "dans douze mois",
+    }
+    for name, date in cases.items():
+        case = tmp_path / name
+        case.mkdir()
+        code, out = _run(case, fx.with_deferred_date(fx.manifest(), date))
+        assert (name, code, out) == (name, 2, None)
+        assert not (case / "variants.json").exists()
 
 
 # ---------------------------------------------------------------------------

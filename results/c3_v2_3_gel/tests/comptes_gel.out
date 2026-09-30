@@ -1,0 +1,33 @@
+# comptes_gel — suite C2 — 2026-09-30T14:38:34Z
+# HEAD b47e4c8ec2cbfead9a0c19e711ed71ad5f321685 branche feat/c3-amendements-v2.3 ; base 662c104ef8cb5a9b5c7fb04452f7af817cb5a87a
+collecte wt_base : exit=0 ; 3330/3354 tests collected (24 deselected) in 2.81s
+collecte kraken-trading-bot : exit=0 ; 3337/3361 tests collected (24 deselected) in 0.70s
+collectes : base=3330 tete=3337
+retires_vide=0
+ajoutes_egal_neufs_declares=0
+  neuf : tests/test_scripts/test_c3_anchor.py::test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1
+  neuf : tests/test_scripts/test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+  neuf : tests/test_scripts/test_c3_common.py::test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide
+  neuf : tests/test_scripts/test_c3_verdict.py::test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur
+  neuf : tests/test_scripts/test_c3_verdict.py::test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee
+  neuf : tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+  neuf : tests/test_scripts/test_c3_verdict.py::test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee
+xfail : base=1 tete=9
+xfail_tete_egal_base_neufs_vers_xfail=0
+aucun_xpass_failed_error=0
+resume base={'passed': 3310, 'skipped': 19, 'deselected': 24, 'xfailed': 1} tete={'passed': 3309, 'skipped': 19, 'deselected': 24, 'xfailed': 9}
+equation : 3310 (base) − 1 (témoin R-17 → xfail) + 0 (neufs verts) = 3309 ; tête = 3309
+equation_juste=0
+ignores_inchanges=0
+deselectionnes_inchanges_24=0
+attendu_du_GO_3309_passes_9_xfail=0
+objets : modifies=5 ajoutes=21 retires=0
+  modifié : test_c3_anchor.py::test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refusee
+  modifié : test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+  modifié : test_c3_common.py::ADOPTED_PACKAGE
+  modifié : test_c3_common.py::test_aucun_sha_de_protocole_n_est_ecrit_en_dur_dans_l_outillage_ni_les_tests
+  modifié : test_c3_verdict.py::_chain_world
+objets_modifies_egal_declares=0
+objets_ajoutes_egal_declares=0
+objets_retires_vide=0
+rc=0
