@@ -1,0 +1,23 @@
+# preflight conf — 2026-09-30T07:09:59Z — HEAD local 08cba3d966aaf517c251a076fb7b6c60f88470c6
+host=krakenbot date=2026-09-30T07:10:01Z bash=5.2.21(1)-release
+service_head=8689636b4999d8e1c28086cd804e4c20d893509f
+service_tracked_dirty_lines=0
+py=Python 3.12.3
+pytest_rc=0 pytest=pytest 9.0.2
+poetry_lock_egal_head=0
+pyproject_egal_head=0
+runs_entries=
+run_dir=absent
+archive_du_jour=absent
+tmux=no server running on /tmp/tmux-1000/default;
+disk_home=54G libres / 75G
+cpus=4 mem_free_mb=5921
+collector=active NRestarts=0
+trader=inactive
+service_env=present
+campaign_unlock_service=absent
+pg_port_5432=open
+pg_port_5433=closed
+remote_ok=0
+ssh_exit=0
+rc=0

@@ -1,0 +1,22 @@
+# archive conf — 2026-09-30T07:15:01Z
+files_listed=0
+files_count=139
+files_sha=0
+tar_create=0
+tgz_sha=0
+list_equal=0
+forbidden_entries=0
+no_repo_no_env=0
+tgz_sha_check=0
+extract=0
+diff_out=0
+cmp_pilot=0
+extracted_sha=0
+tgz_sha256=17a1e6e84a0766b3c373f6f11e6176ceca30c317f73f71a03ad9c2010a380211
+rm_run=0
+rm_at=2026-09-30T07:15:05Z
+run_absent=0
+parent=absent
+remote_rc=0
+ssh_exit=0
+rc=0
