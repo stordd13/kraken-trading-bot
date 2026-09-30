@@ -431,6 +431,23 @@ après la relecture de Bruno (STOP 1) et son GO de lancement.
 - **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
   diagnostic avant l'accord de Bruno. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
 
+### Issue de l'entrée 21 (inscrite après le run — aucune lecture économique, issue non lue)
+
+- **Lancement** : un seul, au `15e4cb9` (S1), après la CI verte sur S1 (tentative 1), la relecture de l'attendu, du
+  manifeste et du pilote par Bruno (STOP 1) et son GO de lancement. Pilote `1f4b9fd4…be16`, exécuté depuis le clone et
+  consigné dans `status.txt`. Le 2026-09-30 de 20:53:16 à 20:57:22Z, sur le serveur, en lecture seule assertée par
+  Postgres.
+- **Archive** : `~/archive/c3_outillage_v2_3_conf_20260930/` (sha256 `94a6e9e8…000b`, 139 fichiers), vérifiée par codes
+  seulement avant le `rm -rf` du run (20:57:54Z).
+- **Rien n'a été lu du chemin sélection** hors de `status.txt`.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 21 | Trois exécutions (workers 4 / 1 / 4) : producteur préfixe **0** ; `c3_anchor` (la date déclarée à 365 j exactement admise), `c3_entry`, `c3_benchmark`, `c3_select` autonomes **0** ; producteur d'évaluation **`0 event=evaluated`** ; `chain` **0**, avec les six codes d'étape en 0, **`chain.verified` vrai, violations vides, zéro violation au rejeu** — les trois fois. L'issue publiée **n'est pas lue** (`validé` et `réfuté` inatteignables par construction : provenance `unknown` ; aucune évaluation différée inscrite, par construction) | `results/c3_outillage_v2_3/conformite/server/status.txt` |
+| 21 | **23 artefacts identiques au bit** sur les trois exécutions (`compared=23 differing=0 absent=0`), liste attendue exacte ; aucun sha d'artefact versionné (booléens seulement) | `status.txt`, `verify_attendu.out` |
+| 21 | `alembic` `c3bd1e7a0001` inchangé ; service `662c104`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` absent ; attendu **tenu sur ses 10 items vérifiables** (le 11ᵉ, les bornes, repose sur des appuis déclarés) | `conformite/server/verify_attendu.out` |
+| 21 | Porte § L.5 option 1 au `c62acb4` (S2) : **24/24 `_full`** (agrégat JUnit `tests:24,failures:0,errors:0,skipped:0,missing:0`), le 2026-09-30 de 21:08:00 à 22:18:21Z. Ce ne sont pas des runs du producteur : backtests P6 comparés par hash, aucune métrique lue | `results/c3_outillage_v2_3/gate_L5/` |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
@@ -459,3 +476,8 @@ l'adoption de v2.1 : section précédente.)_
     `deferred_evaluation.date`.
   - Il suit l'outillage v2.3 : huit `xfail` strict, X1 à X8.
   - Merge sur `dev` sous décision humaine. Ajout seul.
+- **Outillage v2.3 livré et conformité v2.3 prouvée le 30/09/2026** (entrée 21, avec son issue).
+  - X1 à X8 levés ; l'évaluation différée (date au manifeste, descripteur `D`, inscription au verdict, comparaison à
+    l'ancrage) est outillée ; `results/c3_outillage_v2_3/report.md`. Merge sur `dev` sous décision humaine.
+  - Restent avant la première campagne : le manifeste gelé sous v2.3 (avec `deferred_evaluation.date`), le registre de
+    campagne persistant et son sel à la racine, `CAMPAIGN_UNLOCK` créé par Bruno. Ajout seul.

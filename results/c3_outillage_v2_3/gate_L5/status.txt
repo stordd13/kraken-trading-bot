@@ -1,0 +1,40 @@
+guard=0 sha=c62acb4c351de177d30b9b7f4c75b8d5c3306ba9 python=Python 3.12.3 pytest=pytest 9.0.2 krakenbot=/home/bruno/runs/c3_outillage_v2_3/gate/repo/src/krakenbot/__init__.py
+pilot_sha256=b5d2018f11409362f3f316e95bb7973ce570107e3eec4d98496d5fb52d562c93
+pilot_copy=0
+service_before=head=662c104ef8cb5a9b5c7fb04452f7af817cb5a87a dirty=0
+collector_before=active NRestarts=0
+start=2026-09-30T21:08:00Z
+alembic_before=0
+combo0=0 junit=1/0/0/0 at=2026-09-30T21:11:58Z
+combo1=0 junit=1/0/0/0 at=2026-09-30T21:15:56Z
+combo2=0 junit=1/0/0/0 at=2026-09-30T21:19:07Z
+combo3=0 junit=1/0/0/0 at=2026-09-30T21:20:03Z
+combo4=0 junit=1/0/0/0 at=2026-09-30T21:20:58Z
+combo5=0 junit=1/0/0/0 at=2026-09-30T21:21:43Z
+combo6=0 junit=1/0/0/0 at=2026-09-30T21:22:42Z
+combo7=0 junit=1/0/0/0 at=2026-09-30T21:23:41Z
+combo8=0 junit=1/0/0/0 at=2026-09-30T21:24:29Z
+combo9=0 junit=1/0/0/0 at=2026-09-30T21:25:20Z
+combo10=0 junit=1/0/0/0 at=2026-09-30T21:26:12Z
+combo11=0 junit=1/0/0/0 at=2026-09-30T21:26:52Z
+combo12=0 junit=1/0/0/0 at=2026-09-30T21:27:47Z
+combo13=0 junit=1/0/0/0 at=2026-09-30T21:28:41Z
+combo14=0 junit=1/0/0/0 at=2026-09-30T21:29:24Z
+combo15=0 junit=1/0/0/0 at=2026-09-30T21:34:57Z
+combo16=0 junit=1/0/0/0 at=2026-09-30T21:40:35Z
+combo17=0 junit=1/0/0/0 at=2026-09-30T21:44:49Z
+combo18=0 junit=1/0/0/0 at=2026-09-30T21:50:01Z
+combo19=0 junit=1/0/0/0 at=2026-09-30T21:55:11Z
+combo20=0 junit=1/0/0/0 at=2026-09-30T21:59:08Z
+combo21=0 junit=1/0/0/0 at=2026-09-30T22:05:58Z
+combo22=0 junit=1/0/0/0 at=2026-09-30T22:13:02Z
+combo23=0 junit=1/0/0/0 at=2026-09-30T22:18:20Z
+full=0
+junit_total=tests:24,failures:0,errors:0,skipped:0,missing:0
+extract=0
+tree_after=0
+alembic_after=0
+interpreter_check=0
+collector_after=active NRestarts=0
+service_after=head=662c104ef8cb5a9b5c7fb04452f7af817cb5a87a dirty=0
+end=2026-09-30T22:18:21Z
