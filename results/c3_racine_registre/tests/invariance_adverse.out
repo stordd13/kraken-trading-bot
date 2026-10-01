@@ -1,0 +1,7 @@
+# invariance_adverse — 2026-10-01T09:18:40Z — HEAD c3f0ac6a22251a48b34227083c9aaad6de174ee4
+cas=temoin rc=0 attendu=0 restaure=0 items=[]
+cas=b_backtest_modifie rc=1 attendu=non0 restaure=0 items=[hors_liste scripts/backtest.py;a_fichiers_changes_dans_la_liste=1;b_diff_vide ref=313eb00 head=0 index=0 arbre=1 non_suivis=0;b_diff_vide ref=c62acb4 head=0 index=0 arbre=1 non_suivis=0;]
+cas=c_src_importe_c3_anchor rc=1 attendu=non0 restaure=0 items=[hors_liste src/krakenbot/zz_invariance_adverse.py;a_fichiers_changes_dans_la_liste=1;b_diff_vide ref=313eb00 head=0 index=0 arbre=0 non_suivis=1;b_diff_vide ref=c62acb4 head=0 index=0 arbre=0 non_suivis=1;  HORS_AUTORISES src/krakenbot/zz_invariance_adverse.py;c_graphe_import=1;]
+cas=d_full_charge_c3_common rc=1 attendu=non0 restaure=0 items=[hors_liste tests/test_scripts/test_run_p6_determinism.py;a_fichiers_changes_dans_la_liste=1;b_diff_vide ref=313eb00 head=0 index=0 arbre=1 non_suivis=0;b_diff_vide ref=c62acb4 head=0 index=0 arbre=1 non_suivis=0;d_modules_du_depot_charges=26 dont_c3=1;]
+cas=a_hors_liste rc=1 attendu=non0 restaure=0 items=[hors_liste zz_invariance_adverse.txt;a_fichiers_changes_dans_la_liste=1;]
+rc=0

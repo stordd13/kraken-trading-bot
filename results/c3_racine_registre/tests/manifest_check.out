@@ -1,0 +1,15 @@
+# manifest_check — 2026-10-01T09:20:24Z — HEAD c3f0ac6a22251a48b34227083c9aaad6de174ee4
+manifest_sha256=9966efade2729f5da6652b0ffa8feda9b127840a77d9a47660823a1e9c50a24b
+manifest_v23_sha256=24bde67dd88005e22f05b4917c7fa973ab37b384ac19df3acb6a3e56e704565a
+lignes_texte_changees=3 (attendu 3)
+chemins_ajoute=-
+chemins_retire=-
+chemins_reecrit=research_log_entry,run_scope,variant_id
+chemins_attendus=0
+ecart_date_differee_jours=365.000000 attendu=365.000000 ecart_ok=0
+diff_manifeste_et_ecart=0
+protocole_v23=0 declare=d030ab239de317f6… fichier=d030ab239de317f6…
+c3_anchor_local=0
+ancrage_T=0 T=2020-09-11T21:36:00+00:00 attendu=2020-09-11T21:36:00+00:00
+temporaire_supprime=0
+rc=0
