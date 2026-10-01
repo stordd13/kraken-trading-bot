@@ -855,3 +855,87 @@ def test_R22_un_non_fini_dans_un_autre_enregistrement_du_registre_est_un_diagnos
     assert code == 1
     assert out is not None and out["invalide"] is True
     assert "VIOLATION" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------------------
+# R-4 (runbook `skills/registry.md`) — la racine du registre traverse l'ancrage telle quelle
+# ---------------------------------------------------------------------------
+
+
+def test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Runbook `skills/registry.md` : le registre de campagne porte à sa racine un sel, `{"salt": …, "variants": {}}`,
+    écrit à la main (§ 1) ; « l'ancrage préserve les clés de racine — sinon la première réécriture jette le sel,
+    silencieusement » (ordre des opérations, 1). § A.6 : « Ré-exécuter le même manifeste est idempotent » ; toute
+    empreinte différente est une nouvelle variante, qui déclare son parent. Racine synthétique (`fx.REGISTRY_ROOT_SYNTHETIC`)
+    écrite comme au runbook § 1 : elle traverse l'enregistrement de la racine, la relance idempotente (octets du registre
+    inchangés) et l'enregistrement d'un enfant, ses valeurs à l'octet près ; elle n'est imprimée nulle part, ni sur
+    stdout, ni sur stderr, ni dans les sorties de l'ancrage (runbook § 4)."""
+    registry_path = tmp_path / "variants.json"
+    registry_path.write_text(
+        json.dumps({**fx.REGISTRY_ROOT_SYNTHETIC, "variants": {}}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    payload = fx.manifest()
+    capsys.readouterr()
+    code, root = _run(tmp_path, payload)
+    assert code == 0 and root is not None and root["registry"]["new_entry"] is True
+    first = registry_path.read_bytes()
+    assert b"racine-de-test" in first, "la première réécriture a jeté la racine"
+    code, again = _run(tmp_path, payload, output="anchor_again.json")
+    assert code == 0 and again is not None and again["registry"]["new_entry"] is False
+    assert registry_path.read_bytes() == first, (
+        "même manifeste : registre inchangé, racine comprise"
+    )
+    child = fx.manifest(
+        variant_id="synth-child", parent={"is_root": False, "variant_key": root["variant_key"]}
+    )
+    code, out = _run(tmp_path, child, name="child.json", output="anchor_child.json")
+    assert code == 0 and out is not None and out["registry"]["new_entry"] is True
+    printed = capsys.readouterr()
+    registry = cc.read_json(registry_path)
+    assert sorted(registry) == sorted([*fx.REGISTRY_ROOT_SYNTHETIC, "variants"])
+    for name, value in fx.REGISTRY_ROOT_SYNTHETIC.items():
+        assert (name, cc.dumps_canonical(registry[name])) == (name, cc.dumps_canonical(value))
+    assert sorted(registry["variants"]) == sorted([root["variant_key"], out["variant_key"]])
+    published = "".join(
+        p.read_text(encoding="utf-8") for p in sorted(tmp_path.glob("anchor*.json"))
+    )
+    for secret in (fx.REGISTRY_ROOT_SYNTHETIC["salt"], "racine_de_test_typee"):
+        assert secret not in printed.out + printed.err + published
+
+
+def test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ I.1 : une valeur **fournie** non finie est une violation, ligne 15, code 1 ; « un artefact de diagnostic est
+    écrit, code 1, et porte `invalide: true` et la liste des violations » ; runbook `skills/registry.md` § 3 : « un
+    registre corrompu se constate par codes (la canonicalisation à la lecture produit un code 1 […]) ». La racine
+    traverse l'ancrage (R-4) : sans contrôle, un flottant non fini à la racine atteindrait le writer strict — trace nue,
+    sans diagnostic, la classe que R-22 (cas 1) a fermée dans les enregistrements ; le registre n'est pas réécrit. Témoin
+    intégré (règle agent 1) : la chaîne `"NaN"` est une valeur opaque, qui traverse telle quelle (plan D2 : la racine
+    n'est jamais lue comme un nombre). Chaque cas dans son propre répertoire, registre écrit comme au runbook § 1."""
+    outcomes: dict[str, tuple[int, bool, bool, bool]] = {}
+    for name, value in (("flottant_nan", float("nan")), ("chaine_nan", "NaN")):
+        case = tmp_path / name
+        case.mkdir()
+        registry_path = case / "variants.json"
+        registry_path.write_text(
+            json.dumps({"salt": value, "variants": {}}, indent=2, allow_nan=True) + "\n",
+            encoding="utf-8",
+        )
+        before = registry_path.read_bytes()
+        capsys.readouterr()
+        code, out = _run(case, fx.manifest())
+        err = capsys.readouterr().err
+        kept = cc.read_json(registry_path)
+        outcomes[name] = (
+            code,
+            out is not None and out["invalide"] is (name == "flottant_nan"),
+            registry_path.read_bytes() == before
+            if name == "flottant_nan"
+            else "salt" in kept and kept["salt"] == "NaN",
+            "VIOLATION" in err,
+        )
+    assert outcomes == {"flottant_nan": (1, True, True, True), "chaine_nan": (0, True, True, False)}

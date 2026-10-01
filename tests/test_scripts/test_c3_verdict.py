@@ -3075,6 +3075,86 @@ def test_un_now_illisible_en_mode_chain_est_une_erreur_d_usage_rien_ecrit(tmp_pa
 
 
 # ---------------------------------------------------------------------------
+# R-4 (runbook `skills/registry.md`) — la racine du registre traverse l'inscription du verdict
+# ---------------------------------------------------------------------------
+
+
+def test_A6_registry_inscription_preserve_les_cles_de_racine(tmp_path: Path) -> None:
+    """Runbook `skills/registry.md` (R-4) : le sel vit à la racine du registre de campagne ; le verdict le réécrit à
+    l'étape 6 quand il inscrit l'issue « dans l'enregistrement de sa variante » (§ A.6 v2.2) et, quand elle ouvre la
+    voie, l'évaluation différée (§ A.6 v2.3). Le brief (§ 3.2) demande de prouver par test, pas par lecture, que
+    l'inscription préserve les clés de racine. Registre fait à la main — racine synthétique (`fx.REGISTRY_ROOT_SYNTHETIC`)
+    et un enregistrement —, inscription sans puis avec bloc différé, registre écrit par le writer de la chaîne et relu :
+    les clés de racine et leurs valeurs, à l'octet près, et l'inscription faite."""
+    expected_keys = sorted([*fx.REGISTRY_ROOT_SYNTHETIC, "variants"])
+    inscription = {"issue": cc.ISSUE_INCONCLUSIF, "raison": "F_CANNOT_SEPARATE", "compte": True}
+    deferred_block = {"date": fx.DEFERRED_DATE.isoformat(), "variant_key": "empreinte-synthetique"}
+    outcomes: dict[str, tuple[list[str], bool, bool, bool]] = {}
+    for name, deferred in (("sans_bloc_differe", None), ("avec_bloc_differe", deferred_block)):
+        path = tmp_path / f"{name}.json"
+        cc.write_json(
+            path,
+            {
+                **fx.REGISTRY_ROOT_SYNTHETIC,
+                "variants": {"variante-synthetique": {"family": "grid"}},
+            },
+        )
+        violations: list[str] = []
+        updated = cv.registry_inscription(
+            path,
+            variant_key="variante-synthetique",
+            inscription=inscription,
+            deferred=deferred,
+            violations=violations,
+        )
+        assert (name, violations) == (name, []) and updated is not None
+        cc.write_json(path, updated)
+        after = cc.read_json(path)
+        record = after["variants"]["variante-synthetique"]
+        outcomes[name] = (
+            sorted(after),
+            all(
+                cc.dumps_canonical(after[key]) == cc.dumps_canonical(value)
+                for key, value in fx.REGISTRY_ROOT_SYNTHETIC.items()
+            ),
+            "verdict" in record,
+            DEFERRED_KEY in record,
+        )
+    assert outcomes == {
+        "sans_bloc_differe": (expected_keys, True, True, False),
+        "avec_bloc_differe": (expected_keys, True, True, True),
+    }
+
+
+def test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Runbook `skills/registry.md` (R-4) : « l'ancrage préserve les clés de racine — sinon la première réécriture jette
+    le sel, silencieusement ». Adverse du brief (§ 3.2) : un registre synthétique portant des clés de racine en plus
+    (`fx.REGISTRY_ROOT_SYNTHETIC`) traverse un enregistrement par l'ancrage (étape 1) **et** une inscription par le
+    verdict (étape 6) du même `chain`, dans le monde de X3 — l'issue ouvre la voie, le verdict inscrit l'issue et
+    l'évaluation différée (§ A.6 v2.3) ; les clés et leurs valeurs survivent à l'octet près, et ne sont imprimées nulle
+    part, ni sur stdout, ni sur stderr, ni dans les sorties de la chaîne (runbook § 4)."""
+    w = _opening_world(tmp_path)
+    cc.write_json(w["registry"], {**fx.REGISTRY_ROOT_SYNTHETIC, "variants": {}})
+    capsys.readouterr()
+    assert cv.main(_chain_argv(w)) == 0
+    printed = capsys.readouterr()
+    _assert_opens_the_way(w)
+    registry = cc.read_json(w["registry"])
+    assert sorted(registry) == sorted([*fx.REGISTRY_ROOT_SYNTHETIC, "variants"])
+    for name, value in fx.REGISTRY_ROOT_SYNTHETIC.items():
+        assert (name, cc.dumps_canonical(registry[name])) == (name, cc.dumps_canonical(value))
+    record = _record(w)
+    assert "verdict" in record and DEFERRED_KEY in record
+    published = "".join(
+        p.read_text(encoding="utf-8") for p in sorted(w["out"].iterdir()) if p.is_file()
+    )
+    for secret in (fx.REGISTRY_ROOT_SYNTHETIC["salt"], "racine_de_test_typee"):
+        assert secret not in printed.out + printed.err + published
+
+
+# ---------------------------------------------------------------------------
 # Revue Fin (1) — admission de l'évaluation (§ L.1 v2.1) : aucun chemin de publication avant le contrôle
 # ---------------------------------------------------------------------------
 

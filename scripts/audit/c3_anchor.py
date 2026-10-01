@@ -23,6 +23,9 @@
 * **§ A.6 v2.3 (AM-01)** — ``deferred_evaluation.date``, obligatoire sur tout manifeste (forme : ``cc.load_manifest``),
   est validée ici : au moins 365 jours après ``window.end`` (``assert_deferred_date``), sinon ``R0_INVALID_RUN``,
   code 2.
+* **Racine du registre (R-4, ``skills/registry.md``)** — toute clé hors ``variants`` (le sel du registre de campagne)
+  traverse la lecture et la réécriture telle quelle, jamais lue ni validée : la jeter ferait perdre le sel à la première
+  réécriture, silencieusement.
 
 **Les valeurs gelées sont assertées, pas seulement leur forme** — liste close de quatre assertions,
 tout écart étant un contrat rompu (``R0_INVALID_RUN``, code 2, rien d'écrit) : la fraction d'ancrage,
@@ -231,7 +234,12 @@ def load_registry(path: Path) -> dict[str, Any]:
     """Le registre, ou un registre vide s'il n'existe pas encore ; mal formé → erreur d'entrée. Chaque
     enregistrement est canonicalisé à la lecture : une valeur **fournie** non finie, dans quelque enregistrement
     que ce soit, est une violation (§ I.1, ligne 15 : diagnostic ``invalide``, code 1), jamais une trace du writer
-    à la réécriture (R-22, cas 1)."""
+    à la réécriture (R-22, cas 1).
+
+    **Racine** (R-4, plan D1-D2) : toute clé hors ``variants`` est rendue telle que ``read_json`` la donne, jamais lue
+    ni validée, et ``register`` la réécrit telle quelle. Elle n'est pas passée à ``canon``, qui lirait comme un nombre
+    une valeur opaque de forme décimale ; seul le critère du writer strict s'y applique : un flottant non fini est une
+    violation, comme dans un enregistrement, et le message ne cite aucune valeur."""
     if not Path(path).exists():
         return {"variants": {}}
     try:
@@ -242,7 +250,14 @@ def load_registry(path: Path) -> dict[str, Any]:
     for key in variants:
         cc.require_mapping(variants, key, where="registry.variants")
     cc.canon(dict(variants))
-    return {"variants": dict(variants)}
+    root = {key: value for key, value in raw.items() if key != "variants"}
+    try:
+        cc.dumps_canonical(root)
+    except ValueError:
+        raise cc.NonFiniteValueError(
+            "registre : une valeur de racine hors `variants` est non finie (§ I.1, ligne 15)"
+        ) from None
+    return {**root, "variants": dict(variants)}
 
 
 def register(
@@ -258,7 +273,7 @@ def register(
 
     Renvoie ``(registre, nouvel_enregistrement)``. Un enregistrement existant dont le contenu
     recalculé diffère est une **violation** (statut enregistré ≠ recalculé, § I.1 l.15) ; le
-    registre n'est alors pas réécrit.
+    registre n'est alors pas réécrit. La racine (clés hors ``variants``, R-4) est rendue telle quelle.
     """
     variants = cc.require_mapping(registry, "variants", where="registry")
     if key in variants:
@@ -272,7 +287,7 @@ def register(
                 f"registre : enregistrement {key[:16]} différent du recalcul (première différence {path}) "
                 "— le recalcul fait foi, le registre n'est pas réécrit"
             )
-        return {"variants": dict(variants)}, False
+        return dict(registry), False
     stop_criterion(variants, family=str(record["family"]), key=key, incoming=incoming)
     parent = record["parent"]
     if parent["is_root"]:
@@ -289,7 +304,7 @@ def register(
         )
     updated = dict(variants)
     updated[key] = {**dict(record), "first_registered_at": now.isoformat()}
-    return {"variants": updated}, True
+    return {**dict(registry), "variants": updated}, True
 
 
 def build_payload(

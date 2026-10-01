@@ -1,0 +1,5 @@
+# rouge_avant — C2_vert — mode vert — 2026-10-01T08:37:14Z
+# HEAD 8915807b9acafcfce3404c8cf5e01f8b80f11d18 branche feat/c3-racine-registre ; code de la base 313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+tests copiés : test_c3_common.py test_c3_anchor.py test_c3_verdict.py (arbre courant)
+test=test_c3_verdict.py::test_A6_registry_inscription_preserve_les_cles_de_racine pytest_exit=0 (attendu 0) échec : 
+rc=0
