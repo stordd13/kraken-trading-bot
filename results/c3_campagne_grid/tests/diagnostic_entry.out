@@ -1,0 +1,7 @@
+# diagnostic_entry — 2026-10-01T21:06:03Z — HEAD local ae88eb3f0464e6c4062a2bf72bf49200113bd86c
+violations_total=64
+violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,warmup_series:64,warmup_sufficient:0,coverage_recoupe:0,hors_classe:0
+champs=-
+lecture_exit=0
+ssh_exit=0
+rc=0
