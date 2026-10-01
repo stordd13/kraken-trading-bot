@@ -512,6 +512,26 @@ de Bruno (STOP 1), la création de `CAMPAIGN_UNLOCK` par Bruno et son GO de lanc
 - **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
   diagnostic avant l'accord de Bruno. L'issue sera inscrite dans une section suivante, sans réécrire celle-ci.
 
+### Issue de l'entrée 23 (inscrite après le run — STOP au run : aucune issue produite, rien lu au-delà de la liste close)
+
+- **Lancement** : un seul, au `cd4b177` (S1), après la CI verte sur S1 (tentative 1), la relecture de Bruno (STOP 1), la
+  création de `CAMPAIGN_UNLOCK` et la vérification § 1 du runbook par Bruno, et son GO de lancement. Pilote
+  `3bbfd9fc…85e4`, exécuté depuis le clone, le 2026-10-01 de 17:14:54 à 17:58:36Z, sur le serveur.
+- **Arrêt** : `c3_entry` autonome en **code 1** (§ I.1, ligne 15 : une violation, pas un résultat) ; arrêt au premier
+  écart, les étapes suivantes non exécutées ; code du pilote 1.
+- **Aucune archive, aucune suppression, aucune relance, aucune lecture de diagnostic** : le répertoire du run reste en
+  place au serveur, en attente de la décision de Bruno.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 23 | Préfixe **0** (96 candidats, 3 workers, 43 min 40 s) ; ancrage autonome **0**, `registry.new_entry` vrai : la variante est inscrite au registre de campagne, **sans verdict** ; `c3_entry` autonome **1** ; benchmark, sélection, évaluation et chaîne non exécutés (arrêt au premier écart). **Aucune issue produite** : ni triplet, ni statut compté, ni évaluation différée inscrits | `results/c3_campagne_grid/server/status.txt` |
+| 23 | Attendu tenu sur 4 items sur 11 (gardes, base, service, préfixe) ; écarts 5 à 11 : le code 1 de `c3_entry` et l'arrêt qui s'ensuit | `server/verify_attendu.out` |
+| 23 | `alembic` `c3bd1e7a0001` inchangé ; service `235461e`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` présent | `server/status.txt`, `server/alembic_{before,after}.txt` |
+
+- Constat : `results/c3_campagne_grid/constat.md`. **Jalon du § 10.2 : non atteint par ce run** (aucun verdict).
+- La suite est une décision de Bruno : lecture de diagnostic sur liste close, relance, statut de ce run au regard du
+  § 10.1, cérémonie du registre (première inscription faite). Ajout seul.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme

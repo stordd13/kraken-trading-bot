@@ -1,0 +1,16 @@
+# launch — 2026-10-01T17:14:45Z — sha cd4b17715a0dada8aa812df0e722072df6f0989b
+sha_egal_head_local=0
+origin_tip=cd4b17715a0dada8aa812df0e722072df6f0989b
+sha_egal_tip_origin=0
+pilote_versionne_au_sha=0
+mkdir_run=0
+clone_head=cd4b17715a0dada8aa812df0e722072df6f0989b
+clone=0
+env_copy_out_dir=0
+campaign_unlock_transporte_cmp=0
+pilot_sha256_blob=3bbfd9fc8ccd62f837ece2b2696578e30e38f0459533669a8dcf1e6d6b4585e4
+pilot_sha256_clone=3bbfd9fc8ccd62f837ece2b2696578e30e38f0459533669a8dcf1e6d6b4585e4
+pilot_cmp=0
+tmux_launch=0
+session=c3-campagne-grid-20261001 launched_at=2026-10-01T17:14:54Z
+rc=0
