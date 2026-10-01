@@ -1,0 +1,16 @@
+# interdits_adverse — 2026-10-01T08:35:30Z — HEAD 313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+cas=temoin rc=0 attendu=0 restaure=0 items_en_ecart=[]
+cas=sha_fichier_du_chantier rc=0 attendu=0 restaure=0 items_en_ecart=[empreintes_64_ajoutees=1 dont_protocole=0 dont_fichiers_du_chantier=1 ;]
+cas=non_suivi_tests rc=1 attendu=non0 restaure=0 items_en_ecart=[hors_liste_blanche tests/zz_interdits_adverse.txt;liste_blanche=1;rc=1;]
+cas=code_hors_liste rc=1 attendu=non0 restaure=0 items_en_ecart=[gele scripts/audit/c3_entry.py head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche scripts/audit/c3_entry.py;liste_blanche=1;arbre_hors_index=1 fichier(s) suivi(s) modifiés non indexés;rc=1;]
+cas=verdict_gele rc=1 attendu=non0 restaure=0 items_en_ecart=[gele scripts/audit/c3_verdict.py head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche scripts/audit/c3_verdict.py;liste_blanche=1;arbre_hors_index=1 fichier(s) suivi(s) modifiés non indexés;rc=1;]
+cas=protocole_modifie rc=1 attendu=non0 restaure=0 items_en_ecart=[gele docs/protocole_c3.md head=0 index=0 arbre=1 non_suivis=0;protocole_sha_egal_consigne=1 (recalculé 1797a1e5dfae1158…, consigné d;hors_liste_blanche docs/protocole_c3.md;liste_blanche=1;arbre_hors_index=1 fichier(s) suivi(s) modifiés non indexés;rc=1;]
+cas=suivi_claude_md rc=1 attendu=non0 restaure=0 items_en_ecart=[gele CLAUDE.md head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche CLAUDE.md;liste_blanche=1;arbre_hors_index=1 fichier(s) suivi(s) modifiés non indexés;rc=1;]
+cas=hors_liste_blanche rc=1 attendu=non0 restaure=0 items_en_ecart=[hors_liste_blanche zz_interdits_adverse.txt;liste_blanche=1;rc=1;]
+cas=artefact_verdict_json rc=1 attendu=non0 restaure=0 items_en_ecart=[artefact_versionne results/c3_racine_registre/zz_adverse/verdict.json;aucun_artefact=1;rc=1;]
+cas=artefact_registre rc=1 attendu=non0 restaure=0 items_en_ecart=[artefact_versionne results/c3_racine_registre/zz_adverse/variants.json;aucun_artefact=1;rc=1;]
+cas=empreinte_hors_regle rc=1 attendu=non0 restaure=0 items_en_ecart=[empreintes_64_ajoutees=1 dont_protocole=0 dont_fichiers_du_chantier=0 ;empreinte_hors_regle 39f4bf4ed1ac3dbb…;aucun_sha_artefact=1;rc=1;]
+cas=nomme_dette23 rc=1 attendu=non0 restaure=0 items_en_ecart=[nomme_dette23 results/c3_racine_registre/zz_adverse/x.sh;dette23=1;rc=1;]
+cas=nomme_registre_campagne rc=1 attendu=non0 restaure=0 items_en_ecart=[nomme_registre_campagne results/c3_racine_registre/zz_adverse/x.sh;registre_campagne_non_nomme=1;rc=1;]
+cas=v23_modifie rc=1 attendu=non0 restaure=0 items_en_ecart=[gele results/c3_outillage_v2_3 head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche results/c3_outillage_v2_3/report.md;liste_blanche=1;arbre_hors_index=1 fichier(s) suivi(s) modifiés non indexés;rc=1;]
+rc=0

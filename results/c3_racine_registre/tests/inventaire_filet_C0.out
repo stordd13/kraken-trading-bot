@@ -1,0 +1,57 @@
+# inventaire-filet — C0 — 2026-10-01T08:28:00Z
+# HEAD 313eb00c2019b98cf20fb81ac8327f7b9d1e920a branche feat/c3-racine-registre
+occurrences=50
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:202 — registres neufs par exécution, comparés au bit entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:238 — registres neufs par exécution, comparés au bit entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:239 — registres neufs par exécution, comparés au bit entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:244 — code de la copie du registre
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:248 — registres neufs par exécution, comparés au bit entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:252 — registres neufs par exécution, comparés au bit entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:55 — registres neufs par exécution, comparés au bit entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:58 — registres neufs par exécution, comparés au bit entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/run_conformite.sh:9 — registres neufs par exécution, comparés au bit entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/verify_attendu.py:148 — code de la copie du registre
+entre_executions   results/c3_outillage_v2_3/conformite/server/verify_attendu.py:35 — artefact de la liste des 23, comparé entre exécutions
+entre_executions   results/c3_outillage_v2_3/conformite/server/verify_attendu.py:53 — artefact de la liste des 23, comparé entre exécutions
+simulation         results/c3_outillage_v2_3/tests/interdits_adverse.sh:69 — cas dévié d'interdits (artefact interdit)
+simulation         results/c3_outillage_v2_3/tests/interdits_lot2_adverse.sh:64 — cas dévié d'interdits (artefact interdit)
+entre_executions   results/c3_outillage_v2_3/tests/manifest_check.sh:81 — registre jeté d'un ancrage local, jamais relu
+contrat_de_chaine  results/c3_outillage_v2_3/tests/non_divulgation.sh:12 — contrôle D13 (aucun digest du registre imprimé)
+contrat_de_chaine  results/c3_outillage_v2_3/tests/non_divulgation.sh:35 — contrôle D13 (aucun digest du registre imprimé)
+simulation         results/c3_outillage_v2_3/tests/pilot_dryrun.sh:117 — registre simulé du dry-run, son propre écrivain ; ne lit pas la sortie de l'outil
+simulation         results/c3_outillage_v2_3/tests/pilot_dryrun.sh:118 — registre simulé du dry-run, son propre écrivain ; ne lit pas la sortie de l'outil
+simulation         results/c3_outillage_v2_3/tests/pilot_dryrun.sh:146 — registre simulé du dry-run, son propre écrivain ; ne lit pas la sortie de l'outil
+simulation         results/c3_outillage_v2_3/tests/pilot_dryrun.sh:147 — registre simulé du dry-run, son propre écrivain ; ne lit pas la sortie de l'outil
+simulation         results/c3_outillage_v2_3/tests/pilot_dryrun.sh:148 — registre simulé du dry-run, son propre écrivain ; ne lit pas la sortie de l'outil
+hors_sujet         scripts/audit/bybit_q5_ws_capture.py:61 — message WebSocket brut, sans rapport
+defaut             scripts/audit/c3_anchor.py:236 — registre absent : racine neuve, rien à préserver (inchangé)
+defaut             scripts/audit/c3_anchor.py:245 — lecture / idempotence : la racine est jetée (§ 3.2)
+defaut             scripts/audit/c3_anchor.py:275 — lecture / idempotence : la racine est jetée (§ 3.2)
+defaut             scripts/audit/c3_anchor.py:292 — écriture : la racine est jetée (§ 3.2)
+contrat_de_chaine  scripts/audit/c3_anchor.py:338 — anchor.json.registry.sha256 (D13, rendu non inversible par le sel)
+defaut             scripts/audit/c3_anchor.py:404 — valeur initiale de main, jamais écrite (succès seul)
+hors_sujet         tests/test_indicators/test_multi_pair_registry.py:91 — registre d'indicateurs multi-paires, sans rapport
+hors_sujet         tests/test_indicators/test_multi_pair_registry.py:93 — registre d'indicateurs multi-paires, sans rapport
+hors_sujet         tests/test_indicators/test_multi_pair_registry.py:95 — registre d'indicateurs multi-paires, sans rapport
+octets_inchanges   tests/test_scripts/test_c3_anchor.py:469 — idempotence (§ A.6)
+octets_inchanges   tests/test_scripts/test_c3_anchor.py:472 — idempotence (§ A.6)
+variants_seul      tests/test_scripts/test_c3_anchor.py:509 — nombre d'enregistrements, jamais la racine
+variants_seul      tests/test_scripts/test_c3_anchor.py:520 — nombre d'enregistrements, jamais la racine
+octets_inchanges   tests/test_scripts/test_c3_anchor.py:533 — enregistrement altéré non réécrit
+octets_inchanges   tests/test_scripts/test_c3_anchor.py:538 — enregistrement altéré non réécrit
+type_de_variants   tests/test_scripts/test_c3_anchor.py:543 — variants non mapping : refus 2
+octets_inchanges   tests/test_scripts/test_c3_anchor.py:750 — refus N2 : registre inchangé
+octets_inchanges   tests/test_scripts/test_c3_anchor.py:761 — refus N2 : registre inchangé
+octets_inchanges   tests/test_scripts/test_c3_verdict.py:2753 — D13 : digest non imprimé (aucune racine lue)
+octets_inchanges   tests/test_scripts/test_c3_verdict.py:2762 — discordance : registre non réécrit
+octets_inchanges   tests/test_scripts/test_c3_verdict.py:2766 — discordance : registre non réécrit
+octets_inchanges   tests/test_scripts/test_c3_verdict.py:2833 — discordance : registre non réécrit
+octets_inchanges   tests/test_scripts/test_c3_verdict.py:2837 — discordance : registre non réécrit
+type_de_variants   tests/test_scripts/test_c3_verdict.py:2903 — variants non mapping : la chaîne s'arrête à l'ancrage
+octets_inchanges   tests/test_scripts/test_c3_verdict.py:3009 — livrable v2.0 : refusé au sha du protocole avant load_registry
+octets_inchanges   tests/test_scripts/test_c3_verdict.py:3045 — livrable v2.0 inchangé
+octets_inchanges   tests/test_scripts/test_c3_verdict.py:3046 — copie du livrable v2.0 inchangée
+par_classe=contrat_de_chaine:3 defaut:5 entre_executions:13 hors_sujet:4 octets_inchanges:14 simulation:7 type_de_variants:2 variants_seul:2
+normatif=0 non_classees=0
+constat=aucun épinglage normatif de la racine
+rc=0
