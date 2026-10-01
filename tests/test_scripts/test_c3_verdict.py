@@ -21,6 +21,7 @@ les **conséquences** des règles, ce qu'un index de symboles ne peut pas faire 
 from __future__ import annotations
 
 from collections.abc import Mapping
+import copy
 import dataclasses
 from datetime import timedelta
 from decimal import Decimal
@@ -2538,12 +2539,6 @@ def _retained_block(w: dict[str, Any]) -> dict[str, Any]:
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X3 — c3_verdict n'inscrit pas encore l'évaluation différée (registry_inscription) : "
-    "outillage v2.3",
-)
 def test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -2566,12 +2561,6 @@ def test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreint
     assert key[:16] not in printed.out + printed.err + published
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X4 — le témoin positif intégré exige l'inscription que c3_verdict n'écrit pas encore : "
-    "outillage v2.3",
-)
 def test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee(
     tmp_path: Path,
 ) -> None:
@@ -2601,12 +2590,6 @@ def test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differ
         assert DEFERRED_KEY not in _record(w), name
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AttributeError,
-    reason="AM-01 v2.3, X5 — c3_verdict ne dérive pas encore le descripteur D (nom d'appel indicatif "
-    "`deferred_descriptor`) : outillage v2.3",
-)
 def test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte() -> None:
     """§ A.6 v2.3, tableau du descripteur `D`, colonne « Valeur au verdict » (AM-01 ; décisions G-6, G-7), recopié ici
     valeur par valeur (règle agent 3). Le monde exerce chaque règle : deux stratégies (`engines` restreint à celle de
@@ -2655,12 +2638,6 @@ def test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte(
     assert cv.deferred_descriptor(campaign, retained) == expected
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X7 — l'ancrage n'accepte pas encore la variante différée par son descripteur (X6), et "
-    "c3_verdict n'applique pas « une fois par famille » : outillage v2.3",
-)
 def test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee(
     tmp_path: Path,
 ) -> None:
@@ -2717,6 +2694,129 @@ def test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_dif
     _assert_opens_the_way(w)
     assert DEFERRED_KEY not in _record(w)
     assert cc.read_json(w["registry"])["variants"][cc.sig(campaign)][DEFERRED_KEY] == inscription
+
+
+def test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif() -> None:
+    """``CONTRAINTES_POST_B4.md`` § 10.1, « Une seule voie de sortie, prospective » : « Si l'issue est `inconclusif
+    (F_CANNOT_SEPARATE)` **et** `Q1 ∧ Q2 ∧ Q3` passent **et** `Δ̂ > 0` dans les six combinaisons — seule la borne
+    manque », recopié en table (règle agent 3). Témoin : la ligne qui ouvre la voie ; chaque autre ligne fait tomber un
+    seul conjonctif — une porte, un `Δ̂` nul ou négatif (`> 0` est strict), une autre issue — et la voie reste fermée.
+    Le prédicat est pur : dans ``decide``, `F_CANNOT_SEPARATE` suit déjà les portes, seul ce test peut faire tomber le
+    conjonctif Q (plan du lot 1 v2.3, D4, D10)."""
+    ok = {"Q1": True, "Q2": True, "Q3": True}
+    positive = {"dd": 0.5, "sigma": 0.25}
+    inc, sep = cc.ISSUE_INCONCLUSIF, "F_CANNOT_SEPARATE"
+    cases: list[tuple[str, str, str | None, dict[str, bool], dict[str, float], bool]] = [
+        ("temoin", inc, sep, ok, positive, True),
+        ("Q1", inc, sep, {**ok, "Q1": False}, positive, False),
+        ("Q2", inc, sep, {**ok, "Q2": False}, positive, False),
+        ("Q3", inc, sep, {**ok, "Q3": False}, positive, False),
+        ("delta_sigma_nul", inc, sep, ok, {**positive, "sigma": 0.0}, False),
+        ("delta_dd_negatif", inc, sep, ok, {**positive, "dd": -0.1}, False),
+        ("valide", cc.ISSUE_VALIDE, None, ok, positive, False),
+        ("refute", cc.ISSUE_REFUTE, None, ok, positive, False),
+        ("f_not_estimable", inc, "F_NOT_ESTIMABLE", ok, positive, False),
+    ]
+    for name, issue, reason, gates, delta_hat, expected in cases:
+        decision = cv.Decision(
+            issue=issue,
+            reason=reason,
+            retained="identite-synthetique",
+            selection_status="SÉLECTION_VALIDE",
+            provenance=cc.PROVENANCE_CLEAN,
+            gates=dict(gates),
+            bounds_positive=issue == cc.ISSUE_VALIDE,
+            delta_hat=dict(delta_hat),
+        )
+        assert (name, cv.opens_deferred_way(decision)) == (name, expected)
+
+
+def test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ A.6 v2.3 (AM-01) : l'empreinte différée « n'est **jamais imprimée** hors registre » ; § A.6 v2.2 : l'inscription
+    est écrite une fois — une inscription existante différente est une violation (§ I.1, ligne 15 : code 1, diagnostic,
+    registre intact). Décision D13 du plan du lot 1 v2.3 (Bruno, 30/09) : le digest du registre écrit n'est jamais
+    imprimé. Monde de X3 : la première chaîne inscrit l'évaluation différée (témoin), sans rien imprimer de
+    l'empreinte ni du digest du registre ; puis le bloc différé est altéré au registre, et la même chaîne, relancée,
+    doit le voir — sans imprimer ni l'empreinte inscrite, ni l'altérée."""
+    w = _opening_world(tmp_path)
+    capsys.readouterr()
+    assert cv.main(_chain_argv(w)) == 0
+    first = capsys.readouterr()
+    record = _record(w)
+    assert DEFERRED_KEY in record, (
+        "témoin : l'issue qui ouvre la voie inscrit l'évaluation différée"
+    )
+    key = record[DEFERRED_KEY]["variant_key"]
+    assert key[:16] not in first.out + first.err
+    assert cc.file_sha256(w["registry"]) not in first.out + first.err, (
+        "digest du registre imprimé (D13)"
+    )
+    registry = cc.read_json(w["registry"])
+    # Empreinte altérée discriminante (une suite de zéros vit dans les NAV décimales publiées).
+    altered = cc.sig({"empreinte": "altérée"})
+    variant = cc.read_json(w["out"] / "anchor.json")["variant_key"]
+    registry["variants"][variant][DEFERRED_KEY]["variant_key"] = altered
+    cc.write_json(w["registry"], registry)
+    before = cc.file_sha256(w["registry"])
+    out = tmp_path / "relance"
+    assert cv.main(_chain_argv(w, out=out)) == 1
+    second = capsys.readouterr()
+    assert cc.file_sha256(w["registry"]) == before, "le registre n'est pas réécrit"
+    assert cc.read_json(out / "verdict.json")["invalide"] is True
+    published = (
+        second.out
+        + second.err
+        + "".join(p.read_text(encoding="utf-8") for p in sorted(out.iterdir()) if p.is_file())
+    )
+    assert "évaluation différée" in second.err
+    for secret in (key, altered):
+        assert secret[:16] not in published
+
+
+def test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement() -> None:
+    """§ A.6 v2.3 (AM-01) : « **Tout champ hors de cette liste est hors engagement** […] En particulier
+    `research_log_entry`, `run_scope`, `variant_id` et `protocol_sha256` n'entrent pas dans `D` » ; décision D-B : les
+    paramètres de procédure (`anchor_fraction`, `uncertainty`) sont exclus ; `universe_provenance` au verdict : « la
+    constante `clean` » ; `engines` et `fees.pair_costs` restreints à la configuration retenue. Chaque variation touche
+    un champ hors table : `D` est inchangé, sauf `deferred_evaluation_of`, l'empreinte de la variante de campagne, qui
+    suit le manifeste entier. Témoin : la dérivation de référence est celle de la table (`fx.deferred_descriptor`,
+    épinglée par X5). Ferme la limite « constante `clean` non discriminée » du rapport du gel (§ 8)."""
+    campaign = fx.with_deferred_date(fx.manifest())
+    reference = cv.deferred_descriptor(campaign, campaign["universe"]["candidates"][0])
+    assert reference == fx.deferred_descriptor(campaign, campaign["universe"]["candidates"][0])
+    assert reference["candidate"]["pair"] == "BTC/USDC"
+    variations: list[tuple[str, tuple[Any, ...], Any]] = [
+        ("research_log_entry", ("research_log_entry",), "docs/RESEARCH_LOG.md — une autre entrée"),
+        ("run_scope", ("run_scope",), "note de portée"),
+        ("variant_id", ("variant_id",), "synth-autre"),
+        ("protocol_sha256", ("protocol_sha256",), "0" * 64),
+        ("anchor_fraction", ("anchor_fraction",), 0.5),
+        ("uncertainty.seed", ("uncertainty", "seed"), 1),
+        ("provenance", ("universe", "provenance"), cc.PROVENANCE_UNKNOWN),
+        ("data.hors_table", ("data", "note"), "hors table"),
+        ("fees.hors_table", ("fees", "note"), "hors table"),
+        ("fees.autre_paire", ("fees", "pair_costs", "SOL/USDC", "spread"), "0.0099"),
+        ("window.hors_table", ("window", "note"), "hors table"),
+        ("candidat.hors_table", ("universe", "candidates", 0, "note"), "hors table"),
+        (
+            "autre_strategie",
+            ("strategies", "synth_signal"),
+            {"engine": "signal", "decision_timeframes": ["1d"]},
+        ),
+    ]
+    for name, path, value in variations:
+        varied = copy.deepcopy(campaign)
+        node: Any = varied
+        for step in path[:-1]:
+            node = node[step]
+        node[path[-1]] = value
+        descriptor = cv.deferred_descriptor(varied, varied["universe"]["candidates"][0])
+        assert (name, descriptor["deferred_evaluation_of"]) == (name, cc.sig(varied))
+        rest = {k: v for k, v in descriptor.items() if k != "deferred_evaluation_of"}
+        expected = {k: v for k, v in reference.items() if k != "deferred_evaluation_of"}
+        assert (name, rest) == (name, expected)
 
 
 def test_A2_une_reinscription_discordante_au_registre_est_une_violation(tmp_path: Path) -> None:

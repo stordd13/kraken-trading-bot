@@ -1,0 +1,22 @@
+# C3 outillage v2.3, lot 1 — déclarations lues par comptes.sh (identifiants pytest complets).
+[leves]
+# Les huit marqueurs du squelette du gel (réserves X1-X8), chacun levé au commit qui l'a fait passer (XPASS strict).
+tests/test_scripts/test_c3_anchor.py::test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1
+tests/test_scripts/test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+tests/test_scripts/test_c3_common.py::test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide
+tests/test_scripts/test_c3_verdict.py::test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur
+tests/test_scripts/test_c3_verdict.py::test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee
+tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+tests/test_scripts/test_c3_verdict.py::test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee
+[neufs]
+# D10 : N1, N3, N4 (C3), N2 (C4).
+tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+tests/test_scripts/test_c3_verdict.py::test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee
+tests/test_scripts/test_c3_verdict.py::test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement
+tests/test_scripts/test_c3_anchor.py::test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe
+[renomme_ancien]
+# D9 (Application v2.3, point 2).
+tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21
+[renomme_nouveau]
+tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_le_protocole_courant

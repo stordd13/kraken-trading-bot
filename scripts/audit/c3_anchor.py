@@ -12,12 +12,17 @@
   seconde racine dans un registre non vide → refus (elle contournerait la parenté).
 * **§ A.6 v2.2 (AM-05)** — le registre tient l'état du critère d'arrêt, et l'ancrage l'applique : pour une clé
   nouvelle, les enregistrements de la famille que le manifeste déclare sont lus ; une famille qui porte un verdict
-  compté n'accepte que l'empreinte de l'évaluation différée inscrite au verdict ; une famille qui a consommé sa
-  relance unique (deux verdicts non comptés) n'accepte plus rien — refus ``R0_INVALID_RUN``, code 2
+  compté n'accepte que la variante dont le descripteur ``D``, re-dérivé du manifeste entrant par la règle du
+  § A.6 v2.3 (``cc.deferred_descriptor_at_run``), a l'empreinte de l'évaluation différée inscrite au verdict ; une
+  famille qui a consommé sa relance unique (deux verdicts non comptés) n'accepte plus rien — refus
+  ``R0_INVALID_RUN``, code 2
   (``CONTRAINTES_POST_B4.md`` § 10.1, section d'origine, non redite ici). Les champs d'issue (``verdict``,
   ``deferred_evaluation``), écrits par ``c3_verdict`` à l'étape 6, sont hors ``RECORD_KEYS`` : l'idempotence tient.
   Le sha256 déclaré du protocole est asserté **avant** le typage du manifeste : un manifeste d'un autre protocole
   n'est pas relu sous le schéma de celui-ci.
+* **§ A.6 v2.3 (AM-01)** — ``deferred_evaluation.date``, obligatoire sur tout manifeste (forme : ``cc.load_manifest``),
+  est validée ici : au moins 365 jours après ``window.end`` (``assert_deferred_date``), sinon ``R0_INVALID_RUN``,
+  code 2.
 
 **Les valeurs gelées sont assertées, pas seulement leur forme** — liste close de quatre assertions,
 tout écart étant un contrat rompu (``R0_INVALID_RUN``, code 2, rien d'écrit) : la fraction d'ancrage,
@@ -41,7 +46,7 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import sys
 from typing import Any
@@ -118,6 +123,22 @@ def assert_frozen_values(manifest: cc.Manifest) -> list[str]:
     return problems
 
 
+def assert_deferred_date(manifest: cc.Manifest) -> None:
+    """§ A.6 v2.3 (AM-01), à l'étape 1 : `deferred_evaluation.date` est « au moins 12 mois après `window.end` »
+    (§ 10.1, « au moins 12 mois de données neuves ») — décision de gate du 30/09 : **≥ 365 jours**, 365 exactement
+    admis ; trop proche → ``R0_INVALID_RUN``, code 2 (§ I.1, ligne 2), rien d'écrit. Absente ou illisible, la clé a
+    déjà été refusée par ``cc.load_manifest`` (erreur de forme). La date est une déclaration du manifeste, jamais une
+    fenêtre lue."""
+    gap = manifest.deferred_evaluation_date - manifest.window_end
+    if gap < timedelta(days=cc.DEFERRED_MIN_DAYS):
+        raise cc.EntryRefusedError(
+            "R0_INVALID_RUN",
+            f"deferred_evaluation.date {manifest.deferred_evaluation_date.isoformat()} : "
+            f"{gap.total_seconds() / 86400.0:.6f} j après window.end {manifest.window_end.isoformat()}, minimum "
+            f"{cc.DEFERRED_MIN_DAYS} j (§ A.6 v2.3)",
+        )
+
+
 def variant_record(manifest: cc.Manifest, *, manifest_sha256: str) -> dict[str, Any]:
     """L'enregistrement recalculé d'une variante — sans horodatage, pour être recoupé."""
     parent: dict[str, Any] = {"is_root": manifest.parent_is_root}
@@ -155,15 +176,19 @@ def assert_declared_protocol(raw: Any) -> None:
         )
 
 
-def stop_criterion(variants: Mapping[str, Any], *, family: str, key: str) -> None:
+def stop_criterion(
+    variants: Mapping[str, Any], *, family: str, key: str, incoming: Mapping[str, Any]
+) -> None:
     """§ A.6 v2.2 (AM-05), à l'étape 1 : l'ancrage lit les enregistrements de la famille et refuse
     (``R0_INVALID_RUN``, code 2) toute variante nouvelle que ``CONTRAINTES_POST_B4.md`` § 10.1 exclut — une seconde
     campagne sur une famille qui porte déjà un verdict compté, ou une relance au-delà de l'unique (deux verdicts non
-    comptés). Sur une famille au verdict compté, **seule est acceptée** la variante dont l'empreinte est l'empreinte
-    attendue de l'évaluation différée inscrite au verdict : un état du registre, pas une exception de lecture."""
+    comptés). § A.6 v2.3 (AM-01) : sur une famille au verdict compté, l'ancrage **dérive le même descripteur du
+    manifeste entrant, par la même règle** (``cc.deferred_descriptor_at_run``), et **seule est acceptée** la variante
+    dont ``sig(canon(D))`` égale l'empreinte inscrite au verdict : un état du registre, pas une exception de lecture.
+    Non-divulgation : le refus ne nomme aucune empreinte de descripteur, ni l'inscrite ni la dérivée."""
     counted: list[str] = []
     not_counted = 0
-    expected: set[str] = set()
+    deferred_keys: set[str] = set()
     for other in variants:
         where = f"registry.variants.{other[:16]}"
         stored = cc.require_mapping(variants, other, where="registry.variants")
@@ -180,17 +205,19 @@ def stop_criterion(variants: Mapping[str, Any], *, family: str, key: str) -> Non
         deferred = cc.optional_mapping(stored, "deferred_evaluation", where=where)
         if deferred is not None:
             cc.require_datetime(deferred, "date", where=f"{where}.deferred_evaluation")
-            expected.add(
+            deferred_keys.add(
                 cc.require_str(deferred, "variant_key", where=f"{where}.deferred_evaluation")
             )
     if counted:
-        if key in expected:
-            return
+        if deferred_keys:
+            descriptor = cc.deferred_descriptor_at_run(incoming)
+            if descriptor is not None and cc.sig(descriptor) in deferred_keys:
+                return
         raise cc.EntryRefusedError(
             "R0_INVALID_RUN",
             f"la famille {family!r} porte déjà un verdict compté ({counted[0][:16]}) : seule l'évaluation différée "
-            f"inscrite au verdict est acceptée, et l'empreinte {key[:16]} n'est pas la sienne (§ A.6 v2.2 ; "
-            "CONTRAINTES § 10.1)",
+            f"inscrite au verdict est acceptée, et le descripteur dérivé du manifeste entrant (variante {key[:16]}) "
+            "n'a pas l'empreinte inscrite — empreintes non imprimées (§ A.6 v2.3 ; CONTRAINTES § 10.1)",
         )
     if not_counted >= 2:
         raise cc.EntryRefusedError(
@@ -223,6 +250,7 @@ def register(
     key: str,
     record: Mapping[str, Any],
     *,
+    incoming: Mapping[str, Any],
     now: datetime,
     violations: list[str],
 ) -> tuple[dict[str, Any], bool]:
@@ -245,7 +273,7 @@ def register(
                 "— le recalcul fait foi, le registre n'est pas réécrit"
             )
         return {"variants": dict(variants)}, False
-    stop_criterion(variants, family=str(record["family"]), key=key)
+    stop_criterion(variants, family=str(record["family"]), key=key, incoming=incoming)
     parent = record["parent"]
     if parent["is_root"]:
         if variants:
@@ -382,10 +410,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         problems = assert_frozen_values(manifest)
         if problems:
             raise cc.EntryRefusedError("R0_INVALID_RUN", "valeurs gelées : " + " ; ".join(problems))
+        assert_deferred_date(manifest)
         registry = load_registry(args.registry)
         key = cc.sig(raw)
         record = variant_record(manifest, manifest_sha256=cc.file_sha256(args.manifest))
-        registry, new_entry = register(registry, key, record, now=now, violations=violations)
+        registry, new_entry = register(
+            registry, key, record, incoming=raw, now=now, violations=violations
+        )
     except cc.EntryRefusedError as exc:
         print(f"ENTREE REFUSEE {exc}", file=sys.stderr)
         return 2

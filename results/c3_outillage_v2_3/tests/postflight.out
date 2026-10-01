@@ -1,0 +1,11 @@
+# postflight — 2026-09-30T22:19:03Z
+runs_c3_outillage_v2_3=absent
+campaign_unlock_service=absent
+tmux_sessions_chantier=0
+archive_conf=0
+archive_gate=0
+collector=active NRestarts=0
+service_head=662c104ef8cb5a9b5c7fb04452f7af817cb5a87a dirty=0
+alembic_head=0
+ssh_exit=0
+rc=0

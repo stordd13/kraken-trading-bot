@@ -100,6 +100,13 @@ dément est une violation. L'issue est ``inconclusif``, raison la première du �
 route, ``comparator_not_comparable`` quand le comparateur d'évaluation est en échec, ``motif_detail`` disant ce qui
 manque ou le test en échec (plan du lot 2, D7).
 
+**Évaluation différée (§ A.6 v2.3, AM-01).** En mode ``chain``, quand l'issue ouvre la voie de sortie prospective
+(``opens_deferred_way`` : ``inconclusif (F_CANNOT_SEPARATE)``, ``Q1 ∧ Q2 ∧ Q3``, ``Δ̂ > 0`` aux six combinaisons), le
+verdict inscrit à l'enregistrement de sa variante ``deferred_evaluation {date, variant_key}`` — la date copiée du
+manifeste, ``sig(canon(D))`` du descripteur de la configuration retenue (``cc.deferred_descriptor_at_verdict``) —, une
+fois par famille. L'empreinte ne vit qu'au registre : aucun message ne la porte, et la ligne du registre écrit n'en
+imprime pas le digest (décision D13 du plan du lot 1 v2.3).
+
 Pure, read-only hors de sa sortie. Aucun accès base de données.
 
 Usage::
@@ -188,6 +195,9 @@ class Decision:
     #: § C.5 v2.2 : le motif de ``E_NO_BENCHMARK`` (``cc.BENCHMARK_MOTIFS``), ce qu'il nomme à côté.
     motif: str | None = None
     motif_detail: str | None = None
+    #: § F.2 (d) v2.1 : `Δ̂` **rejoué**, par appariement — lu par le prédicat d'ouverture de la voie de sortie
+    #: prospective (``opens_deferred_way``, § A.6 v2.3) ; jamais publié. ``None`` hors d'un rejeu (abstention, refus).
+    delta_hat: Mapping[str, float] | None = None
 
 
 def _gate_results(*, net_pnl: float, cagr_pct: float, delta_dd: float) -> dict[str, bool]:
@@ -1165,6 +1175,7 @@ def decide(artifacts: Mapping[str, Mapping[str, Any]], *, violations: list[str])
         "estimability": estimability_payload,
         "continuity_state": view.derived_state,
         "synthetic": synthetic,
+        "delta_hat": dict(replay.delta_hat),
     }
     if reasons:
         reason = cc.worst_reason(*reasons)
@@ -1315,18 +1326,98 @@ def counted_status(decision: Decision, selection: Mapping[str, Any]) -> bool:
     return COUNTED[key]
 
 
+#: ``CONTRAINTES_POST_B4.md`` § 10.1 (section d'origine, non redite) : la seule issue qui ouvre la voie de sortie
+#: prospective, et les portes qu'elle exige passées.
+DEFERRED_WAY_ISSUE: tuple[str, str] = (cc.ISSUE_INCONCLUSIF, "F_CANNOT_SEPARATE")
+GATES_Q: tuple[str, ...] = ("Q1", "Q2", "Q3")
+
+
+def opens_deferred_way(decision: Decision) -> bool:
+    """``CONTRAINTES_POST_B4.md`` § 10.1 : la voie de sortie prospective s'ouvre « si l'issue est `inconclusif
+    (F_CANNOT_SEPARATE)` **et** `Q1 ∧ Q2 ∧ Q3` passent **et** `Δ̂ > 0` dans les six combinaisons — seule la borne
+    manque ». Chaque conjonctif est évalué, aucun n'est déduit d'un autre (dans ``decide``, `F_CANNOT_SEPARATE` suit déjà
+    les portes : le conjonctif Q est gardé parce que le texte le nomme). `Δ̂` ne dépend pas de `L` : sur chacune des six
+    combinaisons `L × appariement`, c'est le `Δ̂` rejoué de son appariement (``decision.delta_hat``)."""
+    if (decision.issue, decision.reason) != DEFERRED_WAY_ISSUE:
+        return False
+    if set(decision.gates) != set(GATES_Q) or not all(decision.gates[q] is True for q in GATES_Q):
+        return False
+    if decision.delta_hat is None:
+        return False
+    return all(
+        decision.delta_hat[combination.split(":", 1)[1]] > 0 for combination in cc.COMBINATIONS
+    )
+
+
+def deferred_descriptor(campaign: Mapping[str, Any], retained: Mapping[str, Any]) -> dict[str, Any]:
+    """§ A.6 v2.3 (AM-01) : le descripteur `D` **au verdict**, dérivé du manifeste brut de la campagne et du bloc
+    candidat brut de la configuration retenue. La règle vit dans ``c3_common`` : l'ancrage la re-dérive du manifeste
+    entrant au run différé, par la même règle."""
+    return cc.deferred_descriptor_at_verdict(campaign, retained)
+
+
+def deferred_evaluation_block(
+    manifest: Mapping[str, Any], decision: Decision, *, violations: list[str]
+) -> dict[str, str] | None:
+    """§ A.6 v2.3 (AM-01) : quand l'issue ouvre la voie (``opens_deferred_way``), ce que le verdict inscrit à
+    l'enregistrement de sa variante — la **date déclarée**, copiée de ``deferred_evaluation.date`` du manifeste, jamais
+    choisie ici, et l'empreinte attendue ``sig(canon(D))`` de la configuration retenue ; sinon ``None``. Le manifeste de
+    l'évaluation différée n'est écrit nulle part : seul son engagement l'est. **Non-divulgation** : ce bloc ne vit
+    qu'au registre ; aucun message ne l'interpole."""
+    if not opens_deferred_way(decision):
+        return None
+    loaded = cc.load_manifest(manifest)
+    candidates = cc.require_sequence(
+        cc.require_mapping(manifest, "universe", where="manifest"),
+        "candidates",
+        where="manifest.universe",
+    )
+    index = next(
+        (i for i, c in enumerate(loaded.candidates) if c.identity == decision.retained), None
+    )
+    if index is None:
+        violations.append(
+            f"la configuration retenue {(decision.retained or '-')[:16]} n'est pas un candidat du manifeste — "
+            "l'évaluation différée n'est pas inscrite (§ A.6 v2.3)"
+        )
+        return None
+    declared = cc.require_mapping(manifest, "deferred_evaluation", where="manifest")
+    return {
+        "date": cc.require_str(declared, "date", where="manifest.deferred_evaluation"),
+        "variant_key": cc.sig(deferred_descriptor(manifest, candidates[index])),
+    }
+
+
+def _family_carries_deferred(variants: Mapping[str, Any], *, family: str, variant_key: str) -> bool:
+    """« La voie prospective ne s'ouvre qu'une fois par famille » (§ A.6 v2.3) : vrai si un **autre** enregistrement de
+    la même famille porte déjà une évaluation différée inscrite."""
+    for other in variants:
+        if other == variant_key:
+            continue
+        where = f"registry.variants.{other[:16]}"
+        stored = cc.require_mapping(variants, other, where="registry.variants")
+        if cc.require_str(stored, "family", where=where) != family:
+            continue
+        if cc.optional_mapping(stored, "deferred_evaluation", where=where) is not None:
+            return True
+    return False
+
+
 def registry_inscription(
     registry_path: Path,
     *,
     variant_key: str,
     inscription: Mapping[str, Any],
+    deferred: Mapping[str, str] | None,
     violations: list[str],
 ) -> dict[str, Any] | None:
     """§ A.6 v2.2 : le verdict inscrit **une fois** l'issue, la raison et le statut compté dans l'enregistrement de sa
-    variante. Rend le registre à écrire, ou ``None`` s'il n'y a rien à écrire (inscription identique déjà
-    présente). Variante absente du registre, ou inscription existante différente : violation (§ I.1, ligne 15), le
-    registre n'est pas réécrit. L'évaluation différée n'est pas inscrite : le texte ne dit pas d'où la date et le
-    manifeste attendus viennent (plan du lot 1, D7, candidat v2.3)."""
+    variante ; § A.6 v2.3 (AM-01) : et, quand l'issue ouvre la voie, l'évaluation différée ``{date, variant_key}``
+    (``deferred``) — sauf si un autre enregistrement de la même famille en porte déjà une (**une fois par famille** : le
+    verdict d'une variante différée n'en inscrit jamais). Rend le registre à écrire, ou ``None`` s'il n'y a rien à
+    écrire (inscriptions identiques déjà présentes). Variante absente du registre, ou inscription existante différente
+    — verdict ou évaluation différée — : violation (§ I.1, ligne 15), le registre n'est pas réécrit. Le triplet du
+    verdict est nommé dans la violation ; le bloc différé ne l'est **jamais** (non-divulgation, § A.6 v2.3)."""
     try:
         raw = cc.read_json(registry_path)
     except (OSError, ValueError) as exc:
@@ -1338,19 +1429,37 @@ def registry_inscription(
             "pas inscrite (§ A.6 v2.2)"
         )
         return None
+    where = f"registry.variants.{variant_key[:16]}"
     record = cc.require_mapping(variants, variant_key, where="registry.variants")
-    existing = cc.optional_mapping(record, "verdict", where=f"registry.variants.{variant_key[:16]}")
-    if existing is not None:
-        if cc.canon(dict(existing)) != cc.canon(dict(inscription)):
+    family = cc.require_str(record, "family", where=where)
+    if deferred is not None and _family_carries_deferred(
+        variants, family=family, variant_key=variant_key
+    ):
+        deferred = None
+    existing = cc.optional_mapping(record, "verdict", where=where)
+    existing_deferred = cc.optional_mapping(record, "deferred_evaluation", where=where)
+    if existing is not None or existing_deferred is not None:
+        if existing is None or cc.canon(dict(existing)) != cc.canon(dict(inscription)):
             violations.append(
                 f"registre : la variante {variant_key[:16]} porte déjà un verdict inscrit différent "
-                f"({dict(existing)}) de celui-ci ({dict(inscription)}) — écrit une fois, jamais réécrit (§ A.6 v2.2)"
+                f"({dict(existing) if existing is not None else 'aucun verdict'}) de celui-ci ({dict(inscription)}) "
+                "— écrit une fois, jamais réécrit (§ A.6 v2.2)"
+            )
+        elif (existing_deferred is None) != (deferred is None) or (
+            existing_deferred is not None
+            and deferred is not None
+            and cc.canon(dict(existing_deferred)) != cc.canon(dict(deferred))
+        ):
+            violations.append(
+                f"registre : la variante {variant_key[:16]} porte une évaluation différée inscrite qui diffère de "
+                "celle de ce verdict — valeurs non imprimées (§ A.6 v2.3, non-divulgation) ; écrit une fois, jamais "
+                "réécrit"
             )
         return None
-    updated = {
-        **dict(raw),
-        "variants": {**dict(variants), variant_key: {**dict(record), "verdict": dict(inscription)}},
-    }
+    new_record = {**dict(record), "verdict": dict(inscription)}
+    if deferred is not None:
+        new_record["deferred_evaluation"] = dict(deferred)
+    updated = {**dict(raw), "variants": {**dict(variants), variant_key: new_record}}
     return updated
 
 
@@ -1728,6 +1837,9 @@ def run_verdict(
     § A.6 v2.2 (AM-05) : en mode ``chain`` (``registry`` fourni), l'issue publiée (code 0) et son statut au critère
     d'arrêt sont inscrits à l'enregistrement de la variante, une fois ; une contradiction est une violation, vue
     avant toute écriture. Le verdict seul n'inscrit pas (il ne porte pas de registre : plan du lot 1, D6).
+    § A.6 v2.3 (AM-01) : quand l'issue ouvre la voie de sortie prospective, l'évaluation différée ``{date,
+    variant_key}`` est inscrite avec elle, une fois par famille ; elle n'est jamais imprimée, et le digest du registre
+    écrit ne l'est pas non plus (décision D13 du plan du lot 1 v2.3).
     """
     artifacts: dict[str, Mapping[str, Any]] = {}
     inputs: dict[str, Path] = {}
@@ -1806,9 +1918,20 @@ def run_verdict(
                 "raison": decision.reason,
                 "compte": counted_status(decision, selection),
             }
-            registry_update = registry_inscription(
-                registry, variant_key=variant_key, inscription=inscription, violations=violations
+            # § A.6 v2.3 (AM-01) : l'évaluation différée, quand l'issue ouvre la voie — en mode `chain` seul.
+            deferred = deferred_evaluation_block(
+                cc.require_mapping(artifacts, "manifest", where="artefacts"),
+                decision,
+                violations=violations,
             )
+            if not violations:
+                registry_update = registry_inscription(
+                    registry,
+                    variant_key=variant_key,
+                    inscription=inscription,
+                    deferred=deferred,
+                    violations=violations,
+                )
     except cc.UndefinedIssueError as exc:
         # Garde générique (aucun site c3 ne la lève depuis v2.1, AM-19) : constatée après une violation,
         # la violation prime (§ I.1 l.15) ; seule, aucune issue n'est publiée, code 2.
@@ -1878,8 +2001,10 @@ def run_verdict(
     print("\n".join(render_lines(payload)))
     print(f"written {output} sha256 {digest}")
     if registry is not None and registry_update is not None:
-        registry_digest = cc.write_json(registry, registry_update)
-        print(f"written {registry} sha256 {registry_digest} (issue inscrite, § A.6 v2.2)")
+        # Décision D13 (Bruno, 30/09) : aucun digest du registre imprimé, qu'une évaluation différée soit inscrite ou
+        # non — une omission conditionnelle ferait de la forme du log un canal d'un bit sur l'issue (§ A.6 v2.3).
+        cc.write_json(registry, registry_update)
+        print(f"written {registry} (issue inscrite, § A.6)")
     return 0
 
 

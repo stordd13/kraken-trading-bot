@@ -1,0 +1,8 @@
+# xfail en fin de lot 1 — 2026-09-30T16:40:43Z
+# HEAD 382bea050e1a7d5323e93e5d213ffafc0db0c7ef branche feat/c3-outillage-v2.3 ; extrait lu : results/c3_outillage_v2_3/tests/suite_C4.out
+suite_rc=0 failed_error_xpass=0
+xfail_n=1
+xfail=tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3
+resume=3321 passed, 19 skipped, 24 deselected, 1 xfailed in 188.48s (0:03:08)
+seul_xfail_le_caduc=oui
+rc=0

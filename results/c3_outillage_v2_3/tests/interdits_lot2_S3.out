@@ -1,0 +1,139 @@
+# interdits_lot2 — S3 — 2026-09-30T22:19:38Z
+# HEAD c62acb4c351de177d30b9b7f4c75b8d5c3306ba9 branche feat/c3-outillage-v2.3 ; base b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9 ; lot 1 a30d62a2fec51a4c277d51a5d20047892b2fbcca
+gele_base src head=0 index=0 arbre=0 non_suivis=0
+gele_base config head=0 index=0 arbre=0 non_suivis=0
+gele_base pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele_base poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele_base .github head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/backtest.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/run_p6_backtests.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/run_p7_grid_search.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/rejeu_common.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_common.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_prefix.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_evaluate.py head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/protocole_c3.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.1.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.2.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.3.md head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_v2_3_gel head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 scripts head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 tests head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 src head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 config head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 .github head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 agent head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 skills head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 CLAUDE.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 PROJECT_CONTEXT.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/INDEX.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/CODE_MAP.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/protocole_c3.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.1.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.2.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.3.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/CONTRAINTES_POST_B4.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_v2_3_gel head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_3/lot1 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_3/plans/lot1.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_3/mutants.log head=0 index=0 arbre=0 non_suivis=0
+protocole_sha_egal_consigne=0 (d030ab239de317f6…)
+## fichiers changés depuis le lot 1 (HEAD ∪ index ∪ arbre ∪ non suivis ; fichiers étrangers exclus)
+  docs/RESEARCH_LOG.md
+  results/c3_outillage_v2_3/conformite/attendu.md
+  results/c3_outillage_v2_3/conformite/manifest.json
+  results/c3_outillage_v2_3/conformite/server/alembic_after.txt
+  results/c3_outillage_v2_3/conformite/server/alembic_before.txt
+  results/c3_outillage_v2_3/conformite/server/c3_outillage_v2_3_conf_server_20260930.tgz.sha256
+  results/c3_outillage_v2_3/conformite/server/pilot_exit.txt
+  results/c3_outillage_v2_3/conformite/server/run_conformite.sh
+  results/c3_outillage_v2_3/conformite/server/status.txt
+  results/c3_outillage_v2_3/conformite/server/verify_attendu.out
+  results/c3_outillage_v2_3/conformite/server/verify_attendu.py
+  results/c3_outillage_v2_3/gate_L5/alembic_after.txt
+  results/c3_outillage_v2_3/gate_L5/alembic_before.txt
+  results/c3_outillage_v2_3/gate_L5/c3_outillage_v2_3_gate_server_20260930.tgz.sha256
+  results/c3_outillage_v2_3/gate_L5/pilot_exit.txt
+  results/c3_outillage_v2_3/gate_L5/pytest_summary.txt
+  results/c3_outillage_v2_3/gate_L5/run_gate.sh
+  results/c3_outillage_v2_3/gate_L5/status.txt
+  results/c3_outillage_v2_3/gate_L5/verify_gate.out
+  results/c3_outillage_v2_3/plans/lot2.md
+  results/c3_outillage_v2_3/report.md
+  results/c3_outillage_v2_3/tests/archive.sh
+  results/c3_outillage_v2_3/tests/archive_conf.out
+  results/c3_outillage_v2_3/tests/archive_gate.out
+  results/c3_outillage_v2_3/tests/ci_status_S1.out
+  results/c3_outillage_v2_3/tests/ci_status_S2.out
+  results/c3_outillage_v2_3/tests/events.out
+  results/c3_outillage_v2_3/tests/events.sh
+  results/c3_outillage_v2_3/tests/fetch.sh
+  results/c3_outillage_v2_3/tests/fetch_conf.out
+  results/c3_outillage_v2_3/tests/fetch_gate.out
+  results/c3_outillage_v2_3/tests/interdits_lot2.sh
+  results/c3_outillage_v2_3/tests/interdits_lot2_C0.out
+  results/c3_outillage_v2_3/tests/interdits_lot2_S1.out
+  results/c3_outillage_v2_3/tests/interdits_lot2_S2.out
+  results/c3_outillage_v2_3/tests/interdits_lot2_S3.out
+  results/c3_outillage_v2_3/tests/interdits_lot2_adverse.out
+  results/c3_outillage_v2_3/tests/interdits_lot2_adverse.sh
+  results/c3_outillage_v2_3/tests/launch.sh
+  results/c3_outillage_v2_3/tests/launch_conf.out
+  results/c3_outillage_v2_3/tests/launch_gate.out
+  results/c3_outillage_v2_3/tests/lint_lot2.out
+  results/c3_outillage_v2_3/tests/lint_lot2.sh
+  results/c3_outillage_v2_3/tests/manifest_check.out
+  results/c3_outillage_v2_3/tests/manifest_check.sh
+  results/c3_outillage_v2_3/tests/pilot_dryrun.out
+  results/c3_outillage_v2_3/tests/pilot_dryrun.sh
+  results/c3_outillage_v2_3/tests/postflight.out
+  results/c3_outillage_v2_3/tests/postflight.sh
+  results/c3_outillage_v2_3/tests/preflight.sh
+  results/c3_outillage_v2_3/tests/preflight_conf.out
+  results/c3_outillage_v2_3/tests/preflight_gate.out
+  results/c3_outillage_v2_3/tests/reprise_lot2.out
+  results/c3_outillage_v2_3/tests/reprise_lot2.sh
+  results/c3_outillage_v2_3/tests/tunnel.out
+  results/c3_outillage_v2_3/tests/verify_adverse.out
+  results/c3_outillage_v2_3/tests/verify_adverse.sh
+  results/c3_outillage_v2_3/tests/verify_conformite.sh
+  results/c3_outillage_v2_3/tests/verify_gate.sh
+  results/c3_outillage_v2_3/tests/wait.sh
+  results/c3_outillage_v2_3/tests/wait_conf.out
+  results/c3_outillage_v2_3/tests/wait_gate.out
+liste_blanche=0
+etranger=absent gel_v2_3.patch (non suivi ; constat, pas un écart)
+etranger_inchange=0 (lot2_s1.patch non suivi, sha256_16 b8dcfa42bb697a2d)
+## fichiers du commit courant (index contre HEAD)
+  M	docs/RESEARCH_LOG.md
+  A	results/c3_outillage_v2_3/gate_L5/alembic_after.txt
+  A	results/c3_outillage_v2_3/gate_L5/alembic_before.txt
+  A	results/c3_outillage_v2_3/gate_L5/c3_outillage_v2_3_gate_server_20260930.tgz.sha256
+  A	results/c3_outillage_v2_3/gate_L5/pilot_exit.txt
+  A	results/c3_outillage_v2_3/gate_L5/pytest_summary.txt
+  A	results/c3_outillage_v2_3/gate_L5/status.txt
+  A	results/c3_outillage_v2_3/gate_L5/verify_gate.out
+  A	results/c3_outillage_v2_3/report.md
+  A	results/c3_outillage_v2_3/tests/archive_gate.out
+  A	results/c3_outillage_v2_3/tests/ci_status_S2.out
+  A	results/c3_outillage_v2_3/tests/fetch_gate.out
+  A	results/c3_outillage_v2_3/tests/launch_gate.out
+  A	results/c3_outillage_v2_3/tests/postflight.out
+  A	results/c3_outillage_v2_3/tests/preflight_gate.out
+  M	results/c3_outillage_v2_3/tests/tunnel.out
+  A	results/c3_outillage_v2_3/tests/wait_gate.out
+arbre_hors_index=0 fichier(s) suivi(s) modifiés non indexés
+aucun_artefact=0
+campaign_unlock=absent
+empreintes_64_ajoutees=13 dont_protocole=2 dont_fichiers_du_chantier_ou_archives=11 table_adoption=4
+aucun_sha_artefact=0
+dette23=0
+rc=0

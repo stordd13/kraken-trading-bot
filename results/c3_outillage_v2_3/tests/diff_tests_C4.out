@@ -1,0 +1,41 @@
+# diff des tests — C4 — 2026-09-30T16:40:35Z
+# HEAD 382bea050e1a7d5323e93e5d213ffafc0db0c7ef branche feat/c3-outillage-v2.3 ; base b50f2d1
+## tests/test_scripts/test_c3_anchor.py
+  fonctions base=42 head=43 ; xfail de la base=3
+  neuve déclarée : test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe
+  corps modifié, déclaré : _campaign_v21_manifest — D8 : fenêtre v2.1 (fin 2026-06-29) — la date re-déclarée par `fx.with_deferred_date`
+  X levé : test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee — corps identique, décorateurs = base moins xfail
+  X levé : test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1 — corps identique, décorateurs = base moins xfail
+  X levé : test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent — corps identique, décorateurs = base moins xfail
+## tests/test_scripts/test_c3_benchmark.py
+  fonctions base=35 head=35 ; xfail de la base=0
+## tests/test_scripts/test_c3_chronology.py
+  fonctions base=18 head=18 ; xfail de la base=0
+## tests/test_scripts/test_c3_common.py
+  fonctions base=99 head=99 ; xfail de la base=1
+  corps modifié, déclaré : manifest — D8 : `deferred_evaluation.date` par défaut, 365 j après la fin de fenêtre (§ A.6 v2.3)
+  X levé : test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide — corps identique, décorateurs = base moins xfail
+## tests/test_scripts/test_c3_continuity.py
+  fonctions base=50 head=50 ; xfail de la base=0
+## tests/test_scripts/test_c3_entry.py
+  fonctions base=65 head=65 ; xfail de la base=0
+  renommé (D9), nœud identique : test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21 → test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_le_protocole_courant
+## tests/test_scripts/test_c3_select.py
+  fonctions base=54 head=54 ; xfail de la base=0
+## tests/test_scripts/test_c3_verdict.py
+  fonctions base=223 head=226 ; xfail de la base=4
+  neuve déclarée : test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+  neuve déclarée : test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement
+  neuve déclarée : test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee
+  X levé : test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur — corps identique, décorateurs = base moins xfail
+  X levé : test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee — corps identique, décorateurs = base moins xfail
+  X levé : test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte — corps identique, décorateurs = base moins xfail
+  X levé : test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee — corps identique, décorateurs = base moins xfail
+## tests/test_scripts/test_c3b_common.py
+  fonctions base=72 head=72 ; xfail de la base=0
+## tests/test_scripts/test_c3b_evaluate.py
+  fonctions base=102 head=102 ; xfail de la base=1
+## tests/test_scripts/test_c3b_prefix.py
+  fonctions base=36 head=36 ; xfail de la base=0
+x_leves_vus=8 sur 8
+rc=0

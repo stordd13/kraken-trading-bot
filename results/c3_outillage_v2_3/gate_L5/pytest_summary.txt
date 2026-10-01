@@ -1,0 +1,72 @@
+combo0
+  234.60s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo0]
+  1 passed in 234.69s (0:03:54)
+combo1
+  235.61s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo1]
+  1 passed in 235.68s (0:03:55)
+combo2
+  188.07s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo2]
+  1 passed in 188.14s (0:03:08)
+combo3
+  54.23s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo3]
+  1 passed in 54.29s
+combo4
+  52.99s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo4]
+  1 passed in 53.06s
+combo5
+  42.86s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo5]
+  1 passed in 42.93s
+combo6
+  56.75s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo6]
+  1 passed in 56.82s
+combo7
+  56.41s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo7]
+  1 passed in 56.48s
+combo8
+  45.56s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo8]
+  1 passed in 45.62s
+combo9
+  49.07s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo9]
+  1 passed in 49.14s
+combo10
+  49.28s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo10]
+  1 passed in 49.35s
+combo11
+  38.76s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo11]
+  1 passed in 38.82s
+combo12
+  52.33s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo12]
+  1 passed in 52.41s
+combo13
+  51.43s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo13]
+  1 passed in 51.50s
+combo14
+  40.87s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo14]
+  1 passed in 40.93s
+combo15
+  330.86s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo15]
+  1 passed in 330.93s (0:05:30)
+combo16
+  335.71s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo16]
+  1 passed in 335.77s (0:05:35)
+combo17
+  252.17s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo17]
+  1 passed in 252.24s (0:04:12)
+combo18
+  309.77s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo18]
+  1 passed in 309.84s (0:05:09)
+combo19
+  308.04s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo19]
+  1 passed in 308.11s (0:05:08)
+combo20
+  234.36s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo20]
+  1 passed in 234.43s (0:03:54)
+combo21
+  407.96s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo21]
+  1 passed in 408.04s (0:06:48)
+combo22
+  421.63s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo22]
+  1 passed in 421.69s (0:07:01)
+combo23
+  315.26s call     tests/test_scripts/test_run_p6_determinism.py::test_determinism_parallel_vs_serial_full[combo23]
+  1 passed in 315.33s (0:05:15)

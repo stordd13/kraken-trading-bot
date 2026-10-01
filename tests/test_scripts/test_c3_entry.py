@@ -703,7 +703,7 @@ def test_entrees_illisibles_sortent_2_sans_ecrire(tmp_path: Path) -> None:
     ),
     reason="artefact du rejeu ou livrable réel absent",
 )
-def test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21(
+def test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_le_protocole_courant(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     """En-tête v2.1 : « le sha256 de v2.0 reste celui que porte tout manifeste C3a ; un manifeste v2.1 est une

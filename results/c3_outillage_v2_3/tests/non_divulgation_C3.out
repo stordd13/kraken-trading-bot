@@ -1,0 +1,8 @@
+# non_divulgation — C3 — 2026-09-30T16:35:05Z
+# HEAD d7362f05638479cd6e1f5cf34899736233ed5327 branche feat/c3-outillage-v2.3
+# fichiers suivis modifiés (non commités) : 4
+module scripts/audit/c3_common.py : f-strings=187 print=0
+module scripts/audit/c3_anchor.py : f-strings=41 print=9
+module scripts/audit/c3_verdict.py : f-strings=132 print=24
+sites=0
+rc=0

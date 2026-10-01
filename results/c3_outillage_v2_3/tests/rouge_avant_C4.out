@@ -1,0 +1,5 @@
+# rouge_avant — C4 — 2026-09-30T16:37:02Z
+# HEAD 382bea050e1a7d5323e93e5d213ffafc0db0c7ef branche feat/c3-outillage-v2.3 ; code de la base b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9
+tests copiés : test_c3_common.py test_c3_anchor.py test_c3_verdict.py (arbre courant)
+test=test_c3_anchor.py::test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe pytest_exit=1 (attendu 1) échec : E   AssertionError: assert {'deux_candid...n': (2, True)} == {'deux_candid...': (0, False)} tests/test_scripts/test_c3_anchor.py:763: AssertionError: assert {'deux_candid...n': (2, True)} == {'deux_candid...': (0, False)} 
+rc=0

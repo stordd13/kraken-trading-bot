@@ -1,0 +1,15 @@
+# launch gate — 2026-09-30T21:07:51Z — sha c62acb4c351de177d30b9b7f4c75b8d5c3306ba9
+sha_egal_head_local=0
+origin_tip=c62acb4c351de177d30b9b7f4c75b8d5c3306ba9
+sha_egal_tip_origin=0
+pilote_versionne_au_sha=0
+mkdir_run=0
+clone_head=c62acb4c351de177d30b9b7f4c75b8d5c3306ba9
+clone=0
+env_copy_out_dir=0
+pilot_sha256_blob=b5d2018f11409362f3f316e95bb7973ce570107e3eec4d98496d5fb52d562c93
+pilot_sha256_clone=b5d2018f11409362f3f316e95bb7973ce570107e3eec4d98496d5fb52d562c93
+pilot_cmp=0
+tmux_launch=0
+session=c3-outillage-v23-gate-20260930 launched_at=2026-09-30T21:07:59Z
+rc=0

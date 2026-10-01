@@ -1,0 +1,28 @@
+# suite — C1 — 2026-09-30T16:17:59Z
+# HEAD f73727c3b5e35586a443bde918a8bcf8fb985848 branche feat/c3-outillage-v2.3
+# fichiers suivis modifiés (non commités) : 1
+# commande : PYTHONPATH=results/c3_v2_2/tests poetry run pytest -q -p no:cacheprovider -p gate_sans_tunnel -rsxX -k "not test_determinism_parallel_vs_serial_full"
+tunnel_5433=fermé
+pytest_exit=0
+fin=2026-09-30T16:21:05Z
+XFAIL tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+XFAIL tests/test_scripts/test_c3_anchor.py::test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1
+XFAIL tests/test_scripts/test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+XFAIL tests/test_scripts/test_c3_common.py::test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide
+XFAIL tests/test_scripts/test_c3_verdict.py::test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur
+XFAIL tests/test_scripts/test_c3_verdict.py::test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee
+XFAIL tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+XFAIL tests/test_scripts/test_c3_verdict.py::test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee
+XFAIL tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3
+## ignorés, par raison
+8 : Database not reachable (tunnel down or no local Postgres). Start the tunnel with `tunnel_ssh_hetzner` then rerun.
+4 : Set BYBIT_INTEGRATION=1 (read-only) or =trade (real limit order) to run
+2 : Database not reachable (tunnel down or no local Postgres).
+2 : Database not reachable
+1 : Set BYBIT_INTEGRATION=1 to hit stream.bybit.eu
+1 : Database not reachable (tunnel down)
+1 : BYBIT_INTEGRATION=trade required (real order)
+resume=3309 passed, 19 skipped, 24 deselected, 9 xfailed in 185.14s (0:03:05)
+failed_error_xpass=0
+brut=/private/tmp/claude-501/-Users-stordd-doc-GitHub-kraken-trading-bot/58458c37-5d0f-498c-846b-769756302381/scratchpad/suite_C1.raw
+rc=0

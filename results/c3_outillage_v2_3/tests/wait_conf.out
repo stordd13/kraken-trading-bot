@@ -1,0 +1,6 @@
+2026-09-30T20:53:21Z poll=1 exit=pending lines=8 last=start_1=2026-09-30T20:53:18Z 
+2026-09-30T20:54:22Z poll=2 exit=pending lines=26 last=start_2=2026-09-30T20:54:10Z 
+2026-09-30T20:55:24Z poll=3 exit=pending lines=26 last=start_2=2026-09-30T20:54:10Z 
+2026-09-30T20:56:25Z poll=4 exit=pending lines=33 last=registry_copy_2=0 
+2026-09-30T20:57:26Z poll=5 exit=0 lines=91 last=end=2026-09-30T20:57:22Z 
+rc=0

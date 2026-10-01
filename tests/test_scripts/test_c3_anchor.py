@@ -115,7 +115,8 @@ def _campaign_v21_manifest() -> dict[str, Any]:
     """La fixture de campagne v2.1 : le manifeste conforme des fixtures, sur la fenêtre déclarée du § A.3 v2.1."""
     payload = fx.manifest()
     payload["window"] = dict(V21_WINDOW)
-    return payload
+    # § A.6 v2.3 (AM-01) : la date différée suit la fenêtre (≥ 365 jours après sa fin).
+    return fx.with_deferred_date(payload)
 
 
 def test_la_fenetre_de_la_premiere_campagne_donne_l_ancrage_du_texte(tmp_path: Path) -> None:
@@ -706,12 +707,6 @@ def test_R17_sur_une_famille_close_une_autre_empreinte_que_la_differee_est_refus
     assert code == 2 and out is None
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X6 — c3_anchor.stop_criterion compare l'empreinte brute du manifeste entrant, pas celle de son "
-    "descripteur D : outillage v2.3",
-)
 def test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee(
     tmp_path: Path,
 ) -> None:
@@ -729,17 +724,54 @@ def test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acce
     assert out["variant_key"] == cc.sig(deferred) and out["registry"]["new_entry"] is True
 
 
+def test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """§ A.6 v2.3 (AM-01), colonne « Recoupement au run différé » : `universe_provenance` = « la provenance déclarée du
+    manifeste entrant », `candidate` = « l'unique candidat du manifeste entrant ». Témoin intégré (règle agent 1) : le
+    manifeste différé de la configuration retenue est accepté. Adverses, même famille close, même configuration : une
+    provenance déclarée `unknown`, puis deux candidats dont la retenue en tête — refusés, `R0_INVALID_RUN`, code 2, rien
+    d'écrit. « **Non-divulgation.** […] elle n'est **jamais imprimée** hors registre » : ni l'empreinte inscrite, ni
+    celle d'un descripteur dérivé n'apparaît dans stdout, stderr ou les sorties de l'ancrage (plan du lot 1 v2.3, D6,
+    D7, D10). Chaque cas dans son propre répertoire, famille close neuve."""
+    outcomes: dict[str, tuple[int, bool]] = {}
+    for name in ("temoin", "provenance_unknown", "deux_candidats"):
+        case = tmp_path / name
+        case.mkdir()
+        campaign, expected = _closed_family_with_deferred(case)
+        retained, other = campaign["universe"]["candidates"][:2]
+        incoming = fx.deferred_manifest(campaign, retained)
+        secrets = [expected]
+        if name == "provenance_unknown":
+            incoming["universe"]["provenance"] = cc.PROVENANCE_UNKNOWN
+            secrets.append(cc.sig(fx.deferred_descriptor_at_run(incoming)))
+        elif name == "deux_candidats":
+            incoming["universe"]["candidates"] = [dict(retained), dict(other)]
+        registry_before = cc.file_sha256(case / "variants.json")
+        capsys.readouterr()
+        code, out = _run(case, incoming, name="entrant.json", output="anchor_entrant.json")
+        printed = capsys.readouterr()
+        written = "".join(
+            p.read_text(encoding="utf-8")
+            for p in sorted(case.iterdir())
+            if p.is_file() and p.name != "variants.json"
+        )
+        for secret in secrets:
+            assert (name, secret[:16] in printed.out + printed.err + written) == (name, False)
+        unchanged = cc.file_sha256(case / "variants.json") == registry_before
+        outcomes[name] = (code, out is None and unchanged)
+    assert outcomes == {
+        "temoin": (0, False),
+        "provenance_unknown": (2, True),
+        "deux_candidats": (2, True),
+    }
+
+
 # ---------------------------------------------------------------------------
 # § A.6 v2.3 (AM-01) — la clé du manifeste `deferred_evaluation.date`, validée à l'étape 1 (X1, X2)
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X1 — c3_anchor ne lit pas encore `deferred_evaluation.date` (clé obligatoire, étape 1) : "
-    "outillage v2.3",
-)
 def test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1(
     tmp_path: Path,
 ) -> None:
@@ -753,12 +785,6 @@ def test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1(
     assert not (tmp_path / "variants.json").exists()
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X2 — c3_anchor ne valide pas encore `deferred_evaluation.date` (≥ 365 jours après "
-    "`window.end`, lisible) : outillage v2.3",
-)
 def test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent(
     tmp_path: Path,
 ) -> None:

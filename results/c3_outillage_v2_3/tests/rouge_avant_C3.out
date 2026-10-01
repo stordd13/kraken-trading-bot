@@ -1,0 +1,7 @@
+# rouge_avant — C3 — 2026-09-30T16:31:32Z
+# HEAD d7362f05638479cd6e1f5cf34899736233ed5327 branche feat/c3-outillage-v2.3 ; code de la base b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9
+tests copiés : test_c3_common.py test_c3_anchor.py test_c3_verdict.py (arbre courant)
+test=test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif pytest_exit=1 (attendu 1) échec : E   TypeError: Decision.__init__() got an unexpected keyword argument 'delta_hat' tests/test_scripts/test_c3_verdict.py:2727: TypeError: Decision.__init__() got an unexpected keyword argument 'delta_hat' 
+test=test_c3_verdict.py::test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee pytest_exit=1 (attendu 1) échec : E   AssertionError: témoin : l'issue qui ouvre la voie inscrit l'évaluation différée tests/test_scripts/test_c3_verdict.py:2754: AssertionError: témoin : l'issue qui ouvre la voie inscrit l'évaluation différée 
+test=test_c3_verdict.py::test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement pytest_exit=1 (attendu 1) échec : E   AttributeError: module 'c3_verdict' has no attribute 'deferred_descriptor' tests/test_scripts/test_c3_verdict.py:2793: AttributeError: module 'c3_verdict' has no attribute 'deferred_descriptor' 
+rc=0

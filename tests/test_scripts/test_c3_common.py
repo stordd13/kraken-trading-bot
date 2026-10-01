@@ -917,6 +917,9 @@ def manifest(
         "universe": {"provenance": provenance, "candidates": candidates},
         # § A.6 v2.2 (AM-05) : la famille du mécanisme évalué, au sens du critère d'arrêt.
         "family": "grid",
+        # § A.6 v2.3 (AM-01) : la date de l'évaluation différée, obligatoire sur tout manifeste ; 365 jours exactement
+        # après `window.end` (`DEFERRED_DATE`).
+        "deferred_evaluation": {"date": DEFERRED_DATE.isoformat()},
         "strategies": {STRATEGY: {"engine": "grid", "decision_timeframes": list(DECISION_TFS)}},
         "selection_rule": {
             "text": "§ A.10 : D1-D6, puis P1∧P2∧P3, puis classement par Δ^dd (§ A.9)",
@@ -1946,11 +1949,6 @@ def deferred_manifest(
     return with_deferred_date(out)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason="AM-01 v2.3, X8 — c3_common.load_manifest ne lit pas encore `deferred_evaluation.date` : outillage v2.3",
-)
 def test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide() -> None:
     """§ A.6 v2.3 (AM-01) : « `deferred_evaluation.date` : une date, **obligatoire sur tout manifeste** […] ;
     absente, non lisible ou trop proche → `R0_INVALID_RUN`, code 2 (§ I.1, ligne 2) ». `load_manifest` en porte la

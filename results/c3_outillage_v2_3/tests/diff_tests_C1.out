@@ -1,0 +1,35 @@
+# diff des tests — C1 — 2026-09-30T16:21:05Z
+# HEAD f73727c3b5e35586a443bde918a8bcf8fb985848 branche feat/c3-outillage-v2.3 ; base b50f2d1
+## tests/test_scripts/test_c3_anchor.py
+  fonctions base=42 head=42 ; xfail de la base=3
+  X encore marqué (partiel) : test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+  X encore marqué (partiel) : test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1
+  X encore marqué (partiel) : test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+## tests/test_scripts/test_c3_benchmark.py
+  fonctions base=35 head=35 ; xfail de la base=0
+## tests/test_scripts/test_c3_chronology.py
+  fonctions base=18 head=18 ; xfail de la base=0
+## tests/test_scripts/test_c3_common.py
+  fonctions base=99 head=99 ; xfail de la base=1
+  X encore marqué (partiel) : test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide
+## tests/test_scripts/test_c3_continuity.py
+  fonctions base=50 head=50 ; xfail de la base=0
+## tests/test_scripts/test_c3_entry.py
+  fonctions base=65 head=65 ; xfail de la base=0
+  renommé (D9), nœud identique : test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21 → test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_le_protocole_courant
+## tests/test_scripts/test_c3_select.py
+  fonctions base=54 head=54 ; xfail de la base=0
+## tests/test_scripts/test_c3_verdict.py
+  fonctions base=223 head=223 ; xfail de la base=4
+  X encore marqué (partiel) : test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur
+  X encore marqué (partiel) : test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee
+  X encore marqué (partiel) : test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+  X encore marqué (partiel) : test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee
+## tests/test_scripts/test_c3b_common.py
+  fonctions base=72 head=72 ; xfail de la base=0
+## tests/test_scripts/test_c3b_evaluate.py
+  fonctions base=102 head=102 ; xfail de la base=1
+## tests/test_scripts/test_c3b_prefix.py
+  fonctions base=36 head=36 ; xfail de la base=0
+x_leves_vus=0 sur 8
+rc=0

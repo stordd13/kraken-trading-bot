@@ -1,0 +1,43 @@
+# verify_adverse — 2026-09-30T20:31:41Z — HEAD dcef3012b0a725177eca7115a341006dc689ac02
+temoins_pilot_dryrun=0
+conf cas=temoin rc=0 attendu=0 items_en_ecart=0
+conf cas=sha_passe_autre rc=1 attendu=non0 items_en_ecart=1
+conf cas=guard_refused rc=1 attendu=non0 items_en_ecart=1
+conf cas=pilot_sha_autre rc=1 attendu=non0 items_en_ecart=1
+conf cas=alembic_after_autre rc=1 attendu=non0 items_en_ecart=1
+conf cas=service_nrestarts rc=1 attendu=non0 items_en_ecart=1
+conf cas=workers_2_a_4 rc=1 attendu=non0 items_en_ecart=1
+conf cas=prefix_2_code_3 rc=1 attendu=non0 items_en_ecart=1
+conf cas=pre_select_3_code_2 rc=1 attendu=non0 items_en_ecart=1
+conf cas=eval_1_forme_de_refus rc=1 attendu=non0 items_en_ecart=1
+conf cas=chain_steps_2_continuity_1 rc=1 attendu=non0 items_en_ecart=1
+conf cas=chain_verified_3_faux rc=1 attendu=non0 items_en_ecart=1
+conf cas=violations_1_non_vides rc=1 attendu=non0 items_en_ecart=1
+conf cas=rejeu_2_non_vide rc=1 attendu=non0 items_en_ecart=1
+conf cas=interpreter_1 rc=1 attendu=non0 items_en_ecart=1
+conf cas=eq3_run2_seul rc=1 attendu=non0 items_en_ecart=1
+conf cas=eq3_ligne_absente rc=1 attendu=non0 items_en_ecart=1
+conf cas=compared_22 rc=1 attendu=non0 items_en_ecart=1
+conf cas=listing_1 rc=1 attendu=non0 items_en_ecart=1
+conf cas=cle_absente_chain_verified_2 rc=1 attendu=non0 items_en_ecart=1
+conf cas=chain_stopped_present rc=1 attendu=non0 items_en_ecart=1
+conf cas=campaign_unlock_apres rc=1 attendu=non0 items_en_ecart=1
+conf cas=pilot_exit_1 rc=1 attendu=non0 items_en_ecart=1
+gate cas=temoin rc=0 attendu=0 items_en_ecart=0
+gate cas=sha_passe_autre rc=1 attendu=non0 items_en_ecart=1
+gate cas=agregat_23_sur_24 rc=1 attendu=non0 items_en_ecart=1
+gate cas=combo7_skippe_rc0 rc=1 attendu=non0 items_en_ecart=1
+gate cas=combo3_rc1 rc=1 attendu=non0 items_en_ecart=1
+gate cas=full_failed rc=1 attendu=non0 items_en_ecart=1
+gate cas=extract_46 rc=1 attendu=non0 items_en_ecart=1
+gate cas=resume_passed_manquant rc=1 attendu=non0 items_en_ecart=1
+gate cas=tree_after_1 rc=1 attendu=non0 items_en_ecart=1
+gate cas=alembic_after_autre rc=1 attendu=non0 items_en_ecart=1
+gate cas=collector_nrestarts rc=1 attendu=non0 items_en_ecart=1
+gate cas=service_head_autre rc=1 attendu=non0 items_en_ecart=1
+gate cas=interpreter_1 rc=1 attendu=non0 items_en_ecart=1
+gate cas=cle_absente_full rc=1 attendu=non0 items_en_ecart=1
+gate cas=pilot_sha_autre rc=1 attendu=non0 items_en_ecart=1
+gate cas=pilot_exit_1 rc=1 attendu=non0 items_en_ecart=1
+temporaire_supprime=0
+rc=0

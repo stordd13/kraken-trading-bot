@@ -1,0 +1,83 @@
+# interdits — C3 — 2026-09-30T16:35:17Z
+# HEAD d7362f05638479cd6e1f5cf34899736233ed5327 branche feat/c3-outillage-v2.3 ; base b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9
+gele src head=0 index=0 arbre=0 non_suivis=0
+gele config head=0 index=0 arbre=0 non_suivis=0
+gele pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele .github head=0 index=0 arbre=0 non_suivis=0
+gele scripts/backtest.py head=0 index=0 arbre=0 non_suivis=0
+gele scripts/run_p6_backtests.py head=0 index=0 arbre=0 non_suivis=0
+gele scripts/run_p7_grid_search.py head=0 index=0 arbre=0 non_suivis=0
+gele scripts/audit/rejeu_common.py head=0 index=0 arbre=0 non_suivis=0
+gele scripts/audit/c3b_common.py head=0 index=0 arbre=0 non_suivis=0
+gele scripts/audit/c3b_prefix.py head=0 index=0 arbre=0 non_suivis=0
+gele scripts/audit/c3b_evaluate.py head=0 index=0 arbre=0 non_suivis=0
+gele docs/protocole_c3.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/amendements_c3_v2.1.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/amendements_c3_v2.2.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/amendements_c3_v2.3.md head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_v2_3_gel head=0 index=0 arbre=0 non_suivis=0
+protocole_sha_egal_consigne=0 (d030ab239de317f6…)
+## fichiers changés depuis la base (HEAD ∪ index ∪ arbre ∪ non suivis ; gel_v2_3.patch exclu)
+  agent/AGENT_C3_OUTILLAGE_V2_3.md
+  results/c3_outillage_v2_3/plans/lot1.md
+  results/c3_outillage_v2_3/tests/base_db.sh
+  results/c3_outillage_v2_3/tests/ci_status.sh
+  results/c3_outillage_v2_3/tests/comptes.sh
+  results/c3_outillage_v2_3/tests/diff_tests.sh
+  results/c3_outillage_v2_3/tests/diff_tests_C1.out
+  results/c3_outillage_v2_3/tests/diff_tests_C2.out
+  results/c3_outillage_v2_3/tests/diff_tests_C3.out
+  results/c3_outillage_v2_3/tests/interdits.sh
+  results/c3_outillage_v2_3/tests/interdits_C0.out
+  results/c3_outillage_v2_3/tests/interdits_C1.out
+  results/c3_outillage_v2_3/tests/interdits_C2.out
+  results/c3_outillage_v2_3/tests/interdits_C3.out
+  results/c3_outillage_v2_3/tests/lint.sh
+  results/c3_outillage_v2_3/tests/lint_C2.out
+  results/c3_outillage_v2_3/tests/lint_C3.out
+  results/c3_outillage_v2_3/tests/lint_base.out
+  results/c3_outillage_v2_3/tests/mutant.sh
+  results/c3_outillage_v2_3/tests/non_divulgation.sh
+  results/c3_outillage_v2_3/tests/non_divulgation_C3.out
+  results/c3_outillage_v2_3/tests/non_divulgation_base.out
+  results/c3_outillage_v2_3/tests/rouge_avant.sh
+  results/c3_outillage_v2_3/tests/rouge_avant_C3.out
+  results/c3_outillage_v2_3/tests/suite.sh
+  results/c3_outillage_v2_3/tests/suite_C1.out
+  results/c3_outillage_v2_3/tests/suite_C2.out
+  results/c3_outillage_v2_3/tests/suite_C3.out
+  results/c3_outillage_v2_3/tests/suite_base.out
+  results/c3_outillage_v2_3/tests/tunnel.sh
+  results/c3_outillage_v2_3/tests/xfail_fin.sh
+  scripts/audit/c3_anchor.py
+  scripts/audit/c3_common.py
+  scripts/audit/c3_verdict.py
+  tests/test_scripts/test_c3_anchor.py
+  tests/test_scripts/test_c3_common.py
+  tests/test_scripts/test_c3_entry.py
+  tests/test_scripts/test_c3_verdict.py
+liste_blanche=0
+etranger_inchange=0 (gel_v2_3.patch non suivi, sha256_16 1ffa3eec6e2d7051)
+## fichiers du commit courant (index contre HEAD)
+  A	results/c3_outillage_v2_3/tests/diff_tests_C3.out
+  A	results/c3_outillage_v2_3/tests/lint_C3.out
+  M	results/c3_outillage_v2_3/tests/non_divulgation.sh
+  A	results/c3_outillage_v2_3/tests/non_divulgation_C3.out
+  A	results/c3_outillage_v2_3/tests/rouge_avant.sh
+  A	results/c3_outillage_v2_3/tests/rouge_avant_C3.out
+  A	results/c3_outillage_v2_3/tests/suite_C3.out
+  M	scripts/audit/c3_common.py
+  M	scripts/audit/c3_verdict.py
+  M	tests/test_scripts/test_c3_verdict.py
+arbre_hors_index=0 fichier(s) suivi(s) modifiés non indexés
+brief agent/AGENT_C3_OUTILLAGE_V2_3.md sha256_16=844ca5377609bc7c
+aucun_artefact=0
+campaign_unlock=absent
+empreintes_64_ajoutees=1 dont_protocole=1 table_adoption=4
+aucun_sha_artefact=0
+dette23=0
+rc=0
