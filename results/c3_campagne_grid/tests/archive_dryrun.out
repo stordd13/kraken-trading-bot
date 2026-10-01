@@ -1,0 +1,28 @@
+# archive_dryrun — 2026-10-01T15:34:04Z — HEAD 6af79758070deb37d861129491ad0d92275c5706
+cas=conforme rc=0 lignes_changees=8 repertoire_chantier=absent archive=present lecture_seule=oui source=absente
+  conforme: pilote_termine=0
+  conforme: tmux_chantier_absente=0
+  conforme: archive_absente_avant=0
+  conforme: aucun_out_sous_le_repertoire_du_chantier=0
+  conforme: suppression_clone=0
+lignes_substituees_conforme=8
+cas=out_residuel rc=1 lignes_changees=8 repertoire_chantier=present archive=present lecture_seule=oui source=absente
+  out_residuel: pilote_termine=0
+  out_residuel: tmux_chantier_absente=0
+  out_residuel: archive_absente_avant=0
+  out_residuel: aucun_out_sous_le_repertoire_du_chantier=1
+  out_residuel: suppression_clone=SKIPPED
+cas=archive_presente rc=1 lignes_changees=8 repertoire_chantier=present archive=absent lecture_seule=non source=intacte
+  archive_presente: pilote_termine=0
+  archive_presente: tmux_chantier_absente=0
+  archive_presente: archive_absente_avant=1
+cas=pilote_non_termine rc=1 lignes_changees=8 repertoire_chantier=present archive=absent lecture_seule=non source=intacte
+  pilote_non_termine: pilote_termine=1
+  pilote_non_termine: tmux_chantier_absente=0
+  pilote_non_termine: archive_absente_avant=0
+cas=tmux_ouverte rc=1 lignes_changees=8 repertoire_chantier=present archive=absent lecture_seule=non source=intacte
+  tmux_ouverte: pilote_termine=0
+  tmux_ouverte: tmux_chantier_absente=1
+  tmux_ouverte: archive_absente_avant=0
+temporaire_supprime=0
+rc=0

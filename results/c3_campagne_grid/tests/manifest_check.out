@@ -1,0 +1,30 @@
+# manifest_check — 2026-10-01T15:34:04Z — HEAD 6af79758070deb37d861129491ad0d92275c5706
+copie_a_l_octet_du_brouillon=0
+sha256sum: d422076b09292d8aeb2a6ae3f39b9c37325f23e954c05c6c83a8979255325041  results/c3_campagne_grid/manifest.json
+sha256_egal_gel=0
+protocole_v23=0 declare=d030ab239de317f6… fichier=d030ab239de317f6…
+ecart_date_differee_jours=365.000000 attendu=365.000000
+candidats=96 distincts=96 produit_attendu=96
+fenetre=0
+fraction_ancrage=0
+ecart_365=0
+famille=0
+provenance=0
+racine=0
+graine=0
+univers_96=0
+estampilles_1w_derivees_citees=0
+entree_23_citee=0
+faits_du_gel=0
+c3_anchor_local=0
+ancrage_T=2024-11-22T04:48:00+00:00
+ancrage_prefixe_jours=1362.2
+ancrage_evaluation_jours=583.8
+ancrage_n_candidats=96
+ancrage_nouvelle_au_registre_temporaire=True
+ancrage_attendu=0 T_attendu=2024-11-22T04:48:00+00:00
+anchor_log: ancrage T = 2024-11-22T04:48:00+00:00 (F = 0.7, fenêtre 2021-03-01T00:00:00+00:00 -> 2026-06-29T00:00:00+00:00, préfixe 1362.2 j)
+anchor_log: variante 3159a90780ebbf8a (grid-atr-v4-campagne-2021-2026) — nouvelle au registre
+anchor_log: provenance de l'univers : contaminated (96 candidats)
+temporaire_supprime=0
+rc=0
