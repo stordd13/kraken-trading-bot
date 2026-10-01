@@ -1,0 +1,13 @@
+tenu  — 1 gardes : guard=0 au SHA S1, krakenbot du clone, protocole v2.3, manifeste déclaré, CAMPAIGN_UNLOCK absent, pilote = blob S1
+tenu  — 2 base : alembic 0 avant et après, identiques, c3bd1e7a0001 (head)
+tenu  — 3 service inchangé (HEAD, 0 ligne sale, collector actif, NRestarts), arbre du clone propre, CAMPAIGN_UNLOCK absent après
+tenu  — 4 producteur préfixe : 0 aux trois exécutions, workers 4 / 1 / 4
+tenu  — 5 chaîne 1-4 autonome : anchor, entry, benchmark, select en 0, trois fois
+tenu  — 6 producteur d'évaluation : 0 event=evaluated, trois fois
+tenu  — 7 chaîne complète : six codes d'étape en 0, chain.verified vrai, violations vides, zéro violation au rejeu, trois fois
+tenu  — 8 interpréteur du clone dans les deux provenances, renommage, trois fois
+tenu  — 9 déterminisme : liste attendue, 23 artefacts identiques au bit sur les trois exécutions
+tenu  — 10 pilote : code de sortie 0
+11 bornes des lectures : appuis du code, des tests et des codes de la chaîne (attendu § 7) — aucune lecture d'artefact
+10/10 items vérifiables tenus
+rc=0

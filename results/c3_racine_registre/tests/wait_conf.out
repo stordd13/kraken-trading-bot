@@ -1,0 +1,10 @@
+2026-10-01T10:16:22Z poll=1 exit=pending lines=8 last=start_1=2026-10-01T10:16:16Z 
+2026-10-01T10:16:53Z poll=2 exit=pending lines=8 last=start_1=2026-10-01T10:16:16Z 
+2026-10-01T10:17:24Z poll=3 exit=pending lines=26 last=start_2=2026-10-01T10:17:10Z 
+2026-10-01T10:17:55Z poll=4 exit=pending lines=26 last=start_2=2026-10-01T10:17:10Z 
+2026-10-01T10:18:27Z poll=5 exit=pending lines=26 last=start_2=2026-10-01T10:17:10Z 
+2026-10-01T10:18:57Z poll=6 exit=pending lines=26 last=start_2=2026-10-01T10:17:10Z 
+2026-10-01T10:19:29Z poll=7 exit=pending lines=33 last=registry_copy_2=0 
+2026-10-01T10:20:00Z poll=8 exit=pending lines=44 last=start_3=2026-10-01T10:19:31Z 
+2026-10-01T10:20:31Z poll=9 exit=0 lines=91 last=end=2026-10-01T10:20:27Z 
+rc=0

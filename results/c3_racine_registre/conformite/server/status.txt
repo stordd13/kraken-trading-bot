@@ -1,0 +1,91 @@
+guard=0 sha=84fff64385b8da267668f69d038f09d58fa522a3 python=Python 3.12.3 krakenbot=/home/bruno/runs/c3_racine_registre/conf/repo/src/krakenbot/__init__.py protocol=d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6 manifest=9966efade2729f5da6652b0ffa8feda9b127840a77d9a47660823a1e9c50a24b campaign_unlock=absent
+pilot_sha256=ddf85bb84fc7c9c7d2f26373ab3af8aa1fa8f05d15b1af53b2f69c45399166ff
+pilot_copy=0
+service_before=head=313eb00c2019b98cf20fb81ac8327f7b9d1e920a dirty=0 collector=active NRestarts=0
+start=2026-10-01T10:16:15Z
+alembic_before=0
+workers_1=4
+start_1=2026-10-01T10:16:16Z
+prefix_1=0 event=- at=2026-10-01T10:16:55Z
+pre_anchor_1=0
+pre_entry_1=0
+pre_benchmark_1=0
+pre_select_1=0
+eval_1=0 event=evaluated at=2026-10-01T10:17:07Z
+registry_copy_1=0
+chain_1=0
+chain_verified_1=true
+violations_empty_1=true
+replay_violations_empty_1=true
+chain_steps_1=anchor:0,entry:0,benchmark:0,select:0,continuity:0
+extract_1=0
+interpreter_1=0
+moved_1=0
+end_1=2026-10-01T10:17:10Z
+workers_2=1
+start_2=2026-10-01T10:17:10Z
+prefix_2=0 event=- at=2026-10-01T10:19:17Z
+pre_anchor_2=0
+pre_entry_2=0
+pre_benchmark_2=0
+pre_select_2=0
+eval_2=0 event=evaluated at=2026-10-01T10:19:28Z
+registry_copy_2=0
+chain_2=0
+chain_verified_2=true
+violations_empty_2=true
+replay_violations_empty_2=true
+chain_steps_2=anchor:0,entry:0,benchmark:0,select:0,continuity:0
+extract_2=0
+interpreter_2=0
+moved_2=0
+end_2=2026-10-01T10:19:31Z
+workers_3=4
+start_3=2026-10-01T10:19:31Z
+prefix_3=0 event=- at=2026-10-01T10:20:11Z
+pre_anchor_3=0
+pre_entry_3=0
+pre_benchmark_3=0
+pre_select_3=0
+eval_3=0 event=evaluated at=2026-10-01T10:20:22Z
+registry_copy_3=0
+chain_3=0
+chain_verified_3=true
+violations_empty_3=true
+replay_violations_empty_3=true
+chain_steps_3=anchor:0,entry:0,benchmark:0,select:0,continuity:0
+extract_3=0
+interpreter_3=0
+moved_3=0
+end_3=2026-10-01T10:20:25Z
+listing_expected_3of3=0
+eq3 prefix/observations.json=0
+eq3 prefix/coverage.json=0
+eq3 prefix/candles.json=0
+eq3 pre/anchor.json=0
+eq3 pre/variants.json=0
+eq3 pre/entry.json=0
+eq3 pre/entry.md=0
+eq3 pre/benchmark.json=0
+eq3 pre/selection.json=0
+eq3 pre/selection.md=0
+eq3 eval/evaluation.json=0
+eq3 eval/benchmark_eval.json=0
+eq3 eval/candles_eval.json=0
+eq3 eval/evaluation_sensitivity.json=0
+eq3 chain/anchor.json=0
+eq3 chain/entry.json=0
+eq3 chain/entry.md=0
+eq3 chain/benchmark.json=0
+eq3 chain/selection.json=0
+eq3 chain/selection.md=0
+eq3 chain/continuity.json=0
+eq3 chain/verdict.json=0
+eq3 chain/variants.json=0
+bit_equal_3of3=0 compared=23 differing=0 absent=0
+alembic_after=0
+alembic_same_head=0
+service_after=head=313eb00c2019b98cf20fb81ac8327f7b9d1e920a dirty=0 collector=active NRestarts=0
+tree_after=0
+campaign_unlock_after=absent
+end=2026-10-01T10:20:27Z
