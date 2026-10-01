@@ -24,8 +24,13 @@ a, b = old.read_text(encoding="utf-8"), new.read_text(encoding="utf-8")
 assert text.count(a) == 1, "ancien introuvable ou multiple"
 target.write_text(text.replace(a, b), encoding="utf-8")
 PY
-poetry run pytest -q -p no:cacheprovider "$@" > /dev/null 2>&1
+RAW=$(mktemp)
+poetry run pytest -q -p no:cacheprovider --tb=line "$@" > "$RAW" 2>&1
 under=$?
+# Ajout de la reprise (racine du registre) : la ligne où le tueur échoue sous le mutant — la règle, pas un plantage.
+why=$(grep -E '^(E |/|tests/)' "$RAW" | grep -vE '^tests/[^ ]+::' | head -n 2 | tr '\n' ' ' | sed -E 's/[0-9a-f]{64}/<64hex>/g' \
+  | cut -c1-260)
+rm -f "$RAW"
 git checkout -- "$TARGET"
 git diff --quiet -- "$TARGET"
 restored=$?
@@ -35,6 +40,7 @@ after=$?
   echo "## ${LABEL} — $(date -u +%FT%TZ) — HEAD $(git rev-parse --short HEAD)"
   echo "cible=${TARGET} témoins=$*"
   echo "sous_mutant_exit=${under} (attendu ≠ 0) restauré_diff_vide=${restored} (attendu 0) après_exit=${after} (attendu 0)"
+  echo "échec_sous_mutant : ${why}"
 } >> "$LOG"
 [ "$under" -ne 0 ] && [ "$restored" -eq 0 ] && [ "$after" -eq 0 ] && exit 0
 exit 1

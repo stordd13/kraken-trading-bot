@@ -1,0 +1,10 @@
+# non_divulgation — mutant_M5 — 2026-10-01T08:54:12Z
+# HEAD 9b72662ccf4ce49717571fffde91ea31e47e9930 branche feat/c3-racine-registre
+# fichiers suivis modifiés (non commités) : 2
+module scripts/audit/c3_common.py : f-strings=194 print=0
+module scripts/audit/c3_anchor.py : f-strings=42 print=10
+module scripts/audit/c3_verdict.py : f-strings=132 print=24
+ligne_ajoutee_qui_imprime_ou_interpole scripts/audit/c3_anchor.py:0 ['print(f"registre : racine {root}", file=sys.stderr)']
+lignes_ajoutees_depuis_313eb00=21
+sites=1
+rc=1

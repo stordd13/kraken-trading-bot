@@ -1,0 +1,8 @@
+# base_db — C3 — 2026-10-01T08:45:45Z
+# HEAD 9b72662ccf4ce49717571fffde91ea31e47e9930 branche feat/c3-racine-registre
+tunnel_5433=ouvert
+ignores_base_sans_tunnel(suite_C3)=13
+pytest_exit=0
+resume=92 passed, 24 deselected in 354.28s (0:05:54)
+failed_error=0 ignores_base_restants=0
+rc=0

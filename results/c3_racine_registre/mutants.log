@@ -1,0 +1,126 @@
+## mutants — début 2026-10-01T08:52:30Z — HEAD 9b72662ccf4ce49717571fffde91ea31e47e9930
+## M1a load_registry rend {variants} seul (état 313eb00) — tueur test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant — 2026-10-01T08:52:33Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M1a load_registry rend {variants} seul (état 313eb00) — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:52:37Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M1b register (écriture) rend {variants: updated} — tueur test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant — 2026-10-01T08:52:39Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M1b register (écriture) rend {variants: updated} — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:52:44Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2a registry_inscription : racine perdue — tueur test_A6_registry_inscription_preserve_les_cles_de_racine — 2026-10-01T08:52:46Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_registry_inscription_preserve_les_cles_de_racine
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2a registry_inscription : racine perdue — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:52:50Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2b registry_inscription : racine réécrite par canon — tueur test_A6_registry_inscription_preserve_les_cles_de_racine — 2026-10-01T08:52:52Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_registry_inscription_preserve_les_cles_de_racine
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2b registry_inscription : racine réécrite par canon — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:52:56Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2c run_verdict : registre canonicalisé au site d'écriture — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:53:01Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M3a D : la graphie du manifeste entre dans window (isoformat contourné) — tueur test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie — 2026-10-01T08:53:03Z — HEAD 9b72662
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M3b parse_datetime sans astimezone(UTC) — tueur test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie — 2026-10-01T08:53:05Z — HEAD 9b72662
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M4 contrôle de la racine retiré — tueur test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic — 2026-10-01T08:53:07Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M5 load_registry imprime la racine sur stderr — tueur test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant — 2026-10-01T08:53:09Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M5-grep — 2026-10-01T08:53:09Z — non_divulgation.sh sous M5
+sous_mutant_rc=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_rc=0 (attendu 0)
+## mutants rc=0 — fin 2026-10-01T08:53:09Z
+## rejeu des mutants, avec la ligne d'échec de chaque tueur (mutant.sh complété) — 2026-10-01T08:53:34Z
+## mutants — début 2026-10-01T08:53:34Z — HEAD 9b72662ccf4ce49717571fffde91ea31e47e9930
+## M1a load_registry rend {variants} seul (état 313eb00) — tueur test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant — 2026-10-01T08:53:36Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: la première réécriture a jeté la racine /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_anchor.py:885: AssertionError: la première réécriture a jeté la racine 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M1a load_registry rend {variants} seul (état 313eb00) — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:53:40Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: assert ['variants'] == ['racine_de_t...', 'variants'] /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:3194: AssertionError: assert ['variants'] == ['racine_de_t...', 'variants'] 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M1b register (écriture) rend {variants: updated} — tueur test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant — 2026-10-01T08:53:42Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: la première réécriture a jeté la racine /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_anchor.py:885: AssertionError: la première réécriture a jeté la racine 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M1b register (écriture) rend {variants: updated} — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:53:47Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: assert ['variants'] == ['racine_de_t...', 'variants'] /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:3194: AssertionError: assert ['variants'] == ['racine_de_t...', 'variants'] 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2a registry_inscription : racine perdue — tueur test_A6_registry_inscription_preserve_les_cles_de_racine — 2026-10-01T08:53:49Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_registry_inscription_preserve_les_cles_de_racine
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   KeyError: 'salt' /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:3166: KeyError: 'salt' 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2a registry_inscription : racine perdue — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:53:53Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: assert ['variants'] == ['racine_de_t...', 'variants'] /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:3194: AssertionError: assert ['variants'] == ['racine_de_t...', 'variants'] 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2b registry_inscription : racine réécrite par canon — tueur test_A6_registry_inscription_preserve_les_cles_de_racine — 2026-10-01T08:53:55Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_registry_inscription_preserve_les_cles_de_racine
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: assert {'avec_bloc_d... True, False)} == {'avec_bloc_d... True, False)} /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:3172: AssertionError: assert {'avec_bloc_d... True, False)} == {'avec_bloc_d... True, 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2b registry_inscription : racine réécrite par canon — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:53:59Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   assert ('racine_de_t...nicode":"é"}') == ('racine_de_t...nicode":"é"}') /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:3196: assert ('racine_de_t...nicode":"é"}') == ('racine_de_t...nicode":"é"}') 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M2c run_verdict : registre canonicalisé au site d'écriture — tueur test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict — 2026-10-01T08:54:04Z — HEAD 9b72662
+cible=scripts/audit/c3_verdict.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   assert ('racine_de_t...nicode":"é"}') == ('racine_de_t...nicode":"é"}') /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:3196: assert ('racine_de_t...nicode":"é"}') == ('racine_de_t...nicode":"é"}') 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M3a D : la graphie du manifeste entre dans window (isoformat contourné) — tueur test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie — 2026-10-01T08:54:06Z — HEAD 9b72662
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: assert {('+00:00', '..., False), ...} == {('+00:00', '...e, True), ...} /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:2868: AssertionError: assert {('+00:00', '..., False), ...} == {('+00:00', '...e, True
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M3b parse_datetime sans astimezone(UTC) — tueur test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie — 2026-10-01T08:54:08Z — HEAD 9b72662
+cible=scripts/audit/c3_common.py témoins=tests/test_scripts/test_c3_verdict.py::test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: assert {('+00:00', '..., False), ...} == {('+00:00', '...e, True), ...} /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_verdict.py:2868: AssertionError: assert {('+00:00', '..., False), ...} == {('+00:00', '...e, True
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M4 contrôle de la racine retiré — tueur test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic — 2026-10-01T08:54:10Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   ValueError: salt: flottant non fini (nan) — JSON n'a ni NaN ni infini /Users/stordd/doc/GitHub/kraken-trading-bot/scripts/audit/_common.py:51: ValueError: salt: flottant non fini (nan) — JSON n'a ni NaN ni infini 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M5 load_registry imprime la racine sur stderr — tueur test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant — 2026-10-01T08:54:12Z — HEAD 9b72662
+cible=scripts/audit/c3_anchor.py témoins=tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+sous_mutant_exit=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_exit=0 (attendu 0)
+échec_sous_mutant : E   AssertionError: assert 'racine-de-test' not in 'ancrage T =... 1096.0\n}\n' /Users/stordd/doc/GitHub/kraken-trading-bot/tests/test_scripts/test_c3_anchor.py:906: AssertionError: assert 'racine-de-test' not in 'ancrage T =... 1096.0\n}\n' 
+résultat=0 (attendu 0 : tué, restauré, reverdi)
+## M5-grep — 2026-10-01T08:54:12Z — non_divulgation.sh sous M5
+sous_mutant_rc=1 (attendu ≠ 0) restauré_diff_vide=0 (attendu 0) après_rc=0 (attendu 0)
+## mutants rc=0 — fin 2026-10-01T08:54:12Z
