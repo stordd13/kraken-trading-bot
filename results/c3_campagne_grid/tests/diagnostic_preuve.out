@@ -1,29 +1,41 @@
-# diagnostic_preuve — 2026-10-01T20:02:02Z — HEAD 1a5745f91a2426def15d322ca1fba9b51bf3a595
-corps_extrait_lignes=86 (sans substitution)
+# diagnostic_preuve — 2026-10-01T20:30:51Z — HEAD 2fa339fbe03d3310c0c95e3f2a2af5e2672288b8
+corps_extrait_lignes=122 (sans substitution)
 fabrique_par_le_code_de_S1=0
 temoin cas=anchor rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
   sortie: violations_total=3
-  sortie: violations_par_classe=anchor_inputs_sha256:1,anchor_T:1,provenance:1,non_fini_ou_invalide:0,hors_classe:0
+  sortie: violations_par_classe=anchor_inputs_sha256:1,anchor_T:1,provenance:1,non_fini_ou_invalide:0,warmup_series:0,warmup_sufficient:0,coverage_recoupe:0,hors_classe:0
   sortie: champs=-
 temoin cas=nan rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
   sortie: violations_total=1
-  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:1,hors_classe:0
+  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:1,warmup_series:0,warmup_sufficient:0,coverage_recoupe:0,hors_classe:0
   sortie: champs=net_pnl:1
 temoin cas=non_fini rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
   sortie: violations_total=6
-  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:6,hors_classe:0
+  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:6,warmup_series:0,warmup_sufficient:0,coverage_recoupe:0,hors_classe:0
   sortie: champs=spread:1,total_trades:1,values:1,hors_liste:3
+temoin cas=warmup_series rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
+  sortie: violations_total=1
+  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,warmup_series:1,warmup_sufficient:0,coverage_recoupe:0,hors_classe:0
+  sortie: champs=-
+temoin cas=warmup_sufficient rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
+  sortie: violations_total=1
+  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,warmup_series:0,warmup_sufficient:1,coverage_recoupe:0,hors_classe:0
+  sortie: champs=-
+temoin cas=coverage_recoupe rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
+  sortie: violations_total=2
+  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,warmup_series:0,warmup_sufficient:0,coverage_recoupe:2,hors_classe:0
+  sortie: champs=-
 temoin cas=hors_classe rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
-  sortie: violations_total=4
-  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,hors_classe:4
+  sortie: violations_total=1
+  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,warmup_series:0,warmup_sufficient:0,coverage_recoupe:0,hors_classe:1
   sortie: champs=-
 temoin cas=mixte rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
-  sortie: violations_total=14
-  sortie: violations_par_classe=anchor_inputs_sha256:1,anchor_T:1,provenance:1,non_fini_ou_invalide:7,hors_classe:4
+  sortie: violations_total=15
+  sortie: violations_par_classe=anchor_inputs_sha256:1,anchor_T:1,provenance:1,non_fini_ou_invalide:7,warmup_series:1,warmup_sufficient:1,coverage_recoupe:2,hors_classe:1
   sortie: champs=net_pnl:1,spread:1,total_trades:1,values:1,hors_liste:3
 temoin cas=vide rc=0 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 0)
   sortie: violations_total=0
-  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,hors_classe:0
+  sortie: violations_par_classe=anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,warmup_series:0,warmup_sufficient:0,coverage_recoupe:0,hors_classe:0
   sortie: champs=-
 temoin cas=illisible rc=1 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 1)
 temoin cas=non_liste rc=1 attendu_egal=0 grammaire=0 plantes_absentes=0 (rc attendu 1)
@@ -32,5 +44,8 @@ mutant=M2_chemin_au_lieu_du_champ applique=0 rc=0 attendu_egal=1 grammaire=1 pla
 mutant=M3_champ_non_valide applique=0 rc=0 attendu_egal=1 grammaire=1 plantes_absentes=0
 mutant=M4_entry_md_ouvert applique=0 rc=1 attendu_egal=1 grammaire=0 plantes_absentes=0
 mutant=M5_autre_champ_lu applique=0 rc=0 attendu_egal=1 grammaire=0 plantes_absentes=0
+mutant=M6_classe_warmup_series_retiree applique=0 rc=0 attendu_egal=1 grammaire=0 plantes_absentes=0
+mutant=M7_sous_forme_sans_unite_retiree applique=0 rc=0 attendu_egal=1 grammaire=0 plantes_absentes=0
+mutant=M8_extrait_warmup_sufficient_imprime applique=0 rc=0 attendu_egal=1 grammaire=1 plantes_absentes=1
 temporaire_supprime=0
 rc=0

@@ -9,9 +9,13 @@
 # refusal else 0)`, c3_entry.py:978 ; un échec I-A produit un refus, code 2) : elle est dans `violations`.
 # N'imprime que, tirés de `violations` :
 #   violations_total=<n>
-#   violations_par_classe=anchor_inputs_sha256:<n>,anchor_T:<n>,provenance:<n>,non_fini_ou_invalide:<n>,hors_classe:<n>
+#   violations_par_classe=anchor_inputs_sha256:<n>,anchor_T:<n>,provenance:<n>,non_fini_ou_invalide:<n>,
+#     warmup_series:<n>,warmup_sufficient:<n>,coverage_recoupe:<n>,hors_classe:<n> (une ligne) — huit classes, décision
+#     de Bruno après la première relecture : les trois formes atteignables hors du premier cadrage (a06 l.497 et l.516,
+#     a07 l.597) reçoivent chacune leur classe, en comptage seul ; hors_classe reste le filet ;
 #   champs=<champ:n,…> pour la classe non_fini_ou_invalide (`-` si aucune), chaque nom de champ validé contre le schéma
-#     des observations tiré du code à S1 (SCHEMA ; tests/schema_observations.sh l'épingle au code), sinon hors_liste.
+#     des observations tiré du code à S1 (SCHEMA ; tests/schema_observations.sh l'épingle au code) sous la racine
+#     `observations.` (condition approuvée par Bruno), sinon hors_liste.
 # Jamais la chaîne brute d'une violation, jamais une identité de candidat, jamais une valeur, jamais un chemin. Un
 # hors_classe ou un hors_liste dans la sortie est un point de décision, pas une invitation à élargir.
 # La sortie d'erreur de l'interpréteur est jetée au serveur (une trace pourrait porter un fragment de violation) :
@@ -51,7 +55,10 @@ SCHEMA = (
     "starting_balance", "strategy", "sufficient", "timestamp", "total_trades", "trades", "values", "warmup",
     "winning_trades",
 )
-CLASSES = ("anchor_inputs_sha256", "anchor_T", "provenance", "non_fini_ou_invalide", "hors_classe")
+CLASSES = (
+    "anchor_inputs_sha256", "anchor_T", "provenance", "non_fini_ou_invalide", "warmup_series", "warmup_sufficient",
+    "coverage_recoupe", "hors_classe",
+)
 # Les formes du code de S1 (235461e), par motif — classification fermée décidée par Bruno.
 #   anchor_inputs_sha256 : c3_common.check_inputs_match (l.1101-1106), appelé par c3_entry.main (l.938) ;
 #   anchor_T             : c3_entry.main (l.944-946) ;
@@ -59,6 +66,33 @@ CLASSES = ("anchor_inputs_sha256", "anchor_T", "provenance", "non_fini_ou_invali
 ANCHOR_INPUTS = re.compile(r"anchor\.inputs_sha256\.manifest: enregistré .*, fichier [0-9a-f]{16}", re.S)
 ANCHOR_T = re.compile(r"anchor\.anchor déclaré \S+, recalculé \S+ — le recalcul fait foi", re.S)
 PROVENANCE = re.compile(r"anchor\.universe_provenance '[^']*' != manifeste '[^']*'", re.S)
+#   warmup_series        : c3_entry.a06_warmup (l.497-501) ;
+#   warmup_sufficient    : c3_entry.a06_warmup (l.516-519) ;
+#   coverage_recoupe     : c3_common.coverage_recompute (l.2094-2104, AM-09, deux sous-formes), versé par
+#                          c3_entry.a07_coverage (l.597).
+# Comptage seul : motifs sur les parties stables des formes, aucun groupe, jamais d'extrait — elles portent des
+# identités de candidats, des séries de décision, des dates.
+WARMUP_SERIES = re.compile(
+    r"observations\..+\.decision_timeframes exportée \[.*\] ≠ liste effective du manifeste \[.*\] pour ce candidat"
+    r" — un désaccord est une violation, jamais un arbitrage \(§ A\.8 D2\)",
+    re.S,
+)
+WARMUP_SUFFICIENT = re.compile(
+    r"observations\..+\.warmup\..+\.sufficient déclaré (?:True|False), recalculé (?:True|False)"
+    r" — le statut recalculé fait foi",
+    re.S,
+)
+COVERAGE_DATES_NULL = re.compile(
+    r"coverage\.pairs\..+\.first_day/last_day \(.*\) avec \d+ unité\(s\) couverte\(s\) recalculée\(s\)"
+    r" — nulles si et seulement si aucune unité n'est couverte \(§ A\.7 v2\.2\)",
+    re.S,
+)
+COVERAGE_DATES_SANS_UNITE = re.compile(
+    r"coverage\.pairs\..+\.first_day/last_day \[.*\] sur une série sans unité couverte"
+    r" — nulles si et seulement si aucune unité n'est couverte \(§ A\.7 v2\.2\)",
+    re.S,
+)
+COVERAGE_RECOUPE = (COVERAGE_DATES_NULL, COVERAGE_DATES_SANS_UNITE)
 #   non_fini_ou_invalide : InvalidValueError (c3_common l.348, 358, 385, 472, 484, 554, 556, 915, 2295) et
 #   NonFiniteValueError (rejeu_common l.180, 186), y compris levées depuis l'intérieur des assertions (revue R3 d,
 #   c3_entry l.974-976). Les formes à chemin portent le champ en dernière composante ; les autres n'en portent aucun.
@@ -87,6 +121,12 @@ def classify(violation):
         return "anchor_T", None
     if PROVENANCE.fullmatch(violation):
         return "provenance", None
+    if WARMUP_SERIES.fullmatch(violation):
+        return "warmup_series", None
+    if WARMUP_SUFFICIENT.fullmatch(violation):
+        return "warmup_sufficient", None
+    if any(form.fullmatch(violation) for form in COVERAGE_RECOUPE):
+        return "coverage_recoupe", None
     for form in FIELD_FORMS:
         match = form.fullmatch(violation)
         if match:

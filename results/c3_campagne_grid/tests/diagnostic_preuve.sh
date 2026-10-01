@@ -8,15 +8,19 @@
 #       l'assertion I-A.1, inscrite par main : revue R3 d, l.974-976) — les deux entry.json sont ceux qu'écrit c3_entry ;
 #     - les accesseurs de c3_common (minimum, suite non finie, décimal non fini, champ de couverture, champ hors
 #       schéma), cc.candidate_identity (NonFiniteValueError de canon) ;
-#     - c3_entry.a06_warmup (séries de décision en désaccord ; `sufficient` déclaré ≠ recalculé) et
-#       cc.coverage_recompute (dates contre unités couvertes, AM-09) : les trois formes atteignables hors du cadrage.
+#     - c3_entry.a06_warmup (séries de décision en désaccord → warmup_series ; `sufficient` déclaré ≠ recalculé →
+#       warmup_sufficient) et cc.coverage_recompute (les deux sous-formes AM-09 → coverage_recoupe) : chacune dans sa
+#       classe (huit classes, décision de Bruno après la première relecture) ; une forme inventée → hors_classe.
 #     Les attendus sont dérivés de la classification décidée par Bruno (texte), jamais de la sortie du script.
-#  2. Cas adverses : chaque violation plantée porte l'identité réelle d'un candidat (64 hex, clé d'observation) et des
-#     valeurs (-987654, NaN, inf, la paire, la stratégie) ; des champs sentinelles sont ajoutés à entry.json hors de
+#  2. Cas adverses : chaque violation plantée porte l'identité réelle d'un candidat (64 hex, clé d'observation) — y
+#     compris chacune des trois formes des nouvelles classes, où elle est plantée au chemin — et des valeurs (-987654,
+#     NaN, inf, la paire, la stratégie, des séries, des dates) ; des champs sentinelles sont ajoutés à entry.json hors de
 #     `violations` ; entry.md et entry.log sont présents, porteurs de sentinelles, et ILLISIBLES (chmod 000). La sortie
 #     doit égaler l'attendu, respecter la grammaire fermée, et ne contenir aucune chaîne plantée.
 #  3. Mutants du corps (copies temporaires, une seule modification chacun) : violation brute imprimée ; chemin imprimé
-#     au lieu du champ ; champ non validé ; entry.md ouvert ; un autre champ d'entry.json lu. Chacun doit être vu.
+#     au lieu du champ ; champ non validé ; entry.md ouvert ; un autre champ d'entry.json lu ; classe warmup_series
+#     retirée ; sous-forme AM-09 « sans unité » retirée ; extrait d'une forme warmup_sufficient imprimé. Chacun doit être
+#     vu.
 # Rien de planté ni de produit n'est imprimé ici : seuls des codes, des booléens et les sorties des témoins (de la
 # grammaire fermée) remontent. Sortie : diagnostic_preuve.out ; rc=0 ssi tout tient.
 set -o pipefail
@@ -130,12 +134,29 @@ ctx2 = c3_entry.Context(manifest=manifest, anchor=T, prefix_days=0.0, coverage_p
                                               "decision_timeframes": list(cand.decision_timeframes),
                                               "warmup": {P: blocks}}})
 c3_entry.a06_warmup(ctx2)
-series = {"expected": 0, "observed": 0, "covered_units": 0, "expected_units": 1, "missing_stamps": [],
-          "longest_gap_days": 0.0, "first_day": None, "last_day": None}
-v_am09 = cc.coverage_recompute(series, start=manifest.window_start, end=T, interval=10080,
-                               where=f"coverage.pairs.{cand.pair}.10080")["violations"]
-v_hors_classe = ctx.violations + ctx2.violations + v_am09 + [f"forme inconnue simulée {ident} -987654"]
-assert [len(ctx.violations), len(ctx2.violations), len(v_am09)] == [1, 1, 1]
+# AM-09, deux sous-formes, sur une fenêtre courte de la série 1 w (deux estampilles) ; l'identité est plantée au chemin.
+start = manifest.window_start
+end = start + timedelta(days=14)
+stamps = []
+stamp = cc.first_stamp_strictly_after(start, 10080)
+while stamp <= end:
+    stamps.append(stamp)
+    stamp += timedelta(days=7)
+assert len(stamps) == 2
+dates = [s.date().isoformat() for s in stamps]
+series_null = {"expected": 0, "observed": 0, "covered_units": 0, "expected_units": 1, "missing_stamps": [],
+               "longest_gap_days": 0.0, "first_day": None, "last_day": None}
+series_none = dict(series_null, missing_stamps=[s.isoformat() for s in stamps], first_day=dates[0], last_day=dates[1])
+v_null = cc.coverage_recompute(series_null, start=start, end=end, interval=10080,
+                               where=f"coverage.pairs.{ident}.10080")["violations"]
+v_none = cc.coverage_recompute(series_none, start=start, end=end, interval=10080,
+                               where=f"coverage.pairs.{ident}.10080")["violations"]
+assert [len(ctx.violations), len(ctx2.violations), len(v_null), len(v_none)] == [1, 1, 1, 1]
+assert all(ident in v for v in ctx.violations + ctx2.violations + v_null + v_none)
+v_warmup_series = list(ctx.violations)
+v_warmup_sufficient = list(ctx2.violations)
+v_coverage = v_null + v_none
+v_hors_classe = [f"forme inventée simulée {ident} -987654"]
 
 sentinels = {
     "refusal": {"detail": f"SENTINELLE refus {ident} -987654"},
@@ -146,8 +167,12 @@ cases = {
     "anchor": None,
     "nan": None,
     "non_fini": {"violations": v_non_fini},
+    "warmup_series": {"violations": v_warmup_series},
+    "warmup_sufficient": {"violations": v_warmup_sufficient},
+    "coverage_recoupe": {"violations": v_coverage},
     "hors_classe": {"violations": v_hors_classe},
-    "mixte": {"violations": v_anchor + v_nan + v_non_fini + v_hors_classe, **sentinels},
+    "mixte": {"violations": v_anchor + v_nan + v_non_fini + v_warmup_series + v_warmup_sufficient + v_coverage
+              + v_hors_classe, **sentinels},
     "vide": {"violations": []},
     "illisible": {"refusal": {"detail": f"SENTINELLE {ident}"}},
     "non_liste": {"violations": f"SENTINELLE {ident}"},
@@ -165,7 +190,8 @@ for name, payload in cases.items():
     (d / "entry.md").chmod(0)
     (d / "entry.log").chmod(0)
 (base / "plantes.txt").write_text(
-    "\n".join([ident, ident[:16], "987654", cand.pair, cand.strategy, "SENTINELLE", "NaN", "Infinity"]) + "\n",
+    "\n".join([ident, ident[:16], "987654", cand.pair, cand.strategy, "SENTINELLE", "NaN", "Infinity",
+               "'1d'", *dates]) + "\n",
     encoding="utf-8",
 )
 print("fabrique=ok")
@@ -177,18 +203,24 @@ log "fabrique_par_le_code_de_S1=$r"
 # --- attendus, dérivés de la classification décidée (texte) ---------------------------------------------------------
 # anchor : les trois formes de main → une par classe d'ancre. nan : InvalidValueError sur `net_pnl`, clé du schéma,
 # racine observations. non_fini : total_trades, values, spread (clés du schéma, racine observations) ; longest_gap_days
-# (racine coverage), NonFiniteValueError (sans champ), zz_hors_schema (hors schéma) → hors_liste ×3. hors_classe : les
-# deux formes de a06, la forme AM-09 de coverage_recompute, une forme inconnue. mixte : la réunion (3 + 1 + 6 + 4).
+# (racine coverage), NonFiniteValueError (sans champ), zz_hors_schema (hors schéma) → hors_liste ×3. warmup_series,
+# warmup_sufficient : la forme de a06 dans sa classe ; coverage_recoupe : les deux sous-formes AM-09 ; hors_classe : une
+# forme inventée. mixte : la réunion (3 + 1 + 6 + 1 + 1 + 2 + 1).
 mkdir -p "$T/attendus"
 expect() { printf '%s\n' "violations_total=$2" "violations_par_classe=$3" "champs=$4" > "$T/attendus/$1"; }
-expect anchor 3 "anchor_inputs_sha256:1,anchor_T:1,provenance:1,non_fini_ou_invalide:0,hors_classe:0" "-"
-expect nan 1 "anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:1,hors_classe:0" "net_pnl:1"
-expect non_fini 6 "anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:6,hors_classe:0" \
-  "spread:1,total_trades:1,values:1,hors_liste:3"
-expect hors_classe 4 "anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,hors_classe:4" "-"
-expect mixte 14 "anchor_inputs_sha256:1,anchor_T:1,provenance:1,non_fini_ou_invalide:7,hors_classe:4" \
-  "net_pnl:1,spread:1,total_trades:1,values:1,hors_liste:3"
-expect vide 0 "anchor_inputs_sha256:0,anchor_T:0,provenance:0,non_fini_ou_invalide:0,hors_classe:0" "-"
+classes() {  # classes <ancre sha> <ancre T> <provenance> <non fini> <séries> <sufficient> <couverture> <hors classe>
+  printf 'anchor_inputs_sha256:%s,anchor_T:%s,provenance:%s,non_fini_ou_invalide:%s,warmup_series:%s,' "$1" "$2" "$3" "$4" "$5"
+  printf 'warmup_sufficient:%s,coverage_recoupe:%s,hors_classe:%s' "$6" "$7" "$8"
+}
+expect anchor 3 "$(classes 1 1 1 0 0 0 0 0)" "-"
+expect nan 1 "$(classes 0 0 0 1 0 0 0 0)" "net_pnl:1"
+expect non_fini 6 "$(classes 0 0 0 6 0 0 0 0)" "spread:1,total_trades:1,values:1,hors_liste:3"
+expect warmup_series 1 "$(classes 0 0 0 0 1 0 0 0)" "-"
+expect warmup_sufficient 1 "$(classes 0 0 0 0 0 1 0 0)" "-"
+expect coverage_recoupe 2 "$(classes 0 0 0 0 0 0 2 0)" "-"
+expect hors_classe 1 "$(classes 0 0 0 0 0 0 0 1)" "-"
+expect mixte 15 "$(classes 1 1 1 7 1 1 2 1)" "net_pnl:1,spread:1,total_trades:1,values:1,hors_liste:3"
+expect vide 0 "$(classes 0 0 0 0 0 0 0 0)" "-"
 printf '%s\n' "violations_total=illisible" > "$T/attendus/illisible"
 printf '%s\n' "violations_total=illisible" > "$T/attendus/non_liste"
 
@@ -213,7 +245,8 @@ field = "(?:" + "|".join(re.escape(k) for k in sorted(schema)) + "|hors_liste)"
 grammar = [
     re.compile(r"violations_total=(?:\d+|illisible)"),
     re.compile(r"violations_par_classe=anchor_inputs_sha256:\d+,anchor_T:\d+,provenance:\d+,"
-               r"non_fini_ou_invalide:\d+,hors_classe:\d+"),
+               r"non_fini_ou_invalide:\d+,warmup_series:\d+,warmup_sufficient:\d+,coverage_recoupe:\d+,"
+               r"hors_classe:\d+"),
     re.compile(r"champs=(?:-|" + field + r":\d+(?:," + field + r":\d+)*)"),
 ]
 lines = text.splitlines()
@@ -225,7 +258,8 @@ print(f"rc={rc} attendu_egal={'0' if equal else '1'} grammaire={'0' if grammar_o
 PY
 }
 
-for name in anchor nan non_fini hors_classe mixte vide illisible non_liste; do
+for name in anchor nan non_fini warmup_series warmup_sufficient coverage_recoupe hors_classe mixte vide illisible \
+  non_liste; do
   verdict=$(judge "$T/body.py" "$name")
   case "$name" in illisible|non_liste) want_rc=1 ;; *) want_rc=0 ;; esac
   log "temoin cas=$name $verdict (rc attendu $want_rc)"
@@ -258,6 +292,11 @@ mutate M4_entry_md_ouvert $'import sys\n' \
   $'import sys\nopen(sys.argv[1][: -len("entry.json")] + "entry.md", encoding="utf-8").read()\n'
 mutate M5_autre_champ_lu 'violations = json.load(handle)["violations"]' \
   'raw = json.load(handle); violations = raw["violations"] + [str(raw.get("refusal"))]'
+mutate M6_classe_warmup_series_retiree $'    if WARMUP_SERIES.fullmatch(violation):\n        return "warmup_series", None\n' ''
+mutate M7_sous_forme_sans_unite_retiree 'COVERAGE_RECOUPE = (COVERAGE_DATES_NULL, COVERAGE_DATES_SANS_UNITE)' \
+  'COVERAGE_RECOUPE = (COVERAGE_DATES_NULL,)'
+mutate M8_extrait_warmup_sufficient_imprime '        return "warmup_sufficient", None' \
+  $'        print(violation)\n        return "warmup_sufficient", None'
 
 chmod -R u+rw "$T" 2> /dev/null
 rm -rf "$T"
