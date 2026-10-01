@@ -1,0 +1,1582 @@
+# reprise — 2026-10-01T15:33:08Z — HEAD 6af79758070deb37d861129491ad0d92275c5706
+## results/c3_racine_registre/conformite/server/run_conformite.sh -> results/c3_campagne_grid/server/run_campagne.sh : lignes source changées=234, lignes reprise=259
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — pilote serveur de la conformité sous v2.3, au code
+< # du chantier (plans/lot2.md L1-L6 ; attendu déclaré avant le lancement : ../attendu.md). Versionné au commit S1 et
+< # exécuté DEPUIS LE CLONE à ce SHA (D1) :
+< #   bash ~/runs/c3_racine_registre/conf/repo/results/c3_racine_registre/conformite/server/run_conformite.sh <S1, 40 hex>
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/conformite/server/
+> # run_conformite.sh) — pilote serveur du run compté, au code de S1 (plans/plan.md § 1 ; attendu déclaré avant le
+> # lancement : ../attendu.md). Versionné au commit S1 et exécuté DEPUIS LE CLONE à ce SHA :
+> #   bash ~/runs/c3_campagne_grid/campagne/repo/results/c3_campagne_grid/server/run_campagne.sh <S1, 40 hex>
+< # Ordre : gardes -> pilot_sha256 -> service et alembic avant -> trois exécutions K = 1, 2, 3 (workers 4 / 1 / 4, D4),
+< # chacune au MÊME chemin absolu $RUN/work (K3 : anchor.json et entry.json embarquent les chemins de leurs entrées),
+< # renommée out/run<K> ensuite :
+< #   c3b_prefix -> c3_anchor, c3_entry, c3_benchmark, c3_select (autonomes, registre neuf work/pre/variants.json)
+< #   -> c3b_evaluate --selection -> copie du registre dans work/chain/ -> c3_verdict.py chain (neuf entrées)
+< #   -> extraction de booléens par heredoc -> interpréteur des deux provenances -> mv
+< # -> comparaison au bit des 23 artefacts sur les trois exécutions -> alembic après (toujours) -> service, arbre du
+< # clone, CAMPAIGN_UNLOCK.
+< #  - Règles serveur (skills/deployment.md, précédents C3b) : pas de `set -e` (chaque code capturé dans status.txt, on
+< #    continue) ; second `alembic current` toujours ; un seul environnement (venv du service, `env PYTHONPATH="$REPO/src"`
+< #    sur chaque invocation Python, jamais sur alembic, lancé depuis l'arbre du service) ; `pilot_sha256` consigné
+< #    après `guard=0` ; pas de kill ; base en lecture seule assertée par le producteur lui-même (`probe_database`).
+< #  - Non-lecture (issue non lue ; D3) : les sorties des producteurs et de la chaîne, et leurs journaux, vont EN
+< #    FICHIERS SEULEMENT — ni tee, ni écran, ni listing, ni taille, ni sha. Remontent : des codes, un nom d'événement
+< #    tiré de la liste close EVENTS (prouvée égale au code par tests/events.sh), et des booléens extraits par heredoc,
+< #    qui n'impriment ni identité, ni paire, ni métrique, ni λ, ni issue, ni raison, ni motif.
+< #  - Les trois exécutions tournent même après un échec ; dans une exécution, une étape dont une entrée manque est
+< #    SKIPPED, les suivantes sont tentées. Le STOP vient après, sur l'attendu.
+> # Ordre : gardes -> pilot_sha256 -> service et alembic avant -> UNE exécution, arrêtée au premier écart :
+> #   c3b_prefix -> c3_anchor (première inscription au registre de campagne), c3_entry, c3_benchmark, c3_select
+> #   (autonomes) -> c3b_evaluate --selection -> c3_verdict.py chain (même registre) -> extraction par heredoc
+> #   -> interpréteur des deux provenances -> alembic après (toujours) -> service, arbre du clone, CAMPAIGN_UNLOCK.
+> #  - Règles serveur (skills/deployment.md, précédents C3b) : pas de `set -e` (chaque code consigné dans status.txt) ;
+> #    second `alembic current` toujours ; un seul environnement (venv du service, `env PYTHONPATH="$REPO/src"` sur
+> #    chaque invocation Python, jamais sur alembic, lancé depuis l'arbre du service) ; `pilot_sha256` consigné après
+> #    `guard=0` ; pas de kill ; base en lecture seule assertée par le producteur lui-même (`probe_database`).
+> #  - Registre de campagne (runbook skills/registry.md) : nommé sur les deux seules lignes `--registry` (ancrage
+> #    autonome, chaîne) ; ce pilote ne le lit, ne le copie, ne le liste ni ne le teste jamais.
+> #  - Arrêt au premier écart (plan § 1) : une étape ne tourne que si toutes les précédentes ont rendu leur attendu ;
+> #    sinon `<clé>=NOT_RUN`, et `halted_at` nomme le premier écart. Aucune écriture au registre ne suit un écart. Les
+> #    contrôles « après » (alembic, service, arbre du clone, CAMPAIGN_UNLOCK) sont inconditionnels.
+> #  - Non-lecture : sorties et journaux EN FICHIERS SEULEMENT — ni tee, ni écran, ni listing, ni taille, ni sha.
+> #    Remontent (plan § 2) : des codes, un nom d'événement de la liste close EVENTS (prouvée égale au code par
+> #    tests/events.sh), des booléens, et l'issue et la raison tirées de la chaîne § L.2 que `c3_verdict chain` publie
+> #    sur stdout, validées contre leurs listes closes. Aucun autre champ de la chaîne, aucune identité, aucune métrique.
+< RUN=/home/bruno/runs/c3_racine_registre/conf
+> RUN=/home/bruno/runs/c3_campagne_grid/campagne
+< WORK=$RUN/work
+< SELF=results/c3_racine_registre/conformite/server/run_conformite.sh
+< MANIFEST=results/c3_racine_registre/conformite/manifest.json
+< MANIFEST_SHA=9966efade2729f5d…
+> SELF=results/c3_campagne_grid/server/run_campagne.sh
+> MANIFEST=results/c3_campagne_grid/manifest.json
+> MANIFEST_SHA=d422076b09292d8a…
+< CAMPAIGN=RACINE_REGISTRE_CONF
+> CAMPAIGN=GRID_ATR_V4_2026
+> WORKERS=3
+< WORKERS=(- 4 1 4)
+> # A1 : cinq codes d'étape (c3_verdict.CHAIN_FILES) ; le code de la chaîne elle-même est celui que rend le verdict.
+< # Les 23 artefacts comparés au bit entre les trois exécutions (attendu § 4 item 5). Exclus, déclarés (K4) :
+< # prefix/prefix_run.json, prefix/partial/*, eval/evaluation_run_provenance.json, logs/* (durées, horodatages).
+< ARTEFACTS=(
+<   prefix/observations.json prefix/coverage.json prefix/candles.json
+<   pre/anchor.json pre/variants.json pre/entry.json pre/entry.md pre/benchmark.json pre/selection.json pre/selection.md
+<   eval/evaluation.json eval/benchmark_eval.json eval/candles_eval.json eval/evaluation_sensitivity.json
+<   chain/anchor.json chain/entry.json chain/entry.md chain/benchmark.json chain/selection.json chain/selection.md
+<   chain/continuity.json chain/verdict.json chain/variants.json
+< )
+> halted=""
+< expect() {  # expect <valeur> <attendue> : un écart marque le pilote (code 1), rien d'autre
+> go() { [ -z "$halted" ]; }
+> deviate() {  # deviate <étape> : un fait hors attendu ; le premier arrête les étapes suivantes
+>   fail=1
+>   if [ -z "$halted" ]; then halted=$1; fi
+> }
+> expect() {  # expect <valeur> <attendue> : contrôle inconditionnel ; un écart marque le pilote (code 1), rien d'autre
+> # Le booléen registry.new_entry d'un anchor.json, rien d'autre.
+> new_entry() {
+>   pyrun - "$1" 2>> "$OUT/extract.err" <<'PYEOF'
+> import json
+> import sys
+> try:
+>     with open(sys.argv[1], encoding="utf-8") as handle:
+>         value = json.load(handle)["registry"]["new_entry"]
+> except (OSError, KeyError, TypeError, ValueError):
+>     value = None
+> print("true" if value is True else "false" if value is False else "absent")
+> PYEOF
+> }
+> # step <clé> <journal> -- <arguments python…> : NOT_RUN après un écart, sinon le code (attendu 0).
+> step() {
+>   local key=$1 journal=$2
+>   shift 3
+>   if ! go; then
+>     record "$key=NOT_RUN"
+>     return
+>   fi
+>   pyrun "$@" > "$OUT/logs/$journal" 2>&1
+>   local r=$?
+>   record "$key=$r"
+>   [ "$r" = "0" ] || deviate "$key"
+> }
+> 
+<     record "guard=REFUSED env_mismatch file=$f clone=$a service=$b"
+>     record "guard=REFUSED env_mismatch file=$f"
+< if [ -e "$UNLOCK" ]; then
+<   record "guard=REFUSED campaign_unlock_present"
+> # Garde-fou 6 levé par Bruno : CAMPAIGN_UNLOCK, créé par lui dans l'arbre du service, transporté ici par launch.sh.
+> if [ ! -f "$UNLOCK" ]; then
+>   record "guard=REFUSED campaign_unlock_absent"
+< if [ -e "$WORK" ] || [ -e "$OUT/run1" ] || [ -e "$OUT/run2" ] || [ -e "$OUT/run3" ]; then
+<   record "guard=REFUSED work_or_runs_present"
+<   exit 2
+< fi
+< record "guard=0 sha=$SHA python=$("$PY" -V 2>&1) krakenbot=$KB protocol=$PROTOCOL_SHA manifest=$MANIFEST_SHA campaign_unlock=absent"
+> for d in prefix pre eval chain logs; do
+>   if [ -e "$OUT/$d" ]; then
+>     record "guard=REFUSED sorties_presentes"
+>     exit 2
+>   fi
+> done
+> record "guard=0 sha=$SHA python=$("$PY" -V 2>&1) krakenbot=$KB protocol=$PROTOCOL_SHA manifest=$MANIFEST_SHA campaign_unlock=present"
+< record "pilot_copy=$?"
+> r=$?
+> record "pilot_copy=$r"
+> expect "$r" 0
+< rc_ab=$?
+< record "alembic_before=$rc_ab"
+< expect "$rc_ab" 0
+> r=$?
+> record "alembic_before=$r"
+> [ "$r" = "0" ] || deviate alembic_before
+> mkdir -p "$OUT/logs" "$OUT/pre" "$OUT/chain"
+> record "workers=$WORKERS"
+< # --- une exécution ------------------------------------------------------------------------------------------------
+< # step <clé> <journal> <entrées requises…> -- <arguments python…> : SKIPPED si une entrée manque, sinon le code.
+< step() {
+<   local key=$1 journal=$2
+<   shift 2
+<   local missing=""
+<   while [ "$1" != "--" ]; do
+<     if [ ! -f "$1" ]; then missing=1; fi
+<     shift
+<   done
+<   shift
+<   if [ -n "$missing" ]; then
+<     record "$key=SKIPPED entree_absente"
+<     fail=1
+<     return
+<   fi
+<   pyrun "$@" > "$WORK/logs/$journal" 2>&1
+<   local r=$?
+<   record "$key=$r"
+<   expect "$r" 0
+< }
+> # --- 1. producteur préfixe ------------------------------------------------------------------------------------------
+> if go; then
+>   pyrun scripts/audit/c3b_prefix.py --manifest "$MANIFEST" --output-dir "$OUT/prefix" --workers "$WORKERS" \
+>     --now "$NOW" > "$OUT/logs/prefix.log" 2>&1
+>   r=$?
+>   ev="-"
+>   if [ "$r" -ne 0 ]; then ev=$(event_of "$OUT/logs/prefix.log"); fi
+>   record "prefix=$r event=$ev at=$(stamp)"
+>   [ "$r" = "0" ] || deviate prefix
+> else
+>   record "prefix=NOT_RUN"
+> fi
+< execute() {
+<   local k=$1
+<   local w=${WORKERS[$1]}
+<   local P=$WORK/prefix C=$WORK/pre E=$WORK/eval H=$WORK/chain
+<   record "workers_$k=$w"
+<   record "start_$k=$(stamp)"
+<   if ! mkdir "$WORK" 2> /dev/null; then
+<     record "work_$k=REFUSED present"
+<     fail=1
+<     return
+<   fi
+<   mkdir -p "$WORK/logs" "$C" "$H"
+> # --- 2. chaîne 1-4 autonome ; l'ancrage fait la première inscription au registre de campagne -------------------------
+> step pre_anchor anchor.log -- scripts/audit/c3_anchor.py --manifest "$MANIFEST" \
+>   --registry /home/bruno/c3/registry/variants.json --output "$OUT/pre/anchor.json" --now "$NOW"
+> if go; then
+>   ne=$(new_entry "$OUT/pre/anchor.json")
+>   record "registry_new_entry_pre=$ne"
+>   [ "$ne" = "true" ] || deviate registry_new_entry_pre
+> else
+>   record "registry_new_entry_pre=NOT_RUN"
+> fi
+> step pre_entry entry.log -- scripts/audit/c3_entry.py --manifest "$MANIFEST" --anchor "$OUT/pre/anchor.json" \
+>   --observations "$OUT/prefix/observations.json" --coverage "$OUT/prefix/coverage.json" \
+>   --output "$OUT/pre/entry.json" --markdown "$OUT/pre/entry.md" --now "$NOW"
+> step pre_benchmark benchmark.log -- scripts/audit/c3_benchmark.py --manifest "$MANIFEST" \
+>   --anchor "$OUT/pre/anchor.json" --entry "$OUT/pre/entry.json" --observations "$OUT/prefix/observations.json" \
+>   --candles "$OUT/prefix/candles.json" --output "$OUT/pre/benchmark.json" --now "$NOW"
+> step pre_select select.log -- scripts/audit/c3_select.py --manifest "$MANIFEST" --anchor "$OUT/pre/anchor.json" \
+>   --entry "$OUT/pre/entry.json" --observations "$OUT/prefix/observations.json" \
+>   --coverage "$OUT/prefix/coverage.json" --benchmark "$OUT/pre/benchmark.json" \
+>   --output "$OUT/pre/selection.json" --markdown "$OUT/pre/selection.md" --now "$NOW"
+<   # 1. producteur préfixe
+<   pyrun scripts/audit/c3b_prefix.py --manifest "$MANIFEST" --output-dir "$P" --workers "$w" --now "$NOW" \
+<     > "$WORK/logs/prefix.log" 2>&1
+<   local r=$?
+<   local ev="-"
+<   if [ "$r" -ne 0 ]; then ev=$(event_of "$WORK/logs/prefix.log"); fi
+<   record "prefix_$k=$r event=$ev at=$(stamp)"
+<   expect "$r" 0
+< 
+<   # 2. chaîne 1-4 autonome, registre neuf sous la sortie de l'exécution
+<   step "pre_anchor_$k" anchor.log "$MANIFEST" -- scripts/audit/c3_anchor.py --manifest "$MANIFEST" \
+<     --registry "$C/variants.json" --output "$C/anchor.json" --now "$NOW"
+<   step "pre_entry_$k" entry.log "$C/anchor.json" "$P/observations.json" "$P/coverage.json" -- \
+<     scripts/audit/c3_entry.py --manifest "$MANIFEST" --anchor "$C/anchor.json" --observations "$P/observations.json" \
+<     --coverage "$P/coverage.json" --output "$C/entry.json" --markdown "$C/entry.md" --now "$NOW"
+<   step "pre_benchmark_$k" benchmark.log "$C/anchor.json" "$C/entry.json" "$P/observations.json" "$P/candles.json" -- \
+<     scripts/audit/c3_benchmark.py --manifest "$MANIFEST" --anchor "$C/anchor.json" --entry "$C/entry.json" \
+<     --observations "$P/observations.json" --candles "$P/candles.json" --output "$C/benchmark.json" --now "$NOW"
+<   step "pre_select_$k" select.log "$C/anchor.json" "$C/entry.json" "$P/observations.json" "$P/coverage.json" \
+<     "$C/benchmark.json" -- scripts/audit/c3_select.py --manifest "$MANIFEST" --anchor "$C/anchor.json" \
+<     --entry "$C/entry.json" --observations "$P/observations.json" --coverage "$P/coverage.json" \
+<     --benchmark "$C/benchmark.json" --output "$C/selection.json" --markdown "$C/selection.md" --now "$NOW"
+< 
+<   # 3. producteur d'évaluation, chemin sélection
+<   if [ -f "$C/anchor.json" ] && [ -f "$C/selection.json" ] && [ -f "$C/benchmark.json" ]; then
+<     pyrun scripts/audit/c3b_evaluate.py --manifest "$MANIFEST" --anchor "$C/anchor.json" \
+<       --selection "$C/selection.json" --benchmark "$C/benchmark.json" --output-dir "$E" --now "$NOW" \
+<       > "$WORK/logs/evaluate.log" 2>&1
+<     r=$?
+<     if [ "$r" -eq 0 ] && grep -qE '\[info +\] evaluated ' "$WORK/logs/evaluate.log"; then
+<       ev=evaluated
+<     elif [ "$r" -eq 0 ] && grep -qE '\[info +\] refusal_form_written ' "$WORK/logs/evaluate.log"; then
+<       ev=refusal_form_written
+<     elif [ "$r" -eq 0 ]; then
+<       ev=hors_liste
+<     else
+<       ev=$(event_of "$WORK/logs/evaluate.log")
+<     fi
+<     record "eval_$k=$r event=$ev at=$(stamp)"
+<     expect "$r" 0
+<     expect "$ev" evaluated
+<   else
+<     record "eval_$k=SKIPPED entree_absente"
+<     fail=1
+<   fi
+< 
+<   # 4. chaîne complète : registre de l'exécution copié (idempotent à l'étape 1, inscription à l'étape 6)
+<   if [ -f "$C/variants.json" ]; then
+<     cp "$C/variants.json" "$H/variants.json"
+<     r=$?
+> # --- 3. producteur d'évaluation, chemin sélection -------------------------------------------------------------------
+> if go; then
+>   pyrun scripts/audit/c3b_evaluate.py --manifest "$MANIFEST" --anchor "$OUT/pre/anchor.json" \
+>     --selection "$OUT/pre/selection.json" --benchmark "$OUT/pre/benchmark.json" --output-dir "$OUT/eval" \
+>     --now "$NOW" > "$OUT/logs/evaluate.log" 2>&1
+>   r=$?
+>   if [ "$r" -eq 0 ] && grep -qE '\[info +\] evaluated ' "$OUT/logs/evaluate.log"; then
+>     ev=evaluated
+>   elif [ "$r" -eq 0 ] && grep -qE '\[info +\] refusal_form_written ' "$OUT/logs/evaluate.log"; then
+>     ev=refusal_form_written
+>   elif [ "$r" -eq 0 ]; then
+>     ev=hors_liste
+<     r=1
+>     ev=$(event_of "$OUT/logs/evaluate.log")
+<   record "registry_copy_$k=$r"
+<   expect "$r" 0
+<   local beval=()
+<   if [ -f "$E/benchmark_eval.json" ]; then beval=(--benchmark-eval "$E/benchmark_eval.json"); fi
+<   if [ -f "$E/evaluation.json" ] && [ -f "$E/candles_eval.json" ] && [ -f "$H/variants.json" ] \
+<     && [ -f "$P/observations.json" ] && [ -f "$P/coverage.json" ] && [ -f "$P/candles.json" ]; then
+<     pyrun scripts/audit/c3_verdict.py chain --manifest "$MANIFEST" --observations "$P/observations.json" \
+<       --coverage "$P/coverage.json" --candles "$P/candles.json" --evaluation "$E/evaluation.json" \
+<       ${beval[@]+"${beval[@]}"} --candles-eval "$E/candles_eval.json" --registry "$H/variants.json" --out-dir "$H" \
+<       --campaign "$CAMPAIGN" --now "$NOW" > "$WORK/logs/chain.log" 2>&1
+<     r=$?
+<     record "chain_$k=$r"
+<     expect "$r" 0
+<   else
+<     record "chain_$k=SKIPPED entree_absente"
+<     fail=1
+<   fi
+>   record "eval=$r event=$ev at=$(stamp)"
+>   { [ "$r" = "0" ] && [ "$ev" = "evaluated" ]; } || deviate eval
+> else
+>   record "eval=NOT_RUN"
+> fi
+<   # 5. extraction : chain.verified, violations vides, violations de rejeu vides, étapes — rien d'autre
+<   local extract
+<   extract=$(pyrun - "$H/verdict.json" "$WORK/logs/chain.log" 2>> "$OUT/extract.err" <<'PYEOF'
+> # --- 4. chaîne complète, sur le même registre (étape 1 idempotente, inscription de l'issue à l'étape 6) -------------
+> chain_ran=0
+> if go; then
+>   pyrun scripts/audit/c3_verdict.py chain --manifest "$MANIFEST" --observations "$OUT/prefix/observations.json" \
+>     --coverage "$OUT/prefix/coverage.json" --candles "$OUT/prefix/candles.json" \
+>     --evaluation "$OUT/eval/evaluation.json" --benchmark-eval "$OUT/eval/benchmark_eval.json" \
+>     --candles-eval "$OUT/eval/candles_eval.json" \
+>     --registry /home/bruno/c3/registry/variants.json --out-dir "$OUT/chain" --campaign "$CAMPAIGN" --now "$NOW" \
+>     > "$OUT/logs/chain.log" 2>&1
+>   r=$?
+>   chain_ran=1
+>   record "chain=$r at=$(stamp)"
+>   [ "$r" = "0" ] || deviate chain
+> else
+>   record "chain=NOT_RUN"
+> fi
+> 
+> # --- 5. extraction : la liste close du plan § 2, rien d'autre ------------------------------------------------------
+> if [ "$chain_ran" = "1" ]; then
+>   extract=$(pyrun - "$OUT/chain/verdict.json" "$OUT/chain/anchor.json" "$OUT/logs/chain.log" "$CAMPAIGN" \
+>     2>> "$OUT/extract.err" <<'PYEOF'
+< path, log = sys.argv[1], sys.argv[2]
+> sys.stdout.reconfigure(encoding="utf-8")
+> verdict_path, anchor_path, log_path, campaign = sys.argv[1:5]
+> #: § H.1 (section d'origine) : les trois issues, et les raisons de la liste fermée ; `-` hors `inconclusif`.
+> ISSUES = ("validé", "réfuté", "inconclusif")
+> REASONS = (
+>     "R0_INVALID_RUN", "P_PROVENANCE", "D_WARMUP_PREFIX", "A_NO_ADMISSIBLE_CANDIDATE", "A_BELOW_FLOOR",
+>     "D_WARMUP_ANCHOR", "R1_NOT_NORMALISED", "E_NO_BENCHMARK", "E_STAMP_MISMATCH", "F_NOT_ESTIMABLE",
+>     "F_CANNOT_SEPARATE", "D_NOT_ADMISSIBLE", "C_COVERAGE",
+> )
+> #: § L.2 : les neuf champs qui suivent le label de la chaîne, dans l'ordre où `c3_verdict` les écrit.
+> KEYS = (
+>     "verdict", "raison", "selection", "statut_selection", "continuite", "variante", "provenance", "protocole",
+>     "observations",
+> )
+> failed = False
+<     with open(path, encoding="utf-8") as handle:
+>     with open(log_path, encoding="utf-8") as handle:
+>         log = handle.read().splitlines()
+> except OSError:
+>     log = []
+>     failed = True
+> 
+> # 1. contrôles mécaniques de verdict.json, comme aux conformités : jamais un champ d'issue
+> try:
+>     with open(verdict_path, encoding="utf-8") as handle:
+<     try:
+<         with open(log, encoding="utf-8") as handle:
+<             stop = re.search(r"CHAINE ARRETEE à l'étape (\w+)(?: \(code de retour (\d+)\))?", handle.read())
+<     except FileNotFoundError:
+<         stop = None
+>     stop = None
+>     for line in log:
+>         found = re.search(r"CHAINE ARRETEE à l'étape (\w+)(?: \(code de retour (\d+)\))?", line)
+>         if found:
+>             stop = found
+<     sys.exit(0)
+< violations = verdict["violations"]
+< chain = verdict["chain"]
+< replay = [v for v in violations if str(v).startswith(("rejeu", "réplications"))]
+< print(f"chain_verified={'true' if chain['verified'] is True else 'false'}")
+< print(f"violations_empty={'true' if violations == [] else 'false'}")
+< print(f"replay_violations_empty={'true' if replay == [] else 'false'}")
+< print("chain_steps=" + ",".join(f"{step['name']}:{step['exit_code']}" for step in chain["steps"]))
+> except (OSError, ValueError):
+>     print("verdict_json=illisible")
+>     failed = True
+> else:
+>     try:
+>         violations = verdict["violations"]
+>         chain = verdict["chain"]
+>         replay = [v for v in violations if str(v).startswith(("rejeu", "réplications"))]
+>         print(f"chain_verified={'true' if chain['verified'] is True else 'false'}")
+>         print(f"violations_empty={'true' if violations == [] else 'false'}")
+>         print(f"replay_violations_empty={'true' if replay == [] else 'false'}")
+>         print("chain_steps=" + ",".join(f"{step['name']}:{step['exit_code']}" for step in chain["steps"]))
+>     except (KeyError, TypeError):
+>         print("verdict_json=forme_hors_liste")
+>         failed = True
+> 
+> # 2. new_entry de l'ancrage de la chaîne : idempotent attendu (la première inscription est celle de l'ancrage autonome)
+> try:
+>     with open(anchor_path, encoding="utf-8") as handle:
+>         value = json.load(handle)["registry"]["new_entry"]
+> except (OSError, KeyError, TypeError, ValueError):
+>     value = None
+> print(f"registry_new_entry_chain={'true' if value is True else 'false' if value is False else 'absent'}")
+> 
+> # 3. la chaîne § L.2 publiée sur stdout : l'issue et la raison, chacune validée contre sa liste close ; le statut de
+> #    sélection comparé à SÉLECTION_DESCRIPTIVE, jamais imprimé ; aucun autre champ n'est lu.
+> label = f"C3_{campaign} | "
+> lines = [line for line in log if line.startswith(label)]
+> descriptive = False
+> if len(lines) == 1:
+>     pairs = [part.split("=", 1) for part in lines[0][len(label):].split(" | ")]
+>     if all(len(pair) == 2 for pair in pairs) and tuple(pair[0] for pair in pairs) == KEYS:
+>         fields = dict(pairs)
+>         issue = fields["verdict"] if fields["verdict"] in ISSUES else "hors_liste"
+>         reason = fields["raison"] if fields["raison"] in REASONS or fields["raison"] == "-" else "hors_liste"
+>         descriptive = fields["statut_selection"] == "SÉLECTION_DESCRIPTIVE"
+>     else:
+>         issue = reason = "forme_hors_liste"
+> elif not lines:
+>     issue = reason = "absent"
+> else:
+>     issue = reason = "multiple"
+> print(f"issue={issue}")
+> print(f"raison={reason}")
+> print(f"selection_descriptive={'true' if descriptive else 'false'}")
+> 
+> # 4. la ligne de forme fixe de l'inscription de l'issue au registre (§ A.6 ; D13 : ni valeur ni digest)
+> inscribed = any(re.fullmatch(r"written .+ \(issue inscrite, § A\.6\)", line) for line in log)
+> print(f"issue_inscrite={'true' if inscribed else 'false'}")
+> sys.exit(1 if failed else 0)
+<   local line
+<     if [ -n "$line" ]; then record "${line%%=*}_$k=${line#*=}"; fi
+>     if [ -n "$line" ]; then record "$line"; fi
+<   record "extract_$k=$r"
+<   expect "$r" 0
+<   echo "$extract" | grep -qx "chain_verified=true" || fail=1
+<   echo "$extract" | grep -qx "violations_empty=true" || fail=1
+<   echo "$extract" | grep -qx "replay_violations_empty=true" || fail=1
+<   echo "$extract" | grep -qx "chain_steps=$STEPS_OK" || fail=1
+>   record "extract=$r"
+>   ok=0
+>   [ "$r" = "0" ] || ok=1
+>   for want in chain_verified=true violations_empty=true replay_violations_empty=true "chain_steps=$STEPS_OK" \
+>     registry_new_entry_chain=false issue_inscrite=true issue=inconclusif raison=P_PROVENANCE \
+>     selection_descriptive=true; do
+>     printf '%s\n' "$extract" | grep -qxF -- "$want" || ok=1
+>   done
+>   [ "$ok" = "0" ] || deviate extract
+> else
+>   record "extract=NOT_RUN"
+> fi
+<   # 6. interpréteur des deux provenances : booléen seulement
+<   pyrun - "$P/prefix_run.json" "$E/evaluation_run_provenance.json" "$REPO" >> "$OUT/extract.err" 2>&1 <<'PYEOF'
+> # --- 6. interpréteur des deux provenances : booléen seulement -------------------------------------------------------
+> if go; then
+>   pyrun - "$OUT/prefix/prefix_run.json" "$OUT/eval/evaluation_run_provenance.json" "$REPO" >> "$OUT/extract.err" 2>&1 <<'PYEOF'
+<   record "interpreter_$k=$r"
+<   expect "$r" 0
+>   record "interpreter=$r"
+>   [ "$r" = "0" ] || deviate interpreter
+> else
+>   record "interpreter=NOT_RUN"
+> fi
+> record "halted_at=${halted:--}"
+> record "end_run=$(stamp)"
+<   # 7. renommage : l'exécution quitte le chemin commun
+<   mv "$WORK" "$OUT/run$k"
+<   r=$?
+<   record "moved_$k=$r"
+<   expect "$r" 0
+<   record "end_$k=$(stamp)"
+< }
+< 
+< execute 1
+< execute 2
+< execute 3
+< 
+< # --- déterminisme : liste attendue et égalité au bit des 23 artefacts, booléens seulement -------------------------
+< listing() {
+<   (cd "$1" && find . -type f ! -path './logs/*' ! -path './prefix/partial/*' ! -name prefix_run.json \
+<     ! -name evaluation_run_provenance.json | sed 's|^\./||' | LC_ALL=C sort)
+< }
+< EXPECTED_LIST=$(printf '%s\n' "${ARTEFACTS[@]}" | LC_ALL=C sort)
+< listing_ok=0
+< for k in 1 2 3; do
+<   if [ ! -d "$OUT/run$k" ] || [ "$(listing "$OUT/run$k")" != "$EXPECTED_LIST" ]; then listing_ok=1; fi
+< done
+< record "listing_expected_3of3=$listing_ok"
+< expect "$listing_ok" 0
+< compared=0
+< differing=0
+< absent=0
+< for a in "${ARTEFACTS[@]}"; do
+<   if [ -f "$OUT/run1/$a" ] && [ -f "$OUT/run2/$a" ] && [ -f "$OUT/run3/$a" ]; then
+<     compared=$((compared + 1))
+<     cmp -s "$OUT/run1/$a" "$OUT/run2/$a"; e12=$?
+<     cmp -s "$OUT/run1/$a" "$OUT/run3/$a"; e13=$?
+<     if [ "$e12" -eq 0 ] && [ "$e13" -eq 0 ]; then
+<       record "eq3 $a=0"
+<     else
+<       differing=$((differing + 1))
+<       record "eq3 $a=1 r12=$e12 r13=$e13"
+<     fi
+<   else
+<     absent=$((absent + 1))
+<     record "eq3 $a=absent"
+<   fi
+< done
+< if [ "$compared" -eq "${#ARTEFACTS[@]}" ] && [ "$differing" -eq 0 ] && [ "$absent" -eq 0 ]; then bit=0; else bit=1; fi
+< record "bit_equal_3of3=$bit compared=$compared differing=$differing absent=$absent"
+< expect "$bit" 0
+< 
+< rc_aa=$?
+< record "alembic_after=$rc_aa"
+< expect "$rc_aa" 0
+> r=$?
+> record "alembic_after=$r"
+> expect "$r" 0
+< if [ -e "$UNLOCK" ]; then unlock_after=present; else unlock_after=absent; fi
+> if [ -f "$UNLOCK" ]; then unlock_after=present; else unlock_after=absent; fi
+< expect "$unlock_after" absent
+> expect "$unlock_after" present
+## results/c3_racine_registre/conformite/server/verify_attendu.py -> results/c3_campagne_grid/server/verify_attendu.py : lignes source changées=82, lignes reprise=102
+< """C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — vérification de l'attendu de conformité
+< (``../attendu.md``), item par item.
+> """Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/conformite/server/
+> verify_attendu.py) — vérification de l'attendu déclaré (``../attendu.md``), item par item.
+< producteur ni de la chaîne (issue non lue ; plan D3). Prouvé avant son premier usage par ``tests/verify_adverse.sh``
+< (témoin sain à 0, chaque cas dévié ≠ 0 ; condition du GO).
+> producteur ni de la chaîne, aucun registre. L'issue et la raison y figurent, tirées par le pilote de la chaîne § L.2
+> (liste close, plan § 2). **Compté** n'y figure pas : aucun canal ne le publie hors du registre (plan, K2). Il est
+> **dérivé** ici de ``(issue, raison)`` par la table du § 10.1 de ``docs/CONTRAINTES_POST_B4.md``, recopiée du texte
+> (``COUNTED_10_1``, ``CONDITIONAL_10_1``) et épinglée aux constantes du code par ``tests/table_10_1.sh`` : dérivé, non
+> lu (décision Q1 de Bruno). Prouvé avant son premier usage par ``tests/verify_adverse.sh`` (témoin sain à 0, chaque cas
+> dévié ≠ 0 avec exactement un item en écart).
+<     python3 results/c3_racine_registre/conformite/server/verify_attendu.py --sha <S1, 40 hex>
+>     python3 results/c3_campagne_grid/server/verify_attendu.py --sha <S1, 40 hex>
+< ``--dir`` vaut par défaut le répertoire de ce fichier ; ``--pilot-sha`` le sha256 de ``run_conformite.sh`` à côté.
+> ``--dir`` vaut par défaut le répertoire de ce fichier ; ``--pilot-sha`` le sha256 de ``run_campagne.sh`` à côté.
+< MANIFEST_SHA = "9966efade2729f5d…"
+< KRAKENBOT_SUFFIX = "/runs/c3_racine_registre/conf/repo/src/krakenbot/__init__.py"
+> MANIFEST_SHA = "d422076b09292d8a…"
+> KRAKENBOT_SUFFIX = "/runs/c3_campagne_grid/campagne/repo/src/krakenbot/__init__.py"
+< WORKERS = {1: "4", 2: "1", 3: "4"}
+> WORKERS = "3"
+> #: A1 : cinq codes d'étape, ceux de ``c3_verdict.CHAIN_FILES`` (scripts/audit/c3_verdict.py:2016) ; le code de la
+> #: chaîne elle-même (clé ``chain``) est celui que rend le verdict, pas un sixième pas.
+< ARTEFACTS = (
+<     "prefix/observations.json",
+<     "prefix/coverage.json",
+<     "prefix/candles.json",
+<     "pre/anchor.json",
+<     "pre/variants.json",
+<     "pre/entry.json",
+<     "pre/entry.md",
+<     "pre/benchmark.json",
+<     "pre/selection.json",
+<     "pre/selection.md",
+<     "eval/evaluation.json",
+<     "eval/benchmark_eval.json",
+<     "eval/candles_eval.json",
+<     "eval/evaluation_sensitivity.json",
+<     "chain/anchor.json",
+<     "chain/entry.json",
+<     "chain/entry.md",
+<     "chain/benchmark.json",
+<     "chain/selection.json",
+<     "chain/selection.md",
+<     "chain/continuity.json",
+<     "chain/verdict.json",
+<     "chain/variants.json",
+< )
+> #: L'attendu déclaré : issue, raison, compté.
+> EXPECTED_TRIPLET = ("inconclusif", "P_PROVENANCE", False)
+> #: ``docs/CONTRAINTES_POST_B4.md`` § 10.1 (section d'origine), recopiée du texte : le statut compté de chaque issue que
+> #: la chaîne publie, par ``(issue, raison)`` telles que la chaîne § L.2 les écrit (``raison=-`` hors ``inconclusif``).
+> COUNTED_10_1: dict[tuple[str, str], bool] = {
+>     ("validé", "-"): True,
+>     ("réfuté", "-"): True,
+>     ("inconclusif", "A_BELOW_FLOOR"): True,
+>     ("inconclusif", "F_NOT_ESTIMABLE"): True,
+>     ("inconclusif", "F_CANNOT_SEPARATE"): True,
+>     ("inconclusif", "R0_INVALID_RUN"): False,
+>     ("inconclusif", "P_PROVENANCE"): False,
+>     ("inconclusif", "D_WARMUP_PREFIX"): False,
+>     ("inconclusif", "D_WARMUP_ANCHOR"): False,
+>     ("inconclusif", "R1_NOT_NORMALISED"): False,
+>     ("inconclusif", "E_NO_BENCHMARK"): False,
+>     ("inconclusif", "E_STAMP_MISMATCH"): False,
+> }
+> #: § 10.1, ligne conditionnelle : compté si et seulement si aucun candidat n'a été retiré par l'une de ces clauses —
+> #: non dérivable sans lire la sélection, donc ``indéterminé`` ici (un écart à l'attendu).
+> CONDITIONAL_10_1: dict[tuple[str, str], tuple[str, ...]] = {
+>     ("inconclusif", "A_NO_ADMISSIBLE_CANDIDATE"): ("D1", "D2", "D6"),
+> }
+> def counted(issue: str, reason: str) -> bool | None:
+>     """Le statut compté dérivé de ``(issue, raison)`` par la table du § 10.1 ; ``None`` quand la table ne le donne pas
+>     sans lecture (ligne conditionnelle, ou couple hors table)."""
+>     return COUNTED_10_1.get((issue, reason))
+> 
+> 
+<         args.pilot_sha or hashlib.sha256((HERE / "run_conformite.sh").read_bytes()).hexdigest()
+>         args.pilot_sha or hashlib.sha256((HERE / "run_campagne.sh").read_bytes()).hexdigest()
+<     def per_run(check: Callable[[int], bool]) -> bool:
+<         return all(check(k) for k in (1, 2, 3))
+< 
+<             and f.get("campaign_unlock") == "absent"
+>             and f.get("campaign_unlock") == "present"
+<             and s("campaign_unlock_after") == "absent"
+>             and s("campaign_unlock_after") == "present"
+<         return per_run(
+<             lambda k: s(f"workers_{k}") == WORKERS[k]
+<             and s(f"prefix_{k}").split()[:2] == ["0", "event=-"]
+<         )
+>         return s("workers") == WORKERS and s("prefix").split()[:2] == ["0", "event=-"]
+<         return per_run(
+<             lambda k: all(
+<                 s(f"pre_{step}_{k}") == "0" for step in ("anchor", "entry", "benchmark", "select")
+<             )
+>         return (
+>             all(s(f"pre_{step}") == "0" for step in ("anchor", "entry", "benchmark", "select"))
+>             and s("registry_new_entry_pre") == "true"
+<         return per_run(lambda k: s(f"eval_{k}").split()[:2] == ["0", "event=evaluated"])
+>         return s("eval").split()[:2] == ["0", "event=evaluated"]
+<         return per_run(
+<             lambda k: s(f"registry_copy_{k}") == "0"
+<             and s(f"chain_{k}") == "0"
+<             and s(f"chain_steps_{k}") == STEPS_OK
+<             and s(f"chain_verified_{k}") == "true"
+<             and s(f"violations_empty_{k}") == "true"
+<             and s(f"replay_violations_empty_{k}") == "true"
+<             and s(f"extract_{k}") == "0"
+<             and f"verdict_json_{k}" not in status
+<             and f"chain_stopped_{k}" not in status
+>         return (
+>             s("chain").split()[0] == "0"
+>             and s("chain_steps") == STEPS_OK
+>             and s("chain_verified") == "true"
+>             and s("violations_empty") == "true"
+>             and s("replay_violations_empty") == "true"
+>             and s("registry_new_entry_chain") == "false"
+>             and s("issue_inscrite") == "true"
+>             and s("extract") == "0"
+>             and "verdict_json" not in status
+>             and "chain_stopped" not in status
+>     def issue() -> bool:
+>         pair = (s("issue"), s("raison"))
+>         return (
+>             pair == EXPECTED_TRIPLET[:2]
+>             and counted(*pair) is EXPECTED_TRIPLET[2]
+>             and s("selection_descriptive") == "true"
+>         )
+> 
+<         return per_run(lambda k: s(f"interpreter_{k}") == "0" and s(f"moved_{k}") == "0")
+>         return s("interpreter") == "0"
+<     def determinism() -> bool:
+<         eq3 = {key[len("eq3 ") :]: value for key, value in status.items() if key.startswith("eq3 ")}
+<         return (
+<             s("listing_expected_3of3") == "0"
+<             and set(eq3) == set(ARTEFACTS)
+<             and all(value == "0" for value in eq3.values())
+<             and s("bit_equal_3of3") == f"0 compared={len(ARTEFACTS)} differing=0 absent=0"
+>     def no_halt() -> bool:
+>         return s("halted_at") == "-" and not any(
+>             value == "NOT_RUN" or value.startswith("NOT_RUN ") for value in status.values()
+<     items = [
+>     items: list[tuple[str, Callable[[], bool]]] = [
+<             "1 gardes : guard=0 au SHA S1, krakenbot du clone, protocole v2.3, manifeste déclaré, "
+<             "CAMPAIGN_UNLOCK absent, pilote = blob S1",
+>             "1 gardes : guard=0 au SHA S1, krakenbot du clone, protocole v2.3, manifeste gelé, "
+>             "CAMPAIGN_UNLOCK présent, pilote = blob S1",
+<             "CAMPAIGN_UNLOCK absent après",
+>             "CAMPAIGN_UNLOCK présent après",
+<         ("4 producteur préfixe : 0 aux trois exécutions, workers 4 / 1 / 4", prefix),
+<         ("5 chaîne 1-4 autonome : anchor, entry, benchmark, select en 0, trois fois", chain_1_4),
+<         ("6 producteur d'évaluation : 0 event=evaluated, trois fois", evaluation),
+>         ("4 producteur préfixe : 0, event=-, workers 3", prefix),
+<             "7 chaîne complète : six codes d'étape en 0, chain.verified vrai, violations vides, zéro violation au "
+<             "rejeu, trois fois",
+>             "5 chaîne 1-4 autonome : anchor, entry, benchmark, select en 0 ; première inscription au registre "
+>             "(registry.new_entry vrai)",
+>             chain_1_4,
+>         ),
+>         ("6 producteur d'évaluation : 0 event=evaluated", evaluation),
+>         (
+>             "7 chaîne complète : code 0, cinq codes d'étape en 0 (c3_verdict.CHAIN_FILES), chain.verified vrai, "
+>             "violations vides, zéro violation au rejeu, ancrage idempotent, issue inscrite",
+<         ("8 interpréteur du clone dans les deux provenances, renommage, trois fois", interpreter),
+<             "9 déterminisme : liste attendue, 23 artefacts identiques au bit sur les trois exécutions",
+<             determinism,
+>             "8 issue : inconclusif, P_PROVENANCE, non compté (dérivé du § 10.1) ; sélection SÉLECTION_DESCRIPTIVE",
+>             issue,
+<         ("10 pilote : code de sortie 0", pilot_exit),
+>         ("9 interpréteur du clone dans les deux provenances", interpreter),
+>         ("10 aucun arrêt : halted_at=-, aucune étape NOT_RUN", no_halt),
+>         ("11 pilote : code de sortie 0", pilot_exit),
+>     found = (status.get("issue", "absent"), status.get("raison", "absent"))
+>     derived = counted(*found)
+>     compte = "oui" if derived is True else "non" if derived is False else "indéterminé"
+<         "11 bornes des lectures : appuis du code, des tests et des codes de la chaîne (attendu § 7) — "
+<         "aucune lecture d'artefact"
+>         f"triplet constaté : issue={found[0]} raison={found[1]} compté={compte} "
+>         "(compté dérivé de (issue, raison) par la table du § 10.1, non lu)"
+>     print(
+>         "déclarés, jamais vérifiés : aucune évaluation différée inscrite ; contenu du registre (racine préservée, "
+>         "compte inscrit) ; bornes des lectures — appuis du code, des tests et des codes de la chaîne (attendu § 8)"
+>     )
+## results/c3_racine_registre/conformite/attendu.md -> results/c3_campagne_grid/attendu.md : lignes source changées=140, lignes reprise=189
+(réécrit pour ce chantier ; diff non recopié, relu en entier)
+## results/c3_racine_registre/tests/preflight.sh -> results/c3_campagne_grid/tests/preflight.sh : lignes source changées=24, lignes reprise=27
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — preflight du serveur avant la phase conf, LECTURE SEULE, lancé par `bash` depuis
+< # le dépôt (results/c3_outillage_v2_2/plans/lot3.md § 5, § 6 ; modèle : results/c3b_producteur/closure/tests/preflight_server.sh).
+< # usage : bash preflight.sh conf (la phase gate n'est pas reprise : porte non rejouée, plans/lot2.md L5)
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/preflight.sh) — preflight
+> # du serveur avant le lancement, LECTURE SEULE, lancé par `bash` depuis le dépôt (plans/plan.md § 1).
+> # usage : bash preflight.sh
+< # répertoire de la phase absent) ; archive du jour de la phase absente ; sessions tmux ; disque ; mémoire ; collector
+< # (actif, NRestarts) ; trader ; `.env` du service ; ports Postgres 5432 / 5433 ; CAMPAIGN_UNLOCK absent de l'arbre du
+< # service. Sortie : preflight_<phase>.out, une ligne `clé=valeur`, puis `rc=`.
+< # rc=0 ssi : répertoire de la phase absent, archive du jour absente, collector actif, `.env` présent, port 5432 ouvert,
+< # poetry.lock et pyproject.toml égaux à HEAD, CAMPAIGN_UNLOCK absent, et (gate) pytest importable.
+> # répertoire du chantier absent) ; archive du jour absente ; sessions tmux ; disque ; mémoire disponible ; collector
+> # (actif, NRestarts) ; trader ; `.env` du service ; ports Postgres 5432 / 5433 ; CAMPAIGN_UNLOCK PRÉSENT dans l'arbre du
+> # service (existence seule, contenu jamais lu : créé par Bruno entre STOP 1 et le GO, décision Q2). Ne touche jamais le
+> # répertoire du registre de campagne. Sortie : preflight.out, une ligne `clé=valeur`, puis `rc=`.
+> # rc=0 ssi : répertoire du chantier absent, archive du jour absente, collector actif, `.env` présent, port 5432 ouvert,
+> # poetry.lock et pyproject.toml égaux à HEAD, CAMPAIGN_UNLOCK présent, mémoire disponible ≥ 5000 Mo.
+> # Un refus de preflight = rien lancé, rien écrit : re-tenter le preflight après l'accord de Bruno n'est pas une relance
+> # du run compté (plan, A5).
+< PHASE=${1:?conf}
+< case "$PHASE" in conf) ;; *) echo "phase inconnue : $PHASE" >&2; exit 2 ;; esac
+< OUT=results/c3_racine_registre/tests/preflight_${PHASE}.out
+> OUT=results/c3_campagne_grid/tests/preflight.out
+> MEM_MIN_MB=5000
+<   echo "# preflight $PHASE — $(date -u +%FT%TZ) — HEAD local $(git rev-parse HEAD)"
+<   ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$PHASE" "$LOCK_SHA" "$PYPROJECT_SHA" "$DAY" <<'REMOTE'
+>   echo "# preflight — $(date -u +%FT%TZ) — HEAD local $(git rev-parse HEAD)"
+>   ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$LOCK_SHA" "$PYPROJECT_SHA" "$DAY" "$MEM_MIN_MB" <<'REMOTE'
+< PHASE=$1
+< LOCK_SHA=$2
+< PYPROJECT_SHA=$3
+< DAY=$4
+> LOCK_SHA=$1
+> PYPROJECT_SHA=$2
+> DAY=$3
+> MEM_MIN_MB=$4
+< if [ "$PHASE" = gate ] && [ "$r" -ne 0 ]; then ok=1; fi
+< if [ "$a" = "$LOCK_SHA" ]; then echo "poetry_lock_egal_head=0"; else echo "poetry_lock_egal_head=1 service=$a"; ok=1; fi
+< if [ "$b" = "$PYPROJECT_SHA" ]; then echo "pyproject_egal_head=0"; else echo "pyproject_egal_head=1 service=$b"; ok=1; fi
+> if [ "$a" = "$LOCK_SHA" ]; then echo "poetry_lock_egal_head=0"; else echo "poetry_lock_egal_head=1"; ok=1; fi
+> if [ "$b" = "$PYPROJECT_SHA" ]; then echo "pyproject_egal_head=0"; else echo "pyproject_egal_head=1"; ok=1; fi
+< if [ -e "/home/bruno/runs/c3_racine_registre/$PHASE" ]; then echo "run_dir=PRESENT"; ok=1; else echo "run_dir=absent"; fi
+< if [ -e "/home/bruno/archive/c3_racine_registre_${PHASE}_$DAY" ]; then echo "archive_du_jour=PRESENT"; ok=1; else echo "archive_du_jour=absent"; fi
+> if [ -e /home/bruno/runs/c3_campagne_grid ]; then echo "run_dir=PRESENT"; ok=1; else echo "run_dir=absent"; fi
+> if [ -e "/home/bruno/archive/c3_campagne_grid_$DAY" ]; then echo "archive_du_jour=PRESENT"; ok=1; else echo "archive_du_jour=absent"; fi
+< echo "cpus=$(nproc) mem_free_mb=$(free -m | awk '/^Mem:/ {print $7}')"
+> m=$(free -m | awk '/^Mem:/ {print $7}')
+> echo "cpus=$(nproc) mem_free_mb=$m mem_min_mb=$MEM_MIN_MB"
+> if [ -z "$m" ] || [ "$m" -lt "$MEM_MIN_MB" ]; then echo "memoire_suffisante=1"; ok=1; else echo "memoire_suffisante=0"; fi
+< if [ -e "$SERVICE/results/c3b_producteur/CAMPAIGN_UNLOCK" ]; then echo "campaign_unlock_service=PRESENT"; ok=1; else echo "campaign_unlock_service=absent"; fi
+> if [ -f "$SERVICE/results/c3b_producteur/CAMPAIGN_UNLOCK" ]; then echo "campaign_unlock_service=present"; else echo "campaign_unlock_service=ABSENT"; ok=1; fi
+## results/c3_racine_registre/tests/launch.sh -> results/c3_campagne_grid/tests/launch.sh : lignes source changées=23, lignes reprise=29
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — mise en place et lancement de la phase conf sur le serveur, lancé par `bash`
+< # depuis le dépôt (results/c3_outillage_v2_2/plans/lot3.md § 5, § 6 ; modèle : results/c3b_producteur/closure/tests/launch_gate.sh).
+< # usage : bash launch.sh conf <SHA complet, 40 hex> (porte non rejouée : plans/lot2.md L5)
+< # S'arrête au premier code non nul. Étapes (codes dans launch_<phase>.out) :
+< #   0. SHA = HEAD local = tip de origin/feat/c3-racine-registre (git ls-remote) : transport par push, jamais de bundle ;
+< #   1. ~/runs/c3_racine_registre/<phase> créé (échoue s'il existe) ;
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/launch.sh) — mise en
+> # place et lancement du run compté sur le serveur, lancé par `bash` depuis le dépôt, APRÈS le preflight à rc=0 et le
+> # GO de lancement de Bruno nommant S1.
+> # usage : bash launch.sh <SHA S1 complet, 40 hex>
+> # S'arrête au premier code non nul. Étapes (codes dans launch.out) :
+> #   0. SHA = HEAD local = tip de origin/feat/c3-campagne-grid (git ls-remote) : transport par push, jamais de bundle ;
+> #   1. ~/runs/c3_campagne_grid/campagne créé (échoue s'il existe) ;
+< #   4. sha du pilote dans le clone == sha du blob local au SHA ;
+< #   5. session tmux `c3-racine-registre-<phase>-<AAAAMMJJ>` : `bash -lc` sur le pilote DU CLONE, avec le SHA en argument ;
+< #      code du pilote dans out/pilot_exit.txt. Aucun kill, aucune relance ; la session se ferme à la sortie du pilote.
+> #   4. CAMPAIGN_UNLOCK, créé par Bruno dans l'arbre du service, COPIÉ dans le clone (décision Q2 : transport par script,
+> #      comme le .env, jamais une création) ; égalité par `cmp`, contenu jamais lu ni affiché, aucun sha ;
+> #   5. sha du pilote dans le clone == sha du blob local au SHA ;
+> #   6. session tmux `c3-campagne-grid-<AAAAMMJJ>` : `bash -lc` sur le pilote DU CLONE, sous `nice -n 10`, avec le SHA
+> #      en argument ; code du pilote dans out/pilot_exit.txt. Aucun kill, aucune relance ; la session se ferme à la
+> #      sortie du pilote.
+< PHASE=${1:?conf}
+< SHA=${2:?sha}
+< case "$PHASE" in
+<   conf) PILOT=results/c3_racine_registre/conformite/server/run_conformite.sh ;;
+<   *) echo "phase inconnue : $PHASE" >&2; exit 2 ;;
+< esac
+> SHA=${1:?sha}
+> PILOT=results/c3_campagne_grid/server/run_campagne.sh
+> UNLOCK=results/c3b_producteur/CAMPAIGN_UNLOCK
+< OUT=results/c3_racine_registre/tests/launch_${PHASE}.out
+> OUT=results/c3_campagne_grid/tests/launch.out
+< RUN=/home/bruno/runs/c3_racine_registre/$PHASE
+< SESSION=c3-racine-registre-$PHASE-$(date -u +%Y%m%d)
+> RUN=/home/bruno/runs/c3_campagne_grid/campagne
+> SESSION=c3-campagne-grid-$(date -u +%Y%m%d)
+< log "# launch $PHASE — $(date -u +%FT%TZ) — sha $SHA"
+> log "# launch — $(date -u +%FT%TZ) — sha $SHA"
+< remote_tip=$(git ls-remote origin refs/heads/feat/c3-racine-registre | cut -f1)
+> remote_tip=$(git ls-remote origin refs/heads/feat/c3-campagne-grid | cut -f1)
+< "${SSH[@]}" "mkdir -p /home/bruno/runs/c3_racine_registre && mkdir $RUN" >> "$OUT" 2>&1
+> "${SSH[@]}" "mkdir -p /home/bruno/runs/c3_campagne_grid && mkdir $RUN" >> "$OUT" 2>&1
+< git -C repo fetch -q origin feat/c3-racine-registre || exit 12
+> git -C repo fetch -q origin feat/c3-campagne-grid || exit 12
+> "${SSH[@]}" "test -f /home/bruno/apps/kraken-trading-bot/$UNLOCK && test ! -e $RUN/repo/$UNLOCK \
+> && cp -p /home/bruno/apps/kraken-trading-bot/$UNLOCK $RUN/repo/$UNLOCK \
+> && cmp -s /home/bruno/apps/kraken-trading-bot/$UNLOCK $RUN/repo/$UNLOCK" >> "$OUT" 2>&1
+> step campaign_unlock_transporte_cmp $?
+> 
+< "${SSH[@]}" "tmux new -d -s $SESSION \"bash -lc 'bash $RUN/repo/$PILOT $SHA; echo \\\$? > $RUN/out/pilot_exit.txt'\"" \
+> "${SSH[@]}" "tmux new -d -s $SESSION \"bash -lc 'nice -n 10 bash $RUN/repo/$PILOT $SHA; echo \\\$? > $RUN/out/pilot_exit.txt'\"" \
+## results/c3_racine_registre/tests/wait.sh -> results/c3_campagne_grid/tests/wait.sh : lignes source changées=13, lignes reprise=11
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — attente de la fin du pilote de la phase conf, lancé par `bash` en arrière-plan
+< # depuis le dépôt (modèle : results/c3b_producteur/closure/tests/wait_gate.sh).
+< # usage : bash wait.sh conf <intervalle en s> <nombre maximal de sondes>
+< # Sonde : existence de out/pilot_exit.txt, nombre de lignes de status.txt et sa dernière ligne (des codes et des
+< # booléens seulement — status.txt ne porte rien d'autre). Ne lit rien d'autre, ne tue rien, ne relance rien.
+< # Sortie : wait_<phase>.out ; rc=0 si pilot_exit.txt est apparu, 1 sinon (délai dépassé : STOP, rien n'est tué).
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/wait.sh) — attente de la
+> # fin du pilote, lancé par `bash` en arrière-plan depuis le dépôt.
+> # usage : bash wait.sh <intervalle en s> <nombre maximal de sondes>   (plan § 1 : 120 120, plafond 4 h)
+> # Sonde : existence de out/pilot_exit.txt, nombre de lignes de status.txt et la CLÉ de sa dernière ligne — jamais sa
+> # valeur (plan § 1). Ne lit rien d'autre, ne tue rien, ne relance rien.
+> # Sortie : wait.out ; rc=0 si pilot_exit.txt est apparu, 1 sinon (délai dépassé : STOP, rien n'est tué).
+< PHASE=${1:?conf}
+< INTERVAL=${2:?intervalle}
+< MAX=${3:?sondes}
+< case "$PHASE" in conf) ;; *) echo "phase inconnue : $PHASE" >&2; exit 2 ;; esac
+> INTERVAL=${1:?intervalle}
+> MAX=${2:?sondes}
+< OUT=results/c3_racine_registre/tests/wait_${PHASE}.out
+> OUT=results/c3_campagne_grid/tests/wait.out
+< G=/home/bruno/runs/c3_racine_registre/$PHASE/out
+> G=/home/bruno/runs/c3_campagne_grid/campagne/out
+<   probe=$("${SSH[@]}" "if [ -f $G/pilot_exit.txt ]; then echo exit=\$(cat $G/pilot_exit.txt); else echo exit=pending; fi; echo lines=\$(wc -l < $G/status.txt); echo last=\$(tail -n 1 $G/status.txt)" 2>&1)
+>   probe=$("${SSH[@]}" "if [ -f $G/pilot_exit.txt ]; then echo exit=\$(cat $G/pilot_exit.txt); else echo exit=pending; fi; echo lines=\$(wc -l < $G/status.txt); echo last_key=\$(tail -n 1 $G/status.txt | cut -d= -f1)" 2
+## results/c3_racine_registre/tests/fetch.sh -> results/c3_campagne_grid/tests/fetch.sh : lignes source changées=15, lignes reprise=12
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — rapatriement des extraits de la phase conf, lancé par `bash` depuis le dépôt
+< # (modèle : results/c3b_producteur/closure/tests/fetch_gate.sh).
+< # usage : bash fetch.sh conf
+< # Ne rapatrie que les extraits de la liste close (attendu § 4 item 5, plan § 8) : status.txt, pilot_exit.txt,
+< # alembic_before.txt, alembic_after.txt, et pour la porte pytest_summary.txt. Les sorties des producteurs, de la chaîne,
+< # les journaux et les JUnit restent au serveur (archive), jamais ouverts.
+< # Sortie : fetch_<phase>.out (code par fichier, sha256 local == distant) ; rc=0 si tout est rapatrié à l'identique.
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/fetch.sh) — rapatriement
+> # des extraits du run, lancé par `bash` depuis le dépôt.
+> # usage : bash fetch.sh
+> # Ne rapatrie que la liste close (plan § 2, attendu § 9) : status.txt, pilot_exit.txt, alembic_before.txt,
+> # alembic_after.txt. Les sorties des producteurs et de la chaîne, les journaux et le registre restent au serveur,
+> # jamais ouverts. Avant S2, la règle 64 hex d'interdits.sh est balayée sur ces quatre fichiers (plan, A4).
+> # Sortie : fetch.out (code par fichier, sha256 local == distant : ce sont des fichiers du chantier, jamais des artefacts
+> # du chemin) ; rc=0 si tout est rapatrié à l'identique.
+< PHASE=${1:?conf}
+< case "$PHASE" in
+<   conf) DEST=results/c3_racine_registre/conformite/server
+<     FILES=(status.txt pilot_exit.txt alembic_before.txt alembic_after.txt) ;;
+<   *) echo "phase inconnue : $PHASE" >&2; exit 2 ;;
+< esac
+< OUT=results/c3_racine_registre/tests/fetch_${PHASE}.out
+> DEST=results/c3_campagne_grid/server
+> FILES=(status.txt pilot_exit.txt alembic_before.txt alembic_after.txt)
+> OUT=results/c3_campagne_grid/tests/fetch.out
+< G=/home/bruno/runs/c3_racine_registre/$PHASE/out
+> G=/home/bruno/runs/c3_campagne_grid/campagne/out
+## results/c3_racine_registre/tests/verify_conformite.sh -> results/c3_campagne_grid/tests/verify.sh : lignes source changées=7, lignes reprise=8
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — vérification de l'attendu de conformité sur les extraits rapatriés (conformite/server/ :
+< # status.txt, alembic_*.txt, pilot_exit.txt), par verify_attendu.py — prouvé avant son premier usage par
+< # tests/verify_adverse.sh (condition du GO). Lancé par `bash` depuis le dépôt.
+< # usage : bash verify_conformite.sh <S1, 40 hex>
+< # Sortie : conformite/server/verify_attendu.out (items tenus / écarts), puis rc= ; rc=0 ssi tous les items sont tenus.
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/verify_conformite.sh) —
+> # vérification de l'attendu sur les extraits rapatriés (server/ : status.txt, alembic_*.txt, pilot_exit.txt), par
+> # verify_attendu.py — prouvé avant son premier usage par tests/verify_adverse.sh. Lancé par `bash` depuis le dépôt.
+> # usage : bash verify.sh <S1, 40 hex>
+> # Sortie : server/verify_attendu.out (items tenus / écarts, triplet constaté, compté dérivé), puis rc= ; rc=0 ssi tous
+> # les items sont tenus.
+< OUT=results/c3_racine_registre/conformite/server/verify_attendu.out
+< python3 results/c3_racine_registre/conformite/server/verify_attendu.py --sha "$SHA" > "$OUT" 2>&1
+> OUT=results/c3_campagne_grid/server/verify_attendu.out
+> python3 results/c3_campagne_grid/server/verify_attendu.py --sha "$SHA" > "$OUT" 2>&1
+## results/c3_racine_registre/tests/archive.sh -> results/c3_campagne_grid/tests/archive.sh : lignes source changées=70, lignes reprise=55
+(réécrit pour ce chantier ; diff non recopié, relu en entier)
+## results/c3_racine_registre/tests/postflight.sh -> results/c3_campagne_grid/tests/postflight.sh : lignes source changées=27, lignes reprise=28
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — postflight du serveur après la phase conf,
+< # LECTURE SEULE, lancé par `bash` depuis le dépôt (plans/lot2.md L6, brief § 4).
+< # usage : bash postflight.sh <AAAAMMJJ conf> <HEAD du service relevé au preflight> <NRestarts du preflight>
+< # Relève : ~/runs/c3_racine_registre absent ; aucune session tmux `c3-racine-registre-*` ; l'archive de la
+< # conformité présente et `sha256sum -c --status` sur son .sha256 ; collector actif et NRestarts égal à celui du preflight ; HEAD du service
+< # égal à celui du preflight, 0 ligne sale ; alembic head inchangé (`c3bd1e7a0001 (head)`, depuis l'arbre du service,
+< # sans PYTHONPATH) ; CAMPAIGN_UNLOCK absent de l'arbre du service. Sortie : postflight.out ; rc=0 ssi tout tient.
+< # Écarts au postflight v2.2, déclarés : NRestarts comparé au preflight, alembic head relevé (brief § 4).
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/postflight.sh) —
+> # postflight du serveur après l'archive, LECTURE SEULE, lancé par `bash` depuis le dépôt (plans/plan.md § 4).
+> # usage : bash postflight.sh <AAAAMMJJ de l'archive> <HEAD du service relevé au preflight> <NRestarts du preflight>
+> # Relève : ~/runs/c3_campagne_grid absent ; aucune session tmux `c3-campagne-grid-*` ; l'archive présente, en lecture
+> # seule, sans repo/ ni .env, témoins présents (codes seulement : ni taille, ni compte, ni sha) ; collector actif et
+> # NRestarts égal à celui du preflight ; HEAD du service égal à celui du preflight, 0 ligne sale ; alembic head inchangé
+> # (`c3bd1e7a0001 (head)`, depuis l'arbre du service, sans PYTHONPATH) ; CAMPAIGN_UNLOCK de l'arbre du service présent,
+> # jamais touché (Bruno le supprime après le merge). JAMAIS le répertoire du registre de campagne : ni lecture, ni stat,
+> # ni sha, ni listing — la vérification des clés de racine et la sauvegarde sont la cérémonie de Bruno, après STOP 2.
+> # Sortie : postflight.out ; rc=0 ssi tout tient.
+< DCONF=${1:?date conf}
+> DARC=${1:?date de l archive}
+< OUT=results/c3_racine_registre/tests/postflight.out
+> OUT=results/c3_campagne_grid/tests/postflight.out
+<   ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$DCONF" <<'REMOTE'
+>   ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$DARC" <<'REMOTE'
+< if [ -e /home/bruno/runs/c3_racine_registre ]; then echo "runs_c3_racine_registre=PRESENT"; else echo "runs_c3_racine_registre=absent"; fi
+< if [ -e "$SERVICE/results/c3b_producteur/CAMPAIGN_UNLOCK" ]; then echo "campaign_unlock_service=PRESENT"; else echo "campaign_unlock_service=absent"; fi
+< n=$(tmux ls 2>/dev/null | grep -c '^c3-racine-registre-')
+> ARC=/home/bruno/archive/c3_campagne_grid_$1
+> if [ -e /home/bruno/runs/c3_campagne_grid ]; then echo "runs_c3_campagne_grid=PRESENT"; else echo "runs_c3_campagne_grid=absent"; fi
+> if [ -f "$SERVICE/results/c3b_producteur/CAMPAIGN_UNLOCK" ]; then echo "campaign_unlock_service=present"; else echo "campaign_unlock_service=ABSENT"; fi
+> n=$(tmux ls 2>/dev/null | grep -c '^c3-campagne-grid-')
+< for pair in "conf $1"; do
+<   set -- $pair
+<   ARC=/home/bruno/archive/c3_racine_registre_$1_$2
+<   if (cd "$ARC" 2>/dev/null && sha256sum -c --status "c3_racine_registre_$1_server_$2.tgz.sha256"); then
+<     echo "archive_$1=0"
+<   else
+<     echo "archive_$1=1"
+<   fi
+< done
+> if [ -f "$ARC/out/status.txt" ] && [ -f "$ARC/out/pilot_exit.txt" ]; then echo "archive_presente=0"; else echo "archive_presente=1"; fi
+> w=$(find "$ARC/out" -perm /222 2>/dev/null | wc -l | tr -d ' ')
+> if [ -d "$ARC/out" ] && [ "$w" = "0" ]; then echo "archive_lecture_seule=0"; else echo "archive_lecture_seule=1"; fi
+> f=$(find "$ARC" \( -name repo -o -name .env \) 2>/dev/null | wc -l | tr -d ' ')
+> if [ "$f" = "0" ]; then echo "archive_sans_repo_ni_env=0"; else echo "archive_sans_repo_ni_env=1"; fi
+< DIRTY=$(git -C "$SERVICE" status --porcelain --untracked-files=no | wc -l)
+> DIRTY=$(git -C "$SERVICE" status --porcelain --untracked-files=no | wc -l | tr -d ' ')
+< grep -qx "runs_c3_racine_registre=absent" "$OUT" || fail=1
+> grep -qx "runs_c3_campagne_grid=absent" "$OUT" || fail=1
+< grep -qx "campaign_unlock_service=absent" "$OUT" || fail=1
+< grep -qx "archive_conf=0" "$OUT" || fail=1
+> grep -qx "campaign_unlock_service=present" "$OUT" || fail=1
+> grep -qx "archive_presente=0" "$OUT" || fail=1
+> grep -qx "archive_lecture_seule=0" "$OUT" || fail=1
+> grep -qx "archive_sans_repo_ni_env=0" "$OUT" || fail=1
+## results/c3_racine_registre/tests/verify_adverse.sh -> results/c3_campagne_grid/tests/verify_adverse.sh : lignes source changées=50, lignes reprise=62
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — les vérificateurs sont prouvés avant de servir
+< # (règle agent 1) : verify_attendu.py décide « attendu tenu » ; un défaut chez lui laisserait passer une déviation.
+< # Écart déclaré à la source : la partie « porte » (verify_gate.sh, 15 cas) est retirée (porte non rejouée, L5).
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/verify_adverse.sh) —
+> # le vérificateur est prouvé avant de servir (règle agent 1) : verify_attendu.py décide « attendu tenu » ; un défaut
+> # chez lui laisserait passer une déviation, y compris un triplet « meilleur ».
+< # Sortie : verify_adverse.out, `<vérificateur> cas=<nom> rc=<n> attendu=<0|non0> items_en_ecart=<n>` ; rc=0 ssi chaque
+< # témoin rend 0 avec 0 item en écart, et chaque cas dévié rend autre chose que 0 avec EXACTEMENT un item en écart (la
+< # déviation mord pour sa raison, pas pour une copie ratée).
+> # Sortie : verify_adverse.out, `conf cas=<nom> rc=<n> attendu=<0|non0> items_en_ecart=<n>` ; rc=0 ssi le témoin rend 0
+> # avec 0 item en écart, et chaque cas dévié rend autre chose que 0 avec EXACTEMENT un item en écart (la déviation mord
+> # pour sa raison, pas pour une copie ratée).
+< OUT=results/c3_racine_registre/tests/verify_adverse.out
+< VERIFY_CONF=results/c3_racine_registre/conformite/server/verify_attendu.py
+> OUT=results/c3_campagne_grid/tests/verify_adverse.out
+> VERIFY=results/c3_campagne_grid/server/verify_attendu.py
+< DRYRUN_OUT="$T/dryrun.out" DRYRUN_KEEP="$T/keep" bash results/c3_racine_registre/tests/pilot_dryrun.sh
+> DRYRUN_OUT="$T/dryrun.out" DRYRUN_KEEP="$T/keep" bash results/c3_campagne_grid/tests/pilot_dryrun.sh
+< log "temoins_pilot_dryrun=$r"
+> log "temoin_pilot_dryrun=$r"
+< CONF_SHA=$SIM_SHA
+< CONF_PILOT=$SIM_PILOT_SHA
+< judge() {  # judge <vérificateur> <cas> <rc> <attendu : 0 | non0> <sortie du vérificateur>
+> judge() {  # judge <cas> <rc> <attendu : 0 | non0> <sortie du vérificateur>
+<   n=$(grep -c '^ÉCART' "$5")
+<   log "$1 cas=$2 rc=$3 attendu=$4 items_en_ecart=$n"
+<   if [ "$4" = "0" ] && { [ "$3" != "0" ] || [ "$n" != "0" ]; }; then fail=1; fi
+<   if [ "$4" = "non0" ] && { [ "$3" = "0" ] || [ "$n" != "1" ]; }; then fail=1; fi
+>   n=$(grep -c '^ÉCART' "$4")
+>   log "conf cas=$1 rc=$2 attendu=$3 items_en_ecart=$n"
+>   if [ "$3" = "0" ] && { [ "$2" != "0" ] || [ "$n" != "0" ]; }; then fail=1; fi
+>   if [ "$3" = "non0" ] && { [ "$2" = "0" ] || [ "$n" != "1" ]; }; then fail=1; fi
+< 
+< # --- conformité ------------------------------------------------------------------------------------------------------
+<   python3 "$VERIFY_CONF" --sha "$3" --dir "$D" --pilot-sha "$CONF_PILOT" > "$D/verify.txt" 2>&1
+<   judge conf "$1" "$?" "$2" "$D/verify.txt"
+>   python3 "$VERIFY" --sha "$3" --dir "$D" --pilot-sha "$SIM_PILOT_SHA" > "$D/verify.txt" 2>&1
+>   judge "$1" "$?" "$2" "$D/verify.txt"
+< conf temoin 0 "$CONF_SHA" -
+> S=$SIM_SHA
+> conf temoin 0 "$S" -
+> # item 1 — gardes
+< conf guard_refused non0 "$CONF_SHA" "sedi 's/^guard=0 /guard=REFUSED /' status.txt"
+< conf pilot_sha_autre non0 "$CONF_SHA" "sedi 's/^pilot_sha256=.*/pilot_sha256=deadbeef/' status.txt"
+< conf alembic_after_autre non0 "$CONF_SHA" "echo 'c3bd1e7a0002 (head)' >> alembic_after.txt"
+< conf service_nrestarts non0 "$CONF_SHA" "sedi 's/^\(service_after=.*\)NRestarts=0/\1NRestarts=1/' status.txt"
+< conf workers_2_a_4 non0 "$CONF_SHA" "sedi 's/^workers_2=1$/workers_2=4/' status.txt"
+< conf prefix_2_code_3 non0 "$CONF_SHA" "sedi 's/^prefix_2=0 /prefix_2=3 /' status.txt"
+< conf pre_select_3_code_2 non0 "$CONF_SHA" "sedi 's/^pre_select_3=0$/pre_select_3=2/' status.txt"
+< conf eval_1_forme_de_refus non0 "$CONF_SHA" \
+<   "sedi 's/^eval_1=0 event=evaluated /eval_1=0 event=refusal_form_written /' status.txt"
+< conf chain_steps_2_continuity_1 non0 "$CONF_SHA" \
+<   "sedi 's/^chain_steps_2=\(.*\)continuity:0$/chain_steps_2=\1continuity:1/' status.txt"
+< conf chain_verified_3_faux non0 "$CONF_SHA" "sedi 's/^chain_verified_3=true$/chain_verified_3=false/' status.txt"
+< conf violations_1_non_vides non0 "$CONF_SHA" \
+<   "sedi 's/^violations_empty_1=true$/violations_empty_1=false/' status.txt"
+< conf rejeu_2_non_vide non0 "$CONF_SHA" \
+<   "sedi 's/^replay_violations_empty_2=true$/replay_violations_empty_2=false/' status.txt"
+< conf interpreter_1 non0 "$CONF_SHA" "sedi 's/^interpreter_1=0$/interpreter_1=1/' status.txt"
+< conf eq3_run2_seul non0 "$CONF_SHA" \
+<   "sedi 's|^eq3 eval/evaluation.json=0$|eq3 eval/evaluation.json=1 r12=1 r13=0|' status.txt"
+< conf eq3_ligne_absente non0 "$CONF_SHA" "sedi '/^eq3 chain\/verdict.json=/d' status.txt"
+< conf compared_22 non0 "$CONF_SHA" \
+<   "sedi 's/^bit_equal_3of3=0 compared=23 /bit_equal_3of3=0 compared=22 /' status.txt"
+< conf listing_1 non0 "$CONF_SHA" "sedi 's/^listing_expected_3of3=0$/listing_expected_3of3=1/' status.txt"
+< conf cle_absente_chain_verified_2 non0 "$CONF_SHA" "sedi '/^chain_verified_2=/d' status.txt"
+< conf chain_stopped_present non0 "$CONF_SHA" "echo 'chain_stopped_1=continuity:1' >> status.txt"
+< conf campaign_unlock_apres non0 "$CONF_SHA" \
+<   "sedi 's/^campaign_unlock_after=absent$/campaign_unlock_after=present/' status.txt"
+< conf pilot_exit_1 non0 "$CONF_SHA" "echo 1 > pilot_exit.txt"
+> conf guard_refused non0 "$S" "sedi 's/^guard=0 /guard=REFUSED /' status.txt"
+> conf unlock_absent_a_la_garde non0 "$S" "sedi 's/campaign_unlock=present\$/campaign_unlock=absent/' status.txt"
+> conf pilot_sha_autre non0 "$S" "sedi 's/^pilot_sha256=.*/pilot_sha256=deadbeef/' status.txt"
+> # item 2 — base
+> conf alembic_after_autre non0 "$S" "echo 'c3bd1e7a0002 (head)' >> alembic_after.txt"
+> # item 3 — service
+> conf service_nrestarts non0 "$S" "sedi 's/^\(service_after=.*\)NRestarts=0/\1NRestarts=1/' status.txt"
+> conf unlock_absent_apres non0 "$S" "sedi 's/^campaign_unlock_after=present\$/campaign_unlock_after=absent/' status.txt"
+> # item 4 — préfixe
+> conf workers_4 non0 "$S" "sedi 's/^workers=3\$/workers=4/' status.txt"
+> conf prefix_code_3 non0 "$S" "sedi 's/^prefix=0 /prefix=3 /' status.txt"
+> # item 5 — chaîne 1-4 autonome, première inscription
+> conf pre_select_code_2 non0 "$S" "sedi 's/^pre_select=0\$/pre_select=2/' status.txt"
+> conf new_entry_pre_faux non0 "$S" "sedi 's/^registry_new_entry_pre=true\$/registry_new_entry_pre=false/' status.txt"
+> # item 6 — évaluation
+> conf eval_forme_de_refus non0 "$S" "sedi 's/^eval=0 event=evaluated /eval=0 event=refusal_form_written /' status.txt"
+> # item 7 — chaîne complète
+> conf chain_code_1 non0 "$S" "sedi 's/^chain=0 /chain=1 /' status.txt"
+> conf chain_steps_continuity_1 non0 "$S" "sedi 's/^chain_steps=\(.*\)continuity:0\$/chain_steps=\1continuity:1/' status.txt"
+> conf chain_verified_faux non0 "$S" "sedi 's/^chain_verified=true\$/chain_verified=false/' status.txt"
+> conf violations_non_vides non0 "$S" "sedi 's/^violations_empty=true\$/violations_empty=false/' status.txt"
+> conf rejeu_non_vide non0 "$S" "sedi 's/^replay_violations_empty=true\$/replay_violations_empty=false/' status.txt"
+> conf new_entry_chaine_vrai non0 "$S" \
+>   "sedi 's/^registry_new_entry_chain=false\$/registry_new_entry_chain=true/' status.txt"
+> conf issue_non_inscrite non0 "$S" "sedi 's/^issue_inscrite=true\$/issue_inscrite=false/' status.txt"
+> conf extract_1 non0 "$S" "sedi 's/^extract=0\$/extract=1/' status.txt"
+> conf chain_stopped_present non0 "$S" "echo 'chain_stopped=continuity:1' >> status.txt"
+> # item 8 — issue : tout autre triplet est un écart, « meilleur » compris
+> conf triplet_meilleur non0 "$S" "sedi 's/^issue=inconclusif\$/issue=validé/; s/^raison=P_PROVENANCE\$/raison=-/' status.txt"
+> conf raison_comptee non0 "$S" "sedi 's/^raison=P_PROVENANCE\$/raison=F_CANNOT_SEPARATE/' status.txt"
+> conf raison_conditionnelle non0 "$S" "sedi 's/^raison=P_PROVENANCE\$/raison=A_NO_ADMISSIBLE_CANDIDATE/' status.txt"
+> conf issue_hors_liste non0 "$S" "sedi 's/^issue=inconclusif\$/issue=hors_liste/' status.txt"
+> conf selection_non_descriptive non0 "$S" \
+>   "sedi 's/^selection_descriptive=true\$/selection_descriptive=false/' status.txt"
+> conf cle_raison_absente non0 "$S" "sedi '/^raison=/d' status.txt"
+> # item 9 — interpréteur
+> conf interpreter_1 non0 "$S" "sedi 's/^interpreter=0\$/interpreter=1/' status.txt"
+> # item 10 — aucun arrêt
+> conf halted_at_eval non0 "$S" "sedi 's/^halted_at=-\$/halted_at=eval/' status.txt"
+> conf etape_not_run non0 "$S" "echo 'etape_simulee=NOT_RUN' >> status.txt"
+> # item 11 — code du pilote
+> conf pilot_exit_1 non0 "$S" "echo 1 > pilot_exit.txt"
+## results/c3_racine_registre/tests/pilot_dryrun.sh -> results/c3_campagne_grid/tests/pilot_dryrun.sh : lignes source changées=87, lignes reprise=151
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — le pilote de conformité exercé en local dans un
+< # monde simulé, sans base, sans serveur, avant S1 (plans/lot2.md L6) : une panne du pilote se voit ici, pas sur le
+< # serveur. Écart déclaré à la source : les deux simulations du pilote de la porte sont retirées (porte non rejouée, L5).
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/pilot_dryrun.sh) — le
+> # pilote du run compté exercé en local dans un monde simulé, sans base, sans serveur, sans registre réel, avant S1
+> # (plans/plan.md § 5) : une panne du pilote se voit ici, pas sur le serveur.
+< #    le clone seulement ; dans la copie du pilote, TROIS lignes changent (SERVICE, PY, RUN : chemins du monde simulé),
+< #    comptées ;
+> #    le clone seulement ; dans la copie du pilote, SIX lignes changent, comptées : SERVICE, PY, RUN (chemins du monde
+> #    simulé), les deux lignes `--registry` (un registre simulé du monde, jamais le registre de campagne, dont le chemin
+> #    est construit ici), et la ligne UNLOCK= qui pointe un MARQUEUR DE SIMULATION — aucun fichier nommé
+> #    CAMPAIGN_UNLOCK n'est créé, même temporairement (brief § 3) ;
+< #    pour de vrai), et les sept scripts, qui écrivent des sorties déterministes EMBARQUANT LES CHEMINS DE LEURS ENTRÉES
+< #    comme le vrai code (c3_anchor.py:309, c3_entry.py:778,797 — la parade K3 est donc éprouvée) et des provenances à
+< #    durée aléatoire (les exclusions K4 sont donc éprouvées) ;
+> #    pour de vrai), et les sept scripts ; l'ancrage simulé inscrit au registre simulé (new_entry vrai s'il est neuf),
+> #    la chaîne simulée publie la chaîne § L.2 sur stdout, la ligne « issue inscrite » de forme fixe, et inscrit l'issue
+> #    au registre simulé ;
+< # Simulations : conforme (pilote 0) ; `eval_run2` (evaluation.json diffère au seul run 2 : pilote 1, eq3 r12=1 r13=0) ;
+< # `chain_violation` (chaîne en 1 avec une violation de rejeu : pilote 1) ; garde de SHA (pilote 2).
+> # Simulations : conforme (0) ; triplet « meilleur » (1) ; forme de refus à l'évaluation (1, chaîne NOT_RUN, registre
+> # simulé sans verdict) ; échec du préfixe (1, ancrage NOT_RUN, registre simulé jamais créé) ; violation de chaîne (1) ;
+> # variante déjà au registre, new_entry faux (1) ; SHA faux (2) ; sans marqueur (2).
+< # rc=0 ssi les quatre simulations rendent leur code attendu et la conforme porte ses marqueurs.
+> # rc=0 ssi les huit simulations rendent leur code attendu et portent leurs marqueurs.
+< OUT=${DRYRUN_OUT:-results/c3_racine_registre/tests/pilot_dryrun.out}
+< SELF=results/c3_racine_registre/conformite/server/run_conformite.sh
+< MANIFEST=results/c3_racine_registre/conformite/manifest.json
+> OUT=${DRYRUN_OUT:-results/c3_campagne_grid/tests/pilot_dryrun.out}
+> SELF=results/c3_campagne_grid/server/run_campagne.sh
+> MANIFEST=results/c3_campagne_grid/manifest.json
+> C3=$(printf 'c%s' 3)
+> REG_FULL="/home/bruno/${C3}/regis$(printf 'try')/variants.json"
+> sys.stdout.reconfigure(encoding="utf-8")
+< state = os.environ["SIM_STATE"]
+< def count(name):
+<     path = os.path.join(state, name)
+<     n = int(open(path).read()) + 1 if os.path.exists(path) else 1
+<     open(path, "w").write(str(n))
+<     return n
+> def load(path):
+>     with open(path, encoding="utf-8") as handle:
+>         return json.load(handle)
+< elif args[:2] == ["-m", "pytest"] and "--version" in args:
+<     print("pytest 9.0.2")
+< elif args[:2] == ["-m", "pytest"]:
+<     junit = next(a.split("=", 1)[1] for a in args if a.startswith("--junitxml="))
+<     test = args[-1]
+<     skipped = 1 if (dev == "gate_skip" and test.endswith("[combo7]")) else 0
+<     with open(junit, "w", encoding="utf-8") as handle:
+<         handle.write(f'<testsuites><testsuite tests="1" failures="0" errors="0" skipped="{skipped}"/></testsuites>\n')
+<     if skipped:
+<         print("1 skipped in 0.10s")
+<     else:
+<         print(f"1.23s call     {test}")
+<         print("1 passed in 1.30s")
+>         if dev == "prefix_echec":
+>             print("2026-10-01T00:00:00Z [error    ] job_failed                     identity=x")
+>             sys.exit(3)
+<         print("2026-09-29T00:00:00Z [info     ] job_done                       identity=x")
+>         print("2026-10-01T00:00:00Z [info     ] job_done                       identity=x")
+<         dump(opt("--registry"), {"variants": {"k": {"family": "sim"}}})
+<         dump(opt("--output"), {"sim": "anchor", "registry": {"path": opt("--registry")}})
+>         reg = opt("--registry")
+>         registry = load(reg) if os.path.exists(reg) else {"salt": "sim", "variants": {}}
+>         new = "k" not in registry["variants"]
+>         if new:
+>             registry["variants"]["k"] = {"family": "sim"}
+>             dump(reg, registry)
+>         dump(opt("--output"), {"sim": "anchor", "registry": {"path": reg, "new_entry": new}})
+>         print(f"variante k (sim) — {'nouvelle au registre' if new else 'déjà au registre, idempotent'}")
+<         open(opt("--markdown"), "w").write(f"entry {opt('--observations')}\n")
+>         with open(opt("--markdown"), "w", encoding="utf-8") as handle:
+>             handle.write(f"entry {opt('--observations')}\n")
+<         open(opt("--markdown"), "w").write(f"selection {opt('--coverage')}\n")
+>         with open(opt("--markdown"), "w", encoding="utf-8") as handle:
+>             handle.write(f"selection {opt('--coverage')}\n")
+<         n = count("evaluate")
+<         drift = n if (dev == "eval_run2" and n == 2) else 0
+<         dump(f"{out}/evaluation.json", {"sim": "evaluation", "selection": opt("--selection"), "drift": drift})
+>         dump(f"{out}/evaluation.json", {"sim": "evaluation", "selection": opt("--selection")})
+<         print("2026-09-29T00:00:00Z [info     ] evaluated                      source=selection")
+>         event = "refusal_form_written" if dev == "forme_de_refus" else "evaluated"
+>         print(f"2026-10-01T00:00:00Z [info     ] {event:<30} source=selection")
+<         steps = [{"name": s, "exit_code": 0} for s in ("anchor", "entry", "benchmark", "select", "continuity")]
+<         for name in ("anchor", "entry", "benchmark", "selection", "continuity"):
+>         reg = opt("--registry")
+>         registry = load(reg)
+>         dump(f"{out}/anchor.json", {"sim": "chain-anchor", "registry": {"path": reg, "new_entry": "k" not in registry["variants"]}})
+>         for name in ("entry", "benchmark", "selection", "continuity"):
+<             open(f"{out}/{name}.md", "w").write(f"chain {name}\n")
+>             with open(f"{out}/{name}.md", "w", encoding="utf-8") as handle:
+>                 handle.write(f"chain {name}\n")
+>         steps = [{"name": s, "exit_code": 0} for s in ("anchor", "entry", "benchmark", "select", "continuity")]
+<         registry = json.load(open(opt("--registry")))
+<         registry["variants"]["k"]["verdict"] = {"issue": "sim"}
+<         dump(opt("--registry"), registry)
+<         sys.exit(1 if bad else 0)
+>         if bad:
+>             print("ARTEFACT INVALIDE — aucun verdict, aucune chaîne citable")
+>             print("VIOLATION rejeu {21:dd} : simulé", file=sys.stderr)
+>             sys.exit(1)
+>         issue, reason = ("validé", "-") if dev == "triplet_meilleur" else ("inconclusif", "P_PROVENANCE")
+>         print(
+>             f"C3_{opt('--campaign')} | verdict={issue} | raison={reason} | selection=0123456789abcdef"
+>             " | statut_selection=SÉLECTION_DESCRIPTIVE | continuite=VÉRIFIÉE | variante=0123456789abcdef"
+>             " | provenance=contaminated | protocole=d030ab239de317f6 | observations=0123456789abcdef"
+>         )
+>         print("")
+>         print(f"written {out}/verdict.json sha256 " + "0" * 64)
+>         registry["variants"]["k"]["verdict"] = {"issue": issue, "raison": reason, "compte": False}
+>         dump(reg, registry)
+>         print(f"written {reg} (issue inscrite, § A.6)")
+< # simulate <nom> <déviation> <sha à passer : HEAD | faux> [pilote] [phase] -> code du pilote ; monde neuf à chaque fois
+> # simulate <nom> <déviation> <sha : HEAD | faux> <marqueur : oui | non> [variante déjà au registre : oui | non]
+> # -> code du pilote ; monde neuf à chaque fois
+<   local name=$1 deviation=$2 which=$3 pilot=${4:-$SELF} phase=${5:-conf}
+<   local run=$T/$name/runs/c3_racine_registre/$phase
+<   mkdir -p "$run/out" "$T/$name/state"
+>   local name=$1 deviation=$2 which=$3 marker=$4 prereg=${5:-non}
+>   local run=$T/$name/runs/c3_campagne_grid/campagne
+>   local reg=$T/$name/registre_simule/variants.json
+>   mkdir -p "$run/out" "$(dirname "$reg")"
+<   mkdir -p "$(dirname "$run/repo/$MANIFEST")" "$(dirname "$run/repo/$pilot")"
+>   mkdir -p "$(dirname "$run/repo/$MANIFEST")" "$(dirname "$run/repo/$SELF")"
+<     -e "s|^RUN=/home/bruno/runs/c3_racine_registre/$phase\$|RUN=$run|" "$pilot" > "$run/repo/$pilot"
+<   CHANGED=$(diff "$pilot" "$run/repo/$pilot" | grep -c '^>')
+<   git -C "$run/repo" add "$MANIFEST" "$pilot"
+>     -e "s|^RUN=/home/bruno/runs/c3_campagne_grid/campagne\$|RUN=$run|" \
+>     -e "s|^UNLOCK=results/c3b_producteur/CAMPAIGN_UNLOCK\$|UNLOCK=results/c3b_producteur/SIM_MARQUEUR_UNLOCK|" \
+>     -e "s|--registry ${REG_FULL} |--registry ${reg} |" "$SELF" > "$run/repo/$SELF"
+>   CHANGED=$(diff "$SELF" "$run/repo/$SELF" | grep -c '^>')
+>   git -C "$run/repo" add "$MANIFEST" "$SELF"
+>   if [ "$marker" = oui ]; then : > "$run/repo/results/c3b_producteur/SIM_MARQUEUR_UNLOCK"; fi
+>   if [ "$prereg" = oui ]; then printf '{"salt": "sim", "variants": {"k": {"family": "sim"}}}\n' > "$reg"; fi
+<   (cd "$run/repo" && PATH="$T/bin:$PATH" SIM_DEVIATION="$deviation" SIM_STATE="$T/$name/state" \
+<     bash "$run/repo/$pilot" "$sha" > "$T/$name/stdout.txt" 2>&1)
+>   (cd "$run/repo" && PATH="$T/bin:$PATH" SIM_DEVIATION="$deviation" \
+>     bash "$run/repo/$SELF" "$sha" > "$T/$name/stdout.txt" 2>&1)
+>   SIM_REG=$reg
+< status_line() { grep -E "^$2" "$1/out/status.txt" 2> /dev/null | head -n 1; }
+> st() { grep -E "^$2=" "$1/out/status.txt" 2> /dev/null | head -n 1; }   # la ligne de status d'une clé
+> has() { grep -qxF -- "$2" "$1/out/status.txt" || { fail=1; log "marqueur_absent $2"; }; }   # marqueur exigé
+> has_re() { grep -qE -- "$2" "$1/out/status.txt" || { fail=1; log "marqueur_absent $2"; }; }  # marqueur exigé (motif)
+> reg_state() {  # absent | sans_verdict | avec_verdict
+>   if [ ! -f "$1" ]; then echo absent; return; fi
+>   python3 -c 'import json, sys; d = json.load(open(sys.argv[1])); print("avec_verdict" if "verdict" in d["variants"]["k"] else "sans_verdict")' "$1"
+> }
+> expect_rc() {  # expect_rc <nom> <code obtenu> <code attendu>
+>   log "sim_${1}_exit=$2 attendu=$3"
+>   [ "$2" = "$3" ] || fail=1
+> }
+< simulate conforme "" HEAD; r=$?
+< log "pilote_lignes_changees=$CHANGED"
+< [ "$CHANGED" = "3" ] || fail=1
+< lines=$(wc -l < "$SIM_RUN/out/status.txt" | tr -d ' ')
+< log "sim_conforme_exit=$r lignes_status=$lines"
+< log "sim_conforme_$(status_line "$SIM_RUN" 'bit_equal_3of3=')"
+< log "sim_conforme_$(status_line "$SIM_RUN" 'listing_expected_3of3=')"
+< [ "$r" = "0" ] || fail=1
+< grep -qx "bit_equal_3of3=0 compared=23 differing=0 absent=0" "$SIM_RUN/out/status.txt" || fail=1
+> simulate conforme "" HEAD oui; r=$?
+> log "pilote_lignes_changees=$CHANGED (attendu 6 : SERVICE, PY, RUN, UNLOCK, les deux --registry)"
+> [ "$CHANGED" = "6" ] || fail=1
+> expect_rc conforme "$r" 0
+> for k in halted_at issue raison selection_descriptive registry_new_entry_pre registry_new_entry_chain issue_inscrite \
+>   chain_verified chain_steps eval prefix; do
+>   log "sim_conforme_$(st "$SIM_RUN" "$k" | sed 's/ at=.*//')"
+> done
+> for m in "halted_at=-" "issue=inconclusif" "raison=P_PROVENANCE" "selection_descriptive=true" \
+>   "registry_new_entry_pre=true" "registry_new_entry_chain=false" "issue_inscrite=true" "chain_verified=true" \
+>   "chain_steps=anchor:0,entry:0,benchmark:0,select:0,continuity:0" "campaign_unlock_after=present"; do
+>   has "$SIM_RUN" "$m"
+> done
+> s=$(reg_state "$SIM_REG"); log "sim_conforme_registre_simule=$s"; [ "$s" = avec_verdict ] || { fail=1; log "registre_simule_inattendu conforme"; }
+< # 2. evaluation.json différent au seul run 2
+< simulate eval_run2 eval_run2 HEAD; r=$?
+< log "sim_eval_run2_exit=$r"
+< log "sim_eval_run2_$(status_line "$SIM_RUN" 'eq3 eval/evaluation.json=')"
+< [ "$r" = "1" ] || fail=1
+< grep -qx "eq3 eval/evaluation.json=1 r12=1 r13=0" "$SIM_RUN/out/status.txt" || fail=1
+> # 2. triplet « meilleur » : un écart, jamais une bonne surprise
+> simulate triplet_meilleur triplet_meilleur HEAD oui; r=$?
+> expect_rc triplet_meilleur "$r" 1
+> for k in issue raison halted_at; do log "sim_triplet_meilleur_$(st "$SIM_RUN" "$k")"; done
+> has "$SIM_RUN" "issue=validé"; has "$SIM_RUN" "raison=-"; has "$SIM_RUN" "halted_at=extract"
+< # 3. chaîne en 1 avec une violation de rejeu
+< simulate chain_violation chain_violation HEAD; r=$?
+< log "sim_chain_violation_exit=$r"
+< log "sim_chain_violation_$(status_line "$SIM_RUN" 'chain_1=')"
+< log "sim_chain_violation_$(status_line "$SIM_RUN" 'replay_violations_empty_1=')"
+< [ "$r" = "1" ] || fail=1
+< grep -qx "replay_violations_empty_1=false" "$SIM_RUN/out/status.txt" || fail=1
+> # 3. forme de refus à l'évaluation : arrêt avant la chaîne, aucune issue inscrite
+> simulate forme_de_refus forme_de_refus HEAD oui; r=$?
+> expect_rc forme_de_refus "$r" 1
+> for k in eval chain halted_at; do log "sim_forme_de_refus_$(st "$SIM_RUN" "$k" | sed 's/ at=.*//')"; done
+> has "$SIM_RUN" "chain=NOT_RUN"; has "$SIM_RUN" "halted_at=eval"
+> has_re "$SIM_RUN" '^eval=0 event=refusal_form_written '
+> s=$(reg_state "$SIM_REG"); log "sim_forme_de_refus_registre_simule=$s"; [ "$s" = sans_verdict ] || { fail=1; log "registre_simule_inattendu forme_de_refus"; }
+< # 4. garde : SHA passé ≠ HEAD
+< simulate guard_head "" faux; r=$?
+< log "sim_guard_head_exit=$r"
+< log "sim_guard_head_$(status_line "$SIM_RUN" 'guard=' | cut -d' ' -f1)"
+< [ "$r" = "2" ] || fail=1
+> # 4. échec du préfixe : l'ancrage ne tourne pas, le registre simulé n'est jamais créé
+> simulate prefix_echec prefix_echec HEAD oui; r=$?
+> expect_rc prefix_echec "$r" 1
+> for k in prefix pre_anchor halted_at; do log "sim_prefix_echec_$(st "$SIM_RUN" "$k" | sed 's/ at=.*//')"; done
+> has "$SIM_RUN" "pre_anchor=NOT_RUN"; has "$SIM_RUN" "halted_at=prefix"
+> has_re "$SIM_RUN" '^prefix=3 event=job_failed '
+> s=$(reg_state "$SIM_REG"); log "sim_prefix_echec_registre_simule=$s"; [ "$s" = absent ] || { fail=1; log "registre_simule_inattendu prefix_echec"; }
+> # 5. violation de chaîne
+> simulate chain_violation chain_violation HEAD oui; r=$?
+> expect_rc chain_violation "$r" 1
+> for k in chain chain_verified replay_violations_empty issue halted_at; do
+>   log "sim_chain_violation_$(st "$SIM_RUN" "$k" | sed 's/ at=.*//')"
+> done
+> has "$SIM_RUN" "chain_verified=false"; has "$SIM_RUN" "issue=absent"; has "$SIM_RUN" "halted_at=chain"
+> 
+> # 6. variante déjà au registre : new_entry faux à l'ancrage autonome, arrêt aussitôt
+> simulate new_entry_faux "" HEAD oui oui; r=$?
+> expect_rc new_entry_faux "$r" 1
+> for k in registry_new_entry_pre pre_entry halted_at; do log "sim_new_entry_faux_$(st "$SIM_RUN" "$k")"; done
+> has "$SIM_RUN" "registry_new_entry_pre=false"; has "$SIM_RUN" "pre_entry=NOT_RUN"
+> has "$SIM_RUN" "halted_at=registry_new_entry_pre"
+> 
+> # 7. garde : SHA passé ≠ HEAD
+> simulate guard_head "" faux oui; r=$?
+> expect_rc guard_head "$r" 2
+> log "sim_guard_head_$(st "$SIM_RUN" guard | cut -d' ' -f1)"
+> 
+> # 8. garde : marqueur de simulation (rôle de CAMPAIGN_UNLOCK) absent du clone
+> simulate sans_marqueur "" HEAD non; r=$?
+> expect_rc sans_marqueur "$r" 2
+> log "sim_sans_marqueur_$(st "$SIM_RUN" guard)"
+> has "$SIM_RUN" "guard=REFUSED campaign_unlock_absent"
+> 
+## results/c3_racine_registre/tests/events.sh -> results/c3_campagne_grid/tests/events.sh : lignes source changées=4, lignes reprise=4
+< # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — la liste close des événements d'erreur des producteurs, recopiée dans le pilote de
+< # conformité (variable EVENTS), est prouvée égale à celle que le code nomme (results/c3_outillage_v2_2/plans/lot3.md § 5).
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/events.sh) — la liste close des événements d'erreur des producteurs, recopiée dans le pilote de
+> # campagne (variable EVENTS), est prouvée égale à celle que le code nomme (results/c3_outillage_v2_2/plans/lot3.md § 5).
+< OUT=results/c3_racine_registre/tests/events.out
+< PILOT=results/c3_racine_registre/conformite/server/run_conformite.sh
+> OUT=results/c3_campagne_grid/tests/events.out
+> PILOT=results/c3_campagne_grid/server/run_campagne.sh
+## results/c3_racine_registre/tests/manifest_check.sh -> results/c3_campagne_grid/tests/manifest_check.sh : lignes source changées=62, lignes reprise=102
+(réécrit pour ce chantier ; diff non recopié, relu en entier)
+## results/c3_racine_registre/tests/interdits_lot2.sh -> results/c3_campagne_grid/tests/interdits.sh : lignes source changées=70, lignes reprise=99
+< # C3 racine du registre, lot 2 — interdits du brief (§ 4, § 6), du runbook (§ 4) et du plan du lot 2 (plans/lot2.md),
+< # lancé par `bash` AVANT chaque commit (fichiers indexés) et au tip. Repris de
+< # results/c3_outillage_v2_3/tests/interdits_lot2.sh, avec les contrôles du lot 1 de ce chantier (tests/interdits.sh,
+< # qui reste tel quel) ; reprise comptée dans reprise_lot2.out.
+< # Usage : bash interdits_lot2.sh <étiquette>. Sortie : interdits_lot2_<étiquette>.out. rc=0 ssi :
+< #  1. chemins gelés contre 313eb00 (base du chantier) : intacts au commit, à l'index, dans l'arbre, aucun non suivi ;
+< #  2. le lot 2 n'écrit aucun code : diff vide contre 56c65aa (tip du lot 1) sur le code, les tests, la configuration,
+< #     les docs gelées, les répertoires clos et le livrable du lot 1 ;
+< #  3. le protocole est gelé : sha256 recalculé = dernière ligne `**sha256 vX.Y :**` de l'Adoption du paquet v2.3 ;
+< #  4. liste blanche du lot 2 : tout fichier changé depuis 56c65aa est sous results/c3_racine_registre/ ou est
+< #     docs/RESEARCH_LOG.md ;
+< #  5. aucun artefact du chemin sélection sous results/c3_racine_registre/ (`conformite/manifest.json` excepté par son
+< #     nom exact), CAMPAIGN_UNLOCK absent (arbre et HEAD) ;
+< #  6. règle 64 hex du lot 2 (plans/lot2.md § 2) : toute empreinte de 64 hex ajoutée depuis 313eb00 est une empreinte du
+< #     protocole (table d'Adoption), le sha256 d'un fichier du chantier (results/c3_racine_registre/**, suivi ou non,
+< #     skills/registry.md, le brief), celui du manifeste v2.3 comparé, ou le sha d'une archive consigné dans un
+< #     `*.tgz.sha256` du chantier — jamais le sha d'un artefact du chemin ;
+< #  7. aucun script ni vérificateur du chantier ne nomme le répertoire de la dette 23 (ce fichier-ci excepté) ;
+< #  8. runbook § 4, brief § 6 : aucun script ni vérificateur du chantier ne nomme le chemin du registre de campagne
+< #     (motifs construits ici, ce fichier-ci et tests/interdits.sh exceptés) ; ce répertoire n'existe pas sous le $HOME
+< #     local.
+> # Première campagne C3 comptée, famille grid-atr-v4 — interdits du brief (§ 3), du runbook (skills/registry.md § 4) et
+> # du plan (plans/plan.md § 5), lancé par `bash` AVANT chaque commit (fichiers indexés) et au tip. Repris de
+> # results/c3_racine_registre/tests/interdits_lot2.sh ; reprise comptée dans reprise.out.
+> # Usage : bash interdits.sh <étiquette>. Sortie : interdits_<étiquette>.out. rc=0 ssi :
+> #  1. chemins gelés contre 235461e (base du chantier) : intacts au commit, à l'index, dans l'arbre, aucun non suivi —
+> #     sauf, sous agent/, le brief et le brouillon du manifeste, non suivis par décision (plan § 5) ;
+> #  2. le protocole est gelé : sha256 recalculé = dernière ligne `**sha256 vX.Y :**` de l'Adoption du paquet v2.3 ;
+> #  3. liste blanche : tout fichier changé depuis 235461e est sous results/c3_campagne_grid/ ou est docs/RESEARCH_LOG.md ;
+> #     le brief et le brouillon ne sont ni suivis ni indexés ;
+> #  4. docs/RESEARCH_LOG.md en ajout seul : aucune ligne retirée ni modifiée depuis 235461e (commits, index, arbre) ;
+> #  5. aucun artefact du chemin sélection sous results/c3_campagne_grid/ (`manifest.json` à la racine du chantier
+> #     excepté par son nom exact), aucune archive ni empreinte d'archive (`.tgz`, `.tgz.sha256`) ; CAMPAIGN_UNLOCK absent
+> #     en local (arbre et HEAD) ;
+> #  6. règle 64 hex : toute empreinte de 64 hex ajoutée depuis 235461e (chaque commit, l'arbre, les non suivis) est une
+> #     empreinte du protocole (table d'Adoption), le sha256 d'un fichier du chantier (results/c3_campagne_grid/**, suivi
+> #     ou non) ou le sha256 du manifeste gelé — jamais celui d'un artefact du chemin ni d'une archive ; une sortie qui
+> #     porterait autre chose est filtrée à la source, la règle n'est jamais élargie (plan, A4) ;
+> #  7. aucun script ni vérificateur du chantier ne nomme le répertoire de la dette 23 (ce fichier et son adverse
+> #     exceptés : le mot y est construit) ;
+> #  8. registre de campagne : dans les scripts et vérificateurs du chantier, son chemin n'apparaît que sur les deux
+> #     lignes `--registry` du pilote, chacune égale au chemin construit ici, une seule fois par ligne (contrôle
+> #     mécanique ; la relecture du STOP 1 au caractère près reste la parade, A2) ; tant que le pilote n'existe pas, zéro
+> #     occurrence ; le répertoire n'existe pas sous le $HOME local.
+< BASE=313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+< LOT1=56c65aaf8d14e6c70a4dcc66f321a83bb785d817
+< CH=results/c3_racine_registre
+> BASE=235461e8a4beac42ecb57cc75ab13e8d88dfac14
+> CH=results/c3_campagne_grid
+< OUT="$DIR/interdits_lot2_${LABEL}.out"
+> OUT="$DIR/interdits_${LABEL}.out"
+< BRIEF=agent/AGENT_C3_RACINE_REGISTRE.md
+< RUNBOOK=skills/registry.md
+< V23_MANIFEST=results/c3_outillage_v2_3/conformite/manifest.json
+> BRIEF=agent/AGENT_C3_CAMPAGNE_GRID.md
+> DRAFT=agent/manifest_campagne_draft.json
+> PILOT=$CH/server/run_campagne.sh
+> MANIFEST_SHA=d422076b09292d8a…
+<   echo "# interdits_lot2 — $LABEL — $(date -u +%FT%TZ)"
+<   echo "# HEAD $(git rev-parse HEAD) branche $(git branch --show-current) ; base $BASE ; lot 1 $LOT1"
+>   echo "# interdits — $LABEL — $(date -u +%FT%TZ)"
+>   echo "# HEAD $(git rev-parse HEAD) branche $(git branch --show-current) ; base $BASE"
+> untracked_except() {  # fichiers non suivis sous <chemin>, hors le brief et le brouillon (non suivis par décision)
+>   git ls-files --others --exclude-standard -- "$1" | grep -vxF -e "$BRIEF" -e "$DRAFT"
+> }
+<     u=$(git ls-files --others --exclude-standard -- "$p" | wc -l | tr -d ' ')
+>     u=$(untracked_except "$p" | wc -l | tr -d ' ')
+< # 1. chemins gelés contre la base du chantier
+< frozen gele_base "$BASE" src config pyproject.toml poetry.lock .github scripts/backtest.py scripts/run_p6_backtests.py \
+<   scripts/run_p7_grid_search.py scripts/audit/_common.py scripts/audit/rejeu_common.py scripts/audit/c3b_common.py \
+<   scripts/audit/c3b_prefix.py scripts/audit/c3b_evaluate.py scripts/audit/c3_common.py scripts/audit/c3_verdict.py \
+<   scripts/audit/c3_entry.py scripts/audit/c3_benchmark.py scripts/audit/c3_select.py scripts/audit/c3_continuity.py \
+<   docs/protocole_c3.md docs/amendements_c3_v2.1.md docs/amendements_c3_v2.2.md docs/amendements_c3_v2.3.md \
+<   docs/CONTRAINTES_POST_B4.md CLAUDE.md results/c3_v2_2 results/c3b_producteur results/c3_outillage_v2_2 \
+<   results/c3_v2_3_gel results/c3_outillage_v2_3
+> # 1. chemins gelés contre la base du chantier (brief § 3 : diff vide contre 235461e)
+> frozen gele "$BASE" src scripts tests config pyproject.toml poetry.lock .github skills agent CLAUDE.md PROJECT_CONTEXT.md \
+>   ROADMAP.md results/INDEX.md docs/CODE_MAP.md docs/protocole_c3.md docs/amendements_c3_v2.1.md \
+>   docs/amendements_c3_v2.2.md docs/amendements_c3_v2.3.md docs/CONTRAINTES_POST_B4.md docs/rejeu_grid_prespec.md \
+>   results/rejeu_grid_report.md results/c3_racine_registre results/c3_outillage_v2_3 results/c3_v2_3_gel \
+>   results/c3_outillage_v2_2 results/c3_v2_2 results/c3b_producteur
+< # 2. le lot 2 n'écrit aucun code, ne touche aucune doc gelée ni le livrable clos du lot 1
+< frozen gele_lot2 "$LOT1" scripts tests src config pyproject.toml poetry.lock .github agent skills CLAUDE.md \
+<   PROJECT_CONTEXT.md results/INDEX.md docs/CODE_MAP.md docs/protocole_c3.md docs/amendements_c3_v2.1.md \
+<   docs/amendements_c3_v2.2.md docs/amendements_c3_v2.3.md docs/CONTRAINTES_POST_B4.md results/c3_v2_2 \
+<   results/c3b_producteur results/c3_outillage_v2_2 results/c3_v2_3_gel results/c3_outillage_v2_3 "$CH/lot1" \
+<   "$CH/plans/plan.md" "$CH/mutants.log"
+< 
+< # 3. protocole gelé
+> # 2. protocole gelé
+< # 4. liste blanche du lot 2
+< ALLOW='^(results/c3_racine_registre/.+|docs/RESEARCH_LOG\.md)$'
+< CHANGED=$( { git diff --name-only "$LOT1" HEAD; git diff --cached --name-only "$LOT1"; git diff --name-only "$LOT1";
+<   git ls-files --others --exclude-standard; } | LC_ALL=C sort -u)
+< echo "## fichiers changés depuis le lot 1 (HEAD ∪ index ∪ arbre ∪ non suivis)" >> "$OUT"
+> # 3. liste blanche ; le brief et le brouillon jamais suivis ni indexés
+> ALLOW='^(results/c3_campagne_grid/.+|docs/RESEARCH_LOG\.md)$'
+> CHANGED=$( { git diff --name-only "$BASE" HEAD; git diff --cached --name-only "$BASE"; git diff --name-only "$BASE";
+>   untracked_except .; } | LC_ALL=C sort -u)
+> echo "## fichiers changés depuis la base (HEAD ∪ index ∪ arbre ∪ non suivis, brief et brouillon exceptés)" >> "$OUT"
+> tracked=0
+> for f in "$BRIEF" "$DRAFT"; do
+>   if git ls-files --error-unmatch -- "$f" > /dev/null 2>&1; then echo "suivi_interdit $f" >> "$OUT"; tracked=1; fi
+> done
+> echo "brief_et_brouillon_non_suivis=$tracked" >> "$OUT"
+> [ "$tracked" = "0" ] || rc=1
+< # 5. chemin sélection
+< ARTEFACT='(^|/)((variants|evaluation[a-z_]*|benchmark[a-z_]*|candles[a-z_]*|selection|verdict|continuity|anchor|entry|observations|coverage|prefix_run|manifest[a-z_]*)\.(json|md)|[^/]*\.tgz)$'
+> # 4. le journal en ajout seul (git diff --numstat : colonne des lignes retirées, commits, index et arbre)
+> removed=$( { git diff --numstat "$BASE" HEAD -- docs/RESEARCH_LOG.md; git diff --cached --numstat "$BASE" -- docs/RESEARCH_LOG.md;
+>   git diff --numstat "$BASE" -- docs/RESEARCH_LOG.md; } | awk '{s += $2} END {print s + 0}')
+> if [ "$removed" = "0" ]; then
+>   echo "journal_ajout_seul=0" >> "$OUT"
+> else
+>   echo "journal_ajout_seul=1 (lignes retirées ou modifiées : $removed)" >> "$OUT"; rc=1
+> fi
+> 
+> # 5. chemin sélection, archives ; CAMPAIGN_UNLOCK absent en local
+> ARTEFACT='(^|/)((variants|evaluation[a-z_]*|benchmark[a-z_]*|candles[a-z_]*|selection|verdict|continuity|anchor|entry|observations|coverage|prefix_run|manifest[a-z_]*)\.(json|md)|[^/]*\.tgz|[^/]*\.tgz\.sha256)$'
+< artefacts=$(printf '%s\n' "$ALL_CHANTIER" | grep -E "$ARTEFACT" | grep -vxF "$CH/conformite/manifest.json")
+> artefacts=$(printf '%s\n' "$ALL_CHANTIER" | grep -E "$ARTEFACT" | grep -vxF "$CH/manifest.json")
+<   echo "campaign_unlock=present" >> "$OUT"; rc=1
+>   echo "campaign_unlock_local=1 (présent)" >> "$OUT"; rc=1
+<   echo "campaign_unlock=absent" >> "$OUT"
+>   echo "campaign_unlock_local=0 (absent)" >> "$OUT"
+< # 6. règle 64 hex du lot 2
+> # 6. règle 64 hex
+< { git diff "$BASE" | grep -E '^\+' ; git ls-files --others --exclude-standard -z | xargs -0 cat 2> /dev/null; } \
+> { git log -p --format= "$BASE"..HEAD | grep -E '^\+'; git diff "$BASE" | grep -E '^\+';
+>   git diff --cached "$BASE" | grep -E '^\+'; git ls-files --others --exclude-standard -z | xargs -0 cat 2> /dev/null; } \
+<   for f in "$RUNBOOK" "$BRIEF" "$V23_MANIFEST"; do [ -f "$f" ] && shasum -a 256 "$f" | cut -d' ' -f1; done
+<   printf '%s\n' "$ALL_CHANTIER" | grep -E '\.tgz\.sha256$' | while IFS= read -r f; do [ -f "$f" ] && cut -d' ' -f1 "$f"; done
+>   echo "$MANIFEST_SHA"
+<     f"dont_fichiers_du_chantier_ou_archives={len((found - table) & safe)} table_adoption={len(table)}"
+>     f"dont_fichiers_du_chantier_ou_manifeste={len((found - table) & safe)} table_adoption={len(table)}"
+< print(f"aucun_sha_artefact={0 if not extra else 1}")
+> print(f"aucun_sha_hors_regle={0 if not extra else 1}")
+< grep -q '^aucun_sha_artefact=0$' "$OUT" || rc=1
+> grep -q '^aucun_sha_hors_regle=0$' "$OUT" || rc=1
+< named=$(find "$CH" -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits_lot2.sh ! -name interdits.sh -print0 \
+> named=$(find "$CH" -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits.sh ! -name interdits_adverse.sh -print0 \
+< # 8. registre de campagne : jamais nommé par un script du chantier, jamais créé localement (chemin construit ici)
+> # 8. registre de campagne (chemin construit ici) : les deux seules lignes `--registry` du pilote
+> REG_FULL="/home/bruno/${C3}/regis$(printf 'try')/variants.json"
+< named=$(find "$CH" -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits_lot2.sh ! -name interdits.sh -print0 \
+<   | xargs -0 grep -lE "$REG_PAT" 2> /dev/null)
+< if [ -n "$named" ]; then
+<   while IFS= read -r f; do echo "nomme_registre_campagne $f" >> "$OUT"; done <<< "$named"
+> hits=$(find "$CH" -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits.sh ! -name interdits_adverse.sh -print0 \
+>   | xargs -0 grep -nE "$REG_PAT" 2> /dev/null)
+> allowed=0
+> bad=0
+> while IFS= read -r hit; do
+>   [ -z "$hit" ] && continue
+>   file=${hit%%:*}
+>   rest=${hit#*:}
+>   content=${rest#*:}
+>   n_pat=$(printf '%s\n' "$content" | grep -oE "$REG_PAT" | wc -l | tr -d ' ')
+>   if [ "$file" = "$PILOT" ] && [ "$n_pat" = "1" ] \
+>     && { [[ "$content" == *"--registry ${REG_FULL} "* ]] || [[ "$content" == *"--registry ${REG_FULL}" ]]; }; then
+>     allowed=$((allowed + 1))
+>   else
+>     bad=$((bad + 1))
+>     echo "nomme_registre_campagne ${file}:${rest%%:*}" >> "$OUT"
+>   fi
+> done <<< "$hits"
+> if [ -f "$PILOT" ]; then want=2; else want=0; fi
+> echo "registre_lignes_admises=$allowed attendu=$want hors_admis=$bad" >> "$OUT"
+> if [ "$allowed" != "$want" ] || [ "$bad" != "0" ]; then
+## results/c3_racine_registre/tests/interdits_lot2_adverse.sh -> results/c3_campagne_grid/tests/interdits_adverse.sh : lignes source changées=43, lignes reprise=64
+< # C3 racine du registre, lot 2 — interdits_lot2.sh prouvé avant de servir (règle agent 1 ; repris de
+< # results/c3_outillage_v2_3/tests/interdits_lot2_adverse.sh et de tests/interdits_adverse.sh du lot 1) : chaque cas
+< # dévié fabriqué doit le faire sortir en rc≠0 par son propre item ; le témoin (l'arbre tel quel) et le témoin positif de
+< # la règle 64 hex (le sha256 du manifeste v2.3 comparé est admis) en rc=0. Chaque cas crée un fichier (ou ajoute une
+< # ligne à un fichier suivi), lance interdits_lot2.sh sous l'étiquette `adv`, puis restaure ; l'état `git status` est
+< # comparé avant et après chaque cas. Jamais CAMPAIGN_UNLOCK, jamais le répertoire du registre de campagne sous $HOME
+< # (brief § 6) : leurs contrôles n'ont pas de cas dévié, déclaré.
+< # Sortie : interdits_lot2_adverse.out, `cas=<nom> rc=<n> attendu=<0|non0> restaure=<0|1> items_en_ecart=[…]`, puis
+< # rc=0 ssi tout tient.
+> # Première campagne C3 comptée, famille grid-atr-v4 — interdits.sh prouvé avant de servir (règle agent 1 ; repris de
+> # results/c3_racine_registre/tests/interdits_lot2_adverse.sh) : chaque cas dévié fabriqué doit le faire sortir en rc≠0
+> # par son propre item ; le témoin (l'arbre tel quel) et le témoin positif de la règle 64 hex (le sha256 du manifeste
+> # gelé est admis) en rc=0. Chaque cas crée un fichier, ajoute une ligne à un fichier suivi ou indexe le brief, lance
+> # interdits.sh sous l'étiquette `adv`, puis restaure ; l'état `git status` est comparé avant et après chaque cas, et le
+> # contenu de chaque fichier sauvegardé (journal, pilote) est comparé par `cmp` à sa sauvegarde.
+> # Les deux cas du pilote (faute de frappe dans un littéral `--registry`, troisième ligne `--registry`) ne s'exercent
+> # que si le pilote existe ; sinon `sans_objet`, déclaré. Jamais CAMPAIGN_UNLOCK, jamais le répertoire du registre de
+> # campagne sous $HOME (brief § 3) : leurs contrôles n'ont pas de cas dévié, déclaré.
+> # Sortie : interdits_adverse.out, `cas=<nom> rc=<n> attendu=<0|non0> restaure=<0|1> items_en_ecart=[…]`, puis rc=0 ssi
+> # tout tient.
+< T=results/c3_racine_registre/tests
+< OUT=$T/interdits_lot2_adverse.out
+< ADV_OUT=$T/interdits_lot2_adv.out
+> T=results/c3_campagne_grid/tests
+> OUT=$T/interdits_adverse.out
+> ADV_OUT=$T/interdits_adv.out
+> BRIEF=agent/AGENT_C3_CAMPAGNE_GRID.md
+> PILOT=results/c3_campagne_grid/server/run_campagne.sh
+< echo "# interdits_lot2_adverse — $(date -u +%FT%TZ) — HEAD $(git rev-parse HEAD)" >> "$OUT"
+> echo "# interdits_adverse — $(date -u +%FT%TZ) — HEAD $(git rev-parse HEAD)" >> "$OUT"
+> SAVE=$(mktemp)
+<   bash "$T/interdits_lot2.sh" adv > /dev/null 2>&1
+>   bash "$T/interdits.sh" adv > /dev/null 2>&1
+<   grep -E '^(hors_liste_blanche|artefact_versionne|empreinte_hors_regle|nomme_dette23|nomme_registre_campagne) |=1( |$)|non_suivis=[1-9]' \
+>   grep -E '^(hors_liste_blanche|artefact_versionne|empreinte_hors_regle|nomme_dette23|nomme_registre_campagne|suivi_interdit) |=1( |$)|non_suivis=[1-9]' \
+< record() {  # record <cas> <rc> <attendu>
+> record() {  # record <cas> <rc> <attendu> [contenu restauré : 0 | 1]
+>   if [ "${4:-0}" != "0" ]; then s=1; fi
+< d=results/c3_racine_registre/zz_adverse
+> d=results/c3_campagne_grid/zz_adverse
+< # témoin positif : le sha256 du manifeste v2.3 comparé, écrit dans un fichier du chantier, est admis
+< H=$(shasum -a 256 results/c3_outillage_v2_3/conformite/manifest.json | cut -d' ' -f1)
+< mkdir -p "$d"; echo "manifeste v2.3 $H" > "$d/note.txt"; r=$(run); rm -rf "$d"; record sha_manifeste_v23 "$r" 0
+> # témoin positif : le sha256 du manifeste gelé, écrit dans un fichier du chantier, est admis
+> H=$(shasum -a 256 agent/manifest_campagne_draft.json | cut -d' ' -f1)
+> mkdir -p "$d"; echo "manifeste gelé $H" > "$d/note.txt"; r=$(run); rm -rf "$d"; record sha_manifeste_gele "$r" 0
+< # 1. code touché : le module du lot 1 (gelé au lot 2), puis un module gelé dès la base
+< echo "# adverse" >> scripts/audit/c3_anchor.py; r=$(run); git checkout -q -- scripts/audit/c3_anchor.py
+< record code_du_lot1_touche "$r" non0
+> # 1. code, test, runbook, docs hors liste, un fichier suivi de agent/
+< record verdict_gele "$r" non0
+< 
+< # 2. un test touché
+> record code_touche "$r" non0
+< 
+< # 3. le runbook commité au lot 1
+< 
+< # 4. une doc hors liste (CLAUDE.md, PROJECT_CONTEXT.md)
+< echo "# adverse" >> PROJECT_CONTEXT.md; r=$(run); git checkout -q -- PROJECT_CONTEXT.md; record project_context "$r" non0
+> echo "# adverse" >> agent/AGENT_C3_RACINE_REGISTRE.md; r=$(run); git checkout -q -- agent/AGENT_C3_RACINE_REGISTRE.md
+> record agent_suivi_touche "$r" non0
+< # 5. le livrable clos du lot 1
+< echo "# adverse" >> results/c3_racine_registre/lot1/README.md; r=$(run)
+< git checkout -q -- results/c3_racine_registre/lot1/README.md; record readme_lot1 "$r" non0
+> # 2. le brief de ce chantier indexé (jamais commité par ce chantier)
+> git add -- "$BRIEF"; r=$(run); git rm -q --cached -- "$BRIEF"; record brief_indexe "$r" non0
+< # 6. le protocole
+> # 3. le protocole
+< # 7. artefact du chemin sous le chantier (verdict, registre) ; un autre manifeste que celui de la conformité
+> # 4. le journal : une ligne existante modifiée (ajout seul violé), restauré depuis sa sauvegarde
+> cp docs/RESEARCH_LOG.md "$SAVE"
+> sed -e 's/^# Journal des essais de recherche (append-only)$/# Journal des essais de recherche (modifié)/' "$SAVE" \
+>   > docs/RESEARCH_LOG.md
+> r=$(run); cp "$SAVE" docs/RESEARCH_LOG.md; cmp -s "$SAVE" docs/RESEARCH_LOG.md; c=$?
+> record journal_ligne_modifiee "$r" non0 "$c"
+> 
+> # 5. artefacts du chemin sous le chantier : verdict, registre, un autre manifeste, une empreinte d'archive
+> mkdir -p "$d"; echo x > "$d/c3_campagne_grid_server.tgz.sha256"; r=$(run); rm -rf "$d"; record empreinte_archive "$r" non0
+< # 8. une empreinte de 64 hex hors règle (construite ici, jamais écrite), dans un fichier du chantier
+> # 6. une empreinte de 64 hex hors règle (construite ici, jamais écrite), dans un fichier du chantier
+< mkdir -p "$d"; echo "eq3 sha=$H" > "$d/note.txt"; r=$(run); rm -rf "$d"; record empreinte_hors_regle "$r" non0
+> mkdir -p "$d"; echo "sha=$H" > "$d/note.txt"; r=$(run); rm -rf "$d"; record empreinte_hors_regle "$r" non0
+< # 9. fichier hors liste blanche à la racine
+< f=zz_interdits_lot2_adverse.txt
+> # 7. fichier hors liste blanche à la racine
+> f=zz_interdits_adverse.txt
+< # 10. script du chantier qui nomme le répertoire de la dette 23 (mot construit ici)
+> # 8. script du chantier qui nomme le répertoire de la dette 23 (mot construit ici)
+< # 11. script du chantier qui nomme le registre de campagne (chemin construit ici)
+> # 9. script du chantier, autre que le pilote, qui nomme le registre de campagne (chemin construit ici)
+< rm -f "$ITEMS"
+> # 10. le pilote : faute de frappe dans le premier littéral `--registry` ; troisième ligne `--registry`
+> if [ -f "$PILOT" ]; then
+>   REG_FULL="/home/bruno/${C3}/regis$(printf 'try')/variants.json"
+>   cp "$PILOT" "$SAVE"
+>   perl -pe 'if (!$done && s{(--registry \S*?)variants\.json}{${1}variant.json}) { $done = 1 }' "$SAVE" > "$PILOT"
+>   r=$(run); cp "$SAVE" "$PILOT"; cmp -s "$SAVE" "$PILOT"; c=$?
+>   record registre_faute_de_frappe "$r" non0 "$c"
+>   { cat "$SAVE"; printf '# --registry %s\n' "$REG_FULL"; } > "$PILOT"
+>   r=$(run); cp "$SAVE" "$PILOT"; cmp -s "$SAVE" "$PILOT"; c=$?
+>   record registre_troisieme_ligne "$r" non0 "$c"
+> else
+>   echo "cas=registre_faute_de_frappe sans_objet (pilote absent)" >> "$OUT"
+>   echo "cas=registre_troisieme_ligne sans_objet (pilote absent)" >> "$OUT"
+> fi
+> 
+> rm -f "$ITEMS" "$SAVE"
+## results/c3_racine_registre/tests/lint_lot2.sh -> results/c3_campagne_grid/tests/lint.sh : lignes source changées=9, lignes reprise=8
+< # C3 racine du registre, lot 2 (repris de results/c3_racine_registre/tests/lint_lot2.sh) — lint des seuls fichiers Python
+< # du lot, EN VÉRIFICATION SEULEMENT : `ruff check` et `ruff format --check`, jamais `--fix` ni formatage (le lot n'écrit
+< # aucun code). Les scripts bash du lot sont vérifiés en syntaxe par `bash -n`. Lancé par `bash` depuis le dépôt.
+< # Sortie : lint_lot2.out ; rc=0 ssi tout est vert.
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/lint_lot2.sh) — lint du
+> # seul fichier Python du chantier, EN VÉRIFICATION SEULEMENT : `ruff check` et `ruff format --check`, jamais `--fix` ni
+> # formatage. Les scripts bash du chantier sont vérifiés en syntaxe par `bash -n`. Lancé par `bash` depuis le dépôt.
+> # Sortie : lint.out ; rc=0 ssi tout est vert.
+< OUT=results/c3_racine_registre/tests/lint_lot2.out
+< PY_FILES=(results/c3_racine_registre/conformite/server/verify_attendu.py)
+< SH_FILES=(results/c3_racine_registre/conformite/server/run_conformite.sh
+<   results/c3_racine_registre/tests/{preflight,launch,wait,fetch,archive,postflight,verify_conformite,verify_adverse,pilot_dryrun,events,manifest_check,interdits_lot2,interdits_lot2_adverse,reprise_lot2,invariance_porte
+> OUT=results/c3_campagne_grid/tests/lint.out
+> PY_FILES=(results/c3_campagne_grid/server/verify_attendu.py)
+> SH_FILES=(results/c3_campagne_grid/server/run_campagne.sh results/c3_campagne_grid/tests/*.sh)
+< echo "# lint_lot2 — $(date -u +%FT%TZ) — HEAD $(git rev-parse HEAD)" >> "$OUT"
+> echo "# lint — $(date -u +%FT%TZ) — HEAD $(git rev-parse HEAD)" >> "$OUT"
+## results/c3_racine_registre/tests/tunnel.sh -> results/c3_campagne_grid/tests/tunnel.sh : lignes source changées=2, lignes reprise=2
+< # C3 racine du registre (repris de l'outillage v2.3) — tunnel SSH vers la base (127.0.0.1:5433), lecture seule, pour les tests base de la suite.
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/tunnel.sh) — tunnel SSH vers la base (127.0.0.1:5433), lecture seule, pour les tests base de la suite.
+< OUT="$ROOT/results/c3_racine_registre/tests/tunnel.out"
+> OUT="$ROOT/results/c3_campagne_grid/tests/tunnel.out"
+## results/c3_racine_registre/tests/ci_status.sh -> results/c3_campagne_grid/tests/ci_status.sh : lignes source changées=1, lignes reprise=1
+< # C3 racine du registre (repris de results/c3_racine_registre/tests/ci_status.sh) — état de la CI (workflow « CI ») sur un SHA poussé, lancé par `bash` depuis le dépôt.
+> # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/ci_status.sh) — état de la CI (workflow « CI ») sur un SHA poussé, lancé par `bash` depuis le dépôt.
+rc=0

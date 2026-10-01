@@ -1,0 +1,111 @@
+# interdits — S5 — 2026-10-01T21:06:42Z
+# HEAD ae88eb3f0464e6c4062a2bf72bf49200113bd86c branche feat/c3-campagne-grid ; base 235461e8a4beac42ecb57cc75ab13e8d88dfac14
+gele src head=0 index=0 arbre=0 non_suivis=0
+gele scripts head=0 index=0 arbre=0 non_suivis=0
+gele tests head=0 index=0 arbre=0 non_suivis=0
+gele config head=0 index=0 arbre=0 non_suivis=0
+gele pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele .github head=0 index=0 arbre=0 non_suivis=0
+gele skills head=0 index=0 arbre=0 non_suivis=0
+gele agent head=0 index=0 arbre=0 non_suivis=0
+gele CLAUDE.md head=0 index=0 arbre=0 non_suivis=0
+gele PROJECT_CONTEXT.md head=0 index=0 arbre=0 non_suivis=0
+gele ROADMAP.md head=0 index=0 arbre=0 non_suivis=0
+gele results/INDEX.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/CODE_MAP.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/protocole_c3.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/amendements_c3_v2.1.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/amendements_c3_v2.2.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/amendements_c3_v2.3.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/CONTRAINTES_POST_B4.md head=0 index=0 arbre=0 non_suivis=0
+gele docs/rejeu_grid_prespec.md head=0 index=0 arbre=0 non_suivis=0
+gele results/rejeu_grid_report.md head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_racine_registre head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_outillage_v2_3 head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_v2_3_gel head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+protocole_sha_egal_consigne=0 (d030ab239de317f6…)
+## fichiers changés depuis la base (HEAD ∪ index ∪ arbre ∪ non suivis, brief et brouillon exceptés)
+  docs/RESEARCH_LOG.md
+  results/c3_campagne_grid/attendu.md
+  results/c3_campagne_grid/constat.md
+  results/c3_campagne_grid/diagnostic_lecture.md
+  results/c3_campagne_grid/manifest.json
+  results/c3_campagne_grid/plans/plan.md
+  results/c3_campagne_grid/server/alembic_after.txt
+  results/c3_campagne_grid/server/alembic_before.txt
+  results/c3_campagne_grid/server/pilot_exit.txt
+  results/c3_campagne_grid/server/run_campagne.sh
+  results/c3_campagne_grid/server/status.txt
+  results/c3_campagne_grid/server/verify_attendu.out
+  results/c3_campagne_grid/server/verify_attendu.py
+  results/c3_campagne_grid/tests/archive.sh
+  results/c3_campagne_grid/tests/archive_dryrun.out
+  results/c3_campagne_grid/tests/archive_dryrun.sh
+  results/c3_campagne_grid/tests/ci_status.sh
+  results/c3_campagne_grid/tests/ci_status_S1.out
+  results/c3_campagne_grid/tests/ci_status_S2.out
+  results/c3_campagne_grid/tests/ci_status_S3.out
+  results/c3_campagne_grid/tests/ci_status_S4.out
+  results/c3_campagne_grid/tests/diagnostic_entry.out
+  results/c3_campagne_grid/tests/diagnostic_entry.sh
+  results/c3_campagne_grid/tests/diagnostic_preuve.out
+  results/c3_campagne_grid/tests/diagnostic_preuve.sh
+  results/c3_campagne_grid/tests/events.out
+  results/c3_campagne_grid/tests/events.sh
+  results/c3_campagne_grid/tests/fetch.out
+  results/c3_campagne_grid/tests/fetch.sh
+  results/c3_campagne_grid/tests/interdits.sh
+  results/c3_campagne_grid/tests/interdits_C0.out
+  results/c3_campagne_grid/tests/interdits_S1.out
+  results/c3_campagne_grid/tests/interdits_S2.out
+  results/c3_campagne_grid/tests/interdits_S3.out
+  results/c3_campagne_grid/tests/interdits_S4.out
+  results/c3_campagne_grid/tests/interdits_S5.out
+  results/c3_campagne_grid/tests/interdits_adverse.out
+  results/c3_campagne_grid/tests/interdits_adverse.sh
+  results/c3_campagne_grid/tests/launch.out
+  results/c3_campagne_grid/tests/launch.sh
+  results/c3_campagne_grid/tests/lint.out
+  results/c3_campagne_grid/tests/lint.sh
+  results/c3_campagne_grid/tests/manifest_check.out
+  results/c3_campagne_grid/tests/manifest_check.sh
+  results/c3_campagne_grid/tests/mutants_pilote.out
+  results/c3_campagne_grid/tests/mutants_pilote.sh
+  results/c3_campagne_grid/tests/pilot_dryrun.out
+  results/c3_campagne_grid/tests/pilot_dryrun.sh
+  results/c3_campagne_grid/tests/postflight.sh
+  results/c3_campagne_grid/tests/preflight.out
+  results/c3_campagne_grid/tests/preflight.sh
+  results/c3_campagne_grid/tests/reprise.out
+  results/c3_campagne_grid/tests/reprise.sh
+  results/c3_campagne_grid/tests/schema_observations.out
+  results/c3_campagne_grid/tests/schema_observations.sh
+  results/c3_campagne_grid/tests/table_10_1.out
+  results/c3_campagne_grid/tests/table_10_1.sh
+  results/c3_campagne_grid/tests/tunnel.out
+  results/c3_campagne_grid/tests/tunnel.sh
+  results/c3_campagne_grid/tests/verify.sh
+  results/c3_campagne_grid/tests/verify_adverse.out
+  results/c3_campagne_grid/tests/verify_adverse.sh
+  results/c3_campagne_grid/tests/wait.out
+  results/c3_campagne_grid/tests/wait.sh
+liste_blanche=0
+brief_et_brouillon_non_suivis=0
+## fichiers du commit courant (index contre HEAD)
+  A	results/c3_campagne_grid/tests/ci_status_S4.out
+  A	results/c3_campagne_grid/tests/diagnostic_entry.out
+arbre_hors_index=0 fichier(s) suivi(s) modifiés non indexés
+journal_ajout_seul=0
+aucun_artefact=0
+campaign_unlock_local=0 (absent)
+empreintes_64_ajoutees=6 dont_protocole=1 dont_fichiers_du_chantier_ou_manifeste=5 table_adoption=4
+aucun_sha_hors_regle=0
+dette23=0
+registre_lignes_admises=2 attendu=2 hors_admis=0
+registre_campagne_non_nomme=0
+registre_campagne_absent_local=0
+rc=0

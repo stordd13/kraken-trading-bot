@@ -1,0 +1,46 @@
+# pilot_dryrun — 2026-10-01T15:33:09Z — HEAD 6af79758070deb37d861129491ad0d92275c5706
+bash_local=GNU bash, version 3.2.57(1)-release (arm64-apple-darwin25)
+pilote_lignes_changees=6 (attendu 6 : SERVICE, PY, RUN, UNLOCK, les deux --registry)
+sim_conforme_exit=0 attendu=0
+sim_conforme_halted_at=-
+sim_conforme_issue=inconclusif
+sim_conforme_raison=P_PROVENANCE
+sim_conforme_selection_descriptive=true
+sim_conforme_registry_new_entry_pre=true
+sim_conforme_registry_new_entry_chain=false
+sim_conforme_issue_inscrite=true
+sim_conforme_chain_verified=true
+sim_conforme_chain_steps=anchor:0,entry:0,benchmark:0,select:0,continuity:0
+sim_conforme_eval=0 event=evaluated
+sim_conforme_prefix=0 event=-
+sim_conforme_registre_simule=avec_verdict
+sim_triplet_meilleur_exit=1 attendu=1
+sim_triplet_meilleur_issue=validé
+sim_triplet_meilleur_raison=-
+sim_triplet_meilleur_halted_at=extract
+sim_forme_de_refus_exit=1 attendu=1
+sim_forme_de_refus_eval=0 event=refusal_form_written
+sim_forme_de_refus_chain=NOT_RUN
+sim_forme_de_refus_halted_at=eval
+sim_forme_de_refus_registre_simule=sans_verdict
+sim_prefix_echec_exit=1 attendu=1
+sim_prefix_echec_prefix=3 event=job_failed
+sim_prefix_echec_pre_anchor=NOT_RUN
+sim_prefix_echec_halted_at=prefix
+sim_prefix_echec_registre_simule=absent
+sim_chain_violation_exit=1 attendu=1
+sim_chain_violation_chain=1
+sim_chain_violation_chain_verified=false
+sim_chain_violation_replay_violations_empty=false
+sim_chain_violation_issue=absent
+sim_chain_violation_halted_at=chain
+sim_new_entry_faux_exit=1 attendu=1
+sim_new_entry_faux_registry_new_entry_pre=false
+sim_new_entry_faux_pre_entry=NOT_RUN
+sim_new_entry_faux_halted_at=registry_new_entry_pre
+sim_guard_head_exit=2 attendu=2
+sim_guard_head_guard=REFUSED
+sim_sans_marqueur_exit=2 attendu=2
+sim_sans_marqueur_guard=REFUSED campaign_unlock_absent
+temporaire_supprime=0
+rc=0

@@ -487,6 +487,51 @@ cette entrée. Le run se fait au SHA de ce commit, après la relecture de Bruno 
 | 22 | `alembic` `c3bd1e7a0001` inchangé ; service `313eb00`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` absent ; attendu **tenu sur ses 10 items vérifiables** ; postflight `rc=0` | `conformite/server/verify_attendu.out`, `tests/postflight.out` |
 | 22 | Porte § L.5 **non rejouée** : la porte jouée au `c62acb4` (entrée 21, 24/24) vaut pour le tip, invariance prouvée au SHA du run et au tip (rien de ce que la porte exerce n'a changé ; `c3_anchor` hors de son chemin) | `results/c3_racine_registre/tests/invariance_porte_S1.out`, `invariance_porte_S2.out` |
 
+### Première campagne C3 comptée — famille grid-atr-v4, fenêtre 2021-03-01 → 2026-06-29 (entrée 23, inscrite le 2026-10-01, avant lancement — run compté, issue lue par la liste close seulement)
+
+Premier run du producteur et de la chaîne C3 sur la fenêtre de campagne, sous le protocole v2.3 et le manifeste gelé
+par Bruno le 2026-10-01 (`results/c3_campagne_grid/manifest.json`, copie à l'octet du gel). **Un seul lancement, aucun
+retry.** L'attendu est déclaré ici, avant le run : **`inconclusif (P_PROVENANCE)`, non compté** — l'univers est
+`contaminated` et `P_PROVENANCE` (rang 2 du § H.1) précède toute raison économique ; `validé` et `réfuté` sont
+inatteignables, la voie du § 10.1 ne s'ouvre pas. L'issue ne remonte que par la liste close (l'issue et la raison de la
+chaîne § L.2, le statut compté dérivé du § 10.1, des codes et des booléens). Attendu complet, item par item :
+`results/c3_campagne_grid/attendu.md`, committé avec cette entrée. Le run se fait au SHA de ce commit, après la relecture
+de Bruno (STOP 1), la création de `CAMPAIGN_UNLOCK` par Bruno et son GO de lancement.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 23 | 2026-10-01 | Première campagne C3 comptée : `c3b_prefix.py` → `c3_anchor` (première inscription au registre de campagne), `c3_entry`, `c3_benchmark`, `c3_select` → `c3b_evaluate.py --selection` → `c3_verdict.py chain` (six étapes, neuf entrées) ; **une exécution**, `--workers 3`, arrêt au premier écart ; registre de campagne persistant (sel à la racine, `skills/registry.md`), mode `chain` ; `--campaign GRID_ATR_V4_2026` (étiquette d'instrument, dette 21) ; issue et raison lues par la chaîne § L.2 seulement, statut compté dérivé du § 10.1 (non lu) | famille **`grid-atr-v4`** : `grok_grid_atr_adaptive_v4` × {`BTC/USDT`, `SOL/USDT`}, `GRID_ATR_GRID` courant (`min_spacing_pct` 4 × `atr_multiplier` 4 × `bear_protection_mode` 3) = **96 candidats** ; provenance **`contaminated`** (planchers du balayage re-choisis au GATE B de B4.3 à la lumière de la campagne Binance, renoncement non corrigé : `results/rejeu_grid_report.md` § 10.3) ; paires de déploiement `BTC/USDC`, `SOL/USDC` (transposition déclarée, § A.6) | `exchange='binance'` USDT **end-stampées**, exécution 5 m, séries 4 h / 1 j / 1 w ; fenêtre `2021-03-01 → 2026-06-29`, `F = 0,70`, `T = 2024-11-22T04:48Z` (préfixe 1 362,2 j, évaluation 583,8 j), amorçage `≥ 400 j` avant chaque début ; **8 estampilles 1 w dérivées** (`ohlc_derived`, entrée 13) : 2022-06-06, 2022-07-04, 2022-09-05, 2022-10-03, 2022-11-07, 2022-12-05 (préfixe), 2025-02-03, 2025-03-03 (évaluation) ; `deferred_evaluation.date = 2027-06-29` (365 j exactement après la fin ; déclarée parce que v2.3 l'exige, inerte ici) ; données déjà explorées au sens du § D.1 : portée rétrospective (§ D.2) | branche `feat/c3-campagne-grid`, exécuté au commit de cette entrée (code identique à `235461e`, `interdits_S1.out`) ; métriques v2, `replay_version` 2 ; protocole v2.3 `d030ab23…79e6` ; manifeste `d422076b…5041` | bybit maker 0,10 % / taker 0,25 % (EU spot VIP0) ; coûts par paire du GATE B (`config/pair_costs_b4.json`, sonde carnet Bybit des 14-15/09, 126 relevés, règle max(p75 global, p75 nocturne) : BTC spread 2 bps et slippage 2 bps, SOL 11 et 2) ; `min_order_quote 5.0` (minOrderAmt Bybit relevé le 2026-10-01, valeur du jour) ; capital `1000` ; graine 20261001 | **`inconclusif (P_PROVENANCE)`, non compté** ; sélection publiée sous `SÉLECTION_DESCRIPTIVE` ; préfixe 0 ; chaîne 1-4 autonome 0, première inscription au registre ; évaluation `0 evaluated` ; chaîne 0, cinq codes d'étape en 0, `chain.verified` vrai, violations vides, étape 1 idempotente, issue inscrite ; aucune évaluation différée inscrite (déclaré, jamais vérifié) ; base, service, `alembic` inchangés. **Tout autre triplet, « meilleur » compris, est un écart, donc un STOP** | **Clôture de la famille grid** par la clause de clôture § K.2 de `docs/rejeu_grid_prespec.md` — décision de gestion de Bruno, prise en conversation manifeste avant ce run ; motif, tel que l'expose le manifeste gelé (`run_scope`) : sous provenance `contaminated`, ni `validé` ni `réfuté` ne sont atteignables pour cet univers et la voie prospective du § 10.1 ne peut pas s'ouvrir ; annoncée comme telle, jamais déduite du verdict (protocole § K.1). Toute reprise de la famille exige un mécanisme nouveau (`CONTRAINTES_POST_B4.md` § 5, ticket § 6). Travail de mécanisme pour les familles suivantes, composées avant toute évaluation | `results/c3_campagne_grid/` (`attendu.md`, `manifest.json`, pilote, preuves) ; `results/c3_campagne_grid/report.md` (au commit de preuves) |
+
+- **Garde-fou 6, levé par Bruno** : `CAMPAIGN_UNLOCK` est créé par Bruno dans l'arbre du service, entre la relecture du
+  STOP 1 et le GO de lancement, puis transporté dans le clone par le script de lancement ; aucun agent ne le crée. Bruno
+  le supprime après le merge.
+- **Registre de campagne** : nommé sur les deux seules lignes `--registry` du pilote ; jamais lu, copié, listé ni testé
+  par l'agent. Clés de racine vérifiées par Bruno (runbook § 1) à la création de `CAMPAIGN_UNLOCK` ; sauvegarde (runbook
+  § 2) après le run, par Bruno.
+- **Jalon du § 10.2** (premier verdict réel de la famille grid avant le 2027-01-31) : consigné avec sa date dans l'issue.
+- **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
+  diagnostic avant l'accord de Bruno. L'issue sera inscrite dans une section suivante, sans réécrire celle-ci.
+
+### Issue de l'entrée 23 (inscrite après le run — STOP au run : aucune issue produite, rien lu au-delà de la liste close)
+
+- **Lancement** : un seul, au `cd4b177` (S1), après la CI verte sur S1 (tentative 1), la relecture de Bruno (STOP 1), la
+  création de `CAMPAIGN_UNLOCK` et la vérification § 1 du runbook par Bruno, et son GO de lancement. Pilote
+  `3bbfd9fc…85e4`, exécuté depuis le clone, le 2026-10-01 de 17:14:54 à 17:58:36Z, sur le serveur.
+- **Arrêt** : `c3_entry` autonome en **code 1** (§ I.1, ligne 15 : une violation, pas un résultat) ; arrêt au premier
+  écart, les étapes suivantes non exécutées ; code du pilote 1.
+- **Aucune archive, aucune suppression, aucune relance, aucune lecture de diagnostic** : le répertoire du run reste en
+  place au serveur, en attente de la décision de Bruno.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 23 | Préfixe **0** (96 candidats, 3 workers, 43 min 40 s) ; ancrage autonome **0**, `registry.new_entry` vrai : la variante est inscrite au registre de campagne, **sans verdict** ; `c3_entry` autonome **1** ; benchmark, sélection, évaluation et chaîne non exécutés (arrêt au premier écart). **Aucune issue produite** : ni triplet, ni statut compté, ni évaluation différée inscrits | `results/c3_campagne_grid/server/status.txt` |
+| 23 | Attendu tenu sur 4 items sur 11 (gardes, base, service, préfixe) ; écarts 5 à 11 : le code 1 de `c3_entry` et l'arrêt qui s'ensuit | `server/verify_attendu.out` |
+| 23 | `alembic` `c3bd1e7a0001` inchangé ; service `235461e`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` présent | `server/status.txt`, `server/alembic_{before,after}.txt` |
+
+- Constat : `results/c3_campagne_grid/constat.md`. **Jalon du § 10.2 : non atteint par ce run** (aucun verdict).
+- La suite est une décision de Bruno : lecture de diagnostic sur liste close, relance, statut de ce run au regard du
+  § 10.1, cérémonie du registre (première inscription faite). Ajout seul.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme

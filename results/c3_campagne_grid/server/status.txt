@@ -1,0 +1,25 @@
+guard=0 sha=cd4b17715a0dada8aa812df0e722072df6f0989b python=Python 3.12.3 krakenbot=/home/bruno/runs/c3_campagne_grid/campagne/repo/src/krakenbot/__init__.py protocol=d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6 manifest=d422076b09292d8aeb2a6ae3f39b9c37325f23e954c05c6c83a8979255325041 campaign_unlock=present
+pilot_sha256=3bbfd9fc8ccd62f837ece2b2696578e30e38f0459533669a8dcf1e6d6b4585e4
+pilot_copy=0
+service_before=head=235461e8a4beac42ecb57cc75ab13e8d88dfac14 dirty=0 collector=active NRestarts=0
+start=2026-10-01T17:14:54Z
+alembic_before=0
+workers=3
+prefix=0 event=- at=2026-10-01T17:58:34Z
+pre_anchor=0
+registry_new_entry_pre=true
+pre_entry=1
+pre_benchmark=NOT_RUN
+pre_select=NOT_RUN
+eval=NOT_RUN
+chain=NOT_RUN
+extract=NOT_RUN
+interpreter=NOT_RUN
+halted_at=pre_entry
+end_run=2026-10-01T17:58:35Z
+alembic_after=0
+alembic_same_head=0
+service_after=head=235461e8a4beac42ecb57cc75ab13e8d88dfac14 dirty=0 collector=active NRestarts=0
+tree_after=0
+campaign_unlock_after=present
+end=2026-10-01T17:58:36Z

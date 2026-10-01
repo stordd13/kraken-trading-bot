@@ -1,0 +1,24 @@
+2026-10-01T17:15:03Z poll=1 exit=pending lines=7 last_key=workers 
+2026-10-01T17:17:05Z poll=2 exit=pending lines=7 last_key=workers 
+2026-10-01T17:19:06Z poll=3 exit=pending lines=7 last_key=workers 
+2026-10-01T17:21:08Z poll=4 exit=pending lines=7 last_key=workers 
+2026-10-01T17:23:09Z poll=5 exit=pending lines=7 last_key=workers 
+2026-10-01T17:25:11Z poll=6 exit=pending lines=7 last_key=workers 
+2026-10-01T17:27:12Z poll=7 exit=pending lines=7 last_key=workers 
+2026-10-01T17:29:14Z poll=8 exit=pending lines=7 last_key=workers 
+2026-10-01T17:31:15Z poll=9 exit=pending lines=7 last_key=workers 
+2026-10-01T17:33:16Z poll=10 exit=pending lines=7 last_key=workers 
+2026-10-01T17:35:18Z poll=11 exit=pending lines=7 last_key=workers 
+2026-10-01T17:37:20Z poll=12 exit=pending lines=7 last_key=workers 
+2026-10-01T17:39:21Z poll=13 exit=pending lines=7 last_key=workers 
+2026-10-01T17:41:23Z poll=14 exit=pending lines=7 last_key=workers 
+2026-10-01T17:43:24Z poll=15 exit=pending lines=7 last_key=workers 
+2026-10-01T17:45:26Z poll=16 exit=pending lines=7 last_key=workers 
+2026-10-01T17:47:27Z poll=17 exit=pending lines=7 last_key=workers 
+2026-10-01T17:49:28Z poll=18 exit=pending lines=7 last_key=workers 
+2026-10-01T17:51:30Z poll=19 exit=pending lines=7 last_key=workers 
+2026-10-01T17:53:31Z poll=20 exit=pending lines=7 last_key=workers 
+2026-10-01T17:55:33Z poll=21 exit=pending lines=7 last_key=workers 
+2026-10-01T17:57:34Z poll=22 exit=pending lines=7 last_key=workers 
+2026-10-01T17:59:36Z poll=23 exit=1 lines=25 last_key=end 
+rc=0
