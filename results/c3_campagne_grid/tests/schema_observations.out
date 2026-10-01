@@ -1,0 +1,10 @@
+# schema_observations — 2026-10-01T19:29:12Z — HEAD 1a5745f91a2426def15d322ca1fba9b51bf3a595
+schema_extrait_n=63
+schema_extrait=amount_base,avg_holding_minutes,buy_fees,dca_counters,decision_timeframes,duration_days,dust_written_off_base,effective_params,end,ending_balance,entry_price,equity_daily,exchange,exec_interval,extended_by,fee,fees,first,gross_quote,interval,inventory_divergence_base,largest_gap_candles,last,liquidation,loaded,losing_trades,lots,max_drawdown_pct_daily,metrics_version,min_order_quote,n_daily_returns,net_pnl,net_pnl_lot_basis,pair,pair_costs,pair_costs_file,params,period,pnl,positions,price,reference_price,rejections,replay_version,required,residual_net_proceeds,residual_trade_base,sell_fees,slippage,slippage_pct,spread,spread_pct,stale_by_candles,start,starting_balance,strategy,sufficient,timestamp,total_trades,trades,values,warmup,winning_trades
+cles_dynamiques=_segment_form:f'{segment}_end',_segment_form:f'{segment}_start',_segment_form:segment,_segment_form:tf,a02_d5:ctx.prefix,a02_d5:tf,a03_bounds:ctx.prefix,a03_bounds:f'{ctx.prefix}_end',a03_bounds:f'{ctx.prefix}_start',a06_warmup:ctx.prefix,a06_warmup:tf,a08_d2:ctx.prefix,a08_d2:tf,entry:key
+copie_n=63 copie_triee=0 copie_sans_doublon=0
+copie_moins_extrait=-
+extrait_moins_copie=-
+copie_egale_extrait=0
+mutant_cle_retiree_mord=0 mutant_cle_ajoutee_mord=0
+rc=0
