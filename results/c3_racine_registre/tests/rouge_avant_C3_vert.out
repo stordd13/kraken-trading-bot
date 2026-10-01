@@ -1,0 +1,5 @@
+# rouge_avant — C3_vert — mode vert — 2026-10-01T08:41:39Z
+# HEAD b8ed4b019fdc9cc0a1f9bf05a9074d643b8ccfb8 branche feat/c3-racine-registre ; code de la base 313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+tests copiés : test_c3_common.py test_c3_anchor.py test_c3_verdict.py (arbre courant)
+test=test_c3_verdict.py::test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie pytest_exit=0 (attendu 0) échec : 
+rc=0

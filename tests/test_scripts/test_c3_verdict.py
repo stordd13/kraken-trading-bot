@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import copy
 import dataclasses
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from functools import cache
 import math
@@ -2817,6 +2817,55 @@ def test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement() -> None:
         rest = {k: v for k, v in descriptor.items() if k != "deferred_evaluation_of"}
         expected = {k: v for k, v in reference.items() if k != "deferred_evaluation_of"}
         assert (name, rest) == (name, expected)
+
+
+def test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie() -> None:
+    """§ A.6 v2.3, tableau du descripteur `D` : `window` vaut, au verdict, `{start: window.end de la campagne, end: date
+    déclarée}` et, au run différé, « `window` du manifeste entrant » — deux **instants**. Décision D2 du plan du lot 1
+    v2.3 (`results/c3_outillage_v2_3/plans/lot1.md`) : les deux instants de `window` sont normalisés en UTC, « un
+    instant, pas une graphie, est engagé » ; CLAUDE.md, règle d'or 2 (UTC). Limite du rapport v2.3 (§ 5) : aucune
+    fixture n'écrivait autre chose que `+00:00`. Trois graphies du même instant — `+00:00`, `Z`, `+02:00` (plan D6) —
+    pour la campagne (A) et pour le manifeste différé (B) : au verdict, `window` est l'instant UTC et `D` ne dépend de A
+    que par `deferred_evaluation_of`, l'empreinte du manifeste brut (§ A.6 : la clé de variante engage le manifeste
+    complet) ; l'empreinte que l'ancrage re-dérive du manifeste différé (`cc.deferred_descriptor_at_run`) égale celle
+    du verdict, pour tout couple (A, B)."""
+
+    def written(instant: datetime, graphie: str) -> str:
+        if graphie == "Z":
+            return instant.isoformat().replace("+00:00", "Z")
+        if graphie == "+02:00":
+            return instant.astimezone(timezone(timedelta(hours=2))).isoformat()
+        return instant.isoformat()
+
+    graphies = ("+00:00", "Z", "+02:00")
+    expected_window = {"start": "2026-04-01T00:00:00+00:00", "end": "2027-04-01T00:00:00+00:00"}
+    reference_campaign = fx.manifest()
+    retained = reference_campaign["universe"]["candidates"][0]
+    reference = cv.deferred_descriptor(reference_campaign, retained)
+    assert reference["window"] == expected_window
+    assert written(fx.WINDOW_END, "+02:00") == "2026-04-01T02:00:00+02:00"
+    outcomes: dict[tuple[str, str], tuple[bool, bool, bool, bool]] = {}
+    for a in graphies:
+        campaign = fx.manifest()
+        campaign["window"]["end"] = written(fx.WINDOW_END, a)
+        campaign["deferred_evaluation"]["date"] = written(fx.DEFERRED_DATE, a)
+        at_verdict = cv.deferred_descriptor(campaign, retained)
+        rest = {k: v for k, v in at_verdict.items() if k != "deferred_evaluation_of"}
+        expected_rest = {k: v for k, v in reference.items() if k != "deferred_evaluation_of"}
+        for b in graphies:
+            deferred = fx.deferred_manifest(campaign, retained)
+            deferred["window"] = {
+                "start": written(fx.WINDOW_END, b),
+                "end": written(fx.DEFERRED_DATE, b),
+            }
+            at_run = cc.deferred_descriptor_at_run(deferred)
+            outcomes[(a, b)] = (
+                at_verdict["window"] == expected_window,
+                at_verdict["deferred_evaluation_of"] == cc.sig(campaign),
+                rest == expected_rest,
+                at_run is not None and cc.sig(at_run) == cc.sig(at_verdict),
+            )
+    assert outcomes == {(a, b): (True, True, True, True) for a in graphies for b in graphies}
 
 
 def test_A2_une_reinscription_discordante_au_registre_est_une_violation(tmp_path: Path) -> None:

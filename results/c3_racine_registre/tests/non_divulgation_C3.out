@@ -1,0 +1,9 @@
+# non_divulgation — C3 — 2026-10-01T08:45:16Z
+# HEAD b8ed4b019fdc9cc0a1f9bf05a9074d643b8ccfb8 branche feat/c3-racine-registre
+# fichiers suivis modifiés (non commités) : 1
+module scripts/audit/c3_common.py : f-strings=194 print=0
+module scripts/audit/c3_anchor.py : f-strings=41 print=9
+module scripts/audit/c3_verdict.py : f-strings=132 print=24
+lignes_ajoutees_depuis_313eb00=20
+sites=0
+rc=0
