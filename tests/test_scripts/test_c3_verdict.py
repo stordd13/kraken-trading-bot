@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 import copy
 import dataclasses
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from functools import cache
 import math
@@ -2819,6 +2819,55 @@ def test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement() -> None:
         assert (name, rest) == (name, expected)
 
 
+def test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie() -> None:
+    """§ A.6 v2.3, tableau du descripteur `D` : `window` vaut, au verdict, `{start: window.end de la campagne, end: date
+    déclarée}` et, au run différé, « `window` du manifeste entrant » — deux **instants**. Décision D2 du plan du lot 1
+    v2.3 (`results/c3_outillage_v2_3/plans/lot1.md`) : les deux instants de `window` sont normalisés en UTC, « un
+    instant, pas une graphie, est engagé » ; CLAUDE.md, règle d'or 2 (UTC). Limite du rapport v2.3 (§ 5) : aucune
+    fixture n'écrivait autre chose que `+00:00`. Trois graphies du même instant — `+00:00`, `Z`, `+02:00` (plan D6) —
+    pour la campagne (A) et pour le manifeste différé (B) : au verdict, `window` est l'instant UTC et `D` ne dépend de A
+    que par `deferred_evaluation_of`, l'empreinte du manifeste brut (§ A.6 : la clé de variante engage le manifeste
+    complet) ; l'empreinte que l'ancrage re-dérive du manifeste différé (`cc.deferred_descriptor_at_run`) égale celle
+    du verdict, pour tout couple (A, B)."""
+
+    def written(instant: datetime, graphie: str) -> str:
+        if graphie == "Z":
+            return instant.isoformat().replace("+00:00", "Z")
+        if graphie == "+02:00":
+            return instant.astimezone(timezone(timedelta(hours=2))).isoformat()
+        return instant.isoformat()
+
+    graphies = ("+00:00", "Z", "+02:00")
+    expected_window = {"start": "2026-04-01T00:00:00+00:00", "end": "2027-04-01T00:00:00+00:00"}
+    reference_campaign = fx.manifest()
+    retained = reference_campaign["universe"]["candidates"][0]
+    reference = cv.deferred_descriptor(reference_campaign, retained)
+    assert reference["window"] == expected_window
+    assert written(fx.WINDOW_END, "+02:00") == "2026-04-01T02:00:00+02:00"
+    outcomes: dict[tuple[str, str], tuple[bool, bool, bool, bool]] = {}
+    for a in graphies:
+        campaign = fx.manifest()
+        campaign["window"]["end"] = written(fx.WINDOW_END, a)
+        campaign["deferred_evaluation"]["date"] = written(fx.DEFERRED_DATE, a)
+        at_verdict = cv.deferred_descriptor(campaign, retained)
+        rest = {k: v for k, v in at_verdict.items() if k != "deferred_evaluation_of"}
+        expected_rest = {k: v for k, v in reference.items() if k != "deferred_evaluation_of"}
+        for b in graphies:
+            deferred = fx.deferred_manifest(campaign, retained)
+            deferred["window"] = {
+                "start": written(fx.WINDOW_END, b),
+                "end": written(fx.DEFERRED_DATE, b),
+            }
+            at_run = cc.deferred_descriptor_at_run(deferred)
+            outcomes[(a, b)] = (
+                at_verdict["window"] == expected_window,
+                at_verdict["deferred_evaluation_of"] == cc.sig(campaign),
+                rest == expected_rest,
+                at_run is not None and cc.sig(at_run) == cc.sig(at_verdict),
+            )
+    assert outcomes == {(a, b): (True, True, True, True) for a in graphies for b in graphies}
+
+
 def test_A2_une_reinscription_discordante_au_registre_est_une_violation(tmp_path: Path) -> None:
     """§ A.6 v2.2 (AM-05, impact outillage) : l'issue et son statut sont « écrits une fois. Une réécriture différente
     est une violation » (plan du lot 1, D8, A2) — code 1, diagnostic, registre intact."""
@@ -3072,6 +3121,86 @@ def test_un_now_illisible_en_mode_chain_est_une_erreur_d_usage_rien_ecrit(tmp_pa
     argv[argv.index("--now") + 1] = "hier"
     assert cv.main(argv) == 2
     assert not any((w["out"] / f).exists() for f in CHAIN_FILES)
+
+
+# ---------------------------------------------------------------------------
+# R-4 (runbook `skills/registry.md`) — la racine du registre traverse l'inscription du verdict
+# ---------------------------------------------------------------------------
+
+
+def test_A6_registry_inscription_preserve_les_cles_de_racine(tmp_path: Path) -> None:
+    """Runbook `skills/registry.md` (R-4) : le sel vit à la racine du registre de campagne ; le verdict le réécrit à
+    l'étape 6 quand il inscrit l'issue « dans l'enregistrement de sa variante » (§ A.6 v2.2) et, quand elle ouvre la
+    voie, l'évaluation différée (§ A.6 v2.3). Le brief (§ 3.2) demande de prouver par test, pas par lecture, que
+    l'inscription préserve les clés de racine. Registre fait à la main — racine synthétique (`fx.REGISTRY_ROOT_SYNTHETIC`)
+    et un enregistrement —, inscription sans puis avec bloc différé, registre écrit par le writer de la chaîne et relu :
+    les clés de racine et leurs valeurs, à l'octet près, et l'inscription faite."""
+    expected_keys = sorted([*fx.REGISTRY_ROOT_SYNTHETIC, "variants"])
+    inscription = {"issue": cc.ISSUE_INCONCLUSIF, "raison": "F_CANNOT_SEPARATE", "compte": True}
+    deferred_block = {"date": fx.DEFERRED_DATE.isoformat(), "variant_key": "empreinte-synthetique"}
+    outcomes: dict[str, tuple[list[str], bool, bool, bool]] = {}
+    for name, deferred in (("sans_bloc_differe", None), ("avec_bloc_differe", deferred_block)):
+        path = tmp_path / f"{name}.json"
+        cc.write_json(
+            path,
+            {
+                **fx.REGISTRY_ROOT_SYNTHETIC,
+                "variants": {"variante-synthetique": {"family": "grid"}},
+            },
+        )
+        violations: list[str] = []
+        updated = cv.registry_inscription(
+            path,
+            variant_key="variante-synthetique",
+            inscription=inscription,
+            deferred=deferred,
+            violations=violations,
+        )
+        assert (name, violations) == (name, []) and updated is not None
+        cc.write_json(path, updated)
+        after = cc.read_json(path)
+        record = after["variants"]["variante-synthetique"]
+        outcomes[name] = (
+            sorted(after),
+            all(
+                cc.dumps_canonical(after[key]) == cc.dumps_canonical(value)
+                for key, value in fx.REGISTRY_ROOT_SYNTHETIC.items()
+            ),
+            "verdict" in record,
+            DEFERRED_KEY in record,
+        )
+    assert outcomes == {
+        "sans_bloc_differe": (expected_keys, True, True, False),
+        "avec_bloc_differe": (expected_keys, True, True, True),
+    }
+
+
+def test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Runbook `skills/registry.md` (R-4) : « l'ancrage préserve les clés de racine — sinon la première réécriture jette
+    le sel, silencieusement ». Adverse du brief (§ 3.2) : un registre synthétique portant des clés de racine en plus
+    (`fx.REGISTRY_ROOT_SYNTHETIC`) traverse un enregistrement par l'ancrage (étape 1) **et** une inscription par le
+    verdict (étape 6) du même `chain`, dans le monde de X3 — l'issue ouvre la voie, le verdict inscrit l'issue et
+    l'évaluation différée (§ A.6 v2.3) ; les clés et leurs valeurs survivent à l'octet près, et ne sont imprimées nulle
+    part, ni sur stdout, ni sur stderr, ni dans les sorties de la chaîne (runbook § 4)."""
+    w = _opening_world(tmp_path)
+    cc.write_json(w["registry"], {**fx.REGISTRY_ROOT_SYNTHETIC, "variants": {}})
+    capsys.readouterr()
+    assert cv.main(_chain_argv(w)) == 0
+    printed = capsys.readouterr()
+    _assert_opens_the_way(w)
+    registry = cc.read_json(w["registry"])
+    assert sorted(registry) == sorted([*fx.REGISTRY_ROOT_SYNTHETIC, "variants"])
+    for name, value in fx.REGISTRY_ROOT_SYNTHETIC.items():
+        assert (name, cc.dumps_canonical(registry[name])) == (name, cc.dumps_canonical(value))
+    record = _record(w)
+    assert "verdict" in record and DEFERRED_KEY in record
+    published = "".join(
+        p.read_text(encoding="utf-8") for p in sorted(w["out"].iterdir()) if p.is_file()
+    )
+    for secret in (fx.REGISTRY_ROOT_SYNTHETIC["salt"], "racine_de_test_typee"):
+        assert secret not in printed.out + printed.err + published
 
 
 # ---------------------------------------------------------------------------

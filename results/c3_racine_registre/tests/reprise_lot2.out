@@ -1,0 +1,500 @@
+# reprise_lot2 — 2026-10-01T09:20:55Z — HEAD c3f0ac6a22251a48b34227083c9aaad6de174ee4
+## results/c3_outillage_v2_3/conformite/server/run_conformite.sh -> results/c3_racine_registre/conformite/server/run_conformite.sh : lignes source changées=9, lignes reprise=10
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — pilote serveur de la conformité sous v2.3 (results/c3_outillage_v2_2/plans/lot3.md § 5 ; attendu déclaré avant le
+< # lancement : ../attendu.md). Versionné au commit S1 et exécuté DEPUIS LE CLONE à ce SHA (D1) :
+< #   bash ~/runs/c3_outillage_v2_3/conf/repo/results/c3_outillage_v2_3/conformite/server/run_conformite.sh <S1, 40 hex>
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — pilote serveur de la conformité sous v2.3, au code
+> # du chantier (plans/lot2.md L1-L6 ; attendu déclaré avant le lancement : ../attendu.md). Versionné au commit S1 et
+> # exécuté DEPUIS LE CLONE à ce SHA (D1) :
+> #   bash ~/runs/c3_racine_registre/conf/repo/results/c3_racine_registre/conformite/server/run_conformite.sh <S1, 40 hex>
+< RUN=/home/bruno/runs/c3_outillage_v2_3/conf
+> RUN=/home/bruno/runs/c3_racine_registre/conf
+< SELF=results/c3_outillage_v2_3/conformite/server/run_conformite.sh
+< MANIFEST=results/c3_outillage_v2_3/conformite/manifest.json
+< MANIFEST_SHA=24bde67dd88005e22f05b4917c7fa973ab37b384ac19df3acb6a3e56e704565a
+> SELF=results/c3_racine_registre/conformite/server/run_conformite.sh
+> MANIFEST=results/c3_racine_registre/conformite/manifest.json
+> MANIFEST_SHA=9966efade2729f5da6652b0ffa8feda9b127840a77d9a47660823a1e9c50a24b
+< CAMPAIGN=OUTILLAGE_V23_CONF
+< NOW=2026-09-30T00:00:00+00:00
+> CAMPAIGN=RACINE_REGISTRE_CONF
+> NOW=2026-10-01T00:00:00+00:00
+## results/c3_outillage_v2_3/conformite/server/verify_attendu.py -> results/c3_racine_registre/conformite/server/verify_attendu.py : lignes source changées=5, lignes reprise=5
+< """C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — vérification de l'attendu de conformité (``../attendu.md``),
+< item par item.
+> """C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — vérification de l'attendu de conformité
+> (``../attendu.md``), item par item.
+<     python3 results/c3_outillage_v2_3/conformite/server/verify_attendu.py --sha <S1, 40 hex>
+>     python3 results/c3_racine_registre/conformite/server/verify_attendu.py --sha <S1, 40 hex>
+< MANIFEST_SHA = "24bde67dd88005e22f05b4917c7fa973ab37b384ac19df3acb6a3e56e704565a"
+< KRAKENBOT_SUFFIX = "/runs/c3_outillage_v2_3/conf/repo/src/krakenbot/__init__.py"
+> MANIFEST_SHA = "9966efade2729f5da6652b0ffa8feda9b127840a77d9a47660823a1e9c50a24b"
+> KRAKENBOT_SUFFIX = "/runs/c3_racine_registre/conf/repo/src/krakenbot/__init__.py"
+## results/c3_outillage_v2_3/conformite/attendu.md -> results/c3_racine_registre/conformite/attendu.md : lignes source changées=69, lignes reprise=81
+(attendu : réécrit pour ce lot ; diff non recopié, relu en entier)
+## results/c3_outillage_v2_3/tests/preflight.sh -> results/c3_racine_registre/tests/preflight.sh : lignes source changées=7, lignes reprise=7
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — preflight du serveur avant une phase (conf | gate), LECTURE SEULE, lancé par `bash` depuis
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — preflight du serveur avant la phase conf, LECTURE SEULE, lancé par `bash` depuis
+< # usage : bash preflight.sh <conf|gate>
+> # usage : bash preflight.sh conf (la phase gate n'est pas reprise : porte non rejouée, plans/lot2.md L5)
+< PHASE=${1:?conf ou gate}
+< case "$PHASE" in conf | gate) ;; *) echo "phase inconnue : $PHASE" >&2; exit 2 ;; esac
+> PHASE=${1:?conf}
+> case "$PHASE" in conf) ;; *) echo "phase inconnue : $PHASE" >&2; exit 2 ;; esac
+< OUT=results/c3_outillage_v2_3/tests/preflight_${PHASE}.out
+> OUT=results/c3_racine_registre/tests/preflight_${PHASE}.out
+< if [ -e "/home/bruno/runs/c3_outillage_v2_3/$PHASE" ]; then echo "run_dir=PRESENT"; ok=1; else echo "run_dir=absent"; fi
+< if [ -e "/home/bruno/archive/c3_outillage_v2_3_${PHASE}_$DAY" ]; then echo "archive_du_jour=PRESENT"; ok=1; else echo "archive_du_jour=absent"; fi
+> if [ -e "/home/bruno/runs/c3_racine_registre/$PHASE" ]; then echo "run_dir=PRESENT"; ok=1; else echo "run_dir=absent"; fi
+> if [ -e "/home/bruno/archive/c3_racine_registre_${PHASE}_$DAY" ]; then echo "archive_du_jour=PRESENT"; ok=1; else echo "archive_du_jour=absent"; fi
+## results/c3_outillage_v2_3/tests/launch.sh -> results/c3_racine_registre/tests/launch.sh : lignes source changées=14, lignes reprise=13
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — mise en place et lancement d'une phase (conf | gate) sur le serveur, lancé par `bash`
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — mise en place et lancement de la phase conf sur le serveur, lancé par `bash`
+< # usage : bash launch.sh <conf|gate> <SHA complet, 40 hex>
+> # usage : bash launch.sh conf <SHA complet, 40 hex> (porte non rejouée : plans/lot2.md L5)
+< #   0. SHA = HEAD local = tip de origin/feat/c3-outillage-v2.3 (git ls-remote) : transport par push, jamais de bundle ;
+< #   1. ~/runs/c3_outillage_v2_3/<phase> créé (échoue s'il existe) ;
+> #   0. SHA = HEAD local = tip de origin/feat/c3-racine-registre (git ls-remote) : transport par push, jamais de bundle ;
+> #   1. ~/runs/c3_racine_registre/<phase> créé (échoue s'il existe) ;
+< #   5. session tmux `c3-outillage-v23-<phase>-<AAAAMMJJ>` : `bash -lc` sur le pilote DU CLONE, avec le SHA en argument ;
+> #   5. session tmux `c3-racine-registre-<phase>-<AAAAMMJJ>` : `bash -lc` sur le pilote DU CLONE, avec le SHA en argument ;
+< PHASE=${1:?conf ou gate}
+> PHASE=${1:?conf}
+<   conf) PILOT=results/c3_outillage_v2_3/conformite/server/run_conformite.sh ;;
+<   gate) PILOT=results/c3_outillage_v2_3/gate_L5/run_gate.sh ;;
+>   conf) PILOT=results/c3_racine_registre/conformite/server/run_conformite.sh ;;
+< OUT=results/c3_outillage_v2_3/tests/launch_${PHASE}.out
+> OUT=results/c3_racine_registre/tests/launch_${PHASE}.out
+< RUN=/home/bruno/runs/c3_outillage_v2_3/$PHASE
+< SESSION=c3-outillage-v23-$PHASE-$(date -u +%Y%m%d)
+> RUN=/home/bruno/runs/c3_racine_registre/$PHASE
+> SESSION=c3-racine-registre-$PHASE-$(date -u +%Y%m%d)
+< remote_tip=$(git ls-remote origin refs/heads/feat/c3-outillage-v2.3 | cut -f1)
+> remote_tip=$(git ls-remote origin refs/heads/feat/c3-racine-registre | cut -f1)
+< "${SSH[@]}" "mkdir -p /home/bruno/runs/c3_outillage_v2_3 && mkdir $RUN" >> "$OUT" 2>&1
+> "${SSH[@]}" "mkdir -p /home/bruno/runs/c3_racine_registre && mkdir $RUN" >> "$OUT" 2>&1
+< git -C repo fetch -q origin feat/c3-outillage-v2.3 || exit 12
+> git -C repo fetch -q origin feat/c3-racine-registre || exit 12
+## results/c3_outillage_v2_3/tests/wait.sh -> results/c3_racine_registre/tests/wait.sh : lignes source changées=6, lignes reprise=6
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — attente de la fin du pilote d'une phase (conf | gate), lancé par `bash` en arrière-plan
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — attente de la fin du pilote de la phase conf, lancé par `bash` en arrière-plan
+< # usage : bash wait.sh <conf|gate> <intervalle en s> <nombre maximal de sondes>
+> # usage : bash wait.sh conf <intervalle en s> <nombre maximal de sondes>
+< PHASE=${1:?conf ou gate}
+> PHASE=${1:?conf}
+< case "$PHASE" in conf | gate) ;; *) echo "phase inconnue : $PHASE" >&2; exit 2 ;; esac
+> case "$PHASE" in conf) ;; *) echo "phase inconnue : $PHASE" >&2; exit 2 ;; esac
+< OUT=results/c3_outillage_v2_3/tests/wait_${PHASE}.out
+> OUT=results/c3_racine_registre/tests/wait_${PHASE}.out
+< G=/home/bruno/runs/c3_outillage_v2_3/$PHASE/out
+> G=/home/bruno/runs/c3_racine_registre/$PHASE/out
+## results/c3_outillage_v2_3/tests/fetch.sh -> results/c3_racine_registre/tests/fetch.sh : lignes source changées=8, lignes reprise=6
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — rapatriement des extraits d'une phase (conf | gate), lancé par `bash` depuis le dépôt
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — rapatriement des extraits de la phase conf, lancé par `bash` depuis le dépôt
+< # usage : bash fetch.sh <conf|gate>
+> # usage : bash fetch.sh conf
+< PHASE=${1:?conf ou gate}
+> PHASE=${1:?conf}
+<   conf) DEST=results/c3_outillage_v2_3/conformite/server
+>   conf) DEST=results/c3_racine_registre/conformite/server
+<   gate) DEST=results/c3_outillage_v2_3/gate_L5
+<     FILES=(status.txt pilot_exit.txt alembic_before.txt alembic_after.txt pytest_summary.txt) ;;
+< OUT=results/c3_outillage_v2_3/tests/fetch_${PHASE}.out
+> OUT=results/c3_racine_registre/tests/fetch_${PHASE}.out
+< G=/home/bruno/runs/c3_outillage_v2_3/$PHASE/out
+> G=/home/bruno/runs/c3_racine_registre/$PHASE/out
+## results/c3_outillage_v2_3/tests/archive.sh -> results/c3_racine_registre/tests/archive.sh : lignes source changées=15, lignes reprise=13
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — archive d'une phase (conf | gate) sur le serveur, vérifiée avant `rm -rf`, lancé par
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — archive de la phase conf sur le serveur, vérifiée avant `rm -rf`, lancé par
+< # usage : bash archive.sh <conf|gate> <AAAAMMJJ>
+> # usage : bash archive.sh conf <AAAAMMJJ>
+< # `rm -rf ~/runs/c3_outillage_v2_3/<phase>` seulement si tout vaut 0 (le .env copié part avec le clone), et `rmdir` du
+> # `rm -rf ~/runs/c3_racine_registre/<phase>` seulement si tout vaut 0 (le .env copié part avec le clone), et `rmdir` du
+< PHASE=${1:?conf ou gate}
+> PHASE=${1:?conf}
+<   conf) DEST=results/c3_outillage_v2_3/conformite/server
+<     PILOT=results/c3_outillage_v2_3/conformite/server/run_conformite.sh ;;
+<   gate) DEST=results/c3_outillage_v2_3/gate_L5
+<     PILOT=results/c3_outillage_v2_3/gate_L5/run_gate.sh ;;
+>   conf) DEST=results/c3_racine_registre/conformite/server
+>     PILOT=results/c3_racine_registre/conformite/server/run_conformite.sh ;;
+< OUT=results/c3_outillage_v2_3/tests/archive_${PHASE}.out
+< NAME=c3_outillage_v2_3_${PHASE}_server_$DATE.tgz
+> OUT=results/c3_racine_registre/tests/archive_${PHASE}.out
+> NAME=c3_racine_registre_${PHASE}_server_$DATE.tgz
+< RUN=/home/bruno/runs/c3_outillage_v2_3/$PHASE
+< ARC=/home/bruno/archive/c3_outillage_v2_3_${PHASE}_$DATE
+< TGZ=$ARC/c3_outillage_v2_3_${PHASE}_server_$DATE.tgz
+> RUN=/home/bruno/runs/c3_racine_registre/$PHASE
+> ARC=/home/bruno/archive/c3_racine_registre_${PHASE}_$DATE
+> TGZ=$ARC/c3_racine_registre_${PHASE}_server_$DATE.tgz
+<   rmdir --ignore-fail-on-non-empty /home/bruno/runs/c3_outillage_v2_3
+<   echo "parent=$(if [ -e /home/bruno/runs/c3_outillage_v2_3 ]; then echo present; else echo absent; fi)"
+>   rmdir --ignore-fail-on-non-empty /home/bruno/runs/c3_racine_registre
+>   echo "parent=$(if [ -e /home/bruno/runs/c3_racine_registre ]; then echo present; else echo absent; fi)"
+## results/c3_outillage_v2_3/tests/postflight.sh -> results/c3_racine_registre/tests/postflight.sh : lignes source changées=17, lignes reprise=15
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — postflight du serveur après les deux phases, LECTURE SEULE, lancé
+< # par `bash` depuis le dépôt (plans/lot2.md § 5, brief § 4).
+< # usage : bash postflight.sh <AAAAMMJJ conf> <AAAAMMJJ gate> <HEAD du service relevé au preflight> <NRestarts du preflight>
+< # Relève : ~/runs/c3_outillage_v2_3 absent ; aucune session tmux `c3-outillage-*` ; les deux archives présentes et
+< # `sha256sum -c --status` sur leur .sha256 ; collector actif et NRestarts égal à celui du preflight ; HEAD du service
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — postflight du serveur après la phase conf,
+> # LECTURE SEULE, lancé par `bash` depuis le dépôt (plans/lot2.md L6, brief § 4).
+> # usage : bash postflight.sh <AAAAMMJJ conf> <HEAD du service relevé au preflight> <NRestarts du preflight>
+> # Relève : ~/runs/c3_racine_registre absent ; aucune session tmux `c3-racine-registre-*` ; l'archive de la
+> # conformité présente et `sha256sum -c --status` sur son .sha256 ; collector actif et NRestarts égal à celui du preflight ; HEAD du service
+< DGATE=${2:?date gate}
+< SERVICE_HEAD=${3:?head du service}
+< NRESTARTS=${4:?NRestarts du preflight}
+> SERVICE_HEAD=${2:?head du service}
+> NRESTARTS=${3:?NRestarts du preflight}
+< OUT=results/c3_outillage_v2_3/tests/postflight.out
+> OUT=results/c3_racine_registre/tests/postflight.out
+<   ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$DCONF" "$DGATE" <<'REMOTE'
+>   ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$DCONF" <<'REMOTE'
+< if [ -e /home/bruno/runs/c3_outillage_v2_3 ]; then echo "runs_c3_outillage_v2_3=PRESENT"; else echo "runs_c3_outillage_v2_3=absent"; fi
+> if [ -e /home/bruno/runs/c3_racine_registre ]; then echo "runs_c3_racine_registre=PRESENT"; else echo "runs_c3_racine_registre=absent"; fi
+< n=$(tmux ls 2>/dev/null | grep -c '^c3-outillage-')
+> n=$(tmux ls 2>/dev/null | grep -c '^c3-racine-registre-')
+< for pair in "conf $1" "gate $2"; do
+> for pair in "conf $1"; do
+<   ARC=/home/bruno/archive/c3_outillage_v2_3_$1_$2
+<   if (cd "$ARC" 2>/dev/null && sha256sum -c --status "c3_outillage_v2_3_$1_server_$2.tgz.sha256"); then
+>   ARC=/home/bruno/archive/c3_racine_registre_$1_$2
+>   if (cd "$ARC" 2>/dev/null && sha256sum -c --status "c3_racine_registre_$1_server_$2.tgz.sha256"); then
+< grep -qx "runs_c3_outillage_v2_3=absent" "$OUT" || fail=1
+> grep -qx "runs_c3_racine_registre=absent" "$OUT" || fail=1
+< grep -qx "archive_gate=0" "$OUT" || fail=1
+## results/c3_outillage_v2_3/tests/verify_conformite.sh -> results/c3_racine_registre/tests/verify_conformite.sh : lignes source changées=3, lignes reprise=3
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — vérification de l'attendu de conformité sur les extraits rapatriés (conformite/server/ :
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — vérification de l'attendu de conformité sur les extraits rapatriés (conformite/server/ :
+< OUT=results/c3_outillage_v2_3/conformite/server/verify_attendu.out
+< python3 results/c3_outillage_v2_3/conformite/server/verify_attendu.py --sha "$SHA" > "$OUT" 2>&1
+> OUT=results/c3_racine_registre/conformite/server/verify_attendu.out
+> python3 results/c3_racine_registre/conformite/server/verify_attendu.py --sha "$SHA" > "$OUT" 2>&1
+## results/c3_outillage_v2_3/tests/verify_adverse.sh -> results/c3_racine_registre/tests/verify_adverse.sh : lignes source changées=40, lignes reprise=7
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — brief § 4 et condition du GO v2.2 (29/09) : les vérificateurs sont prouvés avant de servir (règle agent 1).
+< # verify_attendu.py (conformité) et verify_gate.sh (porte § L.5) décident « attendu tenu » ; un défaut chez eux
+< # laisserait passer une déviation.
+< #  - Témoins sains : les extraits des simulations CONFORMES du pilote lui-même (tests/pilot_dryrun.sh, DRYRUN_KEEP) —
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — les vérificateurs sont prouvés avant de servir
+> # (règle agent 1) : verify_attendu.py décide « attendu tenu » ; un défaut chez lui laisserait passer une déviation.
+> # Écart déclaré à la source : la partie « porte » (verify_gate.sh, 15 cas) est retirée (porte non rejouée, L5).
+> #  - Témoin sain : les extraits de la simulation CONFORME du pilote lui-même (tests/pilot_dryrun.sh, DRYRUN_KEEP) —
+< OUT=results/c3_outillage_v2_3/tests/verify_adverse.out
+< VERIFY_CONF=results/c3_outillage_v2_3/conformite/server/verify_attendu.py
+< VERIFY_GATE=results/c3_outillage_v2_3/tests/verify_gate.sh
+> OUT=results/c3_racine_registre/tests/verify_adverse.out
+> VERIFY_CONF=results/c3_racine_registre/conformite/server/verify_attendu.py
+< DRYRUN_OUT="$T/dryrun.out" DRYRUN_KEEP="$T/keep" bash results/c3_outillage_v2_3/tests/pilot_dryrun.sh
+> DRYRUN_OUT="$T/dryrun.out" DRYRUN_KEEP="$T/keep" bash results/c3_racine_registre/tests/pilot_dryrun.sh
+< . "$T/keep/gate/sim.env"
+< GATE_SHA=$SIM_SHA
+< GATE_PILOT=$SIM_PILOT_SHA
+< # --- porte ------------------------------------------------------------------------------------------------------------
+< # gate <cas> <attendu> <sha passé> <commande de déviation sur $D, ou « - »>
+< gate() {
+<   local D=$T/gate/$1
+<   mkdir -p "$D"
+<   cp "$T/keep/gate/"{status.txt,alembic_before.txt,alembic_after.txt,pilot_exit.txt,pytest_summary.txt} "$D/"
+<   if [ "$4" != "-" ]; then (cd "$D" && eval "$4"); fi
+<   bash "$VERIFY_GATE" "$3" "$D" "$D/verify.txt" "$GATE_PILOT" > /dev/null 2>&1
+<   judge gate "$1" "$?" "$2" "$D/verify.txt"
+< }
+< gate temoin 0 "$GATE_SHA" -
+< gate sha_passe_autre non0 0000000000000000000000000000000000000000 -
+< gate agregat_23_sur_24 non0 "$GATE_SHA" \
+<   "sedi 's/^junit_total=.*/junit_total=tests:23,failures:0,errors:0,skipped:0,missing:1/' status.txt"
+< gate combo7_skippe_rc0 non0 "$GATE_SHA" "sedi 's|^combo7=0 junit=1/0/0/0 |combo7=0 junit=1/0/0/1 |' status.txt"
+< gate combo3_rc1 non0 "$GATE_SHA" "sedi 's|^combo3=0 |combo3=1 |' status.txt"
+< gate full_failed non0 "$GATE_SHA" "sedi 's/^full=0$/full=FAILED n=1 combos=combo3/' status.txt"
+< gate extract_46 non0 "$GATE_SHA" "sedi 's/^extract=0$/extract=1 lines=46/' status.txt"
+< gate resume_passed_manquant non0 "$GATE_SHA" \
+<   "awk '!(/^  1 passed in / && !seen++)' pytest_summary.txt > s.tmp && mv s.tmp pytest_summary.txt"
+< gate tree_after_1 non0 "$GATE_SHA" "sedi 's/^tree_after=0$/tree_after=1/' status.txt"
+< gate alembic_after_autre non0 "$GATE_SHA" "echo 'c3bd1e7a0002 (head)' >> alembic_after.txt"
+< gate collector_nrestarts non0 "$GATE_SHA" "sedi 's/^\(collector_after=.*\)NRestarts=0/\1NRestarts=1/' status.txt"
+< gate service_head_autre non0 "$GATE_SHA" "sedi 's/^service_after=head=[0-9a-f]*/service_after=head=deadbeef/' status.txt"
+< gate interpreter_1 non0 "$GATE_SHA" "sedi 's/^interpreter_check=0$/interpreter_check=1/' status.txt"
+< gate cle_absente_full non0 "$GATE_SHA" "sedi '/^full=/d' status.txt"
+< gate pilot_sha_autre non0 "$GATE_SHA" "sedi 's/^pilot_sha256=.*/pilot_sha256=deadbeef/' status.txt"
+< gate pilot_exit_1 non0 "$GATE_SHA" "echo 1 > pilot_exit.txt"
+< 
+## results/c3_outillage_v2_3/tests/pilot_dryrun.sh -> results/c3_racine_registre/tests/pilot_dryrun.sh : lignes source changées=42, lignes reprise=11
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — le pilote de conformité exercé en local dans un monde simulé, sans base, sans serveur,
+< # avant S1 (results/c3_outillage_v2_2/plans/lot3.md § 5) : une panne du pilote se voit ici, pas sur le serveur.
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — le pilote de conformité exercé en local dans un
+> # monde simulé, sans base, sans serveur, avant S1 (plans/lot2.md L6) : une panne du pilote se voit ici, pas sur le
+> # serveur. Écart déclaré à la source : les deux simulations du pilote de la porte sont retirées (porte non rejouée, L5).
+< # `chain_violation` (chaîne en 1 avec une violation de rejeu : pilote 1) ; garde de SHA (pilote 2) ; puis le pilote
+< # de la porte (gate_L5/run_gate.sh, faux `pytest` qui écrit un JUnit par combo) : conforme (pilote 0), et `gate_skip`
+< # (combo7 skippé avec rc=0, le faux vert « module skippé » : pilote 1).
+> # `chain_violation` (chaîne en 1 avec une violation de rejeu : pilote 1) ; garde de SHA (pilote 2).
+< # alembic_*.txt, pilot_exit.txt et sim.env des deux simulations conformes, la porte sous gate/ avec
+< # pytest_summary.txt — témoins de verify_adverse.sh).
+< # rc=0 ssi les six simulations rendent leur code attendu et les conformes portent leurs marqueurs.
+> # alembic_*.txt, pilot_exit.txt et sim.env de la simulation conforme — témoin de verify_adverse.sh).
+> # rc=0 ssi les quatre simulations rendent leur code attendu et la conforme porte ses marqueurs.
+< OUT=${DRYRUN_OUT:-results/c3_outillage_v2_3/tests/pilot_dryrun.out}
+< SELF=results/c3_outillage_v2_3/conformite/server/run_conformite.sh
+< MANIFEST=results/c3_outillage_v2_3/conformite/manifest.json
+> OUT=${DRYRUN_OUT:-results/c3_racine_registre/tests/pilot_dryrun.out}
+> SELF=results/c3_racine_registre/conformite/server/run_conformite.sh
+> MANIFEST=results/c3_racine_registre/conformite/manifest.json
+<   local run=$T/$name/runs/c3_outillage_v2_3/$phase
+>   local run=$T/$name/runs/c3_racine_registre/$phase
+<     -e "s|^RUN=/home/bruno/runs/c3_outillage_v2_3/$phase\$|RUN=$run|" "$pilot" > "$run/repo/$pilot"
+>     -e "s|^RUN=/home/bruno/runs/c3_racine_registre/$phase\$|RUN=$run|" "$pilot" > "$run/repo/$pilot"
+< # 5. pilote de la porte, conforme : 24 combos 1/0/0/0
+< GATE=results/c3_outillage_v2_3/gate_L5/run_gate.sh
+< simulate gate_conforme "" HEAD "$GATE" gate; r=$?
+< log "gate_pilote_lignes_changees=$CHANGED"
+< [ "$CHANGED" = "3" ] || fail=1
+< log "sim_gate_conforme_exit=$r"
+< log "sim_gate_conforme_$(status_line "$SIM_RUN" 'full=')"
+< log "sim_gate_conforme_$(status_line "$SIM_RUN" 'junit_total=')"
+< log "sim_gate_conforme_$(status_line "$SIM_RUN" 'extract=')"
+< [ "$r" = "0" ] || fail=1
+< grep -qx "junit_total=tests:24,failures:0,errors:0,skipped:0,missing:0" "$SIM_RUN/out/status.txt" || fail=1
+< if [ -n "${DRYRUN_KEEP:-}" ]; then
+<   mkdir -p "$DRYRUN_KEEP/gate"
+<   cp "$SIM_RUN/out/status.txt" "$SIM_RUN/out/alembic_before.txt" "$SIM_RUN/out/alembic_after.txt" \
+<     "$SIM_RUN/out/pilot_exit.txt" "$SIM_RUN/out/pytest_summary.txt" "$DRYRUN_KEEP/gate/"
+<   {
+<     echo "SIM_SHA=$SIM_SHA"
+<     echo "SIM_PILOT_SHA=$(sha256sum "$SIM_RUN/repo/$GATE" | cut -d' ' -f1)"
+<   } > "$DRYRUN_KEEP/gate/sim.env"
+< fi
+< 
+< # 6. porte : combo7 skippé avec rc=0 (le faux vert « module skippé ») -> pilote 1
+< simulate gate_skip gate_skip HEAD "$GATE" gate; r=$?
+< log "sim_gate_skip_exit=$r"
+< log "sim_gate_skip_$(status_line "$SIM_RUN" 'combo7=' | cut -d' ' -f1-2)"
+< log "sim_gate_skip_$(status_line "$SIM_RUN" 'full=')"
+< [ "$r" = "1" ] || fail=1
+< grep -q "^combo7=0 junit=1/0/0/1 " "$SIM_RUN/out/status.txt" || fail=1
+< 
+## results/c3_outillage_v2_3/tests/events.sh -> results/c3_racine_registre/tests/events.sh : lignes source changées=3, lignes reprise=3
+< # C3 outillage v2.3, lot 2 (repris du lot 3 v2.2) — la liste close des événements d'erreur des producteurs, recopiée dans le pilote de
+> # C3 racine du registre, lot 2 (repris de l'outillage v2.3, lot 2) — la liste close des événements d'erreur des producteurs, recopiée dans le pilote de
+< OUT=results/c3_outillage_v2_3/tests/events.out
+< PILOT=results/c3_outillage_v2_3/conformite/server/run_conformite.sh
+> OUT=results/c3_racine_registre/tests/events.out
+> PILOT=results/c3_racine_registre/conformite/server/run_conformite.sh
+## results/c3_outillage_v2_3/tests/manifest_check.sh -> results/c3_racine_registre/tests/manifest_check.sh : lignes source changées=13, lignes reprise=15
+< # C3 outillage v2.3, lot 2 — le manifeste de conformité v2.3 vérifié avant S1 (plans/lot2.md § 4 ; repris de
+< # results/c3_outillage_v2_2/tests/manifest_check.sh).
+< #  1. Chemins JSON changés contre le manifeste de la conformité v2.2 (results/c3_outillage_v2_2/conformite/manifest.json)
+< #     = exactement la liste déclarée : `deferred_evaluation.date` ajouté ; rien de retiré ; `protocol_sha256`,
+< #     `research_log_entry`, `run_scope`, `variant_id` réécrits (K1).
+> # C3 racine du registre, lot 2 — le manifeste de conformité vérifié avant S1 (plans/lot2.md L2 ; repris de
+> # results/c3_outillage_v2_3/tests/manifest_check.sh, réécrit pour le delta de ce lot).
+> #  1. Chemins JSON changés contre le manifeste de la conformité v2.3 (results/c3_outillage_v2_3/conformite/manifest.json)
+> #     = exactement la liste déclarée : rien d'ajouté ; rien de retiré ; `research_log_entry`, `run_scope`, `variant_id`
+> #     réécrits (plan L2) ; et le texte ne diffère que sur ces trois lignes (même mise en forme).
+< #  3. `deferred_evaluation.date` − `window.end` : exactement 365 jours (D8 : le bord admis de la borne, § A.6 v2.3).
+> #  3. `deferred_evaluation.date` − `window.end` : exactement 365 jours, inchangé (le bord admis de la borne, § A.6 v2.3).
+< OUT=results/c3_outillage_v2_3/tests/manifest_check.out
+< NEW=results/c3_outillage_v2_3/conformite/manifest.json
+< OLD=results/c3_outillage_v2_2/conformite/manifest.json
+> OUT=results/c3_racine_registre/tests/manifest_check.out
+> NEW=results/c3_racine_registre/conformite/manifest.json
+> OLD=results/c3_outillage_v2_3/conformite/manifest.json
+< NOW=2026-09-30T00:00:00+00:00
+> NOW=2026-10-01T00:00:00+00:00
+< echo "manifest_v22_sha256=$(shasum -a 256 "$OLD" | cut -d' ' -f1)" >> "$OUT"
+> echo "manifest_v23_sha256=$(shasum -a 256 "$OLD" | cut -d' ' -f1)" >> "$OUT"
+> echo "lignes_texte_changees=$(diff "$OLD" "$NEW" | grep -c '^>') (attendu 3)" >> "$OUT"
+> [ "$(diff "$OLD" "$NEW" | grep -c '^>')" = "3" ] && [ "$(diff "$OLD" "$NEW" | grep -c '^<')" = "3" ] || fail=1
+<     "ajoute": ["deferred_evaluation.date"],
+>     "ajoute": [],
+<     "reecrit": ["protocol_sha256", "research_log_entry", "run_scope", "variant_id"],
+>     "reecrit": ["research_log_entry", "run_scope", "variant_id"],
+## results/c3_outillage_v2_3/tests/interdits_lot2.sh -> results/c3_racine_registre/tests/interdits_lot2.sh : lignes source changées=51, lignes reprise=62
+< # C3 outillage v2.3, lot 2 — interdits du brief (§ 4, § 6) et du plan du lot 2 (plans/lot2.md § 4, D3), lancé par
+< # `bash` AVANT chaque commit (fichiers indexés) et au tip. Dérivé de tests/interdits.sh (lot 1), qui reste tel quel.
+> # C3 racine du registre, lot 2 — interdits du brief (§ 4, § 6), du runbook (§ 4) et du plan du lot 2 (plans/lot2.md),
+> # lancé par `bash` AVANT chaque commit (fichiers indexés) et au tip. Repris de
+> # results/c3_outillage_v2_3/tests/interdits_lot2.sh, avec les contrôles du lot 1 de ce chantier (tests/interdits.sh,
+> # qui reste tel quel) ; reprise comptée dans reprise_lot2.out.
+< #  1. chemins gelés contre b50f2d1 (lot 1) : intacts au commit, à l'index, dans l'arbre, aucun fichier non suivi ;
+< #  2. le lot 2 n'écrit aucun code : diff vide contre a30d62a (tip du lot 1) sur le code, les tests, la configuration,
+> #  1. chemins gelés contre 313eb00 (base du chantier) : intacts au commit, à l'index, dans l'arbre, aucun non suivi ;
+> #  2. le lot 2 n'écrit aucun code : diff vide contre 56c65aa (tip du lot 1) sur le code, les tests, la configuration,
+< #  4. liste blanche du lot 2 : tout fichier changé depuis a30d62a est sous results/c3_outillage_v2_3/ ou est
+< #     docs/RESEARCH_LOG.md ; les fichiers étrangers à la racine (pas à ce chantier, jamais touchés) ne sont jamais
+< #     suivis, et sont inchangés s'ils sont présents : `gel_v2_3.patch` (G0 du lot 2 : absent, retiré hors de cette
+< #     session) et `lot2_s1.patch` (apparu au preflight de la conformité, 30/09 ; ajouté à cette liste après S1, déclaré) ;
+< #  5. aucun artefact du chemin sélection sous results/c3_outillage_v2_3/ (`conformite/manifest.json` excepté par son
+> #  4. liste blanche du lot 2 : tout fichier changé depuis 56c65aa est sous results/c3_racine_registre/ ou est
+> #     docs/RESEARCH_LOG.md ;
+> #  5. aucun artefact du chemin sélection sous results/c3_racine_registre/ (`conformite/manifest.json` excepté par son
+< #  6. règle 64 hex du lot 2 (plan D3, valable pour ce lot seulement) : toute empreinte de 64 hex ajoutée depuis
+< #     b50f2d1 est soit une empreinte du protocole (table d'Adoption), soit le sha256 d'un fichier du chantier
+< #     (results/c3_outillage_v2_3/**, suivi ou non) ou du manifeste v2.2 comparé, soit le sha d'une archive consigné dans
+< #     un `*.tgz.sha256` du chantier — jamais le sha d'un artefact du chemin ;
+< #  7. aucun script ni vérificateur du chantier ne nomme le répertoire de la dette 23.
+> #  6. règle 64 hex du lot 2 (plans/lot2.md § 2) : toute empreinte de 64 hex ajoutée depuis 313eb00 est une empreinte du
+> #     protocole (table d'Adoption), le sha256 d'un fichier du chantier (results/c3_racine_registre/**, suivi ou non,
+> #     skills/registry.md, le brief), celui du manifeste v2.3 comparé, ou le sha d'une archive consigné dans un
+> #     `*.tgz.sha256` du chantier — jamais le sha d'un artefact du chemin ;
+> #  7. aucun script ni vérificateur du chantier ne nomme le répertoire de la dette 23 (ce fichier-ci excepté) ;
+> #  8. runbook § 4, brief § 6 : aucun script ni vérificateur du chantier ne nomme le chemin du registre de campagne
+> #     (motifs construits ici, ce fichier-ci et tests/interdits.sh exceptés) ; ce répertoire n'existe pas sous le $HOME
+> #     local.
+< BASE=b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9
+< LOT1=a30d62a2fec51a4c277d51a5d20047892b2fbcca
+< DIR=results/c3_outillage_v2_3/tests
+> BASE=313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+> LOT1=56c65aaf8d14e6c70a4dcc66f321a83bb785d817
+> CH=results/c3_racine_registre
+> DIR=$CH/tests
+< #: Fichiers étrangers à la racine : nom et préfixe de 16 hex de leur sha256 au premier constat.
+< FOREIGN_LIST=(gel_v2_3.patch:1ffa3eec6e2d7051 lot2_s1.patch:b8dcfa42bb697a2d)
+< FOREIGN_NAMES=$(for e in "${FOREIGN_LIST[@]}"; do echo "${e%%:*}"; done)
+> BRIEF=agent/AGENT_C3_RACINE_REGISTRE.md
+> RUNBOOK=skills/registry.md
+> V23_MANIFEST=results/c3_outillage_v2_3/conformite/manifest.json
+<   scripts/run_p7_grid_search.py scripts/audit/rejeu_common.py scripts/audit/c3b_common.py scripts/audit/c3b_prefix.py \
+<   scripts/audit/c3b_evaluate.py docs/protocole_c3.md docs/amendements_c3_v2.1.md docs/amendements_c3_v2.2.md \
+<   docs/amendements_c3_v2.3.md results/c3_v2_2 results/c3b_producteur results/c3_outillage_v2_2 results/c3_v2_3_gel
+>   scripts/run_p7_grid_search.py scripts/audit/_common.py scripts/audit/rejeu_common.py scripts/audit/c3b_common.py \
+>   scripts/audit/c3b_prefix.py scripts/audit/c3b_evaluate.py scripts/audit/c3_common.py scripts/audit/c3_verdict.py \
+>   scripts/audit/c3_entry.py scripts/audit/c3_benchmark.py scripts/audit/c3_select.py scripts/audit/c3_continuity.py \
+>   docs/protocole_c3.md docs/amendements_c3_v2.1.md docs/amendements_c3_v2.2.md docs/amendements_c3_v2.3.md \
+>   docs/CONTRAINTES_POST_B4.md CLAUDE.md results/c3_v2_2 results/c3b_producteur results/c3_outillage_v2_2 \
+>   results/c3_v2_3_gel results/c3_outillage_v2_3
+<   results/c3b_producteur results/c3_outillage_v2_2 results/c3_v2_3_gel results/c3_outillage_v2_3/lot1 \
+<   results/c3_outillage_v2_3/plans/lot1.md results/c3_outillage_v2_3/mutants.log
+>   results/c3b_producteur results/c3_outillage_v2_2 results/c3_v2_3_gel results/c3_outillage_v2_3 "$CH/lot1" \
+>   "$CH/plans/plan.md" "$CH/mutants.log"
+< # 4. liste blanche du lot 2, et le fichier étranger
+< ALLOW='^(results/c3_outillage_v2_3/.+|docs/RESEARCH_LOG\.md)$'
+> # 4. liste blanche du lot 2
+> ALLOW='^(results/c3_racine_registre/.+|docs/RESEARCH_LOG\.md)$'
+<   git ls-files --others --exclude-standard; } | grep -vxF "$FOREIGN_NAMES" | LC_ALL=C sort -u)
+< echo "## fichiers changés depuis le lot 1 (HEAD ∪ index ∪ arbre ∪ non suivis ; fichiers étrangers exclus)" >> "$OUT"
+>   git ls-files --others --exclude-standard; } | LC_ALL=C sort -u)
+> echo "## fichiers changés depuis le lot 1 (HEAD ∪ index ∪ arbre ∪ non suivis)" >> "$OUT"
+< for e in "${FOREIGN_LIST[@]}"; do
+<   name=${e%%:*}
+<   sha16=${e#*:}
+<   if git ls-files --error-unmatch "$name" > /dev/null 2>&1; then
+<     echo "etranger_suivi=1 ($name est suivi : interdit)" >> "$OUT"; rc=1
+<   elif [ ! -e "$name" ]; then
+<     echo "etranger=absent $name (non suivi ; constat, pas un écart)" >> "$OUT"
+<   elif [ "$(shasum -a 256 "$name" | cut -c1-16)" = "$sha16" ]; then
+<     echo "etranger_inchange=0 ($name non suivi, sha256_16 $sha16)" >> "$OUT"
+<   else
+<     echo "etranger_inchange=1 ($name modifié)" >> "$OUT"; rc=1
+<   fi
+< done
+< ALL_CHANTIER=$( { git ls-files -- results/c3_outillage_v2_3; git ls-files --others --exclude-standard -- results/c3_outillage_v2_3; } \
+<   | LC_ALL=C sort -u)
+< artefacts=$(printf '%s\n' "$ALL_CHANTIER" | grep -E "$ARTEFACT" | grep -vxF results/c3_outillage_v2_3/conformite/manifest.json)
+> ALL_CHANTIER=$( { git ls-files -- "$CH"; git ls-files --others --exclude-standard -- "$CH"; } | LC_ALL=C sort -u)
+> artefacts=$(printf '%s\n' "$ALL_CHANTIER" | grep -E "$ARTEFACT" | grep -vxF "$CH/conformite/manifest.json")
+< # 6. règle 64 hex du lot 2 (D3)
+> # 6. règle 64 hex du lot 2
+< { git diff "$BASE" | grep -E '^\+' ; git ls-files --others --exclude-standard -z | grep -zvxF "$FOREIGN_NAMES" \
+<   | xargs -0 cat 2> /dev/null; } | grep -oE '[0-9a-f]{64}' | LC_ALL=C sort -u > "$FOUND"
+> { git diff "$BASE" | grep -E '^\+' ; git ls-files --others --exclude-standard -z | xargs -0 cat 2> /dev/null; } \
+>   | grep -oE '[0-9a-f]{64}' | LC_ALL=C sort -u > "$FOUND"
+<   shasum -a 256 results/c3_outillage_v2_2/conformite/manifest.json | cut -d' ' -f1
+>   for f in "$RUNBOOK" "$BRIEF" "$V23_MANIFEST"; do [ -f "$f" ] && shasum -a 256 "$f" | cut -d' ' -f1; done
+< # 7. dette 23 : le mot est construit ici, aucun fichier du chantier ne le porte
+> # 7. dette 23 : le mot est construit ici
+< named=$(find results/c3_outillage_v2_3 -type f \( -name '*.sh' -o -name '*.py' \) -print0 | xargs -0 grep -il "$W" 2> /dev/null)
+> named=$(find "$CH" -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits_lot2.sh ! -name interdits.sh -print0 \
+>   | xargs -0 grep -il "$W" 2> /dev/null)
+> # 8. registre de campagne : jamais nommé par un script du chantier, jamais créé localement (chemin construit ici)
+> C3=$(printf 'c%s' 3)
+> REG_PAT="(~|\\\$HOME|\\\$\\{HOME\\}|home/[a-z]+)/${C3}(/|\$|[^_a-z0-9])|${C3}/regis$(printf 'try')"
+> named=$(find "$CH" -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits_lot2.sh ! -name interdits.sh -print0 \
+>   | xargs -0 grep -lE "$REG_PAT" 2> /dev/null)
+> if [ -n "$named" ]; then
+>   while IFS= read -r f; do echo "nomme_registre_campagne $f" >> "$OUT"; done <<< "$named"
+>   echo "registre_campagne_non_nomme=1" >> "$OUT"; rc=1
+> else
+>   echo "registre_campagne_non_nomme=0" >> "$OUT"
+> fi
+> if [ -e "$HOME/$C3" ]; then
+>   echo "registre_campagne_absent_local=1 (le répertoire existe sous \$HOME)" >> "$OUT"; rc=1
+> else
+>   echo "registre_campagne_absent_local=0" >> "$OUT"
+> fi
+> 
+## results/c3_outillage_v2_3/tests/interdits_lot2_adverse.sh -> results/c3_racine_registre/tests/interdits_lot2_adverse.sh : lignes source changées=20, lignes reprise=41
+< # C3 outillage v2.3, lot 2 — interdits_lot2.sh prouvé avant de servir (règle agent 1 ; repris de
+< # tests/interdits_adverse.sh du lot 1) : chaque cas dévié fabriqué doit le faire sortir en rc≠0 ; le témoin (l'arbre tel
+< # quel) en rc=0. Chaque cas crée un fichier (ou ajoute une ligne à un fichier suivi), lance interdits_lot2.sh sous
+< # l'étiquette `adv`, puis restaure ; l'état `git status` est comparé avant et après chaque cas. Jamais CAMPAIGN_UNLOCK.
+< # Sortie : interdits_lot2_adverse.out, `cas=<nom> rc=<n> attendu=<0|non0> restaure=<0|1>`, puis rc=0 ssi témoin 0,
+< # chaque cas ≠ 0, tout restauré.
+> # C3 racine du registre, lot 2 — interdits_lot2.sh prouvé avant de servir (règle agent 1 ; repris de
+> # results/c3_outillage_v2_3/tests/interdits_lot2_adverse.sh et de tests/interdits_adverse.sh du lot 1) : chaque cas
+> # dévié fabriqué doit le faire sortir en rc≠0 par son propre item ; le témoin (l'arbre tel quel) et le témoin positif de
+> # la règle 64 hex (le sha256 du manifeste v2.3 comparé est admis) en rc=0. Chaque cas crée un fichier (ou ajoute une
+> # ligne à un fichier suivi), lance interdits_lot2.sh sous l'étiquette `adv`, puis restaure ; l'état `git status` est
+> # comparé avant et après chaque cas. Jamais CAMPAIGN_UNLOCK, jamais le répertoire du registre de campagne sous $HOME
+> # (brief § 6) : leurs contrôles n'ont pas de cas dévié, déclaré.
+> # Sortie : interdits_lot2_adverse.out, `cas=<nom> rc=<n> attendu=<0|non0> restaure=<0|1> items_en_ecart=[…]`, puis
+> # rc=0 ssi tout tient.
+< T=results/c3_outillage_v2_3/tests
+> T=results/c3_racine_registre/tests
+> ITEMS=$(mktemp)
+>   grep -E '^(hors_liste_blanche|artefact_versionne|empreinte_hors_regle|nomme_dette23|nomme_registre_campagne) |=1( |$)|non_suivis=[1-9]' \
+>     "$ADV_OUT" | grep -vE '^(arbre_hors_index|empreintes_64_ajoutees)=' | cut -c1-70 | tr '\n' ';' > "$ITEMS"
+<   echo "cas=$1 rc=$2 attendu=$3 restaure=$s" >> "$OUT"
+>   echo "cas=$1 rc=$2 attendu=$3 restaure=$s items_en_ecart=[$(cat "$ITEMS")]" >> "$OUT"
+> d=results/c3_racine_registre/zz_adverse
+< # 1. code touché : un module de chaîne du lot 1 (gelé au lot 2)
+< echo "# adverse" >> scripts/audit/c3_verdict.py; r=$(run); git checkout -q -- scripts/audit/c3_verdict.py
+> # témoin positif : le sha256 du manifeste v2.3 comparé, écrit dans un fichier du chantier, est admis
+> H=$(shasum -a 256 results/c3_outillage_v2_3/conformite/manifest.json | cut -d' ' -f1)
+> mkdir -p "$d"; echo "manifeste v2.3 $H" > "$d/note.txt"; r=$(run); rm -rf "$d"; record sha_manifeste_v23 "$r" 0
+> 
+> # 1. code touché : le module du lot 1 (gelé au lot 2), puis un module gelé dès la base
+> echo "# adverse" >> scripts/audit/c3_anchor.py; r=$(run); git checkout -q -- scripts/audit/c3_anchor.py
+> echo "# adverse" >> scripts/audit/c3_verdict.py; r=$(run); git checkout -q -- scripts/audit/c3_verdict.py
+> record verdict_gele "$r" non0
+< # 3. une doc hors liste (CLAUDE.md, PROJECT_CONTEXT.md)
+> # 3. le runbook commité au lot 1
+> echo "# adverse" >> skills/registry.md; r=$(run); git checkout -q -- skills/registry.md; record runbook_touche "$r" non0
+> 
+> # 4. une doc hors liste (CLAUDE.md, PROJECT_CONTEXT.md)
+< # 4. le livrable clos du lot 1
+< echo "# adverse" >> results/c3_outillage_v2_3/lot1/README.md; r=$(run)
+< git checkout -q -- results/c3_outillage_v2_3/lot1/README.md; record readme_lot1 "$r" non0
+> # 5. le livrable clos du lot 1
+> echo "# adverse" >> results/c3_racine_registre/lot1/README.md; r=$(run)
+> git checkout -q -- results/c3_racine_registre/lot1/README.md; record readme_lot1 "$r" non0
+< # 5. le protocole
+> # 6. le protocole
+< # 6. artefact du chemin sous le chantier (verdict, registre) ; un autre manifeste que celui de la conformité
+< d=results/c3_outillage_v2_3/zz_adverse
+> # 7. artefact du chemin sous le chantier (verdict, registre) ; un autre manifeste que celui de la conformité
+< # 7. une empreinte de 64 hex hors règle (construite ici, jamais écrite), dans un fichier du chantier
+> # 8. une empreinte de 64 hex hors règle (construite ici, jamais écrite), dans un fichier du chantier
+< # 8. fichier hors liste blanche à la racine
+> # 9. fichier hors liste blanche à la racine
+< # 9. script du chantier qui nomme le répertoire de la dette 23 (mot construit ici)
+> # 10. script du chantier qui nomme le répertoire de la dette 23 (mot construit ici)
+> # 11. script du chantier qui nomme le registre de campagne (chemin construit ici)
+> C3=$(printf 'c%s' 3)
+> mkdir -p "$d"; printf '#!/bin/bash\nstat ~/%s/registry/variants.json\n' "$C3" > "$d/x.sh"; r=$(run); rm -rf "$d"
+> record nomme_registre_campagne "$r" non0
+> 
+> rm -f "$ITEMS"
+## results/c3_outillage_v2_3/tests/lint_lot2.sh -> results/c3_racine_registre/tests/lint_lot2.sh : lignes source changées=5, lignes reprise=5
+< # C3 outillage v2.3, lot 2 (repris de results/c3_outillage_v2_2/tests/lint_lot3.sh) — lint des seuls fichiers Python
+> # C3 racine du registre, lot 2 (repris de results/c3_racine_registre/tests/lint_lot2.sh) — lint des seuls fichiers Python
+< OUT=results/c3_outillage_v2_3/tests/lint_lot2.out
+< PY_FILES=(results/c3_outillage_v2_3/conformite/server/verify_attendu.py)
+< SH_FILES=(results/c3_outillage_v2_3/conformite/server/run_conformite.sh results/c3_outillage_v2_3/gate_L5/run_gate.sh
+<   results/c3_outillage_v2_3/tests/{preflight,launch,wait,fetch,archive,postflight,verify_conformite,verify_gate,verify_adverse,pilot_dryrun,events,manifest_check,interdits_lot2,interdits_lot2_adverse,reprise_lot2,lint_
+> OUT=results/c3_racine_registre/tests/lint_lot2.out
+> PY_FILES=(results/c3_racine_registre/conformite/server/verify_attendu.py)
+> SH_FILES=(results/c3_racine_registre/conformite/server/run_conformite.sh
+>   results/c3_racine_registre/tests/{preflight,launch,wait,fetch,archive,postflight,verify_conformite,verify_adverse,pilot_dryrun,events,manifest_check,interdits_lot2,interdits_lot2_adverse,reprise_lot2,invariance_porte
+rc=0

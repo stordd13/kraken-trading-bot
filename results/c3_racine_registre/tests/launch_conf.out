@@ -1,0 +1,15 @@
+# launch conf — 2026-10-01T10:16:07Z — sha 84fff64385b8da267668f69d038f09d58fa522a3
+sha_egal_head_local=0
+origin_tip=84fff64385b8da267668f69d038f09d58fa522a3
+sha_egal_tip_origin=0
+pilote_versionne_au_sha=0
+mkdir_run=0
+clone_head=84fff64385b8da267668f69d038f09d58fa522a3
+clone=0
+env_copy_out_dir=0
+pilot_sha256_blob=ddf85bb84fc7c9c7d2f26373ab3af8aa1fa8f05d15b1af53b2f69c45399166ff
+pilot_sha256_clone=ddf85bb84fc7c9c7d2f26373ab3af8aa1fa8f05d15b1af53b2f69c45399166ff
+pilot_cmp=0
+tmux_launch=0
+session=c3-racine-registre-conf-20261001 launched_at=2026-10-01T10:16:15Z
+rc=0

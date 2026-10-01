@@ -1,0 +1,125 @@
+# interdits_lot2 — S3 — 2026-10-01T10:30:41Z
+# HEAD b8f1e723586239fe228a9c8d22c00d3be787c0a3 branche feat/c3-racine-registre ; base 313eb00c2019b98cf20fb81ac8327f7b9d1e920a ; lot 1 56c65aaf8d14e6c70a4dcc66f321a83bb785d817
+gele_base src head=0 index=0 arbre=0 non_suivis=0
+gele_base config head=0 index=0 arbre=0 non_suivis=0
+gele_base pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele_base poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele_base .github head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/backtest.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/run_p6_backtests.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/run_p7_grid_search.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/_common.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/rejeu_common.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_common.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_prefix.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3b_evaluate.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3_common.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3_verdict.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3_entry.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3_benchmark.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3_select.py head=0 index=0 arbre=0 non_suivis=0
+gele_base scripts/audit/c3_continuity.py head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/protocole_c3.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.1.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.2.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/amendements_c3_v2.3.md head=0 index=0 arbre=0 non_suivis=0
+gele_base docs/CONTRAINTES_POST_B4.md head=0 index=0 arbre=0 non_suivis=0
+gele_base CLAUDE.md head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_v2_3_gel head=0 index=0 arbre=0 non_suivis=0
+gele_base results/c3_outillage_v2_3 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 scripts head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 tests head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 src head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 config head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 pyproject.toml head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 poetry.lock head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 .github head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 agent head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 skills head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 CLAUDE.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 PROJECT_CONTEXT.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/INDEX.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/CODE_MAP.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/protocole_c3.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.1.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.2.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/amendements_c3_v2.3.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 docs/CONTRAINTES_POST_B4.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3b_producteur head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_2 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_v2_3_gel head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_outillage_v2_3 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_racine_registre/lot1 head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_racine_registre/plans/plan.md head=0 index=0 arbre=0 non_suivis=0
+gele_lot2 results/c3_racine_registre/mutants.log head=0 index=0 arbre=0 non_suivis=0
+protocole_sha_egal_consigne=0 (d030ab239de317f6…)
+## fichiers changés depuis le lot 1 (HEAD ∪ index ∪ arbre ∪ non suivis)
+  docs/RESEARCH_LOG.md
+  results/c3_racine_registre/conformite/attendu.md
+  results/c3_racine_registre/conformite/manifest.json
+  results/c3_racine_registre/conformite/server/alembic_after.txt
+  results/c3_racine_registre/conformite/server/alembic_before.txt
+  results/c3_racine_registre/conformite/server/c3_racine_registre_conf_server_20261001.tgz.sha256
+  results/c3_racine_registre/conformite/server/pilot_exit.txt
+  results/c3_racine_registre/conformite/server/run_conformite.sh
+  results/c3_racine_registre/conformite/server/status.txt
+  results/c3_racine_registre/conformite/server/verify_attendu.out
+  results/c3_racine_registre/conformite/server/verify_attendu.py
+  results/c3_racine_registre/plans/lot2.md
+  results/c3_racine_registre/report.md
+  results/c3_racine_registre/tests/archive.sh
+  results/c3_racine_registre/tests/archive_conf.out
+  results/c3_racine_registre/tests/ci_status_S1.out
+  results/c3_racine_registre/tests/ci_status_S2.out
+  results/c3_racine_registre/tests/events.out
+  results/c3_racine_registre/tests/events.sh
+  results/c3_racine_registre/tests/fetch.sh
+  results/c3_racine_registre/tests/fetch_conf.out
+  results/c3_racine_registre/tests/interdits_lot2.sh
+  results/c3_racine_registre/tests/interdits_lot2_C0.out
+  results/c3_racine_registre/tests/interdits_lot2_S1.out
+  results/c3_racine_registre/tests/interdits_lot2_S2.out
+  results/c3_racine_registre/tests/interdits_lot2_S3.out
+  results/c3_racine_registre/tests/interdits_lot2_adverse.out
+  results/c3_racine_registre/tests/interdits_lot2_adverse.sh
+  results/c3_racine_registre/tests/invariance_adverse.out
+  results/c3_racine_registre/tests/invariance_adverse.sh
+  results/c3_racine_registre/tests/invariance_porte.sh
+  results/c3_racine_registre/tests/invariance_porte_S1.out
+  results/c3_racine_registre/tests/invariance_porte_S2.out
+  results/c3_racine_registre/tests/launch.sh
+  results/c3_racine_registre/tests/launch_conf.out
+  results/c3_racine_registre/tests/lint_lot2.out
+  results/c3_racine_registre/tests/lint_lot2.sh
+  results/c3_racine_registre/tests/manifest_check.out
+  results/c3_racine_registre/tests/manifest_check.sh
+  results/c3_racine_registre/tests/pilot_dryrun.out
+  results/c3_racine_registre/tests/pilot_dryrun.sh
+  results/c3_racine_registre/tests/postflight.out
+  results/c3_racine_registre/tests/postflight.sh
+  results/c3_racine_registre/tests/preflight.sh
+  results/c3_racine_registre/tests/preflight_conf.out
+  results/c3_racine_registre/tests/reprise_lot2.out
+  results/c3_racine_registre/tests/reprise_lot2.sh
+  results/c3_racine_registre/tests/tunnel.out
+  results/c3_racine_registre/tests/verify_adverse.out
+  results/c3_racine_registre/tests/verify_adverse.sh
+  results/c3_racine_registre/tests/verify_conformite.sh
+  results/c3_racine_registre/tests/wait.sh
+  results/c3_racine_registre/tests/wait_conf.out
+liste_blanche=0
+## fichiers du commit courant (index contre HEAD)
+  A	results/c3_racine_registre/tests/ci_status_S2.out
+arbre_hors_index=0 fichier(s) suivi(s) modifiés non indexés
+aucun_artefact=0
+campaign_unlock=absent
+empreintes_64_ajoutees=9 dont_protocole=1 dont_fichiers_du_chantier_ou_archives=8 table_adoption=4
+aucun_sha_artefact=0
+dette23=0
+registre_campagne_non_nomme=0
+registre_campagne_absent_local=0
+rc=0

@@ -1,0 +1,7 @@
+# rouge_avant — C2 — mode rouge — 2026-10-01T08:37:10Z
+# HEAD 8915807b9acafcfce3404c8cf5e01f8b80f11d18 branche feat/c3-racine-registre ; code de la base 313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+tests copiés : test_c3_common.py test_c3_anchor.py test_c3_verdict.py (arbre courant)
+test=test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant pytest_exit=1 (attendu 1) échec : E   AssertionError: la première réécriture a jeté la racine tests/test_scripts/test_c3_anchor.py:884: AssertionError: la première réécriture a jeté la racine 
+test=test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict pytest_exit=1 (attendu 1) échec : E   AssertionError: assert ['variants'] == ['racine_de_t...', 'variants'] tests/test_scripts/test_c3_verdict.py:3142: AssertionError: assert ['variants'] == ['racine_de_t...', 'variants'] 
+test=test_c3_anchor.py::test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic pytest_exit=1 (attendu 1) échec : E   AssertionError: assert {'chaine_nan'...False, False)} == {'chaine_nan'..., True, True)} tests/test_scripts/test_c3_anchor.py:935: AssertionError: assert {'chaine_nan'...False, False)} == {'chaine_nan'..., True, True)} 
+rc=0

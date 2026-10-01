@@ -1,0 +1,10 @@
+# lint — base — 2026-10-01T08:34:40Z
+# HEAD 313eb00c2019b98cf20fb81ac8327f7b9d1e920a branche feat/c3-racine-registre
+ruff_check_ci=0
+ruff_format_ci=0
+ruff_check_depot=0
+mypy_src=Found 65 errors in 18 files (checked 83 source files)
+mypy_strict scripts/audit/c3_common.py 4
+mypy_strict scripts/audit/c3_anchor.py 0
+mypy_strict scripts/audit/c3_verdict.py 0
+rc=0

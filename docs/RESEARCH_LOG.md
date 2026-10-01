@@ -448,6 +448,45 @@ après la relecture de Bruno (STOP 1) et son GO de lancement.
 | 21 | `alembic` `c3bd1e7a0001` inchangé ; service `662c104`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` absent ; attendu **tenu sur ses 10 items vérifiables** (le 11ᵉ, les bornes, repose sur des appuis déclarés) | `conformite/server/verify_attendu.out` |
 | 21 | Porte § L.5 option 1 au `c62acb4` (S2) : **24/24 `_full`** (agrégat JUnit `tests:24,failures:0,errors:0,skipped:0,missing:0`), le 2026-09-30 de 21:08:00 à 22:18:21Z. Ce ne sont pas des runs du producteur : backtests P6 comparés par hash, aucune métrique lue | `results/c3_outillage_v2_3/gate_L5/` |
 
+### C3 racine du registre (R-4), lot 2 — conformité du producteur et de la chaîne au code du chantier, sous v2.3, sur la fenêtre 2020 (entrée 22, inscrite le 2026-10-01, avant lancement — essai d'instrument, fenêtre hors campagne, aucune lecture économique, issue non lue)
+
+Essai d'**instrument**, pas un essai de recherche : aucune sélection n'en sort, et il est hors quota. C'est un run
+neuf, parce que le chantier racine du registre touche `c3_anchor` (l'ancrage préserve les clés de racine du registre,
+pour le sel du registre de campagne, `skills/registry.md`) : la conformité du 30/09 (entrée 21) ne couvre plus le tip.
+Les **quatre temps** sont rejoués (préfixe, chaîne 1-4, évaluation, chaîne complète), **trois fois**, au code du
+chantier (lot 1). Attendu complet, item par item : `results/c3_racine_registre/conformite/attendu.md`, committé avec
+cette entrée. Le run se fait au SHA de ce commit, après la relecture de Bruno (STOP 1) et son GO de lancement. La porte
+§ L.5 n'est pas rejouée : son invariance depuis la dernière porte jouée (`c62acb4`, entrée 21) est prouvée
+(`results/c3_racine_registre/tests/invariance_porte_S1.out`).
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 22 | 2026-10-01 | C3 racine du registre, lot 2 — essai d'instrument : `c3b_prefix.py` → `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select` → `c3b_evaluate.py --selection` → `c3_verdict.py chain` (six étapes, neuf entrées), **trois exécutions** (`--workers` 4 / 1 / 4 au préfixe, même `--now`, même chemin absolu), registre **neuf par exécution** (racine `variants` seule, aucun sel) ; `--campaign RACINE_REGISTRE_CONF`, étiquette d'instrument (dette 21 intacte) ; **aucune lecture économique, issue non lue** | `grok_grid_atr_adaptive_v4`, 4 paramétrages (classes C1, C2, C5, C6) × `BTC/USDT`, `ETH/USDT`, `SOL/USDT` = **12 candidats** ; famille de test `test-conformite-instrument-2020` (jamais une famille de campagne) ; provenance `unknown` : aucun `validé` atteignable, et la voie du § 10.1 ne s'ouvre pas (aucune évaluation différée inscrite) ; chemin sélection seul, aucune identité, paire, métrique ni issue ne remonte au dépôt | `exchange='binance'`, exécution 5 m, séries 4 h / 1 j / 1 w ; fenêtre de conformité `2020-01-06 → 2020-12-28`, `T = 2020-09-11T21:36Z` ; lectures bornées à `≤ T` (préfixe) et `≤ fin` (évaluation), amorçage `≥ 400 j` avant ; `deferred_evaluation.date = 2021-12-28` (365 j exactement après la fin, une déclaration, jamais une fenêtre lue) ; **hors campagne** (garde-fou 6, `CAMPAIGN_UNLOCK` absent) | branche `feat/c3-racine-registre`, exécuté au commit de cette entrée (code identique à `56c65aa`, `interdits_lot2_S1.out`) ; métriques v2, `replay_version` 2 ; protocole v2.3 `d030ab23…79e6` ; manifeste `9966efad…a24b` (celui de l'entrée 21, trois lignes réécrites : `variant_id`, `research_log_entry`, `run_scope`) | bybit maker 0,10 % / taker 0,25 % ; coûts de `config/pair_costs_b4.json` pour la paire de déploiement USDC (§ A.6) ; `min_order_quote 5.0` (valeur du rejeu, inerte sur le grid) | producteur préfixe 0 ×3 ; chaîne 1-4 autonome 0 ×4 ×3 ; producteur d'évaluation `0 evaluated` ×3 ; chaîne complète : six codes d'étape en 0, `chain.verified` vrai, violations vides, zéro violation au rejeu, ×3 ; **23 artefacts identiques au bit sur les trois exécutions** (booléens seulement, aucun sha d'artefact versionné) ; `alembic` `c3bd1e7a0001` inchangé ; service et collector inchangés ; `validé` et `réfuté` inatteignables par construction (provenance `unknown`) | aucune décision économique ; la conformité au SHA du chantier est la preuve d'instrument du dernier changement de code de chaîne avant la campagne (brief § 1) ; merge sous décision humaine | `results/c3_racine_registre/conformite/` (`attendu.md`, `manifest.json`, pilote, preuves au commit suivant) ; `results/c3_racine_registre/report.md` |
+
+- **Garde-fou 6, mécanique** : le producteur refuse (code 2) toute fenêtre qui finit après le 2021-03-01 tant que
+  `results/c3b_producteur/CAMPAIGN_UNLOCK` n'existe pas. Ce fichier n'existe pas, et ce lot ne le crée pas.
+- **Aucun registre persistant, aucun sel réel** : le registre de campagne est créé par Bruno après le merge
+  (`skills/registry.md` § 1) ; ce run n'utilise que des registres jetés.
+- **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
+  diagnostic avant l'accord de Bruno. L'issue mesurée sera inscrite dans une section suivante, sans réécrire celle-ci.
+
+### Issue de l'entrée 22 (inscrite après le run — aucune lecture économique, issue non lue)
+
+- **Lancement** : un seul, au `84fff64` (S1), après la CI verte sur S1 (tentative 1), la relecture de l'attendu, du
+  manifeste et du pilote par Bruno, recalculés à ce SHA (STOP 1), et son GO de lancement. Pilote `ddf85bb8…66ff`, exécuté
+  depuis le clone et consigné dans `status.txt`. Le 2026-10-01 de 10:16:15 à 10:20:27Z, sur le serveur, en lecture seule
+  assertée par Postgres.
+- **Archive** : `~/archive/c3_racine_registre_conf_20261001/` (sha256 `04e00089…512d`, 139 fichiers), vérifiée par codes
+  seulement avant le `rm -rf` du run (10:21:13Z).
+- **Rien n'a été lu du chemin sélection** hors de `status.txt`.
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 22 | Trois exécutions (workers 4 / 1 / 4) : producteur préfixe **0** ; `c3_anchor`, `c3_entry`, `c3_benchmark`, `c3_select` autonomes **0** ; producteur d'évaluation **`0 event=evaluated`** ; `chain` **0**, avec les six codes d'étape en 0, **`chain.verified` vrai, violations vides, zéro violation au rejeu** — les trois fois. L'issue publiée **n'est pas lue** (`validé` et `réfuté` inatteignables par construction : provenance `unknown` ; aucune évaluation différée inscrite, par construction) | `results/c3_racine_registre/conformite/server/status.txt` |
+| 22 | **23 artefacts identiques au bit** sur les trois exécutions (`compared=23 differing=0 absent=0`), liste attendue exacte ; aucun sha d'artefact versionné (booléens seulement) | `status.txt`, `verify_attendu.out` |
+| 22 | `alembic` `c3bd1e7a0001` inchangé ; service `313eb00`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` absent ; attendu **tenu sur ses 10 items vérifiables** ; postflight `rc=0` | `conformite/server/verify_attendu.out`, `tests/postflight.out` |
+| 22 | Porte § L.5 **non rejouée** : la porte jouée au `c62acb4` (entrée 21, 24/24) vaut pour le tip, invariance prouvée au SHA du run et au tip (rien de ce que la porte exerce n'a changé ; `c3_anchor` hors de son chemin) | `results/c3_racine_registre/tests/invariance_porte_S1.out`, `invariance_porte_S2.out` |
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
@@ -481,3 +520,9 @@ l'adoption de v2.1 : section précédente.)_
     l'ancrage) est outillée ; `results/c3_outillage_v2_3/report.md`. Merge sur `dev` sous décision humaine.
   - Restent avant la première campagne : le manifeste gelé sous v2.3 (avec `deferred_evaluation.date`), le registre de
     campagne persistant et son sel à la racine, `CAMPAIGN_UNLOCK` créé par Bruno. Ajout seul.
+- **Racine du registre (R-4) livrée et conformité au code du chantier prouvée le 01/10/2026** (entrée 22, avec son
+  issue).
+  - L'ancrage préserve les clés de racine du registre ; le runbook du registre de campagne est versionné
+    (`skills/registry.md`) ; `results/c3_racine_registre/report.md`. Merge sur `dev` sous décision humaine.
+  - Restent avant la première campagne : la création du registre de campagne et de son sel par Bruno (runbook § 1),
+    le manifeste gelé sous v2.3, `CAMPAIGN_UNLOCK` créé par Bruno. Ajout seul.

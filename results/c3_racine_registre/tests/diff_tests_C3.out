@@ -1,0 +1,32 @@
+# diff des tests — C3 — 2026-10-01T08:41:40Z
+# HEAD b8ed4b019fdc9cc0a1f9bf05a9074d643b8ccfb8 branche feat/c3-racine-registre ; base 313eb00
+## tests/test_scripts/test_c3_anchor.py
+  fonctions base=43 head=45 ; xfail de la base=0
+  neuve déclarée : test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+  neuve déclarée : test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic
+## tests/test_scripts/test_c3_benchmark.py
+  fonctions base=35 head=35 ; xfail de la base=0
+## tests/test_scripts/test_c3_chronology.py
+  fonctions base=18 head=18 ; xfail de la base=0
+## tests/test_scripts/test_c3_common.py
+  fonctions base=99 head=99 ; xfail de la base=0
+  affectation ajoutée déclarée : REGISTRY_ROOT_SYNTHETIC
+## tests/test_scripts/test_c3_continuity.py
+  fonctions base=50 head=50 ; xfail de la base=0
+## tests/test_scripts/test_c3_entry.py
+  fonctions base=65 head=65 ; xfail de la base=0
+## tests/test_scripts/test_c3_select.py
+  fonctions base=54 head=54 ; xfail de la base=0
+## tests/test_scripts/test_c3_verdict.py
+  fonctions base=226 head=229 ; xfail de la base=0
+  neuve déclarée : test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+  neuve déclarée : test_A6_registry_inscription_preserve_les_cles_de_racine
+  neuve déclarée : test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie
+## tests/test_scripts/test_c3b_common.py
+  fonctions base=72 head=72 ; xfail de la base=0
+## tests/test_scripts/test_c3b_evaluate.py
+  fonctions base=102 head=102 ; xfail de la base=1
+## tests/test_scripts/test_c3b_prefix.py
+  fonctions base=36 head=36 ; xfail de la base=0
+x_leves_vus=0 sur 0
+rc=0

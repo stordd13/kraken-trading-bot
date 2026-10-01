@@ -1,0 +1,26 @@
+# comptes — suite C3 — 2026-10-01T08:44:55Z
+# HEAD b8ed4b019fdc9cc0a1f9bf05a9074d643b8ccfb8 branche feat/c3-racine-registre ; base 313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+collecte wt_base -k='not test_determinism_parallel_vs_serial_full' : exit=0 ; 3341/3365 tests collected (24 deselected) in 2.93s
+collecte kraken-trading-bot -k='not test_determinism_parallel_vs_serial_full' : exit=0 ; 3346/3370 tests collected (24 deselected) in 0.68s
+collecte kraken-trading-bot -k='' : exit=0 ; 3370 tests collected in 0.63s
+collectes : base=3341 tete=3346
+retires_egal_renomme_ancien=0
+ajoutes_egal_renomme_nouveau_et_neufs=0
+  ajouté : tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+  ajouté : tests/test_scripts/test_c3_anchor.py::test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic
+  ajouté : tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+  ajouté : tests/test_scripts/test_c3_verdict.py::test_A6_registry_inscription_preserve_les_cles_de_racine
+  ajouté : tests/test_scripts/test_c3_verdict.py::test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie
+k_deselectionne_exactement_24_full=0
+xfail : base=1 tete=1 leves_declares=0
+leves_inclus_xfail_base=0
+xfail_tete_egal_base_moins_leves=0
+  reste xfail : tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3
+aucun_xpass_failed_error=0
+resume base={'passed': 3321, 'skipped': 19, 'deselected': 24, 'xfailed': 1} tete={'passed': 3326, 'skipped': 19, 'deselected': 24, 'xfailed': 1}
+equation : 3321 (base) + 0 (levés) + 5 (neufs) = 3326 ; tête = 3326
+equation_juste=0
+ignores_inchanges=0
+deselectionnes_inchanges_24=0
+xfailed_resume_egal_lignes=0
+rc=0

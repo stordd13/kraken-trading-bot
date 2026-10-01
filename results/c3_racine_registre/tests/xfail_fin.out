@@ -1,0 +1,8 @@
+# xfail en fin de lot 1 (racine du registre) — 2026-10-01T08:44:55Z
+# HEAD b8ed4b019fdc9cc0a1f9bf05a9074d643b8ccfb8 branche feat/c3-racine-registre ; extrait lu : results/c3_racine_registre/tests/suite_C3.out
+suite_rc=0 failed_error_xpass=0
+xfail_n=1
+xfail=tests/test_scripts/test_c3b_evaluate.py::test_hors_R_a_comparator_cagr_overflow_is_a_control_error_3
+resume=3326 passed, 19 skipped, 24 deselected, 1 xfailed in 184.94s (0:03:04)
+seul_xfail_le_caduc=oui
+rc=0

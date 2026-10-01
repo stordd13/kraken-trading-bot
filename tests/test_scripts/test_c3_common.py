@@ -970,6 +970,22 @@ def anchor_argv(
     ]
 
 
+#: R-4 (runbook `skills/registry.md` § 1 : `{"salt": …, "variants": {}}`) — clés de racine **synthétiques**, nommées
+#: comme telles, jamais un sel réel (brief § 1) : `salt` porte le nom du runbook et une valeur qui n'a pas la forme d'un
+#: sel ; la seconde clé, typée, fait mordre toute réécriture des valeurs (par `canon` : 7 → "7", "0E-30" → "0").
+REGISTRY_ROOT_SYNTHETIC: dict[str, Any] = {
+    "salt": "racine-de-test",
+    "racine_de_test_typee": {
+        "entier": 7,
+        "flottant": 0.5,
+        "nul": None,
+        "decimal_en_texte": "0E-30",
+        "liste": [1, "a"],
+        "unicode": "é",
+    },
+}
+
+
 # ---------------------------------------------------------------------------
 # Observations, couverture et bougies synthétiques — le monde complet d'un run C3a
 # ---------------------------------------------------------------------------

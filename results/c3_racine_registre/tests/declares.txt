@@ -1,0 +1,11 @@
+# C3 racine du registre, lot 1 — déclarations lues par comptes.sh (identifiants pytest complets, plan § 3).
+[leves]
+[neufs]
+# Plan § 3 : T1 et T4 (ancrage), T2-chaîne, T2-verdict, T3 (verdict).
+tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+tests/test_scripts/test_c3_anchor.py::test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic
+tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+tests/test_scripts/test_c3_verdict.py::test_A6_registry_inscription_preserve_les_cles_de_racine
+tests/test_scripts/test_c3_verdict.py::test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie
+[renomme_ancien]
+[renomme_nouveau]

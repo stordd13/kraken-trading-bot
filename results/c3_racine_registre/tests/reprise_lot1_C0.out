@@ -1,0 +1,398 @@
+# reprise_lot1 — C0 — 2026-10-01T08:36:01Z — HEAD 313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+## results/c3_outillage_v2_3/tests/suite.sh -> results/c3_racine_registre/tests/suite.sh : lignes source changées=3, lignes reprise=3
+< # C3 outillage v2.3 — suite complète locale SANS TUNNEL (brief § 3.3) : le greffon `gate_sans_tunnel` de la porte v2.2
+> # C3 racine du registre (repris de l'outillage v2.3) — suite complète locale SANS TUNNEL (brief § 3.3) : le greffon `gate_sans_tunnel` de la porte v2.2
+< # Usage : bash suite_gel.sh <étiquette>. Sortie brute au scratchpad si SUITE_RAW est posé, sinon mktemp ; extrait
+> # Usage : bash suite.sh <étiquette>. Sortie brute au scratchpad si SUITE_RAW est posé, sinon mktemp ; extrait
+< DIR=results/c3_outillage_v2_3/tests
+> DIR=results/c3_racine_registre/tests
+## results/c3_outillage_v2_3/tests/lint.sh -> results/c3_racine_registre/tests/lint.sh : lignes source changées=4, lignes reprise=4
+< # C3 outillage v2.3 — lint et typage (repris de results/c3_outillage_v2_2/tests/lint.sh). Usage : bash lint.sh
+> # C3 racine du registre — lint et typage (repris de results/c3_racine_registre/tests/lint.sh). Usage : bash lint.sh
+< # 3. mypy strict des trois modules du lot (MYPYPATH=src:scripts:scripts/audit --follow-imports=silent --strict), une
+< #    invocation par fichier ; le nombre d'erreurs par fichier est comparé à la base b50f2d1 (lint_base.out, mesuré au
+> # 3. mypy strict des trois modules de chaîne (c3_anchor touché, les deux autres gelés) (MYPYPATH=src:scripts:scripts/audit --follow-imports=silent --strict), une
+> #    invocation par fichier ; le nombre d'erreurs par fichier est comparé à la base 313eb00 (lint_base.out, mesuré au
+< DIR=results/c3_outillage_v2_3/tests
+> DIR=results/c3_racine_registre/tests
+## results/c3_outillage_v2_3/tests/tunnel.sh -> results/c3_racine_registre/tests/tunnel.sh : lignes source changées=2, lignes reprise=2
+< # C3 outillage v2.3 (repris de v2.2) — tunnel SSH vers la base (127.0.0.1:5433), lecture seule, pour les tests base de la suite.
+> # C3 racine du registre (repris de l'outillage v2.3) — tunnel SSH vers la base (127.0.0.1:5433), lecture seule, pour les tests base de la suite.
+< OUT="$ROOT/results/c3_outillage_v2_3/tests/tunnel.out"
+> OUT="$ROOT/results/c3_racine_registre/tests/tunnel.out"
+## results/c3_outillage_v2_3/tests/base_db.sh -> results/c3_racine_registre/tests/base_db.sh : lignes source changées=2, lignes reprise=2
+< # C3 outillage v2.3, lot 1 — les tests base (lecture seule), tunnel ouvert (brief § 3.2 : « ouvert pour les 13 tests
+> # C3 racine du registre, lot 1 (repris de l'outillage v2.3) — les tests base (lecture seule), tunnel ouvert (brief § 3.2 : « ouvert pour les 13 tests
+< DIR=results/c3_outillage_v2_3/tests
+> DIR=results/c3_racine_registre/tests
+## results/c3_outillage_v2_3/tests/xfail_fin.sh -> results/c3_racine_registre/tests/xfail_fin.sh : lignes source changées=3, lignes reprise=3
+< # C3 outillage v2.3, lot 1 (repris du lot 2 v2.2) — critère de fin : « 0 xfail dans la suite hors le caduc déclaré ». Lit l'extrait versionné
+> # C3 racine du registre, lot 1 (repris de l'outillage v2.3) — critère de fin : « 0 xfail dans la suite hors le caduc déclaré ». Lit l'extrait versionné
+< DIR=results/c3_outillage_v2_3/tests
+> DIR=results/c3_racine_registre/tests
+<   echo "# xfail en fin de lot 1 — $(date -u +%FT%TZ)"
+>   echo "# xfail en fin de lot 1 (racine du registre) — $(date -u +%FT%TZ)"
+## results/c3_outillage_v2_3/tests/ci_status.sh -> results/c3_racine_registre/tests/ci_status.sh : lignes source changées=1, lignes reprise=1
+< # C3 outillage v2.3 (repris de results/c3_outillage_v2_2/tests/ci_status.sh) — état de la CI (workflow « CI ») sur un SHA poussé, lancé par `bash` depuis le dépôt.
+> # C3 racine du registre (repris de results/c3_racine_registre/tests/ci_status.sh) — état de la CI (workflow « CI ») sur un SHA poussé, lancé par `bash` depuis le dépôt.
+## results/c3_outillage_v2_3/tests/mutant.sh -> results/c3_racine_registre/tests/mutant.sh : lignes source changées=2, lignes reprise=2
+< # C3 outillage v2.3 (repris de results/c3_outillage_v2_2/tests/mutant.sh) — vérification d'un témoin vert par mutant temporaire du code : applique au fichier une substitution
+> # C3 racine du registre (repris de results/c3_racine_registre/tests/mutant.sh) — vérification d'un témoin vert par mutant temporaire du code : applique au fichier une substitution
+< LOG=results/c3_outillage_v2_3/mutants.log
+> LOG=results/c3_racine_registre/mutants.log
+## results/c3_outillage_v2_3/tests/comptes.sh -> results/c3_racine_registre/tests/comptes.sh : lignes source changées=6, lignes reprise=6
+< # C3 outillage v2.3, lot 1 — décompte de la suite et réconciliation par identifiants contre la base b50f2d1 (repris de
+< # results/c3_v2_3_gel/tests/comptes_gel.sh). Usage : bash comptes.sh <suite de tête> (lit suite_base.out,
+< # suite_<suite>.out, declares_lot1.txt). Sortie : comptes_<suite>.out. rc=0 ssi :
+> # C3 racine du registre, lot 1 — décompte de la suite et réconciliation par identifiants contre la base 313eb00 (repris
+> # de results/c3_racine_registre/tests/comptes.sh). Usage : bash comptes.sh <suite de tête> (lit suite_base.out,
+> # suite_<suite>.out, declares.txt). Sortie : comptes_<suite>.out. rc=0 ssi :
+< BASE=b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9
+< DIR=results/c3_outillage_v2_3/tests
+> BASE=313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+> DIR=results/c3_racine_registre/tests
+< "$PY" - "$A" "$B" "$C" "$DIR/suite_base.out" "$DIR/suite_${SUITE}.out" "$DIR/declares_lot1.txt" >> "$OUT" <<'PY' || rc=1
+> "$PY" - "$A" "$B" "$C" "$DIR/suite_base.out" "$DIR/suite_${SUITE}.out" "$DIR/declares.txt" >> "$OUT" <<'PY' || rc=1
+## results/c3_outillage_v2_3/tests/rouge_avant.sh -> results/c3_racine_registre/tests/rouge_avant.sh : lignes source changées=12, lignes reprise=16
+< # C3 outillage v2.3, lot 1 — règle agent 1 : « tout test de contrat naît adverse », constaté ROUGE contre un état qui
+< # n'implémente pas la règle. Les tests neufs du lot (plan D10 : N1-N4) sont lancés dans un worktree détaché à la base
+< # b50f2d1 (code v2.2 + squelette du gel), avec les fichiers de test COURANTS copiés par-dessus : chacun doit échouer, et
+< # la ligne où il échoue est consignée (l'attendu de la règle, jamais un préalable de fixture).
+< # Usage : bash rouge_avant.sh <étiquette> <nodeid…> (nodeids relatifs à tests/test_scripts/). Sortie :
+< # rouge_avant_<étiquette>.out ; rc=0 ssi chaque test échoue à la base.
+> # C3 racine du registre, lot 1 (repris de l'outillage v2.3) — règle agent 1 : « tout test de contrat naît adverse »,
+> # constaté ROUGE contre un état qui n'implémente pas la règle. Les tests neufs du lot (plan D5) sont lancés dans un
+> # worktree détaché à la base 313eb00 (l'ancrage qui jette la racine), avec les fichiers de test COURANTS copiés
+> # par-dessus. Mode `rouge` (T1, T2-chaîne, T4) : chacun doit échouer, et la ligne où il échoue est consignée (l'attendu
+> # de la règle, jamais un préalable de fixture). Mode `vert` (T2-verdict, T3 — propriétés déjà tenues à la base, plan
+> # D5) : chacun doit passer à la base ; leur mordant est prouvé par mutants (mutants.log).
+> # Usage : bash rouge_avant.sh <étiquette> <rouge|vert> <nodeid…> (nodeids relatifs à tests/test_scripts/). Sortie :
+> # rouge_avant_<étiquette>.out ; rc=0 ssi chaque test échoue (rouge) ou passe (vert) à la base.
+< shift
+> MODE="${2:?rouge|vert}"
+> shift 2
+> case "$MODE" in rouge) EXPECT=1 ;; vert) EXPECT=0 ;; *) exit 2 ;; esac
+< BASE=b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9
+< DIR=results/c3_outillage_v2_3/tests
+> BASE=313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+> DIR=results/c3_racine_registre/tests
+<   echo "# rouge_avant — $LABEL — $(date -u +%FT%TZ)"
+>   echo "# rouge_avant — $LABEL — mode $MODE — $(date -u +%FT%TZ)"
+<   echo "test=${node} pytest_exit=${e} (attendu 1) échec : ${where}" >> "$OUT"
+<   [ "$e" -eq 1 ] || rc=1
+>   echo "test=${node} pytest_exit=${e} (attendu ${EXPECT}) échec : ${where}" >> "$OUT"
+>   [ "$e" -eq "$EXPECT" ] || rc=1
+## results/c3_outillage_v2_3/tests/diff_tests.sh -> results/c3_racine_registre/tests/diff_tests.sh : lignes source changées=48, lignes reprise=26
+< # C3 outillage v2.3, lot 1 — diff des tests contre la base b50f2d1 (tip du gel mergé), par l'AST (commentaires et mise
+< # en forme ignorés). Repris de results/c3_outillage_v2_2/tests/diff_tests.sh. Usage : bash diff_tests.sh <étiquette>.
+< # Sortie : diff_tests_<étiquette>.out. Second argument `partiel` (commits intermédiaires) : un X encore marqué, corps
+< # et décorateurs identiques à la base, est admis ; sans lui (fin de lot), les huit doivent être levés. Pour chaque
+< # fonction de niveau module des fichiers de tests C3 : corps et signature (décorateurs exclus) et décorateurs comparés
+< # à la base. Règles (brief § 3.2 ; plan du lot 1 § 1, D8-D10) :
+< #  1. aucune fonction de la base supprimée, sauf le test renommé (D9), dont le nœud entier (signature, corps,
+< #     décorateurs) est identique sous son nom neuf ;
+< #  2. les huit tests X (sept X + le témoin R-17) : corps identique ; décorateurs = ceux de la base moins le seul
+< #     marqueur `xfail` ;
+< #  3. aucun autre test xfail de la base touché (le caduc garde corps et décorateurs) ;
+< #  4. toute autre fonction au corps ou aux décorateurs modifiés appartient à la liste déclarée ;
+< #  5. toute fonction neuve appartient à la liste déclarée ;
+< #  6. les affectations de niveau module retirées, ajoutées ou modifiées appartiennent à la liste déclarée.
+> # C3 racine du registre, lot 1 — diff des tests contre la base 313eb00 (dev au merge de l'outillage v2.3), par l'AST
+> # (commentaires et mise en forme ignorés). Repris de results/c3_outillage_v2_3/tests/diff_tests.sh (listes du plan,
+> # § 3 et D4). Usage : bash diff_tests.sh <étiquette>. Sortie : diff_tests_<étiquette>.out. Pour chaque fonction de
+> # niveau module des fichiers de tests C3 : corps et signature (décorateurs exclus) et décorateurs comparés à la base.
+> # Règles (brief § 3.3 : « corps des tests existants intacts hors liste déclarée ») :
+> #  1. aucune fonction de la base supprimée ni renommée ;
+> #  2. aucun test xfail de la base touché (le caduc garde corps et décorateurs) ;
+> #  3. toute fonction existante au corps ou aux décorateurs modifiés appartient à la liste déclarée (vide ici) ;
+> #  4. toute fonction neuve appartient à la liste déclarée (les cinq tests du plan § 3) ;
+> #  5. les affectations de niveau module retirées, ajoutées ou modifiées appartiennent à la liste déclarée (la constante
+> #     `REGISTRY_ROOT_SYNTHETIC` de `fx`, plan D4).
+< OUT=results/c3_outillage_v2_3/tests/diff_tests_${LABEL}.out
+> OUT=results/c3_racine_registre/tests/diff_tests_${LABEL}.out
+<   echo "# HEAD $(git rev-parse HEAD) branche $(git branch --show-current) ; base b50f2d1"
+>   echo "# HEAD $(git rev-parse HEAD) branche $(git branch --show-current) ; base 313eb00"
+< BASE = "b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9"
+> BASE = "313eb00c2019b98cf20fb81ac8327f7b9d1e920a"
+< #: Les huit marqueurs levés (brief § 3.1 ; paquet v2.3, réserves X1-X8).
+< LIFTED = {
+<     (T + "test_c3_anchor.py", "test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1"),
+<     (T + "test_c3_anchor.py", "test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent"),
+<     (T + "test_c3_anchor.py", "test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee"),
+<     (T + "test_c3_common.py", "test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide"),
+<     (T + "test_c3_verdict.py", "test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur"),
+<     (T + "test_c3_verdict.py", "test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee"),
+<     (T + "test_c3_verdict.py", "test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte"),
+<     (T + "test_c3_verdict.py", "test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee"),
+< }
+< #: D9 — le renommage, nom seul (Application v2.3, point 2).
+< RENAMED = {
+<     (T + "test_c3_entry.py", "test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21"):
+<     "test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_le_protocole_courant",
+< }
+< #: D8 — fonctions au corps modifié, déclarées.
+< DECLARED_BODY = {
+<     T + "test_c3_common.py": {
+<         "manifest": "D8 : `deferred_evaluation.date` par défaut, 365 j après la fin de fenêtre (§ A.6 v2.3)",
+<     },
+<     T + "test_c3_anchor.py": {
+<         "_campaign_v21_manifest": "D8 : fenêtre v2.1 (fin 2026-06-29) — la date re-déclarée par `fx.with_deferred_date`",
+<     },
+< }
+< #: D10 — tests neufs (et leurs aides), déclarés.
+> #: Aucun marqueur à lever, aucun renommage, aucun corps existant modifié (plan § 3, D9).
+> LIFTED: set[tuple[str, str]] = set()
+> RENAMED: dict[tuple[str, str], str] = {}
+> DECLARED_BODY: dict[str, dict[str, str]] = {}
+> #: Plan § 3 — les cinq tests neufs, déclarés.
+<         "test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe",
+>         "test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant",
+>         "test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic",
+<         "test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif",
+<         "test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee",
+<         "test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement",
+>         "test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict",
+>         "test_A6_registry_inscription_preserve_les_cles_de_racine",
+>         "test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie",
+< DECLARED_ASSIGN_ADDED: set[tuple[str, str]] = set()
+> #: Plan D4 — la racine synthétique, une constante de `fx`.
+> DECLARED_ASSIGN_ADDED: set[tuple[str, str]] = {(T + "test_c3_common.py", "REGISTRY_ROOT_SYNTHETIC")}
+## results/c3_outillage_v2_3/tests/non_divulgation.sh -> results/c3_racine_registre/tests/non_divulgation.sh : lignes source changées=4, lignes reprise=31
+< # C3 outillage v2.3, lot 1 — non-divulgation (§ A.6 v2.3 : l'empreinte différée « n'est jamais imprimée hors
+< # registre ») : contrôle STATIQUE, complément des contrôles comportementaux (X3, N2, N3 ; plan du lot 1, D7 b, D13).
+> # C3 racine du registre, lot 1 (repris de results/c3_outillage_v2_3/tests/non_divulgation.sh, plan D8) — non-divulgation
+> # (§ A.6 v2.3 : l'empreinte différée « n'est jamais imprimée hors registre » ; runbook § 4 : ni contenu, ni digest, ni
+> # taille du registre) : contrôle STATIQUE, complément des contrôles comportementaux (X3, N2, N3 ; T1, T2-chaîne).
+< #  3. aucun appel de journalisation (`logging`, `structlog`, `logger`, `log.`) dans ces modules.
+> #  3. aucun appel de journalisation (`logging`, `structlog`, `logger`, `log.`) dans ces modules ;
+> #  4. (plan D8) les lignes AJOUTÉES depuis 313eb00 aux trois modules (`git diff -U0`) ne contiennent ni `print(`, ni appel
+> #     de journalisation, ni interpolation (préfixe f-string, `.format(`, `%` sur une chaîne) : le passthrough de la racine
+> #     ne dit rien de la racine, dans aucun message.
+< OUT=results/c3_outillage_v2_3/tests/non_divulgation_${LABEL}.out
+> OUT=results/c3_racine_registre/tests/non_divulgation_${LABEL}.out
+> # 4. lignes ajoutées depuis la base (plan D8)
+> import subprocess
+> 
+> BASE = "313eb00c2019b98cf20fb81ac8327f7b9d1e920a"
+> ADDED_BAD = re.compile(
+>     r"\bprint\(|\b(logging|structlog|logger|log)\.|(^|[^A-Za-z0-9_])[rRbB]?[fF][rRbB]?[\"']|\.format\(|[\"']\s*%\s*[\w(]"
+> )
+> diff = subprocess.run(["git", "diff", "-U0", BASE, "--", *FILES], capture_output=True, text=True, check=True).stdout
+> n_added = 0
+> current = ""
+> for line in diff.splitlines():
+>     if line.startswith("+++ "):
+>         current = line[6:] if line.startswith("+++ b/") else line[4:]
+>         continue
+>     if not line.startswith("+"):
+>         continue
+>     n_added += 1
+>     code = line[1:]
+>     if code.lstrip().startswith("#"):
+>         continue
+>     if ADDED_BAD.search(code):
+>         report("ligne_ajoutee_qui_imprime_ou_interpole", current, 0, [code.strip()[:120]])
+> print(f"lignes_ajoutees_depuis_313eb00={n_added}")
+## results/c3_outillage_v2_3/tests/interdits.sh -> results/c3_racine_registre/tests/interdits.sh : lignes source changées=39, lignes reprise=66
+< # C3 outillage v2.3 — interdits du brief (§ 3.2, § 6), lancé par `bash` AVANT chaque commit (fichiers indexés) et au
+< # tip. Repris de results/c3_v2_3_gel/tests/interdits_gel.sh et results/c3_outillage_v2_2/tests/interdits.sh.
+> # C3 racine du registre — interdits du brief (§ 3.3, § 6) et du runbook (§ 4), lancé par `bash` AVANT chaque commit
+> # (fichiers indexés) et au tip. Repris de results/c3_outillage_v2_3/tests/interdits.sh (base, listes, règle 64 hex du
+> # plan D10, contrôles du runbook) ; reprise comptée dans reprise_lot1.out.
+< #  1. chemins gelés : aucun écart contre b50f2d1 au commit (HEAD), à l'index ni dans l'arbre, aucun fichier non suivi ;
+> #  1. chemins gelés : aucun écart contre 313eb00 au commit (HEAD), à l'index ni dans l'arbre, aucun fichier non suivi ;
+< #  3. liste blanche du lot 1 (plan § 2) : tout fichier changé depuis b50f2d1 (HEAD, index, arbre, non suivis) est l'un
+< #     des trois modules, l'un des quatre fichiers de test, le brief, ou sous results/c3_outillage_v2_3/ ;
+< #     `gel_v2_3.patch` (racine, non suivi, pas à ce chantier) est exclu par son nom et doit rester inchangé ;
+< #  4. aucun artefact du chemin sélection sous results/c3_outillage_v2_3/, CAMPAIGN_UNLOCK absent (arbre et HEAD) ;
+< #  5. aucun sha d'artefact versionné : toute empreinte de 64 hex ajoutée est l'une des empreintes du protocole
+< #     consignées à la table « Adoption » du paquet v2.3 ;
+< #  6. aucun script ni vérificateur du chantier ne nomme le répertoire de la dette 23 (ce fichier-ci excepté).
+> #  3. liste blanche du lot 1 (plan § 5) : tout fichier changé depuis 313eb00 (HEAD, index, arbre, non suivis) est
+> #     c3_anchor.py, l'un des trois fichiers de test, le runbook (skills/registry.md), le brief, ou sous
+> #     results/c3_racine_registre/ ;
+> #  4. aucun artefact du chemin sélection sous results/c3_racine_registre/, CAMPAIGN_UNLOCK absent (arbre et HEAD) ;
+> #  5. règle 64 hex (plan D10) : toute empreinte de 64 hex ajoutée est l'une des empreintes du protocole consignées à la
+> #     table « Adoption » du paquet v2.3, ou le sha256 d'un fichier du chantier (results/c3_racine_registre/**,
+> #     skills/registry.md, le brief) ;
+> #  6. aucun script ni vérificateur du chantier ne nomme le répertoire de la dette 23 (ce fichier-ci excepté) ;
+> #  7. runbook § 4 et brief § 6 : aucun script ni vérificateur du chantier, ni le module ou les tests touchés, ne nomme
+> #     le chemin du registre de campagne (motifs construits ici, ce fichier-ci excepté) ; ce répertoire n'existe pas sous
+> #     le $HOME local (jamais créé).
+< BASE=b50f2d15150f90a6d6ceb7ab2d41f8b1f495ecf9
+< DIR=results/c3_outillage_v2_3/tests
+> BASE=313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+> CH=results/c3_racine_registre
+> DIR=$CH/tests
+< FOREIGN=gel_v2_3.patch
+< FOREIGN_SHA16=1ffa3eec6e2d7051
+> BRIEF=agent/AGENT_C3_RACINE_REGISTRE.md
+> RUNBOOK=skills/registry.md
+<   scripts/run_p7_grid_search.py scripts/audit/rejeu_common.py scripts/audit/c3b_common.py scripts/audit/c3b_prefix.py
+<   scripts/audit/c3b_evaluate.py docs/protocole_c3.md docs/amendements_c3_v2.1.md docs/amendements_c3_v2.2.md
+<   docs/amendements_c3_v2.3.md results/c3_v2_2 results/c3b_producteur results/c3_outillage_v2_2 results/c3_v2_3_gel)
+>   scripts/run_p7_grid_search.py scripts/audit/_common.py scripts/audit/rejeu_common.py scripts/audit/c3b_common.py
+>   scripts/audit/c3b_prefix.py scripts/audit/c3b_evaluate.py scripts/audit/c3_common.py scripts/audit/c3_verdict.py
+>   scripts/audit/c3_entry.py scripts/audit/c3_benchmark.py scripts/audit/c3_select.py scripts/audit/c3_continuity.py
+>   docs/protocole_c3.md docs/amendements_c3_v2.1.md docs/amendements_c3_v2.2.md docs/amendements_c3_v2.3.md
+>   docs/CONTRAINTES_POST_B4.md CLAUDE.md results/c3_v2_2 results/c3b_producteur results/c3_outillage_v2_2
+>   results/c3_v2_3_gel results/c3_outillage_v2_3)
+< ALLOW='^(scripts/audit/c3_(common|anchor|verdict)\.py|tests/test_scripts/test_c3_(common|anchor|verdict|entry)\.py|agent/AGENT_C3_OUTILLAGE_V2_3\.md|results/c3_outillage_v2_3/.+)$'
+> ALLOW='^(scripts/audit/c3_anchor\.py|tests/test_scripts/test_c3_(common|anchor|verdict)\.py|skills/registry\.md|agent/AGENT_C3_RACINE_REGISTRE\.md|results/c3_racine_registre/.+)$'
+<   git ls-files --others --exclude-standard; } | grep -vxF "$FOREIGN" | LC_ALL=C sort -u)
+< echo "## fichiers changés depuis la base (HEAD ∪ index ∪ arbre ∪ non suivis ; $FOREIGN exclu)" >> "$OUT"
+>   git ls-files --others --exclude-standard; } | LC_ALL=C sort -u)
+> echo "## fichiers changés depuis la base (HEAD ∪ index ∪ arbre ∪ non suivis)" >> "$OUT"
+< if git ls-files --error-unmatch "$FOREIGN" > /dev/null 2>&1; then
+<   echo "etranger_suivi=1 ($FOREIGN est suivi : interdit)" >> "$OUT"; rc=1
+< elif [ -f "$FOREIGN" ] && [ "$(shasum -a 256 "$FOREIGN" | cut -c1-16)" = "$FOREIGN_SHA16" ]; then
+<   echo "etranger_inchange=0 ($FOREIGN non suivi, sha256_16 $FOREIGN_SHA16)" >> "$OUT"
+< else
+<   echo "etranger_inchange=1 ($FOREIGN absent ou modifié)" >> "$OUT"; rc=1
+< fi
+< f=agent/AGENT_C3_OUTILLAGE_V2_3.md
+< [ -f "$f" ] && echo "brief $f sha256_16=$(shasum -a 256 "$f" | cut -c1-16)" >> "$OUT"
+> [ -f "$BRIEF" ] && echo "brief $BRIEF sha256_16=$(shasum -a 256 "$BRIEF" | cut -c1-16)" >> "$OUT"
+> [ -f "$RUNBOOK" ] && echo "runbook $RUNBOOK sha256_16=$(shasum -a 256 "$RUNBOOK" | cut -c1-16)" >> "$OUT"
+< artefacts=$(printf '%s\n' "$CHANGED" | grep '^results/c3_outillage_v2_3/' | grep -E "$ARTEFACT")
+> artefacts=$(printf '%s\n' "$CHANGED" | grep "^$CH/" | grep -E "$ARTEFACT")
+< # 5. empreintes de 64 hex ajoutées ⊆ empreintes du protocole
+> # 5. empreintes de 64 hex ajoutées ⊆ empreintes du protocole ∪ sha256 des fichiers du chantier (D10)
+< { git diff "$BASE" | grep -E '^\+' ; git ls-files --others --exclude-standard -z | grep -zvxF "$FOREIGN" \
+<   | xargs -0 cat 2> /dev/null; } | grep -oE '[0-9a-f]{64}' | LC_ALL=C sort -u > "$TMP"
+< python3 - "$TMP" "$PACKAGE" >> "$OUT" <<'PY'
+> OWN=$(mktemp)
+> { git diff "$BASE" | grep -E '^\+' ; git ls-files --others --exclude-standard -z | xargs -0 cat 2> /dev/null; } \
+>   | grep -oE '[0-9a-f]{64}' | LC_ALL=C sort -u > "$TMP"
+> { find "$CH" -type f -print0 | xargs -0 shasum -a 256 2> /dev/null
+>   for f in "$RUNBOOK" "$BRIEF"; do [ -f "$f" ] && shasum -a 256 "$f"; done; } | cut -d' ' -f1 | LC_ALL=C sort -u > "$OWN"
+> python3 - "$TMP" "$PACKAGE" "$OWN" >> "$OUT" <<'PY'
+> own = set(open(sys.argv[3]).read().split())
+< extra = sorted(found - allowed)
+< print(f"empreintes_64_ajoutees={len(found)} dont_protocole={len(found & allowed)} table_adoption={len(allowed)}")
+> extra = sorted(found - allowed - own)
+> print(
+>     f"empreintes_64_ajoutees={len(found)} dont_protocole={len(found & allowed)} "
+>     f"dont_fichiers_du_chantier={len((found - allowed) & own)} table_adoption={len(allowed)}"
+> )
+<     print(f"empreinte_hors_protocole {h[:16]}…")
+>     print(f"empreinte_hors_regle {h[:16]}…")
+< rm -f "$TMP"
+> rm -f "$TMP" "$OWN"
+< named=$(find results/c3_outillage_v2_3 -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits.sh -print0 \
+> named=$(find "$CH" -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits.sh -print0 \
+> # 7. registre de campagne (runbook § 4, brief § 6) : jamais nommé par un script du chantier, jamais créé localement
+> C3=$(printf 'c%s' 3)
+> REG_PAT="(~|\\\$HOME|\\\$\\{HOME\\}|home/[a-z]+)/${C3}(/|\$|[^_a-z0-9])|${C3}/regis$(printf 'try')"
+> named=$( { find "$CH" -type f \( -name '*.sh' -o -name '*.py' \) ! -name interdits.sh -print0
+>   printf '%s\0' scripts/audit/c3_anchor.py tests/test_scripts/test_c3_common.py tests/test_scripts/test_c3_anchor.py \
+>     tests/test_scripts/test_c3_verdict.py; } | xargs -0 grep -lE "$REG_PAT" 2> /dev/null)
+> if [ -n "$named" ]; then
+>   while IFS= read -r f; do echo "nomme_registre_campagne $f" >> "$OUT"; done <<< "$named"
+>   echo "registre_campagne_non_nomme=1" >> "$OUT"; rc=1
+> else
+>   echo "registre_campagne_non_nomme=0" >> "$OUT"
+> fi
+> if [ -e "$HOME/$C3" ]; then
+>   echo "registre_campagne_absent_local=1 (le répertoire existe sous \$HOME)" >> "$OUT"; rc=1
+> else
+>   echo "registre_campagne_absent_local=0" >> "$OUT"
+> fi
+> 
+## results/c3_outillage_v2_3/tests/interdits_adverse.sh -> results/c3_racine_registre/tests/interdits_adverse.sh : lignes source changées=25, lignes reprise=44
+< # C3 outillage v2.3, lot 1 — interdits.sh prouvé avant de servir (règle agent 1 ; repris de
+< # results/c3_outillage_v2_2/tests/interdits_adverse.sh) : chaque cas dévié fabriqué doit le faire sortir en rc≠0 ; le
+< # témoin (l'arbre tel quel) en rc=0. Chaque cas crée un fichier (ou ajoute une ligne à un fichier suivi), lance
+< # interdits.sh sous l'étiquette `adv`, puis restaure ; l'état `git status` est comparé avant et après chaque cas.
+< # Jamais CAMPAIGN_UNLOCK (interdit, même temporairement) ; `gel_v2_3.patch` n'est jamais touché (pas à ce chantier) :
+< # son contrôle (sha inchangé) n'a pas de cas dévié ici, déclaré au README.
+< # Sortie : interdits_adverse.out, `cas=<nom> rc=<n> attendu=<0|non0> restaure=<0|1>`, puis rc=0 ssi témoin 0, chaque
+< # cas ≠ 0, tout restauré.
+> # C3 racine du registre — interdits.sh prouvé avant de servir (règle agent 1 ; repris de
+> # results/c3_outillage_v2_3/tests/interdits_adverse.sh) : chaque cas dévié fabriqué doit le faire sortir en rc≠0 ; le
+> # témoin (l'arbre tel quel) et le témoin positif de la règle 64 hex (D10 : le sha256 d'un fichier du chantier est admis)
+> # en rc=0. Chaque cas crée un fichier (ou ajoute une ligne à un fichier suivi), lance interdits.sh sous l'étiquette
+> # `adv`, puis restaure ; l'état `git status` est comparé avant et après chaque cas.
+> # Jamais CAMPAIGN_UNLOCK, jamais le répertoire du registre de campagne sous $HOME (interdits, même temporairement : brief
+> # § 6) — leurs contrôles n'ont pas de cas dévié ici, déclaré au README.
+> # Sortie : interdits_adverse.out, `cas=<nom> rc=<n> attendu=<0|non0> restaure=<0|1> items_en_ecart=[…]` (les lignes
+> # d'interdits en écart : chaque cas dévié doit mordre par son propre item), puis rc=0 ssi tout tient.
+< T=results/c3_outillage_v2_3/tests
+> T=results/c3_racine_registre/tests
+> ITEMS=$(mktemp)
+>   grep -E '^(hors_liste_blanche|artefact_versionne|empreinte_hors_regle|nomme_dette23|nomme_registre_campagne) |=1( |$)|non_suivis=[1-9]' \
+>     "$ADV_OUT" | cut -c1-70 | tr '\n' ';' > "$ITEMS"
+<   echo "cas=$1 rc=$2 attendu=$3 restaure=$s" >> "$OUT"
+>   echo "cas=$1 rc=$2 attendu=$3 restaure=$s items_en_ecart=[$(cat "$ITEMS")]" >> "$OUT"
+< # 1. fichier non suivi sous tests/ hors des quatre fichiers du lot
+> d=results/c3_racine_registre/zz_adverse
+> 
+> # témoin positif D10 : le sha256 d'un fichier du chantier, écrit dans un autre fichier du chantier, est admis
+> H=$(shasum -a 256 "$T/interdits.sh" | cut -d' ' -f1)
+> mkdir -p "$d"; echo "sha $H" > "$d/note.txt"; r=$(run); rm -rf "$d"; record sha_fichier_du_chantier "$r" 0
+> 
+> # 1. fichier non suivi sous tests/ hors des trois fichiers du lot
+< # 2. module de code hors des trois du lot (c3_entry), ligne ajoutée puis restaurée
+> # 2. module de chaîne hors liste (c3_entry), ligne ajoutée puis restaurée
+< # 3. le protocole gelé touché (chemin gelé et sha recalculé ≠ consigné)
+> # 3. module gelé pour ce chantier (c3_verdict, plan D3)
+> echo "# adverse" >> scripts/audit/c3_verdict.py; r=$(run); git checkout -q -- scripts/audit/c3_verdict.py
+> record verdict_gele "$r" non0
+> 
+> # 4. le protocole gelé touché (chemin gelé et sha recalculé ≠ consigné)
+< # 4. fichier suivi hors liste blanche (CLAUDE.md)
+> # 5. fichier suivi hors liste blanche (CLAUDE.md)
+< # 5. fichier hors liste blanche à la racine
+> # 6. fichier hors liste blanche à la racine
+< # 6. artefact du chemin sous le répertoire du chantier
+< d=results/c3_outillage_v2_3/zz_adverse
+> # 7. artefact du chemin sous le répertoire du chantier
+< # 7. registre sous le répertoire du chantier
+> # 8. registre sous le répertoire du chantier
+< # 8. empreinte de 64 hex hors table d'Adoption, dans un fichier du chantier (construite, jamais écrite ici)
+> # 9. empreinte de 64 hex hors règle, dans un fichier du chantier (construite, jamais écrite ici)
+< mkdir -p "$d"; echo "sha $H" > "$d/note.txt"; r=$(run); rm -rf "$d"; record empreinte_hors_table "$r" non0
+> mkdir -p "$d"; echo "sha $H" > "$d/note.txt"; r=$(run); rm -rf "$d"; record empreinte_hors_regle "$r" non0
+< # 9. script du chantier qui nomme le répertoire de la dette 23 (le mot est construit ici)
+> # 10. script du chantier qui nomme le répertoire de la dette 23 (le mot est construit ici)
+< mkdir -p "$d"; printf '#!/bin/bash\nls ~/%s\n' "$W" > "$d/x.sh"; r=$(run); rm -rf "$d"; record "nomme_dette23" "$r" non0
+> mkdir -p "$d"; printf '#!/bin/bash\nls ~/%s\n' "$W" > "$d/x.sh"; r=$(run); rm -rf "$d"; record nomme_dette23 "$r" non0
+< # 10. répertoire clos d'un chantier précédent modifié
+< echo "# adverse" >> results/c3_v2_3_gel/report.md; r=$(run); git checkout -q -- results/c3_v2_3_gel/report.md
+< record gel_modifie "$r" non0
+> # 11. script du chantier qui nomme le registre de campagne (le chemin est construit ici)
+> C3=$(printf 'c%s' 3)
+> mkdir -p "$d"; printf '#!/bin/bash\nstat ~/%s/registry/variants.json\n' "$C3" > "$d/x.sh"; r=$(run); rm -rf "$d"
+> record nomme_registre_campagne "$r" non0
+> # 12. répertoire clos d'un chantier précédent modifié
+> echo "# adverse" >> results/c3_outillage_v2_3/report.md; r=$(run); git checkout -q -- results/c3_outillage_v2_3/report.md
+> record v23_modifie "$r" non0
+> 
+> rm -f "$ITEMS"
+## results/c3_outillage_v2_3/tests/declares_lot1.txt -> results/c3_racine_registre/tests/declares.txt : lignes source changées=18, lignes reprise=7
+< # C3 outillage v2.3, lot 1 — déclarations lues par comptes.sh (identifiants pytest complets).
+> # C3 racine du registre, lot 1 — déclarations lues par comptes.sh (identifiants pytest complets, plan § 3).
+< # Les huit marqueurs du squelette du gel (réserves X1-X8), chacun levé au commit qui l'a fait passer (XPASS strict).
+< tests/test_scripts/test_c3_anchor.py::test_X1_un_manifeste_sans_date_d_evaluation_differee_est_refuse_a_l_etape_1
+< tests/test_scripts/test_c3_anchor.py::test_X2_une_date_trop_proche_ou_illisible_est_refusee_365_jours_exactement_passent
+< tests/test_scripts/test_c3_common.py::test_X8_load_manifest_lit_la_date_differee_et_refuse_toute_forme_invalide
+< tests/test_scripts/test_c3_verdict.py::test_X3_l_issue_qui_ouvre_la_voie_inscrit_la_date_du_manifeste_et_l_empreinte_du_descripteur
+< tests/test_scripts/test_c3_verdict.py::test_X4_une_issue_qui_n_ouvre_pas_la_voie_n_inscrit_aucune_evaluation_differee
+< tests/test_scripts/test_c3_verdict.py::test_X5_le_descripteur_est_derive_champ_par_champ_selon_le_tableau_du_texte
+< tests/test_scripts/test_c3_anchor.py::test_R17_temoin_sur_une_famille_close_l_empreinte_differee_attendue_est_acceptee
+< tests/test_scripts/test_c3_verdict.py::test_X7_le_verdict_d_une_variante_differee_n_inscrit_jamais_d_evaluation_differee
+< # D10 : N1, N3, N4 (C3), N2 (C4).
+< tests/test_scripts/test_c3_verdict.py::test_A6_v23_le_predicat_d_ouverture_suit_le_10_1_conjonctif_par_conjonctif
+< tests/test_scripts/test_c3_verdict.py::test_A6_v23_une_evaluation_differee_inscrite_differente_est_une_violation_sans_empreinte_imprimee
+< tests/test_scripts/test_c3_verdict.py::test_A6_v23_tout_champ_hors_de_la_table_est_hors_engagement
+< tests/test_scripts/test_c3_anchor.py::test_A6_v23_sur_une_famille_close_le_descripteur_entrant_suit_la_regle_du_run_differe
+> # Plan § 3 : T1 et T4 (ancrage), T2-chaîne, T2-verdict, T3 (verdict).
+> tests/test_scripts/test_c3_anchor.py::test_A6_la_racine_du_registre_survit_a_l_ancrage_enregistrement_idempotence_enfant
+> tests/test_scripts/test_c3_anchor.py::test_R22_un_non_fini_a_la_racine_du_registre_est_un_diagnostic
+> tests/test_scripts/test_c3_verdict.py::test_A6_la_racine_du_registre_traverse_l_ancrage_et_l_inscription_du_verdict
+> tests/test_scripts/test_c3_verdict.py::test_A6_registry_inscription_preserve_les_cles_de_racine
+> tests/test_scripts/test_c3_verdict.py::test_A6_v23_les_instants_de_D_sont_normalises_un_instant_pas_une_graphie
+< # D9 (Application v2.3, point 2).
+< tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_v21
+< tests/test_scripts/test_c3_entry.py::test_le_livrable_reel_de_C3a_reste_l_historique_v20_et_n_est_pas_rejouable_sous_le_protocole_courant
+rc=0

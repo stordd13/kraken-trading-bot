@@ -1,0 +1,48 @@
+# invariance_porte — S2 — 2026-10-01T10:23:12Z
+# HEAD 84fff64385b8da267668f69d038f09d58fa522a3 branche feat/c3-racine-registre ; porte jouée au c62acb4c351de177d30b9b7f4c75b8d5c3306ba9 ; base 313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+## (a) fichiers changés depuis c62acb4c351de177d30b9b7f4c75b8d5c3306ba9 (HEAD ∪ index ∪ arbre ∪ non suivis), hors résultats
+  agent/AGENT_C3_RACINE_REGISTRE.md
+  docs/RESEARCH_LOG.md
+  scripts/audit/c3_anchor.py
+  skills/registry.md
+  tests/test_scripts/test_c3_anchor.py
+  tests/test_scripts/test_c3_common.py
+  tests/test_scripts/test_c3_verdict.py
+  + 121 fichier(s) sous results/
+a_fichiers_changes_dans_la_liste=0
+b_diff_vide ref=313eb00 head=0 index=0 arbre=0 non_suivis=0
+b_diff_vide ref=c62acb4 head=0 index=0 arbre=0 non_suivis=0
+c_importe_c3_anchor importeurs=10 hors_autorises=0
+  importeur_hors_tests_c3 scripts/audit/c3_verdict.py
+c_importe_c3_verdict importeurs=2 hors_autorises=0
+c_importe_test_c3_common importeurs=10 hors_autorises=0
+  importeur_hors_tests_c3 tests/test_scripts/test_audit_common.py
+c_importe_test_c3_anchor importeurs=0 hors_autorises=0
+c_importe_test_c3_verdict importeurs=0 hors_autorises=0
+c_graphe_import=0
+d_collecte_exit=0 ; 30 tests collected in 0.02s
+d_modules_du_depot_charges=23 dont_c3=0
+  conftest tests/conftest.py
+  krakenbot src/krakenbot/__init__.py
+  krakenbot.backtest_metrics src/krakenbot/backtest_metrics.py
+  krakenbot.config src/krakenbot/config/__init__.py
+  krakenbot.config.settings src/krakenbot/config/settings.py
+  krakenbot.core src/krakenbot/core/__init__.py
+  krakenbot.core.database src/krakenbot/core/database.py
+  krakenbot.core.event_bus src/krakenbot/core/event_bus.py
+  krakenbot.core.exceptions src/krakenbot/core/exceptions.py
+  krakenbot.core.logger src/krakenbot/core/logger.py
+  krakenbot.ml src/krakenbot/ml/__init__.py
+  krakenbot.ml.config src/krakenbot/ml/config.py
+  krakenbot.ml.db_models src/krakenbot/ml/db_models.py
+  krakenbot.models src/krakenbot/models/__init__.py
+  krakenbot.models.base src/krakenbot/models/base.py
+  krakenbot.models.market_data src/krakenbot/models/market_data.py
+  krakenbot.models.orders src/krakenbot/models/orders.py
+  krakenbot.models.trades src/krakenbot/models/trades.py
+  krakenbot.replay_contract src/krakenbot/replay_contract.py
+  scripts scripts/__init__.py
+  scripts.run_p6_backtests scripts/run_p6_backtests.py
+  test_scripts tests/test_scripts/__init__.py
+  test_scripts.test_run_p6_determinism tests/test_scripts/test_run_p6_determinism.py
+rc=0

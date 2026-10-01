@@ -1,0 +1,7 @@
+# inventaire_adverse — 2026-10-01T08:27:58Z — HEAD 313eb00c2019b98cf20fb81ac8327f7b9d1e920a
+cas=temoin rc=0 attendu=0 restaure=0
+cas=racine_egale_au_litteral rc=1 attendu=non0 restaure=0
+cas=cles_de_racine_par_set rc=1 attendu=non0 restaure=0
+cas=cles_de_racine_par_keys rc=1 attendu=non0 restaure=0
+cas=cles_de_racine_relues rc=1 attendu=non0 restaure=0
+rc=0
