@@ -1,0 +1,22 @@
+# interdits_adverse — 2026-10-01T15:15:32Z — HEAD 235461e8a4beac42ecb57cc75ab13e8d88dfac14
+cas=temoin rc=0 attendu=0 restaure=0 items_en_ecart=[]
+cas=sha_manifeste_gele rc=0 attendu=0 restaure=0 items_en_ecart=[]
+cas=code_touche rc=1 attendu=non0 restaure=0 items_en_ecart=[gele scripts head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche scripts/audit/c3_verdict.py;liste_blanche=1;rc=1;]
+cas=test_touche rc=1 attendu=non0 restaure=0 items_en_ecart=[gele tests head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche tests/test_scripts/test_c3_anchor.py;liste_blanche=1;rc=1;]
+cas=runbook_touche rc=1 attendu=non0 restaure=0 items_en_ecart=[gele skills head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche skills/registry.md;liste_blanche=1;rc=1;]
+cas=claude_md rc=1 attendu=non0 restaure=0 items_en_ecart=[gele CLAUDE.md head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche CLAUDE.md;liste_blanche=1;rc=1;]
+cas=agent_suivi_touche rc=1 attendu=non0 restaure=0 items_en_ecart=[gele agent head=0 index=0 arbre=1 non_suivis=0;hors_liste_blanche agent/AGENT_C3_RACINE_REGISTRE.md;liste_blanche=1;rc=1;]
+cas=brief_indexe rc=1 attendu=non0 restaure=0 items_en_ecart=[gele agent head=0 index=1 arbre=1 non_suivis=0;hors_liste_blanche agent/AGENT_C3_CAMPAGNE_GRID.md;liste_blanche=1;suivi_interdit agent/AGENT_C3_CAMPAGNE_GRID.md;brief_et_brouillon_non_suivis=1;rc=1;]
+cas=protocole rc=1 attendu=non0 restaure=0 items_en_ecart=[gele docs/protocole_c3.md head=0 index=0 arbre=1 non_suivis=0;protocole_sha_egal_consigne=1 (recalculé 1797a1e5dfae1158…, consigné d;hors_liste_blanche docs/protocole_c3.md;liste_blanche=1;rc=1;]
+cas=journal_ligne_modifiee rc=1 attendu=non0 restaure=0 items_en_ecart=[journal_ajout_seul=1 (lignes retirées ou modifiées : 1);rc=1;]
+cas=artefact_verdict rc=1 attendu=non0 restaure=0 items_en_ecart=[artefact_versionne results/c3_campagne_grid/zz_adverse/verdict.json;aucun_artefact=1;rc=1;]
+cas=artefact_registre rc=1 attendu=non0 restaure=0 items_en_ecart=[artefact_versionne results/c3_campagne_grid/zz_adverse/variants.json;aucun_artefact=1;rc=1;]
+cas=autre_manifeste rc=1 attendu=non0 restaure=0 items_en_ecart=[artefact_versionne results/c3_campagne_grid/zz_adverse/manifest.json;aucun_artefact=1;rc=1;]
+cas=empreinte_archive rc=1 attendu=non0 restaure=0 items_en_ecart=[artefact_versionne results/c3_campagne_grid/zz_adverse/c3_campagne_gri;aucun_artefact=1;rc=1;]
+cas=empreinte_hors_regle rc=1 attendu=non0 restaure=0 items_en_ecart=[empreinte_hors_regle fddfc331b595b987…;aucun_sha_hors_regle=1;rc=1;]
+cas=hors_liste_blanche rc=1 attendu=non0 restaure=0 items_en_ecart=[hors_liste_blanche zz_interdits_adverse.txt;liste_blanche=1;rc=1;]
+cas=nomme_dette23 rc=1 attendu=non0 restaure=0 items_en_ecart=[nomme_dette23 results/c3_campagne_grid/zz_adverse/x.sh;dette23=1;rc=1;]
+cas=nomme_registre_campagne rc=1 attendu=non0 restaure=0 items_en_ecart=[nomme_registre_campagne results/c3_campagne_grid/zz_adverse/x.sh:2;registre_lignes_admises=0 attendu=0 hors_admis=1;registre_campagne_non_nomme=1;rc=1;]
+cas=registre_faute_de_frappe sans_objet (pilote absent)
+cas=registre_troisieme_ligne sans_objet (pilote absent)
+rc=0
