@@ -1,0 +1,34 @@
+guard=0 sha=fb253db18ecd5bf5f9e01b54cebfdb565479f55e python=Python 3.12.3 krakenbot=/home/bruno/runs/c3_campagne_grid/campagne/repo/src/krakenbot/__init__.py protocol=d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6 manifest=b757c45bbed2b0913ac4ec781c9c6928fa935b7c71639e66f26fb5d2468f4f11 campaign_unlock=present
+pilot_sha256=a1e47f3516fd77165f1263bd5dc77ff1381553a2b2dc363f8417018a2ee69ed2
+pilot_copy=0
+service_before=head=235461e8a4beac42ecb57cc75ab13e8d88dfac14 dirty=0 collector=active NRestarts=0
+start=2026-10-02T07:51:26Z
+alembic_before=0
+workers=3
+prefix=0 event=- at=2026-10-02T08:35:35Z
+pre_anchor=0
+registry_new_entry_pre=true
+pre_entry=0
+pre_benchmark=0
+pre_select=0
+eval=0 event=evaluated at=2026-10-02T08:36:27Z
+chain=0 at=2026-10-02T08:36:40Z
+chain_verified=true
+violations_empty=true
+replay_violations_empty=true
+chain_steps=anchor:0,entry:0,benchmark:0,select:0,continuity:0
+registry_new_entry_chain=false
+issue=inconclusif
+raison=P_PROVENANCE
+selection_descriptive=true
+issue_inscrite=true
+extract=0
+interpreter=0
+halted_at=-
+end_run=2026-10-02T08:36:40Z
+alembic_after=0
+alembic_same_head=0
+service_after=head=235461e8a4beac42ecb57cc75ab13e8d88dfac14 dirty=0 collector=active NRestarts=0
+tree_after=0
+campaign_unlock_after=present
+end=2026-10-02T08:36:41Z

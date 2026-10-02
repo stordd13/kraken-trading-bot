@@ -1,0 +1,15 @@
+# postflight — 2026-10-02T08:39:08Z
+runs_c3_campagne_grid=absent
+campaign_unlock_service=present
+tmux_sessions_chantier=0
+archive_presente=0
+archive_lecture_seule=0
+archive_sans_repo_ni_env=0
+archive_v1_presente=0
+archive_v1_lecture_seule=0
+archive_v1_sans_repo_ni_env=0
+collector=active NRestarts=0
+service_head=235461e8a4beac42ecb57cc75ab13e8d88dfac14 dirty=0
+alembic_head=0
+ssh_exit=0
+rc=0

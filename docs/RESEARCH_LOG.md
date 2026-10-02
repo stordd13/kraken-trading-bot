@@ -566,6 +566,33 @@ le contrôle du registre réel par Bruno ; son GO de lancement, **à partir du 2
 - **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
   diagnostic avant l'accord de Bruno. L'issue sera inscrite dans une section suivante, sans réécrire celle-ci.
 
+### Issue de l'entrée 24 (inscrite après le run — issue lue par la liste close seulement)
+
+- **Lancement** : un seul, au `fb253db` (S1), après quatre préalables : la CI verte sur S1 (tentative 1), la relecture de
+  Bruno (STOP 1), la création de `CAMPAIGN_UNLOCK` et le contrôle du registre réel par Bruno (`attendu.md` § 4 :
+  `True`), et son GO de lancement. Archive-préalable du run v1 à 07:51:02Z (`~/archive/c3_campagne_grid_20261001/out`,
+  en lecture seule ; clone v1 supprimé). Pilote `a1e47f35…69ed2`, exécuté depuis le clone, le 2026-10-02 de 07:51:26 à
+  08:36:41Z, sur le serveur, en lecture seule assertée par Postgres.
+- **Archive** : `~/archive/c3_campagne_grid_20261002/out`, en lecture seule, vérifiée par codes seulement (aucun sha),
+  puis suppression du clone v2 (08:39:03Z). Postflight `rc=0`.
+- **Rien n'a été lu du chemin sélection** hors de la liste close (`status.txt`, `pilot_exit.txt`, les deux
+  `alembic current`).
+
+| # | Issue mesurée | Source |
+|---|---|---|
+| 24 | **`inconclusif (P_PROVENANCE)`, non compté** — le triplet déclaré ; compté dérivé de `(issue, raison)` par la table du § 10.1, non lu ; sélection `SÉLECTION_DESCRIPTIVE`. La chaîne § L.2 est citée pour `verdict=` et `raison=` seulement. Aucune information économique : sous provenance `contaminated`, toute chaîne en code 0 publie ce triplet | `results/c3_campagne_grid_v2/server/status.txt`, `server/verify_attendu.out` |
+| 24 | Préfixe **0** (96 candidats, 3 workers, 44 min 09 s) ; ancrage autonome **0**, `registry.new_entry` vrai (variante v2 inscrite, nouvelle au registre) ; `c3_entry`, `c3_benchmark`, `c3_select` autonomes **0** ; évaluation **`0 event=evaluated`** ; chaîne **0**, cinq codes d'étape en 0, **`chain.verified` vrai, violations vides, zéro violation au rejeu**, étape 1 idempotente, issue inscrite ; interpréteur du clone ; aucun arrêt | `server/status.txt` |
+| 24 | Attendu **tenu 11/11** ; `alembic` `c3bd1e7a0001` inchangé ; service `235461e`, collector actif, `NRestarts=0` inchangés ; `CAMPAIGN_UNLOCK` présent ; règle 64 hex tenue sur les quatre fichiers rapatriés | `server/verify_attendu.out`, `tests/interdits_fetch.out`, `tests/postflight.out` |
+
+- **Jalon du § 10.2** : premier verdict réel de la famille grid, produit le **2026-10-02** (chaîne à 08:36:40Z), avant
+  l'échéance du 2027-01-31. Sa portée au regard des §§ 10.1-10.2 relève de la clôture § K.2 de Bruno.
+- **Registre** (déduit des codes, jamais lu) : la variante v2 y est inscrite avec son issue ; la variante v1 reste sans
+  verdict. Le statut `compte: false` et l'absence d'évaluation différée sont déclarés, jamais vérifiés. Le registre a
+  changé : la vérification des clés de racine et la sauvegarde relèvent de la cérémonie de Bruno.
+- **Relance unique consommée** (§ 10.1, décision de Bruno) : plus aucune relance pour la famille grid. Restent à Bruno
+  le merge, la clôture § K.2 effective au journal et la suppression de `CAMPAIGN_UNLOCK`. Rapport :
+  `results/c3_campagne_grid_v2/report.md`. Ajout seul.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
