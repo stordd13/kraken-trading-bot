@@ -1,0 +1,56 @@
+# manifest_check — 2026-10-02T07:15:47Z — HEAD 765fc1992f49f71cc2994132a19aabb010466665
+copie_a_l_octet_du_brouillon=0
+sha256sum: b757c45bbed2b0913ac4ec781c9c6928fa935b7c71639e66f26fb5d2468f4f11  results/c3_campagne_grid_v2/manifest.json
+sha256_egal_gel=0
+protocole_v23=0 declare=d030ab239de317f6… fichier=d030ab239de317f6…
+ecart_date_differee_jours=365.000000 attendu=365.000000
+candidats=96 distincts=96 produit_attendu=96
+titre_entree_24_au_journal=1 occurrences=0
+fenetre=0
+fraction_ancrage=0
+ecart_365=0
+famille=0
+provenance=0
+parent_non_racine=0
+graine=0
+univers_96=0
+estampilles_1w_derivees_citees=0
+entree_24_citee=0
+titre_entree_24=1
+faits_du_gel=1
+surcharges_egales_classmethod=96/96 attendu=96/96
+classes_surcharges=1d,1w,4h:32 1d,4h:64
+a06_desaccords_v2=0/96 attendu=0
+a06_desaccords_v1_adverse=64/96 attendu=64
+parent_egal_sig_canon_v1=0 prefixe=3159a90780ebbf8a
+surcharges_a06_parent=0
+inscription_v1_par_c3_anchor=0
+anchor_log_v1: ancrage T = 2024-11-22T04:48:00+00:00 (F = 0.7, fenêtre 2021-03-01T00:00:00+00:00 -> 2026-06-29T00:00:00+00:00, préfixe 1362.2 j)
+anchor_log_v1: variante 3159a90780ebbf8a (grid-atr-v4-campagne-2021-2026) — nouvelle au registre
+anchor_log_v1: provenance de l'univers : contaminated (96 candidats)
+cas_vide_code=2 attendu=2
+cas_vide_registre_inchange=0
+cas_vide_aucune_sortie=0
+anchor_log_vide: ENTREE REFUSEE R0_INVALID_RUN: variante 16d6a8f552c8cc19 déclare le parent 3159a90780ebbf8a, absent du registre (§ A.6)
+cas_vide_refus_de_parente=0
+cas_avec_v1_code=0 attendu=0
+cas_avec_v1_ancrage_T=2024-11-22T04:48:00+00:00
+cas_avec_v1_ancrage_prefixe_jours=1362.2
+cas_avec_v1_ancrage_evaluation_jours=583.8
+cas_avec_v1_ancrage_n_candidats=96
+cas_avec_v1_ancrage_nouvelle_au_registre=True
+cas_avec_v1_racine_preservee=0
+cas_avec_v1_enregistrement_v1_inchange=0
+cas_avec_v1_deux_variantes=0
+cas_avec_v1_attendu=0 T_attendu=2024-11-22T04:48:00+00:00
+anchor_log_avec_v1: ancrage T = 2024-11-22T04:48:00+00:00 (F = 0.7, fenêtre 2021-03-01T00:00:00+00:00 -> 2026-06-29T00:00:00+00:00, préfixe 1362.2 j)
+anchor_log_avec_v1: variante 16d6a8f552c8cc19 (grid-atr-v4-campagne-2021-2026-v2) — nouvelle au registre
+anchor_log_avec_v1: provenance de l'univers : contaminated (96 candidats)
+cas_rejeu_code=0 attendu=0
+cas_rejeu_registre_inchange=0
+cas_rejeu_nouvelle_au_registre=False attendu=False
+anchor_log_rejeu: ancrage T = 2024-11-22T04:48:00+00:00 (F = 0.7, fenêtre 2021-03-01T00:00:00+00:00 -> 2026-06-29T00:00:00+00:00, préfixe 1362.2 j)
+anchor_log_rejeu: variante 16d6a8f552c8cc19 (grid-atr-v4-campagne-2021-2026-v2) — déjà au registre, idempotent
+anchor_log_rejeu: provenance de l'univers : contaminated (96 candidats)
+temporaire_supprime=0
+rc=1

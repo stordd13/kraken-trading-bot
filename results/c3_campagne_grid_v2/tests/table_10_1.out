@@ -1,0 +1,8 @@
+# table_10_1 — 2026-10-02T07:22:24Z — HEAD 765fc1992f49f71cc2994132a19aabb010466665
+lignes_texte=12 conditionnelles=1 cles_code=13
+recopie_egale_code=0
+mutant_P_PROVENANCE_compte_mord=0
+mutant_ligne_conditionnelle_retiree_mord=0
+derive_inconclusif_P_PROVENANCE=False
+derive_inconclusif_A_NO_ADMISSIBLE_CANDIDATE=None
+rc=0

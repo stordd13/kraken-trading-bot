@@ -1,0 +1,36 @@
+# verify_adverse — 2026-10-02T07:23:21Z — HEAD 765fc1992f49f71cc2994132a19aabb010466665
+temoin_pilot_dryrun=0
+conf cas=temoin rc=0 attendu=0 items_en_ecart=0
+conf cas=sha_passe_autre rc=1 attendu=non0 items_en_ecart=1
+conf cas=guard_refused rc=1 attendu=non0 items_en_ecart=1
+conf cas=unlock_absent_a_la_garde rc=1 attendu=non0 items_en_ecart=1
+conf cas=pilot_sha_autre rc=1 attendu=non0 items_en_ecart=1
+conf cas=alembic_after_autre rc=1 attendu=non0 items_en_ecart=1
+conf cas=service_nrestarts rc=1 attendu=non0 items_en_ecart=1
+conf cas=unlock_absent_apres rc=1 attendu=non0 items_en_ecart=1
+conf cas=workers_4 rc=1 attendu=non0 items_en_ecart=1
+conf cas=prefix_code_3 rc=1 attendu=non0 items_en_ecart=1
+conf cas=pre_select_code_2 rc=1 attendu=non0 items_en_ecart=1
+conf cas=new_entry_pre_faux rc=1 attendu=non0 items_en_ecart=1
+conf cas=eval_forme_de_refus rc=1 attendu=non0 items_en_ecart=1
+conf cas=chain_code_1 rc=1 attendu=non0 items_en_ecart=1
+conf cas=chain_steps_continuity_1 rc=1 attendu=non0 items_en_ecart=1
+conf cas=chain_verified_faux rc=1 attendu=non0 items_en_ecart=1
+conf cas=violations_non_vides rc=1 attendu=non0 items_en_ecart=1
+conf cas=rejeu_non_vide rc=1 attendu=non0 items_en_ecart=1
+conf cas=new_entry_chaine_vrai rc=1 attendu=non0 items_en_ecart=1
+conf cas=issue_non_inscrite rc=1 attendu=non0 items_en_ecart=1
+conf cas=extract_1 rc=1 attendu=non0 items_en_ecart=1
+conf cas=chain_stopped_present rc=1 attendu=non0 items_en_ecart=1
+conf cas=triplet_meilleur rc=1 attendu=non0 items_en_ecart=1
+conf cas=raison_comptee rc=1 attendu=non0 items_en_ecart=1
+conf cas=raison_conditionnelle rc=1 attendu=non0 items_en_ecart=1
+conf cas=issue_hors_liste rc=1 attendu=non0 items_en_ecart=1
+conf cas=selection_non_descriptive rc=1 attendu=non0 items_en_ecart=1
+conf cas=cle_raison_absente rc=1 attendu=non0 items_en_ecart=1
+conf cas=interpreter_1 rc=1 attendu=non0 items_en_ecart=1
+conf cas=halted_at_eval rc=1 attendu=non0 items_en_ecart=1
+conf cas=etape_not_run rc=1 attendu=non0 items_en_ecart=1
+conf cas=pilot_exit_1 rc=1 attendu=non0 items_en_ecart=1
+temporaire_supprime=0
+rc=0

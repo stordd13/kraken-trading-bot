@@ -1,0 +1,15 @@
+tenu  — 1 gardes : guard=0 au SHA S1, krakenbot du clone, protocole v2.3, manifeste gelé, CAMPAIGN_UNLOCK présent, pilote = blob S1
+tenu  — 2 base : alembic 0 avant et après, identiques, c3bd1e7a0001 (head)
+tenu  — 3 service inchangé (HEAD, 0 ligne sale, collector actif, NRestarts), arbre du clone propre, CAMPAIGN_UNLOCK présent après
+tenu  — 4 producteur préfixe : 0, event=-, workers 3
+tenu  — 5 chaîne 1-4 autonome : anchor, entry, benchmark, select en 0 ; inscription de la variante v2, nouvelle au registre (registry.new_entry vrai)
+tenu  — 6 producteur d'évaluation : 0 event=evaluated
+tenu  — 7 chaîne complète : code 0, cinq codes d'étape en 0 (c3_verdict.CHAIN_FILES), chain.verified vrai, violations vides, zéro violation au rejeu, ancrage idempotent, issue inscrite
+tenu  — 8 issue : inconclusif, P_PROVENANCE, non compté (dérivé du § 10.1) ; sélection SÉLECTION_DESCRIPTIVE
+tenu  — 9 interpréteur du clone dans les deux provenances
+tenu  — 10 aucun arrêt : halted_at=-, aucune étape NOT_RUN
+tenu  — 11 pilote : code de sortie 0
+triplet constaté : issue=inconclusif raison=P_PROVENANCE compté=non (compté dérivé de (issue, raison) par la table du § 10.1, non lu)
+déclarés, jamais vérifiés : aucune évaluation différée inscrite ; contenu du registre (racine préservée, compte inscrit) ; bornes des lectures — appuis du code, des tests et des codes de la chaîne (attendu § 8)
+11/11 items vérifiables tenus
+rc=0

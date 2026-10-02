@@ -1,0 +1,75 @@
+# archive_dryrun — 2026-10-02T07:21:59Z — HEAD 765fc1992f49f71cc2994132a19aabb010466665
+corps_v1_lignes=44 corps_archive_v2_egal_v1=0 corps_prealable_egal_v1=0
+cas=conforme date=20261001 rc=0 lignes_changees=8 repertoire_chantier=absent archive=present lecture_seule=oui source=absente
+  conforme: pilote_termine=0
+  conforme: tmux_chantier_absente=0
+  conforme: archive_absente_avant=0
+  conforme: meme_systeme_de_fichiers=0
+  conforme: aucun_out_sous_le_repertoire_du_chantier=0
+  conforme: suppression_clone=0
+lignes_substituees_conforme=8
+cas=out_residuel date=20261001 rc=1 lignes_changees=8 repertoire_chantier=present archive=present lecture_seule=oui source=absente
+  out_residuel: pilote_termine=0
+  out_residuel: tmux_chantier_absente=0
+  out_residuel: archive_absente_avant=0
+  out_residuel: meme_systeme_de_fichiers=0
+  out_residuel: aucun_out_sous_le_repertoire_du_chantier=1
+  out_residuel: suppression_clone=SKIPPED
+cas=archive_presente date=20261001 rc=1 lignes_changees=8 repertoire_chantier=present archive=absent lecture_seule=non source=intacte
+  archive_presente: pilote_termine=0
+  archive_presente: tmux_chantier_absente=0
+  archive_presente: archive_absente_avant=1
+cas=pilote_non_termine date=20261001 rc=1 lignes_changees=8 repertoire_chantier=present archive=absent lecture_seule=non source=intacte
+  pilote_non_termine: pilote_termine=1
+  pilote_non_termine: tmux_chantier_absente=0
+  pilote_non_termine: archive_absente_avant=0
+cas=tmux_ouverte date=20261001 rc=1 lignes_changees=8 repertoire_chantier=present archive=absent lecture_seule=non source=intacte
+  tmux_ouverte: pilote_termine=0
+  tmux_ouverte: tmux_chantier_absente=1
+  tmux_ouverte: archive_absente_avant=0
+cas=conforme_v2 date=20261002 rc=0 lignes_changees=8 repertoire_chantier=absent archive=present lecture_seule=oui source=absente
+  conforme_v2: pilote_termine=0
+  conforme_v2: tmux_chantier_absente=0
+  conforme_v2: archive_absente_avant=0
+  conforme_v2: meme_systeme_de_fichiers=0
+  conforme_v2: aucun_out_sous_le_repertoire_du_chantier=0
+  conforme_v2: suppression_clone=0
+  conforme_v2: archive_v1_intacte=0
+sonde=ok rc=0 sortie=[sonde_meme_peripherique=0 sonde_find_perm_gnu=0]
+sonde=peripheriques_distincts rc=0 sortie=[sonde_meme_peripherique=1 sonde_find_perm_gnu=0]
+sonde=find_bsd rc=0 sortie=[sonde_meme_peripherique=0 sonde_find_perm_gnu=1]
+sonde=out_absent rc=0 sortie=[sonde_meme_peripherique=1 sonde_find_perm_gnu=0]
+sonde=sans_archive rc=0 sortie=[sonde_meme_peripherique=0 sonde_find_perm_gnu=0]
+faux_ssh_resolu=0 sorties_du_chantier_absentes_avant=0
+enveloppe=archive_sans_verify rc=1 appels_ssh=0
+  archive_sans_verify: archive.out: # archive — 2026-10-02T07:22:00Z
+  archive_sans_verify: archive.out: verify_11_sur_11=1 (refus local, aucun ssh)
+  archive_sans_verify: archive.out: rc=1
+enveloppe=archive_verify_4_sur_11 rc=1 appels_ssh=0
+  archive_verify_4_sur_11: archive.out: # archive — 2026-10-02T07:22:00Z
+  archive_verify_4_sur_11: archive.out: verify_11_sur_11=1 (refus local, aucun ssh)
+  archive_verify_4_sur_11: archive.out: rc=1
+enveloppe=archive_verify_11_sur_11 rc=1 appels_ssh=1
+  archive_verify_11_sur_11: archive.out: ssh_exit=97
+  archive_verify_11_sur_11: archive.out: rc=1
+  archive_verify_11_sur_11: dernier_appel_porte=[-- 20261002] oui
+enveloppe=prealable_sonde_en_ecart rc=1 appels_ssh=1
+  prealable_sonde_en_ecart: archive_prealable.out: sonde_meme_peripherique=1
+  prealable_sonde_en_ecart: archive_prealable.out: sonde_find_perm_gnu=0
+  prealable_sonde_en_ecart: archive_prealable.out: sonde_ssh_exit=0
+  prealable_sonde_en_ecart: archive_prealable.out: corps=NON_LANCE (sonde en écart : rien touché)
+  prealable_sonde_en_ecart: archive_prealable.out: rc=1
+enveloppe=prealable_sonde_a_0 rc=1 appels_ssh=2
+  prealable_sonde_a_0: archive_prealable.out: sonde_meme_peripherique=0
+  prealable_sonde_a_0: archive_prealable.out: sonde_find_perm_gnu=0
+  prealable_sonde_a_0: archive_prealable.out: sonde_ssh_exit=0
+  prealable_sonde_a_0: archive_prealable.out: ssh_exit=97
+  prealable_sonde_a_0: archive_prealable.out: rc=1
+  prealable_sonde_a_0: dernier_appel_porte=[-- 20261001] oui
+enveloppe=prealable_avec_argument rc=2 appels_ssh=0
+etat_git_restaure=0
+a1_lignes_extraites=1 attendu=1
+a1 jour=20261001 sortie=[jour_lancement=REFUSE 20261001 ok=1]
+a1 jour=20261002 sortie=[jour_lancement=20261002 ok=0]
+temporaire_supprime=0
+rc=0

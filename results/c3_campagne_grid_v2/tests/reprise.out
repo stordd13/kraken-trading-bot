@@ -1,0 +1,840 @@
+# reprise — 2026-10-02T07:23:49Z — HEAD 765fc1992f49f71cc2994132a19aabb010466665
+## results/c3_campagne_grid/server/run_campagne.sh -> results/c3_campagne_grid_v2/server/run_campagne.sh : lignes source changées=9, lignes reprise=10
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/conformite/server/
+< # run_conformite.sh) — pilote serveur du run compté, au code de S1 (plans/plan.md § 1 ; attendu déclaré avant le
+< # lancement : ../attendu.md). Versionné au commit S1 et exécuté DEPUIS LE CLONE à ce SHA :
+< #   bash ~/runs/c3_campagne_grid/campagne/repo/results/c3_campagne_grid/server/run_campagne.sh <S1, 40 hex>
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique après correction d'instrument (repris de
+> # results/c3_campagne_grid/server/run_campagne.sh) — pilote serveur du run compté, au code de S1 (plans/plan.md § 1 ;
+> # attendu déclaré avant le lancement : ../attendu.md). Versionné au commit S1 et exécuté DEPUIS LE CLONE à ce SHA :
+> #   bash ~/runs/c3_campagne_grid/campagne/repo/results/c3_campagne_grid_v2/server/run_campagne.sh <S1, 40 hex>
+< #   c3b_prefix -> c3_anchor (première inscription au registre de campagne), c3_entry, c3_benchmark, c3_select
+> #   c3b_prefix -> c3_anchor (inscription de la variante v2, son parent v1 déjà au registre), c3_entry, c3_benchmark,
+> #   c3_select
+< SELF=results/c3_campagne_grid/server/run_campagne.sh
+< MANIFEST=results/c3_campagne_grid/manifest.json
+< MANIFEST_SHA=d422076b09292d8a…
+> SELF=results/c3_campagne_grid_v2/server/run_campagne.sh
+> MANIFEST=results/c3_campagne_grid_v2/manifest.json
+> MANIFEST_SHA=b757c45bbed2b091…
+< # --- 2. chaîne 1-4 autonome ; l'ancrage fait la première inscription au registre de campagne -------------------------
+> # --- 2. chaîne 1-4 autonome ; l'ancrage inscrit la variante v2 au registre de campagne (parent v1 déjà inscrit) ------
+## results/c3_campagne_grid/server/verify_attendu.py -> results/c3_campagne_grid_v2/server/verify_attendu.py : lignes source changées=10, lignes reprise=10
+< """Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/conformite/server/
+> """Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/server/
+< (liste close, plan § 2). **Compté** n'y figure pas : aucun canal ne le publie hors du registre (plan, K2). Il est
+< **dérivé** ici de ``(issue, raison)`` par la table du § 10.1 de ``docs/CONTRAINTES_POST_B4.md``, recopiée du texte
+< (``COUNTED_10_1``, ``CONDITIONAL_10_1``) et épinglée aux constantes du code par ``tests/table_10_1.sh`` : dérivé, non
+< lu (décision Q1 de Bruno). Prouvé avant son premier usage par ``tests/verify_adverse.sh`` (témoin sain à 0, chaque cas
+< dévié ≠ 0 avec exactement un item en écart).
+> (liste close, plan § 3 = plan v1 § 2). **Compté** n'y figure pas : aucun canal ne le publie hors du registre (plan
+> v1, K2). Il est **dérivé** ici de ``(issue, raison)`` par la table du § 10.1 de ``docs/CONTRAINTES_POST_B4.md``,
+> recopiée du texte (``COUNTED_10_1``, ``CONDITIONAL_10_1``) et épinglée aux constantes du code par
+> ``tests/table_10_1.sh`` : dérivé, non lu (décision Q1 de Bruno au chantier v1, reconduite). Prouvé avant son premier
+> usage par ``tests/verify_adverse.sh`` (témoin sain à 0, chaque cas dévié ≠ 0 avec exactement un item en écart).
+<     python3 results/c3_campagne_grid/server/verify_attendu.py --sha <S1, 40 hex>
+>     python3 results/c3_campagne_grid_v2/server/verify_attendu.py --sha <S1, 40 hex>
+< MANIFEST_SHA = "d422076b09292d8a…"
+> MANIFEST_SHA = "b757c45bbed2b091…"
+<             "5 chaîne 1-4 autonome : anchor, entry, benchmark, select en 0 ; première inscription au registre "
+<             "(registry.new_entry vrai)",
+>             "5 chaîne 1-4 autonome : anchor, entry, benchmark, select en 0 ; inscription de la variante v2, "
+>             "nouvelle au registre (registry.new_entry vrai)",
+## results/c3_campagne_grid/attendu.md -> results/c3_campagne_grid_v2/attendu.md : lignes source changées=142, lignes reprise=271
+(réécrit pour ce chantier ; diff non recopié, relu en entier)
+## results/c3_campagne_grid/tests/preflight.sh -> results/c3_campagne_grid_v2/tests/preflight.sh : lignes source changées=5, lignes reprise=10
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/preflight.sh) — preflight
+< # du serveur avant le lancement, LECTURE SEULE, lancé par `bash` depuis le dépôt (plans/plan.md § 1).
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/preflight.sh) —
+> # preflight du serveur avant le lancement, LECTURE SEULE, lancé par `bash` depuis le dépôt APRÈS l'archive-préalable
+> # du run v1, qui libère ~/runs/c3_campagne_grid (plans/plan.md § 2 et § 10 ; plan v1 § 1).
+< # poetry.lock et pyproject.toml égaux à HEAD, CAMPAIGN_UNLOCK présent, mémoire disponible ≥ 5000 Mo.
+> # poetry.lock et pyproject.toml égaux à HEAD, CAMPAIGN_UNLOCK présent, mémoire disponible ≥ 5000 Mo, et jour UTC du
+> # lancement ≥ 20261002 (A1' : un lancement le 01/10 donnerait à l'archive du run v2 le nom de l'archive du run v1,
+> # c3_campagne_grid_20261001).
+< # du run compté (plan, A5).
+> # du run compté (A5 du chantier v1).
+< OUT=results/c3_campagne_grid/tests/preflight.out
+> OUT=results/c3_campagne_grid_v2/tests/preflight.out
+> # A1' : lancement à partir du 2026-10-02 UTC (l'archive du run v1 porte la date 20261001).
+> if [ "$DAY" -ge 20261002 ]; then echo "jour_lancement=$DAY"; else echo "jour_lancement=REFUSE $DAY"; ok=1; fi
+## results/c3_campagne_grid/tests/launch.sh -> results/c3_campagne_grid_v2/tests/launch.sh : lignes source changées=9, lignes reprise=10
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/launch.sh) — mise en
+< # place et lancement du run compté sur le serveur, lancé par `bash` depuis le dépôt, APRÈS le preflight à rc=0 et le
+< # GO de lancement de Bruno nommant S1.
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/launch.sh) —
+> # mise en place et lancement du run compté sur le serveur, lancé par `bash` depuis le dépôt, APRÈS l'archive-préalable
+> # et le preflight à rc=0, sur le GO de lancement de Bruno nommant S1 (à partir du 2026-10-02 UTC, A1').
+< #   0. SHA = HEAD local = tip de origin/feat/c3-campagne-grid (git ls-remote) : transport par push, jamais de bundle ;
+< #   1. ~/runs/c3_campagne_grid/campagne créé (échoue s'il existe) ;
+> #   0. SHA = HEAD local = tip de origin/feat/c3-campagne-grid-v2 (git ls-remote) : transport par push, jamais de
+> #      bundle ;
+> #   1. ~/runs/c3_campagne_grid/campagne créé (échoue s'il existe : l'archive-préalable du run v1 le libère, plan § 2) ;
+< PILOT=results/c3_campagne_grid/server/run_campagne.sh
+> PILOT=results/c3_campagne_grid_v2/server/run_campagne.sh
+< OUT=results/c3_campagne_grid/tests/launch.out
+> OUT=results/c3_campagne_grid_v2/tests/launch.out
+< remote_tip=$(git ls-remote origin refs/heads/feat/c3-campagne-grid | cut -f1)
+> remote_tip=$(git ls-remote origin refs/heads/feat/c3-campagne-grid-v2 | cut -f1)
+< git -C repo fetch -q origin feat/c3-campagne-grid || exit 12
+> git -C repo fetch -q origin feat/c3-campagne-grid-v2 || exit 12
+## results/c3_campagne_grid/tests/wait.sh -> results/c3_campagne_grid_v2/tests/wait.sh : lignes source changées=5, lignes reprise=5
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/wait.sh) — attente de la
+< # fin du pilote, lancé par `bash` en arrière-plan depuis le dépôt.
+< # usage : bash wait.sh <intervalle en s> <nombre maximal de sondes>   (plan § 1 : 120 120, plafond 4 h)
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/wait.sh) —
+> # attente de la fin du pilote, lancé par `bash` en arrière-plan depuis le dépôt.
+> # usage : bash wait.sh <intervalle en s> <nombre maximal de sondes>   (plan v1 § 1, inchangé : 120 120, plafond 4 h)
+< # valeur (plan § 1). Ne lit rien d'autre, ne tue rien, ne relance rien.
+> # valeur (plan v1 § 1). Ne lit rien d'autre, ne tue rien, ne relance rien.
+< OUT=results/c3_campagne_grid/tests/wait.out
+> OUT=results/c3_campagne_grid_v2/tests/wait.out
+## results/c3_campagne_grid/tests/fetch.sh -> results/c3_campagne_grid_v2/tests/fetch.sh : lignes source changées=6, lignes reprise=6
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/fetch.sh) — rapatriement
+< # des extraits du run, lancé par `bash` depuis le dépôt.
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/fetch.sh) —
+> # rapatriement des extraits du run, lancé par `bash` depuis le dépôt.
+< # Ne rapatrie que la liste close (plan § 2, attendu § 9) : status.txt, pilot_exit.txt, alembic_before.txt,
+> # Ne rapatrie que la liste close (plan § 3, attendu § 9) : status.txt, pilot_exit.txt, alembic_before.txt,
+< # jamais ouverts. Avant S2, la règle 64 hex d'interdits.sh est balayée sur ces quatre fichiers (plan, A4).
+> # jamais ouverts. Avant S2, la règle 64 hex d'interdits.sh est balayée sur ces quatre fichiers (A4 du chantier v1).
+< DEST=results/c3_campagne_grid/server
+> DEST=results/c3_campagne_grid_v2/server
+< OUT=results/c3_campagne_grid/tests/fetch.out
+> OUT=results/c3_campagne_grid_v2/tests/fetch.out
+## results/c3_campagne_grid/tests/verify.sh -> results/c3_campagne_grid_v2/tests/verify.sh : lignes source changées=3, lignes reprise=3
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/verify_conformite.sh) —
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/verify.sh) —
+< OUT=results/c3_campagne_grid/server/verify_attendu.out
+< python3 results/c3_campagne_grid/server/verify_attendu.py --sha "$SHA" > "$OUT" 2>&1
+> OUT=results/c3_campagne_grid_v2/server/verify_attendu.out
+> python3 results/c3_campagne_grid_v2/server/verify_attendu.py --sha "$SHA" > "$OUT" 2>&1
+## results/c3_campagne_grid/tests/archive.sh -> results/c3_campagne_grid_v2/tests/archive.sh : lignes source changées=6, lignes reprise=16
+< # Première campagne C3 comptée, famille grid-atr-v4 — archive du run compté sur le serveur (plans/plan.md § 3, D-archive ;
+< # réécrit d'après results/c3_racine_registre/tests/archive.sh), lancé par `bash` depuis le dépôt, seulement après un
+< # fetch et un verify à rc=0 (un écart = STOP : répertoire laissé en place, ni archive ni suppression).
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique — archive du run compté sur le serveur
+> # (plans/plan.md § 4, D-archive ; repris de results/c3_campagne_grid/tests/archive.sh, corps distant REMOTE identique
+> # à l'octet, prouvé par archive_dryrun.sh), lancé par `bash` depuis le dépôt, seulement après un fetch et un verify à
+> # rc=0 — règle rendue mécanique : refus local, AVANT TOUT ssh, si server/verify_attendu.out ne porte pas « 11/11 » et
+> # rc=0 (un écart = STOP : répertoire laissé en place, ni archive ni suppression). Date : le jour de l'archive, au plus
+> # tôt 20261002 (l'archive du run v1, faite par archive_prealable.sh, porte 20261001 : plan § 2).
+< #  - la SEULE suppression du chantier (décision Q3, garde A3) : le clone repo/ (code au S1, copie du .env du service,
+< #    copie de CAMPAIGN_UNLOCK), par `rm -rf` en LITTÉRAL ABSOLU sur le répertoire du chantier sous ~/runs, et seulement
+> #  - la seconde suppression du chantier (la première : le clone v1, par archive_prealable.sh ; garde A3) : le clone
+> #    repo/ du run v2 (code au S1, copie du .env du service, copie de CAMPAIGN_UNLOCK), par `rm -rf` en LITTÉRAL ABSOLU
+> #    sur le répertoire du chantier sous ~/runs (le même chemin qu'au v1, réutilisé : plan § 1-2), et seulement
+< OUT=results/c3_campagne_grid/tests/archive.out
+> OUT=results/c3_campagne_grid_v2/tests/archive.out
+> # Précondition locale (plan § 4), avant tout ssh : l'attendu tenu 11/11 sur les extraits rapatriés.
+> V=results/c3_campagne_grid_v2/server/verify_attendu.out
+> if ! { [ -f "$V" ] && grep -qx "11/11 items vérifiables tenus" "$V" && grep -qx "rc=0" "$V"; }; then
+>   { echo "# archive — $(date -u +%FT%TZ)"; echo "verify_11_sur_11=1 (refus local, aucun ssh)"; echo "rc=1"; } > "$OUT"
+>   exit 1
+> fi
+## results/c3_campagne_grid/tests/archive.sh -> results/c3_campagne_grid_v2/tests/archive_prealable.sh : lignes source changées=11, lignes reprise=43
+< # Première campagne C3 comptée, famille grid-atr-v4 — archive du run compté sur le serveur (plans/plan.md § 3, D-archive ;
+< # réécrit d'après results/c3_racine_registre/tests/archive.sh), lancé par `bash` depuis le dépôt, seulement après un
+< # fetch et un verify à rc=0 (un écart = STOP : répertoire laissé en place, ni archive ni suppression).
+< # usage : bash archive.sh <AAAAMMJJ>
+< # Le run est CONSERVÉ archivé côté serveur, jamais supprimé, jamais versionné, jamais ouvert :
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique — ARCHIVE-PRÉALABLE du run v1 arrêté
+> # (plans/plan.md § 2), premier pas du run après le GO de lancement : copie de results/c3_campagne_grid/tests/archive.sh,
+> # corps distant REMOTE identique à l'octet (gardes A3 inchangées, prouvé par archive_dryrun.sh) ; une copie, parce que
+> # le script v1 écrirait sa sortie dans l'arbre gelé du chantier v1. Lancé par `bash` depuis le dépôt, une seule fois.
+> # Il conditionne le lancement : le run v2 réutilise ~/runs/c3_campagne_grid/campagne, que launch.sh (mkdir) et le
+> # preflight (run_dir) refusent tant qu'il existe.
+> # Avant le corps, une SONDE en LECTURE SEULE (le corps reste intouché) : même périphérique pour out/ du run v1 et
+> # ~/archive (`stat -c %d`, forme GNU jamais exercée au serveur), forme GNU de `find -perm /222` acceptée ; deux codes
+> # imprimés, rien d'autre ; un écart → refus, corps non lancé, rien touché.
+> # Échecs, dits exactement : sonde ou préalables du corps en écart → rien touché ; écart au contrôle de système de
+> # fichiers du corps → un répertoire d'archive vide reste, et un nouvel essai serait refusé par sa propre garde ; écart
+> # après le `mv` → out/ déplacé, repo/ en place, script non rejouable (pilote_termine), preflight et lancement bloqués :
+> # STOP, seul un geste de Bruno débloque. Aucun de ces cas n'écrit au registre ni ne lance le run compté.
+> # usage : bash archive_prealable.sh   (aucun argument : la date est figée au jour du run v1, 20261001 — libre, le v1
+> #   n'ayant jamais archivé ; un second appel est refusé par la garde du corps, archive_absente_avant)
+> # Le run v1 est CONSERVÉ archivé côté serveur, jamais supprimé, jamais versionné, jamais ouvert :
+< #  - la SEULE suppression du chantier (décision Q3, garde A3) : le clone repo/ (code au S1, copie du .env du service,
+< #    copie de CAMPAIGN_UNLOCK), par `rm -rf` en LITTÉRAL ABSOLU sur le répertoire du chantier sous ~/runs, et seulement
+> #  - la première suppression du chantier v2 (garde A3, décision Q3 du v1 reconduite) : le clone repo/ du run v1 (code
+> #    au S1 v1 cd4b177, copie du .env du service, copie de CAMPAIGN_UNLOCK), par `rm -rf` en LITTÉRAL ABSOLU sur le
+> #    répertoire du chantier sous ~/runs, et seulement
+< # Sortie : archive.out (codes, archived_at, rm_at) ; rc=0 ssi archivé, vérifié et clone supprimé.
+> # Sortie : archive_prealable.out (codes de la sonde et du corps, archived_at, rm_at) ; rc=0 ssi sonde à 0, archivé,
+> # vérifié et clone v1 supprimé.
+< DATE=${1:?date AAAAMMJJ}
+> DATE=20261001
+< OUT=results/c3_campagne_grid/tests/archive.out
+> OUT=results/c3_campagne_grid_v2/tests/archive_prealable.out
+> if [ "$#" -ne 0 ]; then echo "aucun argument : la date est figée (20261001)" >&2; exit 2; fi
+< ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$DATE" > "$OUT" 2>&1 <<'REMOTE'
+> # Sonde en lecture seule (plan § 2) : deux codes, rien d'autre.
+> ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' > "$OUT" 2>&1 <<'SONDE'
+> set -u
+> a=$(stat -c %d /home/bruno/runs/c3_campagne_grid/campagne/out 2> /dev/null)
+> d=/home/bruno/archive
+> [ -d "$d" ] || d=/home/bruno
+> b=$(stat -c %d "$d" 2> /dev/null)
+> if [ -n "$a" ] && [ "$a" = "$b" ]; then echo "sonde_meme_peripherique=0"; else echo "sonde_meme_peripherique=1"; fi
+> if find "$d" -maxdepth 0 -perm /222 > /dev/null 2>&1; then echo "sonde_find_perm_gnu=0"; else echo "sonde_find_perm_gnu=1"; fi
+> SONDE
+> echo "sonde_ssh_exit=$?" >> "$OUT"
+> if ! { grep -qx "sonde_meme_peripherique=0" "$OUT" && grep -qx "sonde_find_perm_gnu=0" "$OUT" \
+>   && grep -qx "sonde_ssh_exit=0" "$OUT"; }; then
+>   echo "corps=NON_LANCE (sonde en écart : rien touché)" >> "$OUT"
+>   echo "rc=1" >> "$OUT"
+>   exit 1
+> fi
+> 
+> ssh -p 41922 -o BatchMode=yes bruno@77.42.90.102 'bash -s' -- "$DATE" >> "$OUT" 2>&1 <<'REMOTE'
+## results/c3_campagne_grid/tests/postflight.sh -> results/c3_campagne_grid_v2/tests/postflight.sh : lignes source changées=5, lignes reprise=16
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/postflight.sh) —
+< # postflight du serveur après l'archive, LECTURE SEULE, lancé par `bash` depuis le dépôt (plans/plan.md § 4).
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/postflight.sh) —
+> # postflight du serveur après l'archive, LECTURE SEULE, lancé par `bash` depuis le dépôt (plans/plan.md § 5).
+< # Relève : ~/runs/c3_campagne_grid absent ; aucune session tmux `c3-campagne-grid-*` ; l'archive présente, en lecture
+< # seule, sans repo/ ni .env, témoins présents (codes seulement : ni taille, ni compte, ni sha) ; collector actif et
+> # Relève : ~/runs/c3_campagne_grid absent ; aucune session tmux `c3-campagne-grid-*` ; les DEUX archives — celle du
+> # run v2 (date en argument) et celle du run v1 faite par l'archive-préalable (c3_campagne_grid_20261001, littéral) —
+> # présentes, en lecture seule, sans repo/ ni .env, témoins présents (codes seulement : ni taille, ni compte, ni sha) ; collector actif et
+< OUT=results/c3_campagne_grid/tests/postflight.out
+> OUT=results/c3_campagne_grid_v2/tests/postflight.out
+> # l'archive du run v1 (archive-préalable, plan § 2), mêmes contrôles
+> ARC1=/home/bruno/archive/c3_campagne_grid_20261001
+> if [ -f "$ARC1/out/status.txt" ] && [ -f "$ARC1/out/pilot_exit.txt" ]; then echo "archive_v1_presente=0"; else echo "archive_v1_presente=1"; fi
+> w=$(find "$ARC1/out" -perm /222 2>/dev/null | wc -l | tr -d ' ')
+> if [ -d "$ARC1/out" ] && [ "$w" = "0" ]; then echo "archive_v1_lecture_seule=0"; else echo "archive_v1_lecture_seule=1"; fi
+> f=$(find "$ARC1" \( -name repo -o -name .env \) 2>/dev/null | wc -l | tr -d ' ')
+> if [ "$f" = "0" ]; then echo "archive_v1_sans_repo_ni_env=0"; else echo "archive_v1_sans_repo_ni_env=1"; fi
+> grep -qx "archive_v1_presente=0" "$OUT" || fail=1
+> grep -qx "archive_v1_lecture_seule=0" "$OUT" || fail=1
+> grep -qx "archive_v1_sans_repo_ni_env=0" "$OUT" || fail=1
+## results/c3_campagne_grid/tests/verify_adverse.sh -> results/c3_campagne_grid_v2/tests/verify_adverse.sh : lignes source changées=4, lignes reprise=4
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/verify_adverse.sh) —
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/verify_adverse.sh) —
+< OUT=results/c3_campagne_grid/tests/verify_adverse.out
+< VERIFY=results/c3_campagne_grid/server/verify_attendu.py
+> OUT=results/c3_campagne_grid_v2/tests/verify_adverse.out
+> VERIFY=results/c3_campagne_grid_v2/server/verify_attendu.py
+< DRYRUN_OUT="$T/dryrun.out" DRYRUN_KEEP="$T/keep" bash results/c3_campagne_grid/tests/pilot_dryrun.sh
+> DRYRUN_OUT="$T/dryrun.out" DRYRUN_KEEP="$T/keep" bash results/c3_campagne_grid_v2/tests/pilot_dryrun.sh
+## results/c3_campagne_grid/tests/pilot_dryrun.sh -> results/c3_campagne_grid_v2/tests/pilot_dryrun.sh : lignes source changées=6, lignes reprise=9
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/pilot_dryrun.sh) — le
+< # pilote du run compté exercé en local dans un monde simulé, sans base, sans serveur, sans registre réel, avant S1
+< # (plans/plan.md § 5) : une panne du pilote se voit ici, pas sur le serveur.
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/pilot_dryrun.sh) —
+> # le pilote du run compté exercé en local dans un monde simulé, sans base, sans serveur, sans registre réel, avant
+> # S1 (plans/plan.md § 6) : une panne du pilote se voit ici, pas sur le serveur.
+> # Limite dite (v2) : le registre simulé part absent, comme au v1, alors que le registre réel porte la variante v1 —
+> # le pilote ne lit jamais le registre, son comportement n'en dépend pas ; la parenté (refus sur registre vide,
+> # inscription nouvelle sur registre portant v1, idempotence) est prouvée par manifest_check.sh avec c3_anchor lui-même.
+< OUT=${DRYRUN_OUT:-results/c3_campagne_grid/tests/pilot_dryrun.out}
+< SELF=results/c3_campagne_grid/server/run_campagne.sh
+< MANIFEST=results/c3_campagne_grid/manifest.json
+> OUT=${DRYRUN_OUT:-results/c3_campagne_grid_v2/tests/pilot_dryrun.out}
+> SELF=results/c3_campagne_grid_v2/server/run_campagne.sh
+> MANIFEST=results/c3_campagne_grid_v2/manifest.json
+## results/c3_campagne_grid/tests/mutants_pilote.sh -> results/c3_campagne_grid_v2/tests/mutants_pilote.sh : lignes source changées=6, lignes reprise=6
+< # Première campagne C3 comptée, famille grid-atr-v4 — le dry-run du pilote est vert dès son écriture ; un vert dès
+< # l'écriture ne prouve rien (règle agent 1) : trois mutants TEMPORAIRES du pilote, chacun appliqué à l'arbre de
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/mutants_pilote.sh) —
+> # le dry-run du pilote est vert dès son écriture ; un vert dès l'écriture ne prouve rien (règle agent 1) : trois mutants TEMPORAIRES du pilote, chacun appliqué à l'arbre de
+< # sauvegarde. Détail d'exécution, déclaré au STOP 1 (plan § 5 : « dry-run et cas déviés re-prouvés avant de servir »).
+> # sauvegarde. Détail d'exécution, déclaré au STOP 1 (plan § 6 : « dry-run et cas déviés re-prouvés avant de servir »).
+< OUT=results/c3_campagne_grid/tests/mutants_pilote.out
+< PILOT=results/c3_campagne_grid/server/run_campagne.sh
+> OUT=results/c3_campagne_grid_v2/tests/mutants_pilote.out
+> PILOT=results/c3_campagne_grid_v2/server/run_campagne.sh
+<   DRYRUN_OUT="$TMPO" bash results/c3_campagne_grid/tests/pilot_dryrun.sh > /dev/null 2>&1
+>   DRYRUN_OUT="$TMPO" bash results/c3_campagne_grid_v2/tests/pilot_dryrun.sh > /dev/null 2>&1
+## results/c3_campagne_grid/tests/events.sh -> results/c3_campagne_grid_v2/tests/events.sh : lignes source changées=4, lignes reprise=4
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/events.sh) — la liste close des événements d'erreur des producteurs, recopiée dans le pilote de
+< # campagne (variable EVENTS), est prouvée égale à celle que le code nomme (results/c3_outillage_v2_2/plans/lot3.md § 5).
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/events.sh) — la
+> # liste close des événements d'erreur des producteurs, recopiée dans le pilote de campagne (variable EVENTS), est prouvée égale à celle que le code nomme (results/c3_outillage_v2_2/plans/lot3.md § 5).
+< OUT=results/c3_campagne_grid/tests/events.out
+< PILOT=results/c3_campagne_grid/server/run_campagne.sh
+> OUT=results/c3_campagne_grid_v2/tests/events.out
+> PILOT=results/c3_campagne_grid_v2/server/run_campagne.sh
+## results/c3_campagne_grid/tests/table_10_1.sh -> results/c3_campagne_grid_v2/tests/table_10_1.sh : lignes source changées=4, lignes reprise=5
+< # Première campagne C3 comptée, famille grid-atr-v4 — la table du § 10.1 de docs/CONTRAINTES_POST_B4.md, recopiée DU
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/table_10_1.sh) —
+> # la table du § 10.1 de docs/CONTRAINTES_POST_B4.md, recopiée DU
+< # (décision Q1 de Bruno), est épinglée aux constantes du code (c3_verdict.COUNTED, UNCOUNTED_IF_REMOVED_BY) par un
+> # (décision Q1 de Bruno au chantier v1, reconduite), est épinglée aux constantes du code (c3_verdict.COUNTED, UNCOUNTED_IF_REMOVED_BY) par un
+< OUT=results/c3_campagne_grid/tests/table_10_1.out
+> OUT=results/c3_campagne_grid_v2/tests/table_10_1.out
+<     "verify_attendu", "results/c3_campagne_grid/server/verify_attendu.py"
+>     "verify_attendu", "results/c3_campagne_grid_v2/server/verify_attendu.py"
+## results/c3_campagne_grid/tests/archive_dryrun.sh -> results/c3_campagne_grid_v2/tests/archive_dryrun.sh : lignes source changées=29, lignes reprise=196
+< # Première campagne C3 comptée, famille grid-atr-v4 — le corps distant d'archive.sh exercé en local dans un monde
+< # simulé, avant de servir (plans/plan.md § 3 ; A3 : la seule suppression du chantier doit être la plus paranoïaque du
+< # lot, et ses gardes mordent avant d'être employées). Détail d'exécution, déclaré au STOP 1.
+< # Le corps est extrait d'archive.sh (entre `<<'REMOTE'` et `REMOTE`) ; dans la copie, des lignes changent, comptées :
+< #   `/home/bruno/` → `<monde>/home/bruno/` ; `stat -c %d` → `stat -f %d` et `-perm /222` → `-perm +222` (stat et find
+< #   BSD du poste ; le serveur est GNU) ; `tmux` est un faux tmux du monde.
+< # Monde : ~/runs/c3_campagne_grid/campagne/{out/…, repo/…} où le clone porte un `.env` simulé et le fichier
+< # results/c3_v2_2/outillage_v2_2.md (le motif littéral `*/out*` le prendrait ; la garde retenue ne doit pas).
+< # Cas : conforme (0 : out/ archivé en lecture seule, répertoire du chantier supprimé) ; `out` résiduel dans le clone
+< # (1 : rien supprimé) ; archive du jour déjà présente (1 : source intacte) ; pilote non terminé (1 : source intacte) ;
+< # session tmux du chantier encore ouverte (1 : source intacte).
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/
+> # archive_dryrun.sh, étendu) — les deux scripts d'archive exercés en local avant de servir (plans/plan.md § 2 et § 4 ;
+> # A3 : les suppressions du chantier sont ses gestes les plus paranoïaques, leurs gardes mordent avant d'être employées).
+> # Détail d'exécution, déclaré au STOP 1. Aucun ssh réel n'est possible : les corps tournent en local dans un monde
+> # simulé ; les enveloppes tournent sous un FAUX ssh en tête de PATH (résolution vérifiée avant tout appel), avec un HOME
+> # temporaire et sans agent SSH (un vrai ssh, s'il était atteint, n'aurait ni clé ni hôte connu, en BatchMode).
+> #  1. Corps REMOTE extraits des trois scripts (v1 archive.sh, v2 archive.sh, v2 archive_prealable.sh) : égaux à l'octet.
+> #  2. Le corps dans un monde simulé, comme au v1 (lignes changées, comptées : `/home/bruno/` → `<monde>/home/bruno/` ;
+> #     `stat -c %d` → `stat -f %d` et `-perm /222` → `-perm +222`, formes BSD du poste, le serveur est GNU ; faux tmux) :
+> #     les cinq cas du v1 à la date 20261001 (conforme → archivé en lecture seule, répertoire du chantier supprimé ; `out`
+> #     résiduel → rien supprimé ; archive présente, pilote non terminé, tmux ouverte → source intacte), plus conforme_v2 à
+> #     la date 20261002, l'archive v1 c3_campagne_grid_20261001 préexistante en lecture seule et restée intacte. Le clone
+> #     simulé porte un .env simulé, results/c3_v2_2/outillage_v2_2.md (le motif `*/out*` le prendrait) et un MARQUEUR à
+> #     la place de la copie de CAMPAIGN_UNLOCK (aucun fichier de ce nom n'est créé, brief § 3).
+> #  3. La sonde SONDE d'archive_prealable.sh, extraite telle quelle, `/home/bruno/` → monde, sous un faux stat et un faux
+> #     find (formes GNU) : même périphérique → 0 et 0 ; périphériques distincts → sonde_meme_peripherique=1 ; find à la
+> #     BSD (refus de /222) → sonde_find_perm_gnu=1 ; out/ absent → sonde_meme_peripherique=1 ; ~/archive absent → repli
+> #     sur ~ (0 et 0).
+> #  4. Les enveloppes, sous faux ssh qui consigne chaque appel et ne contacte rien : archive.sh sans verify_attendu.out →
+> #     refus local, 0 appel ; verify_attendu.out à 4/11 → refus local, 0 appel ; à 11/11 et rc=0 → 1 appel portant la
+> #     date ; archive_prealable.sh, sonde en écart → 1 appel, corps non lancé ; sonde à 0 → 2 appels, le second porte la
+> #     date figée 20261001 ; avec un argument → refus d'usage (2), 0 appel. Les fichiers que ces cas écrivent dans le
+> #     chantier (archive.out, archive_prealable.out, le verify_attendu.out fabriqué) ne doivent pas exister avant (sinon
+> #     la partie 4 n'est pas exécutée) ; ils sont recopiés dans la sortie, préfixés, puis supprimés ; l'état
+> #     `git status` est comparé avant et après.
+> #  5. A1' (décision de Bruno au GO du plan) : la ligne `jour_lancement` du preflight, extraite telle quelle, refuse le
+> #     jour 20261001 (l'archive du run v2 y porterait le nom de l'archive v1) et admet 20261002.
+> # Env : DRYRUN_OUT (sortie, défaut tests/archive_dryrun.out) — employé par mutants_archive.sh.
+< OUT=results/c3_campagne_grid/tests/archive_dryrun.out
+< SRC=results/c3_campagne_grid/tests/archive.sh
+> OUT=${DRYRUN_OUT:-results/c3_campagne_grid_v2/tests/archive_dryrun.out}
+> V1=results/c3_campagne_grid/tests/archive.sh
+> ARCH=results/c3_campagne_grid_v2/tests/archive.sh
+> PREA=results/c3_campagne_grid_v2/tests/archive_prealable.sh
+> # --- 1. corps REMOTE égaux à l'octet --------------------------------------------------------------------------------
+> remote_body() { sed -n "/<<'REMOTE'\$/,/^REMOTE\$/p" "$1" | sed '1d;$d'; }
+> remote_body "$V1" > "$T/body.v1"
+> remote_body "$ARCH" > "$T/body.archive"
+> remote_body "$PREA" > "$T/body.prealable"
+> n=$(wc -l < "$T/body.v1" | tr -d ' ')
+> cmp -s "$T/body.v1" "$T/body.archive"; a=$?
+> cmp -s "$T/body.v1" "$T/body.prealable"; p=$?
+> log "corps_v1_lignes=$n corps_archive_v2_egal_v1=$a corps_prealable_egal_v1=$p"
+> { [ "$n" -gt 0 ] && [ "$a" = "0" ] && [ "$p" = "0" ]; } || fail=1
+> 
+> # --- 2. le corps dans un monde simulé -------------------------------------------------------------------------------
+< if [ "${SIM_TMUX:-}" = "ouverte" ]; then echo "c3-campagne-grid-20261001: 1 windows"; exit 0; fi
+> if [ "${SIM_TMUX:-}" = "ouverte" ]; then echo "c3-campagne-grid-20261002: 1 windows"; exit 0; fi
+< sed -n "/<<'REMOTE'\$/,/^REMOTE\$/p" "$SRC" | sed '1d;$d' > "$T/body.orig"
+> snapshot() { (cd "$1" && find . -exec stat -f '%N %p %z %m' {} \; | LC_ALL=C sort); }   # noms, modes, tailles, dates
+< # cas <nom> <réglage du monde : conforme | out_residuel | archive_presente | pilote_non_termine | tmux_ouverte>
+> # cas <nom> <réglage : conforme | out_residuel | archive_presente | pilote_non_termine | tmux_ouverte | conforme_v2> <date>
+<   local name=$1 setup=$2 W=$T/$1
+<   local R=$W/home/bruno/runs/c3_campagne_grid/campagne A=$W/home/bruno/archive/c3_campagne_grid_20261001
+<   mkdir -p "$R/out/logs" "$R/out/chain" "$R/repo/results/c3_v2_2" "$W/home/bruno/archive"
+>   local name=$1 setup=$2 date=$3 W=$T/$1
+>   local R=$W/home/bruno/runs/c3_campagne_grid/campagne A=$W/home/bruno/archive/c3_campagne_grid_$3
+>   local A1=$W/home/bruno/archive/c3_campagne_grid_20261001
+>   mkdir -p "$R/out/logs" "$R/out/chain" "$R/repo/results/c3_v2_2" "$R/repo/results/c3b_producteur" "$W/home/bruno/archive"
+>   : > "$R/repo/results/c3b_producteur/SIM_MARQUEUR_UNLOCK"
+>     conforme_v2)
+>       mkdir -p "$A1/out"
+>       echo "status v1" > "$A1/out/status.txt"
+>       echo "1" > "$A1/out/pilot_exit.txt"
+>       chmod -R a-w "$A1/out"
+>       snapshot "$A1" > "$W/v1_avant.txt"
+>       ;;
+<     "$T/body.orig" > "$W/body.sh"
+<   CHANGED=$(diff "$T/body.orig" "$W/body.sh" | grep -c '^>')
+>     "$T/body.v1" > "$W/body.sh"
+>   CHANGED=$(diff "$T/body.v1" "$W/body.sh" | grep -c '^>')
+<   PATH="$T/bin:$PATH" SIM_TMUX=$tm bash "$W/body.sh" 20261001 > "$W/remote.txt" 2>&1
+>   PATH="$T/bin:$PATH" SIM_TMUX=$tm bash "$W/body.sh" "$date" > "$W/remote.txt" 2>&1
+<   log "cas=$name rc=$r lignes_changees=$CHANGED repertoire_chantier=$runs archive=$arc lecture_seule=$ro source=$src"
+<   grep -E '^(aucun_out_sous_le_repertoire_du_chantier|suppression_clone|archive_absente_avant|pilote_termine|tmux_chantier_absente)=' \
+>   log "cas=$name date=$date rc=$r lignes_changees=$CHANGED repertoire_chantier=$runs archive=$arc lecture_seule=$ro source=$src"
+>   grep -E '^(aucun_out_sous_le_repertoire_du_chantier|suppression_clone|archive_absente_avant|pilote_termine|tmux_chantier_absente|meme_systeme_de_fichiers)=' \
+>   if [ "$setup" = conforme_v2 ]; then
+>     snapshot "$A1" > "$W/v1_apres.txt"
+>     cmp -s "$W/v1_avant.txt" "$W/v1_apres.txt"; local i=$?
+>     log "  $name: archive_v1_intacte=$i"
+>     [ "$i" = "0" ] || fail=1
+>   fi
+< cas conforme conforme; attendu conforme "0 absent present oui absente"
+> cas conforme conforme 20261001; attendu conforme "0 absent present oui absente"
+< cas out_residuel out_residuel; attendu out_residuel "1 present present oui absente"
+< cas archive_presente archive_presente; attendu archive_presente "1 present absent non intacte"
+< cas pilote_non_termine pilote_non_termine; attendu pilote_non_termine "1 present absent non intacte"
+< cas tmux_ouverte tmux_ouverte; attendu tmux_ouverte "1 present absent non intacte"
+> cas out_residuel out_residuel 20261001; attendu out_residuel "1 present present oui absente"
+> cas archive_presente archive_presente 20261001; attendu archive_presente "1 present absent non intacte"
+> cas pilote_non_termine pilote_non_termine 20261001; attendu pilote_non_termine "1 present absent non intacte"
+> cas tmux_ouverte tmux_ouverte 20261001; attendu tmux_ouverte "1 present absent non intacte"
+> cas conforme_v2 conforme_v2 20261002; attendu conforme_v2 "0 absent present oui absente"
+> # --- 3. la sonde d'archive_prealable.sh -----------------------------------------------------------------------------
+> sed -n "/<<'SONDE'\$/,/^SONDE\$/p" "$PREA" | sed '1d;$d' > "$T/sonde.orig"
+> mkdir -p "$T/gnu"
+> cat > "$T/gnu/stat" <<'SH'
+> #!/bin/bash
+> # faux stat GNU : `stat -c %d <chemin>` seulement ; périphérique 1, ou 2 pour ~/archive et ~ si SIM_DEV=distincts
+> [ "$1" = "-c" ] && [ "$2" = "%d" ] || exit 1
+> [ -e "$3" ] || exit 1
+> case "$3" in
+>   */home/bruno/archive | */home/bruno) if [ "${SIM_DEV:-}" = distincts ]; then echo 2; else echo 1; fi ;;
+>   *) echo 1 ;;
+> esac
+> SH
+> cat > "$T/gnu/find" <<'SH'
+> #!/bin/bash
+> # faux find : accepte la forme GNU `-perm /222`, sauf SIM_FIND=bsd (refus, comme le find BSD)
+> if [ "${SIM_FIND:-}" = bsd ]; then echo "find: -perm: /222: illegal mode string" >&2; exit 1; fi
+> [ -e "$1" ] || exit 1
+> exit 0
+> SH
+> chmod +x "$T/gnu/stat" "$T/gnu/find"
+> sonde() {  # sonde <nom> <réglage : ok | distincts | bsd | out_absent | sans_archive> <attendu : deux codes>
+>   local W=$T/sonde_$1
+>   mkdir -p "$W/home/bruno/runs/c3_campagne_grid/campagne/out" "$W/home/bruno/archive"
+>   case "$2" in
+>     out_absent) rmdir "$W/home/bruno/runs/c3_campagne_grid/campagne/out" ;;
+>     sans_archive) rmdir "$W/home/bruno/archive" ;;
+>   esac
+>   sed -e "s|/home/bruno/|$W/home/bruno/|g" -e "s|=/home/bruno\$|=$W/home/bruno|" "$T/sonde.orig" > "$W/sonde.sh"
+>   local dev="" fnd=""
+>   [ "$2" = distincts ] && dev=distincts
+>   [ "$2" = bsd ] && fnd=bsd
+>   PATH="$T/gnu:$PATH" SIM_DEV=$dev SIM_FIND=$fnd bash "$W/sonde.sh" > "$W/sortie.txt" 2>&1
+>   local r=$? got
+>   got=$(tr '\n' ' ' < "$W/sortie.txt" | sed 's/ $//')
+>   log "sonde=$1 rc=$r sortie=[$got]"
+>   if [ "$got" != "$3" ] || [ "$r" != "0" ]; then fail=1; log "  ECART sonde $1 : attendu [$3]"; fi
+> }
+> sonde ok ok "sonde_meme_peripherique=0 sonde_find_perm_gnu=0"
+> sonde peripheriques_distincts distincts "sonde_meme_peripherique=1 sonde_find_perm_gnu=0"
+> sonde find_bsd bsd "sonde_meme_peripherique=0 sonde_find_perm_gnu=1"
+> sonde out_absent out_absent "sonde_meme_peripherique=1 sonde_find_perm_gnu=0"
+> sonde sans_archive sans_archive "sonde_meme_peripherique=0 sonde_find_perm_gnu=0"
+> 
+> # --- 4. les enveloppes, sous faux ssh -------------------------------------------------------------------------------
+> AOUT=results/c3_campagne_grid_v2/tests/archive.out
+> POUT=results/c3_campagne_grid_v2/tests/archive_prealable.out
+> VOUT=results/c3_campagne_grid_v2/server/verify_attendu.out
+> mkdir -p "$T/fakessh" "$T/home"
+> cat > "$T/fakessh/ssh" <<'SH'
+> #!/bin/bash
+> # faux ssh : consigne l'appel (arguments), lit et jette l'entrée standard, ne contacte rien
+> echo "$*" >> "$SIM_SSH_LOG"
+> cat > /dev/null
+> n=$(wc -l < "$SIM_SSH_LOG" | tr -d ' ')
+> case "${SIM_SSH_MODE:-}" in
+>   sonde_ok) if [ "$n" = "1" ]; then printf 'sonde_meme_peripherique=0\nsonde_find_perm_gnu=0\n'; exit 0; fi ;;
+>   sonde_ko) if [ "$n" = "1" ]; then printf 'sonde_meme_peripherique=1\nsonde_find_perm_gnu=0\n'; exit 0; fi ;;
+> esac
+> exit 97
+> SH
+> chmod +x "$T/fakessh/ssh"
+> resolved=$(PATH="$T/fakessh:$PATH" command -v ssh)
+> if [ "$resolved" != "$T/fakessh/ssh" ]; then
+>   log "faux_ssh_resolu=1 (partie 4 non exécutée)"; fail=1
+> elif [ -e "$AOUT" ] || [ -e "$POUT" ] || [ -e "$VOUT" ]; then
+>   log "sorties_du_chantier_deja_presentes=1 (partie 4 non exécutée, rien écrasé)"; fail=1
+> else
+>   log "faux_ssh_resolu=0 sorties_du_chantier_absentes_avant=0"
+>   BEFORE=$(git status --porcelain --untracked-files=all | grep -v " $OUT\$")
+>   # enveloppe <nom> <mode du faux ssh> <contenu de verify_attendu.out ou -> <attendu rc> <attendu appels> <motif du
+>   #   dernier appel ou -> <script> [arguments…]
+>   enveloppe() {
+>     local name=$1 mode=$2 vcontent=$3 want_rc=$4 want_calls=$5 want_last=$6 script=$7
+>     shift 7
+>     local L=$T/ssh_$name.log
+>     : > "$L"
+>     if [ "$vcontent" != "-" ]; then printf '%b' "$vcontent" > "$VOUT"; fi
+>     env -u SSH_AUTH_SOCK HOME="$T/home" PATH="$T/fakessh:$PATH" SIM_SSH_LOG="$L" SIM_SSH_MODE="$mode" \
+>       bash "$script" "$@" > "$T/env_$name.txt" 2>&1
+>     local r=$? calls last ok=0
+>     calls=$(wc -l < "$L" | tr -d ' ')
+>     last=$(tail -n 1 "$L")
+>     log "enveloppe=$name rc=$r appels_ssh=$calls"
+>     for f in "$AOUT" "$POUT"; do
+>       if [ -f "$f" ]; then sed "s/^/  $name: $(basename "$f"): /" "$f" >> "$OUT"; rm -f "$f"; fi
+>     done
+>     rm -f "$VOUT"
+>     [ "$r" = "$want_rc" ] || ok=1
+>     [ "$calls" = "$want_calls" ] || ok=1
+>     if [ "$want_last" != "-" ]; then
+>       case "$last" in *"$want_last"*) ;; *) ok=1 ;; esac
+>       log "  $name: dernier_appel_porte=[$want_last] $([ "$ok" = 0 ] && echo oui || echo NON)"
+>     fi
+>     if [ "$ok" != "0" ]; then fail=1; log "  ECART enveloppe $name : attendu rc=$want_rc appels=$want_calls"; fi
+>   }
+>   enveloppe archive_sans_verify - - 1 0 - "$ARCH" 20261002
+>   enveloppe archive_verify_4_sur_11 - "4/11 items vérifiables tenus\nrc=1\n" 1 0 - "$ARCH" 20261002
+>   enveloppe archive_verify_11_sur_11 - "11/11 items vérifiables tenus\nrc=0\n" 1 1 "-- 20261002" "$ARCH" 20261002
+>   enveloppe prealable_sonde_en_ecart sonde_ko - 1 1 - "$PREA"
+>   enveloppe prealable_sonde_a_0 sonde_ok - 1 2 "-- 20261001" "$PREA"
+>   enveloppe prealable_avec_argument - - 2 0 - "$PREA" 20261002
+>   AFTER=$(git status --porcelain --untracked-files=all | grep -v " $OUT\$")
+>   if [ "$AFTER" = "$BEFORE" ]; then log "etat_git_restaure=0"; else log "etat_git_restaure=1"; fail=1; fi
+> fi
+> 
+> # --- 5. A1' : la ligne jour_lancement du preflight -----------------------------------------------------------------
+> grep -E '^if \[ "\$DAY" -ge 20261002 \]; then' results/c3_campagne_grid_v2/tests/preflight.sh > "$T/a1.sh"
+> n=$(wc -l < "$T/a1.sh" | tr -d ' ')
+> log "a1_lignes_extraites=$n attendu=1"
+> [ "$n" = "1" ] || fail=1
+> jour() {  # jour <AAAAMMJJ> <attendu : sortie> <attendu : ok>
+>   local got
+>   got=$(DAY=$1 bash -c 'set -u; ok=0; . "$0"; echo "ok=$ok"' "$T/a1.sh" | tr '\n' ' ' | sed 's/ $//')
+>   log "a1 jour=$1 sortie=[$got]"
+>   [ "$got" = "$2 ok=$3" ] || { fail=1; log "  ECART a1 $1 : attendu [$2 ok=$3]"; }
+> }
+> jour 20261001 "jour_lancement=REFUSE 20261001" 1
+> jour 20261002 "jour_lancement=20261002" 0
+> 
+## results/c3_campagne_grid/tests/manifest_check.sh -> results/c3_campagne_grid_v2/tests/manifest_check.sh : lignes source changées=35, lignes reprise=163
+< # Première campagne C3 comptée, famille grid-atr-v4 — le manifeste gelé vérifié avant S1 (plans/plan.md § 5 ; repris
+< # de results/c3_racine_registre/tests/manifest_check.sh, réécrit : il n'y a pas de delta ici, le gel entre à l'octet).
+< #  1. results/c3_campagne_grid/manifest.json est le brouillon gelé À L'OCTET (`cmp`), et son sha256 est celui du gel.
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique — le manifeste gelé v2 vérifié avant S1
+> # (plans/plan.md § 6 ; repris de results/c3_campagne_grid/tests/manifest_check.sh, étendu : surcharges, parent, trois
+> # cas d'ancrage sur registre temporaire).
+> #  1. results/c3_campagne_grid_v2/manifest.json est le brouillon gelé À L'OCTET (`cmp`), et son sha256 est celui du gel.
+< #     `window.end` = 365 jours exactement ; famille `grid-atr-v4` ; provenance `contaminated` ; `parent.is_root` ;
+< #     graine 20261001 ; 96 candidats distincts = {BTC/USDT, SOL/USDT} × min_spacing_pct 4 × atr_multiplier 4 ×
+< #     bear_protection_mode 3, tous `grok_grid_atr_adaptive_v4` ; les 8 estampilles 1 w dérivées citées par `run_scope`.
+< #  4. `c3_anchor` en local — pur, sans base ; registre et sortie dans un répertoire temporaire hors du dépôt, supprimé
+< #     ensuite : contrôle du manifeste, PAS le run (ce registre temporaire n'est pas le « registre jeté » qu'exclut
+< #     D-pilote, acté à la relecture, A4) — code 0, T = 2024-11-22T04:48:00+00:00, préfixe 1 362,2 j, 96 candidats,
+< #     variante nouvelle au registre temporaire. Sortie de l'ancrage filtrée par LISTE BLANCHE (A4) : seules les lignes
+< #     `ancrage T = …`, `variante … — nouvelle au registre` et `provenance de l'univers …` sont recopiées ; jamais la ligne
+< #     `written … sha256 …` (64 hex d'un temporaire, hors de la règle d'interdits.sh).
+< # Sortie : manifest_check.out, une ligne `clé=valeur` par fait, puis rc=0 ssi 1 à 4 tiennent.
+> #     `window.end` = 365 jours exactement ; famille `grid-atr-v4` ; provenance `contaminated` ; parent NON racine
+> #     (`is_root` faux, `variant_key` de 64 hex) ; graine 20261001 ; 96 candidats distincts = {BTC/USDT, SOL/USDT} ×
+> #     min_spacing_pct 4 × atr_multiplier 4 × bear_protection_mode 3, tous `grok_grid_atr_adaptive_v4` ; les 8
+> #     estampilles 1 w dérivées citées par `run_scope` ; « entrée 24 » citée ; le titre cité entre « » présent UNE fois au
+> #     journal, en en-tête `### <titre> (entrée 24,`, entre l'issue de l'entrée 23 et « Essais à venir ».
+> #  4. Surcharges `decision_timeframes` : chacune égale la sortie triée de la classmethod pure
+> #     GrokGridATRAdaptiveV4.decision_timeframes(params) (96/96) ; critère a06 de c3_entry (c3_entry.py:496 : en
+> #     ensemble, liste effective du manifeste contre l'export du producteur, c3b_common.decision_timeframes_by_candidate) :
+> #     0 désaccord sur v2 ; CAS ADVERSE, le même contrôle sur le manifeste v1 commité : 64 désaccords (la cause de l'arrêt
+> #     du run v1, constatée par la lecture de diagnostic du 01/10) — le contrôle naît rouge contre l'état précédent.
+> #  5. Parent : parent.variant_key = sig(canon(manifeste v1 commité)), recalculé (seul le préfixe de 16 hex est imprimé).
+> #  6. c3_anchor en local — pur, sans base ; registres et sorties dans un répertoire temporaire hors du dépôt, supprimé
+> #     ensuite ; sel factice écrit au fichier par `secrets.token_hex(32)`, jamais imprimé ; la variante v1 est inscrite
+> #     par c3_anchor LUI-MÊME, sur le manifeste v1 commité, même --now. Trois cas, un journal par cas :
+> #       vide    : registre au sel seul → code 2, refus de parenté, registre inchangé, aucune sortie écrite ;
+> #       avec_v1 : registre portant v1 → code 0, nouvelle au registre, T, préfixe 1 362,2 j, 96 candidats ; racine (sel)
+> #                 et enregistrement v1 inchangés, deux variantes (booléens) ;
+> #       rejeu   : même registre → code 0, déjà au registre, idempotent, registre inchangé.
+> #     Contrôle du manifeste, PAS le run (A4 du chantier v1) : ces registres temporaires ne sont pas des « registres
+> #     jetés » au sens du pilote. De anchor.json, n'imprime que T, préfixe, évaluation, n, new_entry (jamais variant_key,
+> #     registry.sha256, manifest_sha256, inputs_sha256) ; journaux filtrés par LISTE BLANCHE (A4) — jamais une ligne
+> #     `written … sha256 …`.
+> # Sortie : manifest_check.out, une ligne `clé=valeur` par fait, puis rc=0 ssi 1 à 6 tiennent.
+< OUT=results/c3_campagne_grid/tests/manifest_check.out
+< NEW=results/c3_campagne_grid/manifest.json
+< DRAFT=agent/manifest_campagne_draft.json
+< MANIFEST_SHA=d422076b09292d8a…
+> OUT=results/c3_campagne_grid_v2/tests/manifest_check.out
+> NEW=results/c3_campagne_grid_v2/manifest.json
+> DRAFT=agent/manifest_campagne_v2_draft.json
+> V1=results/c3_campagne_grid/manifest.json
+> MANIFEST_SHA=b757c45bbed2b091…
+> # Liste blanche des lignes de journal de c3_anchor recopiées (A4 du chantier v1) ; tout le reste est jeté.
+> KEEP="^(ancrage T = |variante [0-9a-f]{16} \(.*\) — (nouvelle au registre|déjà au registre, idempotent)$|provenance de l'univers |ENTREE REFUSEE R0_INVALID_RUN: variante [0-9a-f]{16} déclare le parent [0-9a-f]{16}, abs
+< # 3. faits du gel (clés et valeurs du manifeste, jamais une donnée)
+< python3 - "$NEW" >> "$OUT" 2>&1 <<'PY'
+> # 3. faits du gel (clés et valeurs du manifeste, jamais une donnée) ; le titre de l'entrée 24 au journal
+> python3 - "$NEW" docs/RESEARCH_LOG.md >> "$OUT" 2>&1 <<'PY'
+> import re
+< checks["racine"] = m["parent"] == {"is_root": True}
+> parent = m["parent"]
+> checks["parent_non_racine"] = (
+>     sorted(parent) == ["is_root", "variant_key"]
+>     and parent["is_root"] is False
+>     and re.fullmatch(r"[0-9a-f]{64}", parent["variant_key"]) is not None
+> )
+< checks["entree_23_citee"] = "entrée 23" in m["research_log_entry"]
+> checks["entree_24_citee"] = "entrée 24" in m["research_log_entry"]
+> # le titre cité entre « » : présent une fois en en-tête de l'entrée 24, entre l'issue de l'entrée 23 et « Essais à venir »
+> found = re.search(r"« (.+) »", m["research_log_entry"])
+> lines = open(sys.argv[2], encoding="utf-8").read().splitlines()
+> heading = f"### {found.group(1)} (entrée 24," if found else None
+> hits = [i for i, line in enumerate(lines) if heading and line.startswith(heading)]
+> issue23 = [i for i, line in enumerate(lines) if line.startswith("### Issue de l'entrée 23")]
+> avenir = [i for i, line in enumerate(lines) if line.startswith("### Essais à venir")]
+> placed = len(hits) == 1 and len(issue23) == 1 and len(avenir) == 1 and issue23[0] < hits[0] < avenir[0]
+> print(f"titre_entree_24_au_journal={'0' if placed else '1'} occurrences={len(hits)}")
+> checks["titre_entree_24"] = placed
+< # 4. c3_anchor local, hors dépôt : contrôle du manifeste, pas le run
+> # 4-5. surcharges = classmethod ; critère a06 contre l'export du producteur (v2 et, adverse, v1) ; parent = sig(canon(v1))
+> poetry run python - "$NEW" "$V1" >> "$OUT" 2>&1 <<'PY'
+> from collections import Counter
+> import sys
+> 
+> sys.path.insert(0, "scripts/audit")
+> sys.path.insert(0, "scripts")
+> sys.path.insert(0, "src")
+> import c3_common as cc  # noqa: E402
+> import c3b_common as c3bc  # noqa: E402
+> 
+> from krakenbot.strategies.grok_grid_atr_adaptive_v4 import GrokGridATRAdaptiveV4  # noqa: E402
+> 
+> new_raw, v1_raw = cc.read_json(sys.argv[1]), cc.read_json(sys.argv[2])
+> cands = new_raw["universe"]["candidates"]
+> equal = sum(c.get("decision_timeframes") == sorted(GrokGridATRAdaptiveV4.decision_timeframes(c["params"])) for c in cands)
+> classes = Counter(",".join(c["decision_timeframes"]) for c in cands)
+> print(f"surcharges_egales_classmethod={equal}/{len(cands)} attendu=96/96")
+> print("classes_surcharges=" + " ".join(f"{k}:{v}" for k, v in sorted(classes.items())))
+> 
+> 
+> def a06(raw):
+>     """Le critère de c3_entry.a06_warmup (l.496) : ensemble exporté par le producteur ≠ liste effective du manifeste."""
+>     manifest = cc.load_manifest(raw)
+>     exported = c3bc.decision_timeframes_by_candidate(manifest)
+>     bad = sum(set(exported[c.identity]) != set(c.decision_timeframes) for c in manifest.candidates)
+>     return bad, len(manifest.candidates)
+> 
+> 
+> bad2, n2 = a06(new_raw)
+> bad1, n1 = a06(v1_raw)
+> print(f"a06_desaccords_v2={bad2}/{n2} attendu=0")
+> print(f"a06_desaccords_v1_adverse={bad1}/{n1} attendu=64")
+> key_v1 = cc.sig(v1_raw)
+> parent_ok = new_raw["parent"]["variant_key"] == key_v1
+> print(f"parent_egal_sig_canon_v1={'0' if parent_ok else '1'} prefixe={key_v1[:16]}")
+> ok = equal == len(cands) == 96 and bad2 == 0 and bad1 == 64 and parent_ok
+> sys.exit(0 if ok else 1)
+> PY
+> r=$?; echo "surcharges_a06_parent=$r" >> "$OUT"; [ $r -ne 0 ] && fail=1
+> 
+> # 6. c3_anchor local, hors dépôt : contrôle du manifeste, pas le run
+< poetry run python scripts/audit/c3_anchor.py --manifest "$NEW" --registry "$TMP/variants.json" \
+<   --output "$TMP/anchor.json" --now "$NOW" > "$TMP/anchor.log" 2>&1
+< r=$?; echo "c3_anchor_local=$r" >> "$OUT"; [ $r -ne 0 ] && fail=1
+< python3 - "$TMP/anchor.json" "$EXPECTED_T" >> "$OUT" 2>&1 <<'PY'
+> python3 - "$TMP" <<'PY'
+> import pathlib
+> import secrets
+> base = pathlib.Path(sys.argv[1])
+> salt = secrets.token_hex(32)  # sel factice : écrit au fichier, jamais imprimé
+> for case in ("vide", "avec_v1"):
+>     (base / case).mkdir()
+>     (base / case / "variants.json").write_text(json.dumps({"salt": salt, "variants": {}}, indent=2) + "\n")
+> PY
+> anchor() {  # anchor <manifeste> <registre> <sortie> <journal>
+>   poetry run python scripts/audit/c3_anchor.py --manifest "$1" --registry "$2" --output "$3" --now "$NOW" > "$4" 2>&1
+> }
+> keep() { grep -E "$KEEP" "$1" | sed "s/^/anchor_log_$2: /" >> "$OUT"; }
+> # la variante v1, inscrite par c3_anchor lui-même sur le manifeste v1 commité
+> anchor "$V1" "$TMP/avec_v1/variants.json" "$TMP/avec_v1/anchor_v1.json" "$TMP/avec_v1/v1.log"
+> r=$?; echo "inscription_v1_par_c3_anchor=$r" >> "$OUT"; [ $r -ne 0 ] && fail=1
+> keep "$TMP/avec_v1/v1.log" v1
+> cp "$TMP/vide/variants.json" "$TMP/vide/avant.json"
+> cp "$TMP/avec_v1/variants.json" "$TMP/avec_v1/avant.json"
+> # cas vide : le contrôle de parent mord
+> anchor "$NEW" "$TMP/vide/variants.json" "$TMP/vide/anchor.json" "$TMP/vide/anchor.log"
+> r=$?; echo "cas_vide_code=$r attendu=2" >> "$OUT"; [ "$r" = "2" ] || fail=1
+> cmp -s "$TMP/vide/avant.json" "$TMP/vide/variants.json"; r=$?; echo "cas_vide_registre_inchange=$r" >> "$OUT"
+> [ $r -ne 0 ] && fail=1
+> [ ! -e "$TMP/vide/anchor.json" ]; r=$?; echo "cas_vide_aucune_sortie=$r" >> "$OUT"; [ $r -ne 0 ] && fail=1
+> keep "$TMP/vide/anchor.log" vide
+> grep -qE "^ENTREE REFUSEE R0_INVALID_RUN: .* absent du registre" "$TMP/vide/anchor.log"; r=$?
+> echo "cas_vide_refus_de_parente=$r" >> "$OUT"; [ $r -ne 0 ] && fail=1
+> # cas avec_v1 : nouvelle inscription
+> anchor "$NEW" "$TMP/avec_v1/variants.json" "$TMP/avec_v1/anchor.json" "$TMP/avec_v1/anchor.log"
+> r=$?; echo "cas_avec_v1_code=$r attendu=0" >> "$OUT"; [ "$r" = "0" ] || fail=1
+> python3 - "$TMP/avec_v1" "$EXPECTED_T" "$V1" >> "$OUT" 2>&1 <<'PY'
+> import json
+> import pathlib
+> import sys
+> 
+> base, expected_t = pathlib.Path(sys.argv[1]), sys.argv[2]
+<     a = json.load(open(sys.argv[1], encoding="utf-8"))
+>     a = json.load(open(base / "anchor.json", encoding="utf-8"))
+<         "nouvelle_au_registre_temporaire": a["registry"]["new_entry"],
+>         "nouvelle_au_registre": a["registry"]["new_entry"],
+>     before = json.load(open(base / "avant.json", encoding="utf-8"))
+>     after = json.load(open(base / "variants.json", encoding="utf-8"))
+>     v1_key = json.load(open(base / "anchor_v1.json", encoding="utf-8"))["variant_key"]
+>     root_kept = sorted(after) == sorted(before) == ["salt", "variants"] and after["salt"] == before["salt"]
+>     v1_kept = after["variants"].get(v1_key) == before["variants"].get(v1_key) is not None
+>     two = len(after["variants"]) == 2 and len(before["variants"]) == 1
+<     facts = {}
+>     facts, root_kept, v1_kept, two = {}, False, False, False
+<     print(f"ancrage_{key}={value}")
+>     print(f"cas_avec_v1_ancrage_{key}={value}")
+> print(f"cas_avec_v1_racine_preservee={'0' if root_kept else '1'}")
+> print(f"cas_avec_v1_enregistrement_v1_inchange={'0' if v1_kept else '1'}")
+> print(f"cas_avec_v1_deux_variantes={'0' if two else '1'}")
+<     facts.get("T") == sys.argv[2]
+>     facts.get("T") == expected_t
+<     and facts.get("nouvelle_au_registre_temporaire") is True
+>     and facts.get("nouvelle_au_registre") is True
+>     and root_kept
+>     and v1_kept
+>     and two
+< print(f"ancrage_attendu={'0' if ok else '1'} T_attendu={sys.argv[2]}")
+> print(f"cas_avec_v1_attendu={'0' if ok else '1'} T_attendu={expected_t}")
+< grep -E "^(ancrage T = |variante .* — nouvelle au registre$|provenance de l'univers )" "$TMP/anchor.log" \
+<   | sed 's/^/anchor_log: /' >> "$OUT"
+> keep "$TMP/avec_v1/anchor.log" avec_v1
+> cp "$TMP/avec_v1/variants.json" "$TMP/avec_v1/apres.json"
+> # cas rejeu : idempotent
+> anchor "$NEW" "$TMP/avec_v1/variants.json" "$TMP/avec_v1/anchor_rejeu.json" "$TMP/avec_v1/rejeu.log"
+> r=$?; echo "cas_rejeu_code=$r attendu=0" >> "$OUT"; [ "$r" = "0" ] || fail=1
+> cmp -s "$TMP/avec_v1/apres.json" "$TMP/avec_v1/variants.json"; r=$?; echo "cas_rejeu_registre_inchange=$r" >> "$OUT"
+> [ $r -ne 0 ] && fail=1
+> ne=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1]))["registry"]["new_entry"])' \
+>   "$TMP/avec_v1/anchor_rejeu.json" 2>&1)
+> echo "cas_rejeu_nouvelle_au_registre=$ne attendu=False" >> "$OUT"; [ "$ne" = "False" ] || fail=1
+> keep "$TMP/avec_v1/rejeu.log" rejeu
+## results/c3_campagne_grid/tests/interdits.sh -> results/c3_campagne_grid_v2/tests/interdits.sh : lignes source changées=21, lignes reprise=25
+< # Première campagne C3 comptée, famille grid-atr-v4 — interdits du brief (§ 3), du runbook (skills/registry.md § 4) et
+< # du plan (plans/plan.md § 5), lancé par `bash` AVANT chaque commit (fichiers indexés) et au tip. Repris de
+< # results/c3_racine_registre/tests/interdits_lot2.sh ; reprise comptée dans reprise.out.
+> # Seconde campagne C3 comptée, famille grid-atr-v4 (relance unique) — interdits du brief (§ 3), du runbook
+> # (skills/registry.md § 4) et du plan (plans/plan.md § 6), lancé par `bash` AVANT chaque commit (fichiers indexés) et au
+> # tip. Repris de results/c3_campagne_grid/tests/interdits.sh ; reprise comptée dans reprise.out.
+< #  1. chemins gelés contre 235461e (base du chantier) : intacts au commit, à l'index, dans l'arbre, aucun non suivi —
+< #     sauf, sous agent/, le brief et le brouillon du manifeste, non suivis par décision (plan § 5) ;
+> #  1. chemins gelés contre cce566d (base du chantier), dont le chantier v1 results/c3_campagne_grid/ (historique clos) :
+> #     intacts au commit, à l'index, dans l'arbre, aucun non suivi — sauf, sous agent/, le brief et le brouillon du
+> #     manifeste v2, non suivis par décision (brief § 3) ;
+< #  3. liste blanche : tout fichier changé depuis 235461e est sous results/c3_campagne_grid/ ou est docs/RESEARCH_LOG.md ;
+> #  3. liste blanche : tout fichier changé depuis cce566d est sous results/c3_campagne_grid_v2/ ou est docs/RESEARCH_LOG.md ;
+< #  4. docs/RESEARCH_LOG.md en ajout seul : aucune ligne retirée ni modifiée depuis 235461e (commits, index, arbre) ;
+< #  5. aucun artefact du chemin sélection sous results/c3_campagne_grid/ (`manifest.json` à la racine du chantier
+> #  4. docs/RESEARCH_LOG.md en ajout seul : aucune ligne retirée ni modifiée depuis cce566d (commits, index, arbre) ;
+> #  5. aucun artefact du chemin sélection sous results/c3_campagne_grid_v2/ (`manifest.json` à la racine du chantier
+< #  6. règle 64 hex : toute empreinte de 64 hex ajoutée depuis 235461e (chaque commit, l'arbre, les non suivis) est une
+< #     empreinte du protocole (table d'Adoption), le sha256 d'un fichier du chantier (results/c3_campagne_grid/**, suivi
+< #     ou non) ou le sha256 du manifeste gelé — jamais celui d'un artefact du chemin ni d'une archive ; une sortie qui
+< #     porterait autre chose est filtrée à la source, la règle n'est jamais élargie (plan, A4) ;
+> #  6. règle 64 hex : toute empreinte de 64 hex ajoutée depuis cce566d (chaque commit, l'arbre, les non suivis) est une
+> #     empreinte du protocole (table d'Adoption), le sha256 d'un fichier du chantier (results/c3_campagne_grid_v2/**,
+> #     suivi ou non) ou l'une des deux empreintes du gel v2 — le sha256 du manifeste gelé et la clé de variante du parent
+> #     qu'il porte — jamais celui d'un artefact du chemin ni d'une archive ; une sortie qui porterait autre chose est
+> #     filtrée à la source, la règle n'est jamais élargie (A4 du chantier v1) ;
+< BASE=235461e8a4beac42ecb57cc75ab13e8d88dfac14
+< CH=results/c3_campagne_grid
+> BASE=cce566d82f40166d9ff95c972e346b26831ed304
+> CH=results/c3_campagne_grid_v2
+< BRIEF=agent/AGENT_C3_CAMPAGNE_GRID.md
+< DRAFT=agent/manifest_campagne_draft.json
+> BRIEF=agent/AGENT_C3_CAMPAGNE_GRID_V2.md
+> DRAFT=agent/manifest_campagne_v2_draft.json
+< MANIFEST_SHA=d422076b09292d8a…
+> MANIFEST_SHA=b757c45bbed2b091…
+> PARENT_KEY=3159a90780ebbf8a…
+< # 1. chemins gelés contre la base du chantier (brief § 3 : diff vide contre 235461e)
+> # 1. chemins gelés contre la base du chantier (brief § 3 : diff vide contre cce566d, chantier v1 compris)
+<   results/c3_outillage_v2_2 results/c3_v2_2 results/c3b_producteur
+>   results/c3_outillage_v2_2 results/c3_v2_2 results/c3b_producteur results/c3_campagne_grid
+< ALLOW='^(results/c3_campagne_grid/.+|docs/RESEARCH_LOG\.md)$'
+> ALLOW='^(results/c3_campagne_grid_v2/.+|docs/RESEARCH_LOG\.md)$'
+>   echo "$PARENT_KEY"
+<     f"dont_fichiers_du_chantier_ou_manifeste={len((found - table) & safe)} table_adoption={len(table)}"
+>     f"dont_fichiers_du_chantier_ou_gel={len((found - table) & safe)} table_adoption={len(table)}"
+## results/c3_campagne_grid/tests/interdits_adverse.sh -> results/c3_campagne_grid_v2/tests/interdits_adverse.sh : lignes source changées=12, lignes reprise=23
+< # Première campagne C3 comptée, famille grid-atr-v4 — interdits.sh prouvé avant de servir (règle agent 1 ; repris de
+< # results/c3_racine_registre/tests/interdits_lot2_adverse.sh) : chaque cas dévié fabriqué doit le faire sortir en rc≠0
+< # par son propre item ; le témoin (l'arbre tel quel) et le témoin positif de la règle 64 hex (le sha256 du manifeste
+< # gelé est admis) en rc=0. Chaque cas crée un fichier, ajoute une ligne à un fichier suivi ou indexe le brief, lance
+< # interdits.sh sous l'étiquette `adv`, puis restaure ; l'état `git status` est comparé avant et après chaque cas, et le
+< # contenu de chaque fichier sauvegardé (journal, pilote) est comparé par `cmp` à sa sauvegarde.
+> # Seconde campagne C3 comptée, famille grid-atr-v4 (relance unique) — interdits.sh prouvé avant de servir (règle agent
+> # 1 ; repris de results/c3_campagne_grid/tests/interdits_adverse.sh) : chaque cas dévié fabriqué doit le faire sortir en
+> # rc≠0 par son propre item ; le témoin (l'arbre tel quel) et les deux témoins positifs de la règle 64 hex (le sha256 du
+> # manifeste gelé et la clé de variante du parent sont admis) en rc=0. Chaque cas crée un fichier, ajoute une ligne à un
+> # fichier suivi ou indexe le brief, lance interdits.sh sous l'étiquette `adv`, puis restaure ; l'état `git status` est
+> # comparé avant et après chaque cas, et le contenu de chaque fichier sauvegardé (journal, pilote) est comparé par `cmp`
+> # à sa sauvegarde. Cas ajoutés au v1 : le chantier v1 touché (fichier suivi modifié ; fichier non suivi ajouté).
+< T=results/c3_campagne_grid/tests
+> T=results/c3_campagne_grid_v2/tests
+< BRIEF=agent/AGENT_C3_CAMPAGNE_GRID.md
+< PILOT=results/c3_campagne_grid/server/run_campagne.sh
+> BRIEF=agent/AGENT_C3_CAMPAGNE_GRID_V2.md
+> PILOT=results/c3_campagne_grid_v2/server/run_campagne.sh
+< d=results/c3_campagne_grid/zz_adverse
+> d=results/c3_campagne_grid_v2/zz_adverse
+< # témoin positif : le sha256 du manifeste gelé, écrit dans un fichier du chantier, est admis
+< H=$(shasum -a 256 agent/manifest_campagne_draft.json | cut -d' ' -f1)
+> # témoins positifs : le sha256 du manifeste gelé et la clé de variante du parent (lue dans le brouillon gelé), écrits
+> # dans un fichier du chantier, sont admis
+> H=$(shasum -a 256 agent/manifest_campagne_v2_draft.json | cut -d' ' -f1)
+> K=$(python3 -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8"))["parent"]["variant_key"])' \
+>   agent/manifest_campagne_v2_draft.json)
+> mkdir -p "$d"; echo "parent $K" > "$d/note.txt"; r=$(run); rm -rf "$d"; record cle_du_parent "$r" 0
+> # 1 bis. le chantier v1, historique clos : un fichier suivi modifié ; un fichier non suivi ajouté
+> echo "# adverse" >> results/c3_campagne_grid/constat.md; r=$(run); git checkout -q -- results/c3_campagne_grid/constat.md
+> record chantier_v1_suivi_modifie "$r" non0
+> echo x > results/c3_campagne_grid/zz_adverse.txt; r=$(run); rm -f results/c3_campagne_grid/zz_adverse.txt
+> record chantier_v1_non_suivi_ajoute "$r" non0
+> 
+## results/c3_campagne_grid/tests/lint.sh -> results/c3_campagne_grid_v2/tests/lint.sh : lignes source changées=5, lignes reprise=5
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/lint_lot2.sh) — lint du
+< # seul fichier Python du chantier, EN VÉRIFICATION SEULEMENT : `ruff check` et `ruff format --check`, jamais `--fix` ni
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/lint.sh) — lint
+> # du seul fichier Python du chantier, EN VÉRIFICATION SEULEMENT : `ruff check` et `ruff format --check`, jamais `--fix` ni
+< OUT=results/c3_campagne_grid/tests/lint.out
+< PY_FILES=(results/c3_campagne_grid/server/verify_attendu.py)
+< SH_FILES=(results/c3_campagne_grid/server/run_campagne.sh results/c3_campagne_grid/tests/*.sh)
+> OUT=results/c3_campagne_grid_v2/tests/lint.out
+> PY_FILES=(results/c3_campagne_grid_v2/server/verify_attendu.py)
+> SH_FILES=(results/c3_campagne_grid_v2/server/run_campagne.sh results/c3_campagne_grid_v2/tests/*.sh)
+## results/c3_campagne_grid/tests/tunnel.sh -> results/c3_campagne_grid_v2/tests/tunnel.sh : lignes source changées=2, lignes reprise=2
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/tunnel.sh) — tunnel SSH vers la base (127.0.0.1:5433), lecture seule, pour les tests base de la suite.
+> # Seconde campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_campagne_grid/tests/tunnel.sh) — tunnel SSH vers la base (127.0.0.1:5433), lecture seule, pour les tests base de la suite.
+< OUT="$ROOT/results/c3_campagne_grid/tests/tunnel.out"
+> OUT="$ROOT/results/c3_campagne_grid_v2/tests/tunnel.out"
+## results/c3_campagne_grid/tests/ci_status.sh -> results/c3_campagne_grid_v2/tests/ci_status.sh : lignes source changées=1, lignes reprise=2
+< # Première campagne C3 comptée, famille grid-atr-v4 (repris de results/c3_racine_registre/tests/ci_status.sh) — état de la CI (workflow « CI ») sur un SHA poussé, lancé par `bash` depuis le dépôt.
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/ci_status.sh) —
+> # état de la CI (workflow « CI ») sur un SHA poussé, lancé par `bash` depuis le dépôt.
+## results/c3_campagne_grid/tests/reprise.sh -> results/c3_campagne_grid_v2/tests/reprise.sh : lignes source changées=17, lignes reprise=25
+< # Première campagne C3 comptée, famille grid-atr-v4 — preuve de reprise (brief § 2.2 : « adaptés par substitutions
+< # comptées ») : chaque pilote, vérificateur et script du chantier repris de results/c3_racine_registre/ y est comparé
+< # à sa source ; ce script consigne, fichier par fichier, le nombre de lignes qui diffèrent et TOUTES ces lignes
+< # (`diff`, `<` source, `>` reprise), sauf pour les fichiers réécrits (attendu, archive, contrôle du manifeste), relus
+< # en entier. Les empreintes de 64 hex des lignes recopiées sont tronquées à 16 hex (règle d'interdits.sh, A4 : une
+< # sortie se filtre, la règle ne s'élargit jamais). Scripts neufs, sans source : reprise.sh, table_10_1.sh,
+< # mutants_pilote.sh, archive_dryrun.sh. Le manifeste est comparé à part (manifest_check.out).
+> # Seconde campagne C3 comptée, famille grid-atr-v4, relance unique (repris de results/c3_campagne_grid/tests/
+> # reprise.sh) — preuve de reprise (brief § 2.2 : « scripts repris de results/c3_campagne_grid/tests/ par substitutions
+> # comptées ») : chaque pilote, vérificateur et script du chantier repris du chantier v1 y est comparé à sa source ; ce
+> # script consigne, fichier par fichier, le nombre de lignes qui diffèrent et TOUTES ces lignes (`diff`, `<` source,
+> # `>` reprise), sauf pour l'attendu, réécrit et relu en entier. Les deux scripts d'archive ont pour source l'archive.sh
+> # du v1 ; leur corps distant n'apparaît dans aucun diff (identique à l'octet, prouvé aussi par archive_dryrun.sh). Les
+> # empreintes de 64 hex des lignes recopiées sont tronquées à 16 hex (règle d'interdits.sh, A4 du chantier v1). Scripts
+> # neufs, sans source : stop1_registre.sh (A2'), mutants_archive.sh. Non repris : les trois scripts du diagnostic v1
+> # (diagnostic_entry.sh, diagnostic_preuve.sh, schema_observations.sh). Le manifeste est comparé à part
+> # (manifest_check.out).
+< S=results/c3_racine_registre
+< D=results/c3_campagne_grid
+> S=results/c3_campagne_grid
+> D=results/c3_campagne_grid_v2
+<   "conformite/server/run_conformite.sh server/run_campagne.sh"
+<   "conformite/server/verify_attendu.py server/verify_attendu.py"
+<   "conformite/attendu.md attendu.md"
+>   "server/run_campagne.sh server/run_campagne.sh"
+>   "server/verify_attendu.py server/verify_attendu.py"
+>   "attendu.md attendu.md"
+<   "tests/verify_conformite.sh tests/verify.sh"
+>   "tests/verify.sh tests/verify.sh"
+>   "tests/archive.sh tests/archive_prealable.sh"
+>   "tests/mutants_pilote.sh tests/mutants_pilote.sh"
+>   "tests/table_10_1.sh tests/table_10_1.sh"
+>   "tests/archive_dryrun.sh tests/archive_dryrun.sh"
+<   "tests/interdits_lot2.sh tests/interdits.sh"
+<   "tests/interdits_lot2_adverse.sh tests/interdits_adverse.sh"
+<   "tests/lint_lot2.sh tests/lint.sh"
+>   "tests/interdits.sh tests/interdits.sh"
+>   "tests/interdits_adverse.sh tests/interdits_adverse.sh"
+>   "tests/lint.sh tests/lint.sh"
+>   "tests/reprise.sh tests/reprise.sh"
+< REWRITTEN=" attendu.md tests/archive.sh tests/manifest_check.sh "
+> REWRITTEN=" attendu.md "
+rc=0
