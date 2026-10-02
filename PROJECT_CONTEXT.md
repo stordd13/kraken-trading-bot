@@ -1,7 +1,7 @@
-# KrakenBot — Contexte Projet (Septembre 2026)
+# KrakenBot — Contexte Projet (Octobre 2026)
 
 > **Source de vérité unique du projet.** Lire en entier avant de toucher au code ou de lancer un agent.
-> Dernière mise à jour : 29 septembre 2026, **à l'adoption du protocole C3 v2.2** ; précédente : 28 septembre, à la clôture du producteur C3b (paquet 1) ; avant : 24 septembre, à la reconstruction 1 w (amendement v2.1 du protocole C3 le 23 septembre). B4 close le 15 sept (merge `4c98b6b`
+> Dernière mise à jour : 2 octobre 2026, **à la clôture de la famille grid (première campagne C3 comptée, §§ 10.1-10.2)** ; précédente : 29 septembre, à l'adoption du protocole C3 v2.2 ; avant : 28 septembre, à la clôture du producteur C3b (paquet 1). B4 close le 15 sept (merge `4c98b6b`
 > dans `dev`, tag `v2.8.0-b4-3-campaign`) : campagne P6/P7 sous fees Bybit → **zéro sélection sous les critères codés avec
 > un instrument depuis invalidé** (audit red-team du 16/09 — addendum en tête de `results/B4_bybit_backtest_report.md`) ;
 > sélection paper vide. Instrument réparé : **C1 métriques** (tag `v2.9.0-c1-metrics`) et **C2 fidélité replay** (tag
@@ -15,7 +15,20 @@
 > `inconclusif (R1_NOT_NORMALISED)`, critère d'arrêt pré-enregistré (`docs/CONTRAINTES_POST_B4.md` § 10). **Fait
 > stratégique : aucune campagne existante ne peut traverser la chaîne C3 sans un producteur conforme → chantier C3b**,
 > dont v2.1 fixe le contrat ; sur la fenêtre de la première campagne, **D1 1 w est résolu** (24 sept : 24 rows 1 w
-> dérivées du 1 d, table `ohlc_derived`, **194/194**, `results/reconstruction_1w_2022_2025/`). Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
+> dérivées du 1 d, table `ohlc_derived`, **194/194**, `results/reconstruction_1w_2022_2025/`). **Protocole amendé en
+> v2.3 le 30 sept** (évaluation différée au manifeste, AM-01 ; sha256
+> `d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6`, **gelé** — sous v2.3, `c3_anchor` refuse tout
+> manifeste v2.2), outillage v2.3 (X1-X8) et racine du registre (R-4) livrés, **registre de campagne persistant créé
+> le 1er oct** (`skills/registry.md`). **Première campagne C3 comptée — famille `grid-atr-v4`** (96 candidats,
+> fenêtre 2021-03-01 → 2026-06-29, provenance `contaminated`) : run v1 du 01/10 **arrêté à `c3_entry`** (code 1 — la
+> déclaration `warmup_series` du manifeste v1 contredisait la dérivation par candidat de la classmethod, 64/96) ;
+> run v2 du 02/10 (manifeste v2 corrigé, zéro changement de code, **relance unique § 10.1 consommée**) : attendu tenu
+> 11/11, **verdict `inconclusif (P_PROVENANCE)`, non compté, `SÉLECTION_DESCRIPTIVE`** — aucune information
+> économique. **Clôture § K.2 de la famille grid le 02/10** (décision de Bruno, jamais déduite du verdict) ; toute
+> reprise exige un mécanisme nouveau (`CONTRAINTES_POST_B4.md` § 5). **Portée § 10.2 : grid est comptée au budget
+> alpha-stop — première des trois familles, échéance 2027-09-30** ; jalon « premier verdict réel avant le
+> 2027-01-31 » **tenu le 02/10**. L'instrument est prouvé de bout en bout sur un vrai run. **Phase courante : travail
+> de mécanisme, familles 2 et 3, composées par règle avant toute évaluation.** Tickets papier (`docs/CONTRAINTES_POST_B4.md`) autorisés, journal
 > `docs/RESEARCH_LOG.md` obligatoire avant tout run. **Roadmap B5 → P10 suspendue**. Pour le moment il n'y a rien à trader.
 
 ---
@@ -38,7 +51,7 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
 - Monitoring Telegram en temps réel
 - Capital initial 1k USDC, scaling progressif vers 20k USDC
 
-### État actuel (22 septembre 2026)
+### État actuel (2 octobre 2026)
 
 - ✅ P0 à P6 terminées (audit, abstraction layer, REST/WS Binance, multi-pair, backtests 24 combos)
 - ✅ P7 phase 1 terminée (30 mai 2026 : 212 jobs de grid search cross-validés, fees Binance)
@@ -221,6 +234,69 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
   - **Où lire** : rapport `results/c3_outillage_v2_2/report.md` ; journal `docs/RESEARCH_LOG.md`, entrée 19.
   - **Suite** : merge (Bruno, avec `CODE_MAP` et les lignes périmées listées au rapport § 9), puis conversation
     manifeste.
+
+- ✅ **Protocole C3 v2.3 (adopté le 30 sept — branche `feat/c3-amendements-v2.3` depuis `dev` @ `662c104`, merge sous
+  décision humaine)** : trois amendements (AM-00 à AM-02), `docs/amendements_c3_v2.3.md` ; protocole v2.3 sha256
+  `d030ab239de317f6cba89877d682338fa2001d2a63d231f1a86c519fe87a79e6`. AM-01 inscrit l'**évaluation différée** du
+  § 10.1 : date déclarée au manifeste (`deferred_evaluation.date`, au moins 365 j après `window.end`), engagement par
+  l'empreinte d'un descripteur `D`, au registre seul ; AM-02 ajoute la ligne 10 ter au § I.1. Sous v2.3, `c3_anchor`
+  refuse tout manifeste v2.2. Journal : entrée 20 ; rapport : `results/c3_v2_3_gel/report.md`.
+
+- ✅ **Outillage v2.3 livré, conformité v2.3 prouvée (30 sept)** : X1 à X8 levés (évaluation différée outillée : date
+  au manifeste, descripteur `D`, inscription au verdict, comparaison à l'ancrage) ; conformité sur la fenêtre 2020
+  hors campagne — quatre temps rejoués ×3, six étapes en code 0, `chain.verified` vrai, 23 artefacts identiques au
+  bit, issue non lue ; porte § L.5 option 1 : 24/24 au serveur. **Pile v2.4 consignée** (rapport § 5 : D3/D6/D14 et
+  D6/D7 hérités de v2.2, D12 « une fois » du run différé, D13 `anchor.json.registry.sha256` ; la limite de test UTC
+  du lot 1 est couverte depuis R-4). Journal : entrée 21 ; rapport : `results/c3_outillage_v2_3/report.md`.
+
+- ✅ **Racine du registre (R-4) livrée, conformité prouvée (1er oct)** : `c3_anchor` préserve les clés de racine du
+  registre (le sel du registre de campagne) ; runbook versionné `skills/registry.md` ; conformité ×3 sur la fenêtre
+  2020, mêmes codes, issue non lue. **Registre de campagne persistant créé par Bruno le 1er oct** (runbook § 1) :
+  `/home/bruno/c3/registry/variants.json`, sel à la racine, mode 600, **non-lecture absolue** (liste close),
+  restauration jamais réparation ; sauvegardes datées (laptop + clé froide, shas croisés) après chaque inscription
+  (runbook § 2). Journal : entrée 22 ; rapport : `results/c3_racine_registre/report.md`.
+
+- ✅ **Première campagne C3 comptée — famille `grid-atr-v4`, close (1er-2 oct)** : manifeste v1 gelé par Bruno le
+  01/10 (`d422076b…5041`) — 96 candidats (`grok_grid_atr_adaptive_v4` × {`BTC/USDT`, `SOL/USDT`}, `GRID_ATR_GRID`
+  courant), fenêtre `2021-03-01 → 2026-06-29` (`T = 2024-11-22T04:48Z`), provenance **`contaminated`** (planchers du
+  balayage re-choisis au GATE B à la lumière de la campagne Binance, `results/rejeu_grid_report.md` § 10.3) :
+  `validé` et `réfuté` inatteignables, voie § 10.1 fermée — clôture § K.2 décidée par Bruno **avant** le run (§ K.1).
+  - **Run v1 (01/10) arrêté à `c3_entry`, code 1** : 64/96 violations `warmup_series` — la liste pleine `{1d,1w,4h}`
+    déclarée au manifeste pour les 96 candidats contredisait la dérivation par candidat de la classmethod pure
+    (`{1d,4h}` pour `bear_protection_mode ∈ {none, 1d_only}`). Diagnostic par lecture sur liste close (8 classes),
+    cause caractérisée depuis le matériel commité seul (classmethod + manifeste), jamais le serveur ; la variante v1
+    (`3159a907…fcb5`) reste au registre **sans verdict** (orpheline documentée). Constat :
+    `results/c3_campagne_grid/constat.md` + `diagnostic_lecture.md` (pas de `report.md`).
+  - **Manifeste v2 gelé le 01/10** (`b757c45b…4f11`) : surcharges `decision_timeframes` par candidat (sorties de la
+    classmethod), `parent = 3159a907…fcb5`, **zéro changement de code**. **Run v2 (02/10) = relance unique du
+    § 10.1, consommée** : attendu tenu 11/11, **triplet `inconclusif (P_PROVENANCE)`, non compté,
+    `SÉLECTION_DESCRIPTIVE`** — déclaré avant le run, aucune information économique, aucun écart. **Jalon § 10.2
+    tenu** : premier verdict réel de la famille grid le 2026-10-02 (échéance 2027-01-31). Rapport :
+    `results/c3_campagne_grid_v2/report.md`.
+  - **Clôture § K.2 au journal (02/10, décision de Bruno, § K.1 : auteur et motif, jamais déduite du verdict)** ;
+    toute reprise de grid exige un mécanisme nouveau (`CONTRAINTES_POST_B4.md` § 5). **Portée § 10.2 : la famille
+    grid est comptée au budget alpha-stop — première des trois familles avant le 2027-09-30. Il reste deux familles
+    et douze mois.**
+  - **L'instrument est prouvé de bout en bout sur un vrai run** (gel → registre persistant → parenté — refus R0 sans
+    parent, idempotence — → run compté → canal sanctionné § L.2 → `compté` dérivé non lu → archive → cérémonie) :
+    les familles 2 et 3 l'achètent sans le repayer. **Leçon de forme** : toute déclaration de manifeste qui duplique
+    une dérivation du code se calcule **par le code** au gel (classmethod pure sur les params gelés), jamais à la
+    main ; le `manifest_check` du chantier rejoue cette égalité (manifeste v1 fautif = étalon adverse, 64/96).
+  - **État post-merge (02/10)** : `dev` = `f593acb` (merge campagne v2 + clôture) ; serveur à `235461e` (pull au
+    preflight du prochain chantier serveur), collector actif (`NRestarts=0`), trader masqué, `alembic`
+    `c3bd1e7a0001`, `CAMPAIGN_UNLOCK` **supprimé** (re-verrouillé). Archives en lecture seule, jamais ouvertes :
+    `~/archive/c3_campagne_grid_20261001/out` (run v1 arrêté) et `~/archive/c3_campagne_grid_20261002/out` (run
+    v2) ; `~/runs/c3_campagne_grid` absent. Registre : deux variantes (v1 sans verdict ; v2 `inconclusif
+    (P_PROVENANCE)`, `compte: false`, sans évaluation différée) ; § 1 post-verdict rendu `True` le 02/10 ;
+    sauvegardes § 2 du 01/10 et du 02/10, prochaine copie après toute nouvelle inscription.
+
+- ▶️ **Phase courante : travail de mécanisme — familles 2 et 3** (`CONTRAINTES_POST_B4.md` §§ 5, 6 et 10) :
+  hypothèses, puis **composition par règle avant toute évaluation** — la condition pour qu'une provenance `clean`
+  soit défendable ou que la voie différée § 10.1 soit atteignable (`unknown` n'est **jamais** `clean`). Chaque
+  famille : ticket § 6, cadrage, manifeste gelé par Bruno, campagne aux gates habituelles. Points hérités :
+  déclarations par candidat **dérivées du code** (leçon v1) ; **parenté au registre à trancher au premier gel de la
+  famille 2** (R0 refuse une racine dans un registre non vide) ; budget § 10.2 : **deux familles, échéance
+  2027-09-30**. Aucune ligne de code de stratégie avant un ticket complet.
 
 - 🛠️ **Prérequis B5 avancés le 16 sept** : backup DB récurrent **fait et testé** (cron 04:15 daily / 04:45 weekly, restore
   prouvé sur container jetable — `skills/database.md`) ; `deploy.yml` **découplé** du trader (marqueurs
@@ -473,10 +549,13 @@ Détail : `ROADMAP.md`.
 - ▶️ **Chantiers post-audit** : C1 (mergé, `v2.9.0-c1-metrics`), C2 (mergé, `v2.10.0-c2-replay`), **rejeu
   diagnostic grid** (clos le 20 sept, verdict `inconclusif (F_CANNOT_SEPARATE)` — famille grid ni validée ni
   dépriorisée) → **C3 validation chronologique** : **C3a mergée le 23 sept** (`64adede`, tag `v2.11.0-c3a-protocole` ;
-  artefact du rejeu refusé à l'entrée) ; **protocole v2.1 amendé le 23 sept** (branche `feat/c3-amendements-v2.1`,
-  merge sous décision humaine) ; **C3b** : producteur conforme, décision de reconstruction 1 w, puis manifeste et
-  campagne réelle sous la chaîne. **Phase courante : C3b paquet 1 clos (producteur, merge sous décision humaine) ;
-  protocole v2.2 adopté le 29/09, outillé le 30/09 (conformité prouvée sous v2.2) ; suite : conversation manifeste.**
+  artefact du rejeu refusé à l'entrée) ; protocole amendé **v2.1 → v2.2 → v2.3** (23/09, 29/09, 30/09 — v2.3 gelé,
+  sha256 `d030ab23…79e6`), outillé et conformité prouvée à chaque palier ; **C3b producteur conforme clos le 28/09** ;
+  racine du registre (R-4) le 01/10, registre de campagne persistant créé. **Campagne grid comptée et close
+  (01-02/10)** : run v1 arrêté à `c3_entry` (manifeste v1 fautif, 64/96), run v2 = relance unique § 10.1, **verdict
+  `inconclusif (P_PROVENANCE)`, non compté** ; clôture § K.2 — **grid comptée 1/3 au budget alpha-stop (échéance
+  2027-09-30)**, jalon § 10.2 tenu. **Phase courante : travail de mécanisme, familles 2 et 3, composées par règle
+  avant toute évaluation** (ticket `CONTRAINTES_POST_B4.md` § 6 ; aucune ligne de code avant cadrage).
 - ⏸️ **Suspendues (sélection B4 vide)** : B5 paper 4+ semaines, P8 Telegram, P10 live progressif — reprise seulement
   quand un candidat aura été validé sous le protocole C3 (sélection chronologique, equity continue) sous fees Bybit.
 - **R&D stratégies** sous `docs/CONTRAINTES_POST_B4.md` (ticket d'entrée obligatoire, deux familles max par cycle,
@@ -759,17 +838,20 @@ d'origine, inchangée :
 
 **Dettes 19, 21, 23 et 24 : inchangées par C3b.**
 - **19** : moteur signal, hors de la première campagne.
-- **21** : `--campaign`. Le `C3B_LOT4B` du 4b était une étiquette d'instrument ; la dette est intacte et se tranche
-  avant la campagne.
-- **23** (bind mount Postgres) et **24** (spread et slippage, à trancher au manifeste) : `ROADMAP.md` § « Items non
-  bloquants ».
+- **21** : `--campaign`. Le `C3B_LOT4B` du 4b était une étiquette d'instrument ; les runs suivants (entrées 21-24)
+  ont passé de même une étiquette déclarée à l'attendu (`OUTILLAGE_V23_CONF`, `RACINE_REGISTRE_CONF`,
+  `GRID_ATR_V4_2026`), jamais vérifiée par la chaîne ; la dette est intacte et se tranche avant la campagne de la
+  famille 2.
+- **23** (bind mount Postgres) et **24** (spread et slippage : décision prise au manifeste grid — coûts GATE B par
+  paire, `config/pair_costs_b4.json` — à reprendre à chaque manifeste) : `ROADMAP.md` § « Items non bloquants ».
 
 **Note WF** (audit red-team 16/09, reformulée le 22 sept — **non déclarée résolue**) : la sélection top-5 de
 P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7
-**n'est pas** une validation chronologique. **État réel** : **nouvelle voie C3 chronologique** — protocole
-`docs/protocole_c3.md` **v2.1** (amendé le 23/09, sha256 `9300f4e5…4129` ; v2.0 gelée au `d931293`), outillage **livré**
-(C3a, `skills/backtest.md` § « Validation C3 »),
-mais **aucune campagne existante ne le traverse** (refus à l'entrée, producteur conforme = chantier C3b) ;
+**n'est pas** une validation chronologique. **État réel** : **voie C3 chronologique opérationnelle** — protocole
+`docs/protocole_c3.md` **v2.3** (amendé le 30/09, sha256 `d030ab23…79e6` ; v2.0 gelée au `d931293`), producteur
+conforme (C3b) et chaîne prouvés (`skills/backtest.md` § « Validation C3 ») ;
+**une campagne réelle a traversé la chaîne de bout en bout le 02/10** (famille grid, verdict
+`inconclusif (P_PROVENANCE)`, non compté — provenance `contaminated`, ni `validé` ni `réfuté` atteignables) ;
 **ancienne phase 2 P7 conservée pour reproduction, impropre à une nouvelle validation chronologique** : les
 runners ne sont pas modifiés, la fuite de sélection y est donc toujours présente. La note sera déclarée résolue
 quand une campagne aura été **validée ou réfutée sous la chaîne C3** — pas avant.
