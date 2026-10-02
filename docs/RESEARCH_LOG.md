@@ -593,6 +593,16 @@ le contrôle du registre réel par Bruno ; son GO de lancement, **à partir du 2
   le merge, la clôture § K.2 effective au journal et la suppression de `CAMPAIGN_UNLOCK`. Rapport :
   `results/c3_campagne_grid_v2/report.md`. Ajout seul.
 
+### Clôture § K.2 — famille grid-atr-v4 (2026-10-02, décision de Bruno)
+
+Clôture de la famille par la clause de clôture § K.2 de `docs/rejeu_grid_prespec.md` — décision de gestion,
+annoncée à l'entrée 23 avant le run v1, reconduite à l'entrée 24, jamais déduite du verdict (§ K.1). Motif :
+sous provenance `contaminated`, ni `validé` ni `réfuté` atteignables ; la voie § 10.1 ne s'ouvre pas. Verdict
+de la famille : un seul, `inconclusif (P_PROVENANCE)`, non compté (2026-10-02) ; relance unique consommée.
+Toute reprise exige un mécanisme nouveau (`CONTRAINTES_POST_B4.md` § 5). **Portée § 10.2 : la famille grid
+est comptée dans le budget alpha-stop — première des trois familles avant le 2027-09-30.** Suite : travail de
+mécanisme, familles 2 et 3, composées par règle avant toute évaluation. Ajout seul.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
