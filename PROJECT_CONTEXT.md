@@ -290,6 +290,19 @@ Bot de trading systématique multi-paires sur Bybit EU, avec :
     (P_PROVENANCE)`, `compte: false`, sans évaluation différée) ; § 1 post-verdict rendu `True` le 02/10 ;
     sauvegardes § 2 du 01/10 et du 02/10, prochaine copie après toute nouvelle inscription.
 
+- 🔎 **Audit trader Astra (02/10, commit audité `ff5d18b`)** : sept défauts confirmés avec reproductions sur le
+  chemin paper/live du trader (masqué) — market order réputé exécuté, annulation non confirmée, fills partiels
+  perdus, bougies ouvertes dans les indicateurs, daily-loss bloquant les SELL, crash protector mono-paire,
+  warmup ASC → **dettes 26-32** (`ROADMAP.md` § « Dettes ajoutées le 02/10/2026 », rapport
+  `results/audit_trader_20261002/RAPPORT_ASTRA_TRADER.md`). Aucun impact sur le verdict C3. **Correction =
+  prérequis B5** (ou préalable d'une campagne qui réutiliserait ces chemins).
+
+- ✅ **§ 11 « Identité de famille — test de frontière » adopté le 02/10** (`CONTRAINTES_POST_B4.md` § 11 + point 0
+  au ticket § 6 ; proposition Claude, lecture adverse Astra ×2 — v1 retirée, quatre retouches —, adoption
+  Bruno) : hypothèse causale, décisions d'exposition, prédiction discriminante ; équivalence sur les règles
+  déclarées ; ne modifie ni le décompte § 10.2 ni la clôture grid ; identité / provenance / capacité de
+  l'instrument = trois gates séparés. Journal : entrée 25.
+
 - ▶️ **Phase courante : travail de mécanisme — familles 2 et 3** (`CONTRAINTES_POST_B4.md` §§ 5, 6 et 10) :
   hypothèses, puis **composition par règle avant toute évaluation** — la condition pour qu'une provenance `clean`
   soit défendable ou que la voie différée § 10.1 soit atteignable (`unknown` n'est **jamais** `clean`). Chaque
@@ -844,6 +857,11 @@ d'origine, inchangée :
   famille 2.
 - **23** (bind mount Postgres) et **24** (spread et slippage : décision prise au manifeste grid — coûts GATE B par
   paire, `config/pair_costs_b4.json` — à reprendre à chaque manifeste) : `ROADMAP.md` § « Items non bloquants ».
+
+**Dettes 26-32 (02/10/2026) — audit trader Astra** : sept défauts confirmés sur le chemin paper/live du trader
+(masqué) ; détail, sites et plan de correction : `ROADMAP.md` § « Dettes ajoutées le 02/10/2026 » ; rapport
+`results/audit_trader_20261002/RAPPORT_ASTRA_TRADER.md`. Aucun impact sur le verdict C3 ; correction = chantier
+dédié, prérequis B5 (ou préalable d'une campagne qui réutiliserait l'un de ces chemins).
 
 **Note WF** (audit red-team 16/09, reformulée le 22 sept — **non déclarée résolue**) : la sélection top-5 de
 P7 phase 2 utilise le Sharpe du test global (période chevauchant les fenêtres), donc le walk-forward de P7

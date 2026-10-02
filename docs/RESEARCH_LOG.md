@@ -603,6 +603,18 @@ Toute reprise exige un mécanisme nouveau (`CONTRAINTES_POST_B4.md` § 5). **Por
 est comptée dans le budget alpha-stop — première des trois familles avant le 2027-09-30.** Suite : travail de
 mécanisme, familles 2 et 3, composées par règle avant toute évaluation. Ajout seul.
 
+### Adoption du § 11 « Identité de famille — test de frontière » (entrée 25, inscrite le 2026-10-02 — aucun run)
+
+Ajout du § 11 à `docs/CONTRAINTES_POST_B4.md` et du point 0 au ticket d'entrée § 6 — décision de Bruno, sur
+proposition Claude du 02/10, lecture adverse Astra (deux passes : v1 retirée — asymétrie A/B, conditions 1-3
+non tenables — puis quatre retouches intégrées à la v2). Le § 11 définit l'identité de famille par trois
+éléments (hypothèse causale avec contrepartie rémunératrice, décisions d'exposition impliquées, prédiction
+discriminante pré-enregistrée), une règle d'équivalence sur les règles déclarées (jamais sur des trajectoires
+observées ; la non-équivalence ne prouve pas la nouveauté) et une liste négative. Il ne modifie ni le décompte
+du § 10.2, ni la clôture § K.2 de la famille grid, ni l'échéance 2027-09-30 ; identité, provenance (§ A.5) et
+capacité de l'instrument restent trois gates séparés ; les prédictions discriminantes et comparaisons entre
+composants sont distinctes du verdict C3 (aucune porte implicite, aucun repêchage). Aucun run. Ajout seul.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme

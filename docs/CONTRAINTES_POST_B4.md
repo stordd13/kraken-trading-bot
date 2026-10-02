@@ -6,6 +6,7 @@
 > Contexte complet : `PROJECT_CONTEXT.md` · verdict : `results/B4_bybit_backtest_report.md` (portée
 > requalifiée par l'addendum du 16/09 en tête du rapport — audit
 > `results/red_team_b4_20260916/RAPPORT_RED_TEAM_B4.md`) · journal des essais : `docs/RESEARCH_LOG.md`.
+> Identité de famille (test de frontière) : § 11, adopté le 2026-10-02.
 > Critère d'arrêt pré-enregistré (clôture de famille, alpha-stop projet, kill-switch live) : § 10, adopté le
 > 2026-09-23 avec la révision v2.1 de `docs/protocole_c3.md`.
 
@@ -112,8 +113,10 @@ cash). « Positif dans l'absolu » ne suffit pas : le B&H est gratuit.
 > pipeline P6/P7 `--fees bybit` est l'outil de test, pas de sélection — **toute sélection
 > relève du protocole C3** (`docs/protocole_c3.md`). Cap de 2 familles par cycle inchangé.
 
-Toute proposition fournit ces sept réponses :
+Toute proposition fournit ces sept réponses, précédées du **point 0** (identité de famille, § 11) :
 
+0. **Identité de famille (§ 11)** : en quoi ce mécanisme diffère de chaque famille close ou morte voisine —
+   hypothèse causale, décisions d'exposition impliquées, prédiction discriminante pré-enregistrée.
 1. **Mécanisme** : pourquoi cet edge existe-t-il ? Qui est le perdant structurel de
    l'autre côté du trade, et pourquoi persiste-t-il ?
 2. **Fréquence attendue** : trades par mois, durée de détention.
@@ -174,7 +177,7 @@ mesurer et n'avons pas mesuré ? Sois spécifique et réfère-toi aux chiffres. 
 **Passe 2 (générative, seulement après la passe 1) :**
 « Sous les contraintes du document (coûts § 2, tension § 3, benchmark § 4, morts
 § 5, environnement § 7, protocole basse rotation § 8), propose au maximum 3 familles de stratégies. Chacune au
-format du ticket d'entrée § 6, les sept points remplis. Toute proposition sans
+format du ticket d'entrée § 6, les sept points remplis, plus le point 0 (identité de famille, § 11). Toute proposition sans
 mécanisme explicite (§ 6.1) ou sans critère de falsification (§ 6.7) sera rejetée
 sans lecture du reste. Les recombinations d'indicateurs techniques sans mécanisme
 sont exclues d'office. »
@@ -244,3 +247,65 @@ d'évaluation ; (ii) rendement réalisé annualisé rapporté à la borne basse 
 sans cycle achevé rapportée à la cadence observée sur le préfixe. Les multiplicateurs et horizons sont écrits,
 gelés, et ne se renégocient pas. Aucun nombre n'est fixé ici : chacun sort des chiffres que la chaîne aura
 publiés.
+
+## 11. Identité de famille — test de frontière (adopté le 2026-10-02)
+
+Adopté le 2026-10-02. Auteur : Bruno ; proposition Claude du 02/10, lecture adverse Astra (deux passes — la v1
+est retirée : asymétrie A/B, conditions 1-3 ; quatre retouches intégrées à la v2). Ce paragraphe définit quand
+deux propositions sont **la même famille** au sens des §§ 5 et 10.1. Il ne modifie **ni** le décompte du § 10.2
+(grid comptée, première des trois familles ; échéance 2027-09-30 inchangée), **ni** la clôture § K.2 de la
+famille grid, **ni** aucune ligne du § 10. **Identité de famille, provenance de l'univers (protocole § A.5) et
+capacité de l'instrument à tester la famille sont trois questions séparées**, examinées chacune à son gate.
+
+**Définition.** Une famille est une **hypothèse causale**, décrite au ticket § 6 (point 0) avant tout résultat
+par trois éléments :
+
+1. **Hypothèse causale** : quelle information ou contrainte produit l'effet ; **qui rémunère le mécanisme** (pas
+   seulement qui perd), et pourquoi ça persiste malgré les coûts de capture (sorties, réentrées, spread des
+   moments d'impulsion, § 2). Une catégorie d'effet (« continuation », « retour à la moyenne ») n'est ni
+   nécessaire ni suffisante.
+2. **Décisions d'exposition impliquées** : ce que l'hypothèse fait faire au capital — quand on est exposé, quand
+   on ne l'est pas, ce qui déclenche les transitions — écrites comme fonctions d'observables.
+3. **Prédiction discriminante pré-enregistrée** : une observation qui départagerait cette hypothèse de chaque
+   famille close ou morte voisine, **mesurable dans des données identifiées au ticket** ; la disponibilité, la
+   provenance et le coût d'acquisition de ces données conditionnent la **faisabilité** du test (point 6 du
+   ticket), pas l'identité. Les critères de succès économiques (coûts, comparateur, bornes) sont communs à
+   toutes les familles et ne sont **jamais** discriminants.
+
+**Règle d'équivalence.** Deux tickets dont les **règles déclarées** impliquent les mêmes décisions d'exposition,
+à financement et conventions d'exécution comparables, sont **la même famille**, quelles que soient les histoires
+qui les habillent. L'équivalence se juge **sur les règles**, jamais sur une coïncidence de trajectoires observées
+sur un échantillon ; et l'absence d'équivalence ne démontre pas, à elle seule, la nouveauté du mécanisme — les
+trois éléments restent exigés. Jugée au gate du ticket, re-vérifiée au manifeste sur l'univers réel.
+
+**Liste négative** (ne crée jamais une famille) : paramétrage, fenêtre, paire, recombinaison d'indicateurs
+(§ 10.1) ; horizon seul ; changement de benchmark seul ; nouvelle histoire causale sans changement de décisions
+ni prédiction discriminante. Un changement de sizing ou l'ajout d'un overlay **ne suffit pas, à lui seul**, à
+constituer une nouvelle famille : toute revendication de mécanisme propre à cet overlay doit satisfaire les
+trois éléments du ticket.
+
+**Composites.** Un composite déclare l'**interaction** revendiquée entre composants et les **comparaisons
+pré-spécifiées** qui l'isolent (composite vs chaque composant seul). La dépendance à un composant d'une famille
+close ne conclut rien à elle seule — ni exclusion automatique, ni droit automatique.
+
+**Articulation avec C3.** Les prédictions discriminantes et les comparaisons entre composants sont **distinctes
+du verdict C3** : elles n'ajoutent aucune porte économique implicite et n'ouvrent **aucun droit de repêchage** —
+le verdict reste celui de la chaîne, lu par le § 10, tel quel.
+
+**Benchmarks.** Toute revendication du type « réduit le MaxDD à return comparable » se juge dans C3 par le
+comparateur **décisionnel** du § C.2 du protocole (blend B&H/cash apparié en risque), jamais par le B&H plein
+notionnel (descriptif). C3 fournit le comparateur décisionnel de référence ; **sa compatibilité avec le
+financement et les règles d'exposition du ticket doit être établie avant la campagne** — en particulier, des
+apports externes ne se comparent pas directement à la comparaison actuelle sur capital initial, et l'appariement
+λ est calibré sur le préfixe : il ne garantit pas mécaniquement un risque identique pendant l'évaluation. Les
+seuils (« comparable », « pas seulement 2022 ») sont chiffrés au ticket, avant les résultats.
+
+**Cas connus.**
+- **Grid** : close par § K.2 — décision de gestion, **aucune réfutation économique attribuée**. Réouverture :
+  § 5 + ce test.
+- **Momentum / signal** : l'horizon seul ne crée rien. « Signal 4h fine-tuné » (§ 5) n'est pas un mécanisme
+  unique auquel tout momentum se rattache : chaque ticket momentum est jugé par ce test, contre ce qui a
+  réellement été testé en P6/P7/B4.
+- **Overlay de régime** : nouveauté non établie d'office, jugée au ticket. Si ses décisions d'exposition
+  coïncident avec un momentum long/cash, c'est la même famille que ce momentum — les deux vivent ou meurent
+  ensemble.

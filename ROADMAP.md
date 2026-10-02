@@ -44,7 +44,7 @@ Le pivot Kraken → Binance (avril 2026) est documenté dans `docs/archive/ROADM
 | **Rejeu grid** | Diagnostic pré-spécifié : 96 configs (48 × BTC/SOL) sous instrument réparé, analyse écrite avant lancement, « inconclusif » possible | 1-2 j | `results/rejeu_grid_report.md`, pré-spécification gelée `docs/rejeu_grid_prespec.md`, artefacts `results/rejeu_grid_20260919/` | ✅ 20 sept — **`inconclusif (F_CANNOT_SEPARATE)`** : 16 configs BTC passent les gates ponctuels, aucune ne tient les six bornes simultanées ; SOL descriptif (données insuffisantes). Ni candidat, ni dépriorisation : **pas de déploiement, pas de tuning supplémentaire**, périmètre non élargi. Suite → C3 |
 | **C3** | Validation chronologique (sélection sur le passé seul, equity continue, benchmark d'exposition, issue « inconclusif ») | 3-5 j | Protocole gelé + outillé ; puis campagne réelle sous la chaîne | ✅ **C3a mergée le 23 sept** (`64adede`, tag `v2.11.0-c3a-protocole`) — outillage complet, artefact du rejeu **refusé à l'entrée** (`D_WARMUP_PREFIX`, 96/96). ✅ **Protocole amendé en v2.1 le 23 sept** (`docs/amendements_c3_v2.1.md`, sha256 `9300f4e5…4129` ; branche `feat/c3-amendements-v2.1`, merge sous décision humaine ; 932 tests C3). ✅ **C3b paquet 1 clos le 28 sept** (producteur conforme, branche `feat/c3b-producteur`, merge sous décision humaine ; reconstruction 1 w faite le 24/09, D1 1 w 194/194). ✅ **Protocole amendé en v2.2 le 29 sept** (`docs/amendements_c3_v2.2.md`, sha256 `1bed7696…292a` ; branche `feat/c3-amendements-v2.2`, merge sous décision humaine ; outillage v2.2 à écrire, R-15 à R-22) ; ✅ **Protocole v2.3 gelé le 30 sept** (sha256 `d030ab23…79e6`), outillage v2.3 (X1-X8) et racine du registre (R-4) livrés, registre de campagne persistant créé le 01/10 ; ✅ **(2) Campagne réelle comptée et close (01-02 oct)** : famille `grid-atr-v4`, **`inconclusif (P_PROVENANCE)`, non compté**, clôture § K.2 — **1/3 au budget alpha-stop, échéance 2027-09-30**. Détail : § « C3 — Validation chronologique » |
 | **Mécanisme F2-F3** | Travail de mécanisme des familles 2 et 3 : hypothèses, ticket § 6, **composition par règle avant toute évaluation** (provenance `clean` défendable ou voie différée § 10.1), cadrage, manifeste gelé, campagne aux gates | semaines | Deux tickets § 6 complets + cadrages ; parenté au registre tranchée au premier gel (famille 2) | ▶️ **Phase courante (02/10)** — budget § 10.2 : deux familles, échéance 2027-09-30 |
-| **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** |
+| **B5** | Paper trading Bybit 4+ semaines (ex-P9) ; P8 Telegram en parallèle ; backup DB récurrent en place (fait le 16/09) | 4-6 sem | 4 sem sans crash, P&L net > 0 sur 3/4 sem, drift backtest/paper < 20 %, pas de trade aberrant | 📋 — démarre sur **un candidat validé sous le protocole C3** ; prérequis ajouté le 02/10 : dettes 26-32 corrigées (audit trader) |
 | **P10** | Live progressif 1k → 5k → 20k | Continu | Voir paliers | 📋 |
 | P11+ | ML, scalping eval, RL | Mois | — | 🔮 |
 
@@ -211,7 +211,8 @@ Les conditions de démarrage de B5 sont inchangées : un candidat `validé` sous
 ### B5 — Paper trading Bybit (4-6 semaines, ex-P9)
 
 **Conditions de démarrage** : **un candidat validé sous le protocole C3** (remplace « B4 concluant »), connecteur
-B1-B3 déployé, alertes Telegram (P8) en place, backup DB récurrent en place (fait le 16/09), test dette 13, trader
+B1-B3 déployé, alertes Telegram (P8) en place, backup DB récurrent en place (fait le 16/09), test dette 13,
+**dettes 26-32 corrigées** (audit trader du 02/10, chantier dédié — § « Dettes ajoutées le 02/10/2026 »), trader
 démasqué et `deploy.yml` re-couplé (marqueurs `# B5: re-enable trader`).
 
 **Ce qu'on surveille** : P&L réel vs backtesté (drift < 20 %), nombre de trades vs attendu, drawdown max,
@@ -326,3 +327,29 @@ Classifieur directionnel 4h comme stratégie supplémentaire ; allocation perfor
   GATE B par paire, `config/pair_costs_b4.json`) ; à reprendre à chaque manifeste.
 - **Dette 25 — preuves de déterminisme C2 rapatriées après coup** (`results/c2_determinism_server/`) ; recette
   d'archivage désormais systématique (C3a, chantier 1 w). Rien à faire, consigné pour l'historique.
+
+**Dettes ajoutées le 02/10/2026 (audit trader Astra, commit audité `ff5d18b` — chemin paper/live du trader,
+masqué ; reproductions locales par l'auditeur, huit sites relus par Claude au tip ; aucun impact sur le verdict
+C3) :**
+- **Dette 26 — un market order accepté est réputé entièrement exécuté** : fallbacks `filled or amount`,
+  `average or price or signal_price`, fee 0 — une réponse Bybit réduite à l'id devient un trade `FILLED` à la
+  quantité demandée, au prix du signal, sans frais (`src/krakenbot/connectors/bybit/rest.py:928`).
+- **Dette 27 — une annulation échouée est déclarée réussie** : `cancel_profit_target()` retire le suivi avant
+  confirmation, appelle `cancel_order` sans la paire (requise par Bybit v5), avale l'exception et marque
+  `CANCELLED` ; l'ordre peut rester actif sur l'exchange (`src/krakenbot/execution/order_manager.py:587`).
+- **Dette 28 — fills partiels perdus sur annulation** : la branche `canceled` jette l'ordre sans comptabiliser
+  le `filled` partiel annoncé par l'exchange (`src/krakenbot/execution/order_manager.py:483`).
+- **Dette 29 — les bougies ouvertes nourrissent les indicateurs** : chaque mise à jour d'une bougie non clôturée
+  est traitée comme une bougie de plus (20 updates d'une bougie ⇒ EMA20 « disponible ») ; fausse les indicateurs
+  live et la parité backtest/paper (`src/krakenbot/strategies/multi_strategy_router.py:308`).
+- **Dette 30 — la daily loss limit bloque aussi les SELL** : `_check_daily_loss_limit` ne reçoit pas le `side` ;
+  un stop-loss peut être refusé par le contrôle de risque (`src/krakenbot/execution/risk.py:218`).
+- **Dette 31 — le crash protector peut vendre la mauvaise paire** : `settings.trading.pair` global appliqué aux
+  ventes de toutes les positions ; quantité de lot absente (`src/krakenbot/strategies/multi_strategy_router.py:473`).
+- **Dette 32 — le warmup charge les bougies les plus anciennes** : `ORDER BY timestamp ASC LIMIT n` sélectionne
+  le début de l'historique au lieu de la fin (`src/krakenbot/indicators/multi_timeframe.py:269`).
+
+Rapport : `results/audit_trader_20261002/RAPPORT_ASTRA_TRADER.md`. **Correction : chantier dédié, préalable au
+premier paper utilisant ces chemins (prérequis B5)** ; si une future campagne réutilise l'un de ces chemins, la
+correction devient un préalable à **cette campagne**. Les dettes 29 et 31 touchent `MultiStrategyRouter`, les
+26-28 et 30 l'exécution → règle d'or 6, review humaine au fix.
