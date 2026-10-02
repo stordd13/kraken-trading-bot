@@ -1,0 +1,7 @@
+# mutants_archive — 2026-10-02T07:24:04Z — HEAD 765fc1992f49f71cc2994132a19aabb010466665
+mutant=M1_precondition_11_sur_11_retiree lignes_changees=1 dryrun_rc=1 restaure=0 en_ecart=[  ECART enveloppe archive_sans_verify : attendu rc=1 appels=0;  ECART enveloppe archive_verify_4_sur_11 : attendu rc=1 appels=0;]
+mutant=M2_controle_de_sonde_neutralise lignes_changees=1 dryrun_rc=1 restaure=0 en_ecart=[  ECART enveloppe prealable_sonde_en_ecart : attendu rc=1 appels=1;]
+mutant=M3_date_figee_changee lignes_changees=1 dryrun_rc=1 restaure=0 en_ecart=[  ECART enveloppe prealable_sonde_a_0 : attendu rc=1 appels=2;]
+mutant=M4_seuil_a1_abaisse lignes_changees=1 dryrun_rc=1 restaure=0 en_ecart=[  ECART a1 20261001 : attendu [jour_lancement=REFUSE 20261001 ok=1];  ECART a1 20261002 : attendu [jour_lancement=20261002 ok=0];]
+scripts_finals_identiques=archive:0,archive_prealable:0,preflight:0
+rc=0

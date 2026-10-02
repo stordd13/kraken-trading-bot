@@ -1,4 +1,4 @@
-# interdits_adverse — 2026-10-02T07:02:41Z — HEAD cce566d82f40166d9ff95c972e346b26831ed304
+# interdits_adverse — 2026-10-02T07:24:29Z — HEAD 765fc1992f49f71cc2994132a19aabb010466665
 cas=temoin rc=0 attendu=0 restaure=0 items_en_ecart=[]
 cas=sha_manifeste_gele rc=0 attendu=0 restaure=0 items_en_ecart=[]
 cas=cle_du_parent rc=0 attendu=0 restaure=0 items_en_ecart=[]
@@ -19,7 +19,7 @@ cas=empreinte_archive rc=1 attendu=non0 restaure=0 items_en_ecart=[artefact_vers
 cas=empreinte_hors_regle rc=1 attendu=non0 restaure=0 items_en_ecart=[empreinte_hors_regle fddfc331b595b987…;aucun_sha_hors_regle=1;rc=1;]
 cas=hors_liste_blanche rc=1 attendu=non0 restaure=0 items_en_ecart=[hors_liste_blanche zz_interdits_adverse.txt;liste_blanche=1;rc=1;]
 cas=nomme_dette23 rc=1 attendu=non0 restaure=0 items_en_ecart=[nomme_dette23 results/c3_campagne_grid_v2/zz_adverse/x.sh;dette23=1;rc=1;]
-cas=nomme_registre_campagne rc=1 attendu=non0 restaure=0 items_en_ecart=[nomme_registre_campagne results/c3_campagne_grid_v2/zz_adverse/x.sh:2;registre_lignes_admises=0 attendu=0 hors_admis=1;registre_campagne_non_nomme=1;rc=1;]
-cas=registre_faute_de_frappe sans_objet (pilote absent)
-cas=registre_troisieme_ligne sans_objet (pilote absent)
+cas=nomme_registre_campagne rc=1 attendu=non0 restaure=0 items_en_ecart=[nomme_registre_campagne results/c3_campagne_grid_v2/zz_adverse/x.sh:2;registre_lignes_admises=2 attendu=2 hors_admis=1;registre_campagne_non_nomme=1;rc=1;]
+cas=registre_faute_de_frappe rc=1 attendu=non0 restaure=0 items_en_ecart=[nomme_registre_campagne results/c3_campagne_grid_v2/server/run_campagn;registre_lignes_admises=1 attendu=2 hors_admis=1;registre_campagne_non_nomme=1;rc=1;]
+cas=registre_troisieme_ligne rc=1 attendu=non0 restaure=0 items_en_ecart=[registre_campagne_non_nomme=1;rc=1;]
 rc=0

@@ -1,0 +1,19 @@
+# stop1_registre — 2026-10-02T07:24:03Z — HEAD 765fc1992f49f71cc2994132a19aabb010466665
+bloc_lignes_commande=1 attendu=1
+substitutions_du_chemin=1 attendu=1
+cle_du_parent_dans_la_commande=0
+inscription_v1_par_c3_anchor=0
+cle_v1_egale_parent_v2=0
+cas=temoin sortie=True rc=0 attendu=True
+cas=mode_644 sortie=False rc=0 attendu=False
+cas=parent_absent sortie=False rc=0 attendu=False
+cas=parent_avec_verdict sortie=False rc=0 attendu=False
+cas=parent_avec_differee sortie=False rc=0 attendu=False
+cas=variante_en_trop sortie=False rc=0 attendu=False
+cas=racine_en_trop sortie=False rc=0 attendu=False
+cas=sel_court sortie=False rc=0 attendu=False
+cas=sel_non_hexadecimal sortie=False rc=0 attendu=False
+cas=fichier_absent sortie=- rc=1 attendu=erreur
+cas=json_illisible sortie=- rc=1 attendu=erreur
+temporaire_supprime=0
+rc=0

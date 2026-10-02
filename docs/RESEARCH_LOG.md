@@ -532,6 +532,40 @@ de Bruno (STOP 1), la création de `CAMPAIGN_UNLOCK` par Bruno et son GO de lanc
 - La suite est une décision de Bruno : lecture de diagnostic sur liste close, relance, statut de ce run au regard du
   § 10.1, cérémonie du registre (première inscription faite). Ajout seul.
 
+### Seconde campagne C3 comptée — famille grid-atr-v4, relance après correction d'instrument, fenêtre 2021-03-01 → 2026-06-29 (entrée 24, inscrite le 2026-10-02, avant lancement — run compté, relance unique du § 10.1, issue lue par la liste close seulement)
+
+Second run du producteur et de la chaîne C3 sur la fenêtre de campagne, sous le protocole v2.3 et le manifeste v2 gelé
+par Bruno le 2026-10-01 (`results/c3_campagne_grid_v2/manifest.json`, copie à l'octet du gel). **Correction
+d'instrument** : le manifeste v1 déclarait la liste pleine `{1d,1w,4h}` pour les 96 candidats, et la classmethod en
+dérive `{1d,4h}` pour 64 d'entre eux (arrêt du run v1 à `c3_entry`, code 1, entrée 23 et lecture de diagnostic du 01/10) ;
+le manifeste v2 porte une surcharge `decision_timeframes` par candidat. Le code est inchangé. **Un seul lancement, aucun
+retry.** **§ 10.1 : ce run est la relance unique après correction d'instrument, décision de Bruno ; après lui, plus
+aucune relance pour la famille grid, quel que soit le résultat.** L'attendu est déclaré ici, avant le run :
+**`inconclusif (P_PROVENANCE)`, non compté**. L'univers est `contaminated` et `P_PROVENANCE` (rang 2 du § H.1) précède
+toute raison économique ; `validé` et `réfuté` sont inatteignables, la voie du § 10.1 ne s'ouvre pas. L'issue ne remonte
+que par la liste close : l'issue et la raison de la chaîne § L.2, le statut compté dérivé du § 10.1, des codes et des
+booléens. Attendu complet, item par item : `results/c3_campagne_grid_v2/attendu.md`, committé avec cette entrée. Le run
+se fait au SHA de ce commit, après trois gestes : la relecture de Bruno (STOP 1) ; la création de `CAMPAIGN_UNLOCK` et
+le contrôle du registre réel par Bruno ; son GO de lancement, **à partir du 2026-10-02 UTC**.
+
+| # | Date | Phase / campagne | Famille + périmètre (configs × paires) | Données + période | Version code + métriques | Modèle de fees | Verdict attendu | Décision consécutive | Source (rapport) |
+|---|---|---|---|---|---|---|---|---|---|
+| 24 | 2026-10-02 | Seconde campagne C3 comptée, **relance unique après correction d'instrument** (§ 10.1) : archive-préalable du run v1 arrêté (`~/archive/c3_campagne_grid_20261001`, clone v1 supprimé), puis `c3b_prefix.py` → `c3_anchor` (inscription de la variante v2, dont le parent, la variante v1, est déjà au registre), `c3_entry`, `c3_benchmark`, `c3_select` → `c3b_evaluate.py --selection` → `c3_verdict.py chain` ; **une exécution**, `--workers 3`, arrêt au premier écart ; registre de campagne persistant (sel à la racine, `skills/registry.md`), mode `chain` ; `--campaign GRID_ATR_V4_2026` (étiquette d'instrument, dette 21) ; issue et raison lues par la chaîne § L.2 seulement, statut compté dérivé du § 10.1 (non lu) | famille **`grid-atr-v4`** : `grok_grid_atr_adaptive_v4` × {`BTC/USDT`, `SOL/USDT`}, `GRID_ATR_GRID` courant (`min_spacing_pct` 4 × `atr_multiplier` 4 × `bear_protection_mode` 3) = **96 candidats, avec surcharge `decision_timeframes` par candidat** — sortie de la classmethod pure `GrokGridATRAdaptiveV4.decision_timeframes` : `{1d,1w,4h}` pour les 32 `1w_only`, `{1d,4h}` pour les 64 autres ; provenance **`contaminated`** (`results/rejeu_grid_report.md` § 10.3) ; paires de déploiement `BTC/USDC`, `SOL/USDC` (transposition déclarée, § A.6) | inchangées depuis l'entrée 23 : `exchange='binance'` USDT **end-stampées**, exécution 5 m, séries 4 h / 1 j / 1 w ; fenêtre `2021-03-01 → 2026-06-29`, `F = 0,70`, `T = 2024-11-22T04:48Z` (préfixe 1 362,2 j, évaluation 583,8 j), amorçage `≥ 400 j` avant chaque début ; **8 estampilles 1 w dérivées** (`ohlc_derived`, entrée 13) : 2022-06-06, 2022-07-04, 2022-09-05, 2022-10-03, 2022-11-07, 2022-12-05 (préfixe), 2025-02-03, 2025-03-03 (évaluation) ; `deferred_evaluation.date = 2027-06-29` (365 j exactement après la fin ; déclarée parce que v2.3 l'exige, inerte ici) ; données déjà explorées au sens du § D.1 : portée rétrospective (§ D.2) | branche `feat/c3-campagne-grid-v2`, exécuté au commit de cette entrée (code identique à `cce566d`, donc au code du run v1, `235461e` : `interdits_S1.out`) ; métriques v2, `replay_version` 2 ; protocole v2.3 `d030ab23…79e6` ; manifeste `b757c45b…4f11` ; parent `3159a907…fcb5`, la variante v1, inscrite au registre sans verdict (entrée 23) | inchangé depuis l'entrée 23 : bybit maker 0,10 % / taker 0,25 % (EU spot VIP0) ; coûts par paire du GATE B (`config/pair_costs_b4.json`, sonde carnet Bybit des 14-15/09) ; `min_order_quote 5.0` ; capital `1000` ; graine 20261001 | **`inconclusif (P_PROVENANCE)`, non compté** ; sélection publiée sous `SÉLECTION_DESCRIPTIVE` ; préfixe 0 ; chaîne 1-4 autonome 0, inscription de la variante v2 (nouvelle au registre) ; évaluation `0 evaluated` ; chaîne 0, cinq codes d'étape en 0, `chain.verified` vrai, violations vides, étape 1 idempotente, issue inscrite ; aucune évaluation différée inscrite (déclaré, jamais vérifié) ; base, service, `alembic` inchangés. **Tout autre triplet, « meilleur » compris, est un écart, donc un STOP — et un arrêt de cette relance ferme la voie pour la famille** | **§ 10.1 : relance unique après correction d'instrument — décision de Bruno ; après ce run, plus aucune relance pour la famille grid, quel que soit le résultat.** **Clôture de la famille grid** par la clause de clôture § K.2 de `docs/rejeu_grid_prespec.md` — décision de gestion de Bruno, prise avant ce run, annoncée comme telle, jamais déduite du verdict (protocole § K.1) ; toute reprise de la famille exige un mécanisme nouveau (`CONTRAINTES_POST_B4.md` § 5, ticket § 6). Travail de mécanisme pour les familles suivantes, composées avant toute évaluation | `results/c3_campagne_grid_v2/` (`attendu.md`, `manifest.json`, pilote, preuves) ; `results/c3_campagne_grid_v2/report.md` (au commit de preuves) |
+
+- **Archive-préalable** : le répertoire du run v1, resté en place par la règle d'arrêt, est archivé avant tout lancement
+  (`~/archive/c3_campagne_grid_20261001/out`, en lecture seule, jamais ouvert) ; le clone v1 est supprimé. Le run v2
+  réutilise le même chemin : ce pas conditionne le lancement.
+- **Garde-fou 6 et registre, gestes de Bruno** : `CAMPAIGN_UNLOCK` est créé par Bruno dans l'arbre du service, entre la
+  relecture du STOP 1 et le GO de lancement, puis transporté dans le clone par le script de lancement ; aucun agent ne le
+  crée. Bruno le supprime après le merge. Au même moment, Bruno exécute le contrôle du registre réel livré à
+  l'attendu (§ 4 : racine, sel, mode 600, la variante v1 seule, sans verdict) ; seule la sortie `True` admet le GO.
+- **Registre de campagne** : nommé sur les deux seules lignes `--registry` du pilote ; jamais lu, copié, listé ni testé
+  par l'agent. Une sauvegarde datée du 01/10, postérieure à la première inscription, est faite par Bruno ; la suivante
+  vient après le run.
+- **Jalon du § 10.2** (premier verdict réel de la famille grid avant le 2027-01-31) : consigné avec sa date dans l'issue.
+- **Tout lancement est consigné** (`status.txt`). Un écart à l'attendu est un constat : STOP, sans relance ni lecture de
+  diagnostic avant l'accord de Bruno. L'issue sera inscrite dans une section suivante, sans réécrire celle-ci.
+
 ### Essais à venir (à inscrire avant lancement)
 
 _(prochain inscrit attendu : **première campagne sous la chaîne C3** — C3b, paquet 2 — après un producteur conforme
